@@ -1,3 +1,4 @@
+import { defaultCardAppearance, normalizeCardAppearance, type HypeCardAppearance } from './hype-card-appearance';
 export type HypeFormat = 'square' | 'story' | 'landscape' | 'card';
 export type TemplateId = 'spotlight' | 'impact' | 'clean';
 export type CardLayoutId = 'slugger' | 'all-star' | 'rookie' | 'dugout';
@@ -27,6 +28,8 @@ export type HypeCardProject = {
   format: HypeFormat;
   palette: PaletteId;
   finish: CardFinishId;
+  cardAppearance: HypeCardAppearance;
+  cardSport: string;
   breakoutEnabled: boolean;
   breakoutBorderColor: string;
   breakoutCutout: string | null;
@@ -125,6 +128,8 @@ export const defaultProject = (): HypeCardProject => ({
   format: 'card',
   palette: 'coral',
   finish: 'classic',
+  cardAppearance: defaultCardAppearance(),
+  cardSport: '',
   breakoutEnabled: false,
   breakoutBorderColor: '#35A8FF',
   breakoutCutout: null,
@@ -134,7 +139,7 @@ export const defaultProject = (): HypeCardProject => ({
   overlay: true,
   branding: true,
   playerName: '',
-  jerseyNumber: '12',
+  jerseyNumber: '',
   teamName: 'Eastside Falcons',
   position: 'Point guard',
   stat: '12 points',
@@ -264,6 +269,8 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
       : defaults.trimEnd,
     layout: project.layout ?? defaults.layout,
     finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
+    cardAppearance: normalizeCardAppearance(project.cardAppearance),
+    cardSport: typeof project.cardSport === 'string' ? project.cardSport.slice(0, 40) : '',
     breakoutEnabled: project.breakoutEnabled === true,
     breakoutBorderColor: typeof project.breakoutBorderColor === 'string' && /^#[\da-f]{6}$/i.test(project.breakoutBorderColor)
       ? project.breakoutBorderColor

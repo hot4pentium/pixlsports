@@ -134,7 +134,7 @@ async function purgeAccount(
     .from(supporterPhotosTable)
     .where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));
   const invites = await db
-    .select({ id: athleteInvitesTable.id, photoObjectPath: athleteInvitesTable.photoObjectPath })
+    .select({ id: athleteInvitesTable.id, photoObjectPath: athleteInvitesTable.photoObjectPath, cutoutObjectPath: athleteInvitesTable.cutoutObjectPath })
     .from(athleteInvitesTable)
     .where(eq(athleteInvitesTable.ownerClerkUserId, account.ownerClerkUserId));
   const invitePhotoClaims = await db
@@ -164,7 +164,7 @@ async function purgeAccount(
     ...supporterPhotoClaims.map((claim) => claim.objectPath),
     ...hypeShares.flatMap((share) => [share.videoObjectPath, share.posterObjectPath]
       .filter((objectPath): objectPath is string => Boolean(objectPath))),
-    ...invites.flatMap((invite) => invite.photoObjectPath ? [invite.photoObjectPath] : []),
+    ...invites.flatMap((invite) => [invite.photoObjectPath, invite.cutoutObjectPath].filter((path): path is string => Boolean(path))),
     ...invitePhotoClaims.map((claim) => claim.objectPath),
   ]);
   for (const objectPath of ownedObjectPaths) {

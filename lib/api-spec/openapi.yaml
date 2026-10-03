@@ -827,6 +827,30 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/appearance:
+    patch:
+      operationId: updateAthleteInviteAppearance
+      tags: [athlete-invites]
+      summary: Save the owner's HYPE Card appearance without changing page settings
+      parameters:
+        - $ref: "#/components/parameters/AthleteInviteToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardAppearance"
+      responses:
+        "200":
+          description: Updated athlete card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInvite"
+        "400":
+          description: Invalid appearance
+        "404":
+          description: Card not found
   /athlete-invites/{inviteToken}/photo/upload-url:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -3073,6 +3097,19 @@ components:
         createdAt:
           type: string
           format: date-time
+    HypeCardAppearance:
+      type: object
+      required: [design, borderColor, accentColor, accentLinked, athleteX, athleteY, athleteScale, jerseyNumber, position]
+      properties:
+        design: { type: string, enum: [classic, gallery, spotlight] }
+        borderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+        accentColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+        accentLinked: { type: boolean }
+        athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
+        athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
+        athleteScale: { type: number, minimum: 0.65, maximum: 1.45 }
+        jerseyNumber: { type: string, maxLength: 12 }
+        position: { type: string, maxLength: 80 }
     AthleteInviteInput:
       type: object
       required: [athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule]
@@ -3122,6 +3159,12 @@ components:
         paused: { type: boolean }
         liveTrackerShareToken: { type: ["string", "null"] }
         photoUrl: { type: ["string", "null"] }
+        cutoutUrl: { type: ["string", "null"] }
+        photoRevision: { type: ["string", "null"] }
+        cardAppearance:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardAppearance"
+            - type: "null"
         events:
           type: array
           items:
@@ -3291,6 +3334,11 @@ components:
           type: string
           enum: [baseball, basketball, football, soccer, volleyball]
         photoUrl: { type: ["string", "null"] }
+        cutoutUrl: { type: ["string", "null"] }
+        cardAppearance:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardAppearance"
+            - type: "null"
         hypeCard:
           anyOf:
             - $ref: "#/components/schemas/AthleteInviteHypeCard"
@@ -3343,11 +3391,14 @@ components:
       required: [objectPath]
       properties:
         objectPath: { type: string, minLength: 1, maxLength: 500 }
+        mediaRole: { type: string, enum: [photo, cutout] }
+        sourcePhotoRevision: { type: string, maxLength: 64 }
     AthleteInvitePhoto:
       type: object
       required: [photoUrl]
       properties:
         photoUrl: { type: ["string", "null"] }
+        photoRevision: { type: ["string", "null"] }
     AthleteInviteManifest:
       type: object
       required: [id, name, short_name, start_url, scope, display, icons]
@@ -3670,6 +3721,9 @@ components:
         format: { type: string, enum: [square, story, landscape, card] }
         palette: { type: string, enum: [coral, teal, gold, midnight] }
         finish: { type: string, enum: [classic, cosmic-clash, gold-spotlight, neon-prism, paint-impact] }
+        cardAppearance:
+          $ref: "#/components/schemas/HypeCardAppearance"
+        cardSport: { type: string, maxLength: 40 }
         breakoutEnabled: { type: boolean }
         breakoutBorderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         breakoutCutoutMediaId: { type: ["string", "null"] }
@@ -3785,6 +3839,11 @@ components:
           type: string
           enum: [baseball, basketball, football, soccer, volleyball]
         photoUrl: { type: ["string", "null"] }
+        cutoutUrl: { type: ["string", "null"] }
+        cardAppearance:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardAppearance"
+            - type: "null"
         hypeCard:
           anyOf:
             - $ref: "#/components/schemas/AthleteInviteHypeCard"

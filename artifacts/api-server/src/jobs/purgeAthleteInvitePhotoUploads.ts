@@ -1,4 +1,4 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, lte, or } from "drizzle-orm";
 import {
   athleteInvitePhotoUploadClaimsTable,
   athleteInvitesTable,
@@ -25,7 +25,7 @@ export async function purgeExpiredAthleteInvitePhotoUploads() {
 
     const [activePhoto] = await db.select({ id: athleteInvitesTable.id })
       .from(athleteInvitesTable)
-      .where(eq(athleteInvitesTable.photoObjectPath, removedClaim.objectPath))
+      .where(or(eq(athleteInvitesTable.photoObjectPath, removedClaim.objectPath), eq(athleteInvitesTable.cutoutObjectPath, removedClaim.objectPath)))
       .limit(1);
     if (activePhoto) continue;
     try {

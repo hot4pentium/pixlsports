@@ -1,0 +1,35 @@
+/* Gallery / Spotlight presentation. Classic rules are untouched. */
+.living-card-frame[data-design="gallery"], .living-card-frame[data-design="spotlight"] { height: auto; min-height: 0; max-height: none; aspect-ratio: 1000 / 1400; }
+.living-card-frame-outer:has(.living-card-frame[data-design="gallery"][data-side="front"]),
+.living-card-frame-outer:has(.living-card-frame[data-design="spotlight"][data-side="front"]) { padding: 0; border-color: transparent; background: none; box-shadow: none; }
+.living-card-frame-outer:has(.living-card-frame[data-design="gallery"][data-side="front"])::after,
+.living-card-frame-outer:has(.living-card-frame[data-design="spotlight"][data-side="front"])::after { display: none; }
+.living-card-frame[data-design="gallery"][data-side="front"], .living-card-frame[data-design="spotlight"][data-side="front"] { overflow: visible; border-color: transparent; background: none; border-radius: 0; }
+.living-card-frame[data-side="front"][data-design="gallery"] .living-card-flip-face, .living-card-frame[data-side="front"][data-design="spotlight"] .living-card-flip-face,
+.living-card-frame[data-design="gallery"][data-side="front"] .living-card-flip-front, .living-card-frame[data-design="spotlight"][data-side="front"] .living-card-flip-front { overflow: visible; }
+.living-card-premium-face { overflow: visible; }
+.living-card-premium-art, .living-card-premium-art > svg { display: block; width: 100%; height: 100%; pointer-events: none; }
+.living-card-premium-art > svg { overflow: visible; }
+
+/* Navigation sits inside the artwork's reserved bottom strip. */
+.living-card-frame[data-design="gallery"][data-side="front"] .living-card-controls { left: 9%; right: 9%; bottom: 3.4%; padding: 0; gap: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control { background: transparent; border: 0; border-radius: 0; color: #10243D; font-family: 'Montserrat', 'DM Sans', sans-serif; border-right: 1px solid #10243d26; }
+.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control:last-child { border-right: 0; }
+.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control:hover { background: #10243d0f; color: #10243D; transform: none; }
+.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control[aria-pressed="true"] { background: transparent; color: #10243D; box-shadow: inset 0 -3px 0 var(--pixl-accent, #EF3996); }
+.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control:focus-visible, .living-card-frame[data-design="spotlight"] .living-card-control:focus-visible { outline: 2px solid var(--pixl-accent, #EF3996); outline-offset: -2px; }
+
+.living-card-frame[data-design="spotlight"] .living-card-controls { left: 7%; right: 7%; bottom: 3.4%; padding: 3px; gap: 0; border: 1px solid #ffffff2e; border-radius: 18px; background: #0B1A33f2; box-shadow: 0 8px 20px #02050c88; }
+.living-card-frame[data-design="spotlight"] .living-card-control { background: transparent; border: 0; border-radius: 12px; color: #E9EEF7; border-right: 1px solid #ffffff22; }
+.living-card-frame[data-design="spotlight"] .living-card-control:last-child { border-right: 0; }
+.living-card-frame[data-design="spotlight"] .living-card-control svg { color: var(--pixl-accent, #EF3996); }
+.living-card-frame[data-design="spotlight"] .living-card-control:hover { background: #ffffff14; color: #fff; transform: none; }
+.living-card-frame[data-design="spotlight"] .living-card-control[aria-pressed="true"] { background: #F6EFE2; color: #10243D; }
+
+/* The alternate faces keep their dark styling in a portrait frame. */
+.living-card-frame[data-design]:not([data-design="classic"]):not([data-side="front"]) { border-radius: 24px; overflow: hidden; }
+@media (max-width: 520px) {
+  .living-card-frame[data-design="gallery"][data-side="front"] .living-card-controls,
+  .living-card-frame[data-design="spotlight"][data-side="front"] .living-card-controls { bottom: 1.3%; }
+  .living-card-frame[data-design="gallery"][data-side="front"] .living-card-control, .living-card-frame[data-design="spotlight"] .living-card-control { font-size: 7px; min-height: 44px; }
+}

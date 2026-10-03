@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HypeCardAppearance } from './hypeCardAppearance';
 import type { HypeCardProjectBackground } from './hypeCardProjectBackground';
 import type { HypeCardProjectBreakoutTransform } from './hypeCardProjectBreakoutTransform';
 import type { HypeCardProjectFinish } from './hypeCardProjectFinish';
@@ -39,6 +40,9 @@ export interface HypeCardProject {
   format: HypeCardProjectFormat;
   palette: HypeCardProjectPalette;
   finish: HypeCardProjectFinish;
+  cardAppearance?: HypeCardAppearance;
+  /** @maxLength 40 */
+  cardSport?: string;
   breakoutEnabled?: boolean;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   breakoutBorderColor?: string;

@@ -16,7 +16,7 @@ export class InvalidAthleteInvitePhotoError extends Error {
   }
 }
 
-export async function sanitizeAthleteInvitePhoto(input: Buffer, declaredContentType: string) {
+export async function sanitizeAthleteInvitePhoto(input: Buffer, declaredContentType: string, cutout = false) {
   if (!input.length || input.length > 5 * 1024 * 1024) throw new InvalidAthleteInvitePhotoError();
   try {
     const source = sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: "error" });
@@ -28,7 +28,15 @@ export async function sanitizeAthleteInvitePhoto(input: Buffer, declaredContentT
       || (metadata.pages ?? 1) !== 1) {
       throw new InvalidAthleteInvitePhotoError();
     }
-    const contents = await source.rotate()
+    if (cutout) {
+      const stats = await source.stats();
+      const alpha = metadata.hasAlpha ? stats.channels.at(-1) : null;
+      if (!alpha || alpha.min > 30 || alpha.max < 200) {
+        throw new InvalidAthleteInvitePhotoError("Choose a transparent athlete PNG or WebP with a visible subject.");
+      }
+    }
+    const prepared = cutout ? source.trim({ background: "#00000000", threshold: 10 }) : source;
+    const contents = await prepared.rotate()
       .resize({
         width: MAX_OUTPUT_DIMENSION,
         height: MAX_OUTPUT_DIMENSION,

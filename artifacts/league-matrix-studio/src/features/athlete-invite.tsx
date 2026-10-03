@@ -21,6 +21,7 @@ import {
   Trophy,
   Trash2,
   Upload,
+  Palette,
   Video,
   X,
   TrendingDown,
@@ -56,6 +57,7 @@ import {
   useRevokeAthleteInviteLiveTapAccessLink,
   type AthleteInviteEventSummary,
   type AthleteInviteInput,
+  type HypeCardAppearance,
 } from '@workspace/api-client-react';
 
 import { Button } from '@/components/ui/button';
@@ -63,6 +65,7 @@ import { Switch } from '@/components/ui/switch';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { HypeCardReplyComposer } from './public-hype-card';
 import { FanCardPhotoManager } from './fan-card-photo-manager';
+import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
 import { OwnerEventNotifications } from './owner-event-notifications';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
@@ -403,6 +406,9 @@ type OwnedAthleteInvite = {
   inviteToken: string;
   liveTrackerShareToken: string | null;
   photoUrl: string | null;
+  cutoutUrl?: string | null;
+  photoRevision?: string | null;
+  cardAppearance?: HypeCardAppearance | null;
   timezone: string | null;
 };
 
@@ -863,7 +869,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const visibilitySavingRef = useRef(false);
   const [visibilityStatus, setVisibilityStatus] = useState<'idle' | 'saving' | 'saved' | 'refresh-error' | 'error'>('idle');
-  const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'events' | 'hypes' | 'media' | 'live-taps' | null>(
+  const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'design' | 'sections' | 'events' | 'hypes' | 'media' | 'live-taps' | null>(
     () => window.location.hash === '#owner-fan-hypes'
       ? 'hypes'
       : window.location.hash === '#owner-notify-followers' ? 'events' : null,
@@ -1219,7 +1225,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </HypeManagerTaskCard>
 
       <HypeManagerTaskCard id="photo" title="Upload Photo" description="Add a new athlete photo" Icon={ImagePlus} active={activeTask === 'photo'} onSelect={() => toggleTask('photo')} badge={invite.photoUrl ? 'Photo added' : undefined}>
-        <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
+        <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} cutoutUrl={invite.cutoutUrl} photoRevision={invite.photoRevision} />
+      </HypeManagerTaskCard>
+
+      <HypeManagerTaskCard id="design" title="Card Design" description="Classic, Gallery or Spotlight" Icon={Palette} active={activeTask === 'design'} onSelect={() => toggleTask('design')} badge={invite.cardAppearance && invite.cardAppearance.design !== 'classic' ? invite.cardAppearance.design === 'gallery' ? 'Gallery' : 'Spotlight' : undefined}>
+        <FanCardAppearanceManager invite={invite} />
       </HypeManagerTaskCard>
 
       <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => toggleTask('sections')} badge={visibilitySaving ? 'Saving…' : visibilityStatus === 'error' ? 'Save failed' : visibilityStatus === 'refresh-error' ? 'Refresh needed' : undefined}>

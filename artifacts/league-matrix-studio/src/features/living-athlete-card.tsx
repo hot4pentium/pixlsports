@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Radio, RotateCcw, Send, Zap } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -372,7 +372,7 @@ export function LivingAthleteCardPage({
         <div className="living-card-layout living-card-layout-solo">
           <section className="living-card-stage" aria-label={`${invite.athleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
-              <div className="living-card-frame" data-side={side} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
+              <div className="living-card-frame" data-side={side} data-design={invite.cardAppearance?.design ?? 'classic'} style={invite.cardAppearance?.accentColor && /^#[0-9a-f]{6}$/i.test(invite.cardAppearance.accentColor) ? ({ '--pixl-accent': invite.cardAppearance.accentColor } as CSSProperties) : undefined} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
                 <div className="living-card-flip-inner">
                   <div className="living-card-flip-face living-card-flip-front">
                     {side === 'front' && (
@@ -381,6 +381,9 @@ export function LivingAthleteCardPage({
                         athleteName={invite.athleteName}
                         teamName={invite.teamName}
                         photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
+                        appearance={invite.cardAppearance}
+                        sport={invite.sport}
+                        cutoutUrl={invite.cutoutUrl}
                         onPhotoError={() => setBrokenPhoto(true)}
                       />
                     )}

@@ -35,6 +35,7 @@ import {
   db,
 } from "@workspace/db";
 import { isAccountActive } from "../lib/accountLifecycle";
+import { athletePhotoRevision } from "../lib/athletePhotoRevision";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { notifyAthleteInviteFans } from "../lib/athleteInviteFanNotifications";
@@ -162,6 +163,11 @@ router.put(
       eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
     )).limit(1);
     if (!invite) { res.status(404).json({ error: "Athlete invite not found." }); return; }
+    const isCutout = parsed.data.mediaRole === "cutout";
+    if (isCutout && (!invite.photoObjectPath || parsed.data.sourcePhotoRevision !== athletePhotoRevision(invite.photoObjectPath))) {
+      res.status(409).json({ error: "The original photo changed. Retry background removal with the current photo." });
+      return;
+    }
     let sanitizedPath: string | null = null;
     let photoPublished = false;
     try {
@@ -190,33 +196,35 @@ router.put(
       });
       const uploaded = await storage.getObjectEntityFile(claim.objectPath);
       const [originalBytes] = await uploaded.download();
-      const sanitized = await sanitizeAthleteInvitePhoto(originalBytes, metadata.contentType);
+      const sanitized = await sanitizeAthleteInvitePhoto(originalBytes, metadata.contentType, isCutout);
       sanitizedPath = await storage.savePrivateObjectEntity(
         sanitized.contents,
         sanitized.contentType,
         ownerClerkUserId,
       );
       const [updated] = await db.update(athleteInvitesTable).set({
-        photoObjectPath: sanitizedPath,
+        ...(isCutout ? { cutoutObjectPath: sanitizedPath } : { photoObjectPath: sanitizedPath, cutoutObjectPath: null }),
         updatedAt: new Date(),
       }).where(and(
         eq(athleteInvitesTable.id, invite.id),
         eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+        ...(isCutout && invite.photoObjectPath ? [eq(athleteInvitesTable.photoObjectPath, invite.photoObjectPath)] : []),
       )).returning({ publicToken: athleteInvitesTable.publicToken, updatedAt: athleteInvitesTable.updatedAt });
       if (!updated) {
         await storage.deleteObjectEntity(sanitizedPath);
-        res.status(404).json({ error: "Athlete invite not found." });
+        res.status(409).json({ error: "The original photo changed. Retry with the current photo." });
         return;
       }
       photoPublished = true;
-      for (const oldPath of [invite.photoObjectPath, claim.objectPath]) {
+      for (const oldPath of [isCutout ? null : invite.photoObjectPath, invite.cutoutObjectPath, claim.objectPath]) {
         if (!oldPath || oldPath === sanitizedPath) continue;
         try { await storage.deleteObjectEntity(oldPath); } catch (error) {
           if (!(error instanceof ObjectNotFoundError)) req.log.warn({ err: error }, "Unable to remove replaced athlete photo");
         }
       }
       res.json(ConfirmAthleteInvitePhotoResponse.parse({
-        photoUrl: `/api/athlete-invites/${updated.publicToken}/photo/image?v=${updated.updatedAt.getTime()}`,
+        photoUrl: `/api/athlete-invites/${updated.publicToken}/photo/image?${isCutout ? "role=cutout&" : ""}v=${updated.updatedAt.getTime()}`,
+        photoRevision: athletePhotoRevision(isCutout ? invite.photoObjectPath : sanitizedPath),
       }));
     } catch (error) {
       if (error instanceof InvalidAthleteInvitePhotoError) {
@@ -246,10 +254,11 @@ router.delete(
       eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
     )).limit(1);
     if (!invite) { res.status(404).end(); return; }
-    await db.update(athleteInvitesTable).set({ photoObjectPath: null, updatedAt: new Date() })
+    await db.update(athleteInvitesTable).set({ photoObjectPath: null, cutoutObjectPath: null, updatedAt: new Date() })
       .where(eq(athleteInvitesTable.id, invite.id));
-    if (invite.photoObjectPath) {
-      try { await storage.deleteObjectEntity(invite.photoObjectPath); } catch (error) {
+    for (const objectPath of [invite.photoObjectPath, invite.cutoutObjectPath]) {
+      if (!objectPath) continue;
+      try { await storage.deleteObjectEntity(objectPath); } catch (error) {
         if (!(error instanceof ObjectNotFoundError)) req.log.warn({ err: error }, "Unable to remove athlete page photo");
       }
     }
@@ -268,9 +277,10 @@ router.get(
     const isOwner = Boolean(invite && getOptionalClerkUserId(req) === invite.ownerClerkUserId);
     const active = invite && !invite.paused
       && await isAccountActive(invite.ownerClerkUserId);
-    if (!invite?.photoObjectPath || (!active && !isOwner)) { res.status(404).end(); return; }
+    const objectPath = req.query.role === "cutout" ? invite?.cutoutObjectPath : invite?.photoObjectPath;
+    if (!objectPath || (!active && !isOwner)) { res.status(404).end(); return; }
     try {
-      const [contents] = await (await storage.getObjectEntityFile(invite.photoObjectPath)).download();
+      const [contents] = await (await storage.getObjectEntityFile(objectPath)).download();
       res.type("image/webp").send(contents);
     } catch (error) {
       if (error instanceof ObjectNotFoundError) { res.status(404).end(); return; }

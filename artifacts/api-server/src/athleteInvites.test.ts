@@ -174,6 +174,36 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     const owned = { inviteToken: createdInvite.inviteToken };
     const publicUrl = `${listUrl}/${owned.inviteToken}`;
     const otherHeaders = { "x-test-user": otherId };
+    const cardAppearance = {
+      design: "gallery", borderColor: "#EF3996", accentColor: "#22C55E", accentLinked: false,
+      athleteX: 0.12, athleteY: -0.08, athleteScale: 1.1, jerseyNumber: "9", position: "Forward",
+    };
+    const appearanceUrl = `${publicUrl}/appearance`;
+    assert.equal((await fetch(appearanceUrl, {
+      method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(cardAppearance),
+    })).status, 401);
+    assert.equal((await fetch(appearanceUrl, {
+      method: "PATCH", headers: { ...otherHeaders, "content-type": "application/json" }, body: JSON.stringify(cardAppearance),
+    })).status, 404);
+    assert.equal((await fetch(appearanceUrl, {
+      method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" },
+      body: JSON.stringify({ ...cardAppearance, athleteScale: 99 }),
+    })).status, 400);
+    const appearanceSaved = await fetch(appearanceUrl, {
+      method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" },
+      body: JSON.stringify(cardAppearance),
+    });
+    assert.equal(appearanceSaved.status, 200);
+    assert.deepEqual((await appearanceSaved.json()).cardAppearance, cardAppearance);
+    assert.deepEqual((await (await fetch(`${publicUrl}/fan`)).json()).cardAppearance, cardAppearance);
+    const reloadedCards = await (await fetch(listUrl, { headers: { "x-test-user": ownerId } })).json();
+    assert.deepEqual(reloadedCards[0].cardAppearance, cardAppearance);
+    const linkedAppearance = { ...cardAppearance, design: "spotlight", accentLinked: true };
+    const linkedSaved = await fetch(appearanceUrl, {
+      method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" }, body: JSON.stringify(linkedAppearance),
+    });
+    assert.equal(linkedSaved.status, 200);
+    assert.equal((await linkedSaved.json()).cardAppearance.accentColor, cardAppearance.borderColor);
     const otherList = await fetch(listUrl, { headers: otherHeaders });
     assert.equal(otherList.status, 200);
     assert.deepEqual(await otherList.json(), []);

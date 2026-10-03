@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AthleteInvitePhotoConfirmInputMediaRole } from './athleteInvitePhotoConfirmInputMediaRole';
 
 export interface AthleteInvitePhotoConfirmInput {
   /**
@@ -12,4 +13,7 @@ export interface AthleteInvitePhotoConfirmInput {
      * @maxLength 500
      */
   objectPath: string;
+  mediaRole?: AthleteInvitePhotoConfirmInputMediaRole;
+  /** @maxLength 64 */
+  sourcePhotoRevision?: string;
 }

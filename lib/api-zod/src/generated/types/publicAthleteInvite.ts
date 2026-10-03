@@ -12,6 +12,7 @@ import type { AthleteInviteLiveTaps } from './athleteInviteLiveTaps';
 import type { AthleteInviteReply } from './athleteInviteReply';
 import type { AthleteInviteScheduleEvent } from './athleteInviteScheduleEvent';
 import type { AthleteInviteVideo } from './athleteInviteVideo';
+import type { HypeCardAppearance } from './hypeCardAppearance';
 import type { HypeCardShareStats } from './hypeCardShareStats';
 import type { PublicAthleteInviteSport } from './publicAthleteInviteSport';
 
@@ -24,6 +25,9 @@ export interface PublicAthleteInvite {
   sport: PublicAthleteInviteSport;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  cutoutUrl?: string | null;
+  cardAppearance?: HypeCardAppearance | null;
   hypeCard: AthleteInviteHypeCard | null;
   /** @maxItems 10 */
   videos: AthleteInviteVideo[];

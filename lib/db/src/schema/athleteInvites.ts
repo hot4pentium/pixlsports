@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const athleteInvitesTable = pgTable("athlete_invites", {
@@ -22,6 +22,8 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   paused: boolean("paused").notNull().default(false),
   liveTrackerShareToken: text("live_tracker_share_token"),
   photoObjectPath: text("photo_object_path"),
+  cutoutObjectPath: text("cutout_object_path"),
+  cardAppearance: jsonb("card_appearance").$type<Record<string, unknown> | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

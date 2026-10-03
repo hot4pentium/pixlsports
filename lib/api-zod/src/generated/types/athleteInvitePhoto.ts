@@ -9,4 +9,6 @@
 export interface AthleteInvitePhoto {
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  photoRevision?: string | null;
 }

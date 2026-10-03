@@ -1,3 +1,7 @@
+import { useEffect, useId, useMemo, useState } from 'react';
+import './premium-hype-card.css';
+import { normalizeCardAppearance, type HypeCardAppearance } from './hype-card-appearance';
+import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
 import './living-athlete-card.css';
 
 export type LivingAthleteCardFrontProps = {
@@ -6,6 +10,9 @@ export type LivingAthleteCardFrontProps = {
   photoUrl?: string | null;
   photoAlt?: string;
   onPhotoError?: () => void;
+  appearance?: HypeCardAppearance | null;
+  sport?: string;
+  cutoutUrl?: string | null;
 };
 
 export function LivingAthleteCardFront({
@@ -14,7 +21,34 @@ export function LivingAthleteCardFront({
   photoUrl,
   photoAlt,
   onPhotoError,
+  appearance,
+  sport,
+  cutoutUrl,
 }: LivingAthleteCardFrontProps) {
+  const [failedCutout, setFailedCutout] = useState<string | null>(null);
+  useEffect(() => {
+    if (!cutoutUrl || !appearance || appearance.design === 'classic') return;
+    let live = true;
+    const probe = new Image();
+    probe.onerror = () => { if (live) setFailedCutout(cutoutUrl); };
+    probe.src = cutoutUrl;
+    return () => { live = false; };
+  }, [cutoutUrl, appearance]);
+  const safeCutout = cutoutUrl && failedCutout !== cutoutUrl ? cutoutUrl : null;
+  const uid = useId().replace(/[^A-Za-z0-9_-]/g, '');
+  const normalized = useMemo(() => (appearance ? normalizeCardAppearance(appearance) : null), [appearance]);
+  const premium = normalized && normalized.design !== 'classic' ? normalized : null;
+  const svg = useMemo(() => premium ? buildBrandedPremiumHypeCardArtwork({
+    athleteName, teamName, sport, jerseyNumber: premium.jerseyNumber, position: premium.position,
+    photoUrl, cutoutUrl: safeCutout, appearance: premium,
+  }, 'all', `lc${uid}`) : '', [premium, athleteName, teamName, sport, photoUrl, safeCutout, uid]);
+  if (premium) {
+    return (
+      <div className="living-card-face living-card-premium-face" key="front" data-design={premium.design}>
+        <div className="living-card-premium-art" role="img" aria-label={`${athleteName} ${premium.design} HYPE Card`} data-testid="img-living-card-athlete" dangerouslySetInnerHTML={{ __html: svg }} />
+      </div>
+    );
+  }
   return (
     <div className="living-card-face" key="front">
       {photoUrl ? (

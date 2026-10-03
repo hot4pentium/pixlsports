@@ -964,6 +964,43 @@ export interface HypeCardShare {
   createdAt: string;
 }
 
+export type HypeCardAppearanceDesign = typeof HypeCardAppearanceDesign[keyof typeof HypeCardAppearanceDesign];
+
+
+export const HypeCardAppearanceDesign = {
+  classic: 'classic',
+  gallery: 'gallery',
+  spotlight: 'spotlight',
+} as const;
+
+export interface HypeCardAppearance {
+  design: HypeCardAppearanceDesign;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  borderColor: string;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  accentColor: string;
+  accentLinked: boolean;
+  /**
+     * @minimum -0.25
+     * @maximum 0.25
+     */
+  athleteX: number;
+  /**
+     * @minimum -0.18
+     * @maximum 0.18
+     */
+  athleteY: number;
+  /**
+     * @minimum 0.65
+     * @maximum 1.45
+     */
+  athleteScale: number;
+  /** @maxLength 12 */
+  jerseyNumber: string;
+  /** @maxLength 80 */
+  position: string;
+}
+
 export type AthleteInviteInputSport = typeof AthleteInviteInputSport[keyof typeof AthleteInviteInputSport];
 
 
@@ -1075,6 +1112,11 @@ export interface OwnedAthleteInvite {
   liveTrackerShareToken: string | null;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  cutoutUrl?: string | null;
+  /** @nullable */
+  photoRevision?: string | null;
+  cardAppearance?: HypeCardAppearance | null;
   events: AthleteInviteEventSummary[];
   createdAt: string;
   updatedAt: string;
@@ -1292,6 +1334,9 @@ export interface PublicAthleteInvite {
   sport: PublicAthleteInviteSport;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  cutoutUrl?: string | null;
+  cardAppearance?: HypeCardAppearance | null;
   hypeCard: AthleteInviteHypeCard | null;
   /** @maxItems 10 */
   videos: AthleteInviteVideo[];
@@ -1328,17 +1373,30 @@ export interface AthleteInvitePhotoUpload {
   objectPath: string;
 }
 
+export type AthleteInvitePhotoConfirmInputMediaRole = typeof AthleteInvitePhotoConfirmInputMediaRole[keyof typeof AthleteInvitePhotoConfirmInputMediaRole];
+
+
+export const AthleteInvitePhotoConfirmInputMediaRole = {
+  photo: 'photo',
+  cutout: 'cutout',
+} as const;
+
 export interface AthleteInvitePhotoConfirmInput {
   /**
      * @minLength 1
      * @maxLength 500
      */
   objectPath: string;
+  mediaRole?: AthleteInvitePhotoConfirmInputMediaRole;
+  /** @maxLength 64 */
+  sourcePhotoRevision?: string;
 }
 
 export interface AthleteInvitePhoto {
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  photoRevision?: string | null;
 }
 
 export type AthleteInviteManifestDisplay = typeof AthleteInviteManifestDisplay[keyof typeof AthleteInviteManifestDisplay];
@@ -2108,6 +2166,9 @@ export interface HypeCardProject {
   format: HypeCardProjectFormat;
   palette: HypeCardProjectPalette;
   finish: HypeCardProjectFinish;
+  cardAppearance?: HypeCardAppearance;
+  /** @maxLength 40 */
+  cardSport?: string;
   breakoutEnabled?: boolean;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   breakoutBorderColor?: string;
@@ -2234,6 +2295,9 @@ export interface PublicAthleteFanCard {
   sport: PublicAthleteFanCardSport;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  cutoutUrl?: string | null;
+  cardAppearance?: HypeCardAppearance | null;
   hypeCard: AthleteInviteHypeCard | null;
   /** @maxItems 10 */
   videos: AthleteInviteVideo[];

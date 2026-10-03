@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AthleteInviteEventSummary } from './athleteInviteEventSummary';
+import type { HypeCardAppearance } from './hypeCardAppearance';
 import type { OwnedAthleteInviteSport } from './ownedAthleteInviteSport';
 
 export interface OwnedAthleteInvite {
@@ -34,6 +35,11 @@ export interface OwnedAthleteInvite {
   liveTrackerShareToken: string | null;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  cutoutUrl?: string | null;
+  /** @nullable */
+  photoRevision?: string | null;
+  cardAppearance?: HypeCardAppearance | null;
   events: AthleteInviteEventSummary[];
   createdAt: Date;
   updatedAt: Date;

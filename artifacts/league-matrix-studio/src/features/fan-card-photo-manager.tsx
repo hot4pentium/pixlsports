@@ -3,11 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import {
   getGetAthleteInviteQueryKey,
+  getGetAthleteFanCardQueryKey,
   getListAthleteInvitesQueryKey,
   useConfirmAthleteInvitePhoto,
   useRemoveAthleteInvitePhoto,
   useRequestAthleteInvitePhotoUploadUrl,
 } from '@workspace/api-client-react';
+import { removeAthleteBackground } from './athlete-background-removal';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -33,7 +35,7 @@ async function preparePhoto(file: File): Promise<Blob> {
   }
 }
 
-export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: string; photoUrl: string | null }) {
+export function FanCardPhotoManager({ inviteToken, photoUrl, cutoutUrl, photoRevision }: { inviteToken: string; photoUrl: string | null; cutoutUrl?: string | null; photoRevision?: string | null }) {
   const queryClient = useQueryClient();
   const requestUpload = useRequestAthleteInvitePhotoUploadUrl();
   const confirm = useConfirmAthleteInvitePhoto();
@@ -41,13 +43,56 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
   const [selected, setSelected] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [cutoutFile, setCutoutFile] = useState<File | null>(null);
   const isBusy = busy || requestUpload.isPending || confirm.isPending || remove.isPending;
 
   async function refresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(inviteToken) }),
       queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(inviteToken) }),
     ]);
+  }
+
+  async function postCutout(blob: Blob, revision: string) {
+    if (blob.size > MAX_PHOTO_BYTES) throw new Error('The transparent cutout is too large. Choose a smaller image.');
+    const claim = await requestUpload.mutateAsync({ inviteToken, data: { contentType: blob.type as 'image/png' | 'image/webp', size: blob.size } });
+    const response = await fetch(claim.uploadUrl, { method: 'PUT', headers: { 'Content-Type': blob.type }, body: blob });
+    if (!response.ok) throw new Error('The cutout upload did not finish.');
+    await confirm.mutateAsync({ inviteToken, data: { objectPath: claim.objectPath, mediaRole: 'cutout', sourcePhotoRevision: revision } });
+    await refresh();
+    setNotice('Original photo and transparent athlete cutout are ready.');
+  }
+
+  async function processCutout(blob: Blob, revision: string) {
+    try {
+      const cutout = await removeAthleteBackground(blob, setNotice);
+      await postCutout(cutout, revision);
+    } catch (error) {
+      setNotice(`Your original photo is saved. ${error instanceof Error ? error.message : 'Background removal failed.'} You can retry below.`);
+    }
+  }
+
+  async function retryCutout() {
+    if (!photoUrl || !photoRevision || isBusy) return;
+    setBusy(true);
+    try {
+      const response = await fetch(photoUrl);
+      if (!response.ok) throw new Error('The original photo could not be loaded.');
+      await processCutout(await response.blob(), photoRevision);
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Background removal failed.'); }
+    finally { setBusy(false); }
+  }
+
+  async function uploadCutout() {
+    if (!cutoutFile || !photoRevision || isBusy) return;
+    if (!['image/png', 'image/webp'].includes(cutoutFile.type) || !cutoutFile.size || cutoutFile.size > MAX_PHOTO_BYTES) {
+      setNotice('Choose a transparent PNG or WebP under 5 MB.'); return;
+    }
+    setBusy(true);
+    try { await postCutout(cutoutFile, photoRevision); setCutoutFile(null); }
+    catch (error) { setNotice(error instanceof Error ? error.message : 'The cutout could not be saved.'); }
+    finally { setBusy(false); }
   }
 
   async function upload() {
@@ -70,10 +115,11 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
         body: photo,
       });
       if (!uploadResponse.ok) throw new Error('The photo upload did not finish. Try again.');
-      await confirm.mutateAsync({ inviteToken, data: { objectPath: claim.objectPath } });
+      const saved = await confirm.mutateAsync({ inviteToken, data: { objectPath: claim.objectPath } });
       setSelected(null);
       await refresh();
-      setNotice('Athlete photo updated on the HYPE Card.');
+      setNotice('Original photo saved. Preparing the athlete cutout…');
+      if (saved.photoRevision) await processCutout(photo, saved.photoRevision);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'The athlete photo could not be uploaded.');
     } finally {
@@ -112,6 +158,17 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
         </button>
         {photoUrl && <button type="button" onClick={() => void removePhoto()} disabled={isBusy} className="inline-flex min-h-11 items-center gap-2 border border-red-300/60 px-4 text-xs font-bold uppercase tracking-widest text-red-200 disabled:opacity-50" data-testid="button-remove-fan-card-photo"><Trash2 className="h-4 w-4" aria-hidden="true" />Remove</button>}
       </div>
+      {photoUrl && <div className="mt-5 flex flex-wrap items-end gap-3 border-t border-white/15 pt-4">
+        {cutoutUrl && <img src={cutoutUrl} alt="Transparent athlete cutout" className="h-24 w-20 bg-white/10 object-contain" data-testid="img-owner-fan-card-cutout" />}
+        <div className="max-w-xl">
+          <p className="text-xs text-white/70">Gallery and Spotlight use a separate athlete cutout. Removal runs on your device and downloads a model on first use; the original photo is always kept. A single, clearly visible athlete works best.</p>
+          <button type="button" disabled={isBusy || !photoRevision} onClick={() => void retryCutout()} className="mt-3 min-h-11 border border-white/30 px-4 text-xs disabled:opacity-50" data-testid="button-retry-fan-card-cutout">{cutoutUrl ? 'Regenerate cutout' : 'Retry background removal'}</button>
+        </div>
+        <label className="flex flex-col gap-2 text-xs text-white/70">Or choose a transparent cutout
+          <input type="file" accept="image/png,image/webp" disabled={isBusy} onChange={(event) => setCutoutFile(event.target.files?.[0] ?? null)} className="max-w-64" data-testid="input-fan-card-cutout" />
+        </label>
+        <button type="button" disabled={!cutoutFile || isBusy || !photoRevision} onClick={() => void uploadCutout()} className="min-h-11 border border-white/30 px-4 text-xs disabled:opacity-50" data-testid="button-upload-fan-card-cutout">Use cutout</button>
+      </div>}
       {notice && <p className="mt-3 text-xs font-medium text-white/75" role="status" data-testid="status-fan-card-photo">{notice}</p>}
     </section>
   );

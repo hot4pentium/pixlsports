@@ -30,6 +30,8 @@ import {
   UpdateAthleteInviteBody,
   UpdateAthleteInviteParams,
   UpdateAthleteInviteResponse,
+  UpdateAthleteInviteAppearanceBody,
+  UpdateAthleteInviteAppearanceResponse,
 } from "@workspace/api-zod";
 import {
   athleteInvitesTable,
@@ -46,6 +48,7 @@ import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
 import { notifyAthleteInviteHypeOwner } from "../lib/athleteInviteHypeNotification";
 import { getAthleteLiveTapsSummary } from "../lib/athleteLiveTaps";
+import { athletePhotoRevision } from "../lib/athletePhotoRevision";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 import { GAME_ON_CARD_MARKER } from "./scheduleShares";
@@ -355,6 +358,10 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
     photoUrl: invite.photoObjectPath && (!invite.paused || isOwner)
       ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
       : null,
+    cutoutUrl: invite.cutoutObjectPath && (!invite.paused || isOwner)
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?role=cutout&v=${invite.updatedAt.getTime()}`
+      : null,
+    cardAppearance: invite.cardAppearance ?? null,
     hypeCard: latestImage ? {
       shareToken: latestImage.publicToken,
       title: athleteMediaName(latestImage),
@@ -406,6 +413,11 @@ async function ownedInviteResponse(invite: InviteRow) {
     photoUrl: invite.photoObjectPath
       ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
       : null,
+    cutoutUrl: invite.cutoutObjectPath
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?role=cutout&v=${invite.updatedAt.getTime()}`
+      : null,
+    photoRevision: athletePhotoRevision(invite.photoObjectPath),
+    cardAppearance: invite.cardAppearance ?? null,
     events: invite.showEvents ? await availableAthleteEvents(invite) : [],
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt,
@@ -650,6 +662,28 @@ router.delete("/athlete-invites/:inviteToken/hypes/:hypeId", requireAuth, async 
   )).returning({ id: athleteInviteHypesTable.id });
   if (!deleted) { res.status(404).json({ error: "Hype not found" }); return; }
   res.status(204).send();
+});
+
+router.patch("/athlete-invites/:inviteToken/appearance", requireAuth, async (req, res): Promise<void> => {
+  const params = UpdateAthleteInviteParams.safeParse(req.params);
+  const parsed = UpdateAthleteInviteAppearanceBody.safeParse(req.body);
+  if (!params.success || !parsed.success) {
+    res.status(400).json({ error: "Choose valid card colors and athlete placement." });
+    return;
+  }
+  const appearance = parsed.data;
+  const [updated] = await db.update(athleteInvitesTable).set({
+    cardAppearance: {
+      ...appearance,
+      accentColor: appearance.accentLinked ? appearance.borderColor : appearance.accentColor,
+    },
+    updatedAt: new Date(),
+  }).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  )).returning();
+  if (!updated) { res.status(404).json({ error: "Athlete card not found." }); return; }
+  res.json(UpdateAthleteInviteAppearanceResponse.parse(await ownedInviteResponse(updated)));
 });
 
 router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Promise<void> => {

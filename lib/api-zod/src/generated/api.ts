@@ -1475,6 +1475,21 @@ export const GetStatTrackerShareEventsResponse = zod.unknown()
  */
 export const listAthleteInvitesResponseTimezoneMax = 100;
 
+export const listAthleteInvitesResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const listAthleteInvitesResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const listAthleteInvitesResponseCardAppearanceOneAthleteXMin = -0.25;
+export const listAthleteInvitesResponseCardAppearanceOneAthleteXMax = 0.25;
+
+export const listAthleteInvitesResponseCardAppearanceOneAthleteYMin = -0.18;
+export const listAthleteInvitesResponseCardAppearanceOneAthleteYMax = 0.18;
+
+export const listAthleteInvitesResponseCardAppearanceOneAthleteScaleMin = 0.65;
+export const listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const listAthleteInvitesResponseCardAppearanceOneJerseyNumberMax = 12;
+
+export const listAthleteInvitesResponseCardAppearanceOnePositionMax = 80;
+
 
 
 export const ListAthleteInvitesResponseItem = zod.object({
@@ -1495,6 +1510,19 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "cutoutUrl": zod.string().nullish(),
+  "photoRevision": zod.string().nullish(),
+  "cardAppearance": zod.union([zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "borderColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneBorderColorRegExp),
+  "accentColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "athleteX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteXMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteXMax),
+  "athleteY": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteYMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteYMax),
+  "athleteScale": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteScaleMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax),
+  "jerseyNumber": zod.string().max(listAthleteInvitesResponseCardAppearanceOneJerseyNumberMax),
+  "position": zod.string().max(listAthleteInvitesResponseCardAppearanceOnePositionMax)
+}),zod.null()]).optional(),
   "events": zod.array(zod.object({
   "shareToken": zod.string().uuid(),
   "eventId": zod.string(),
@@ -1544,6 +1572,21 @@ export const CreateAthleteInviteBody = zod.object({
 
 export const createAthleteInviteResponseTimezoneMax = 100;
 
+export const createAthleteInviteResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const createAthleteInviteResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const createAthleteInviteResponseCardAppearanceOneAthleteXMin = -0.25;
+export const createAthleteInviteResponseCardAppearanceOneAthleteXMax = 0.25;
+
+export const createAthleteInviteResponseCardAppearanceOneAthleteYMin = -0.18;
+export const createAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
+
+export const createAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
+export const createAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const createAthleteInviteResponseCardAppearanceOneJerseyNumberMax = 12;
+
+export const createAthleteInviteResponseCardAppearanceOnePositionMax = 80;
+
 
 
 export const CreateAthleteInviteResponse = zod.object({
@@ -1564,6 +1607,19 @@ export const CreateAthleteInviteResponse = zod.object({
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "cutoutUrl": zod.string().nullish(),
+  "photoRevision": zod.string().nullish(),
+  "cardAppearance": zod.union([zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "borderColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
+  "accentColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "athleteX": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteXMin).max(createAthleteInviteResponseCardAppearanceOneAthleteXMax),
+  "athleteY": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteYMin).max(createAthleteInviteResponseCardAppearanceOneAthleteYMax),
+  "athleteScale": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(createAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "jerseyNumber": zod.string().max(createAthleteInviteResponseCardAppearanceOneJerseyNumberMax),
+  "position": zod.string().max(createAthleteInviteResponseCardAppearanceOnePositionMax)
+}),zod.null()]).optional(),
   "events": zod.array(zod.object({
   "shareToken": zod.string().uuid(),
   "eventId": zod.string(),
@@ -1589,6 +1645,21 @@ export const getAthleteInvitePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{
 export const GetAthleteInviteParams = zod.object({
   "inviteToken": zod.coerce.string().regex(getAthleteInvitePathInviteTokenRegExp)
 })
+
+export const getAthleteInviteResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteInviteResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteInviteResponseCardAppearanceOneAthleteXMin = -0.25;
+export const getAthleteInviteResponseCardAppearanceOneAthleteXMax = 0.25;
+
+export const getAthleteInviteResponseCardAppearanceOneAthleteYMin = -0.18;
+export const getAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
+
+export const getAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
+export const getAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const getAthleteInviteResponseCardAppearanceOneJerseyNumberMax = 12;
+
+export const getAthleteInviteResponseCardAppearanceOnePositionMax = 80;
 
 export const getAthleteInviteResponseHypeCardOneMediaNameMax = 80;
 
@@ -1644,6 +1715,18 @@ export const GetAthleteInviteResponse = zod.object({
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "photoUrl": zod.string().nullable(),
+  "cutoutUrl": zod.string().nullish(),
+  "cardAppearance": zod.union([zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "borderColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
+  "accentColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "athleteX": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteXMin).max(getAthleteInviteResponseCardAppearanceOneAthleteXMax),
+  "athleteY": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteYMin).max(getAthleteInviteResponseCardAppearanceOneAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(getAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "jerseyNumber": zod.string().max(getAthleteInviteResponseCardAppearanceOneJerseyNumberMax),
+  "position": zod.string().max(getAthleteInviteResponseCardAppearanceOnePositionMax)
+}),zod.null()]).optional(),
   "hypeCard": zod.union([zod.object({
   "shareToken": zod.string(),
   "title": zod.string(),
@@ -1770,6 +1853,21 @@ export const UpdateAthleteInviteBody = zod.object({
 
 export const updateAthleteInviteResponseTimezoneMax = 100;
 
+export const updateAthleteInviteResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteInviteResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteInviteResponseCardAppearanceOneAthleteXMin = -0.25;
+export const updateAthleteInviteResponseCardAppearanceOneAthleteXMax = 0.25;
+
+export const updateAthleteInviteResponseCardAppearanceOneAthleteYMin = -0.18;
+export const updateAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
+
+export const updateAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
+export const updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const updateAthleteInviteResponseCardAppearanceOneJerseyNumberMax = 12;
+
+export const updateAthleteInviteResponseCardAppearanceOnePositionMax = 80;
+
 
 
 export const UpdateAthleteInviteResponse = zod.object({
@@ -1790,6 +1888,19 @@ export const UpdateAthleteInviteResponse = zod.object({
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "cutoutUrl": zod.string().nullish(),
+  "photoRevision": zod.string().nullish(),
+  "cardAppearance": zod.union([zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "borderColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
+  "accentColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "athleteX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteXMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteYMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "jerseyNumber": zod.string().max(updateAthleteInviteResponseCardAppearanceOneJerseyNumberMax),
+  "position": zod.string().max(updateAthleteInviteResponseCardAppearanceOnePositionMax)
+}),zod.null()]).optional(),
   "events": zod.array(zod.object({
   "shareToken": zod.string().uuid(),
   "eventId": zod.string(),
@@ -1832,6 +1943,21 @@ export const GetAthleteFanCardParams = zod.object({
 })
 
 export const getAthleteFanCardResponseTimezoneMax = 100;
+
+export const getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteFanCardResponseCardAppearanceOneAthleteXMin = -0.25;
+export const getAthleteFanCardResponseCardAppearanceOneAthleteXMax = 0.25;
+
+export const getAthleteFanCardResponseCardAppearanceOneAthleteYMin = -0.18;
+export const getAthleteFanCardResponseCardAppearanceOneAthleteYMax = 0.18;
+
+export const getAthleteFanCardResponseCardAppearanceOneAthleteScaleMin = 0.65;
+export const getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const getAthleteFanCardResponseCardAppearanceOneJerseyNumberMax = 12;
+
+export const getAthleteFanCardResponseCardAppearanceOnePositionMax = 80;
 
 export const getAthleteFanCardResponseHypeCardOneMediaNameMax = 80;
 
@@ -1899,6 +2025,18 @@ export const GetAthleteFanCardResponse = zod.object({
   "timezone": zod.string().max(getAthleteFanCardResponseTimezoneMax).nullable().describe('Validated IANA timezone, or null for a legacy invite without one.'),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "photoUrl": zod.string().nullable(),
+  "cutoutUrl": zod.string().nullish(),
+  "cardAppearance": zod.union([zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "borderColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp),
+  "accentColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "athleteX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteXMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteXMax),
+  "athleteY": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteYMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteScaleMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax),
+  "jerseyNumber": zod.string().max(getAthleteFanCardResponseCardAppearanceOneJerseyNumberMax),
+  "position": zod.string().max(getAthleteFanCardResponseCardAppearanceOnePositionMax)
+}),zod.null()]).optional(),
   "hypeCard": zod.union([zod.object({
   "shareToken": zod.string(),
   "title": zod.string(),
@@ -2271,6 +2409,111 @@ export const StopAthleteInviteLiveResponse = zod.void()
 
 
 /**
+ * @summary Save the owner's HYPE Card appearance without changing page settings
+ */
+export const updateAthleteInviteAppearancePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const UpdateAthleteInviteAppearanceParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(updateAthleteInviteAppearancePathInviteTokenRegExp)
+})
+
+export const updateAthleteInviteAppearanceBodyBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteInviteAppearanceBodyAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteInviteAppearanceBodyAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceBodyAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceBodyAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceBodyAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceBodyAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceBodyAthleteScaleMax = 1.45;
+
+export const updateAthleteInviteAppearanceBodyJerseyNumberMax = 12;
+
+export const updateAthleteInviteAppearanceBodyPositionMax = 80;
+
+
+
+export const UpdateAthleteInviteAppearanceBody = zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "borderColor": zod.string().regex(updateAthleteInviteAppearanceBodyBorderColorRegExp),
+  "accentColor": zod.string().regex(updateAthleteInviteAppearanceBodyAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceBodyAthleteXMin).max(updateAthleteInviteAppearanceBodyAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceBodyAthleteYMin).max(updateAthleteInviteAppearanceBodyAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceBodyAthleteScaleMin).max(updateAthleteInviteAppearanceBodyAthleteScaleMax),
+  "jerseyNumber": zod.string().max(updateAthleteInviteAppearanceBodyJerseyNumberMax),
+  "position": zod.string().max(updateAthleteInviteAppearanceBodyPositionMax)
+})
+
+export const updateAthleteInviteAppearanceResponseTimezoneMax = 100;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneJerseyNumberMax = 12;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOnePositionMax = 80;
+
+
+
+export const UpdateAthleteInviteAppearanceResponse = zod.object({
+  "inviteToken": zod.string(),
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "timezone": zod.string().max(updateAthleteInviteAppearanceResponseTimezoneMax).nullable(),
+  "trackerProjectId": zod.string().uuid().nullable(),
+  "scheduleProjectId": zod.string().uuid().nullable(),
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showSchedule": zod.boolean(),
+  "showEvents": zod.boolean(),
+  "hypesEnabled": zod.boolean(),
+  "paused": zod.boolean(),
+  "liveTrackerShareToken": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "cutoutUrl": zod.string().nullish(),
+  "photoRevision": zod.string().nullish(),
+  "cardAppearance": zod.union([zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "borderColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneBorderColorRegExp),
+  "accentColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax),
+  "jerseyNumber": zod.string().max(updateAthleteInviteAppearanceResponseCardAppearanceOneJerseyNumberMax),
+  "position": zod.string().max(updateAthleteInviteAppearanceResponseCardAppearanceOnePositionMax)
+}),zod.null()]).optional(),
+  "events": zod.array(zod.object({
+  "shareToken": zod.string().uuid(),
+  "eventId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string().describe('YYYY-MM-DD event date in the athlete invite timezone'),
+  "time": zod.string(),
+  "type": zod.enum(['game', 'practice']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "opponent": zod.string(),
+  "location": zod.string()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Request an owner-only athlete page photo upload
  */
 export const requestAthleteInvitePhotoUploadUrlPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
@@ -2307,14 +2550,19 @@ export const ConfirmAthleteInvitePhotoParams = zod.object({
 
 export const confirmAthleteInvitePhotoBodyObjectPathMax = 500;
 
+export const confirmAthleteInvitePhotoBodySourcePhotoRevisionMax = 64;
+
 
 
 export const ConfirmAthleteInvitePhotoBody = zod.object({
-  "objectPath": zod.string().min(1).max(confirmAthleteInvitePhotoBodyObjectPathMax)
+  "objectPath": zod.string().min(1).max(confirmAthleteInvitePhotoBodyObjectPathMax),
+  "mediaRole": zod.enum(['photo', 'cutout']).optional(),
+  "sourcePhotoRevision": zod.string().max(confirmAthleteInvitePhotoBodySourcePhotoRevisionMax).optional()
 })
 
 export const ConfirmAthleteInvitePhotoResponse = zod.object({
-  "photoUrl": zod.string().nullable()
+  "photoUrl": zod.string().nullable(),
+  "photoRevision": zod.string().nullish()
 })
 
 

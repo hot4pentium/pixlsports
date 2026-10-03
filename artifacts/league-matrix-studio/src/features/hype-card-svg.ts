@@ -1,4 +1,4 @@
-import { 
+import {
   HypeCardProject, 
   HypeFormat, 
   palettes, 
@@ -7,6 +7,8 @@ import {
   templates
 } from './hype-card-types';
 import QRCode from 'qrcode';
+import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
+import { normalizeCardAppearance } from './hype-card-appearance';
 import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup, buildStadiumPhotoWatermarkMarkup } from './hype-card-geometry';
 import { buildPositionBadgeMarkup } from './position-badge';
 import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url';
@@ -850,6 +852,23 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
 }
 
 export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'all', ns = 'ns', statsUrl?: string) {
+  const appearance = normalizeCardAppearance(project.cardAppearance);
+  if (appearance.design !== 'classic') {
+    const { width, height } = getDimensions(project.format);
+    const scale = Math.min(width / 1000, height / 1400);
+    const artwork = buildBrandedPremiumHypeCardArtwork({
+      athleteName: project.playerName,
+      teamName: project.teamName,
+      sport: project.cardSport,
+      jerseyNumber: project.jerseyNumber,
+      position: project.position,
+      photoUrl: project.mediaType === 'video' && layer !== 'all' ? null : project.photo,
+      cutoutUrl: project.breakoutCutout,
+      appearance,
+    }, layer, `premium-${ns}`).replace(/<svg\b/, `<svg x="${(width - 1000 * scale) / 2}" y="${(height - 1400 * scale) / 2}"`).replace('width="1000" height="1400"', `width="${1000 * scale}" height="${1400 * scale}"`);
+    const stats = layer === 'bg' ? '' : buildStatsUrlMarkup(statsUrl, width, height, palettes[project.palette]);
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${artwork}${stats}</svg>`;
+  }
   if (project.format === 'card') {
     return buildStadiumCardSvg(project, layer, ns, statsUrl);
   }
@@ -927,6 +946,17 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
 
 export function getPhotoClipInfo(project: HypeCardProject, ns: string) {
   const { width, height } = getDimensions(project.format);
+  if (normalizeCardAppearance(project.cardAppearance).design !== 'classic') {
+    const scale = Math.min(width / 1000, height / 1400);
+    const frame = project.cardAppearance.design === 'gallery'
+      ? { x: 90, y: 160, width: 820, height: 800, radius: 40 }
+      : { x: 70, y: 170, width: 860, height: 830, radius: 40 };
+    const x = (width - 1000 * scale) / 2 + frame.x * scale;
+    const y = (height - 1400 * scale) / 2 + frame.y * scale;
+    const w = frame.width * scale;
+    const h = frame.height * scale;
+    return { clipId: `premiumPhotoClip-${ns}`, clipContent: `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${frame.radius * scale}"/>`, x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
+  }
   if (project.format !== 'card') {
     const frame = getPhotoFrame(project.format);
     const x = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
