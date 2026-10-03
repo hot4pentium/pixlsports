@@ -1,0 +1,46 @@
+Add a premium “Breakout” design option to the PIXL Sports Hype Card, using the attached concept as the visual reference.
+
+The defining effect is that the athlete appears to extend beyond the card’s frame. Build this as a reusable layered design that works with the user’s uploaded photo and existing athlete information.
+
+**Visual structure**
+
+Arrange the card in these layers, from back to front:
+
+1. A recessed sports background, such as a softly blurred stadium.
+2. A rounded, beveled card frame with subtle highlights and depth.
+3. The athlete’s background-removed photo, positioned in front of the frame.
+4. A foreground nameplate containing the athlete’s name and team.
+5. The existing card navigation and interactive controls.
+
+The athlete’s head should overlap the top border. Depending on the photo, shoulders, hands, or sports equipment can also overlap the frame. Add a restrained shadow behind the athlete to strengthen the separation from the background.
+
+Clip the stadium background inside the frame, but allow the athlete layer to extend beyond it. Leave enough space around the card so the overlapping portions remain visible on mobile.
+
+Keep the result clean and athletic, with the athlete as the focus. Match the concept’s depth without adding excessive glow, particles, or decorative clutter.
+
+**Photo controls**
+
+The effect requires a background-removed athlete image with transparency. Preserve the original photo and use a separate cutout for this design. Keep the athlete’s actual face, uniform, and equipment intact.
+
+Let the user reposition and resize the cutout with a live preview. Provide a “Reset position” action. If background removal is unavailable or unsuccessful, retain the original photo presentation and explain that a cutout is required for the Breakout effect.
+
+**User-selectable border color**
+
+Add a “Border color” control in the card appearance settings:
+
+- Offer preset swatches, including blue, red, green, gold, purple, silver, and pink.
+- Include a custom color picker and hex input.
+- Update the preview immediately as the user changes the color.
+- Apply the selected color to the frame’s main accent, edge lighting, and matching nameplate trim.
+- Preserve the bevel’s highlights and shadows so changing the color retains the frame’s dimensional appearance.
+- Keep the athlete photo and stadium colors independent of this setting.
+
+Save the border color with the individual card design and restore it when the user returns.
+
+**Existing behavior**
+
+Keep the current card information, navigation, sharing, and flip behavior working. The new design should be an appearance option alongside the existing styles.
+
+Use the same saved design settings for the owner’s preview, the shared card, and image exports where exports are supported. Ensure exports include the athlete’s overlap without cropping it away.
+
+The finished result should visibly place the athlete in front of the frame, remain readable on a phone, and let users personalize the frame color without losing the premium depth effect.
