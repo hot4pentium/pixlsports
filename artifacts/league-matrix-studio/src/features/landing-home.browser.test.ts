@@ -240,7 +240,10 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
                   assert.equal(await connection.evaluate(`document.querySelectorAll('.pixl-demo-hype-event-list > li').length === 2 && document.querySelector('[data-testid=face-demo-hype-events]')?.textContent.includes('vs Falcons') && document.querySelectorAll('.pixl-demo-hype-event-list time[datetime]').length === 2`, page.sessionId), true);
                 }
               }
-               assert.equal(await connection.evaluate(`!/\u005c\u005cbvideos?\u005c\u005cb/i.test(document.querySelector('[data-testid=landing-tool-demo]')?.innerText || '')`, page.sessionId), true);
+               assert.equal(await connection.evaluate(
+                 `!(document.querySelector('[data-testid=landing-tool-demo]')?.innerText || '').toLowerCase().includes('video')`,
+                 page.sessionId,
+               ), true);
               await connection.evaluate(`document.querySelector('[data-testid=button-demo-hype-events]').click()`, page.sessionId);
               await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=face-demo-hype-events]')?.textContent.includes('vs Tigers')`, Boolean);
              await connection.evaluate(`document.querySelector('[data-testid=button-demo-hype-front]').click()`, page.sessionId);

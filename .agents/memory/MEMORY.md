@@ -30,6 +30,7 @@
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.
 - [Exported stats QR safe areas](exported-stats-qr-safe-areas.md) — linked stats overlays share one SVG foreground across stills and video, with format-specific protected lanes.
 - [Hype Card watermark legibility](hype-card-watermark-legibility.md) — judge photo overlays at phone-preview scale; a faint full-resolution SVG mark can vanish when reduced.
+- [AI image edit proportions](ai-image-edit-proportions.md) — verify edited image dimensions before replacing fixed-ratio UI artwork.
 - [Athlete fan card and Hype Page lifecycle](athlete-hype-page-lifecycle.md) — share the fan card first, preserve the original page, and keep live sessions temporary.
 - [Hype manager task drafts](hype-manager-task-drafts.md) — keep task panels mounted; immediate visibility saves must not overwrite or implicitly save an unfinished time zone.
 - [Approved Hype manager layout](approved-hype-manager-layout.md) — the owner-only wallet-style task cards are approved; their chevrons should toggle panels open and closed.
