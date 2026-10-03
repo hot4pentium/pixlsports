@@ -169,6 +169,7 @@ export function GameOnInlineStatTracker({
     setOtherActiveGame(null);
     setCompletedGame(null);
     setEndedElsewhere(false);
+    setSportChoiceRequired(false);
     setCurrentGame(null);
 
     if (!userId) {
@@ -184,7 +185,9 @@ export function GameOnInlineStatTracker({
       } else {
         const completed = findCompletedGame(userId, date, opponent, eventId);
         if (completed) setCompletedGame(completed);
-        else createEventGame();
+        else if (!getTrackerSportForProfile(readStoredTrackerData(window.localStorage, userId), sport)) {
+          setSportChoiceRequired(true);
+        }
       }
     } catch {
       setError('The saved Stat Tracker game could not be opened on this device.');
@@ -414,8 +417,19 @@ export function GameOnInlineStatTracker({
             ))}
           </div>
         </div>
-      ) : error && !game ? (
-        <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">{error}</p>
+      ) : !game ? (
+        <div className="game-on-quick-tracker__message" data-testid="inline-tracker-ready">
+          <p>This game is not tracking yet. Press Start game when you’re ready.</p>
+          {error && <p className="game-on-quick-tracker__save-warning" role="alert">{error}</p>}
+          <button
+            type="button"
+            className="game-on-quick-tracker__primary"
+            onClick={() => createEventGame()}
+            data-testid="button-inline-start-game"
+          >
+            Start game
+          </button>
+        </div>
       ) : game && rule && game.sport === 'soccer' && game.soccerPeriodFormat === null ? (
         <div className="game-on-quick-tracker__message" data-testid="inline-soccer-period-setup">
           <p>Choose the soccer game format before recording plays.</p>

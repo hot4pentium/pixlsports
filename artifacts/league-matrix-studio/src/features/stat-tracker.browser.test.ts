@@ -1131,6 +1131,16 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       localStorage.removeItem('leaguematrix-stat-tracker:inline-football-user');
       window.location.href = '/stat-tracker-test.html?inlineFootball=1';
     })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-inline-start-game\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user") === null && document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") === null',
+        page.sessionId,
+      ),
+      true,
+      'opening a scheduled Event Card must not create or mark its game live',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-inline-start-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") !== null', Boolean);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"card-inline-stat-pass-reception\\"]") !== null', Boolean);
     assert.equal(

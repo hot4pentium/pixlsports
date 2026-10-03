@@ -719,10 +719,10 @@ export function SupporterDashboardView({
   const renderMobileSelectedGameOnCard = (card: (typeof collectionCards)[number], options: GameOnCardRenderOptions) => renderSelectedGameOnCard(card, 'mobile', options);
   const renderDesktopSelectedGameOnCard = (card: (typeof collectionCards)[number], options: GameOnCardRenderOptions) => renderSelectedGameOnCard(card, 'desktop', options);
   const gameStage: SupporterGameStage = contextEvent
-      ? getSupporterGameStage(contextEvent, currentTime)
+      ? getSupporterGameStage(contextEvent, currentTime, { includePregameCaptureWindow: false })
       : 'upcoming';
   const recommendedGameStage = recommendedGame
-    ? getSupporterGameStage(recommendedGame, currentTime)
+    ? getSupporterGameStage(recommendedGame, currentTime, { includePregameCaptureWindow: false })
     : null;
   const currentStage = contextEvent && gameStage === 'upcoming'
     ? {

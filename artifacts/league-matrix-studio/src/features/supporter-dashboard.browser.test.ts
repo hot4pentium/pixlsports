@@ -2133,7 +2133,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         value: async (payload) => window.__eventCardShareCalls.push(payload),
       });
     })()`, page.sessionId);
-    await click('[data-testid="button-share-game-on-card-share:filter-test-published"]', page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card shared.'`, Boolean);
     const sharedCardDetails = await connection.evaluate<{
@@ -2916,6 +2916,12 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       .some((card) => card.classList.contains('game-on-collection__card--selected')
         && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-inline-start-game\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      'localStorage.getItem("leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test") === null',
+      page.sessionId,
+    ), true, 'opening the inline tracker must leave the game unstarted');
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-start-game"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") !== null', Boolean);
     const inlineGameDate = await connection.evaluate<string>('window.__dashboardInlineGameDate', page.sessionId);
     assert.deepEqual(await connection.evaluate<{

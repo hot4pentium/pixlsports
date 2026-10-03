@@ -116,7 +116,7 @@ export function LivingAthleteCardPage({
       queryKey: getGetAthleteFanCardQueryKey(inviteToken),
       retry: false,
       refetchOnWindowFocus: true,
-      refetchInterval: (query) => query.state.data?.liveTaps.active ? 5_000 : 60_000,
+      refetchInterval: (query) => query.state.data?.liveTaps.active ? 5_000 : 10_000,
     },
   });
   const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
