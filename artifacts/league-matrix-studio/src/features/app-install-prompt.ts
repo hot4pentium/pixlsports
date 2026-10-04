@@ -35,6 +35,7 @@ export function useAppInstallPrompt(surface: InstallSurface = 'dashboard'): {
   isStandalone: boolean;
   showInstructions: boolean;
   handleInstall: (deviceClass: InstallDeviceClass) => Promise<void>;
+  dismissInstructions: () => void;
 } {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(detectIosDevice);
@@ -149,5 +150,7 @@ export function useAppInstallPrompt(surface: InstallSurface = 'dashboard'): {
     }
   };
 
-  return { action, isIOS, isStandalone, showInstructions, handleInstall };
+  const dismissInstructions = () => setShowInstructions(false);
+
+  return { action, isIOS, isStandalone, showInstructions, handleInstall, dismissInstructions };
 }
