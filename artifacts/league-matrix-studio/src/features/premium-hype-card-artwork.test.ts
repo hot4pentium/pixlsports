@@ -33,15 +33,41 @@ test('Gallery moves the name, details, and long team label down beneath the phot
     cutoutUrl: 'data:image/png;base64,AAAA',
     appearance: defaultCardAppearance('gallery'),
   });
-  assert.match(svg, /<text x="500" y="1123"[^>]*>JORDAN ALEXANDER<\/text>/);
-  assert.match(svg, /<text x="500" y="1221"[^>]*>MATTHEWS<\/text>/);
-  assert.match(svg, /<text x="90" y="1063"/);
-  assert.match(svg, /<text x="500" y="1273"[^>]*>#01\s+\|\s+QUARTERBACK<\/text>/);
+  assert.match(svg, /<text x="500" y="1185"[^>]*>JORDAN ALEXANDER<\/text>/);
+  assert.match(svg, /<text x="500" y="1263.4"[^>]*>MATTHEWS<\/text>/);
+  assert.match(svg, /<text x="90" y="1086"/);
+  assert.match(svg, /<text x="500" y="1320"[^>]*>#01\s+\|\s+QUARTERBACK<\/text>/);
   assert.match(svg, /<line x1="90" y1="1327" x2="910" y2="1327"/);
   assert.ok(svg.indexOf('stroke-width="5"/>') < svg.indexOf('>SOCCER</text>')
     && svg.indexOf('>SOCCER</text>') < svg.indexOf('data-photo-placement="cutout"'),
   'the Gallery cutout overlays its frame and sport label');
   assert.match(svg, /<svg[^>]*overflow="visible"[^>]*data-design="gallery"/);
+});
+test('Gallery extends the photo frame below the avatar and fits short and wrapped names beneath it', () => {
+  for (const athleteName of ['Kimberly', 'Jordan Alexander Matthews']) {
+    for (const teamName of ['Falcons', 'The Eastside Hurricanes']) {
+      for (const layer of ['all', 'bg', 'fg'] as const) {
+        const svg = buildPremiumHypeCardArtwork({
+          ...base, athleteName, teamName, position: 'Keeper',
+          appearance: defaultCardAppearance('gallery'),
+        }, layer);
+        if (layer !== 'fg') {
+          assert.match(svg, /data-gallery-photo-frame x="90" y="160" width="820" height="880"/);
+          assert.match(svg, /<clipPath[^>]*><rect x="90" y="160" width="820" height="880"/);
+        }
+        if (layer !== 'bg') {
+          assert.match(svg, /<image[^>]*x="120" y="60" width="760" height="900"/,
+            'avatar placement stays unchanged while the frame gains 80px below its feet');
+          const identity = [...svg.matchAll(/<text x="500" y="([\d.]+)"[^>]*font-size="([\d.]+)"/g)];
+          assert.ok(identity.length >= 2);
+          for (const [, baseline, fontSize] of identity) {
+            assert.ok(Number(baseline) - Number(fontSize) > 1058, 'identity stays below the taller frame');
+            assert.ok(Number(baseline) <= 1320, 'identity fits inside the card');
+          }
+        }
+      }
+    }
+  }
 });
 test('Spotlight keeps Gallery-style avatar placement and paints the full cutout over the frame', () => {
   const appearance = { ...defaultCardAppearance('spotlight'), athleteScale: 1.2, athleteX: .08, athleteY: -.04 };

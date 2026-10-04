@@ -140,10 +140,12 @@ function gallery(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): stri
   const jersey = (input.jerseyNumber || a.jerseyNumber || '').trim();
   const sub = [jersey ? `#${jersey}` : '', position].filter(Boolean).join('  |  ').toUpperCase();
   const team = (input.teamName || '').trim().toUpperCase();
-  const win = { x: 90, y: 160, w: 820, h: 800 };
-  const nm = fitName(input.athleteName || 'Athlete', 800, 190, 110, 100);
-  const nameBase = nm.lines.length > 1 ? 1123 : 1205;
-  const subY = nm.lines.length > 1 ? Math.min(1305, nameBase + nm.size * 0.98 + 52) : 1285;
+  // Extend the photo frame below the unchanged avatar anchor, including its shadow.
+  const win = { x: 90, y: 160, w: 820, h: 880 };
+  const longTeam = team.length > 18;
+  const nm = fitName(input.athleteName || 'Athlete', 800, longTeam ? 150 : 170, 100, 80);
+  const nameBase = nm.lines.length > 1 ? (longTeam ? 1185 : 1160) : 1245;
+  const subY = 1320;
   const bg = `
 <defs>${grainDef('g-grain', 0.16)}${shadowFilter('g-shadow', 4, 3, .22)}
 <filter id="g-card-shadow" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#2B2118" flood-opacity=".28"/></filter>
@@ -166,7 +168,7 @@ function gallery(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): stri
 <g clip-path="url(#g-win)">${venue('g-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), false)}
 ${photoFallback(input, win, 'g-win')}${initialsArt(input, 500, 600, NAVY)}
 <rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" fill="url(#g-inner)"/></g>
-<rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="40" fill="none" stroke="#2B2118" stroke-opacity=".25" stroke-width="3"/>
+<rect data-gallery-photo-frame x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="40" fill="none" stroke="#2B2118" stroke-opacity=".25" stroke-width="3"/>
 </g>`;
   const fg = `
 <defs>${grainDef('g-grain2', 0.0)}${shadowFilter('g-cut', 14, 10, .38)}</defs>
@@ -176,7 +178,7 @@ ${logo(input, 88, 74, 170)}
 <line x1="90" y1="1327" x2="910" y2="1327" stroke="${NAVY}" stroke-opacity=".14" stroke-width="2"/>
 ${sport ? `<line x1="722" y1="104" x2="758" y2="104" stroke="${accent}" stroke-width="4"/><text x="912" y="115" text-anchor="end" font-family="${FONT_TEXT}" font-weight="600" font-size="28" letter-spacing="6" fill="${NAVY}">${sport}</text>` : ''}
 ${athlete(input, { x: 120, y: 60, w: 760, h: 900 }, 'g-cut')}
-${team ? (team.length <= 18 ? `<g transform="translate(62 ${win.y + 330}) rotate(-90)"><text x="0" y="0" text-anchor="middle" font-family="${FONT_TEXT}" font-weight="600" font-size="22" letter-spacing="5" fill="${NAVY}">${escapeXml(team)}</text></g>` : `<text x="90" y="1063" font-family="${FONT_TEXT}" font-weight="600" font-size="22" letter-spacing="5" fill="${NAVY}">${escapeXml(team)}</text>`) : ''}
+${team ? (!longTeam ? `<g transform="translate(62 ${win.y + 330}) rotate(-90)"><text x="0" y="0" text-anchor="middle" font-family="${FONT_TEXT}" font-weight="600" font-size="22" letter-spacing="5" fill="${NAVY}">${escapeXml(team)}</text></g>` : `<text x="90" y="1086" font-family="${FONT_TEXT}" font-weight="600" font-size="22" letter-spacing="5" fill="${NAVY}">${escapeXml(team)}</text>`) : ''}
 ${nameText(nm.lines, 500, nameBase + (nm.lines.length > 1 ? 0 : 0), nm.size, nm.tl, NAVY, 'middle').replace(/<text x="500"/g, '<text x="500"')}
 ${sub ? `<line x1="90" y1="${subY - 10}" x2="${500 - Math.min(300, sub.length * 11 + 20)}" y2="${subY - 10}" stroke="${accent}" stroke-width="3"/><line x1="${500 + Math.min(300, sub.length * 11 + 20)}" y1="${subY - 10}" x2="910" y2="${subY - 10}" stroke="${accent}" stroke-width="3"/><text x="500" y="${subY}" text-anchor="middle" font-family="${FONT_TEXT}" font-weight="600" font-size="30" letter-spacing="8" fill="${NAVY}">${escapeXml(sub)}</text>` : ''}
 </g>`;

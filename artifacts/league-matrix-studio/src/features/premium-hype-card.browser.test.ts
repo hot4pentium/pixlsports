@@ -47,7 +47,7 @@ window.fixturePhotoUrl=photo;window.fixtureCutoutUrl=cutout;
  function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};const below=true;const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
  if(new URLSearchParams(location.search).has('spillover')){a.athleteScale=1.45;a.athleteY=-.08;}
   return <div className="living-card-stage" data-design={design}><div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><div className="living-card-flip-inner"><div className="living-card-flip-face living-card-flip-front"><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/></div></div>{!below&&controls}</section></div>{below&&controls}</div>}
-   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="classic"/><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
+   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')||new URLSearchParams(location.search).has('gallery-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="classic"/><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);
 `);
   const directory = await mkdtemp(resolve(tmpdir(), 'premium-card-browser-'));
@@ -86,6 +86,22 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="mobile-card-design-controls"]')).display`, session), 'none', 'the compact picker is reserved for phones');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"] svg')?.contains(document.querySelector('[data-testid="appearance-preview-surface"] #export-nav') || document.createElement('span'))`, session), false, 'designer navigation dressing is no longer painted inside the card');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview"] > [data-testid="premium-card-preview-stack"] [data-testid="appearance-navigation-preview"] svg')?.textContent.includes('EVENTS')`, session), true, 'the separately displayed nav strip retains the designer styling and labels');
+    const assertGalleryFrame = async () => {
+      const bounds = await connection!.evaluate<Array<{ taller: boolean; feetClear: boolean; textClear: boolean }>>(`[
+        document.querySelector('.living-card-frame[data-design="gallery"] .living-card-premium-art'),
+        document.querySelector('[data-testid="appearance-preview-surface"]')
+      ].map(root=>{
+        const f=root.querySelector('[data-gallery-photo-frame]').getBoundingClientRect(),a=root.querySelector('[data-photo-placement="cutout"] image').getBoundingClientRect();
+        const texts=[...root.querySelectorAll('text[x="500"]')].map(t=>t.getBoundingClientRect());
+        return {taller:f.height/f.width>1.06,feetClear:a.bottom<=f.bottom-f.width*.08,textClear:texts.every(t=>t.top>f.bottom&&t.width>0)};
+      })`, session);
+      for (const layout of bounds) {
+        assert.ok(layout.taller, 'Gallery has a taller portrait frame in both preview and live artwork');
+        assert.ok(layout.feetClear, 'Gallery leaves space below the avatar feet and shadow');
+        assert.ok(layout.textClear, 'Gallery identity text sits below the extended photo frame');
+      }
+    };
+    await assertGalleryFrame();
     assert.equal(await connection.evaluate(`(()=>{const card=document.querySelector('[data-testid="appearance-preview-surface"]').getBoundingClientRect(),nav=document.querySelector('[data-testid="appearance-navigation-preview"]').getBoundingClientRect();return nav.top>=card.bottom})()`, session), true, 'the designer nav strip is fully below, not overlaid on, the card');
     const breakoutFrame = await connection.evaluate<{ radius: string; padding: string; border: string; background: string; shadow: string }>(`(()=>{const frame=document.querySelector('.living-card-frame-outer:has(.living-card-frame[data-design="breakout"])'),style=getComputedStyle(frame);return {radius:style.borderTopLeftRadius,padding:style.paddingTop,border:style.borderTopWidth,background:style.backgroundImage,shadow:style.boxShadow}})()`, session);
     assert.equal(breakoutFrame.radius, '0px', 'the outer wrapper does not add a second frame');
@@ -150,6 +166,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-gallery"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'gallery', 5_000);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-gallery"]').getAttribute('aria-pressed')`, session), 'true', 'the selected mobile button tracks the preview');
+    await assertGalleryFrame();
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').disabled`, session), false, 'the existing Save design action persists the selected draft');
       const framing = await connection.evaluate(`Array.from(document.querySelectorAll('section.living-card-frame')).filter(card=>card.dataset.design!=='classic').every(card => {
        const box=card.getBoundingClientRect(), nav=card.closest('.living-card-stage').querySelector('.living-card-controls').getBoundingClientRect(), below=card.dataset.design==='gallery'||card.dataset.design==='spotlight'||card.dataset.design==='breakout';
