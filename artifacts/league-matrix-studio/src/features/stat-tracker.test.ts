@@ -1543,6 +1543,10 @@ test('long live tracker names cannot push score or featured stat controls off-sc
     assert.match(button.props.className, /overflow-hidden/);
     for (const label of button.findAllByType('span')) {
       assert.match(label.props.className, /truncate/);
+      if (label.props['data-testid']?.startsWith('stat-title-')) {
+        assert.match(label.props.className, /text-xs/);
+        assert.match(label.props.className, /sm:text-sm/);
+      }
     }
   }
 });
