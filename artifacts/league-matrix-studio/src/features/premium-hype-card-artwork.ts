@@ -158,10 +158,10 @@ function logo(input: PremiumHypeCardInput, x: number, y: number, w: number) {
   return `<image href="${src}" x="${x}" y="${y}" width="${w}" height="${(w * 550 / 1347).toFixed(1)}" preserveAspectRatio="xMinYMin meet"/>`;
 }
 
-function pixlMark(input: PremiumHypeCardInput, x: number, y: number, w: number) {
+function pixlMark(input: PremiumHypeCardInput, x: number, y: number, w: number, clipId = 'b-pixl-mark') {
   const src = safeUrl(input.logoUrl);
   if (!src) return '';
-  return `<image href="${src}" x="${x}" y="${y}" width="${w}" height="${(w * 550 / 1347).toFixed(1)}" clip-path="url(#b-pixl-mark)" preserveAspectRatio="xMinYMin meet"/>`;
+  return `<image href="${src}" x="${x}" y="${y}" width="${w}" height="${(w * 550 / 1347).toFixed(1)}" clip-path="url(#${clipId})" preserveAspectRatio="xMinYMin meet"/>`;
 }
 
 function gallery(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): string {
@@ -277,6 +277,7 @@ ${a.removeBackground !== false ? `<g data-spotlight-window-background="true" cli
 </g></g>`;
   const fg = `
 <defs><clipPath id="s-photo-placeholder"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="40"/></clipPath>
+${input.logoMarkOnly ? `<clipPath id="s-pixl-mark"><rect x="88" y="70" width="172" height="${(172 * 550 / 1347 * 2 / 3).toFixed(1)}"/></clipPath>` : ''}
 ${shadowFilter('s-cut', 16, 10, .55)}
 <filter id="s-glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="5"/></filter>
 <filter id="s-plate" x="-10%" y="-20%" width="120%" height="150%"><feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#02050C" flood-opacity=".6"/></filter>
@@ -286,7 +287,7 @@ ${grainDef('s-grain2', 0.14)}</defs>
 ${originalPhoto}
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="10" opacity=".55" filter="url(#s-glow)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="5"/>
-${input.logoUrl ? `<rect x="76" y="62" width="196" height="76" rx="14" fill="${IVORY}" opacity=".94"/>` : ''}${logo(input, 88, 70, 172)}
+${input.logoUrl ? `<rect x="76" y="62" width="196" height="${input.logoMarkOnly ? 58 : 76}" rx="14" fill="${IVORY}" opacity=".94"/>` : ''}${input.logoMarkOnly ? pixlMark(input, 88, 70, 172, 's-pixl-mark') : logo(input, 88, 70, 172)}
 <line x1="86" y1="152" x2="140" y2="152" stroke="${accent}" stroke-width="4"/>
 ${sport ? `<text x="912" y="108" text-anchor="end" font-family="${FONT_TEXT}" font-weight="600" font-size="28" letter-spacing="8" fill="#F1ECE2">${sport}</text><line x1="860" y1="152" x2="914" y2="152" stroke="${accent}" stroke-width="4"/>` : ''}
 ${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}

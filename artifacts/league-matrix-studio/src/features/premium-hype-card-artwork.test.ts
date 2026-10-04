@@ -32,6 +32,23 @@ test('Breakout aligns the sport label with the main Pixl logo mark', () => {
   assert.match(svg, /clip-path="url\(#b-pixl-mark\)"/, 'Breakout hides the lower "Sports" word from the Pixl brand image');
 });
 
+test('Spotlight crops the default Pixl logo to its mark and preserves full custom logos', () => {
+  const input = {
+    athleteName: 'Player',
+    logoUrl: 'data:image/png;base64,AAAA',
+    appearance: defaultCardAppearance('spotlight'),
+  };
+  const pixl = buildPremiumHypeCardArtwork({ ...input, logoMarkOnly: true }, 'fg');
+  assert.match(pixl, /<clipPath id="s-pixl-mark"><rect x="88" y="70" width="172" height="46\.8"\/><\/clipPath>/);
+  assert.match(pixl, /<rect x="76" y="62" width="196" height="58" rx="14" fill="#F6EFE2"/);
+  assert.match(pixl, /<image href="data:image\/png;base64,AAAA" x="88" y="70" width="172" height="70\.2" clip-path="url\(#s-pixl-mark\)"/);
+
+  const custom = buildPremiumHypeCardArtwork(input, 'fg');
+  assert.match(custom, /<rect x="76" y="62" width="196" height="76" rx="14" fill="#F6EFE2"/);
+  assert.match(custom, /<image href="data:image\/png;base64,AAAA" x="88" y="70" width="172" height="70\.2" preserveAspectRatio="xMinYMin meet"\/>/);
+  assert.doesNotMatch(custom, /s-pixl-mark/);
+});
+
 test('sport backgrounds keep soccer goals out of baseball and football cards', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     const input = { athleteName: 'Player', appearance: defaultCardAppearance(design) };

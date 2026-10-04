@@ -15,6 +15,12 @@ On Breakout, show only the Pixl mark (not the secondary “Sports” word) and a
 
 **How to apply:** Crop only the default Pixl brand image on Breakout, preserve custom logo images and other card designs, and align the sport label to the blue mark rather than the full image bounds.
 
+On Spotlight, show only the Pixl mark for the default logo and hide its “Sports” line; keep custom logos full.
+
+**Why:** The user selected the mark-only treatment after reviewing the Spotlight logo.
+
+**How to apply:** Reuse the default-logo mark crop on Spotlight, size its backing panel to the cropped mark, and leave custom logos unchanged.
+
 Always show available jersey number and position as compact identity details on Spotlight and Breakout, in both full-photo and cutout modes; Spotlight may also retain its large background number when a cutout is enabled.
 
 **Why:** The user reported that Spotlight hid the player number and Breakout hid both number and position, and requested them on each design.
