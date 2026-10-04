@@ -23,6 +23,7 @@ import{removeAthleteBackground}from'./src/features/athlete-background-removal';
 import photo from './src/assets/hypecard-player-photo-640.webp';
 import cutout from './src/assets/youth-football-player-cutout.png';
 import './src/index.css';
+import './src/features/living-athlete-card.css';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
 let saved=JSON.parse(localStorage.getItem('premium-test-settings')||'null')||defaultCardAppearance('gallery');
 const nativeFetch=window.fetch.bind(window);
@@ -43,7 +44,7 @@ window.runRemoval=async()=>{
 const profile={athleteName:'Jordan Alexander Matthews',jerseyNumber:'9',position:'Quarterback'};
 const invite={inviteToken:'fixture',athleteName:'Older Invite Name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,photoRevision:'fixture-revision',cutoutUrl:new URLSearchParams(location.search).has('fallback')?null:cutout,cardAppearance:saved};
 function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};
- return <div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/><div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div></section></div>}
+ return <div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><div className="living-card-flip-inner"><div className="living-card-flip-face living-card-flip-front"><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/></div></div><div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div></section></div>}
   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20}}><h1 style={{fontSize:24,marginBottom:16}}>Premium card design verification</h1><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);
 `);
@@ -70,6 +71,9 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(breakoutFrame.border, '0px', 'the outer wrapper has no visible border');
     assert.equal(breakoutFrame.background, 'none', 'the light-blue wrapper is removed');
     assert.equal(breakoutFrame.shadow, 'none', 'the wrapper adds no frame shadow');
+    const flipBackdrop = await connection.evaluate<{ image: string; color: string }>(`(()=>{const style=getComputedStyle(document.querySelector('.living-card-frame[data-design="breakout"] .living-card-flip-front'));return {image:style.backgroundImage,color:style.backgroundColor}})()`, session);
+    assert.equal(flipBackdrop.image, 'none', 'the real flip-front container adds no rectangular blue backdrop');
+    assert.equal(flipBackdrop.color, 'rgba(0, 0, 0, 0)', 'the area outside the silver outline stays transparent');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-jersey"]').value`, session), '9', 'the profile jersey number fills a blank appearance');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-position"]').value`, session), 'Quarterback', 'the profile position fills a blank appearance');
     assert.match(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').getAttribute('aria-label')`, session), /Jordan Alexander Matthews/, 'the card preview uses the profile-derived athlete name');

@@ -8,6 +8,7 @@
 .living-card-frame-outer:has(.living-card-frame[data-design="breakout"][data-side="front"])::after { display: none; }
 .living-card-frame[data-design="gallery"][data-side="front"], .living-card-frame[data-design="spotlight"][data-side="front"] { overflow: visible; border-color: transparent; background: none; border-radius: 0; }
 .living-card-frame[data-design="breakout"][data-side="front"] { overflow: visible; border-color: transparent; background: none; border-radius: 0; }
+.living-card-frame[data-design="breakout"][data-side="front"] .living-card-flip-front { background: none; }
 .living-card-frame[data-side="front"][data-design="gallery"] .living-card-flip-face, .living-card-frame[data-side="front"][data-design="spotlight"] .living-card-flip-face, .living-card-frame[data-side="front"][data-design="breakout"] .living-card-flip-face,
 .living-card-frame[data-design="gallery"][data-side="front"] .living-card-flip-front, .living-card-frame[data-design="spotlight"][data-side="front"] .living-card-flip-front, .living-card-frame[data-design="breakout"][data-side="front"] .living-card-flip-front { overflow: visible; }
 .living-card-premium-face { overflow: visible; }

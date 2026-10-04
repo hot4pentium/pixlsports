@@ -7,4 +7,4 @@ Keep the silver outline as the only outer frame on Breakout cards. Remove the da
 
 **Why:** The user clarified with an annotated screenshot that the silver outline is the intended frame and explicitly rejected the two colored frames behind it.
 
-**How to apply:** Remove the outer CSS wrapper styling and keep the SVG background clipped inside the silver outline. Preserve the artwork, photo window, and below-card navigation.
+**How to apply:** Remove all surrounding presentation backdrops, including nested flip-face backgrounds, and keep the card interior inside the silver outline. Verify the full live-card structure, not an artwork-only preview. Preserve the artwork, photo window, and below-card navigation.
