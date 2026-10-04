@@ -9,8 +9,8 @@ Every premium card art layer must define the SVG gradients, clips, and filters i
 
 **How to apply:** Keep each layer self-contained and test `bg`, `fg`, and `all` for every premium design.
 
-Use Anton with a light outline for Spotlight's large background jersey number only; center it vertically in the full card, keep the avatar above it, and leave name typography and other templates unchanged.
+Use Anton with a light outline for Spotlight's large background jersey number only; center it vertically between the card top and the name block, keep the avatar above it, and leave name typography and other templates unchanged.
 
-**Why:** The user confirmed the outlined Anton number looks much better and requested that it be centered vertically in the card.
+**Why:** The user confirmed the outlined Anton number looks much better and clarified that centering means between the card top and the name block, not within the full card.
 
 **How to apply:** Maintain preview/export font parity and ensure PNGs embed the number font rather than depending on an external font request.

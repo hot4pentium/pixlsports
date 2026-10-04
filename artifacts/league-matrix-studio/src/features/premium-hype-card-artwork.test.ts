@@ -179,7 +179,9 @@ test('Spotlight uses outlined Anton numerals behind the avatar without changing 
       assert.match(svg, /data-jersey-number="true"[^>]*stroke="#F6EFE2"[^>]*stroke-width="8"[^>]*paint-order="stroke fill"/);
       const number = svg.match(/data-jersey-number="true"[^>]*y="([\d.]+)"[^>]*font-size="([\d.]+)"/)!;
       const visibleCenter = Number(number[1]) - Number(number[2]) * (1760 / 2048) / 2;
-      assert.ok(Math.abs(visibleCenter - 700) < .01, `${jerseyNumber} centers vertically in the entire card`);
+      const fg = buildPremiumHypeCardArtwork(input, 'fg');
+      const plateTop = Number(fg.match(/<rect x="70" y="([\d.]+)"[^>]*data-spotlight-name-block="true"/)![1]);
+      assert.ok(Math.abs(visibleCenter - (14 + plateTop) / 2) < .01, `${jerseyNumber} centers between the card top and name block`);
       assert.doesNotMatch(svg, /<g filter="url\(#[^"]*s-numtex\)">/);
       if (layer === 'all') {
         assert.ok(svg.indexOf('data-jersey-number') < svg.indexOf('data-photo-placement="cutout"'));
@@ -190,6 +192,17 @@ test('Spotlight uses outlined Anton numerals behind the avatar without changing 
   }
   for (const design of ['gallery', 'breakout'] as const) {
     assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /font-family="'Anton'/);
+  }
+});
+test('Spotlight number centering follows the height of short and wrapped name blocks', () => {
+  for (const athleteName of ['Kimberly', 'Jordan Alexander Matthews']) {
+    for (const jerseyNumber of ['9', '10', '123']) {
+      const svg = buildPremiumHypeCardArtwork({ ...base, athleteName, jerseyNumber, appearance: defaultCardAppearance('spotlight') });
+      const plateTop = Number(svg.match(/<rect x="70" y="([\d.]+)"[^>]*data-spotlight-name-block="true"/)![1]);
+      const number = svg.match(/data-jersey-number="true"[^>]*y="([\d.]+)"[^>]*font-size="([\d.]+)"/)!;
+      const center = Number(number[1]) - Number(number[2]) * (1760 / 2048) / 2;
+      assert.ok(Math.abs(center - (14 + plateTop) / 2) < .01);
+    }
   }
 });
 

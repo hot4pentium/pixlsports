@@ -168,7 +168,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
         return {loaded:fonts.length,styles:roots.map(root=>{const n=root.querySelector('[data-jersey-number]'),s=getComputedStyle(n),avatar=root.querySelector('[data-photo-placement]');
           const ctx=document.createElement('canvas').getContext('2d');ctx.font=s.fontWeight+' '+s.fontSize+' Anton';
           const m=ctx.measureText(n.textContent),center=n.y.baseVal.getItem(0).value+(m.actualBoundingBoxDescent-m.actualBoundingBoxAscent)/2;
-          return {font:s.fontFamily,weight:s.fontWeight,stroke:s.stroke,width:s.strokeWidth,behind:!!(n.compareDocumentPosition(avatar)&Node.DOCUMENT_POSITION_FOLLOWING),centerOffset:Math.abs(center-700)};})};
+          const plateTop=root.querySelector('[data-spotlight-name-block]').y.baseVal.value;
+          return {font:s.fontFamily,weight:s.fontWeight,stroke:s.stroke,width:s.strokeWidth,behind:!!(n.compareDocumentPosition(avatar)&Node.DOCUMENT_POSITION_FOLLOWING),centerOffset:Math.abs(center-(14+plateTop)/2)};})};
       })()`, session);
       assert.ok(number.loaded > 0, 'the bundled Anton font loads, not just a fallback');
       for (const style of number.styles) {
@@ -177,7 +178,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
         assert.equal(style.stroke, 'rgb(246, 239, 226)');
         assert.equal(style.width, '8px');
         assert.ok(style.behind, 'the outlined number stays behind the avatar');
-        assert.ok(style.centerOffset < 6, `the visible number is centered vertically in the card: ${style.centerOffset}`);
+        assert.ok(style.centerOffset < 6, `the visible number is centered between the card top and name block: ${style.centerOffset}`);
       }
     };
     await assertSpotlightNumber();

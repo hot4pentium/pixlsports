@@ -205,7 +205,7 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const splitX = 640;
   const numSize = jersey.length > 2 ? 520 : jersey.length === 2 ? 760 : 900;
   // Anton's cap height is 1760/2048 em. Center the visible numerals, not their baseline.
-  const numberBaseline = card.y + card.h / 2 + numSize * (1760 / 2048) / 2;
+  const numberBaseline = (card.y + plate.y) / 2 + numSize * (1760 / 2048) / 2;
   const bg = `
 <defs>${grainDef('s-grain', 0.2)}
 <clipPath id="s-card"><rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50"/></clipPath>
@@ -242,7 +242,7 @@ ${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}
 <g filter="url(#s-plate)">
 <rect x="${plate.x + 20}" y="${plate.y + 22}" width="${plate.w}" height="${plate.h}" rx="30" fill="${mix(accent, '#000000', .12)}" transform="rotate(-1.4 500 ${plate.y + plate.h / 2})"/>
 <rect x="${plate.x + 5}" y="${plate.y - 14}" width="${plate.w}" height="${plate.h}" rx="30" fill="${accent}" transform="rotate(1.6 500 ${plate.y + plate.h / 2})"/>
-<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="28" fill="${IVORY}"/></g>
+<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="28" fill="${IVORY}" data-spotlight-name-block="true"/></g>
 <rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="28" fill="url(#s-sheen)"/>
 <rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="28" filter="url(#s-grain2)" opacity=".6"/>
 ${nameText(nm.lines, plate.x + 40, nameY, nm.size, nm.tl, NAVY)}
