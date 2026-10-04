@@ -192,7 +192,6 @@
 .living-card-stage[data-design="classic"] > .living-card-controls { position: relative; inset: auto; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; margin: 14px auto 0; background: #07172b; }
 .living-card-stage[data-design="classic"] .living-card-face-alt { inset: 0; }
 .living-card-control svg { width: 14px; height: 14px; flex: none; }
-.living-card-control-emoji { font-size: 16px; line-height: 1; }
 .living-card-return-front { display: flex; align-items: center; justify-content: center; gap: 10px; width: calc(100% - 20px); min-height: 46px; margin: 14px auto 0; border: 1px solid #9fcaef8c; border-radius: 11px; background: #143450; color: var(--lc-paper); font: 800 11px 'DM Sans', sans-serif; letter-spacing: .12em; text-transform: uppercase; transition: background .2s, border-color .2s; }
 .living-card-return-front svg { width: 16px; height: 16px; }
 .living-card-return-front:hover { border-color: var(--lc-sky); background: #225480; }
@@ -215,7 +214,6 @@
   .living-card-controls { gap: 2px; padding: 3px; }
   .living-card-controls .living-card-control { gap: 2px; padding: 4px 1px; font-size: 7px; letter-spacing: .015em; }
   .living-card-controls .living-card-control svg { width: 12px; height: 12px; }
-  .living-card-controls .living-card-control-emoji { font-size: 12px; }
   .living-card-live-taps { padding: 12px; }
   .living-card-live-tap-list { gap: 6px; }
   .living-card-live-tap-list button { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 4px; padding: 6px; }
@@ -339,7 +337,6 @@
   .living-card-athlete-name { font-size: clamp(42px, 12vw, 68px); }
   .living-card-controls { bottom: 12px; gap: 4px; padding: 4px; }
   .living-card-control { flex-direction: column; min-height: 44px; gap: 2px; padding: 4px 3px; font-size: 8px; line-height: 1.1; letter-spacing: .04em; text-align: center; }
-  .living-card-control-emoji { font-size: 14px; }
   .living-card-response-list li { grid-template-columns: 28px minmax(0, 1fr); padding: 11px; gap: 8px; }
   .living-card-response-emoji { font-size: 21px; }
   .living-card-response-remove { grid-column: 2; justify-self: start; }

@@ -1,4 +1,4 @@
-import { CalendarDays, ChartNoAxesCombined, Zap } from 'lucide-react';
+import { CalendarDays, ChartNoAxesCombined, ThumbsUp, Zap } from 'lucide-react';
 
 export type CardSide = 'front' | 'responses' | 'stats' | 'events' | 'live-taps';
 
@@ -25,7 +25,7 @@ const controls: Array<{
 ];
 
 function ControlIcon({ side }: { side: ControlSide }) {
-  if (side === 'responses') return <span className="living-card-control-emoji" aria-hidden="true">👍</span>;
+  if (side === 'responses') return <ThumbsUp aria-hidden="true" />;
   if (side === 'stats') return <ChartNoAxesCombined aria-hidden="true" />;
   if (side === 'live-taps') return <Zap aria-hidden="true" />;
   return <CalendarDays aria-hidden="true" />;

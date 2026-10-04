@@ -459,7 +459,14 @@ export function LivingAthleteCardPage({
         )}
 
         <div className="living-card-layout living-card-layout-solo">
-          <section className="living-card-stage" data-design={invite.cardAppearance?.design ?? 'classic'} aria-label={`${displayAthleteName}'s HYPE Card`}>
+          <section
+            className="living-card-stage"
+            data-design={invite.cardAppearance?.design ?? 'classic'}
+            style={invite.cardAppearance?.borderColor && /^#[0-9a-f]{6}$/i.test(invite.cardAppearance.borderColor)
+              ? ({ '--pixl-nav-accent': invite.cardAppearance.borderColor } as CSSProperties)
+              : undefined}
+            aria-label={`${displayAthleteName}'s HYPE Card`}
+          >
             <div className="living-card-frame-outer">
               <div className="living-card-frame" data-side={side} data-design={invite.cardAppearance?.design ?? 'classic'} style={invite.cardAppearance?.accentColor && /^#[0-9a-f]{6}$/i.test(invite.cardAppearance.accentColor) ? ({ '--pixl-accent': invite.cardAppearance.accentColor } as CSSProperties) : undefined} id="living-card-display" role="region" aria-label={`${displayAthleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
                 <div className="living-card-flip-inner">

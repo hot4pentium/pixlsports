@@ -101,7 +101,10 @@ export function SupporterHypeCardPreview({
               data-design="spotlight"
               aria-hidden="true"
               data-testid="saved-card-navigation"
-              style={{ '--pixl-accent': appearance.accentColor } as CSSProperties}
+              style={{
+                '--pixl-accent': appearance.accentColor,
+                '--pixl-nav-accent': appearance.borderColor,
+              } as CSSProperties}
             >
               <LivingCardControls decorative />
             </div>

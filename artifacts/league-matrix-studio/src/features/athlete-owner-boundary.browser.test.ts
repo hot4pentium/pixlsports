@@ -885,7 +885,12 @@ test('player-page owner tools remain private across account changes and pause', 
     };
 
     for (const design of ['classic', 'breakout', 'gallery', 'spotlight'] as const) {
-      fanCard.cardAppearance = defaultCardAppearance(design);
+      const appearance = defaultCardAppearance(design);
+      if (design === 'breakout') {
+        appearance.borderColor = '#22C55E';
+        appearance.accentColor = '#EF3996';
+      }
+      fanCard.cardAppearance = appearance;
       const sharedCard = await open('visitor', 'fan');
       for (const viewport of cardViewports) {
         await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -902,6 +907,16 @@ test('player-page owner tools remain private across account changes and pause', 
           12_000,
         );
         await connection.evaluate('window.scrollTo(0, 0)', sharedCard);
+        if (design === 'breakout') {
+          const iconColors = await connection.evaluate<string[]>(`Array.from(
+            document.querySelectorAll('.living-card-controls .living-card-control svg'),
+          ).map((icon) => getComputedStyle(icon).color)`, sharedCard);
+          assert.deepEqual(
+            iconColors,
+            Array(4).fill('rgb(34, 197, 94)'),
+            'Breakout navigation icons use the visible green border accent, including Replies',
+          );
+        }
         await assertSharedCardLayout(sharedCard, design, viewport.name, 'front');
 
         for (const section of cardNavigation) {
