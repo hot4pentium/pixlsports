@@ -103,9 +103,10 @@ test('player-page owner tools remain private across account changes and pause', 
     inviteToken: token, athleteName: 'Randal', teamName: 'City Hoops',
     seasonName: 'Fall 2026', seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
     sport: 'basketball', trackerProjectId: null, scheduleProjectId: null,
-    showHypeCard: true, showStats: true, showSchedule: false, hypesEnabled: true,
+    showHypeCard: true, showStats: true, showSchedule: false, showEvents: false, hypesEnabled: true,
     timezone: 'America/New_York', paused: false,
     liveTrackerShareToken: null,
+    events: [],
   };
   const stats = {
     athleteName: 'Randal',
@@ -763,6 +764,14 @@ test('player-page owner tools remain private across account changes and pause', 
     await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Shoutouts\"]').click()", ownerManage);
     await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved') && document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Shoutouts\"]')?.disabled === false", Boolean, 12_000);
     assert.equal(owned.hypesEnabled, false, 'Fan Shoutouts are disabled immediately on toggle');
+    const originalEventsSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Allow events\"]')?.getAttribute('aria-checked') || ''", ownerManage);
+    assert.equal(originalEventsSetting, 'false', 'event visibility is available beside the other section switches');
+    await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Allow events\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Allow events\"]')?.getAttribute('aria-checked') === 'true' && document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Allow events\"]')?.disabled === false && document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved')", Boolean, 12_000);
+    assert.equal(owned.showEvents, true, 'event visibility saves through the Visible Sections controls');
+    await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Allow events\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Allow events\"]')?.getAttribute('aria-checked') === 'false' && document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Allow events\"]')?.disabled === false && document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved')", Boolean, 12_000);
+    assert.equal(owned.showEvents, false, 'event visibility can be disabled again from the same section');
     assert.equal(await connection.evaluate(element('[data-testid="button-hype-manager-media"]'), ownerManage), false, 'the media manager remains unavailable');
     assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), false);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-share\"]').click()", ownerManage);
