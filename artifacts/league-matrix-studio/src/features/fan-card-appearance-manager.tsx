@@ -13,7 +13,7 @@ import { saveAthleteCutout } from './athlete-cutout-upload';
 import { HypeCardAppearanceControls, HypeCardDesignPicker } from './hype-card-appearance-controls';
 import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
 import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
-import { buildPremiumNavStripExport } from './premium-hype-card-artwork';
+import { buildPremiumNavStripExport, buildPremiumNavStripPreview } from './premium-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 
 export type FanCardAppearanceInvite = {
@@ -170,7 +170,8 @@ export function FanCardAppearanceManager({ invite, profile }: {
     athleteName: displayAthleteName, teamName: invite.teamName, sport: invite.sport,
     jerseyNumber: draft.jerseyNumber, position: draft.position,
     photoUrl: invite.photoUrl, cutoutUrl: usableCutout, appearance: draft,
-  }, 'all', `pv${uid}`).replace(/<\/svg>$/, `${buildPremiumNavStripExport(draft)}</svg>`), [uid, draft, displayAthleteName, invite.teamName, invite.sport, invite.photoUrl, usableCutout]);
+  }, 'all', `pv${uid}`), [uid, draft, displayAthleteName, invite.teamName, invite.sport, invite.photoUrl, usableCutout]);
+  const navStrip = useMemo(() => draft.design === 'classic' ? '' : buildPremiumNavStripPreview(draft, `pv${uid}`), [uid, draft]);
 
   const save = () => {
     setStatus('idle');
@@ -224,7 +225,10 @@ export function FanCardAppearanceManager({ invite, profile }: {
           <div className="mx-auto w-full max-w-[280px] overflow-visible rounded-2xl" data-testid="appearance-preview">
             {draft.design === 'classic'
               ? <div className="grid aspect-[5/7] place-items-center rounded-2xl border border-white/20 bg-[#10243D] p-4 text-center text-sm text-white/80">{previewCard ? <img src={previewCard} alt="" className="max-h-full rounded-lg object-cover" /> : 'Classic design uses your photo and team details.'}</div>
-              : <div role="img" aria-label={`${draft.design} preview for ${displayAthleteName}${moving ? `. Use arrow keys to position the ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}.` : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={onPositionKeyDown} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />}
+              : <div data-testid="premium-card-preview-stack">
+                  <div role="img" aria-label={`${draft.design} preview for ${displayAthleteName}${moving ? `. Use arrow keys to position the ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}.` : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={onPositionKeyDown} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />
+                  <div className="mt-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" data-testid="appearance-navigation-preview" dangerouslySetInnerHTML={{ __html: navStrip }} />
+                </div>}
           </div>
           <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
         </div>

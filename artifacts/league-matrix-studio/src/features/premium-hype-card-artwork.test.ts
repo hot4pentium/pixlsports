@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPremiumHypeCardArtwork } from './premium-hype-card-artwork';
+import { buildPremiumHypeCardArtwork, buildPremiumNavStripPreview } from './premium-hype-card-artwork';
 test('placement changes the original fallback as well as the cutout in every premium design', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     for (const cutoutUrl of [null, 'data:image/png;base64,AAAA']) {
@@ -22,6 +22,19 @@ test('escapes text and keeps viewBox', () => {
   const svg = buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance('gallery') });
   assert.match(svg, /viewBox="0 0 1000 1400"/);
   assert.ok(!svg.includes('<b>'));
+});
+test('the premium designer preview separates its dressed nav strip from the card artwork', () => {
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+    const nav = buildPremiumNavStripPreview(defaultCardAppearance(design), 'test');
+    assert.match(nav, /viewBox="0 1294 1000 68"/);
+    assert.match(nav, new RegExp(`data-design="${design}"`));
+    assert.match(nav, /REPLIES/);
+    assert.match(nav, /STATS/);
+    assert.match(nav, /TAPS/);
+    assert.match(nav, /EVENTS/);
+    assert.match(nav, /id="test-nav-export-nav"/);
+    assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /id="export-nav"/);
+  }
 });
 test('Breakout keeps resized avatars intact outside the SVG card boundary', () => {
   for (const layer of ['all', 'fg'] as const) {

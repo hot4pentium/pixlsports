@@ -321,7 +321,7 @@ const navIcon = (i: number, c: string) => [
   `<rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="${c}" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="${c}" stroke-width="2"/>`,
 ][i];
 
-/** Static Replies/Stats/Taps/Events strip for PNG export only. The live card uses real HTML buttons. */
+/** Static Replies/Stats/Taps/Events strip for PNG export. The live card uses real HTML buttons. */
 export function buildPremiumNavStripExport(appearance: HypeCardAppearance): string {
   const accent = hex(appearance.accentColor, '#EF3996');
   const gallery = appearance.design === 'gallery';
@@ -335,4 +335,10 @@ ${i > 0 ? `<line x1="${x + cw * i}" y1="${y + 8}" x2="${x + cw * i}" y2="${y + h
   }).join('');
   const back = gallery ? '' : `<rect x="${x}" y="${y - 3}" width="${w}" height="${h + 6}" rx="22" fill="#0B1A33" stroke="#fff" stroke-opacity=".18"/>`;
   return `<g id="export-nav">${back}${cells}</g>`;
+}
+
+/** Preview the saved card's navigation dressing as its own strip below the artwork. */
+export function buildPremiumNavStripPreview(appearance: HypeCardAppearance, ns?: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 1294 1000 68" width="1000" height="68" aria-hidden="true" data-design="${appearance.design}">${buildPremiumNavStripExport(appearance)}</svg>`;
+  return ns ? namespacePremiumSvg(svg, `${ns}-nav`) : svg;
 }
