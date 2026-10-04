@@ -1593,6 +1593,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const athleteRect = athleteCard.getBoundingClientRect();
         const eventRect = eventCard.getBoundingClientRect();
         const repliesRect = hero.querySelector('.supporter-game-on-summary__replies')?.getBoundingClientRect();
+      const headerHorn = header.querySelector('[data-testid="reply-inbox-header-horn"]');
         const heroColumns = getComputedStyle(columns).gridTemplateColumns.trim().split(/\\s+/);
         const collectionColumns = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/);
         scroller.scrollTop = Math.min(240, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
@@ -1630,6 +1631,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
           heroColumnCount: heroColumns.length,
           heroCardsShareRow: Boolean(repliesRect && Math.abs(eventRect.top - repliesRect.top) <= 1),
+        mobileShoutoutsCardRemoved: !hero.querySelector('.supporter-game-on-summary__replies'),
+        headerBullhornVisible: Boolean(headerHorn),
+        headerBullhornUnlit: Boolean(headerHorn && !headerHorn.classList.contains('reply-inbox-header-horn--unread')),
           heroCornerRadius: getComputedStyle(hero).borderRadius,
           heroCardsContained: athleteRect.left >= heroRect.left
             && athleteRect.right <= heroRect.right
@@ -1661,6 +1665,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         heroClearsHeader: true,
         heroColumnCount: width < 640 ? 1 : 2,
         heroCardsShareRow: false,
+        mobileShoutoutsCardRemoved: true,
+        headerBullhornVisible: true,
+        headerBullhornUnlit: true,
         heroCornerRadius: '24px',
         heroCardsContained: true,
         heroKickerFits: true,
@@ -1694,6 +1701,12 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         removedPanels: true,
       }, `mobile header behavior at ${width}px`);
     }
+
+    assert.equal(await connection.evaluate('window.__setReplyInboxUnreadCount(2)', page.sessionId), true, 'the inbox fixture can publish unread shoutouts');
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"reply-inbox-header-horn\\"]")?.classList.contains("reply-inbox-header-horn--unread")', Boolean);
+    assert.equal(await connection.evaluate('document.querySelector("[data-testid=\\"reply-inbox-header-horn\\"]")?.closest("button")?.getAttribute("aria-label")', page.sessionId), 'Open Shoutouts and replies, 2 unread');
+    assert.equal(await connection.evaluate('window.__setReplyInboxUnreadCount(0)', page.sessionId), true, 'restore the empty inbox before later dashboard assertions');
+    await waitFor(connection, page.sessionId, '!document.querySelector("[data-testid=\\"reply-inbox-header-horn\\"]")?.classList.contains("reply-inbox-header-horn--unread")', Boolean);
 
     await waitFor(connection, page.sessionId, 'typeof window.__setSupporterDashboardEvents === "function"', Boolean);
     await connection.evaluate(`window.__setSupporterDashboardEvents([
@@ -4421,10 +4434,11 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
             nativeArt: '${design}'==='classic' ? !!card.querySelector('.living-card-face') : !!card.querySelector('svg'),
             spillover: '${design}'==='classic' || getComputedStyle(card.querySelector('.living-card-premium-face')).overflow==='visible',
             noControls: !slot.querySelector('.living-card-controls'),
-            preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !!document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies') };
+            preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies'),
+            desktopInboxRetained: !!document.querySelector('.supporter-game-on-summary--desktop .supporter-game-on-summary__replies') };
         })()`);
         assert.deepEqual(layout, { equal: true, paired: true, cardsAligned: true, ratio: true, noOverflow: true, actionFits: true,
-          sameDestination: true, nativeArt: true, spillover: true, noControls: true, preserved: true }, `${design} at ${width}px`);
+          sameDestination: true, nativeArt: true, spillover: true, noControls: true, preserved: true, desktopInboxRetained: true }, `${design} at ${width}px`);
         if (design === 'spotlight' && width === 390) {
           const screenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
           await writeFile('/tmp/supporter-hype-pair-390.png', Buffer.from(screenshot.data, 'base64'));
@@ -5060,6 +5074,13 @@ export function mount() {
     Object.defineProperty(window, 'Notification', { configurable: true, value: { requestPermission: async () => 'denied' } });
   }
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  window.__setReplyInboxUnreadCount = (unreadCount) => {
+    const query = queryClient.getQueryCache().findAll().find(({ queryKey }) =>
+      queryKey.some((part) => String(part).includes('/api/hype-card-shares/reply-inbox')));
+    if (!query) return false;
+    queryClient.setQueryData(query.queryKey, { groups: [], unreadCount, totalCount: unreadCount });
+    return true;
+  };
   const root = createRoot(document.getElementById('test-root'));
   if (window.location.search.includes('supporter-active-game-sync')) {
     dashboardEvents = [{

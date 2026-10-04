@@ -555,6 +555,27 @@
   color: #75b8ff;
 }
 
+.reply-inbox-header-horn {
+  color: #f3f6fa;
+  transition: color .2s ease, filter .2s ease;
+}
+
+.reply-inbox-header-horn--unread {
+  color: #a8d8ff;
+  filter: drop-shadow(0 0 3px rgba(104, 184, 255, .48));
+  animation: reply-inbox-horn-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes reply-inbox-horn-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(104, 184, 255, .34)); }
+  50% { filter: drop-shadow(0 0 5px rgba(104, 184, 255, .62)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reply-inbox-header-horn { transition: none; }
+  .reply-inbox-header-horn--unread { animation: none; }
+}
+
 .reply-inbox-summary-trigger__unread {
   flex: 0 0 auto;
   border-radius: 999px;

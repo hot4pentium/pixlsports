@@ -14,7 +14,7 @@ import type {
   HypeCardShareReply,
 } from '@workspace/api-client-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { ArrowRight, MessageCircleHeart, Trash2, Loader2, AlertTriangle, Inbox } from 'lucide-react';
+import { ArrowRight, Megaphone, MessageCircleHeart, Trash2, Loader2, AlertTriangle, Inbox } from 'lucide-react';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/react';
@@ -123,6 +123,7 @@ export function HypeCardReplyInboxTrigger({
   const isLoading = repliesLoading || (Boolean(isSignedIn) && (invitesLoading || (Boolean(inviteToken) && hypesLoading)));
   const isError = repliesError || (Boolean(isSignedIn) && (invitesError || (Boolean(inviteToken) && hypesError)));
   const unreadCount = data?.unreadCount ?? 0;
+  const hasShoutoutsToRead = unreadCount > 0 || Boolean(fanHypes?.length);
   const totalCount = (data?.totalCount ?? 0) + (fanHypes?.length ?? 0);
   const latestActivity = useMemo(() => getLatestFanActivity(fanHypes, data), [data, fanHypes]);
 
@@ -171,11 +172,15 @@ export function HypeCardReplyInboxTrigger({
       className={`group flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         'text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-3 clip-angled-sm w-full justify-between'
       } ${className}`}
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? `Open Shoutouts and replies${unreadCount > 0 ? `, ${unreadCount} unread` : fanHypes?.length ? ', Shoutouts available' : ''}`}
       data-testid={testId ?? 'btn-reply-inbox'}
     >
       <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
-        <MessageCircleHeart className={`h-4 w-4 ${unreadCount > 0 ? 'text-primary animate-pulse' : ''}`} />
+        <Megaphone
+          className={`reply-inbox-header-horn ${hasShoutoutsToRead ? 'reply-inbox-header-horn--unread' : ''}`}
+          data-testid="reply-inbox-header-horn"
+          aria-hidden="true"
+        />
         <span>{isLoading ? '...' : isError ? 'Error' : `${totalCount} Shoutouts & Replies`}</span>
       </div>
       {unreadCount > 0 && (

@@ -102,9 +102,11 @@ export function SupporterGameOnSummary({
           );
         })()}
 
-        <div className="supporter-game-on-summary__replies" aria-label="Recent Shoutouts and replies">
-          <HypeCardReplyInboxTrigger variant="dashboard" />
-        </div>
+        {!isMobile && (
+          <div className="supporter-game-on-summary__replies" aria-label="Recent Shoutouts and replies">
+            <HypeCardReplyInboxTrigger variant="dashboard" />
+          </div>
+        )}
 
         <section
           className="supporter-game-on-summary__record"

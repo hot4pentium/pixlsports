@@ -14,3 +14,9 @@ Keep the install action in the athlete overview header, not inside the Event Car
 **Why:** The user requested moving “How to install” to the header and making the Event Card and HYPE Card equal.
 
 **How to apply:** Preserve the paired-card alignment when changing labels, spacing, or installation controls; retain readable event details and usable card actions on narrow phones.
+
+Keep the mobile Shoutouts & Replies summary card out of the overview grid. Surface the inbox from the page header with a bullhorn that glows when unread replies or Fan Shoutouts are available.
+
+**Why:** The user asked to remove that card on mobile and make available shoutouts visible from the header.
+
+**How to apply:** Keep the inbox reachable from the header; use the existing unread reply count and the available Fan Shoutouts list to control the glow.
