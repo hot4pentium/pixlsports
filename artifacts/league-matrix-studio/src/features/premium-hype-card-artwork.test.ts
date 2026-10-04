@@ -27,6 +27,7 @@ test('Gallery moves the name, details, and long team label down beneath the phot
   const svg = buildPremiumHypeCardArtwork({
     athleteName: 'Jordan Alexander Matthews',
     teamName: 'The Eastside Hurricanes',
+    sport: 'Soccer',
     jerseyNumber: '01',
     position: 'Quarterback',
     appearance: defaultCardAppearance('gallery'),
@@ -36,6 +37,10 @@ test('Gallery moves the name, details, and long team label down beneath the phot
   assert.match(svg, /<text x="90" y="1063"/);
   assert.match(svg, /<text x="500" y="1273"[^>]*>#01\s+\|\s+QUARTERBACK<\/text>/);
   assert.match(svg, /<line x1="90" y1="1327" x2="910" y2="1327"/);
+  assert.ok(svg.indexOf('stroke-width="5"/>') < svg.indexOf('>SOCCER</text>')
+    && svg.indexOf('>SOCCER</text>') < svg.indexOf('data-photo-placement="cutout"'),
+  'the Gallery cutout overlays its frame and sport label');
+  assert.match(svg, /<svg[^>]*overflow="visible"[^>]*data-design="gallery"/);
 });
 test('Spotlight keeps Gallery-style avatar placement and paints the full cutout over the frame', () => {
   const appearance = { ...defaultCardAppearance('spotlight'), athleteScale: 1.2, athleteX: .08, athleteY: -.04 };
@@ -66,7 +71,7 @@ test('the premium designer preview separates its dressed nav strip from the card
     assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /id="export-nav"/);
   }
 });
-test('PNG export omits the navigation strip and preserves Breakout avatar spillover', () => {
+test('PNG export omits navigation and preserves avatar spillover for every premium design', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     const appearance = defaultCardAppearance(design);
     const art = buildPremiumHypeCardArtwork({ ...base, appearance });
@@ -86,6 +91,12 @@ test('PNG export omits the navigation strip and preserves Breakout avatar spillo
         { width: 770, height: 1020 },
       );
       assert.ok(moved.height > portrait.height, 'top padding expands to preserve moved and enlarged avatars too');
+    } else if (design === 'gallery' || design === 'spotlight') {
+      const enlarged = { ...appearance, athleteScale: 1.45, athleteY: -.18 };
+      const movedArt = buildPremiumHypeCardArtwork({ ...base, appearance: enlarged });
+      const spill = preparePremiumCardPngExport(movedArt, enlarged, { width: 770, height: 1020 });
+      assert.match(spill.markup, /viewBox="0 -\d+ 1000 2\d{3}"/);
+      assert.ok(spill.height > 2800, `${design} export expands to show the whole avatar`);
     } else {
       assert.match(png.markup, /viewBox="0 0 1000 1400"/);
       assert.deepEqual({ width: png.width, height: png.height }, { width: 2000, height: 2800 });
