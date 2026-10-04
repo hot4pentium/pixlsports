@@ -15,6 +15,8 @@ On Breakout, show only the Pixl mark (not the secondary “Sports” word) and a
 
 **How to apply:** Crop only the default Pixl brand image on Breakout, preserve custom logo images and other card designs, and align the sport label to the blue mark rather than the full image bounds.
 
-When background removal is off, Spotlight and Breakout must keep the jersey number and position visible as compact identity details below the photo.
+Always show available jersey number and position as compact identity details on Spotlight and Breakout, in both full-photo and cutout modes; Spotlight may also retain its large background number when a cutout is enabled.
 
-**Why:** The full-photo treatment hides Spotlight’s oversized background number, and Breakout otherwise has no number/position treatment; the user explicitly corrected both omissions.
+**Why:** The user reported that Spotlight hid the player number and Breakout hid both number and position, and requested them on each design.
+
+**How to apply:** Place compact details in the nameplate for both photo modes, separating them from the team label when present. Verify the live card and PNG export.

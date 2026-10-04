@@ -310,7 +310,7 @@ test('Spotlight uses outlined Anton numerals behind the avatar without changing 
     assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /font-family="'Anton'/);
   }
 });
-test('Spotlight shows the full original photo in its placeholder and hides the number when background removal is off', () => {
+test('Spotlight shows the full original photo and hides its oversized background number in full-photo mode', () => {
   const appearance = { ...defaultCardAppearance('spotlight'), removeBackground: false };
   const input = {
     ...base,
@@ -339,6 +339,21 @@ test('Spotlight shows the full original photo in its placeholder and hides the n
   assert.match(png.markup, /data-player-details="true"[^>]*>#12\s+\|\s+.*<\/text>/);
   assert.match(png.markup, /preserveAspectRatio="xMidYMid meet"/);
 });
+
+test('Spotlight and Breakout always show jersey number and position in the identity panel', () => {
+  for (const design of ['spotlight', 'breakout'] as const) {
+    for (const removeBackground of [true, false]) {
+      const appearance = { ...defaultCardAppearance(design), removeBackground };
+      const input = { ...base, teamName: 'Home Team', jerseyNumber: '27', position: 'Forward', appearance };
+      const svg = buildPremiumHypeCardArtwork(input);
+      assert.match(svg, /data-player-details="true"[^>]*>#27\s+\|\s+FORWARD<\/text>/, `${design} shows player details with removeBackground=${removeBackground}`);
+      const png = preparePremiumCardPngExport(svg, appearance, { width: 820, height: 1130 });
+      assert.match(png.markup, /data-player-details="true"[^>]*>#27\s+\|\s+FORWARD<\/text>/, `${design} keeps player details in PNG export`);
+      if (design === 'spotlight' && removeBackground) assert.match(svg, /data-jersey-number="true"/, 'the large Spotlight jersey number remains as a background graphic');
+    }
+  }
+});
+
 test('Spotlight number centering follows the height of short and wrapped name blocks', () => {
   for (const athleteName of ['Kimberly', 'Jordan Alexander Matthews']) {
     for (const jerseyNumber of ['9', '10', '123']) {

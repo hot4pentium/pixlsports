@@ -228,7 +228,7 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const jersey = (input.jerseyNumber || a.jerseyNumber || '').trim().replace(/^#/, '');
   const team = (input.teamName || '').trim().toUpperCase();
   const compactDetails = [
-    jersey && a.removeBackground === false ? `#${jersey}` : '',
+    jersey ? `#${jersey}` : '',
     position,
   ].filter(Boolean).join('  |  ');
   const card = { x: 14, y: 14, w: 972, h: 1372 };
@@ -310,9 +310,7 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
   const team = (input.teamName || '').trim().toUpperCase();
   const position = (input.position || a.position || '').trim().toUpperCase();
   const jersey = (input.jerseyNumber || a.jerseyNumber || '').trim().replace(/^#/, '');
-  const compactDetails = a.removeBackground === false
-    ? [jersey ? `#${jersey}` : '', position].filter(Boolean).join('  |  ')
-    : '';
+  const compactDetails = [jersey ? `#${jersey}` : '', position].filter(Boolean).join('  |  ');
   const win = { x: 108, y: 150, w: 784, h: 820 };
   // Two lines share the fixed plate with the team label at y=1129.
   const nm = fitName(input.athleteName || 'Athlete', 760, 132, 96, 68);
