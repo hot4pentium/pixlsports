@@ -15,8 +15,8 @@ Place the photo/avatar layer above the frame layer, including the frame labels.
 
 **Why:** The user explicitly requested that the photo layer overlap the frame layer.
 
-Selecting Avatar or Name plate should immediately activate the move tool; Frame remains locked.
+The Breakout name plate is fixed near the lower portion of the card and paints above the avatar. Only Avatar can be repositioned; Frame remains locked.
 
-**Why:** The user requested automatic move-tool activation upon layer selection.
+**Why:** The user supplied a visual reference and explicitly removed name-plate positioning so the plate stays consistent and overlays the athlete.
 
-**How to apply:** Remove all surrounding presentation backdrops, including nested flip-face backgrounds, and keep the card interior inside the silver outline. Verify overflow on every saved-card ancestor, not just the SVG: later base styles can override an equally specific premium-face rule. Preserve the artwork, photo window, and below-card navigation.
+**How to apply:** Ignore legacy Breakout name-plate offsets when rendering. Keep the plate after the avatar in SVG paint order. Remove all surrounding presentation backdrops, including nested flip-face backgrounds, and keep the card interior inside the silver outline. Verify overflow on every saved-card ancestor, not just the SVG: later base styles can override an equally specific premium-face rule. Preserve the artwork, photo window, and below-card navigation.

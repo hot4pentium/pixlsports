@@ -82,6 +82,16 @@ test('Gallery paints an opaque name container above the avatar in composed and f
   }
   assert.doesNotMatch(buildPremiumHypeCardArtwork(input, 'bg'), /data-card-layer="name-plate"/);
 });
+test('Breakout fixes the name plate over the avatar and ignores legacy plate offsets', () => {
+  const appearance = { ...defaultCardAppearance('breakout'), namePlateX: .08, namePlateY: -.04 };
+  const svg = buildPremiumHypeCardArtwork({ ...base, athleteName: 'Kimberly', teamName: 'Hurricanes', appearance });
+  const avatar = svg.indexOf('data-card-layer="avatar"');
+  const plate = svg.indexOf('data-card-layer="name-plate"');
+  assert.ok(avatar >= 0 && plate > avatar, 'the fixed name plate paints over the lower avatar');
+  assert.match(svg, /data-card-layer="name-plate" data-position="fixed" filter=/);
+  assert.doesNotMatch(svg, /data-card-layer="name-plate"[^>]*transform=/);
+  assert.match(svg, /M116 934H884L924 978V1128/);
+});
 test('Spotlight keeps Gallery-style avatar placement and paints the full cutout over the frame', () => {
   const appearance = { ...defaultCardAppearance('spotlight'), athleteScale: 1.2, athleteX: .08, athleteY: -.04 };
   const svg = buildPremiumHypeCardArtwork({ ...base, logoUrl: 'https://example.com/logo.png', appearance });
@@ -237,14 +247,15 @@ test('Breakout keeps only the metallic outer frame, with no blue frames behind i
   assert.match(fg, /<path d="M116 934H884/);
 });
 
-test('Breakout exposes independent frame, avatar, and name plate layers', () => {
+test('Breakout exposes frame and avatar controls while fixing the name plate above them', () => {
   const appearance = { ...defaultCardAppearance('breakout'), namePlateX: .08, namePlateY: -.04 };
   const bg = buildPremiumHypeCardArtwork({ ...base, appearance }, 'bg');
   const fg = buildPremiumHypeCardArtwork({ ...base, appearance }, 'fg');
   assert.match(bg, /data-card-layer="frame"/);
   assert.match(fg, /data-card-layer="frame"/);
   assert.match(fg, /data-card-layer="avatar"/);
-  assert.match(fg, /data-card-layer="name-plate" transform="translate\(80\.0 -56\.0\)"/);
+  assert.match(fg, /data-card-layer="name-plate" data-position="fixed"/);
+  assert.doesNotMatch(fg, /data-card-layer="name-plate"[^>]*transform=/);
 
   const originalPhoto = buildPremiumHypeCardArtwork({
     ...base,

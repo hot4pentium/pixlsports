@@ -286,7 +286,7 @@ ${initialsArt(input, 500, 560, accent)}
 <rect x="24" y="24" width="952" height="1352" rx="56" fill="none" stroke="url(#b-metal)" stroke-width="10"/>
 </g>
 </g>`;
-  const plate = `<g data-card-layer="name-plate" transform="translate(${(num(a.namePlateX, 0) * 1000).toFixed(1)} ${(num(a.namePlateY, 0) * 1400).toFixed(1)})" filter="url(#b-name-shadow)"><path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="10" stroke-linejoin="round"/>
+  const plate = `<g data-card-layer="name-plate" data-position="fixed" filter="url(#b-name-shadow)"><path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="10" stroke-linejoin="round"/>
 <path d="M156 956H844" stroke="#FFFFFF" stroke-opacity=".24" stroke-width="2"/>
 ${nameText(nm.lines, 500, nameY, nm.size, nm.tl, '#F7F9FC', 'middle')}
 ${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><text x="500" y="1129" text-anchor="middle" font-family="${FONT_TEXT}" font-size="30" font-weight="700" letter-spacing="8" fill="#DFE8F4">${escapeXml(team.slice(0, 24))}</text>` : ''}</g>`;

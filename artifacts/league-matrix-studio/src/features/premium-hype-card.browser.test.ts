@@ -287,7 +287,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       }
     }
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
-    await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-name-plate]")', Boolean, 10_000);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-avatar]")', Boolean, 10_000);
+    assert.equal(await connection.evaluate(`!!document.querySelector('[data-testid="button-layer-name-plate"]')`, session), false, 'Breakout does not offer name plate positioning');
     const backgroundToggle = `document.querySelector('[data-testid="toggle-remove-background"] input')`;
     assert.equal(await connection.evaluate(`${backgroundToggle}.checked`, session), true);
     await connection.evaluate(`${backgroundToggle}.click()`, session);
@@ -300,31 +301,15 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate(`${backgroundToggle}.checked`, session), false);
     await connection.evaluate(`${backgroundToggle}.click()`, session);
     await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-photo-placement=cutout]")', Boolean, 5_000);
-    await connection.evaluate(`document.querySelector('[data-testid="button-layer-name-plate"]').click();document.querySelector('[data-testid="button-reset-placement"]').click()`, session);
     const plateTransform = `document.querySelector('[data-testid="appearance-preview-surface"] [data-card-layer="name-plate"]').getAttribute("transform")`;
     const beforePlate = await connection.evaluate<string>(plateTransform, session);
-    await connection.evaluate(`document.querySelector('[data-testid="button-layer-name-plate"]').click()`, session);
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'true', 'selecting the name plate immediately activates the move tool');
-    await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').scrollIntoView({block:'center'})`, session);
-    const platePoint = await connection.evaluate<{ x: number; y: number }>(`(()=>{const r=document.querySelector('[data-testid="appearance-preview-surface"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`, session);
-    await connection.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...platePoint, button: 'left', clickCount: 1 }, session);
-    await connection.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: platePoint.x + 24, y: platePoint.y + 18, button: 'left', buttons: 1 }, session);
-    await connection.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: platePoint.x + 24, y: platePoint.y + 18, button: 'left', clickCount: 1 }, session);
-    const movedPlate = await connection.evaluate<string>(plateTransform, session);
-    assert.notEqual(movedPlate, beforePlate, 'name plate layer moves independently from the avatar');
-    await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').click();document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
-    await waitFor(connection, session, 'JSON.parse(localStorage.getItem("premium-test-settings")).namePlateX', value => value > 0, 5_000);
-    await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
-    await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-name-plate]")', Boolean, 10_000);
-    assert.equal(await connection.evaluate<string>(plateTransform, session), movedPlate, 'saved name plate position survives reopening');
+    assert.equal(beforePlate, null, 'the Breakout name plate uses its fixed artwork position');
     await connection.evaluate(`document.querySelector('[data-testid="button-layer-frame"]').click()`, session);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').disabled`, session), true, 'the frame is a fixed layer');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'false', 'selecting the locked frame turns the move tool off');
     await connection.evaluate(`document.querySelector('[data-testid="button-layer-avatar"]').click()`, session);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'true', 'selecting the avatar immediately activates the move tool');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').tabIndex`, session), 0, 'the selected movable layer enables keyboard positioning');
-    await connection.evaluate(`document.querySelector('[data-testid="button-layer-name-plate"]').click()`, session);
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'true', 'switching between movable layers keeps the move tool active');
     await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').click()`, session);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'false', 'Done positioning still exits move mode');
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html?fallback=1' }, session);
@@ -333,7 +318,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`${backgroundToggle}.click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=background-removal-status]")?.textContent?.includes("Preparing a transparent athlete cutout") ?? false', Boolean, 5_000);
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
-    await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-name-plate]")', Boolean, 10_000);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-avatar]")', Boolean, 10_000);
     await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-breakout"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'breakout', 5_000);
     await connection.evaluate(`window.exportBlob=null;const create=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{if(b.type==='image/png')window.exportBlob=b;return create(b)};HTMLAnchorElement.prototype.click=function(){};document.querySelector('[data-testid="button-export-appearance-png"]').click()`, session);
