@@ -11,9 +11,10 @@ import { Download } from 'lucide-react';
 import { removeAthleteBackground } from './athlete-background-removal';
 import { saveAthleteCutout } from './athlete-cutout-upload';
 import { HypeCardAppearanceControls } from './hype-card-appearance-controls';
-import { defaultCardAppearance, normalizeCardAppearance, type HypeCardAppearance } from './hype-card-appearance';
+import { defaultCardAppearance, normalizeCardAppearance, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
 import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
 import { buildPremiumNavStripExport } from './premium-hype-card-artwork';
+import type { UserProfile } from './supporter-dashboard-model';
 
 export type FanCardAppearanceInvite = {
   inviteToken: string; athleteName: string; teamName: string; sport: string;
@@ -49,7 +50,10 @@ function loadEmbeddedFonts(): Promise<string> {
   return fontCss;
 }
 
-export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearanceInvite }) {
+export function FanCardAppearanceManager({ invite, profile }: {
+  invite: FanCardAppearanceInvite;
+  profile: Pick<UserProfile, 'athleteName' | 'jerseyNumber' | 'position'>;
+}) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [moving, setMoving] = useState(false);
@@ -68,7 +72,7 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
   }, [invite.cutoutUrl]);
   const usableCutout = failedCutout === invite.cutoutUrl ? null : invite.cutoutUrl;
   const [saved, setSaved] = useState(() => normalizeCardAppearance(invite.cardAppearance));
-  const [draft, setDraft] = useState(saved);
+  const [draft, setDraft] = useState(() => seedCardAppearanceFromProfile(invite.cardAppearance, profile));
   const draftRef = useRef(draft);
   const savedRef = useRef(saved);
   savedRef.current = saved;
@@ -79,7 +83,7 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
     const server = normalizeCardAppearance(invite.cardAppearance);
     if (loadedRef.current.token !== invite.inviteToken) {
       loadedRef.current = { token: invite.inviteToken, key: serverKey };
-      setSaved(server); setDraft(server); setStatus('idle'); setMoving(false);
+      setSaved(server); setDraft(seedCardAppearanceFromProfile(server, profile)); setStatus('idle'); setMoving(false);
       setSelectedLayer('avatar');
       return;
     }
@@ -87,7 +91,7 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
     loadedRef.current.key = serverKey;
     const wasClean = JSON.stringify(draftRef.current) === JSON.stringify(savedRef.current);
     setSaved(server);
-    if (wasClean) setDraft(server);
+    if (wasClean) setDraft(seedCardAppearanceFromProfile(server, profile));
     setMoving(false);
     setSelectedLayer('avatar');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,12 +156,13 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
   };
   const mutation = useUpdateAthleteInviteAppearance();
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const displayAthleteName = invite.athleteName.trim() || profile.athleteName.trim() || 'Athlete';
   const previewCard = invite.cutoutUrl || invite.photoUrl;
   const svg = useMemo(() => draft.design === 'classic' ? '' : buildBrandedPremiumHypeCardArtwork({
-    athleteName: invite.athleteName, teamName: invite.teamName, sport: invite.sport,
+    athleteName: displayAthleteName, teamName: invite.teamName, sport: invite.sport,
     jerseyNumber: draft.jerseyNumber, position: draft.position,
     photoUrl: invite.photoUrl, cutoutUrl: usableCutout, appearance: draft,
-  }, 'all', `pv${uid}`).replace(/<\/svg>$/, `${buildPremiumNavStripExport(draft)}</svg>`), [uid, draft, invite.athleteName, invite.teamName, invite.sport, invite.photoUrl, usableCutout]);
+  }, 'all', `pv${uid}`).replace(/<\/svg>$/, `${buildPremiumNavStripExport(draft)}</svg>`), [uid, draft, displayAthleteName, invite.teamName, invite.sport, invite.photoUrl, usableCutout]);
 
   const save = () => {
     setStatus('idle');
@@ -182,7 +187,7 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
       const [photo, cutout] = await Promise.all([toDataUrl(invite.photoUrl), toDataUrl(usableCutout)]);
       const fonts = await loadEmbeddedFonts();
       const art = buildBrandedPremiumHypeCardArtwork({
-        athleteName: invite.athleteName, teamName: invite.teamName, sport: invite.sport,
+        athleteName: displayAthleteName, teamName: invite.teamName, sport: invite.sport,
         jerseyNumber: draft.jerseyNumber, position: draft.position, photoUrl: photo, cutoutUrl: cutout, appearance: draft,
       }, 'all', 'export');
       const markup = art.replace(/(<svg[^>]*>)/, `$1${fonts ? `<style>${fonts}</style>` : ''}`).replace(/<\/svg>$/, `${buildPremiumNavStripExport(draft)}</svg>`);
@@ -197,7 +202,7 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
       if (!blob) throw new Error('png');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `${invite.athleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.png`;
+      a.download = `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.png`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
       setExportState('idle');
@@ -256,7 +261,7 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || mutation.isPending} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{mutation.isPending ? 'Saving…' : 'Save design'}</button>
           <button type="button" onClick={() => { setDraft(saved); setStatus('idle'); }} disabled={!dirty || mutation.isPending} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-revert-appearance">Revert to saved</button>
-          <button type="button" onClick={() => { setDraft(defaultCardAppearance('classic')); setStatus('idle'); }} disabled={mutation.isPending} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white" data-testid="button-default-appearance">Use Classic</button>
+          <button type="button" onClick={() => { setDraft({ ...defaultCardAppearance('classic'), jerseyNumber: draft.jerseyNumber, position: draft.position }); setStatus('idle'); }} disabled={mutation.isPending} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white" data-testid="button-default-appearance">Use Classic</button>
           {draft.design !== 'classic' && <button type="button" onClick={() => void exportPng()} disabled={exportState === 'working'} className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-export-appearance-png"><Download className="h-4 w-4" aria-hidden="true" />{exportState === 'working' ? 'Preparing…' : dirty ? 'Download draft PNG' : 'Download PNG'}</button>}
         </div>
         <p role="status" aria-live="polite" className="text-sm text-white/80">

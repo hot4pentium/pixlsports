@@ -49,3 +49,20 @@ export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
     position: typeof source.position === 'string' ? source.position.trim().slice(0, 80) : '',
   };
 }
+
+export function seedCardAppearanceFromProfile(
+  value: unknown,
+  profile: { jerseyNumber?: string; position?: string },
+): HypeCardAppearance {
+  const appearance = normalizeCardAppearance(value);
+  const jerseyNumber = typeof profile.jerseyNumber === 'string'
+    ? profile.jerseyNumber.trim().replace(/^#/, '').slice(0, 12)
+    : '';
+  const position = typeof profile.position === 'string' ? profile.position.trim().slice(0, 80) : '';
+
+  return normalizeCardAppearance({
+    ...appearance,
+    jerseyNumber: appearance.jerseyNumber || jerseyNumber,
+    position: appearance.position || position,
+  });
+}

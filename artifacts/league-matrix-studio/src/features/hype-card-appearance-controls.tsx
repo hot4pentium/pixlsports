@@ -85,7 +85,7 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
         <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Design</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {designs.map((d) => (
-            <button key={d.id} type="button" aria-pressed={appearance.design === d.id} onClick={() => onChange(d.id === 'breakout' && appearance.design === 'classic' ? defaultCardAppearance('breakout') : normalizeCardAppearance({ ...appearance, design: d.id }))}
+            <button key={d.id} type="button" aria-pressed={appearance.design === d.id} onClick={() => onChange(d.id === 'breakout' && appearance.design === 'classic' ? normalizeCardAppearance({ ...defaultCardAppearance('breakout'), jerseyNumber: appearance.jerseyNumber, position: appearance.position }) : normalizeCardAppearance({ ...appearance, design: d.id }))}
               className="flex min-h-11 flex-col gap-2 rounded-lg border border-white/25 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:bg-white/15" data-testid={`button-design-${d.id}`}>
               <span className="block aspect-[5/7] w-full"><Thumb id={d.id} border={appearance.borderColor} accent={appearance.accentColor} /></span>
               <span className="text-sm font-black">{d.name}</span>

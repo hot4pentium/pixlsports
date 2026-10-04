@@ -1229,7 +1229,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </HypeManagerTaskCard>
 
       <HypeManagerTaskCard id="design" title="Card Design" description="Classic, Gallery or Spotlight" Icon={Palette} active={activeTask === 'design'} onSelect={() => toggleTask('design')} badge={invite.cardAppearance && invite.cardAppearance.design !== 'classic' ? invite.cardAppearance.design === 'gallery' ? 'Gallery' : 'Spotlight' : undefined}>
-        <FanCardAppearanceManager invite={invite} />
+        <FanCardAppearanceManager invite={invite} profile={profile} />
       </HypeManagerTaskCard>
 
       <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => toggleTask('sections')} badge={visibilitySaving ? 'Saving…' : visibilityStatus === 'error' ? 'Save failed' : visibilityStatus === 'refresh-error' ? 'Refresh needed' : undefined}>

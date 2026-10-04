@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { defaultCardAppearance, normalizeCardAppearance } from './hype-card-appearance';
+import { defaultCardAppearance, normalizeCardAppearance, seedCardAppearanceFromProfile } from './hype-card-appearance';
 import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
 
 test('legacy cards retain their existing presentation with no new appearance', () => {
@@ -19,6 +19,22 @@ test('accent always follows the border and normalized placement survives save/re
   assert.equal(normalized.athleteX, appearance.athleteX);
   assert.deepEqual(normalizeHypeCardProject(JSON.parse(JSON.stringify(project))).cardAppearance, normalized);
   assert.deepEqual(designOnlyProject(project).cardAppearance, normalized);
+});
+test('card appearance fills blank player details from the profile without replacing saved values', () => {
+  const seeded = seedCardAppearanceFromProfile(defaultCardAppearance('gallery'), {
+    jerseyNumber: '#23',
+    position: ' Forward ',
+  });
+  assert.equal(seeded.jerseyNumber, '23');
+  assert.equal(seeded.position, 'Forward');
+
+  const saved = seedCardAppearanceFromProfile({
+    ...defaultCardAppearance('gallery'),
+    jerseyNumber: '12',
+    position: 'Guard',
+  }, { jerseyNumber: '23', position: 'Forward' });
+  assert.equal(saved.jerseyNumber, '12');
+  assert.equal(saved.position, 'Guard');
 });
 test('unsafe colors and placements are rejected or clamped without altering photo', () => {
   const appearance = normalizeCardAppearance({ design: 'spotlight', borderColor: 'url(x)', accentColor: '#22c55e', accentLinked: false, athleteX: 12, athleteY: -12, athleteScale: Infinity });
