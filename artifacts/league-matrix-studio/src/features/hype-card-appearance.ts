@@ -21,8 +21,8 @@ export const appearanceSwatches = [
 export const defaultCardAppearance = (design: HypeCardDesign = 'classic'): HypeCardAppearance => ({
   design,
   borderColor: design === 'breakout' ? '#B7C4D4' : '#EF3996',
-  accentColor: design === 'breakout' ? '#26A9FF' : '#EF3996',
-  accentLinked: design !== 'breakout',
+  accentColor: design === 'breakout' ? '#B7C4D4' : '#EF3996',
+  accentLinked: true,
   removeBackground: true,
   athleteX: 0, athleteY: 0, athleteScale: 1,
   namePlateX: 0, namePlateY: 0,
@@ -34,12 +34,11 @@ export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
   const color = (value: unknown, fallback: string) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : fallback;
   const number = (value: unknown, min: number, max: number, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
   const borderColor = color(source.borderColor, defaults.borderColor);
-  const accentLinked = source.accentLinked !== false;
   return {
     design: source.design === 'gallery' || source.design === 'spotlight' || source.design === 'breakout' ? source.design : 'classic',
     borderColor,
-    accentColor: accentLinked ? borderColor : color(source.accentColor, defaults.accentColor),
-    accentLinked,
+    accentColor: borderColor,
+    accentLinked: true,
     removeBackground: source.removeBackground !== false,
     athleteX: number(source.athleteX, -.25, .25, 0),
     athleteY: number(source.athleteY, -.18, .18, 0),

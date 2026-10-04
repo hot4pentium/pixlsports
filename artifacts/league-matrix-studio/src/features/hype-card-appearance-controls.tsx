@@ -55,7 +55,7 @@ const slider = 'w-full accent-[#EF3996] min-h-11';
 
 export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Athlete placement', showAthleteSize = true, showResetButton = true, onResetPlacement, canEnableBackgroundRemoval = true, onEnableBackgroundRemoval }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void; canEnableBackgroundRemoval?: boolean; onEnableBackgroundRemoval?: () => void }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
-  const setBorder = (c: string) => set(appearance.accentLinked ? { borderColor: c, accentColor: c } : { borderColor: c });
+  const setBorder = (c: string) => set({ borderColor: c, accentColor: c, accentLinked: true });
   const swatches = (current: string, apply: (c: string) => void, label: string) => (
     <div role="group" aria-label={label} className="flex flex-wrap gap-2">
       {appearanceSwatches.map(([name, color]) => (
@@ -107,17 +107,6 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
           <p className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Border color</p>
           {swatches(appearance.borderColor, setBorder, 'Border color presets')}
           {colorRow(appearance.borderColor, setBorder, 'Border')}
-        </div>
-        <div>
-          <label className="flex min-h-11 items-center gap-3 text-sm font-bold">
-            <input type="checkbox" className="h-5 w-5" checked={appearance.accentLinked} onChange={(e) => set(e.target.checked ? { accentLinked: true, accentColor: appearance.borderColor } : { accentLinked: false })} />
-            Accent matches border
-          </label>
-          {!appearance.accentLinked && <div className="mt-2">
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Accent color</p>
-            {swatches(appearance.accentColor, (c) => set({ accentColor: c }), 'Accent color presets')}
-            {colorRow(appearance.accentColor, (c) => set({ accentColor: c }), 'Accent')}
-          </div>}
         </div>
         <div className="rounded-lg border border-white/15 bg-white/5 p-3">
           <label className="flex min-h-11 items-center gap-3 text-sm font-bold" data-testid="toggle-remove-background">
