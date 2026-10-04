@@ -61,7 +61,7 @@ window.verifyGalleryPlate=async()=>{
  }
  return samples;
 };
- function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};const below=true;const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
+ function Card({design}){const a={...defaultCardAppearance(design),background:saved.background||'sport',jerseyNumber:'9',position:'Quarterback'};const below=true;const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
  if(new URLSearchParams(location.search).has('spillover')){a.athleteScale=1.45;a.athleteY=-.08;}
   return <div className="living-card-stage" data-design={design}><div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><div className="living-card-flip-inner"><div className="living-card-flip-face living-card-flip-front"><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/></div></div>{!below&&controls}</section></div>{below&&controls}</div>}
    function App(){const spotlightLive=new URLSearchParams(location.search).has('spotlight-live');return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')||new URLSearchParams(location.search).has('gallery-preview')||new URLSearchParams(location.search).has('spotlight-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}>{!spotlightLive&&<><Card design="classic"/><Card design="gallery"/></>}<Card design="spotlight"/>{!spotlightLive&&<Card design="breakout"/>}</div>{!spotlightLive&&<div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div>}</div>}
@@ -362,6 +362,34 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.match(await connection.evaluate<string>('window.exportDownloadName', session), /^jordan-alexander-matthews-(?:draft|breakout)\.png$/, 'unsupported browsers still download the PNG');
     assert.equal(await connection.evaluate('window.fallbackShareCalls', session), 0, 'a browser without file-share capability detection downloads instead of repeatedly attempting an unsupported share');
     await connection.evaluate(`HTMLAnchorElement.prototype.click=window.originalFallbackClick;for(const [name,descriptor] of [['share',window.originalFallbackShare],['canShare',window.originalFallbackCanShare]]){if(descriptor)Object.defineProperty(navigator,name,descriptor);else delete navigator[name];}`, session);
+    await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-gallery"]').click()`, session);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=card-background-picker]")', Boolean, 5_000);
+    for (const background of ['stadium', 'tunnel', 'studio']) {
+      await connection.evaluate(`document.querySelector('[data-testid="button-card-background-${background}"]').click()`, session);
+      await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] [data-card-background]")?.getAttribute("data-card-background")', value => value === background, 5_000);
+      assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-card-background-${background}"]').getAttribute('aria-pressed')`, session), 'true');
+      assert.equal(await connection.evaluate(`document.querySelector('[data-testid=appearance-preview-surface] [data-card-background]').getAttribute('href').startsWith('data:image/webp;base64,')`, session), true, 'preset uses embedded image bytes');
+    }
+    await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
+    await waitFor(connection, session, 'JSON.parse(localStorage.getItem("premium-test-settings"))?.background', value => value === 'studio', 5_000);
+    await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] [data-card-background]")?.getAttribute("data-card-background")', value => value === 'studio', 10_000);
+    assert.equal(await connection.evaluate(`document.querySelector('.living-card-frame[data-design="gallery"] [data-card-background]')?.getAttribute('data-card-background')`, session), 'studio', 'saved background reaches the live card after reopening');
+    await connection.evaluate(`(()=>{
+      const NativeImage=window.Image;
+      window.backgroundExportMarkup=null;
+      window.Image=class extends NativeImage {set src(v){if(v.startsWith('data:image/svg+xml'))window.backgroundExportMarkup=decodeURIComponent(v.slice(v.indexOf(',')+1));super.src=v;}get src(){return super.src;}};
+      navigator.canShare=()=>true;
+      navigator.share=async()=>{};
+      document.querySelector('[data-testid="button-export-appearance-png"]').click();
+    })()`, session);
+    await waitFor(connection, session, 'window.backgroundExportMarkup', Boolean, 10_000);
+    assert.equal(await connection.evaluate(`window.backgroundExportMarkup.includes('data-card-background="studio"') && window.backgroundExportMarkup.includes('data:image/webp;base64,')`, session), true, 'PNG export embeds the saved preset rather than referencing an external asset');
+    await waitFor(connection, session, 'document.querySelector("[data-testid=button-export-appearance-png]")?.disabled', value => value === false, 15_000);
+    await connection.evaluate(`document.querySelector('[data-testid="button-card-background-sport"]').click()`, session);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-card-background]")', value => value === false, 5_000);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-card-background-sport"]').getAttribute('aria-pressed')`, session), 'true', 'sport default is selectable again');
+
     if (process.env.PIXL_TEST_MODEL === '1') {
       await connection.evaluate('window.runRemoval(); true', session);
       await waitFor(connection, session, 'window.removalResult || null', Boolean, 190_000);

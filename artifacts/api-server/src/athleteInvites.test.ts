@@ -176,6 +176,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     const otherHeaders = { "x-test-user": otherId };
     const cardAppearance = {
       design: "gallery", borderColor: "#EF3996", accentColor: "#22C55E", accentLinked: false,
+      background: "tunnel",
       athleteX: 0.12, athleteY: -0.08, athleteScale: 1.1, jerseyNumber: "9", position: "Forward",
     };
     const appearanceUrl = `${publicUrl}/appearance`;
@@ -198,6 +199,10 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.deepEqual((await (await fetch(`${publicUrl}/fan`)).json()).cardAppearance, cardAppearance);
     const reloadedCards = await (await fetch(listUrl, { headers: { "x-test-user": ownerId } })).json();
     assert.deepEqual(reloadedCards[0].cardAppearance, cardAppearance);
+    assert.equal((await fetch(appearanceUrl, {
+      method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" },
+      body: JSON.stringify({ ...cardAppearance, background: "unknown" }),
+    })).status, 400);
     const linkedAppearance = { ...cardAppearance, design: "spotlight", accentLinked: true };
     const linkedSaved = await fetch(appearanceUrl, {
       method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" }, body: JSON.stringify(linkedAppearance),

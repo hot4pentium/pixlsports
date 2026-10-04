@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { appearanceSwatches, defaultCardAppearance, normalizeCardAppearance, type HypeCardAppearance, type HypeCardDesign } from './hype-card-appearance';
+import { hypeCardBackgrounds } from './hype-card-backgrounds';
 
 const designs: Array<{ id: HypeCardDesign; name: string; blurb: string }> = [
   { id: 'classic', name: 'Classic', blurb: 'Full-bleed photo with navy identity strip.' },
@@ -45,7 +46,7 @@ export function HypeCardDesignPicker({ appearance, onChange, disabled = false, v
   const compact = variant === 'compact';
   const choose = (design: HypeCardDesign) => onChange(
     design === 'breakout' && appearance.design === 'classic'
-      ? normalizeCardAppearance({ ...defaultCardAppearance('breakout'), jerseyNumber: appearance.jerseyNumber, position: appearance.position })
+      ? normalizeCardAppearance({ ...defaultCardAppearance('breakout'), background: appearance.background, jerseyNumber: appearance.jerseyNumber, position: appearance.position })
       : normalizeCardAppearance({ ...appearance, design }),
   );
 
@@ -123,6 +124,23 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
       <HypeCardDesignPicker appearance={appearance} onChange={onChange} disabled={disabled} className={designPickerClassName} />
       {premium && <>
+        <fieldset disabled={disabled} className="space-y-2" data-testid="card-background-picker">
+          <legend className="text-xs font-bold uppercase tracking-widest text-white/80">Card background</legend>
+          <p className="text-xs leading-relaxed text-white/65">Choose the backdrop revealed when the photo background is removed. Match sport uses your athlete’s sport.</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {hypeCardBackgrounds.map((preset) => (
+              <button key={preset.id} type="button" aria-pressed={appearance.background === preset.id}
+                onClick={() => set({ background: preset.id })}
+                className="min-h-11 rounded-lg border border-white/25 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:bg-white/15"
+                data-testid={`button-card-background-${preset.id}`}>
+                {preset.image
+                  ? <img src={preset.image} alt="" className="mb-2 aspect-[5/4] w-full rounded object-cover" />
+                  : <span aria-hidden="true" className="mb-2 grid aspect-[5/4] w-full place-items-center rounded bg-gradient-to-b from-[#274d75] to-[#173d29] text-xs font-bold text-white/80">SPORT</span>}
+                <span className="text-xs font-bold">{preset.label}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
           {placementActions}

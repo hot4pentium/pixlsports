@@ -20,3 +20,9 @@ Keep the area outside Spotlight's rounded glowing frame transparent, without a b
 **Why:** The user requested removal of the blue rectangle behind Spotlight while retaining the card.
 
 **How to apply:** Preserve the interior artwork, glow, and avatar spillover; inspect the live card wrappers as well as its SVG.
+
+Allow owners to choose a preset backdrop behind background-removed athletes instead of requiring the automatic sport backdrop.
+
+**Why:** The user reported that the default venue did not match the athlete’s sport and supplied alternate background artwork for selection.
+
+**How to apply:** Keep a sport-matched default available, preserve the original photo, and carry the chosen backdrop consistently through the editor, shared card, and exports.

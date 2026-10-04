@@ -107,6 +107,7 @@ export * from './gameOnCardStatsState';
 export * from './getNotificationSubscriptionStatusParams';
 export * from './healthStatus';
 export * from './hypeCardAppearance';
+export * from './hypeCardAppearanceBackground';
 export * from './hypeCardAppearanceDesign';
 export * from './hypeCardProject';
 export * from './hypeCardProjectBackground';

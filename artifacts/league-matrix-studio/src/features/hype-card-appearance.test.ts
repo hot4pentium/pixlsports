@@ -3,6 +3,17 @@ import test from 'node:test';
 import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile } from './hype-card-appearance';
 import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
 
+test('background choices survive normalization and saved projects while legacy cards match sport', () => {
+  assert.equal(normalizeCardAppearance({ design: 'breakout' }).background, 'sport');
+  assert.equal(normalizeCardAppearance({ background: 'https://untrusted.example/image.png' }).background, 'sport');
+  for (const background of ['sport', 'stadium', 'tunnel', 'studio'] as const) {
+    const appearance = { ...defaultCardAppearance('breakout'), background };
+    assert.equal(normalizeCardAppearance(appearance).background, background);
+    assert.equal(normalizeHypeCardProject({ ...defaultProject(), cardAppearance: appearance }).cardAppearance.background, background);
+    assert.equal(designOnlyProject({ ...defaultProject(), cardAppearance: appearance }).cardAppearance.background, background);
+  }
+});
+
 test('legacy cards retain their existing presentation with no new appearance', () => {
   assert.deepEqual(normalizeCardAppearance(null), defaultCardAppearance());
   const breakout = defaultCardAppearance('breakout');

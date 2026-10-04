@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HypeCardAppearanceBackground } from './hypeCardAppearanceBackground';
 import type { HypeCardAppearanceDesign } from './hypeCardAppearanceDesign';
 
 export interface HypeCardAppearance {
@@ -15,6 +16,8 @@ export interface HypeCardAppearance {
   accentColor: string;
   accentLinked: boolean;
   removeBackground?: boolean;
+  /** Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport. */
+  background?: HypeCardAppearanceBackground;
   /**
      * @minimum -0.25
      * @maximum 0.25

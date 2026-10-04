@@ -10,6 +10,7 @@ export type PremiumHypeCardInput = {
   cutoutUrl?: string | null;
   appearance: HypeCardAppearance;
   logoUrl?: string;
+  backgroundUrl?: string;
 };
 export type PremiumHypeCardLayer = 'all' | 'bg' | 'fg';
 
@@ -33,10 +34,11 @@ const mix = (a: string, b: string, t: number) => {
 };
 const num = (v: unknown, fb: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fb);
 
-type Venue = 'field' | 'diamond' | 'court' | 'ice' | 'pool';
+type Venue = 'field' | 'gridiron' | 'diamond' | 'court' | 'ice' | 'pool';
 function venueFor(sport?: string): Venue {
   const s = (sport || '').toLowerCase();
   if (/base|soft/.test(s)) return 'diamond';
+  if (/football|rugby/.test(s)) return 'gridiron';
   if (/basket|volley|gym|cheer|wrestl|hand|indoor|futsal/.test(s)) return 'court';
   if (/hockey|ice|skat/.test(s)) return 'ice';
   if (/swim|water|dive/.test(s)) return 'pool';
@@ -62,18 +64,30 @@ function venue(id: string, x: number, y: number, w: number, h: number, kind: Ven
     }
     if (!night) deco += `<ellipse cx="${x + w * 0.25}" cy="${y + h * 0.16}" rx="170" ry="46" fill="#fff" opacity=".7"/><ellipse cx="${x + w * 0.72}" cy="${y + h * 0.26}" rx="210" ry="52" fill="#fff" opacity=".6"/>`;
     if (kind === 'diamond') deco += `<path d="M${x} ${horizon + 40} Q${x + w / 2} ${horizon - 40} ${x + w} ${horizon + 40} L${x + w} ${horizon + 130} L${x} ${horizon + 130}Z" fill="${night ? '#5A3A22' : '#C98F5A'}" opacity=".75"/>`;
-    deco += `<g stroke="${night ? '#DCE6F5' : '#F4F6F8'}" stroke-width="7" fill="none" opacity=".65"><path d="M${x + w * 0.62} ${horizon + 6}V${horizon - 70}H${x + w * 0.9}V${horizon + 6}"/></g>`;
+    if (kind === 'field') deco += `<g data-venue-goal="soccer" stroke="${night ? '#DCE6F5' : '#F4F6F8'}" stroke-width="7" fill="none" opacity=".65"><path d="M${x + w * 0.62} ${horizon + 6}V${horizon - 70}H${x + w * 0.9}V${horizon + 6}"/></g>`;
   } else {
     for (let i = 0; i < 6; i++) deco += `<rect x="${x + 30 + i * (w / 6)}" y="${y + h * 0.07}" width="${w / 6 - 60}" height="22" rx="11" fill="${night ? '#FFF6DC' : '#FFFFFF'}" opacity=".85"/>`;
     deco += `<rect x="${x}" y="${horizon - 90}" width="${w}" height="90" fill="${night ? '#0B1022' : '#9C8E78'}" opacity=".55"/>`;
   }
-  const lines = `<g stroke="#fff" stroke-width="5" opacity="${night ? 0.25 : 0.4}" fill="none"><path d="M${x} ${horizon + 120}L${x + w} ${horizon + 80}"/><path d="M${x + w * 0.5} ${horizon}V${y + h}"/></g>`;
+  const markings = kind === 'diamond'
+    ? `<path data-venue-diamond="true" d="M${x + w * .5} ${y + h * .96}L${x + w * .24} ${y + h * .8}L${x + w * .5} ${horizon + 20}L${x + w * .76} ${y + h * .8}Z"/>`
+    : kind === 'gridiron'
+      ? Array.from({ length: 5 }, (_, i) => `<path data-venue-yard-line="true" d="M${x} ${horizon + (y + h - horizon) * (i + 1) / 6}H${x + w}"/>`).join('')
+      : `<path d="M${x} ${horizon + 120}L${x + w} ${horizon + 80}"/><path d="M${x + w * 0.5} ${horizon}V${y + h}"/>`;
+  const lines = `<g stroke="#fff" stroke-width="5" opacity="${night ? 0.25 : 0.4}" fill="none">${markings}</g>`;
   return `<g id="${id}"><defs>
 <linearGradient id="${id}-w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${wall[0]}"/><stop offset="1" stop-color="${wall[1]}"/></linearGradient>
 <linearGradient id="${id}-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ground[0]}"/><stop offset="1" stop-color="${ground[1]}"/></linearGradient>
 <filter id="${id}-b" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${night ? 9 : 12}"/></filter></defs>
 <g filter="url(#${id}-b)"><rect x="${x - 30}" y="${y - 30}" width="${w + 60}" height="${h + 60}" fill="url(#${id}-w)"/>${deco}
 <rect x="${x - 30}" y="${horizon}" width="${w + 60}" height="${y + h - horizon + 30}" fill="url(#${id}-g)"/>${lines}</g></g>`;
+}
+
+function backdrop(input: PremiumHypeCardInput, id: string, x: number, y: number, w: number, h: number, night: boolean): string {
+  const url = input.appearance.background !== 'sport' ? safeUrl(input.backgroundUrl) : '';
+  return url
+    ? `<image data-card-background="${escapeXml(input.appearance.background)}" href="${url}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
+    : venue(id, x, y, w, h, venueFor(input.sport), night);
 }
 
 function fitName(name: string, maxW: number, maxSize: number, minSize: number, twoLineMax = maxSize * 0.8) {
@@ -176,7 +190,7 @@ function gallery(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): stri
 <g filter="url(#g-soft)"><rect x="62" y="132" width="140" height="150" rx="22" fill="${accent}" transform="rotate(-6 132 207)"/><rect x="62" y="132" width="140" height="150" rx="22" filter="url(#g-grain)" transform="rotate(-6 132 207)"/>
 <rect x="838" y="780" width="110" height="190" rx="22" fill="${mix(accent, '#FFFFFF', .08)}" transform="rotate(3 893 875)"/><rect x="838" y="780" width="110" height="190" rx="22" filter="url(#g-grain)" transform="rotate(3 893 875)"/></g>
 <rect x="${win.x - 18}" y="${win.y - 18}" width="${win.w + 36}" height="${win.h + 36}" rx="56" fill="#F8F1E3" stroke="${border}" stroke-opacity=".7" stroke-width="3" filter="url(#g-soft)"/>
-<g clip-path="url(#g-win)">${venue('g-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), false)}
+<g clip-path="url(#g-win)">${backdrop(input, 'g-venue', win.x, win.y, win.w, win.h, false)}
 ${photoFallback(input, win, 'g-win')}${initialsArt(input, 500, 600, NAVY)}
 <rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" fill="url(#g-inner)"/></g>
 <rect data-gallery-photo-frame="true" x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="40" fill="none" stroke="#2B2118" stroke-opacity=".25" stroke-width="3"/>
@@ -235,7 +249,7 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
 <linearGradient id="s-bezel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${mix(accent, '#FFFFFF', .45)}"/><stop offset=".25" stop-color="#17243A"/><stop offset=".7" stop-color="#07101F"/><stop offset="1" stop-color="${mix(accent, '#000000', .3)}"/></linearGradient></defs>
 <g id="spotlight-bg"><g clip-path="url(#s-card)">
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" fill="#08101F"/>
-${venue('s-venue', card.x, card.y, card.w, card.h, venueFor(input.sport), true)}
+${backdrop(input, 's-venue', card.x, card.y, card.w, card.h, true)}
 ${a.removeBackground === false ? '' : photoFallback(input, { x: card.x, y: card.y, w: card.w, h: card.h }, 's-card', 0.55)}${initialsArt(input, 500, 700, accent)}
 <circle cx="150" cy="520" r="230" fill="#FFF3D6" opacity=".35" filter="url(#s-haze)"/>
 <circle cx="850" cy="520" r="230" fill="#FFF3D6" opacity=".35" filter="url(#s-haze)"/>
@@ -312,7 +326,7 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
 <g clip-path="url(#b-interior)">
 <rect x="29" y="29" width="942" height="1342" rx="51" fill="url(#b-stage)"/>
 <ellipse cx="500" cy="478" rx="470" ry="335" fill="${accent}" opacity=".17" filter="url(#b-glow)"/>
-${venue('b-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}
+${backdrop(input, 'b-venue', win.x, win.y, win.w, win.h, true)}
 </g>
 <g data-card-layer="frame">
 <g data-photo-frame-theme="breakout" filter="url(#b-window-shadow)">
@@ -320,7 +334,7 @@ ${venue('b-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}
 <path d="M${win.x - 8} ${win.y + 54}L${win.x + 30} ${win.y - 8}H${win.x + 196}" fill="none" stroke="${accent}" stroke-width="7" stroke-linecap="round"/>
 <path d="M${win.x + win.w + 8} ${win.y + win.h - 54}L${win.x + win.w - 30} ${win.y + win.h + 8}H${win.x + win.w - 196}" fill="none" stroke="${accent}" stroke-width="7" stroke-linecap="round"/>
 </g>
-<g clip-path="url(#b-window)">${venue('b-window-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}</g>
+<g clip-path="url(#b-window)">${backdrop(input, 'b-window-venue', win.x, win.y, win.w, win.h, true)}</g>
 ${photoFallback(input, win, 'b-window')}
 ${initialsArt(input, 500, 560, accent)}
 <rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56" fill="#081528" fill-opacity=".13"/>

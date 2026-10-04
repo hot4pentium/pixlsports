@@ -3106,6 +3106,10 @@ components:
         accentColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         accentLinked: { type: boolean }
         removeBackground: { type: boolean }
+        background:
+          type: string
+          enum: [sport, stadium, tunnel, studio]
+          description: Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.
         athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
         athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
         athleteScale: { type: number, minimum: 0.65, maximum: 1.45 }

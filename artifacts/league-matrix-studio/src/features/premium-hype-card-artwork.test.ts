@@ -16,6 +16,40 @@ test('placement changes the original fallback as well as the cutout in every pre
 });
 import { defaultCardAppearance } from './hype-card-appearance';
 
+test('sport backgrounds keep soccer goals out of baseball and football cards', () => {
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+    const input = { athleteName: 'Player', appearance: defaultCardAppearance(design) };
+    const baseball = buildPremiumHypeCardArtwork({ ...input, sport: 'baseball' });
+    assert.match(baseball, /data-venue-diamond="true"/);
+    assert.doesNotMatch(baseball, /data-venue-goal/);
+    const football = buildPremiumHypeCardArtwork({ ...input, sport: 'football' });
+    assert.match(football, /data-venue-yard-line="true"/);
+    assert.doesNotMatch(football, /data-venue-goal/);
+    assert.match(buildPremiumHypeCardArtwork({ ...input, sport: 'soccer' }), /data-venue-goal="soccer"/);
+  }
+});
+
+test('selected backgrounds compose behind athletes and remain embedded in PNG artwork', () => {
+  const backgroundUrl = 'data:image/webp;base64,AAAA';
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+    for (const background of ['stadium', 'tunnel', 'studio'] as const) {
+      const appearance = { ...defaultCardAppearance(design), background };
+      const input = { athleteName: 'Player', sport: 'baseball', appearance, backgroundUrl, cutoutUrl: 'data:image/png;base64,BBBB' };
+      for (const layer of ['all', 'bg', 'fg'] as const) {
+        const svg = buildPremiumHypeCardArtwork(input, layer);
+        if (layer === 'fg') assert.doesNotMatch(svg, /data-card-background/);
+        else {
+          assert.match(svg, new RegExp(`data-card-background="${background}"`));
+          assert.match(svg, /href="data:image\/webp;base64,AAAA"/);
+        }
+      }
+      const all = buildPremiumHypeCardArtwork(input);
+      assert.ok(all.indexOf('data-photo-placement="cutout"') > all.indexOf('data-card-background'));
+      assert.match(preparePremiumCardPngExport(all, appearance).markup, /data:image\/webp;base64,AAAA/);
+    }
+  }
+});
+
 test('each name line has its own bounded advance in live, layered, and PNG artwork', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     const maxWidth = design === 'gallery' ? 800 : design === 'spotlight' ? 720 : 760;

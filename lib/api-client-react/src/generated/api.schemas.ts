@@ -974,6 +974,19 @@ export const HypeCardAppearanceDesign = {
   breakout: 'breakout',
 } as const;
 
+/**
+ * Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.
+ */
+export type HypeCardAppearanceBackground = typeof HypeCardAppearanceBackground[keyof typeof HypeCardAppearanceBackground];
+
+
+export const HypeCardAppearanceBackground = {
+  sport: 'sport',
+  stadium: 'stadium',
+  tunnel: 'tunnel',
+  studio: 'studio',
+} as const;
+
 export interface HypeCardAppearance {
   design: HypeCardAppearanceDesign;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
@@ -982,6 +995,8 @@ export interface HypeCardAppearance {
   accentColor: string;
   accentLinked: boolean;
   removeBackground?: boolean;
+  /** Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport. */
+  background?: HypeCardAppearanceBackground;
   /**
      * @minimum -0.25
      * @maximum 0.25
