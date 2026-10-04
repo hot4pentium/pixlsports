@@ -91,6 +91,32 @@ export function getSupporterFanCard<T extends FanCardDestinationCandidate>(
   return matchingInvite;
 }
 
+export function getSupporterFanCardReconnectionCandidates<T extends FanCardDestinationCandidate>(
+  invites: readonly T[],
+  profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
+) {
+  const athleteName = profile.athleteName.trim();
+  const teamName = profile.teamName.trim();
+  if (!athleteName || !teamName || getSupporterFanCard(invites, profile)) return [];
+  return [...invites];
+}
+
+export function getSupporterFanCardToSyncAfterProfileChange<T extends FanCardDestinationCandidate>(
+  invites: readonly T[],
+  previousProfile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
+  nextProfile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
+) {
+  const normalize = (value: string) => value.trim().toLowerCase();
+  if (!normalize(previousProfile.athleteName)
+    || !normalize(previousProfile.teamName)
+    || !normalize(nextProfile.athleteName)
+    || !normalize(nextProfile.teamName)) return undefined;
+  const identityChanged = normalize(previousProfile.athleteName) !== normalize(nextProfile.athleteName)
+    || normalize(previousProfile.teamName) !== normalize(nextProfile.teamName);
+  if (!identityChanged || getSupporterFanCard(invites, nextProfile)) return undefined;
+  return getSupporterFanCard(invites, previousProfile);
+}
+
 export function getSupporterFanCardHref(
   invites: readonly FanCardDestinationCandidate[],
   profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,

@@ -4,15 +4,18 @@ import { BackNavigationLink } from '@/components/back-navigation-link';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
+  getGetAthleteFanCardQueryKey,
   getListAthleteInvitesQueryKey,
   getListProjectsQueryKey,
   getListOwnedGameOnCardsQueryKey,
   useGetSupporterActiveGame,
   useListAthleteInvites,
+  useUpdateAthleteInvite,
   useListProjects,
   useListOwnedGameOnCards,
   useDeleteOwnedGameOnCard,
   useUpdateSupporterActiveGame,
+  type OwnedAthleteInvite,
 } from '@workspace/api-client-react';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
@@ -27,6 +30,7 @@ import {
   getSupporterGameStage,
   getSupporterFanCardHref,
   getSupporterFanCard,
+  getSupporterFanCardReconnectionCandidates,
   getSupporterPreparationContext,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
@@ -372,6 +376,47 @@ export function SupporterDashboardView({
   });
   const fanCardHref = getSupporterFanCardHref(athleteInvitesQuery.data ?? [], profile);
   const savedFanCard = getSupporterFanCard(athleteInvitesQuery.data ?? [], profile);
+  const fanCardReconnectionCandidates = getSupporterFanCardReconnectionCandidates(
+    athleteInvitesQuery.data ?? [],
+    profile,
+  );
+  const updateAthleteInvite = useUpdateAthleteInvite();
+  const [reconnectingFanCardToken, setReconnectingFanCardToken] = useState<string | null>(null);
+  const [fanCardReconnectError, setFanCardReconnectError] = useState('');
+  const reconnectFanCard = useCallback(async (invite: OwnedAthleteInvite) => {
+    if (!userId || !profile.athleteName.trim() || !profile.teamName.trim()) return;
+    setReconnectingFanCardToken(invite.inviteToken);
+    setFanCardReconnectError('');
+    try {
+      await updateAthleteInvite.mutateAsync({
+        inviteToken: invite.inviteToken,
+        data: {
+          athleteName: profile.athleteName.trim(),
+          teamName: profile.teamName.trim(),
+          seasonName: invite.seasonName,
+          seasonEndsAt: invite.seasonEndsAt,
+          timezone: invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          sport: invite.sport,
+          trackerProjectId: invite.trackerProjectId,
+          scheduleProjectId: null,
+          showHypeCard: invite.showHypeCard,
+          showStats: invite.showStats,
+          showSchedule: false,
+          showEvents: invite.showEvents,
+          hypesEnabled: invite.hypesEnabled,
+          paused: invite.paused,
+        },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(invite.inviteToken) }),
+      ]);
+    } catch {
+      setFanCardReconnectError('We couldn’t reconnect that card. Your saved design is unchanged; try again.');
+    } finally {
+      setReconnectingFanCardToken(null);
+    }
+  }, [profile.athleteName, profile.teamName, queryClient, updateAthleteInvite.mutateAsync, userId]);
   const updateActiveGameSelection = useUpdateSupporterActiveGame();
   const deleteOwnedGameOnCard = useDeleteOwnedGameOnCard();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
@@ -1203,6 +1248,10 @@ export function SupporterDashboardView({
                 key={`${userId ?? 'signed-out'}:${savedFanCard?.inviteToken ?? 'none'}`}
                 card={savedFanCard}
                 href={fanCardHref}
+                reconnectionCandidates={fanCardReconnectionCandidates}
+                onReconnect={reconnectFanCard}
+                reconnectingToken={reconnectingFanCardToken}
+                reconnectError={fanCardReconnectError}
                 loading={Boolean(userId) && athleteInvitesQuery.isLoading}
                 failed={Boolean(userId) && athleteInvitesQuery.isError}
                 onRetry={() => { void athleteInvitesQuery.refetch(); }}

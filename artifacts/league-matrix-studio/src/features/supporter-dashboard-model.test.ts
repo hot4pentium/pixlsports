@@ -12,6 +12,8 @@ import {
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
   getSupporterFanCardHref,
+  getSupporterFanCardReconnectionCandidates,
+  getSupporterFanCardToSyncAfterProfileChange,
   getStudioDestination,
   getUserProfile,
   getUserRole,
@@ -102,6 +104,81 @@ test('the Hype Card action falls back to setup when the card is missing or pause
       { athleteName: 'Casey', teamName: 'North Stars' },
     ),
     '/studio/athlete-page',
+  );
+});
+
+test('only offers explicit HYPE Card reconnection when no card matches a complete profile', () => {
+  const savedCards = [
+    { inviteToken: 'old-card', athleteName: 'Casey Rivera', teamName: 'North Stars', paused: false },
+    { inviteToken: 'another-card', athleteName: 'Jordan Lee', teamName: 'South Stars', paused: false },
+  ];
+
+  assert.deepEqual(
+    getSupporterFanCardReconnectionCandidates(savedCards, { athleteName: 'Casey Rivera', teamName: 'North Stars' }),
+    [],
+    'a matching card suppresses reconnection options',
+  );
+  assert.deepEqual(
+    getSupporterFanCardReconnectionCandidates(savedCards, { athleteName: 'Casey Rivera', teamName: 'New Stars' }),
+    savedCards,
+    'mismatched cards are offered for an explicit owner choice, not selected automatically',
+  );
+  assert.deepEqual(
+    getSupporterFanCardReconnectionCandidates(savedCards, { athleteName: 'Casey Rivera', teamName: '' }),
+    [],
+    'reconnection is unavailable until both profile identity fields are present',
+  );
+});
+
+test('a profile edit syncs only the card that matched the previous identity', () => {
+  const savedCards = [
+    { inviteToken: 'old-card', athleteName: 'Casey Rivera', teamName: 'North Stars', paused: false },
+    { inviteToken: 'new-card', athleteName: 'Casey Rivera', teamName: 'West Stars', paused: false },
+  ];
+
+  assert.equal(
+    getSupporterFanCardToSyncAfterProfileChange(
+      savedCards,
+      { athleteName: 'Casey Rivera', teamName: 'North Stars' },
+      { athleteName: 'Casey R.', teamName: 'North Stars' },
+    )?.inviteToken,
+    'old-card',
+  );
+  assert.equal(
+    getSupporterFanCardToSyncAfterProfileChange(
+      savedCards,
+      { athleteName: 'Casey Rivera', teamName: 'North Stars' },
+      { athleteName: 'Casey Rivera', teamName: 'West Stars' },
+    ),
+    undefined,
+    'an already matching card for the new identity takes precedence',
+  );
+  assert.equal(
+    getSupporterFanCardToSyncAfterProfileChange(
+      [savedCards[1]],
+      { athleteName: 'Unknown athlete', teamName: 'Unknown team' },
+      { athleteName: 'Casey R.', teamName: 'West Stars' },
+    ),
+    undefined,
+    'an unrelated sole card is never assumed to belong to the profile',
+  );
+  assert.equal(
+    getSupporterFanCardToSyncAfterProfileChange(
+      savedCards,
+      { athleteName: 'Casey Rivera', teamName: '' },
+      { athleteName: 'Casey R.', teamName: 'North Stars' },
+    ),
+    undefined,
+    'the old card identity must include its team before an automatic profile sync',
+  );
+  assert.equal(
+    getSupporterFanCardToSyncAfterProfileChange(
+      savedCards,
+      { athleteName: 'Casey Rivera', teamName: 'North Stars' },
+      { athleteName: 'Casey Rivera', teamName: 'North Stars' },
+    ),
+    undefined,
+    'unchanged identity does not rewrite the card',
   );
 });
 

@@ -3,6 +3,10 @@ import {
   useDeleteScheduleShare,
   listOwnedGameOnCards,
   getListOwnedGameOnCardsQueryKey,
+  getGetAthleteFanCardQueryKey,
+  getListAthleteInvitesQueryKey,
+  useListAthleteInvites,
+  useUpdateAthleteInvite,
   useCreateProject,
   useGetProject,
   getGetProjectQueryKey,
@@ -98,6 +102,7 @@ import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_
 import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
+  getSupporterFanCardToSyncAfterProfileChange,
   getUserProfile,
   getUserRole,
   isSupporterSetupComplete,
@@ -1419,6 +1424,16 @@ function SupporterProfilePage() {
   const savePhoto = useSaveSupporterPhoto();
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const photoBusy = requestPhotoUpload.isPending || savePhoto.isPending;
+  const ownedAthleteInvitesQuery = useListAthleteInvites({
+    query: {
+      enabled: Boolean(isSignedIn && user?.id),
+      queryKey: [...getListAthleteInvitesQueryKey(), user?.id ?? null],
+      staleTime: 0,
+      refetchOnMount: 'always',
+      retry: false,
+    },
+  });
+  const updateAthleteInvite = useUpdateAthleteInvite();
   const { data: lifecycle, isLoading: lifecycleLoading, isError: lifecycleError, refetch: refetchLifecycle } = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isSignedIn && user?.id),
@@ -1451,10 +1466,50 @@ function SupporterProfilePage() {
     setSaving(true);
     setError('');
     try {
+      const previousProfile = supporterProfileFromUser(user);
+      let ownedInvites = ownedAthleteInvitesQuery.data ?? [];
+      if (!ownedAthleteInvitesQuery.isSuccess && !ownedAthleteInvitesQuery.isError) {
+        const refreshedInvites = await ownedAthleteInvitesQuery.refetch();
+        ownedInvites = refreshedInvites.data ?? [];
+      }
+      const fanCardToSync = getSupporterFanCardToSyncAfterProfileChange(
+        ownedInvites,
+        previousProfile,
+        cleanProfile,
+      );
       const savePlan = createSupporterProfileSavePlan(user.unsafeMetadata, profile);
       await user.update({
         unsafeMetadata: savePlan.unsafeMetadata,
       });
+      if (fanCardToSync) {
+        try {
+          await updateAthleteInvite.mutateAsync({
+            inviteToken: fanCardToSync.inviteToken,
+            data: {
+              athleteName: cleanProfile.athleteName,
+              teamName: cleanProfile.teamName,
+              seasonName: fanCardToSync.seasonName,
+              seasonEndsAt: fanCardToSync.seasonEndsAt,
+              timezone: fanCardToSync.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+              sport: fanCardToSync.sport,
+              trackerProjectId: fanCardToSync.trackerProjectId,
+              scheduleProjectId: null,
+              showHypeCard: fanCardToSync.showHypeCard,
+              showStats: fanCardToSync.showStats,
+              showSchedule: false,
+              showEvents: fanCardToSync.showEvents,
+              hypesEnabled: fanCardToSync.hypesEnabled,
+              paused: fanCardToSync.paused,
+            },
+          });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(fanCardToSync.inviteToken) }),
+          ]);
+        } catch {
+          // The profile is already saved; the dashboard offers an explicit owner-only repair action.
+        }
+      }
       setLocation(savePlan.redirectTo);
     } catch {
       setSaving(false);

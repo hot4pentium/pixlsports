@@ -74,6 +74,36 @@
   font-size: 11px;
   font-weight: 800;
 }
+.supporter-hype-preview__reconnect-options {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+.supporter-hype-preview__reconnect-card {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #80afee40;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.supporter-hype-preview__reconnect-card span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  font-weight: 700;
+}
+.supporter-hype-preview__reconnect-card button {
+  flex-shrink: 0;
+  border: 1px solid #80afee70;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: #10243d;
+}
+.supporter-hype-preview__reconnect-card button:disabled { cursor: wait; opacity: .6; }
 .supporter-hype-preview__link:focus-visible,
 .supporter-hype-preview__state a:focus-visible,
 .supporter-hype-preview__state button:focus-visible { outline: 2px solid #a1d1ff; outline-offset: 2px; border-radius: 8px; }

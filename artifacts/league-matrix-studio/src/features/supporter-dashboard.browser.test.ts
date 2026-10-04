@@ -4445,7 +4445,28 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
         }
       }
     }
-    for (const state of ['empty', 'mismatch', 'paused', 'hidden', 'error']) {
+    await evaluate(`window.__setHypePreviewState('mismatch')`);
+    await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('different athlete details')`);
+    await wait(`Boolean(document.querySelector('[data-testid="button-reconnect-hype-card-saved-athlete-token"]'))`);
+    assert.equal(await evaluate(`!!document.querySelector('[data-testid="mobile-saved-hype-card"] svg image')`), false,
+      'mismatched artwork stays hidden until the owner chooses to reconnect it');
+    await evaluate(`document.querySelector('[data-testid="button-reconnect-hype-card-saved-athlete-token"]').click()`);
+    await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+    assert.deepEqual(await evaluate(`({
+      calls: window.__hypeReconnectCalls,
+      athleteName: window.__hypeReconnectBody?.athleteName,
+      teamName: window.__hypeReconnectBody?.teamName,
+      retainedVisibility: window.__hypeReconnectBody?.showHypeCard === true,
+      artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {}))
+    })`), {
+      calls: 1,
+      athleteName: 'Alexandria Montgomery-Williams',
+      teamName: 'The Northside Comets Select Travel Club',
+      retainedVisibility: true,
+      artworkUntouched: true,
+    });
+
+    for (const state of ['empty', 'paused', 'hidden', 'error']) {
       await evaluate(`window.__setHypePreviewState('${state}')`);
       await wait(`!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
       await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('${state === 'error' ? 'couldn’t load' : state === 'paused' ? 'paused' : state === 'hidden' ? 'hidden' : 'belongs here'}')`);
@@ -5204,10 +5225,20 @@ export function mount() {
     dashboardUserId = 'hype-owner';
     window.__hypePreviewState = JSON.parse(localStorage.getItem('hype-preview-fixture') || '"loading"');
     window.__hypeRequests = 0;
+    window.__hypeReconnectCalls = 0;
+    window.__hypeReconnectBody = null;
+    window.__hypeReconnected = false;
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const requestUrl = input instanceof Request ? input.url : String(input);
-      if (new URL(requestUrl, location.href).pathname !== '/api/athlete-invites') return originalFetch(input, init);
+      const pathname = new URL(requestUrl, location.href).pathname;
+      if (pathname.startsWith('/api/athlete-invites/')) {
+        window.__hypeReconnectCalls++;
+        window.__hypeReconnectBody = JSON.parse(String(init?.body || '{}'));
+        window.__hypeReconnected = true;
+        return new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (pathname !== '/api/athlete-invites') return originalFetch(input, init);
       window.__hypeRequests++;
       const user = dashboardUserId;
       const initial = window.__hypePreviewState;
@@ -5221,7 +5252,7 @@ export function mount() {
       const photo = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><circle cx="200" cy="170" r="90" fill="#eaa44a"/><path d="M60 580V350Q200 230 340 350V580" fill="#eaa44a"/></svg>');
       return new Response(JSON.stringify(state === 'empty' || user !== 'hype-owner' ? [] : [{
         inviteToken: 'saved-athlete-token',
-        athleteName: state === 'mismatch' ? 'Another athlete' : profile.athleteName,
+        athleteName: state === 'mismatch' && !window.__hypeReconnected ? 'Another athlete' : profile.athleteName,
         teamName: profile.teamName, seasonName: '2026', seasonEndsAt: '2030-01-01',
         sport: profile.sport, timezone: 'America/New_York', trackerProjectId: null, scheduleProjectId: null,
         showHypeCard: state !== 'hidden', showStats: true, showSchedule: true, showEvents: true,
