@@ -9,8 +9,8 @@ Premium HYPE Card cutouts may extend above their frame. Live rendering needs vis
 
 **How to apply:** When changing premium avatar placement or scale, test transformed image bounds against the SVG and inspect computed overflow through the live card's ancestor chain. Add PNG export assertions for each affected template using portrait cutouts and maximum scale/offset.
 
-Gallery's inner photo frame should extend beneath the avatar's feet and shadow; the athlete may still extend above its top. Move the name/details down as necessary.
+Gallery's inner photo frame should extend beneath the avatar's feet and shadow; the athlete may still extend above its top. Move the name/details down as necessary. Put the name in a solid container above the avatar layer so the lower avatar goes behind it.
 
-**Why:** The user requested a taller Gallery frame because the avatar was overlapping its bottom edge.
+**Why:** The user requested a taller Gallery frame and then explicitly asked for a name container layered above the lower avatar.
 
-**How to apply:** Check bottom clearance in both the editor preview and shared artwork, keeping the identity text clear of the taller frame.
+**How to apply:** Check bottom clearance and name-panel occlusion in both the editor preview and shared artwork. Preserve the opaque panel and its layer order in PNG exports.

@@ -52,7 +52,7 @@ test('Gallery extends the photo frame below the avatar and fits short and wrappe
           appearance: defaultCardAppearance('gallery'),
         }, layer);
         if (layer !== 'fg') {
-          assert.match(svg, /data-gallery-photo-frame x="90" y="160" width="820" height="880"/);
+          assert.match(svg, /data-gallery-photo-frame="true" x="90" y="160" width="820" height="880"/);
           assert.match(svg, /<clipPath[^>]*><rect x="90" y="160" width="820" height="880"/);
         }
         if (layer !== 'bg') {
@@ -68,6 +68,19 @@ test('Gallery extends the photo frame below the avatar and fits short and wrappe
       }
     }
   }
+});
+test('Gallery paints an opaque name container above the avatar in composed and foreground artwork', () => {
+  const input = { ...base, athleteName: 'Kimberly', appearance: { ...defaultCardAppearance('gallery'), athleteY: .12 } };
+  for (const layer of ['all', 'fg'] as const) {
+    const svg = buildPremiumHypeCardArtwork(input, layer);
+    const avatar = svg.indexOf('data-photo-placement="cutout"');
+    const plate = svg.indexOf('data-card-layer="name-plate"');
+    const name = svg.indexOf('>KIMBERLY</text>');
+    assert.ok(avatar >= 0 && plate > avatar && name > plate, 'the name container and text paint over the avatar');
+    assert.match(svg, /<rect x="60" y="1060" width="880" height="285" rx="28" fill="#F6EFE2"/,
+      'the name container uses a solid ivory background to hide the lower avatar');
+  }
+  assert.doesNotMatch(buildPremiumHypeCardArtwork(input, 'bg'), /data-card-layer="name-plate"/);
 });
 test('Spotlight keeps Gallery-style avatar placement and paints the full cutout over the frame', () => {
   const appearance = { ...defaultCardAppearance('spotlight'), athleteScale: 1.2, athleteX: .08, athleteY: -.04 };

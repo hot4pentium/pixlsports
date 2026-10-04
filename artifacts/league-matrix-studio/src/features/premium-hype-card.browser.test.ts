@@ -20,12 +20,14 @@ import{FanCardAppearanceManager}from'./src/features/fan-card-appearance-manager'
 import{LivingAthleteCardFront}from'./src/features/living-athlete-card-front';
 import{defaultCardAppearance}from'./src/features/hype-card-appearance';
 import{removeAthleteBackground}from'./src/features/athlete-background-removal';
+import{buildPremiumHypeCardArtwork,preparePremiumCardPngExport}from'./src/features/premium-hype-card-artwork';
 import photo from './src/assets/hypecard-player-photo-640.webp';
 import cutout from './src/assets/youth-football-player-cutout.png';
 import './src/index.css';
 import './src/features/living-athlete-card.css';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
 let saved=JSON.parse(localStorage.getItem('premium-test-settings')||'null')||defaultCardAppearance(new URLSearchParams(location.search).has('classic-preview')?'classic':'gallery');
+if(new URLSearchParams(location.search).has('nameplate-overlap'))saved={...saved,athleteY:.12,athleteScale:1.2};
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(url,init)=>{
  if(String(url).includes('/api/athlete-invites/fixture/appearance')){
@@ -44,6 +46,21 @@ window.runRemoval=async()=>{
 const profile={athleteName:'Jordan Alexander Matthews',jerseyNumber:'9',position:'Quarterback'};
 const invite={inviteToken:'fixture',athleteName:'Older Invite Name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,photoRevision:'fixture-revision',cutoutUrl:new URLSearchParams(location.search).has('fallback')?null:cutout,cardAppearance:saved};
 window.fixturePhotoUrl=photo;window.fixtureCutoutUrl=cutout;
+window.verifyGalleryPlate=async()=>{
+ const appearance={...defaultCardAppearance('gallery'),athleteY:.12};
+ const blue='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="760" height="900"><rect width="760" height="900" fill="blue"/></svg>');
+ const samples=[];
+ for(const layer of ['all','fg']){
+  const svg=buildPremiumHypeCardArtwork({athleteName:'Kimberly',teamName:'Falcons',cutoutUrl:blue,appearance},layer);
+  const png=preparePremiumCardPngExport(svg,appearance,{width:760,height:900});
+  const image=new Image();const loaded=new Promise((ok,bad)=>{image.onload=ok;image.onerror=bad});
+  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(png.markup);await loaded;
+  const canvas=document.createElement('canvas');canvas.width=png.width;canvas.height=png.height;
+  const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,canvas.width,canvas.height);
+  samples.push({layer,pixel:[...ctx.getImageData(1000,2136,1,1).data],avatarPixel:[...ctx.getImageData(1000,1800,1,1).data]});
+ }
+ return samples;
+};
  function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};const below=true;const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
  if(new URLSearchParams(location.search).has('spillover')){a.athleteScale=1.45;a.athleteY=-.08;}
   return <div className="living-card-stage" data-design={design}><div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><div className="living-card-flip-inner"><div className="living-card-flip-face living-card-flip-front"><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/></div></div>{!below&&controls}</section></div>{below&&controls}</div>}
@@ -102,6 +119,11 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       }
     };
     await assertGalleryFrame();
+    const platePixels = await connection.evaluate<Array<{ layer: string; pixel: number[]; avatarPixel: number[] }>>('window.verifyGalleryPlate()', session);
+    for (const sample of platePixels) {
+      assert.deepEqual(sample.pixel, [246, 239, 226, 255], `${sample.layer} PNG name panel hides the avatar beneath its solid ivory fill`);
+      assert.deepEqual(sample.avatarPixel, [0, 0, 255, 255], `${sample.layer} test avatar renders visibly above the name panel`);
+    }
     assert.equal(await connection.evaluate(`(()=>{const card=document.querySelector('[data-testid="appearance-preview-surface"]').getBoundingClientRect(),nav=document.querySelector('[data-testid="appearance-navigation-preview"]').getBoundingClientRect();return nav.top>=card.bottom})()`, session), true, 'the designer nav strip is fully below, not overlaid on, the card');
     const breakoutFrame = await connection.evaluate<{ radius: string; padding: string; border: string; background: string; shadow: string }>(`(()=>{const frame=document.querySelector('.living-card-frame-outer:has(.living-card-frame[data-design="breakout"])'),style=getComputedStyle(frame);return {radius:style.borderTopLeftRadius,padding:style.paddingTop,border:style.borderTopWidth,background:style.backgroundImage,shadow:style.boxShadow}})()`, session);
     assert.equal(breakoutFrame.radius, '0px', 'the outer wrapper does not add a second frame');
