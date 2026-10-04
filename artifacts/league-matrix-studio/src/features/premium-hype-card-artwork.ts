@@ -10,6 +10,7 @@ export type PremiumHypeCardInput = {
   cutoutUrl?: string | null;
   appearance: HypeCardAppearance;
   logoUrl?: string;
+  logoMarkOnly?: boolean;
   backgroundUrl?: string;
 };
 export type PremiumHypeCardLayer = 'all' | 'bg' | 'fg';
@@ -155,6 +156,12 @@ function logo(input: PremiumHypeCardInput, x: number, y: number, w: number) {
   const src = safeUrl(input.logoUrl);
   if (!src) return '';
   return `<image href="${src}" x="${x}" y="${y}" width="${w}" height="${(w * 550 / 1347).toFixed(1)}" preserveAspectRatio="xMinYMin meet"/>`;
+}
+
+function pixlMark(input: PremiumHypeCardInput, x: number, y: number, w: number) {
+  const src = safeUrl(input.logoUrl);
+  if (!src) return '';
+  return `<image href="${src}" x="${x}" y="${y}" width="${w}" height="${(w * 550 / 1347).toFixed(1)}" clip-path="url(#b-pixl-mark)" preserveAspectRatio="xMinYMin meet"/>`;
 }
 
 function gallery(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): string {
@@ -350,9 +357,10 @@ ${nameText(nm.lines, 500, nameY, nm.size, nm.tl, '#F7F9FC', 'middle')}
   ${team || compactDetails ? `<path d="M156 1114h688" stroke="${accent}" stroke-opacity=".75" stroke-width="3"/>` : ''}
   ${team ? `<text x="${compactDetails ? 176 : 500}" y="1144" text-anchor="${compactDetails ? 'start' : 'middle'}" font-family="${FONT_TEXT}" font-size="27" font-weight="700" letter-spacing="6" fill="#DFE8F4">${escapeXml(team.slice(0, compactDetails ? 17 : 24))}</text>` : ''}
   ${compactDetails ? `<text data-player-details="true" x="824" y="1144" text-anchor="end" font-family="${FONT_TEXT}" font-size="25" font-weight="700" letter-spacing="4" fill="#DFE8F4">${escapeXml(compactDetails.slice(0, 26))}</text>` : ''}</g>`;
-  const fg = `<defs><linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient><linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>${shadowFilter('b-cut', 14, 10, .42)}${shadowFilter('b-name-shadow', 8, 7, .6)}</defs>
+  const breakoutLogo = input.logoMarkOnly ? pixlMark(input, 92, 62, 148) : logo(input, 92, 62, 148);
+  const fg = `<defs><linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient><linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient><clipPath id="b-pixl-mark"><rect x="92" y="62" width="148" height="40"/></clipPath>${shadowFilter('b-cut', 14, 10, .42)}${shadowFilter('b-name-shadow', 8, 7, .6)}</defs>
 <g id="breakout-fg">
-<g data-card-layer="frame">${logo(input, 92, 62, 148)}${sport ? `<text data-breakout-sport-label="true" x="872" y="92" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
+<g data-card-layer="frame">${breakoutLogo}${sport ? `<text data-breakout-sport-label="true" x="872" y="92" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
 <g data-card-layer="avatar">${athlete(input, { x: 115, y: -210, w: 770, h: 1020 }, 'b-cut')}</g>
 ${plate}
 </g>`;

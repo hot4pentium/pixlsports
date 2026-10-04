@@ -9,6 +9,7 @@ export function buildBrandedPremiumHypeCardArtwork(input: PremiumHypeCardInput, 
   return buildPremiumHypeCardArtwork({
     ...input,
     logoUrl: input.logoUrl || brandLogo,
+    logoMarkOnly: input.logoMarkOnly ?? !input.logoUrl,
     backgroundUrl: hypeCardBackgroundImage(input.appearance.background),
   }, layer, ns);
 }

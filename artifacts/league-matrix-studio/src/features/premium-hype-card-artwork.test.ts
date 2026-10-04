@@ -21,12 +21,15 @@ test('Breakout aligns the sport label with the main Pixl logo mark', () => {
     athleteName: 'Player',
     sport: 'baseball',
     logoUrl: 'data:image/png;base64,AAAA',
+    logoMarkOnly: true,
     appearance: defaultCardAppearance('breakout'),
   }, 'fg');
   const logoY = Number(svg.match(/<image href="data:image\/png;base64,AAAA" x="92" y="(\d+(?:\.\d+)?)"/)?.[1]);
   const sportY = Number(svg.match(/data-breakout-sport-label="true"[^>]*y="(\d+(?:\.\d+)?)"/)?.[1]);
   assert.ok(Number.isFinite(logoY) && Number.isFinite(sportY), 'Breakout renders both header marks');
   assert.ok(Math.abs(sportY - logoY - 30) <= 1, 'the sport label sits on the main logo mark’s visual row, not below it');
+  assert.match(svg, /<clipPath id="b-pixl-mark"><rect x="92" y="62" width="148" height="40"\/><\/clipPath>/);
+  assert.match(svg, /clip-path="url\(#b-pixl-mark\)"/, 'Breakout hides the lower "Sports" word from the Pixl brand image');
 });
 
 test('sport backgrounds keep soccer goals out of baseball and football cards', () => {

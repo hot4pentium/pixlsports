@@ -9,11 +9,11 @@ Use Gallery’s clear framed-photo structure as the common foundation for Spotli
 
 **How to apply:** Keep Spotlight’s surrounding shell illuminated and stadium-like, and keep Breakout’s shell metallic and broadcast-oriented. Preserve each design’s existing photo/cutout behavior, avatar overlap, layered SVG exports, and navigation.
 
-On Breakout, align the sport label vertically with the main blue Pixl mark in the upper frame.
+On Breakout, show only the Pixl mark (not the secondary “Sports” word) and align the sport label vertically with that mark.
 
-**Why:** The user supplied a screenshot showing that the sport name sat visibly below the logo and asked for the two to line up.
+**Why:** The user supplied screenshots showing the sport name below the visible logo and approved removing “Sports” so the Pixl mark and sport can share a clear row.
 
-**How to apply:** Align to the primary blue mark rather than the full logo image, whose secondary “Sports” lettering extends lower.
+**How to apply:** Crop only the default Pixl brand image on Breakout, preserve custom logo images and other card designs, and align the sport label to the blue mark rather than the full image bounds.
 
 When background removal is off, Spotlight and Breakout must keep the jersey number and position visible as compact identity details below the photo.
 
