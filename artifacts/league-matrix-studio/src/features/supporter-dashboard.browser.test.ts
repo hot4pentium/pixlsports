@@ -4409,9 +4409,11 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
           const event = row.children[0], slot = row.children[1];
           const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
           const card = slot.querySelector('.supporter-hype-preview__surface'), c = card.getBoundingClientRect();
+          const eventCard = event.querySelector('[data-testid="card-mobile-featured-event"]').getBoundingClientRect();
           const action = event.querySelector('[data-testid="button-open-featured-game-card-mobile"]');
           const nav = slot.querySelector('a'), quick = document.querySelector('[data-testid="link-mobile-independent-hype"]');
           return { equal: Math.abs(a.width-b.width)<1, paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
+            cardsAligned: Math.abs(eventCard.width-c.width)<1 && Math.abs(eventCard.height-c.height)<1 && Math.abs(eventCard.top-c.top)<1,
             ratio: Math.abs(c.width/c.height-5/7)<.01,
             noOverflow: document.documentElement.scrollWidth<=innerWidth,
             actionFits: !!action && action.getBoundingClientRect().right<=a.right+1,
@@ -4421,7 +4423,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
             noControls: !slot.querySelector('.living-card-controls'),
             preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !!document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies') };
         })()`);
-        assert.deepEqual(layout, { equal: true, paired: true, ratio: true, noOverflow: true, actionFits: true,
+        assert.deepEqual(layout, { equal: true, paired: true, cardsAligned: true, ratio: true, noOverflow: true, actionFits: true,
           sameDestination: true, nativeArt: true, spillover: true, noControls: true, preserved: true }, `${design} at ${width}px`);
         if (design === 'spotlight' && width === 390) {
           const screenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);

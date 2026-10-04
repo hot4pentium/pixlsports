@@ -17,6 +17,7 @@ type SupporterGameOnSummaryProps = {
   sport: Sport | null;
   record: SupporterGameRecord;
   headerAction?: ReactNode;
+  installReminder?: ReactNode;
   children: ReactNode;
   mobileHypeCard?: ReactNode;
 };
@@ -31,6 +32,7 @@ export function SupporterGameOnSummary({
   sport,
   record,
   headerAction,
+  installReminder,
   children,
   mobileHypeCard,
 }: SupporterGameOnSummaryProps) {
@@ -44,12 +46,13 @@ export function SupporterGameOnSummary({
       data-testid={isMobile ? 'mobile-hero-banner' : 'desktop-game-on-summary'}
     >
       <header
-        className={`supporter-game-on-summary__header${headerAction ? ' supporter-game-on-summary__header--with-action' : ''}`}
-        aria-label={headerAction ? 'Dashboard tools and athlete profile' : 'Athlete profile'}
+        className={`supporter-game-on-summary__header${headerAction || installReminder ? ' supporter-game-on-summary__header--with-action' : ''}`}
+        aria-label={headerAction || installReminder ? 'Dashboard tools and athlete profile' : 'Athlete profile'}
         data-testid={isMobile ? 'mobile-athlete-summary' : 'athlete-summary'}
       >
         <h1 id={`game-on-summary-heading-${variant}`} className="sr-only" tabIndex={-1}>Athlete overview</h1>
         {headerAction && <div className="supporter-game-on-summary__header-action">{headerAction}</div>}
+        {installReminder}
         <Link
           href={profileHref}
           className="supporter-game-on-summary__athlete-link"
@@ -82,6 +85,7 @@ export function SupporterGameOnSummary({
               aria-labelledby={isMobile ? 'mobile-next-game-heading' : 'next-game-heading'}
               data-testid={isMobile ? undefined : 'section-next-game-context'}
             >
+              {hasHype && <span className="supporter-hype-preview__label">EVENT CARD</span>}
               <div className="supporter-game-on-summary__event-content" data-testid={isMobile ? 'card-mobile-featured-event' : undefined}>
                 {children}
               </div>

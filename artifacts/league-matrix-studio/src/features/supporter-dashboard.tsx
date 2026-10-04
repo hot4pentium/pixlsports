@@ -979,12 +979,6 @@ export function SupporterDashboardView({
 
   const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
     <>
-      <DashboardInstallReminder
-        action={installAction}
-        showInstructions={showInstallInstructions}
-        onInstall={handleInstallPrompt}
-        variant={variant}
-      />
       <div className="supporter-game-on-summary__event-top">
         <div className="supporter-game-on-summary__event-kicker">
           <span className="supporter-game-on-summary__event-dot" aria-hidden="true" />
@@ -1203,6 +1197,7 @@ export function SupporterDashboardView({
             sport={recordSport}
             record={gameRecord}
             headerAction={!isDesktopDashboard ? dashboardChecklist : undefined}
+            installReminder={<DashboardInstallReminder action={installAction} showInstructions={showInstallInstructions} onInstall={handleInstallPrompt} variant="mobile" />}
             mobileHypeCard={
               <SupporterHypeCardPreview
                 key={`${userId ?? 'signed-out'}:${savedFanCard?.inviteToken ?? 'none'}`}
@@ -1316,6 +1311,7 @@ export function SupporterDashboardView({
         sport={recordSport}
         record={gameRecord}
         headerAction={isDesktopDashboard ? dashboardChecklist : undefined}
+        installReminder={<DashboardInstallReminder action={installAction} showInstructions={showInstallInstructions} onInstall={handleInstallPrompt} variant="desktop" />}
       >
         {renderGameOnEventContent('desktop')}
       </SupporterGameOnSummary>
