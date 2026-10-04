@@ -207,6 +207,7 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const jersey = (input.jerseyNumber || a.jerseyNumber || '').trim().replace(/^#/, '');
   const team = (input.teamName || '').trim().toUpperCase();
   const card = { x: 14, y: 14, w: 972, h: 1372 };
+  const win = { x: 90, y: 170, w: 820, h: 850 };
   const nm = fitName(input.athleteName || 'Athlete', 720, 170, 100, 120);
   const plateH = Math.round(Math.max(220, 28 + nm.size * 0.86 + (nm.lines.length - 1) * nm.size * 0.94 + 46 + 42));
   const plate = { x: 90, y: 1350 - plateH, w: 820, h: plateH };
@@ -217,14 +218,17 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   // Anton's cap height is 1760/2048 em. Center the visible numerals, not their baseline.
   const numberBaseline = (card.y + plate.y) / 2 + numSize * (1760 / 2048) / 2;
   const originalPhoto = a.removeBackground === false
-    ? photoFallback(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-photo-placeholder', 1, 'xMidYMid meet')
+    ? photoFallback(input, win, 's-photo-placeholder', 1, 'xMidYMid meet')
     : '';
   const bg = `
 <defs>${grainDef('s-grain', 0.2)}
 <clipPath id="s-card"><rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50"/></clipPath>
+<clipPath id="s-win"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="40"/></clipPath>
 <filter id="s-haze" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="55"/></filter>
+<filter id="s-frame-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#01040A" flood-opacity=".75"/></filter>
 <radialGradient id="s-vig" cx=".5" cy=".42" r=".75"><stop offset=".5" stop-color="#050913" stop-opacity="0"/><stop offset="1" stop-color="#050913" stop-opacity=".85"/></radialGradient>
-<linearGradient id="s-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913" stop-opacity="0"/><stop offset="1" stop-color="#050913" stop-opacity=".85"/></linearGradient></defs>
+<linearGradient id="s-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913" stop-opacity="0"/><stop offset="1" stop-color="#050913" stop-opacity=".85"/></linearGradient>
+<linearGradient id="s-bezel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${mix(accent, '#FFFFFF', .45)}"/><stop offset=".25" stop-color="#17243A"/><stop offset=".7" stop-color="#07101F"/><stop offset="1" stop-color="${mix(accent, '#000000', .3)}"/></linearGradient></defs>
 <g id="spotlight-bg"><g clip-path="url(#s-card)">
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" fill="#08101F"/>
 ${venue('s-venue', card.x, card.y, card.w, card.h, venueFor(input.sport), true)}
@@ -235,12 +239,18 @@ ${a.removeBackground === false ? '' : photoFallback(input, { x: card.x, y: card.
 <ellipse cx="500" cy="760" rx="520" ry="420" fill="${accent}" opacity=".32" filter="url(#s-haze)"/>
 <ellipse cx="500" cy="300" rx="380" ry="220" fill="${accent}" opacity=".18" filter="url(#s-haze)"/>
 ${jersey && a.removeBackground !== false ? `<g data-card-layer="jersey-number"><text data-jersey-number="true" x="500" y="${numberBaseline.toFixed(2)}" text-anchor="middle" font-family="${FONT_NUMBER}" font-weight="400" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" stroke="${IVORY}" stroke-opacity=".85" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
+<g data-card-layer="photo-frame" data-photo-frame-theme="spotlight" filter="url(#s-frame-shadow)">
+<rect x="${win.x - 20}" y="${win.y - 20}" width="${win.w + 40}" height="${win.h + 40}" rx="58" fill="#050A14" stroke="url(#s-bezel)" stroke-width="12"/>
+<rect x="${win.x - 8}" y="${win.y - 8}" width="${win.w + 16}" height="${win.h + 16}" rx="48" fill="none" stroke="${accent}" stroke-opacity=".68" stroke-width="4"/>
+<path d="M${win.x + 32} ${win.y - 20}H${win.x + 220}M${win.x + win.w - 220} ${win.y - 20}H${win.x + win.w - 32}" stroke="#F8F1E3" stroke-width="4" opacity=".75"/>
+<path d="M${win.x - 20} ${win.y + 90}V${win.y + 240}M${win.x + win.w + 20} ${win.y + win.h - 240}V${win.y + win.h - 90}" stroke="${accent}" stroke-width="12" stroke-linecap="round"/>
+</g>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" fill="url(#s-vig)"/>
 <rect x="${card.x}" y="900" width="${card.w}" height="${card.h - 900}" fill="url(#s-floor)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" filter="url(#s-grain)" opacity=".5"/>
 </g></g>`;
   const fg = `
-<defs><clipPath id="s-photo-placeholder"><rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50"/></clipPath>
+<defs><clipPath id="s-photo-placeholder"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="40"/></clipPath>
 ${shadowFilter('s-cut', 16, 10, .55)}
 <filter id="s-glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="5"/></filter>
 <filter id="s-plate" x="-10%" y="-20%" width="120%" height="150%"><feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#02050C" flood-opacity=".6"/></filter>
@@ -281,7 +291,9 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
 <linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient>
 <linearGradient id="b-stage" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#101F39"/><stop offset=".54" stop-color="#172C49"/><stop offset=".83" stop-color="#364B62"/><stop offset="1" stop-color="#101C2E"/></linearGradient>
 <linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>
+<linearGradient id="b-window-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F7FAFC"/><stop offset=".18" stop-color="#6E7D90"/><stop offset=".5" stop-color="#DDE6F0"/><stop offset=".78" stop-color="#536479"/><stop offset="1" stop-color="#F8FAFC"/></linearGradient>
 <filter id="b-glow" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="b-window-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#020711" flood-opacity=".75"/></filter>
 <filter id="b-cut" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="14" stdDeviation="13" flood-color="#020711" flood-opacity=".72"/></filter>
 <clipPath id="b-window"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56"/></clipPath>
 <clipPath id="b-card"><rect x="18" y="18" width="964" height="1364" rx="62"/></clipPath>
@@ -294,10 +306,16 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
 ${venue('b-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}
 </g>
 <g data-card-layer="frame">
+<g data-photo-frame-theme="breakout" filter="url(#b-window-shadow)">
+<path d="M${win.x - 26} ${win.y + 42}L${win.x + 18} ${win.y - 26}H${win.x + win.w - 18}L${win.x + win.w + 26} ${win.y + 42}V${win.y + win.h - 42}L${win.x + win.w - 18} ${win.y + win.h + 26}H${win.x + 18}L${win.x - 26} ${win.y + win.h - 42}Z" fill="#071326" stroke="url(#b-window-metal)" stroke-width="10" stroke-linejoin="round"/>
+<path d="M${win.x - 8} ${win.y + 54}L${win.x + 30} ${win.y - 8}H${win.x + 196}" fill="none" stroke="${accent}" stroke-width="7" stroke-linecap="round"/>
+<path d="M${win.x + win.w + 8} ${win.y + win.h - 54}L${win.x + win.w - 30} ${win.y + win.h + 8}H${win.x + win.w - 196}" fill="none" stroke="${accent}" stroke-width="7" stroke-linecap="round"/>
+</g>
 <g clip-path="url(#b-window)">${venue('b-window-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}</g>
 ${photoFallback(input, win, 'b-window')}
 ${initialsArt(input, 500, 560, accent)}
 <rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56" fill="#081528" fill-opacity=".13"/>
+<rect data-breakout-photo-frame="true" x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56" fill="none" stroke="#EAF1F8" stroke-opacity=".7" stroke-width="3"/>
 <g fill="#EAF6FF" filter="url(#b-glow)" opacity=".66"><ellipse cx="116" cy="382" rx="56" ry="30"/><ellipse cx="884" cy="382" rx="56" ry="30"/></g>
 <rect x="24" y="24" width="952" height="1352" rx="56" fill="none" stroke="url(#b-metal)" stroke-width="10"/>
 </g>

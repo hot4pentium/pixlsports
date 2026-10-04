@@ -139,6 +139,7 @@ test('Spotlight keeps Gallery-style avatar placement and paints the full cutout 
   assert.match(svg, /<image href="data:image\/png;base64,AAAA" x="90" y="120" width="820" height="1130" preserveAspectRatio="xMidYMax meet"/);
   assert.match(svg, /translate\(580 1194\) scale\(1\.2\)/);
   assert.match(svg, /<rect x="90" y="1088" width="820" height="262" rx="26" fill="url\(#s-sheen\)"/);
+  assert.match(svg, /data-photo-frame-theme="spotlight"/);
 });
 test('the premium designer preview separates its dressed nav strip from the card artwork', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
@@ -255,7 +256,7 @@ test('Spotlight shows the full original photo in its placeholder and hides the n
       assert.doesNotMatch(svg, /data-photo-placement="original"/);
     } else {
       assert.match(svg, /data-photo-placement="original" transform=/);
-      assert.match(svg, /<image href="data:image\/png;base64,BBBB" x="90" y="120" width="820" height="1130" preserveAspectRatio="xMidYMid meet"/);
+      assert.match(svg, /<image href="data:image\/png;base64,BBBB" x="90" y="170" width="820" height="850" preserveAspectRatio="xMidYMid meet"/);
     }
   }
 
@@ -298,6 +299,8 @@ test('Breakout keeps only the metallic outer frame, with no blue frames behind i
   assert.doesNotMatch(bg, /<rect width="1000" height="1400" fill="#061225"\/>/);
   assert.doesNotMatch(bg, /<rect x="18" y="18" width="964" height="1364" rx="62" fill="url\(#b-stage\)"\/>/);
   assert.match(bg, /<rect x="24" y="24" width="952" height="1352" rx="56" fill="none" stroke="url\(#b-metal\)" stroke-width="10"\/>/);
+  assert.match(bg, /data-photo-frame-theme="breakout"/);
+  assert.match(bg, /data-breakout-photo-frame="true"/);
   assert.doesNotMatch(fg, /<rect x="108" y="150" width="784" height="820" rx="56" fill="none" stroke=/);
   assert.doesNotMatch(bg, /<rect x="45" y="92"|<rect x="68" y="115"/);
   assert.doesNotMatch(bg, /stroke="url\(#b-metal\)" stroke-width="28"/);
