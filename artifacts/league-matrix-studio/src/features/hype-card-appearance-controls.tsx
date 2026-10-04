@@ -35,6 +35,45 @@ function Thumb({ id, border, accent }: { id: HypeCardDesign; border: string; acc
   );
 }
 
+export function HypeCardDesignPicker({ appearance, onChange, disabled = false, variant = 'cards', className = '' }: {
+  appearance: HypeCardAppearance;
+  onChange: (next: HypeCardAppearance) => void;
+  disabled?: boolean;
+  variant?: 'cards' | 'compact';
+  className?: string;
+}) {
+  const compact = variant === 'compact';
+  const choose = (design: HypeCardDesign) => onChange(
+    design === 'breakout' && appearance.design === 'classic'
+      ? normalizeCardAppearance({ ...defaultCardAppearance('breakout'), jerseyNumber: appearance.jerseyNumber, position: appearance.position })
+      : normalizeCardAppearance({ ...appearance, design }),
+  );
+
+  return (
+    <fieldset className={className} disabled={disabled} data-testid={compact ? 'card-design-picker-compact' : 'card-design-picker-cards'}>
+      <legend className={`${compact ? 'mb-2 text-[10px]' : 'mb-2 text-xs'} font-bold uppercase tracking-widest text-white/80`}>{compact ? 'Choose design' : 'Design'}</legend>
+      <div className={`grid grid-cols-2 gap-2 ${compact ? '' : 'sm:grid-cols-4'}`}>
+        {designs.map((design) => (
+          <button
+            key={design.id}
+            type="button"
+            aria-pressed={appearance.design === design.id}
+            onClick={() => choose(design.id)}
+            className={compact
+              ? 'flex min-h-11 w-full items-center justify-center rounded-lg border border-white/25 px-2 py-2 text-center text-[11px] font-bold leading-tight text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:bg-white/15 aria-pressed:text-white'
+              : 'flex min-h-11 flex-col gap-2 rounded-lg border border-white/25 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:bg-white/15'}
+            data-testid={`button-design-${compact ? 'compact-' : ''}${design.id}`}
+          >
+            {!compact && <span className="block aspect-[5/7] w-full"><Thumb id={design.id} border={appearance.borderColor} accent={appearance.accentColor} /></span>}
+            <span className={compact ? '' : 'text-sm font-black'}>{design.name}</span>
+            {!compact && <span className="text-[11px] leading-snug text-white/65">{design.blurb}</span>}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function HexField({ value, label, disabled, onValid }: { value: string; label: string; disabled: boolean; onValid: (c: string) => void }) {
   const [text, setText] = useState(value);
   useEffect(() => { setText((t) => (t.toUpperCase() === value.toUpperCase() || !/^#?[0-9a-f]{0,6}$/i.test(t) || t.replace('#', '').length === 6 ? value : t)); }, [value]);
@@ -53,7 +92,7 @@ function HexField({ value, label, disabled, onValid }: { value: string; label: s
 
 const slider = 'w-full accent-[#EF3996] min-h-11';
 
-export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Athlete placement', showAthleteSize = true, showResetButton = true, onResetPlacement, canEnableBackgroundRemoval = true, onEnableBackgroundRemoval }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void; canEnableBackgroundRemoval?: boolean; onEnableBackgroundRemoval?: () => void }) {
+export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Athlete placement', showAthleteSize = true, showResetButton = true, onResetPlacement, canEnableBackgroundRemoval = true, onEnableBackgroundRemoval, designPickerClassName = '' }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void; canEnableBackgroundRemoval?: boolean; onEnableBackgroundRemoval?: () => void; designPickerClassName?: string }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set({ borderColor: c, accentColor: c, accentLinked: true });
   const swatches = (current: string, apply: (c: string) => void, label: string) => (
@@ -81,19 +120,7 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
   const reset = defaultCardAppearance(appearance.design);
   return (
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
-      <fieldset disabled={disabled}>
-        <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Design</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {designs.map((d) => (
-            <button key={d.id} type="button" aria-pressed={appearance.design === d.id} onClick={() => onChange(d.id === 'breakout' && appearance.design === 'classic' ? normalizeCardAppearance({ ...defaultCardAppearance('breakout'), jerseyNumber: appearance.jerseyNumber, position: appearance.position }) : normalizeCardAppearance({ ...appearance, design: d.id }))}
-              className="flex min-h-11 flex-col gap-2 rounded-lg border border-white/25 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:bg-white/15" data-testid={`button-design-${d.id}`}>
-              <span className="block aspect-[5/7] w-full"><Thumb id={d.id} border={appearance.borderColor} accent={appearance.accentColor} /></span>
-              <span className="text-sm font-black">{d.name}</span>
-              <span className="text-[11px] leading-snug text-white/65">{d.blurb}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <HypeCardDesignPicker appearance={appearance} onChange={onChange} disabled={disabled} className={designPickerClassName} />
       {premium && <>
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-xs font-bold uppercase tracking-widest text-white/80">Jersey number

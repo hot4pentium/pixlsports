@@ -62,6 +62,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     const page = await openPage(connection, 'http://localhost:80/premium-appearance-fixture.html', { viewport: { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false } });
     const session = page.sessionId;
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 45_000);
+    assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="card-design-picker-cards"]')).display`, session), 'block', 'desktop keeps the full design picker');
+    assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="mobile-card-design-controls"]')).display`, session), 'none', 'the compact picker is reserved for phones');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-jersey"]').value`, session), '9', 'the profile jersey number fills a blank appearance');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-position"]').value`, session), 'Quarterback', 'the profile position fills a blank appearance');
     assert.match(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').getAttribute('aria-label')`, session), /Jordan Alexander Matthews/, 'the card preview uses the profile-derived athlete name');
@@ -81,9 +83,16 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'spotlight', 10_000);
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, session);
-    const mobile = await connection.evaluate<{ contained: boolean; tap: boolean }>(`({contained:document.documentElement.scrollWidth<=390,tap:[...document.querySelectorAll('.living-card-controls button')].every(b=>b.getBoundingClientRect().height>=44)})`, session);
+    const mobile = await connection.evaluate<{ contained: boolean; tap: boolean; compactPickerVisible: boolean; fullPickerHidden: boolean; inline: boolean; designChoices: number }>(`(()=>{const card=document.querySelector('[data-testid="appearance-preview"]').getBoundingClientRect(),picker=document.querySelector('[data-testid="mobile-card-design-controls"]'),pickerBox=picker.getBoundingClientRect();return {contained:document.documentElement.scrollWidth<=390,tap:[...document.querySelectorAll('.living-card-controls button')].every(b=>b.getBoundingClientRect().height>=44),compactPickerVisible:getComputedStyle(picker).display!=='none',fullPickerHidden:getComputedStyle(document.querySelector('[data-testid="card-design-picker-cards"]')).display==='none',inline:card.right<=pickerBox.left+2&&Math.min(card.bottom,pickerBox.bottom)>Math.max(card.top,pickerBox.top),designChoices:picker.querySelectorAll('button').length}})()`, session);
     assert.ok(mobile.contained, 'phone content must not horizontally overflow');
     assert.ok(mobile.tap, 'navigation retains 44px touch targets');
+    assert.ok(mobile.compactPickerVisible && mobile.fullPickerHidden, 'phones show the compact picker instead of the full design cards');
+    assert.ok(mobile.inline, 'the compact design buttons sit beside the HYPE Card preview');
+    assert.equal(mobile.designChoices, 4, 'all card designs remain available on phones');
+    await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-gallery"]').click()`, session);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'gallery', 5_000);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-gallery"]').getAttribute('aria-pressed')`, session), 'true', 'the selected mobile button tracks the preview');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').disabled`, session), false, 'the existing Save design action persists the selected draft');
     const framing = await connection.evaluate(`Array.from(document.querySelectorAll('section.living-card-frame')).every(card => {
       const box=card.getBoundingClientRect(), nav=card.querySelector('.living-card-controls').getBoundingClientRect();
       const details=Array.from(card.querySelectorAll('svg text')).filter(t=>t.textContent.includes('QUARTERBACK'));
@@ -96,7 +105,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       await connection.send('Page.navigate', { url: `http://localhost:80/premium-appearance-fixture.html${fallback ? '?fallback=1' : ''}` }, session);
       await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-photo-placement]")', Boolean, 10_000);
       for (const design of ['gallery', 'spotlight', 'breakout']) {
-        await connection.evaluate(`document.querySelector('[data-testid="button-design-${design}"]').click()`, session);
+        await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-${design}"]').click()`, session);
         await connection.evaluate(`document.querySelector('[data-testid="button-reset-placement"]').click()`, session);
         const actorBounds = `(()=>{const r=document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement] image').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})()`;
         await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').scrollIntoView({block:'center'});`, session);

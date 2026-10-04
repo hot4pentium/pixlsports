@@ -10,7 +10,7 @@ import type React from 'react';
 import { Download } from 'lucide-react';
 import { removeAthleteBackground } from './athlete-background-removal';
 import { saveAthleteCutout } from './athlete-cutout-upload';
-import { HypeCardAppearanceControls } from './hype-card-appearance-controls';
+import { HypeCardAppearanceControls, HypeCardDesignPicker } from './hype-card-appearance-controls';
 import { defaultCardAppearance, normalizeCardAppearance, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
 import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
 import { buildPremiumNavStripExport } from './premium-hype-card-artwork';
@@ -156,6 +156,14 @@ export function FanCardAppearanceManager({ invite, profile }: {
   };
   const mutation = useUpdateAthleteInviteAppearance();
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const handleAppearanceChange = (next: HypeCardAppearance) => {
+    setDraft(next);
+    setStatus('idle');
+    if (next.design !== draft.design) {
+      setMoving(false);
+      setSelectedLayer('avatar');
+    }
+  };
   const displayAthleteName = invite.athleteName.trim() || profile.athleteName.trim() || 'Athlete';
   const previewCard = invite.cutoutUrl || invite.photoUrl;
   const svg = useMemo(() => draft.design === 'classic' ? '' : buildBrandedPremiumHypeCardArtwork({
@@ -211,13 +219,18 @@ export function FanCardAppearanceManager({ invite, profile }: {
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,280px)_1fr]" data-testid="fan-card-appearance-manager">
-      <div>
-        <div className="mx-auto w-full max-w-[280px] overflow-visible rounded-2xl" data-testid="appearance-preview">
-          {draft.design === 'classic'
-            ? <div className="grid aspect-[5/7] place-items-center rounded-2xl border border-white/20 bg-[#10243D] p-4 text-center text-sm text-white/80">{previewCard ? <img src={previewCard} alt="" className="max-h-full rounded-lg object-cover" /> : 'Classic design uses your photo and team details.'}</div>
-              : <div role="img" aria-label={`${draft.design} preview for ${invite.athleteName}${moving ? `. Use arrow keys to position the ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}.` : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={onPositionKeyDown} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />}
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3 md:block" data-testid="appearance-preview-and-mobile-design">
+        <div className="min-w-0">
+          <div className="mx-auto w-full max-w-[280px] overflow-visible rounded-2xl" data-testid="appearance-preview">
+            {draft.design === 'classic'
+              ? <div className="grid aspect-[5/7] place-items-center rounded-2xl border border-white/20 bg-[#10243D] p-4 text-center text-sm text-white/80">{previewCard ? <img src={previewCard} alt="" className="max-h-full rounded-lg object-cover" /> : 'Classic design uses your photo and team details.'}</div>
+                : <div role="img" aria-label={`${draft.design} preview for ${invite.athleteName}${moving ? `. Use arrow keys to position the ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}.` : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={onPositionKeyDown} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />}
+          </div>
+          <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
         </div>
-        <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
+        <div className="min-w-0 md:hidden" data-testid="mobile-card-design-controls">
+          <HypeCardDesignPicker appearance={draft} onChange={handleAppearanceChange} disabled={mutation.isPending || backgroundRemovalBusy} variant="compact" className="w-full" />
+        </div>
       </div>
       <div className="space-y-5">
         {draft.design === 'breakout' && <div className="rounded-xl border border-white/15 bg-white/5 p-3" role="group" aria-label="Breakout layers" data-testid="breakout-layer-list">
@@ -235,7 +248,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
             ))}
           </div>
         </div>}
-        <HypeCardAppearanceControls appearance={draft} onChange={(next) => { setDraft(next); setStatus('idle'); if (next.design !== draft.design) { setMoving(false); setSelectedLayer('avatar'); } }} disabled={mutation.isPending || backgroundRemovalBusy}
+        <HypeCardAppearanceControls appearance={draft} onChange={handleAppearanceChange} disabled={mutation.isPending || backgroundRemovalBusy} designPickerClassName="hidden md:block"
           placementLabel={selectedLayer === 'name-plate' ? 'Name plate placement' : selectedLayer === 'frame' ? 'Frame layer' : 'Avatar placement'}
           showAthleteSize={selectedLayer === 'avatar'}
           showResetButton={selectedLayer !== 'frame'}
