@@ -652,6 +652,14 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       true,
     );
     assert.equal(
+      await connection.evaluate<number>(
+        'parseFloat(getComputedStyle(document.querySelector("[data-testid=\\"stat-title-touchdown\\"]")).fontSize)',
+        page.sessionId,
+      ),
+      12,
+      'stat titles should be comfortably readable at phone size',
+    );
+    assert.equal(
       await connection.evaluate<boolean>(
         '(() => { const pass = document.querySelector("[data-testid=\\"live-stat-pass-reception\\"]"); const rush = document.querySelector("[data-testid=\\"live-stat-rush-yard\\"]"); const interception = document.querySelector("[data-testid=\\"live-stat-interception\\"]"); return pass?.textContent.includes("PASS/REC") && rush?.textContent.includes("RUSH") && !/yds/i.test(pass?.textContent || "") && !/yds/i.test(rush?.textContent || "") && interception?.textContent.includes("INT") && !document.querySelector("[data-testid=\\"live-stat-reception\\"]") && !document.querySelector("[data-testid=\\"live-stat-pass-yard\\"]"); })()',
         page.sessionId,

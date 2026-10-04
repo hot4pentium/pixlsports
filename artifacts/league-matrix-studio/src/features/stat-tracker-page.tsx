@@ -994,7 +994,7 @@ export function LiveTrackerGame({
             return (
               <div key={item.id} data-testid={`live-stat-card-${item.id}`} data-athlete-assigned={athleteAssigned ? 'true' : 'false'} className="relative min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
                 <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item, 'team')} aria-label={`Record ${item.label} for ${teamName || 'team'}`} aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined} aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? Boolean(choicesAttribution) : undefined} className="group block min-h-[76px] w-full min-w-0 overflow-hidden pr-12 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-                  <span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary-ink">{item.label}</span>
+                  <span data-testid={`stat-title-${item.id}`} className="block min-w-0 truncate text-xs font-bold uppercase tracking-wide text-muted-foreground group-hover:text-primary-ink sm:text-sm">{item.label}</span>
                   <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
                   <span className="mt-1 block truncate text-xs font-bold text-primary-ink">
                     {statCount}
