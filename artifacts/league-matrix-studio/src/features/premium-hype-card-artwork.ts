@@ -226,9 +226,9 @@ ${jersey ? `<g filter="url(#s-numtex)"><text x="500" y="${numSize === 900 ? 780 
 <linearGradient id="s-sheen" x1="0" y1="0" x2="1" y2="1"><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset=".56" stop-color="#C9BFA9" stop-opacity=".25"/><stop offset=".8" stop-color="#C9BFA9" stop-opacity=".25"/><stop offset=".81" stop-color="#fff" stop-opacity="0"/></linearGradient>
 ${grainDef('s-grain2', 0.14)}</defs>
 <g id="spotlight-fg">
-${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="10" opacity=".55" filter="url(#s-glow)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="5"/>
+${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}
 ${input.logoUrl ? `<rect x="76" y="62" width="196" height="76" rx="14" fill="${IVORY}" opacity=".94"/>` : ''}${logo(input, 88, 70, 172)}
 <line x1="86" y1="152" x2="140" y2="152" stroke="${accent}" stroke-width="4"/>
 ${sport ? `<text x="912" y="108" text-anchor="end" font-family="${FONT_TEXT}" font-weight="600" font-size="28" letter-spacing="8" fill="#F1ECE2">${sport}</text><line x1="860" y1="152" x2="914" y2="152" stroke="${accent}" stroke-width="4"/>` : ''}
@@ -309,7 +309,7 @@ export function buildPremiumHypeCardArtwork(input: PremiumHypeCardInput, layer: 
   const design = appearance?.design === 'spotlight' ? 'spotlight' : appearance?.design === 'breakout' ? 'breakout' : 'gallery';
   const safe = { ...input, athleteName: input.athleteName || '' };
   const body = design === 'spotlight' ? spotlight(safe, layer) : design === 'breakout' ? breakout(safe, layer) : gallery(safe, layer);
-  const out = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 1400" width="1000" height="1400"${design === 'breakout' ? ' overflow="visible"' : ''} role="img" aria-label="${escapeXml(input.athleteName)} Hype Card" data-layer="${layer}" data-design="${design}">${body}</svg>`;
+  const out = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 1400" width="1000" height="1400"${design === 'breakout' || design === 'spotlight' ? ' overflow="visible"' : ''} role="img" aria-label="${escapeXml(input.athleteName)} Hype Card" data-layer="${layer}" data-design="${design}">${body}</svg>`;
   return ns ? namespacePremiumSvg(out, ns) : out;
 }
 
