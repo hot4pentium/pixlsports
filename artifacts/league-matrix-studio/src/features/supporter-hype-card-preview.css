@@ -39,8 +39,15 @@
 .supporter-hype-preview__surface .living-card-photo-watermark { font-size: 15cqw; }
 .supporter-hype-preview__surface .living-card-photo-fallback span { font-size: 50cqw; }
 .supporter-hype-preview__surface .living-card-photo-fallback small { font-size: 4cqw; letter-spacing: 0; }
-.supporter-hype-preview__navigation { display: block; width: 100%; margin-top: 2px; pointer-events: none; }
-.supporter-hype-preview__navigation svg { display: block; width: 100%; height: auto; }
+.supporter-hype-preview__navigation { display: block; width: 100%; margin-top: 2px; overflow: hidden; pointer-events: none; }
+.supporter-hype-preview__navigation svg {
+  display: block;
+  width: 200%;
+  height: auto;
+  margin-left: -50%;
+  transform: scaleX(.5);
+  transform-origin: center;
+}
 .supporter-hype-preview__open {
   display: flex;
   min-height: 44px;
