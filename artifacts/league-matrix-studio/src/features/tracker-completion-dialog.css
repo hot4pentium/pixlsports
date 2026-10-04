@@ -25,7 +25,7 @@
   width: 6px;
   height: 13px;
   border-radius: 2px;
-  background: var(--primary);
+  background: #e7f3ff;
   animation: tracker-confetti-fall 3.2s ease-out both;
 }
 .tracker-completion-confetti:nth-child(3n) { background: #71c9ff; transform: rotate(20deg); }

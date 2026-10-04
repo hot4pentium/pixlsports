@@ -19,6 +19,7 @@ import {
 } from './supporter-dashboard-checklist-state';
 import type { ScheduleInstallAction } from './schedule-install';
 import './supporter-dashboard-checklist.css';
+import './tracker-completion-dialog.css';
 
 type InstallDeviceClass = 'mobile' | 'desktop';
 

@@ -711,6 +711,27 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") !== null',
       Boolean,
     );
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    const confettiPresentation = await connection.evaluate<{
+      pieces: number;
+      visiblePieces: number;
+      backgrounds: string[];
+      animations: string[];
+    }>(`(() => {
+        const pieces = Array.from(document.querySelectorAll('.tracker-completion-confetti'));
+        return {
+          pieces: pieces.length,
+          visiblePieces: pieces.filter((piece) => Number(getComputedStyle(piece).opacity) > 0.5).length,
+          backgrounds: Array.from(new Set(pieces.map((piece) => getComputedStyle(piece).backgroundColor))),
+          animations: Array.from(new Set(pieces.map((piece) => getComputedStyle(piece).animationName))),
+        };
+      })()`, page.sessionId);
+    assert.deepEqual(confettiPresentation, {
+      pieces: 14,
+      visiblePieces: 14,
+      backgrounds: ['rgb(231, 243, 255)', 'rgb(113, 201, 255)', 'rgb(248, 215, 114)'],
+      animations: ['tracker-confetti-fall'],
+    }, 'all confetti pieces should be visible in contrasting colors during the celebration');
     assert.equal(
       await connection.evaluate(
         'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]")?.getAttribute("aria-modal")',
