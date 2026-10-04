@@ -45,16 +45,13 @@ test('each layer is self-contained and fg has no bg venue', () => {
   }
 });
 
-test('Breakout keeps a curved photo-window frame and removes the full-card frame', () => {
+test('Breakout keeps its full-height metallic outline without an inset photo frame', () => {
   const input = { ...base, appearance: defaultCardAppearance('breakout') };
   const bg = buildPremiumHypeCardArtwork(input, 'bg');
   const fg = buildPremiumHypeCardArtwork(input, 'fg');
   assert.match(bg, /id="b-window"/);
-  assert.doesNotMatch(bg, /<rect x="24" y="24" width="952" height="1352"/);
-  assert.doesNotMatch(fg, /<rect x="24" y="24" width="952" height="1352"/);
-  assert.match(fg, /<rect x="108" y="150" width="784" height="820" rx="56" fill="none" stroke="url\(#b-metal\)" stroke-width="10"\/>/);
-  assert.ok(fg.indexOf('data-card-layer="avatar"') < fg.indexOf('<rect x="108" y="150"'));
-  assert.ok(fg.indexOf('<rect x="108" y="150"') < fg.indexOf('data-card-layer="name-plate"'));
+  assert.match(bg, /<rect x="24" y="24" width="952" height="1352" rx="56" fill="none" stroke="url\(#b-metal\)" stroke-width="10"\/>/);
+  assert.doesNotMatch(fg, /<rect x="108" y="150" width="784" height="820" rx="56" fill="none" stroke=/);
   assert.doesNotMatch(bg, /<rect x="45" y="92"|<rect x="68" y="115"/);
   assert.doesNotMatch(bg, /stroke="url\(#b-metal\)" stroke-width="28"/);
   assert.doesNotMatch(bg, /M20 1260H980V1400H20Z/);

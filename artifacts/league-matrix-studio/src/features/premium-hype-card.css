@@ -45,7 +45,7 @@
   .living-card-frame[data-design="gallery"][data-side="front"] .living-card-control, .living-card-frame[data-design="spotlight"] .living-card-control, .living-card-frame[data-design="breakout"] .living-card-control { font-size: 7px; min-height: 44px; }
 }
 
-/* The live Breakout card keeps the curved photo-window frame; its navigation sits below the artwork. */
+/* The live Breakout card keeps the full metallic outline; its navigation sits below the artwork. */
 .living-card-stage[data-design="breakout"] .living-card-controls {
   position: relative;
   inset: auto;

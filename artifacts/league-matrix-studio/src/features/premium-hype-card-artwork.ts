@@ -274,6 +274,7 @@ ${photoFallback(input, win, 'b-window')}
 ${initialsArt(input, 500, 560, accent)}
 <rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56" fill="#081528" fill-opacity=".13"/>
 <g fill="#EAF6FF" filter="url(#b-glow)" opacity=".66"><ellipse cx="116" cy="382" rx="56" ry="30"/><ellipse cx="884" cy="382" rx="56" ry="30"/></g>
+<rect x="24" y="24" width="952" height="1352" rx="56" fill="none" stroke="url(#b-metal)" stroke-width="10"/>
 </g>
 </g>`;
   const plate = `<g data-card-layer="name-plate" transform="translate(${(num(a.namePlateX, 0) * 1000).toFixed(1)} ${(num(a.namePlateY, 0) * 1400).toFixed(1)})" filter="url(#b-name-shadow)"><path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="10" stroke-linejoin="round"/>
@@ -283,8 +284,8 @@ ${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><
   const fg = `<defs><linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient><linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>${shadowFilter('b-cut', 14, 10, .42)}${shadowFilter('b-name-shadow', 8, 7, .6)}</defs>
 <g id="breakout-fg">
 <g data-card-layer="avatar">${athlete(input, { x: 115, y: -210, w: 770, h: 1020 }, 'b-cut')}</g>
-<g data-card-layer="frame"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56" fill="none" stroke="url(#b-metal)" stroke-width="10"/>${logo(input, 92, 62, 148)}${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
 ${plate}
+<g data-card-layer="frame">${logo(input, 92, 62, 148)}${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
 </g>`;
   return (layer !== 'fg' ? bg : '') + (layer !== 'bg' ? fg : '');
 }
