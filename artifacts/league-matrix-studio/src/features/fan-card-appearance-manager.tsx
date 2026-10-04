@@ -11,7 +11,7 @@ import { Download } from 'lucide-react';
 import { removeAthleteBackground } from './athlete-background-removal';
 import { saveAthleteCutout } from './athlete-cutout-upload';
 import { HypeCardAppearanceControls, HypeCardDesignPicker } from './hype-card-appearance-controls';
-import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
+import { normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
 import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
 import { buildPremiumNavStripPreview, preparePremiumCardPngExport } from './premium-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
@@ -47,6 +47,18 @@ async function readImageDimensions(dataUrl: string | null): Promise<{ width: num
   image.src = dataUrl;
   await loaded;
   return { width: image.naturalWidth, height: image.naturalHeight };
+}
+
+function supportsImageSharing(file?: File): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof File === 'undefined') return false;
+  if (typeof navigator.canShare !== 'function') return true;
+  try {
+    return navigator.canShare({
+      files: [file ?? new File([''], 'hype-card.png', { type: 'image/png' })],
+    });
+  } catch {
+    return false;
+  }
 }
 
 let fontCss: Promise<string> | null = null;
@@ -115,8 +127,13 @@ export function FanCardAppearanceManager({ invite, profile }: {
     setSelectedLayer('avatar');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite.inviteToken, serverKey]);
-  const [exportState, setExportState] = useState<'idle' | 'working' | 'error'>('idle');
+  const [exportState, setExportState] = useState<'idle' | 'working' | 'ready' | 'error'>('idle');
+  const [preparedExport, setPreparedExport] = useState<{ file: File; draftKey: string } | null>(null);
+  const [exportMessage, setExportMessage] = useState('');
   const uid = useId().replace(/[^A-Za-z0-9_-]/g, '');
+  const currentDraftKey = JSON.stringify(draft);
+  const readyExport = preparedExport?.draftKey === currentDraftKey ? preparedExport : null;
+  const nativeImageSharing = supportsImageSharing();
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const clampPlacement = (a: HypeCardAppearance, x: number, y: number) => normalizeCardAppearance({ ...a, athleteX: x, athleteY: y });
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -173,6 +190,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
   const handleAppearanceChange = (next: HypeCardAppearance) => {
     setDraft(next);
     setStatus('idle');
+    setExportMessage('');
     if (next.design !== draft.design) {
       setMoving(false);
       setSelectedLayer('avatar');
@@ -220,8 +238,50 @@ export function FanCardAppearanceManager({ invite, profile }: {
     });
   };
 
+  const downloadPng = (file: File) => {
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setPreparedExport(null);
+    setExportState('idle');
+    setExportMessage('PNG downloaded. Open it from Downloads to save it to Photos.');
+  };
+
+  const openImageShare = async (image: { file: File; draftKey: string }) => {
+    if (!supportsImageSharing(image.file)) {
+      downloadPng(image.file);
+      return;
+    }
+    try {
+      // Call share before awaiting anything else so a user tap can open the OS share sheet.
+      const sharing = navigator.share({ files: [image.file], title: image.file.name });
+      setExportState('working');
+      await sharing;
+      setPreparedExport(null);
+      setExportState('idle');
+      setExportMessage('Share menu closed.');
+    } catch (error) {
+      setExportState('ready');
+      setExportMessage(
+        error instanceof Error && error.name === 'AbortError'
+          ? 'Share menu closed without saving. Tap Save to Photos to open it again.'
+          : 'The PNG is ready. Tap Save to Photos to open your device share menu.',
+      );
+    }
+  };
+
   const exportPng = async () => {
+    if (readyExport) {
+      await openImageShare(readyExport);
+      return;
+    }
     setExportState('working');
+    setExportMessage('');
     try {
       const [photo, cutout] = await Promise.all([toDataUrl(invite.photoUrl), toDataUrl(usableCutout)]);
       const fonts = await loadEmbeddedFonts();
@@ -241,13 +301,19 @@ export function FanCardAppearanceManager({ invite, profile }: {
       canvas.getContext('2d')!.drawImage(img, 0, 0, png.width, png.height);
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
       if (!blob) throw new Error('png');
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      setExportState('idle');
-    } catch { setExportState('error'); }
+      const file = new File(
+        [blob],
+        `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.png`,
+        { type: 'image/png' },
+      );
+      const image = { file, draftKey: currentDraftKey };
+      setPreparedExport(image);
+      if (supportsImageSharing(file)) await openImageShare(image);
+      else downloadPng(file);
+    } catch {
+      setExportState('error');
+      setExportMessage('Could not prepare the PNG. Try again.');
+    }
   };
 
   return (
@@ -307,16 +373,14 @@ export function FanCardAppearanceManager({ invite, profile }: {
           } />
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || mutation.isPending} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{mutation.isPending ? 'Saving…' : 'Save design'}</button>
-          <button type="button" onClick={() => { setDraft(saved); setStatus('idle'); }} disabled={!dirty || mutation.isPending} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-revert-appearance">Revert to saved</button>
-          <button type="button" onClick={() => { setDraft({ ...defaultCardAppearance('classic'), jerseyNumber: draft.jerseyNumber, position: draft.position }); setStatus('idle'); }} disabled={mutation.isPending} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white" data-testid="button-default-appearance">Use Classic</button>
-          {draft.design !== 'classic' && <button type="button" onClick={() => void exportPng()} disabled={exportState === 'working'} className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-export-appearance-png"><Download className="h-4 w-4" aria-hidden="true" />{exportState === 'working' ? 'Preparing…' : dirty ? 'Download draft PNG' : 'Download PNG'}</button>}
+          {draft.design !== 'classic' && <button type="button" onClick={() => void exportPng()} disabled={exportState === 'working'} className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-export-appearance-png"><Download className="h-4 w-4" aria-hidden="true" />{exportState === 'working' ? 'Preparing…' : nativeImageSharing ? readyExport || dirty ? 'Save draft to Photos' : 'Save PNG to Photos' : dirty ? 'Download draft PNG' : 'Download PNG'}</button>}
         </div>
         <p role="status" aria-live="polite" className="text-sm text-white/80">
           {status === 'saved' && 'Design saved. Supporters now see it.'}
           {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline">Retry</button></span>}
-          {exportState === 'error' && <span className="text-red-200"> Could not prepare the PNG. Try again.</span>}
+          {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-png">{exportMessage}</span>}
         </p>
-        <p className="text-[11px] text-white/50">The PNG shows the card artwork only; Replies, Stats, Taps and Events live on the interactive card.</p>
+        <p className="text-[11px] text-white/50">On supported phones, choose Save Image in the share menu to add the PNG to Photos. Other browsers download it. The PNG shows card artwork only; Replies, Stats, Taps and Events live on the interactive card.</p>
       </div>
     </div>
   );

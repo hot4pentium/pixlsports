@@ -96,6 +96,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       assert.deepEqual(layout.labels, ['Replies', 'Stats', 'Taps', 'Events']);
     };
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 45_000);
+    assert.equal(await connection.evaluate(`!!document.querySelector('[data-testid="button-default-appearance"], [data-testid="button-revert-appearance"]')`, session), false, 'the designer omits the Classic reset and revert controls');
+    assert.equal(await connection.evaluate(`!!document.querySelector('[data-testid="button-save-appearance"]')`, session), true, 'Save design remains available');
     const editorPreviewWidth = await connection.evaluate<number>(
       'document.querySelector("[data-testid=appearance-preview]").getBoundingClientRect().width',
       session,
@@ -202,18 +204,25 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`(()=>{
       window.spotlightExportBlob=null;window.spotlightExportMarkup=null;
       window.originalSpotlightImage=window.Image;window.originalSpotlightUrl=URL.createObjectURL;window.originalSpotlightClick=HTMLAnchorElement.prototype.click;
+      window.originalSpotlightShare=Object.getOwnPropertyDescriptor(navigator,'share');window.originalSpotlightCanShare=Object.getOwnPropertyDescriptor(navigator,'canShare');
       window.Image=class extends window.originalSpotlightImage {set src(v){if(v.startsWith('data:image/svg+xml'))window.spotlightExportMarkup=decodeURIComponent(v.slice(v.indexOf(',')+1));super.src=v;}get src(){return super.src;}};
       URL.createObjectURL=b=>{if(b.type==='image/png')window.spotlightExportBlob=b;return window.originalSpotlightUrl.call(URL,b);};
       HTMLAnchorElement.prototype.click=function(){};
+      Object.defineProperty(navigator,'canShare',{configurable:true,value:data=>!!data.files?.[0]});
+      Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.spotlightExportBlob=data.files?.[0]??null;}});
       document.querySelector('[data-testid="button-export-appearance-png"]').click();
     })()`, session);
     await waitFor(connection, session, '!!window.spotlightExportBlob', Boolean, 30_000);
-    const spotlightExport = await connection.evaluate<{ embedsAnton: boolean; width: number; height: number }>(`(async()=>{
+    const spotlightExport = await connection.evaluate<{ embedsAnton: boolean; width: number; height: number; fileName: string; mimeType: string }>(`(async()=>{
       const image=await createImageBitmap(window.spotlightExportBlob),markup=window.spotlightExportMarkup;
-      const result={embedsAnton:markup.includes("@font-face{font-family:'Anton';src:url(\\"data:")&&markup.includes("format('truetype')")&&markup.includes('data-jersey-number'),width:image.width,height:image.height};
-      image.close();window.Image=window.originalSpotlightImage;URL.createObjectURL=window.originalSpotlightUrl;HTMLAnchorElement.prototype.click=window.originalSpotlightClick;return result;
+      const result={embedsAnton:markup.includes("@font-face{font-family:'Anton';src:url(\\"data:")&&markup.includes("format('truetype')")&&markup.includes('data-jersey-number'),width:image.width,height:image.height,fileName:window.spotlightExportBlob.name,mimeType:window.spotlightExportBlob.type};
+      image.close();window.Image=window.originalSpotlightImage;URL.createObjectURL=window.originalSpotlightUrl;HTMLAnchorElement.prototype.click=window.originalSpotlightClick;
+      for(const [name,descriptor] of [['share',window.originalSpotlightShare],['canShare',window.originalSpotlightCanShare]]){if(descriptor)Object.defineProperty(navigator,name,descriptor);else delete navigator[name];}
+      return result;
     })()`, session);
-    assert.deepEqual(spotlightExport, { embedsAnton: true, width: 2000, height: 2800 }, 'Spotlight PNG export embeds Anton and renders successfully');
+    assert.deepEqual({ embedsAnton: spotlightExport.embedsAnton, width: spotlightExport.width, height: spotlightExport.height }, { embedsAnton: true, width: 2000, height: 2800 }, 'Spotlight PNG export embeds Anton and renders successfully');
+    assert.equal(spotlightExport.mimeType, 'image/png', 'the native photo-save share receives a PNG file');
+    assert.match(spotlightExport.fileName, /^jordan-alexander-matthews-(?:draft|spotlight)\.png$/, 'the native share receives a named HYPE Card PNG');
     assert.equal(await connection.evaluate(`document.querySelectorAll('[data-testid="hype-card-appearance-controls"] input[type="checkbox"]').length`, session), 1, 'only the background-removal checkbox remains');
     assert.equal(await connection.evaluate(`!!document.querySelector('[aria-label="Accent color presets"]')`, session), false, 'the separate accent picker is removed');
     await waitFor(connection, session, '!!document.querySelector("[aria-label=\\"Border color presets\\"]")', Boolean, 5_000);
@@ -331,10 +340,12 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-avatar]")', Boolean, 10_000);
     await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-breakout"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'breakout', 5_000);
-    await connection.evaluate(`window.exportBlob=null;const create=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{if(b.type==='image/png')window.exportBlob=b;return create(b)};HTMLAnchorElement.prototype.click=function(){};document.querySelector('[data-testid="button-export-appearance-png"]').click()`, session);
+    await connection.evaluate(`window.exportBlob=null;window.exportDownloadName=null;window.originalFallbackClick=HTMLAnchorElement.prototype.click;const create=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{if(b.type==='image/png')window.exportBlob=b;return create(b)};HTMLAnchorElement.prototype.click=function(){window.exportDownloadName=this.download};document.querySelector('[data-testid="button-export-appearance-png"]').click()`, session);
     await waitFor(connection, session, '!!window.exportBlob', Boolean, 30_000);
     const exportInfo = await connection.evaluate(`(async()=>{const image=await createImageBitmap(window.exportBlob);return {width:image.width,height:image.height}})()`, session);
     assert.deepEqual(exportInfo, { width: 2000, height: 2800 }, 'the square fixture avatar fits its existing card viewport');
+    assert.match(await connection.evaluate<string>('window.exportDownloadName', session), /^jordan-alexander-matthews-(?:draft|breakout)\.png$/, 'unsupported browsers still download the PNG');
+    await connection.evaluate(`HTMLAnchorElement.prototype.click=window.originalFallbackClick`, session);
     if (process.env.PIXL_TEST_MODEL === '1') {
       await connection.evaluate('window.runRemoval(); true', session);
       await waitFor(connection, session, 'window.removalResult || null', Boolean, 190_000);
