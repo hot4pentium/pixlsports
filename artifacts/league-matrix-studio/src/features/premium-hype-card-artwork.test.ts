@@ -23,6 +23,19 @@ test('escapes text and keeps viewBox', () => {
   assert.match(svg, /viewBox="0 0 1000 1400"/);
   assert.ok(!svg.includes('<b>'));
 });
+test('Gallery keeps a clear paper band between the avatar and athlete identity text', () => {
+  const appearance = { ...defaultCardAppearance('gallery'), athleteScale: 1.45, athleteY: .18 };
+  const svg = buildPremiumHypeCardArtwork({
+    athleteName: 'ATHLETE NAME',
+    cutoutUrl: 'data:image/png;base64,AAAA',
+    appearance,
+  });
+  const athlete = svg.indexOf('data-photo-placement="cutout"');
+  const clearBand = svg.indexOf('<rect x="30" y="970" width="940" height="302" fill="url(#g-name-clear)"/>');
+  const name = svg.indexOf('>ATHLETE NAME</text>');
+  assert.ok(athlete >= 0 && clearBand > athlete && name > clearBand, 'the opaque name area must paint over even a lowered, enlarged avatar');
+  assert.match(svg, /<linearGradient id="g-name-clear"[^>]*gradientUnits="userSpaceOnUse"/);
+});
 test('the premium designer preview separates its dressed nav strip from the card artwork', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     const nav = buildPremiumNavStripPreview(defaultCardAppearance(design), 'test');

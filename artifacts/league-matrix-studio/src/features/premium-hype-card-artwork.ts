@@ -169,9 +169,11 @@ ${photoFallback(input, win, 'g-win')}${initialsArt(input, 500, 600, NAVY)}
 <rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="40" fill="none" stroke="#2B2118" stroke-opacity=".25" stroke-width="3"/>
 </g>`;
   const fg = `
-<defs>${grainDef('g-grain2', 0.0)}${shadowFilter('g-cut', 14, 10, .38)}</defs>
+<defs>${grainDef('g-grain2', 0.0)}${shadowFilter('g-cut', 14, 10, .38)}
+<linearGradient id="g-name-clear" x1="0" y1="970" x2="0" y2="990" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#F6EFE2" stop-opacity="0"/><stop offset=".5" stop-color="#F6EFE2" stop-opacity=".96"/><stop offset="1" stop-color="#F6EFE2"/></linearGradient></defs>
 <g id="gallery-fg">
 ${athlete(input, { x: 120, y: 60, w: 760, h: 900 }, 'g-cut')}
+<rect x="30" y="970" width="940" height="302" fill="url(#g-name-clear)"/>
 <rect x="30" y="30" width="940" height="1340" rx="58" fill="none" stroke="${border}" stroke-width="5"/>
 ${logo(input, 88, 74, 170)}
 <line x1="90" y1="1272" x2="910" y2="1272" stroke="${NAVY}" stroke-opacity=".14" stroke-width="2"/>
