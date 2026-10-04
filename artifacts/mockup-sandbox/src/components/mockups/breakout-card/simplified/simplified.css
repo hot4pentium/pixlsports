@@ -26,13 +26,6 @@
 }
 
 .breakout-showcase { width: 100%; }
-.breakout-art-frame {
-  padding: 9px;
-  border: 1px solid #9fcaef62;
-  border-radius: 32px;
-  background: linear-gradient(130deg, #a4cdeb6b, #152c49 23%, #0b2039 77%, #ff784977);
-  box-shadow: 0 31px 75px #010811aa, 0 0 0 7px #91c8f40a;
-}
 .breakout-art {
   width: 100%;
   aspect-ratio: 5 / 7;

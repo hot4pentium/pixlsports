@@ -65,9 +65,9 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="card-design-picker-cards"]')).display`, session), 'block', 'desktop keeps the full design picker');
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="mobile-card-design-controls"]')).display`, session), 'none', 'the compact picker is reserved for phones');
     const breakoutFrame = await connection.evaluate<{ radius: string; padding: string; background: string }>(`(()=>{const frame=document.querySelector('.living-card-frame-outer:has(.living-card-frame[data-design="breakout"])'),style=getComputedStyle(frame);return {radius:style.borderTopLeftRadius,padding:style.paddingTop,background:style.backgroundImage}})()`, session);
-    assert.equal(breakoutFrame.radius, '32px', 'the light-blue Breakout frame has rounded corners');
-    assert.equal(breakoutFrame.padding, '9px', 'the blue frame remains outside the metallic outline');
-    assert.match(breakoutFrame.background, /linear-gradient/, 'the light-blue frame stays visible behind the card');
+    assert.equal(breakoutFrame.radius, '0px', 'the removed outer wrapper adds no corner styling');
+    assert.equal(breakoutFrame.padding, '0px', 'no extra frame spacing remains outside the metallic outline');
+    assert.equal(breakoutFrame.background, 'none', 'the blue outer rectangle is removed');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-jersey"]').value`, session), '9', 'the profile jersey number fills a blank appearance');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-position"]').value`, session), 'Quarterback', 'the profile position fills a blank appearance');
     assert.match(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').getAttribute('aria-label')`, session), /Jordan Alexander Matthews/, 'the card preview uses the profile-derived athlete name');
