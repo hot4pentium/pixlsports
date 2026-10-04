@@ -45,12 +45,15 @@ test('each layer is self-contained and fg has no bg venue', () => {
   }
 });
 
-test('Breakout layers keep a smaller stadium window, metallic frame and cutout extending above the window', () => {
+test('Breakout uses one full-height metallic edge around the stadium window', () => {
   const input = { ...base, appearance: defaultCardAppearance('breakout') };
   const bg = buildPremiumHypeCardArtwork(input, 'bg');
   const fg = buildPremiumHypeCardArtwork(input, 'fg');
   assert.match(bg, /id="b-window"/);
-  assert.match(bg, /fill="url\(#b-metal\)"/);
+  assert.match(bg, /<rect x="24" y="24" width="952" height="1352" rx="56" fill="none" stroke="url\(#b-metal\)" stroke-width="10"\/>/);
+  assert.doesNotMatch(bg, /<rect x="45" y="92"|<rect x="68" y="115"/);
+  assert.doesNotMatch(bg, /stroke="url\(#b-metal\)" stroke-width="28"/);
+  assert.doesNotMatch(bg, /M20 1260H980V1400H20Z/);
   assert.match(fg, /data-photo-placement="cutout" transform=/);
   assert.match(fg, /<image href="data:image\/png;base64,AAAA" x="115" y="-210"/);
   assert.match(fg, /<path d="M116 934H884/);

@@ -269,23 +269,15 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
 <ellipse cx="500" cy="478" rx="470" ry="335" fill="${accent}" opacity=".17" filter="url(#b-glow)"/>
 ${venue('b-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}
 <g data-card-layer="frame">
-<rect x="45" y="92" width="910" height="1094" rx="74" fill="url(#b-metal)" stroke="${border}" stroke-width="5" stroke-opacity=".88"/>
-<rect x="68" y="115" width="864" height="1048" rx="58" fill="#0A172A" stroke="#FFFFFF" stroke-opacity=".68" stroke-width="3"/>
 <g clip-path="url(#b-window)">${venue('b-window-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}</g>
 ${photoFallback(input, win, 'b-window')}
 ${initialsArt(input, 500, 560, accent)}
 <rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56" fill="#081528" fill-opacity=".13"/>
-<rect x="${win.x - 24}" y="${win.y - 25}" width="${win.w + 48}" height="${win.h + 50}" rx="78" fill="none" stroke="url(#b-metal)" stroke-width="28"/>
-<rect x="${win.x - 5}" y="${win.y - 6}" width="${win.w + 10}" height="${win.h + 12}" rx="63" fill="none" stroke="${accent}" stroke-width="5" filter="url(#b-glow)" opacity=".72"/>
-<rect x="${win.x - 5}" y="${win.y - 6}" width="${win.w + 10}" height="${win.h + 12}" rx="63" fill="none" stroke="${accent}" stroke-width="3"/>
-<rect x="${win.x - 17}" y="${win.y - 18}" width="${win.w + 34}" height="${win.h + 36}" rx="73" fill="none" stroke="#FFFFFF" stroke-opacity=".82" stroke-width="2"/>
 <g fill="#EAF6FF" filter="url(#b-glow)" opacity=".66"><ellipse cx="116" cy="382" rx="56" ry="30"/><ellipse cx="884" cy="382" rx="56" ry="30"/></g>
-<rect x="22" y="22" width="956" height="1356" rx="60" fill="none" stroke="${border}" stroke-opacity=".72" stroke-width="5"/>
+<rect x="24" y="24" width="952" height="1352" rx="56" fill="none" stroke="url(#b-metal)" stroke-width="10"/>
 </g>
-<path d="M20 1260H980V1400H20Z" fill="#071326"/>
 </g>`;
-  const plate = `<g data-card-layer="name-plate" transform="translate(${(num(a.namePlateX, 0) * 1000).toFixed(1)} ${(num(a.namePlateY, 0) * 1400).toFixed(1)})" filter="url(#b-name-shadow)"><path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="15" stroke-linejoin="round"/>
-<path d="M128 940H872L914 982V1125Q914 1148 889 1148H111Q86 1148 86 1125V982Z" fill="none" stroke="${accent}" stroke-width="3"/>
+  const plate = `<g data-card-layer="name-plate" transform="translate(${(num(a.namePlateX, 0) * 1000).toFixed(1)} ${(num(a.namePlateY, 0) * 1400).toFixed(1)})" filter="url(#b-name-shadow)"><path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="10" stroke-linejoin="round"/>
 <path d="M156 956H844" stroke="#FFFFFF" stroke-opacity=".24" stroke-width="2"/>
 ${nameText(nm.lines, 500, nameY, nm.size, nm.tl, '#F7F9FC', 'middle')}
 ${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><text x="500" y="1129" text-anchor="middle" font-family="${FONT_TEXT}" font-size="30" font-weight="700" letter-spacing="8" fill="#DFE8F4">${escapeXml(team.slice(0, 24))}</text>` : ''}</g>`;

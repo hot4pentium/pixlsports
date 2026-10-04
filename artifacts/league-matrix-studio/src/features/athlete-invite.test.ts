@@ -35,10 +35,9 @@ test('HYPE Card events use one persistent all-or-none setting', () => {
 });
 
 test('HYPE Card event details do not repeat the full Game On Card link', () => {
-  const eventsSide = livingCardSource.slice(
-    livingCardSource.indexOf("{side === 'events' && ("),
-    livingCardSource.indexOf('<div className="living-card-controls"'),
-  );
+  const eventsStart = livingCardSource.indexOf("{side === 'events' && (");
+  const controlsStart = livingCardSource.indexOf('<LivingCardControls', eventsStart);
+  const eventsSide = livingCardSource.slice(eventsStart, controlsStart);
   assert.match(eventsSide, /All eligible Event Cards saved by/);
   assert.doesNotMatch(eventsSide, /Full Event Card|gameOnHref|link-living-event-/);
   assert.doesNotMatch(eventsSide, /Open one for its full details/);
@@ -58,14 +57,13 @@ test('new fan Shoutouts require public disclosure while older private responses 
   assert.match(source, /Leave a reply/);
 });
 test('real Hype Card replaces the front slot with responses and moves flip under the card', () => {
-  const controls = livingCardSource.slice(
-    livingCardSource.indexOf('<div className="living-card-controls"'),
-    livingCardSource.indexOf('{showSupportActions &&'),
-  );
-  assert.match(controls, /button-living-card-responses/);
-  assert.match(controls, /👍/);
-  assert.match(controls, /button-living-card-front/);
-  assert.ok(controls.indexOf('button-living-card-front') > controls.indexOf('</div>\n              </div>'));
+  assert.match(livingCardSource, /function LivingCardControls\(/);
+  assert.match(livingCardSource, /const controlsBelowCard = invite\.cardAppearance\?\.design === 'breakout';/);
+  assert.match(livingCardSource, /!controlsBelowCard && <LivingCardControls/);
+  assert.match(livingCardSource, /<div className="living-card-frame-outer">[\s\S]*?<\/div>\s*\{controlsBelowCard && <LivingCardControls/);
+  assert.match(livingCardSource, /data-testid="button-living-card-responses"/);
+  assert.match(livingCardSource, /data-testid="button-living-card-front"/);
+  assert.match(livingCardSource, /data-design=\{invite\.cardAppearance\?\.design \?\? 'classic'\}/);
   assert.match(livingCardSource, /living-card-responses-side/);
   assert.match(livingCardSource, /button-living-card-live-taps/);
   assert.match(livingCardSource, /living-card-live-taps-side/);

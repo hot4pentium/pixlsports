@@ -1,0 +1,37 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Caveat:wght@600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&display=swap");
+
+.breakout-mockup {
+  min-height: 100vh;
+  background: #071326;
+}
+
+.breakout-mockup .living-card-main {
+  min-height: 100vh;
+  padding: 28px 18px 42px;
+  background: transparent;
+}
+
+.breakout-mockup .living-card-layout-solo {
+  display: block;
+  width: min(100%, 600px);
+  margin: 0 auto;
+}
+
+.breakout-mockup .living-card-stage {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.breakout-mockup .living-card-frame-outer {
+  margin: 0;
+}
+
+.breakout-mockup .living-card-frame {
+  height: auto;
+}
+
+@media (max-width: 520px) {
+  .breakout-mockup .living-card-main {
+    padding: 16px 14px 30px;
+  }
+}

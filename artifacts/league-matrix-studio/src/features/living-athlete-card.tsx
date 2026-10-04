@@ -76,6 +76,27 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
+function LivingCardControls({
+  side,
+  eventToday,
+  eventCount,
+  onSelectSide,
+}: {
+  side: CardSide;
+  eventToday: boolean;
+  eventCount: number;
+  onSelectSide: (next: CardSide) => void;
+}) {
+  return (
+    <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
+      <button type="button" className="living-card-control" aria-label="Responses" aria-pressed={side === 'responses'} aria-controls="living-card-display" onClick={() => onSelectSide('responses')} data-testid="button-living-card-responses"><span className="living-card-control-emoji" aria-hidden="true">👍</span> Replies</button>
+      <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => onSelectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
+      <button type="button" className="living-card-control" aria-label="Live Taps" aria-pressed={side === 'live-taps'} aria-controls="living-card-display" onClick={() => onSelectSide('live-taps')} data-testid="button-living-card-live-taps"><Zap aria-hidden="true" /> Taps</button>
+      <button type="button" className={`living-card-control${eventToday ? ' living-card-control-today' : ''}`} aria-pressed={side === 'events'} aria-controls="living-card-display" onClick={() => onSelectSide('events')} data-testid="button-living-card-events"><CalendarDays aria-hidden="true" /> Events{eventCount > 0 && <span className="living-card-control-count">({eventCount})</span>}{eventToday && <span className="sr-only"> · Event today</span>}</button>
+    </div>
+  );
+}
+
 export function LivingAthleteCardPage({
   params,
   followControls,
@@ -332,6 +353,7 @@ export function LivingAthleteCardPage({
     if (side === next) return;
     setSide(next);
   };
+  const controlsBelowCard = invite.cardAppearance?.design === 'breakout';
   const submitHype = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!publicConsent) return;
@@ -459,7 +481,7 @@ export function LivingAthleteCardPage({
         )}
 
         <div className="living-card-layout living-card-layout-solo">
-          <section className="living-card-stage" aria-label={`${displayAthleteName}'s HYPE Card`}>
+          <section className="living-card-stage" data-design={invite.cardAppearance?.design ?? 'classic'} aria-label={`${displayAthleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
               <div className="living-card-frame" data-side={side} data-design={invite.cardAppearance?.design ?? 'classic'} style={invite.cardAppearance?.accentColor && /^#[0-9a-f]{6}$/i.test(invite.cardAppearance.accentColor) ? ({ '--pixl-accent': invite.cardAppearance.accentColor } as CSSProperties) : undefined} id="living-card-display" role="region" aria-label={`${displayAthleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
                 <div className="living-card-flip-inner">
@@ -747,14 +769,10 @@ export function LivingAthleteCardPage({
                 )}
                   </div>
                 </div>
-                <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
-                  <button type="button" className="living-card-control" aria-label="Responses" aria-pressed={side === 'responses'} aria-controls="living-card-display" onClick={() => selectSide('responses')} data-testid="button-living-card-responses"><span className="living-card-control-emoji" aria-hidden="true">👍</span> Replies</button>
-                  <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
-                  <button type="button" className="living-card-control" aria-label="Live Taps" aria-pressed={side === 'live-taps'} aria-controls="living-card-display" onClick={() => selectSide('live-taps')} data-testid="button-living-card-live-taps"><Zap aria-hidden="true" /> Taps</button>
-                  <button type="button" className={`living-card-control${eventToday ? ' living-card-control-today' : ''}`} aria-pressed={side === 'events'} aria-controls="living-card-display" onClick={() => selectSide('events')} data-testid="button-living-card-events"><CalendarDays aria-hidden="true" /> Events{linkedEvents.length > 0 && <span className="living-card-control-count">({linkedEvents.length})</span>}{eventToday && <span className="sr-only"> · Event today</span>}</button>
-                </div>
+                {!controlsBelowCard && <LivingCardControls side={side} eventToday={eventToday} eventCount={linkedEvents.length} onSelectSide={selectSide} />}
               </div>
             </div>
+            {controlsBelowCard && <LivingCardControls side={side} eventToday={eventToday} eventCount={linkedEvents.length} onSelectSide={selectSide} />}
             <button type="button" className="living-card-return-front" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Flip to card front</button>
 
              {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
