@@ -20,3 +20,9 @@ MiniBrowser's desktop window has a minimum width larger than the smallest phone 
 **Why:** A requested 390px desktop window rendered a roughly 428px viewport. A 320px iframe supplied the intended CSS viewport, though `innerWidth` sometimes rounded one pixel below the document client width.
 
 **How to apply:** Keep the iframe's width explicit and allow only a one-pixel rounding difference in `innerWidth`. This validates responsive WebKit layout, not iOS browser chrome, viewport behavior, or Apple touch input. The GTK driver's accepted touch pointer actions did not activate controls; use native mouse/keyboard checks there and keep Chromium touch checks separately labeled.
+
+This workspace's WebKitWebDriver does not implement the WebDriver print endpoint. For layout-only coverage, a test can copy the page's actual `@media print` rules into a test-only screen stylesheet and inspect them in WebKitGTK; Chromium remains responsible for real PDF pagination checks.
+
+**Why:** WebKitWebDriver returned `unknown command` for `POST /session/{id}/print`, so the driver cannot directly emit a PDF for page-count assertions.
+
+**How to apply:** Label projected-rule checks as layout coverage, not native print or pagination coverage. Use Chromium's generated PDF for page count and extracted text; use a native WebKitGTK print operation or another supported path if WebKit PDF output becomes a requirement.
