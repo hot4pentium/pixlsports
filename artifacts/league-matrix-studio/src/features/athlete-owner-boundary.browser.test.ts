@@ -9,6 +9,7 @@ import test from 'node:test';
 import jsQR from 'jsqr';
 import { PNG } from 'pngjs';
 import { DevToolsConnection, monitorProcess, waitFor, waitForUrl, type BrowserPage } from './browser-test-diagnostics';
+import { defaultCardAppearance } from './hype-card-appearance';
 
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const chromiumPath = process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium';
@@ -158,6 +159,7 @@ test('player-page owner tools remain private across account changes and pause', 
     events: [],
     replies: [],
     liveScoreboard: null,
+    cardAppearance: defaultCardAppearance('classic'),
     liveTaps: {
       active: false,
       gameId: null,
@@ -769,6 +771,169 @@ test('player-page owner tools remain private across account changes and pause', 
       "Array.from(document.querySelectorAll('#hype-manager-panel-share button')).some(button => /(?:Start|Stop) Game Day Live/.test(button.textContent || ''))",
       ownerManage,
     ), false, 'Game Day Live is not controlled from the Share Hype Card panel');
+
+    const cardNavigation = [
+      { id: 'button-living-card-responses', side: 'responses' },
+      { id: 'button-living-card-stats', side: 'stats' },
+      { id: 'button-living-card-live-taps', side: 'live-taps' },
+      { id: 'button-living-card-events', side: 'events' },
+    ] as const;
+    const cardViewports = [
+      { name: 'phone', width: 390, height: 844, mobile: true },
+      { name: 'desktop', width: 1365, height: 1400, mobile: false },
+    ] as const;
+    const inspectSharedCardLayout = (sessionId: string) => connection!.evaluate<{
+      design: string;
+      side: string;
+      navBelowFrame: boolean;
+      navInsideCard: boolean;
+      buttons: Array<{
+        height: number;
+        width: number;
+        left: number;
+        right: number;
+        visible: boolean;
+        textFits: boolean;
+        pressed: boolean;
+      }>;
+      returnFrontBelowFrame: boolean;
+      returnFrontHeight: number;
+    }>(`(() => {
+      const stage = document.querySelector('.living-card-stage');
+      const outer = document.querySelector('.living-card-frame-outer');
+      const card = document.querySelector('#living-card-display');
+      const controls = document.querySelector('.living-card-controls');
+      const returnFront = document.querySelector('[data-testid="button-living-card-front"]');
+      if (!(stage instanceof HTMLElement) || !(outer instanceof HTMLElement)
+        || !(card instanceof HTMLElement) || !(controls instanceof HTMLElement)
+        || !(returnFront instanceof HTMLElement)) throw new Error('Shared HYPE Card navigation is missing');
+      const outerBounds = outer.getBoundingClientRect();
+      const cardBounds = card.getBoundingClientRect();
+      const controlsBounds = controls.getBoundingClientRect();
+      const returnBounds = returnFront.getBoundingClientRect();
+      const buttons = [...controls.querySelectorAll('button')].map((button) => {
+        const bounds = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        const range = document.createRange();
+        range.selectNodeContents(button);
+        const textBounds = range.getBoundingClientRect();
+        return {
+          height: bounds.height,
+          width: bounds.width,
+          left: bounds.left,
+          right: bounds.right,
+          visible: style.display !== 'none' && style.visibility !== 'hidden'
+            && Number(style.opacity) > 0 && bounds.width > 0 && bounds.height > 0,
+          textFits: textBounds.left >= bounds.left - 1 && textBounds.right <= bounds.right + 1,
+          pressed: button.getAttribute('aria-pressed') === 'true',
+        };
+      });
+      return {
+        design: stage.dataset.design || '',
+        side: card.dataset.side || '',
+        navBelowFrame: controlsBounds.top >= outerBounds.bottom + 8,
+        navInsideCard: controlsBounds.top >= cardBounds.top - 1 && controlsBounds.bottom <= cardBounds.bottom + 1,
+        buttons,
+        returnFrontBelowFrame: returnBounds.top >= outerBounds.bottom - 1,
+        returnFrontHeight: returnBounds.height,
+      };
+    })()`, sessionId);
+    const assertSharedCardLayout = async (sessionId: string, design: string, viewport: string, side: string) => {
+      const layout = await inspectSharedCardLayout(sessionId);
+      assert.equal(layout.design, design, `${design} renders at ${viewport} width`);
+      assert.equal(layout.side, side, `${design} reaches the ${side} side at ${viewport} width`);
+      assert.equal(layout.buttons.length, 4, `${design} keeps all four section controls`);
+      if (design === 'breakout') {
+        assert.equal(layout.navBelowFrame, true, `Breakout navigation stays below the artwork at ${viewport} width on ${side}`);
+      } else {
+        assert.equal(layout.navInsideCard, true, `${design} navigation stays in the card at ${viewport} width on ${side}`);
+      }
+      assert.equal(layout.returnFrontBelowFrame, true, `the return-to-front action stays below the card at ${viewport} width`);
+      assert.ok(layout.returnFrontHeight >= 44, `the return-to-front action remains tappable at ${viewport} width`);
+      for (const button of layout.buttons) {
+        assert.equal(button.visible, true, `${design} section controls remain visible at ${viewport} width on ${side}`);
+        if (design === 'breakout') {
+          assert.ok(button.height >= 44, `Breakout controls keep 44px touch targets at ${viewport} width on ${side}`);
+        } else {
+          assert.ok(button.height > 0, `${design} controls retain their existing in-card size at ${viewport} width on ${side}`);
+        }
+        assert.ok(button.width > 0 && button.left >= 0 && button.right <= (viewport === 'phone' ? 390 : 1365),
+          `${design} section controls fit horizontally at ${viewport} width on ${side}`);
+        assert.equal(button.textFits, true, `${design} section labels fit their buttons at ${viewport} width on ${side}`);
+      }
+      assert.equal(layout.buttons.filter((button) => button.pressed).length, side === 'front' ? 0 : 1,
+        `${design} marks only the selected section at ${viewport} width on ${side}`);
+    };
+    const clickSharedCardControl = async (sessionId: string, testId: string, minimumHeight = 44) => {
+      const target = await connection!.evaluate<{ x: number; y: number; height: number; hit: boolean }>(`(() => {
+        const button = document.querySelector('[data-testid="${testId}"]');
+        if (!(button instanceof HTMLElement)) throw new Error('HYPE Card control is missing: ${testId}');
+        button.scrollIntoView({ block: 'center', inline: 'center' });
+        const bounds = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+        return { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2, height: bounds.height, hit: hit === button || button.contains(hit) };
+      })()`, sessionId);
+      assert.ok(target.height >= minimumHeight, `${testId} exposes its required touch target`);
+      assert.equal(target.hit, true, `${testId} is not covered at its center point`);
+      await connection!.send('Input.dispatchMouseEvent', {
+        type: 'mousePressed', x: target.x, y: target.y, button: 'left', clickCount: 1,
+      }, sessionId);
+      await connection!.send('Input.dispatchMouseEvent', {
+        type: 'mouseReleased', x: target.x, y: target.y, button: 'left', clickCount: 1,
+      }, sessionId);
+    };
+
+    for (const design of ['breakout', 'gallery', 'spotlight'] as const) {
+      fanCard.cardAppearance = defaultCardAppearance(design);
+      const sharedCard = await open('visitor', 'fan');
+      for (const viewport of cardViewports) {
+        await connection.send('Emulation.setDeviceMetricsOverride', {
+          width: viewport.width,
+          height: viewport.height,
+          deviceScaleFactor: 1,
+          mobile: viewport.mobile,
+        }, sharedCard);
+        await waitFor(
+          connection,
+          sharedCard,
+          `document.querySelector('.living-card-stage')?.dataset.design === '${design}' && document.querySelector('#living-card-display')?.dataset.side === 'front'`,
+          Boolean,
+          12_000,
+        );
+        await connection.evaluate('window.scrollTo(0, 0)', sharedCard);
+        await assertSharedCardLayout(sharedCard, design, viewport.name, 'front');
+
+        for (const section of cardNavigation) {
+          await clickSharedCardControl(sharedCard, section.id, design === 'breakout' ? 44 : 1);
+          await waitFor(connection, sharedCard, `(() => {
+            const card = document.querySelector('#living-card-display');
+            const inner = document.querySelector('.living-card-flip-inner');
+            return card?.dataset.side === '${section.side}'
+              && card?.getAttribute('aria-label')?.endsWith('${
+                section.side === 'responses' ? 'viewer responses'
+                  : section.side === 'stats' ? 'finalized stats'
+                  : section.side === 'events' ? 'events'
+                  : 'Live Taps tally'
+              }')
+              && document.querySelector('[data-testid="${section.id}"]')?.getAttribute('aria-pressed') === 'true'
+              && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001;
+          })()`, Boolean, 12_000);
+          await assertSharedCardLayout(sharedCard, design, viewport.name, section.side);
+        }
+
+        await clickSharedCardControl(sharedCard, 'button-living-card-front');
+        await waitFor(connection, sharedCard, `(() => {
+          const card = document.querySelector('#living-card-display');
+          const inner = document.querySelector('.living-card-flip-inner');
+          return card?.dataset.side === 'front'
+            && card?.getAttribute('aria-label')?.endsWith('card front')
+            && document.querySelector('[data-testid="button-living-card-front"]')?.getAttribute('aria-pressed') === 'true'
+            && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 - 1) < 0.001;
+        })()`, Boolean, 12_000);
+        await assertSharedCardLayout(sharedCard, design, viewport.name, 'front');
+      }
+    }
+
     await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Pause Hype Page')).click()", ownerManage);
     await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('resume hype page'))", Boolean, 12_000);
     assert.equal(paused, true);

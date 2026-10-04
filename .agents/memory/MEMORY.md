@@ -102,3 +102,4 @@
 - [Premium card cutout runtime](premium-card-background-removal.md) — keep removal local and originals intact; prebundle inference dependencies so first-use Vite reloads cannot abort uploads.
 - [Premium artwork layer resources](premium-artwork-layers.md) — each independently rendered SVG layer must define all resources it uses; verify background, foreground, and combined output.
 - [Breakout frame terminology](breakout-frame-terminology.md) — keep the silver outline as the only outer frame; remove both blue layers behind it.
+- [Animated HYPE Card browser checks](animated-card-browser-checks.md) — wait for the CSS 3D flip to settle before dispatching the next CDP click.
