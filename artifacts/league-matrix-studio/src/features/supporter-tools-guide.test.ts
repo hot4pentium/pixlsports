@@ -32,6 +32,11 @@ test('supporter guide separates account tools from public-card actions', async (
   assert.match(app, /<Route path="\/supporter-guide" component={SupporterToolsGuidePage} \/>/);
   assert.match(dashboard, /href="\/supporter-guide"[^>]*data-testid="link-mobile-supporter-guide"/);
   assert.match(dashboard, /href="\/supporter-guide"[^>]*data-testid="link-desktop-supporter-guide"/);
+  const printStyles = styles.slice(styles.indexOf('@media print'));
   assert.match(styles, /@page\s*\{\s*size:\s*letter portrait;/);
-  assert.match(styles, /\.supporter-guide-actions\s*\{\s*display:\s*none;/);
+  assert.match(printStyles, /\.supporter-guide-actions\s*\{\s*display:\s*none;/);
+  assert.match(printStyles, /\.supporter-tools-guide\s*\{\s*width:\s*7\.74in;/);
+  assert.match(printStyles, /\.supporter-tools-guide\s*\{[^}]*break-inside:\s*avoid;[^}]*page-break-inside:\s*avoid;/s);
+  assert.match(printStyles, /\.supporter-guide-columns\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\);/s);
+  assert.match(printStyles, /\.supporter-guide-footer\s*\{\s*display:\s*flex;/);
 });

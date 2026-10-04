@@ -245,12 +245,14 @@
   }
 
   .supporter-tools-guide {
-    width: 100%;
+    width: 7.74in;
     max-width: none;
     margin: 0;
     overflow: visible;
     border: 0;
     box-shadow: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .supporter-guide-hero {
@@ -275,6 +277,7 @@
   }
 
   .supporter-guide-columns {
+    display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 10pt;
     padding: 12pt 0;
@@ -341,6 +344,7 @@
   }
 
   .supporter-guide-footer {
+    display: flex;
     padding: 10pt 0 0;
     font-size: 7.5pt;
   }
