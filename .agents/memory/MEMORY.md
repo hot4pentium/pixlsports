@@ -104,3 +104,4 @@
 - [Breakout frame terminology](breakout-frame-terminology.md) — keep the silver outline as the only outer frame; remove both blue layers behind it.
 - [Designer HYPE Card navigation](designer-hype-card-navigation.md) — keep the designer's nav-strip dressing, but render the strip separately below premium card artwork.
 - [Animated HYPE Card browser checks](animated-card-browser-checks.md) — wait for the CSS 3D flip to settle before dispatching the next CDP click.
+- [Premium avatar spillover](premium-avatar-spillover.md) — let cutouts escape both the SVG viewport and every hidden-overflow live wrapper; enlarge PNG viewBoxes separately.

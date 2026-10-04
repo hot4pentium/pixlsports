@@ -12,6 +12,7 @@
 .living-card-frame[data-side="front"][data-design="gallery"] .living-card-flip-face, .living-card-frame[data-side="front"][data-design="spotlight"] .living-card-flip-face, .living-card-frame[data-side="front"][data-design="breakout"] .living-card-flip-face,
 .living-card-frame[data-design="gallery"][data-side="front"] .living-card-flip-front, .living-card-frame[data-design="spotlight"][data-side="front"] .living-card-flip-front, .living-card-frame[data-design="breakout"][data-side="front"] .living-card-flip-front { overflow: visible; }
 .living-card-premium-face { overflow: visible; }
+.living-card-stage[data-design="gallery"] .living-card-premium-face { overflow: visible; }
 .living-card-premium-face[data-design="breakout"] { overflow: visible; }
 .living-card-premium-art, .living-card-premium-art > svg { display: block; width: 100%; height: 100%; pointer-events: none; }
 .living-card-premium-art > svg { overflow: visible; }

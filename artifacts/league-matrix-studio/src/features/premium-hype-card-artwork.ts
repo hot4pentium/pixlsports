@@ -171,11 +171,11 @@ ${photoFallback(input, win, 'g-win')}${initialsArt(input, 500, 600, NAVY)}
   const fg = `
 <defs>${grainDef('g-grain2', 0.0)}${shadowFilter('g-cut', 14, 10, .38)}</defs>
 <g id="gallery-fg">
-${athlete(input, { x: 120, y: 60, w: 760, h: 900 }, 'g-cut')}
 <rect x="30" y="30" width="940" height="1340" rx="58" fill="none" stroke="${border}" stroke-width="5"/>
 ${logo(input, 88, 74, 170)}
 <line x1="90" y1="1327" x2="910" y2="1327" stroke="${NAVY}" stroke-opacity=".14" stroke-width="2"/>
 ${sport ? `<line x1="722" y1="104" x2="758" y2="104" stroke="${accent}" stroke-width="4"/><text x="912" y="115" text-anchor="end" font-family="${FONT_TEXT}" font-weight="600" font-size="28" letter-spacing="6" fill="${NAVY}">${sport}</text>` : ''}
+${athlete(input, { x: 120, y: 60, w: 760, h: 900 }, 'g-cut')}
 ${team ? (team.length <= 18 ? `<g transform="translate(62 ${win.y + 330}) rotate(-90)"><text x="0" y="0" text-anchor="middle" font-family="${FONT_TEXT}" font-weight="600" font-size="22" letter-spacing="5" fill="${NAVY}">${escapeXml(team)}</text></g>` : `<text x="90" y="1063" font-family="${FONT_TEXT}" font-weight="600" font-size="22" letter-spacing="5" fill="${NAVY}">${escapeXml(team)}</text>`) : ''}
 ${nameText(nm.lines, 500, nameBase + (nm.lines.length > 1 ? 0 : 0), nm.size, nm.tl, NAVY, 'middle').replace(/<text x="500"/g, '<text x="500"')}
 ${sub ? `<line x1="90" y1="${subY - 10}" x2="${500 - Math.min(300, sub.length * 11 + 20)}" y2="${subY - 10}" stroke="${accent}" stroke-width="3"/><line x1="${500 + Math.min(300, sub.length * 11 + 20)}" y1="${subY - 10}" x2="910" y2="${subY - 10}" stroke="${accent}" stroke-width="3"/><text x="500" y="${subY}" text-anchor="middle" font-family="${FONT_TEXT}" font-weight="600" font-size="30" letter-spacing="8" fill="${NAVY}">${escapeXml(sub)}</text>` : ''}
@@ -309,7 +309,7 @@ export function buildPremiumHypeCardArtwork(input: PremiumHypeCardInput, layer: 
   const design = appearance?.design === 'spotlight' ? 'spotlight' : appearance?.design === 'breakout' ? 'breakout' : 'gallery';
   const safe = { ...input, athleteName: input.athleteName || '' };
   const body = design === 'spotlight' ? spotlight(safe, layer) : design === 'breakout' ? breakout(safe, layer) : gallery(safe, layer);
-  const out = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 1400" width="1000" height="1400"${design === 'breakout' || design === 'spotlight' ? ' overflow="visible"' : ''} role="img" aria-label="${escapeXml(input.athleteName)} Hype Card" data-layer="${layer}" data-design="${design}">${body}</svg>`;
+  const out = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 1400" width="1000" height="1400" overflow="visible" role="img" aria-label="${escapeXml(input.athleteName)} Hype Card" data-layer="${layer}" data-design="${design}">${body}</svg>`;
   return ns ? namespacePremiumSvg(out, ns) : out;
 }
 
@@ -346,9 +346,9 @@ export function buildPremiumNavStripPreview(appearance: HypeCardAppearance, ns?:
 }
 
 /**
- * Prepare the card-only PNG artwork. Breakout avatars intentionally extend above
- * the metal frame, so expand that export's SVG viewport to include their full
- * positioned image instead of relying on overflow outside the raster viewport.
+ * Prepare card-only PNG artwork. Premium avatars may intentionally extend above
+ * their frame, so expand the raster viewport instead of relying on SVG overflow,
+ * which raster exports clip at the viewBox.
  */
 export function preparePremiumCardPngExport(
   artwork: string,
@@ -360,13 +360,19 @@ export function preparePremiumCardPngExport(
   height: number;
 } {
   let topBleed = 0;
-  if (appearance.design === 'breakout' && artwork.includes('data-photo-placement="cutout"')
+  if (artwork.includes('data-photo-placement="cutout"')
     && cutoutSize && cutoutSize.width > 0 && cutoutSize.height > 0) {
     const scale = Math.max(0.65, Math.min(1.45, Number(appearance.athleteScale) || 1));
     const y = Math.max(-0.18, Math.min(0.18, Number(appearance.athleteY) || 0)) * 1400;
-    const imageScale = Math.min(770 / cutoutSize.width, 1020 / cutoutSize.height);
-    const imageTop = -210 + 1020 - cutoutSize.height * imageScale;
-    const transformedTop = (imageTop - 810) * scale + 810 + y;
+    const box = appearance.design === 'gallery'
+      ? { x: 120, y: 60, width: 760, height: 900 }
+      : appearance.design === 'spotlight'
+        ? { x: 90, y: 120, width: 820, height: 1130 }
+        : { x: 115, y: -210, width: 770, height: 1020 };
+    const boxBottom = box.y + box.height;
+    const imageScale = Math.min(box.width / cutoutSize.width, box.height / cutoutSize.height);
+    const imageTop = boxBottom - cutoutSize.height * imageScale;
+    const transformedTop = (imageTop - boxBottom) * scale + boxBottom + y;
     if (transformedTop < 0) topBleed = Math.ceil(-transformedTop + 32);
   }
 
@@ -374,7 +380,7 @@ export function preparePremiumCardPngExport(
   let markup = artwork;
   if (topBleed) {
     if (!artwork.includes('viewBox="0 0 1000 1400"') || !artwork.includes('width="1000" height="1400"')) {
-      throw new Error('Unexpected Breakout artwork viewport.');
+      throw new Error('Unexpected premium card artwork viewport.');
     }
     markup = artwork
       .replace('viewBox="0 0 1000 1400"', `viewBox="0 -${topBleed} 1000 ${viewHeight}"`)

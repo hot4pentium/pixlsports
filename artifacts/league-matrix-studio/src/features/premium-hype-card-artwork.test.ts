@@ -30,6 +30,7 @@ test('Gallery moves the name, details, and long team label down beneath the phot
     sport: 'Soccer',
     jerseyNumber: '01',
     position: 'Quarterback',
+    cutoutUrl: 'data:image/png;base64,AAAA',
     appearance: defaultCardAppearance('gallery'),
   });
   assert.match(svg, /<text x="500" y="1123"[^>]*>JORDAN ALEXANDER<\/text>/);
