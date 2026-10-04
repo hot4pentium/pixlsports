@@ -15,10 +15,13 @@ import {
   useListPublicAthleteInviteHypes,
   useSendAthleteInviteHype,
   useSendAthleteLiveTap,
+  useUpdateAthleteInvite,
   type PublicAthleteFanCard,
   type AthleteInviteHypeInput,
 } from '@workspace/api-client-react';
 import { hasEventToday } from './athlete-event-links';
+import { resolveHypeCardAthleteName } from './hype-card-appearance';
+import { getUserProfile } from './supporter-dashboard-model';
 
 import {
   Dialog,
@@ -97,7 +100,11 @@ export function LivingAthleteCardPage({
   const [liveTapFeedback, setLiveTapFeedback] = useState('');
   const [followDialogOpen, setFollowDialogOpen] = useState(false);
   const [hypeDialogOpen, setHypeDialogOpen] = useState(false);
-  const { isLoaded: clerkLoaded, isSignedIn } = useUser();
+  const [profileNameSyncError, setProfileNameSyncError] = useState(false);
+  const [profileNameSyncRetry, setProfileNameSyncRetry] = useState(0);
+  const profileNameSyncAttemptRef = useRef('');
+  const { user, isLoaded: clerkLoaded, isSignedIn } = useUser();
+  const profile = getUserProfile(user);
   const queryClient = useQueryClient();
   const ownedInvitesQuery = useListAthleteInvites({
     query: {
@@ -107,6 +114,7 @@ export function LivingAthleteCardPage({
     },
   });
   const ownedInvites = ownedInvitesQuery.data;
+  const updateInvite = useUpdateAthleteInvite();
   const sendHype = useSendAthleteInviteHype();
   const sendLiveTap = useSendAthleteLiveTap();
   const deleteHype = useDeleteAthleteInviteHype();
@@ -138,8 +146,68 @@ export function LivingAthleteCardPage({
       retry: false,
     },
   });
+  const profileAthleteName = profile.athleteName.trim();
+  const displayAthleteName = resolveHypeCardAthleteName(
+    ownerInvite ? profileAthleteName : '',
+    invite?.athleteName ?? '',
+  );
+  const profileNameSyncKey = ownerInvite && profileAthleteName && ownerInvite.athleteName.trim() !== profileAthleteName
+    ? `${ownerInvite.inviteToken}:${profileAthleteName}`
+    : '';
 
   const photoUrl = invite?.photoUrl ?? null;
+
+  useEffect(() => {
+    if (!ownerInvite || !profileNameSyncKey || updateInvite.isPending) return;
+    if (profileNameSyncAttemptRef.current === profileNameSyncKey) return;
+    profileNameSyncAttemptRef.current = profileNameSyncKey;
+    setProfileNameSyncError(false);
+    void updateInvite.mutateAsync({
+      inviteToken: ownerInvite.inviteToken,
+      data: {
+        athleteName: profileAthleteName,
+        teamName: ownerInvite.teamName,
+        seasonName: ownerInvite.seasonName,
+        seasonEndsAt: ownerInvite.seasonEndsAt,
+        timezone: ownerInvite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        sport: ownerInvite.sport,
+        trackerProjectId: ownerInvite.trackerProjectId,
+        scheduleProjectId: null,
+        showHypeCard: ownerInvite.showHypeCard,
+        showStats: ownerInvite.showStats,
+        showSchedule: false,
+        showEvents: ownerInvite.showEvents,
+        hypesEnabled: ownerInvite.hypesEnabled,
+        paused: ownerInvite.paused,
+      },
+    }).then(async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(inviteToken) }),
+      ]);
+    }).catch(() => setProfileNameSyncError(true));
+  }, [
+    inviteToken,
+    ownerInvite?.inviteToken,
+    ownerInvite?.athleteName,
+    ownerInvite?.teamName,
+    ownerInvite?.seasonName,
+    ownerInvite?.seasonEndsAt,
+    ownerInvite?.timezone,
+    ownerInvite?.sport,
+    ownerInvite?.trackerProjectId,
+    ownerInvite?.showHypeCard,
+    ownerInvite?.showStats,
+    ownerInvite?.showEvents,
+    ownerInvite?.hypesEnabled,
+    ownerInvite?.paused,
+    profileAthleteName,
+    profileNameSyncKey,
+    profileNameSyncRetry,
+    updateInvite.isPending,
+    updateInvite.mutateAsync,
+    queryClient,
+  ]);
 
   useEffect(() => {
     setSide('front');
@@ -181,9 +249,9 @@ export function LivingAthleteCardPage({
   useEffect(() => {
     if (!invite) return;
     const previous = document.title;
-    document.title = `${invite.athleteName} · HYPE Card | Pixl Sports`;
+    document.title = `${displayAthleteName} · HYPE Card | Pixl Sports`;
     return () => { document.title = previous; };
-  }, [invite?.athleteName]);
+  }, [displayAthleteName]);
   useEffect(() => {
     if (!invite?.stats) return;
     setTrendStatId((current) => (
@@ -282,7 +350,7 @@ export function LivingAthleteCardPage({
         queryClient.invalidateQueries({ queryKey: getListPublicAthleteInviteHypesQueryKey(inviteToken) }),
         queryClient.invalidateQueries({ queryKey: getListAthleteInviteHypesQueryKey(inviteToken) }),
       ]);
-      setHypeFeedback(`Your ${reaction} Shoutout is now visible on the Responses side. Thanks for cheering ${invite.athleteName} on!`);
+      setHypeFeedback(`Your ${reaction} Shoutout is now visible on the Responses side. Thanks for cheering ${displayAthleteName} on!`);
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
       setHypeFeedback(status === 429 ? 'You have sent several shoutouts. Please try again in an hour.'
@@ -361,6 +429,27 @@ export function LivingAthleteCardPage({
   return (
     <Shell>
       <main className="living-card-main">
+        {ownerInvite && profileNameSyncKey && updateInvite.isPending && (
+          <p className="mb-4 border-l-2 border-sky-300 bg-sky-950/60 px-4 py-3 text-sm text-white" role="status" data-testid="status-profile-name-sync">
+            Updating the shared HYPE Card name from your athlete profile…
+          </p>
+        )}
+        {ownerInvite && profileNameSyncError && (
+          <div className="mb-4 border-l-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="alert" data-testid="error-profile-name-sync">
+            <p>The card preview uses your profile name, but the shared card could not be updated for other viewers.</p>
+            <button
+              type="button"
+              className="mt-2 min-h-10 font-bold underline underline-offset-2"
+              onClick={() => {
+                profileNameSyncAttemptRef.current = '';
+                setProfileNameSyncError(false);
+                setProfileNameSyncRetry((attempt) => attempt + 1);
+              }}
+            >
+              Retry name update
+            </button>
+          </div>
+        )}
         {ownerInvite && (
           <div className="living-card-intro">
             <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
@@ -370,15 +459,15 @@ export function LivingAthleteCardPage({
         )}
 
         <div className="living-card-layout living-card-layout-solo">
-          <section className="living-card-stage" aria-label={`${invite.athleteName}'s HYPE Card`}>
+          <section className="living-card-stage" aria-label={`${displayAthleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
-              <div className="living-card-frame" data-side={side} data-design={invite.cardAppearance?.design ?? 'classic'} style={invite.cardAppearance?.accentColor && /^#[0-9a-f]{6}$/i.test(invite.cardAppearance.accentColor) ? ({ '--pixl-accent': invite.cardAppearance.accentColor } as CSSProperties) : undefined} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
+              <div className="living-card-frame" data-side={side} data-design={invite.cardAppearance?.design ?? 'classic'} style={invite.cardAppearance?.accentColor && /^#[0-9a-f]{6}$/i.test(invite.cardAppearance.accentColor) ? ({ '--pixl-accent': invite.cardAppearance.accentColor } as CSSProperties) : undefined} id="living-card-display" role="region" aria-label={`${displayAthleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
                 <div className="living-card-flip-inner">
                   <div className="living-card-flip-face living-card-flip-front">
                     {side === 'front' && (
                       <LivingAthleteCardFront
                         key="front"
-                        athleteName={invite.athleteName}
+                        athleteName={displayAthleteName}
                         teamName={invite.teamName}
                         photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
                         appearance={invite.cardAppearance}
@@ -393,12 +482,12 @@ export function LivingAthleteCardPage({
                   <div className="living-card-face living-card-face-alt" key="stats">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / The record</span><span>{invite.seasonName}</span></div>
                     <h2 className="living-card-alt-title">Season stats.</h2>
-                    <p className="living-card-alt-subtitle">{invite.athleteName} / {invite.teamName || sport} / Finalized games only</p>
+                    <p className="living-card-alt-subtitle">{displayAthleteName} / {invite.teamName || sport} / Finalized games only</p>
                     {invite.liveScoreboard && (
                       <section className="living-card-scoreboard" aria-label="Game Day Live scoreboard" data-testid="fan-card-live-scoreboard">
                         <div className="living-card-scoreboard-heading"><Radio size={17} aria-hidden="true" /> Game Day Live <span>View only</span></div>
                         <div className="living-card-scoreboard-row">
-                          <span>{invite.liveScoreboard.teamName || invite.athleteName}</span>
+                          <span>{invite.liveScoreboard.teamName || displayAthleteName}</span>
                           <strong aria-label={`${invite.liveScoreboard.score} to ${invite.liveScoreboard.opponentScore}`}>{invite.liveScoreboard.score}–{invite.liveScoreboard.opponentScore}</strong>
                           <span>{invite.liveScoreboard.opponent || 'Opponent'}</span>
                         </div>
@@ -516,14 +605,14 @@ export function LivingAthleteCardPage({
                                   ) : <p>No combined stats were recorded.</p>}
                                 </div>
                                 <div className="living-card-game-stat-group living-card-athlete-game-stats">
-                                  <h5>{invite.athleteName} · individual stats</h5>
+                                  <h5>{displayAthleteName} · individual stats</h5>
                                   {selectedGameAthleteStats.length > 0 ? (
                                     <dl>
                                       {selectedGameAthleteStats.map(([id, value]) => (
                                         <div key={id}><dt>{id.replace(/[-_]/g, ' ')}</dt><dd>{value}</dd></div>
                                       ))}
                                     </dl>
-                                  ) : <p>No stats were specifically credited to {invite.athleteName}.</p>}
+                                  ) : <p>No stats were specifically credited to {displayAthleteName}.</p>}
                                 </div>
                               </section>
                             )}
@@ -546,7 +635,7 @@ export function LivingAthleteCardPage({
                     <h2 className="living-card-alt-title">Events.</h2>
                     <p className="living-card-alt-subtitle">
                       {invite.showEvents
-                        ? `All eligible Event Cards saved by ${invite.athleteName}’s card owner appear here.`
+                        ? `All eligible Event Cards saved by ${displayAthleteName}’s card owner appear here.`
                         : 'The card owner has turned off event sharing.'}
                     </p>
                     {invite.showEvents && linkedEvents.length > 0 ? (
@@ -578,7 +667,7 @@ export function LivingAthleteCardPage({
                     <h2 className="living-card-alt-title">Live Taps.</h2>
                     <p className="living-card-alt-subtitle">
                       {invite.liveTaps.active
-                        ? `Cheer for ${invite.athleteName} during Game Day Live.`
+                        ? `Cheer for ${displayAthleteName} during Game Day Live.`
                         : 'The tally opens when the card owner starts Game Day Live.'}
                     </p>
                     <section className="living-card-live-taps" aria-labelledby="living-card-live-taps-title">
@@ -634,7 +723,7 @@ export function LivingAthleteCardPage({
                   <div className="living-card-face living-card-face-alt" key="responses" data-testid="living-card-responses-side">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / From the stands</span><span>{invite.seasonName}</span></div>
                     <h2 className="living-card-alt-title">Responses.</h2>
-                    <p className="living-card-alt-subtitle">Cheers shared for {invite.athleteName}. Names stay private; older owner-only messages are not shown to other viewers.</p>
+                    <p className="living-card-alt-subtitle">Cheers shared for {displayAthleteName}. Names stay private; older owner-only messages are not shown to other viewers.</p>
                     {shoutoutsLoading ? <p className="living-card-note" role="status">Loading responses…</p>
                       : shoutoutsError ? <div className="living-card-empty" role="alert"><h3>Responses are unavailable.</h3><button type="button" onClick={() => void (ownerInvite ? ownerShoutouts.refetch() : publicShoutouts.refetch())}>Try again</button></div>
                       : shoutouts && shoutouts.length > 0 ? (
@@ -644,7 +733,7 @@ export function LivingAthleteCardPage({
                               <span className="living-card-response-emoji" aria-hidden="true">{item.reaction}</span>
                               <div className="living-card-response-content">
                                 <small>{new Date(item.createdAt).toLocaleDateString()}{ownerInvite && 'publiclyVisible' in item && !item.publiclyVisible ? ' · Private · Owner only' : ''}</small>
-                                {item.message ? <p>{item.message}</p> : <p className="living-card-response-cheer">Cheering {invite.athleteName} on!</p>}
+                                {item.message ? <p>{item.message}</p> : <p className="living-card-response-cheer">Cheering {displayAthleteName} on!</p>}
                               </div>
                               {ownerInvite && <button type="button" className="living-card-response-remove" disabled={deleteHype.isPending} onClick={() => void removeShoutout(item.id)} aria-label={`Remove response from ${new Date(item.createdAt).toLocaleDateString()}`}>Remove</button>}
                             </li>
@@ -680,7 +769,7 @@ export function LivingAthleteCardPage({
                  <DialogContent className="living-card-dialog" data-testid="dialog-follow-fan-card">
                    <DialogHeader className="living-card-dialog-header">
                      <span className="living-card-dialog-kicker">Keep the season close</span>
-                     <DialogTitle>Follow {invite.athleteName}.</DialogTitle>
+                     <DialogTitle>Follow {displayAthleteName}.</DialogTitle>
                      <DialogDescription>
                         Follow this card on the device you are using. No account is needed. Choose Game Day Live alerts only if you want them.
                      </DialogDescription>
@@ -704,7 +793,7 @@ export function LivingAthleteCardPage({
                      <span className="living-card-dialog-kicker">From the stands</span>
                       <DialogTitle>Send a Shoutout.</DialogTitle>
                      <DialogDescription>
-                        Pick a cheer and add a short message for {invite.athleteName}. Your emoji and message will appear publicly on this card; your name is only visible to the owner.
+                        Pick a cheer and add a short message for {displayAthleteName}. Your emoji and message will appear publicly on this card; your name is only visible to the owner.
                      </DialogDescription>
                    </DialogHeader>
                    <div className="living-card-dialog-body">

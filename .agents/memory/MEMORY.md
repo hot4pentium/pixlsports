@@ -19,7 +19,7 @@
 - [Supporter game-day media](supporter-game-day-media.md) — capture stays device-managed; the web journey passes game context between existing tools without creating a moment library.
 - [Supporter dashboard browser coverage](supporter-dashboard-browser-coverage.md) — isolate narrow card checks from long tracker journeys; card-flip focus follows the visible face.
 - [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.
-- [Supporter profile propagation](supporter-profile-propagation.md) — profile athlete details seed new local work, while saved cloud designs and published snapshots remain authored independently.
+- [Supporter profile propagation](supporter-profile-propagation.md) — live HYPE Cards follow the verified owner's profile; saved designs and published snapshots remain authored independently.
 - [Browser route coverage](browser-route-coverage.md) — cross-route browser checks should use stable test IDs and tolerate presentation-copy casing.
 - [Shared live browser checks](shared-live-browser-checks.md) — keep a spectator page open across owner updates to verify shared refresh, not just a fresh fetch.
 - [Chromium browser diagnostics](chromium-browser-diagnostics.md) — CDP release checks should preserve bounded process output and page lifecycle failures through shared monitors.

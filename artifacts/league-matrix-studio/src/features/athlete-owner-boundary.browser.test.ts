@@ -72,6 +72,7 @@ async function waitForWebDriverValue<T>(
 
 test('player-page owner tools remain private across account changes and pause', async () => {
   let paused = false;
+  let profileNameUpdateResponseSent = false;
   const requests: Array<{ viewer: string; method: string; path: string }> = [];
   const publicShoutouts = [{
     id: publicShoutoutId,
@@ -98,7 +99,7 @@ test('player-page owner tools remain private across account changes and pause', 
   const testLiveTapAccessId = '123e4567-e89b-42d3-a456-426614174002';
   const testLiveTapAccessToken = 'family-live-tap-qr-test-access-token-0123456789';
   const owned = {
-    inviteToken: token, athleteName: 'Jordan', teamName: 'City Hoops',
+    inviteToken: token, athleteName: 'Randal', teamName: 'City Hoops',
     seasonName: 'Fall 2026', seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
     sport: 'basketball', trackerProjectId: null, scheduleProjectId: null,
     showHypeCard: true, showStats: true, showSchedule: false, hypesEnabled: true,
@@ -106,7 +107,7 @@ test('player-page owner tools remain private across account changes and pause', 
     liveTrackerShareToken: null,
   };
   const stats = {
-    athleteName: 'Jordan',
+    athleteName: 'Randal',
     sport: 'basketball',
     gamesPlayed: 3,
     score: 40,
@@ -212,8 +213,10 @@ test('player-page owner tools remain private across account changes and pause', 
       for await (const chunk of request) raw += chunk;
       const changes = JSON.parse(raw) as Partial<typeof owned>;
       Object.assign(owned, changes);
+      fanCard.athleteName = owned.athleteName;
       paused = Boolean(owned.paused);
       json(200, { ...owned, paused });
+      if (changes.athleteName === 'Kimberly') profileNameUpdateResponseSent = true;
     } else if (path === `/api/athlete-invites/${token}/public-shoutouts` && method === 'GET') {
       json(200, publicShoutouts);
     } else if (path === `/api/athlete-invites/${token}/hypes` && method === 'GET' && viewer === 'owner') {
@@ -333,10 +336,15 @@ test('player-page owner tools remain private across account changes and pause', 
     const ownerFanCard = await open('owner', 'fan');
     await waitFor(connection, ownerFanCard, element('.living-card-controls'), Boolean, 30_000);
     await waitFor(connection, ownerFanCard, element('[data-testid="link-manage-living-card"]'), Boolean, 30_000);
+    await waitFor(connection, ownerFanCard, "document.querySelector('[data-testid=\"text-living-card-athlete-name\"]')?.textContent === 'Kimberly'", Boolean, 12_000);
+    await waitForWebDriverValue(async () => owned.athleteName, (name) => name === 'Kimberly', 'the saved card name to match the athlete profile');
+    await waitForWebDriverValue(async () => profileNameUpdateResponseSent, Boolean, 'the profile name update response');
+    assert.equal(fanCard.athleteName, 'Kimberly', 'the shared card record is updated from the owner profile');
     assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-follow"]'), ownerFanCard), false);
     assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), ownerFanCard), false);
     const otherFanCard = await open('other', 'fan');
     await waitFor(connection, otherFanCard, element('[data-testid="button-open-fan-card-follow"]'), Boolean, 30_000);
+    await waitFor(connection, otherFanCard, "document.querySelector('[data-testid=\"text-living-card-athlete-name\"]')?.textContent === 'Kimberly'", Boolean, 12_000);
     assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), otherFanCard), true);
     fanCard.liveTaps.active = true;
     fanCard.liveTaps.gameId = 'live-game';
@@ -408,7 +416,7 @@ test('player-page owner tools remain private across account changes and pause', 
       visitorFanCard,
     ), true, 'the return-to-front control is below the card');
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-front\"]').click()", visitorFanCard);
-    await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.getAttribute('aria-label') === 'Jordan — card front'", Boolean, 12_000);
+    await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.getAttribute('aria-label') === 'Kimberly — card front'", Boolean, 12_000);
     await waitFor(connection, visitorFanCard, `(() => {
       const inner = document.querySelector('.living-card-flip-inner');
       return Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 - 1) < 0.001;
@@ -528,14 +536,14 @@ test('player-page owner tools remain private across account changes and pause', 
         "document.querySelector('[data-testid=\"athlete-game-stats-title\"]')?.textContent || ''",
         visitor,
       ),
-      /Jordan’s game stats/,
+      /Randal’s game stats/,
     );
     assert.equal(
       await connection.evaluate<string>(
         "document.querySelector('[data-testid=\"athlete-game-stats-monogram\"]')?.textContent?.trim() || ''",
         visitor,
       ),
-      'J',
+      'R',
     );
     assert.match(
       await connection.evaluate<string>(
@@ -603,7 +611,7 @@ test('player-page owner tools remain private across account changes and pause', 
         "document.querySelector('[data-testid=\"athlete-game-stats-empty\"]')?.innerText || ''",
         visitor,
       ),
-      /No individual stats were recorded for Jordan/,
+      /No individual stats were recorded for Randal/,
     );
     for (const session of [other, visitor]) {
       assert.equal(await connection.evaluate(element('[data-testid="link-manage-athlete-hype-page"]'), session), false);
@@ -695,21 +703,21 @@ test('player-page owner tools remain private across account changes and pause', 
       const image = document.querySelector('[data-testid="img-created-live-tap-qr"]');
       return { alt: image?.getAttribute('alt') || '', src: image?.getAttribute('src') || '' };
     })()`, ownerManage);
-    assert.match(familyQrImage.alt, /Private Family Live Taps QR code for Jordan/);
+    assert.match(familyQrImage.alt, /Private Family Live Taps QR code for Kimberly/);
     assert.ok(familyQrImage.src.length > 1000, 'the owner sees a rendered QR image instead of a copyable family URL');
     const qrPng = PNG.sync.read(Buffer.from(familyQrImage.src.replace(/^data:image\/png;base64,/, ''), 'base64'));
     const decodedFamilyQr = jsQR(Uint8ClampedArray.from(qrPng.data), qrPng.width, qrPng.height);
     assert.ok(decodedFamilyQr, 'the rendered family QR image can be decoded');
     const scannedFamilyUrl = new URL(decodedFamilyQr.data);
     assert.equal(scannedFamilyUrl.origin, `http://127.0.0.1:${vitePort}`);
-    assert.equal(scannedFamilyUrl.pathname, `/fan/${token}`, 'the QR opens Jordan’s HYPE Card');
+    assert.equal(scannedFamilyUrl.pathname, `/fan/${token}`, 'the QR opens Kimberly’s HYPE Card');
     assert.equal(scannedFamilyUrl.search, '');
     const scannedAccessToken = new URLSearchParams(scannedFamilyUrl.hash.slice(1)).get('live-taps');
     assert.equal(scannedAccessToken, testLiveTapAccessToken, 'the QR carries its private Live Taps access in the fragment');
     assert.equal(`${scannedFamilyUrl.origin}${scannedFamilyUrl.pathname}${scannedFamilyUrl.search}`.includes(scannedAccessToken), false);
     const scannedFanCard = await open('visitor', 'fan', false, scannedFamilyUrl.hash);
     await waitFor(connection, scannedFanCard, element('.living-card-controls'), Boolean, 30_000);
-    await waitFor(connection, scannedFanCard, "window.location.hash === '' && document.title.includes('Jordan')", Boolean, 12_000);
+    await waitFor(connection, scannedFanCard, "window.location.hash === '' && document.title.includes('Kimberly')", Boolean, 12_000);
     assert.ok(requests.some(({ viewer, method, path }) => (
       viewer === 'visitor' && method === 'GET' && path === `/api/athlete-invites/${token}/fan`
     )), 'scanning opens the intended public HYPE Card');
@@ -718,7 +726,7 @@ test('player-page owner tools remain private across account changes and pause', 
       href: window.location.href,
       savedToken: window.localStorage.getItem('pixlSports:liveTaps:${token}'),
     }))()`, scannedFanCard);
-    assert.equal(scannedCardState.title, 'Jordan · HYPE Card | Pixl Sports');
+    assert.equal(scannedCardState.title, 'Kimberly · HYPE Card | Pixl Sports');
     assert.equal(scannedCardState.href.includes(testLiveTapAccessToken), false, 'the access token is removed from the address bar after it is read');
     assert.equal(scannedCardState.savedToken, testLiveTapAccessToken, 'the scanned family access is retained for this card');
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-live-taps\"]').click()", scannedFanCard);
@@ -744,20 +752,17 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === false", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
     assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), false);
-    const originalSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage);
+    const originalSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Finalized stats\"]')?.getAttribute('aria-checked') || ''", ownerManage);
     await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]').click()", ownerManage);
-    const changedSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage);
+    const changedSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Finalized stats\"]')?.getAttribute('aria-checked') || ''", ownerManage);
     assert.notEqual(changedSetting, originalSetting);
     await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved')", Boolean, 12_000);
-    assert.equal(owned.showHypeCard, changedSetting === 'true', 'the switch is saved without submitting the form');
+    assert.equal(owned.showStats, changedSetting === 'true', 'the Finalized stats switch is saved without submitting the form');
     await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Shoutouts\"]').click()", ownerManage);
     await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved') && document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Shoutouts\"]')?.disabled === false", Boolean, 12_000);
     assert.equal(owned.hypesEnabled, false, 'Fan Shoutouts are disabled immediately on toggle');
-    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-media\"]').click()", ownerManage);
-    assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-media')?.hidden", ownerManage), false);
-    assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), true);
-    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
-    assert.equal(await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage), changedSetting);
+    assert.equal(await connection.evaluate(element('[data-testid="button-hype-manager-media"]'), ownerManage), false, 'the media manager remains unavailable');
+    assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), false);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-share\"]').click()", ownerManage);
     assert.ok((await connection.evaluate<string>("document.querySelector('#hype-manager-panel-share')?.innerText || ''", ownerManage)).includes('Pause Hype Page'));
     assert.equal(await connection.evaluate(
@@ -768,7 +773,7 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('resume hype page'))", Boolean, 12_000);
     assert.equal(paused, true);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
-    assert.equal(await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage), changedSetting);
+    assert.equal(await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Finalized stats\"]')?.getAttribute('aria-checked') || ''", ownerManage), changedSetting);
     const pausedOwner = await open('owner', 'public');
     await waitFor(connection, pausedOwner, element('[data-testid="link-manage-athlete-hype-page"]'), Boolean, 30_000);
     const pausedOther = await open('other', 'public');
@@ -781,7 +786,12 @@ test('player-page owner tools remain private across account changes and pause', 
     }
     assert.ok(requests.some(({ viewer, path }) => viewer === 'other' && path === '/api/athlete-invites'));
     assert.ok(requests.some(({ viewer, method }) => viewer === 'owner' && method === 'PATCH'));
-    assert.equal(requests.some(({ viewer, method }) => viewer !== 'owner' && method !== 'GET' && method !== 'OPTIONS'), false);
+    const nonOwnerWrites = requests.filter(({ viewer, method }) => viewer !== 'owner' && method !== 'GET' && method !== 'OPTIONS');
+    assert.ok(nonOwnerWrites.length > 0, 'a private family QR enables authorized Live Taps');
+    assert.ok(
+      nonOwnerWrites.every(({ method, path }) => method === 'POST' && path === `/api/athlete-invites/${token}/live-taps`),
+      'non-owners can only submit Live Taps through the family endpoint',
+    );
   } finally {
     if (connection) for (const page of pages) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

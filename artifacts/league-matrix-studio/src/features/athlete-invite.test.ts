@@ -229,7 +229,7 @@ test('the HYPE Card manager preserves the public page path and protected studio 
   assert.match(publicPageSource, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
   assert.match(publicPageSource, /athlete-highlights-heading col-span-2 row-start-2[\s\S]*?lg:col-start-2 lg:row-start-1/);
   assert.match(publicPageSource, /col-start-2 row-start-1 inline-flex min-h-10[\s\S]*?text-\[10px\][\s\S]*?lg:col-start-1 lg:row-start-2/);
-  assert.match(source, /<OwnerHypePageManage invite=\{ownerInvite\} \/>/);
+  assert.match(source, /<OwnerHypePageManage invite=\{ownerInvite\} profile=\{profile\} \/>/);
   assert.doesNotMatch(publicPageSource, /<OwnerHypePageManage/);
   assert.match(appSource, /path="\/player\/:inviteToken\/manage" component=\{OwnerAthleteInviteManagePage\}/);
   assert.ok(
@@ -272,7 +272,7 @@ test('shared card omits the intro headline while keeping the owner manage link',
   assert.ok(introIndex >= 0 && manageIndex > introIndex && manageIndex < layoutIndex);
   assert.match(livingCardSource, /\{ownerInvite && \(\s*<div className="living-card-intro">\s*<Link className="living-card-manage"/);
   assert.match(livingCardSource, /<span>Manage this athletic card<\/span><ArrowRight aria-hidden="true" \/>/);
-  assert.match(livingCardSource, /aria-label=\{`\$\{invite\.athleteName\}'s HYPE Card`\}/);
+  assert.match(livingCardSource, /aria-label=\{`\$\{displayAthleteName\}'s HYPE Card`\}/);
   assert.doesNotMatch(livingCardSource, /One card\.|Every chapter\./);
   assert.match(livingCardStyles, /\.living-card-manage \{[^}]*flex-wrap: nowrap/);
   assert.doesNotMatch(livingCardSource, /The same athlete, a new story after every game\. Keep this link close\./);
@@ -280,6 +280,15 @@ test('shared card omits the intro headline while keeping the owner manage link',
     livingCardSource,
     /className="living-card-story"[\s\S]*?data-testid="link-manage-living-card"/,
   );
+});
+
+test('the live HYPE Card uses the owner profile name and syncs it to the shared invite', () => {
+  assert.match(livingCardSource, /const displayAthleteName = resolveHypeCardAthleteName\(\s*ownerInvite \? profileAthleteName : '',\s*invite\?\.athleteName \?\? '',\s*\)/);
+  assert.match(livingCardSource, /const ownerInvite = ownedInvites\?\.find\(\(item\) => item\.inviteToken === inviteToken\) \?\? null/);
+  assert.match(livingCardSource, /useUpdateAthleteInvite\(\)/);
+  assert.match(livingCardSource, /athleteName: profileAthleteName/);
+  assert.match(livingCardSource, /invalidateQueries\(\{ queryKey: getGetAthleteFanCardQueryKey\(inviteToken\) \}\)/);
+  assert.match(livingCardSource, /athleteName=\{displayAthleteName\}/);
 });
 
 test('athlete pages retire schedule content and force retired API fields off', () => {
