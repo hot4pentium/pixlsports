@@ -344,3 +344,41 @@ export function buildPremiumNavStripPreview(appearance: HypeCardAppearance, ns?:
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 1294 1000 68" width="1000" height="68" aria-hidden="true" data-design="${appearance.design}">${buildPremiumNavStripExport(appearance)}</svg>`;
   return ns ? namespacePremiumSvg(svg, `${ns}-nav`) : svg;
 }
+
+/**
+ * Prepare the card-only PNG artwork. Breakout avatars intentionally extend above
+ * the metal frame, so expand that export's SVG viewport to include their full
+ * positioned image instead of relying on overflow outside the raster viewport.
+ */
+export function preparePremiumCardPngExport(
+  artwork: string,
+  appearance: HypeCardAppearance,
+  cutoutSize?: { width: number; height: number },
+): {
+  markup: string;
+  width: number;
+  height: number;
+} {
+  let topBleed = 0;
+  if (appearance.design === 'breakout' && artwork.includes('data-photo-placement="cutout"')
+    && cutoutSize && cutoutSize.width > 0 && cutoutSize.height > 0) {
+    const scale = Math.max(0.65, Math.min(1.45, Number(appearance.athleteScale) || 1));
+    const y = Math.max(-0.18, Math.min(0.18, Number(appearance.athleteY) || 0)) * 1400;
+    const imageScale = Math.min(770 / cutoutSize.width, 1020 / cutoutSize.height);
+    const imageTop = -210 + 1020 - cutoutSize.height * imageScale;
+    const transformedTop = (imageTop - 810) * scale + 810 + y;
+    if (transformedTop < 0) topBleed = Math.ceil(-transformedTop + 32);
+  }
+
+  const viewHeight = 1400 + topBleed;
+  let markup = artwork;
+  if (topBleed) {
+    if (!artwork.includes('viewBox="0 0 1000 1400"') || !artwork.includes('width="1000" height="1400"')) {
+      throw new Error('Unexpected Breakout artwork viewport.');
+    }
+    markup = artwork
+      .replace('viewBox="0 0 1000 1400"', `viewBox="0 -${topBleed} 1000 ${viewHeight}"`)
+      .replace('width="1000" height="1400"', `width="1000" height="${viewHeight}"`);
+  }
+  return { markup, width: 2000, height: viewHeight * 2 };
+}

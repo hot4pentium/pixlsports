@@ -13,7 +13,7 @@ import { saveAthleteCutout } from './athlete-cutout-upload';
 import { HypeCardAppearanceControls, HypeCardDesignPicker } from './hype-card-appearance-controls';
 import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
 import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
-import { buildPremiumNavStripExport, buildPremiumNavStripPreview } from './premium-hype-card-artwork';
+import { buildPremiumNavStripPreview, preparePremiumCardPngExport } from './premium-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 
 export type FanCardAppearanceInvite = {
@@ -33,6 +33,18 @@ async function toDataUrl(url: string | null | undefined): Promise<string | null>
     r.onerror = () => reject(new Error('image'));
     r.readAsDataURL(blob);
   });
+}
+
+async function readImageDimensions(dataUrl: string | null): Promise<{ width: number; height: number } | undefined> {
+  if (!dataUrl) return undefined;
+  const image = new Image();
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('image'));
+  });
+  image.src = dataUrl;
+  await loaded;
+  return { width: image.naturalWidth, height: image.naturalHeight };
 }
 
 let fontCss: Promise<string> | null = null;
@@ -195,18 +207,20 @@ export function FanCardAppearanceManager({ invite, profile }: {
     try {
       const [photo, cutout] = await Promise.all([toDataUrl(invite.photoUrl), toDataUrl(usableCutout)]);
       const fonts = await loadEmbeddedFonts();
+      const cutoutSize = await readImageDimensions(cutout);
       const art = buildBrandedPremiumHypeCardArtwork({
         athleteName: displayAthleteName, teamName: invite.teamName, sport: invite.sport,
         jerseyNumber: draft.jerseyNumber, position: draft.position, photoUrl: photo, cutoutUrl: cutout, appearance: draft,
       }, 'all', 'export');
-      const markup = art.replace(/(<svg[^>]*>)/, `$1${fonts ? `<style>${fonts}</style>` : ''}`).replace(/<\/svg>$/, `${buildPremiumNavStripExport(draft)}</svg>`);
+      const png = preparePremiumCardPngExport(art, draft, cutoutSize);
+      const markup = png.markup.replace(/(<svg[^>]*>)/, `$1${fonts ? `<style>${fonts}</style>` : ''}`);
       const img = new Image();
       const loaded = new Promise<void>((ok, bad) => { img.onload = () => ok(); img.onerror = () => bad(new Error('render')); });
       img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
       await loaded;
       const canvas = document.createElement('canvas');
-      canvas.width = 2000; canvas.height = 2800;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, 2000, 2800);
+      canvas.width = png.width; canvas.height = png.height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, png.width, png.height);
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
       if (!blob) throw new Error('png');
       const a = document.createElement('a');

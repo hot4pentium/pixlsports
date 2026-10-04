@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPremiumHypeCardArtwork, buildPremiumNavStripPreview } from './premium-hype-card-artwork';
+import { buildPremiumHypeCardArtwork, buildPremiumNavStripPreview, preparePremiumCardPngExport } from './premium-hype-card-artwork';
 test('placement changes the original fallback as well as the cutout in every premium design', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     for (const cutoutUrl of [null, 'data:image/png;base64,AAAA']) {
@@ -36,6 +36,32 @@ test('the premium designer preview separates its dressed nav strip from the card
     if (design === 'gallery') assert.match(nav, /fill="#F6EFE2"/, 'the detached Gallery strip retains its paper background');
     else assert.match(nav, /fill="#0B1A33" stroke="#fff"/, `${design} retains its dark nav dressing`);
     assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /id="export-nav"/);
+  }
+});
+test('PNG export omits the navigation strip and preserves Breakout avatar spillover', () => {
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+    const appearance = defaultCardAppearance(design);
+    const art = buildPremiumHypeCardArtwork({ ...base, appearance });
+    const png = preparePremiumCardPngExport(art, appearance, { width: 1024, height: 1024 });
+    assert.doesNotMatch(png.markup, /export-nav|>EVENTS</);
+    if (design === 'breakout') {
+      assert.match(png.markup, /viewBox="0 0 1000 1400"/, 'a square source fitted into the frame needs no extra spillover area');
+      assert.deepEqual({ width: png.width, height: png.height }, { width: 2000, height: 2800 });
+      assert.match(png.markup, /data-photo-placement="cutout"/);
+      const portrait = preparePremiumCardPngExport(art, appearance, { width: 770, height: 1020 });
+      assert.match(portrait.markup, /viewBox="0 -242 1000 1642"/);
+      assert.match(portrait.markup, /width="1000" height="1642"/);
+      assert.deepEqual({ width: portrait.width, height: portrait.height }, { width: 2000, height: 3284 });
+      const moved = preparePremiumCardPngExport(
+        art,
+        { ...appearance, athleteScale: 1.45, athleteY: -.18 },
+        { width: 770, height: 1020 },
+      );
+      assert.ok(moved.height > portrait.height, 'top padding expands to preserve moved and enlarged avatars too');
+    } else {
+      assert.match(png.markup, /viewBox="0 0 1000 1400"/);
+      assert.deepEqual({ width: png.width, height: png.height }, { width: 2000, height: 2800 });
+    }
   }
 });
 test('Breakout keeps resized avatars intact outside the SVG card boundary', () => {

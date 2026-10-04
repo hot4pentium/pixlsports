@@ -210,10 +210,12 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, 'document.querySelector("[data-testid=background-removal-status]")?.textContent?.includes("Preparing a transparent athlete cutout") ?? false', Boolean, 5_000);
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
     await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-name-plate]")', Boolean, 10_000);
+    await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-breakout"]').click()`, session);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'breakout', 5_000);
     await connection.evaluate(`window.exportBlob=null;const create=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{if(b.type==='image/png')window.exportBlob=b;return create(b)};HTMLAnchorElement.prototype.click=function(){};document.querySelector('[data-testid="button-export-appearance-png"]').click()`, session);
     await waitFor(connection, session, '!!window.exportBlob', Boolean, 30_000);
-    const dimensions = await connection.evaluate(`(async()=>{const image=await createImageBitmap(window.exportBlob);return {width:image.width,height:image.height}})()`, session);
-    assert.deepEqual(dimensions, { width: 2000, height: 2800 });
+    const exportInfo = await connection.evaluate(`(async()=>{const image=await createImageBitmap(window.exportBlob);return {width:image.width,height:image.height}})()`, session);
+    assert.deepEqual(exportInfo, { width: 2000, height: 2800 }, 'the square fixture avatar fits its existing card viewport');
     if (process.env.PIXL_TEST_MODEL === '1') {
       await connection.evaluate('window.runRemoval(); true', session);
       await waitFor(connection, session, 'window.removalResult || null', Boolean, 190_000);
