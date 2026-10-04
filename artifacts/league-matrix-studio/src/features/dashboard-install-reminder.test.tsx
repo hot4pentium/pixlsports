@@ -10,7 +10,6 @@ function renderReminder(
 ) {
   return renderToStaticMarkup(createElement(DashboardInstallReminder, {
     action: 'instructions',
-    isIOS: false,
     showInstructions: false,
     onInstall: () => undefined,
     variant: 'mobile',
@@ -22,13 +21,13 @@ test('dashboard reminder presents a standalone install action', () => {
   const markup = renderReminder({ action: 'install' });
 
   assert.match(markup, /Install app/);
-  assert.match(markup, /aria-controls="dashboard-install-instructions-dialog"/);
-  assert.match(markup, /aria-expanded="false"/);
+  assert.doesNotMatch(markup, /aria-controls=/);
+  assert.doesNotMatch(markup, /aria-expanded=/);
   assert.doesNotMatch(markup, /Install Pixl Sports for one-tap access/);
 });
 
 test('dashboard reminder exposes the instructions dialog state accessibly', () => {
-  const markup = renderReminder({ showInstructions: true, isIOS: true });
+  const markup = renderReminder({ showInstructions: true });
 
   assert.match(markup, /aria-expanded="true"/);
   assert.match(markup, /aria-controls="dashboard-install-instructions-dialog"/);

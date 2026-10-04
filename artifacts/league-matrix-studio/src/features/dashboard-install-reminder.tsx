@@ -18,7 +18,6 @@ type InstallDeviceClass = 'mobile' | 'desktop';
 
 type DashboardInstallReminderProps = {
   action: ScheduleInstallAction;
-  isIOS: boolean;
   showInstructions: boolean;
   onInstall: (deviceClass: InstallDeviceClass) => void;
   variant: InstallDeviceClass;
@@ -26,7 +25,6 @@ type DashboardInstallReminderProps = {
 
 export function DashboardInstallReminder({
   action,
-  isIOS,
   showInstructions,
   onInstall,
   variant,
@@ -43,8 +41,8 @@ export function DashboardInstallReminder({
         type="button"
         className="dashboard-install-reminder__button"
         onClick={() => { void onInstall(variant); }}
-        aria-expanded={showInstructions}
-        aria-controls="dashboard-install-instructions-dialog"
+        aria-expanded={action === 'instructions' ? showInstructions : undefined}
+        aria-controls={action === 'instructions' ? 'dashboard-install-instructions-dialog' : undefined}
         aria-label={action === 'install' ? 'Install Pixl Sports' : 'Show Pixl Sports installation instructions'}
         data-testid={`button-dashboard-install-${variant}`}
       >

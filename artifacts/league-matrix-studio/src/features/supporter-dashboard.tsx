@@ -66,7 +66,10 @@ import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
 import { NotificationSettings } from './notification-settings';
-import { DashboardInstallReminder } from './dashboard-install-reminder';
+import {
+  DashboardInstallInstructionsDialog,
+  DashboardInstallReminder,
+} from './dashboard-install-reminder';
 import { useAppInstallPrompt } from './app-install-prompt';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
 import {
@@ -376,6 +379,7 @@ export function SupporterDashboardView({
     isIOS: installIsIOS,
     showInstructions: showInstallInstructions,
     handleInstall: handleInstallPrompt,
+    dismissInstructions: dismissInstallInstructions,
   } = useAppInstallPrompt();
   const ownedGameOnCardsQuery = useListOwnedGameOnCards({
     query: {
@@ -974,7 +978,6 @@ export function SupporterDashboardView({
     <>
       <DashboardInstallReminder
         action={installAction}
-        isIOS={installIsIOS}
         showInstructions={showInstallInstructions}
         onInstall={handleInstallPrompt}
         variant={variant}
@@ -1468,6 +1471,13 @@ export function SupporterDashboardView({
 
     </div>
       </div>
+      <DashboardInstallInstructionsDialog
+        open={showInstallInstructions}
+        isIOS={installIsIOS}
+        onOpenChange={(open) => {
+          if (!open) dismissInstallInstructions();
+        }}
+      />
       <SupporterDashboardChecklistCompletionDialog
         open={dashboardChecklistCompletionOpen}
         onOpenChange={setDashboardChecklistCompletionOpen}

@@ -974,8 +974,29 @@ test('dashboard empty game notice and install reminder work across screen sizes'
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector(\'[data-testid="dashboard-install-instructions-mobile"]\')?.textContent ?? ""',
+      'document.querySelector(\'[data-testid="dashboard-install-instructions-dialog"]\')?.textContent ?? ""',
       (text) => text.includes('Open your browser menu'),
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const dialog = document.querySelector('[data-testid="dashboard-install-instructions-dialog"]');
+        return dialog instanceof HTMLElement
+          && dialog.getAttribute('role') === 'dialog'
+          && Boolean(dialog.getAttribute('aria-labelledby'))
+          && Boolean(dialog.getAttribute('aria-describedby'));
+      })()`, page.sessionId),
+      true,
+      'installation guidance opens in a labelled and described dialog',
+    );
+    await connection.evaluate(
+      'document.querySelector(\'[data-testid="dashboard-install-instructions-dismiss"]\')?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      '!document.querySelector(\'[data-testid="dashboard-install-instructions-dialog"]\')',
+      Boolean,
     );
     const fallbackEvent = await connection.evaluate<boolean>(`window.__installAnalyticsEvents.some(({ name, data }) =>
       name === 'app_install_instructions_viewed'
@@ -1490,7 +1511,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?game-on-card-save-transition`);
 
-    for (const width of [320, 375, 390, 430, 639, 640, 768]) {
+    for (const width of [320, 375, 390, 430, 560, 639, 640, 768]) {
       const height = width === 768 ? 1024 : 844;
       await connection.send('Emulation.setDeviceMetricsOverride', {
         width,
@@ -1629,8 +1650,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerTop: 0,
         headerTopAfterScroll: 0,
         heroClearsHeader: true,
-        heroColumnCount: width < 360 ? 1 : 2,
-        heroCardsShareRow: width >= 360 && width < 640,
+        heroColumnCount: width < 640 ? 1 : 2,
+        heroCardsShareRow: false,
         heroCornerRadius: '24px',
         heroCardsContained: true,
         heroKickerFits: true,
