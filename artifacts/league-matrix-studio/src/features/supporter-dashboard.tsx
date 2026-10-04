@@ -19,8 +19,7 @@ import {
 } from '@workspace/api-client-react';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
-  Users, Activity,
-  ArrowRight, ArrowUpRight, PenSquare, Loader2, AlertTriangle, Camera, X,
+  Users, ArrowLeft, ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, X,
   Menu, RotateCcw, Bell, ShieldCheck
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
@@ -1283,20 +1282,10 @@ export function SupporterDashboardView({
               <span className="combined-actions-card__heading-mark" aria-hidden="true" />
               <span>Quick links</span>
             </div>
-            <div className="combined-actions-card__grid" data-testid="dashboard-primary-actions-grid">
-              <Link href={dashboardStatsHref} className="combined-actions-card__link" data-testid="link-mobile-independent-stats">
-                <span className="combined-actions-card__link-content">
-                  <span className="combined-actions-card__icon" aria-hidden="true"><Activity size={17} strokeWidth={2.2} /></span>
-                  <span className="combined-actions-card__label">View stats</span>
-                </span>
-                <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
-              </Link>
-              <Link href={fanCardHref} className="combined-actions-card__link" data-testid="link-mobile-independent-hype">
-                <span className="combined-actions-card__link-content">
-                  <span className="combined-actions-card__icon combined-actions-card__icon--hype" aria-hidden="true"><Zap size={17} strokeWidth={2.2} /></span>
-                  <span className="combined-actions-card__label">View HYPE Card</span>
-                </span>
-                <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
+            <div className="combined-actions-card__grid combined-actions-card__grid--single" data-testid="dashboard-primary-actions-grid">
+              <Link href={dashboardStatsHref} className="combined-actions-card__stats-link" data-testid="link-mobile-independent-stats">
+                <ArrowLeft size={16} aria-hidden="true" />
+                <span>View stats</span>
               </Link>
             </div>
           </section>
@@ -1387,20 +1376,10 @@ export function SupporterDashboardView({
           <span className="combined-actions-card__heading-mark" aria-hidden="true" />
           <span>Quick links</span>
         </div>
-        <div className="combined-actions-card__grid" data-testid="dashboard-primary-actions-grid">
-          <Link href={dashboardStatsHref} className="combined-actions-card__link" data-testid="link-desktop-independent-stats">
-            <span className="combined-actions-card__link-content">
-              <span className="combined-actions-card__icon" aria-hidden="true"><Activity size={17} strokeWidth={2.2} /></span>
-              <span className="combined-actions-card__label">View stats</span>
-            </span>
-            <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
-          </Link>
-          <Link href={fanCardHref} className="combined-actions-card__link" data-testid="link-desktop-independent-hype">
-            <span className="combined-actions-card__link-content">
-              <span className="combined-actions-card__icon combined-actions-card__icon--hype" aria-hidden="true"><Zap size={17} strokeWidth={2.2} /></span>
-              <span className="combined-actions-card__label">View HYPE Card</span>
-            </span>
-            <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
+        <div className="combined-actions-card__grid combined-actions-card__grid--single" data-testid="dashboard-primary-actions-grid">
+          <Link href={dashboardStatsHref} className="combined-actions-card__stats-link" data-testid="link-desktop-independent-stats">
+            <ArrowLeft size={16} aria-hidden="true" />
+            <span>View stats</span>
           </Link>
         </div>
       </section>
