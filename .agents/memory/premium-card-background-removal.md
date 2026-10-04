@@ -9,6 +9,12 @@ Keep background removal local to the device, preserve the original photo, and tr
 
 **How to apply:** Keep the original-photo fallback and an explicit retry available. Retain source identity checks when introducing new derivative-generation paths.
 
+Classic HYPE Cards always show the full original photo; only premium styles may use the background-removed cutout.
+
+**Why:** The user wants Classic to retain the photo's full background rather than display a transparent cutout.
+
+**How to apply:** Classic previews and live renders should use the original photo URL even when a cutout exists.
+
 Prebundle lazy browser-inference dependencies before the first upload in Vite development.
 
 **Why:** First-use optimization of Transformers.js caused a full page reload during inference; the pending worker promise disappeared even though the inference code itself was sound.

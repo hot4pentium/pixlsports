@@ -99,7 +99,7 @@
 - [Stale API client declarations](stale-api-client-declarations.md) — refresh API client project-reference declarations before diagnosing missing generated exports in consumer type checks.
 - [Live Taps and in-person QR access](live-taps-concept.md) — keep cheers separate from stats; only an owner-created, revocable family QR grants tap access, not the public card URL.
 - [Browser-native control testing](browser-native-control-fixtures.md) — drive file, color, and range controls through native Chromium interactions so React state and disabled semantics are tested correctly.
-- [Premium card cutout runtime](premium-card-background-removal.md) — keep removal local and originals intact; prebundle inference dependencies so first-use Vite reloads cannot abort uploads.
+- [Premium card cutout runtime](premium-card-background-removal.md) — Classic always uses the full photo; premium cutouts stay local, preserve originals, and must be ready before upload.
 - [Premium artwork layer resources](premium-artwork-layers.md) — each independently rendered SVG layer must define all resources it uses; verify background, foreground, and combined output.
 - [Breakout frame terminology](breakout-frame-terminology.md) — keep the silver outline as the only outer frame; remove both blue layers behind it.
 - [Designer HYPE Card navigation](designer-hype-card-navigation.md) — keep the designer's nav-strip dressing, but render the strip separately below premium card artwork.

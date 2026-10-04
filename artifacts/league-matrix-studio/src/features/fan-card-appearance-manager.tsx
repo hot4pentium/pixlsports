@@ -177,7 +177,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
     }
   };
   const displayAthleteName = resolveHypeCardAthleteName(profile.athleteName, invite.athleteName);
-  const previewCard = invite.cutoutUrl || invite.photoUrl;
+  const previewCard = invite.photoUrl;
   const svg = useMemo(() => draft.design === 'classic' ? '' : buildBrandedPremiumHypeCardArtwork({
     athleteName: displayAthleteName, teamName: invite.teamName, sport: invite.sport,
     jerseyNumber: draft.jerseyNumber, position: draft.position,
