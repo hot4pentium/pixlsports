@@ -244,6 +244,7 @@ test('Spotlight shows the full original photo in its placeholder and hides the n
   const input = {
     ...base,
     jerseyNumber: '12',
+    position: 'Keeper',
     photoUrl: 'data:image/png;base64,BBBB',
     appearance,
   };
@@ -257,12 +258,14 @@ test('Spotlight shows the full original photo in its placeholder and hides the n
     } else {
       assert.match(svg, /data-photo-placement="original" transform=/);
       assert.match(svg, /<image href="data:image\/png;base64,BBBB" x="90" y="170" width="820" height="850" preserveAspectRatio="xMidYMid meet"/);
+      assert.match(svg, /data-player-details="true"[^>]*>#12\s+\|\s+.*<\/text>/);
     }
   }
 
   const artwork = buildPremiumHypeCardArtwork(input);
   const png = preparePremiumCardPngExport(artwork, appearance, { width: 820, height: 1130 });
   assert.doesNotMatch(png.markup, /data-jersey-number/);
+  assert.match(png.markup, /data-player-details="true"[^>]*>#12\s+\|\s+.*<\/text>/);
   assert.match(png.markup, /preserveAspectRatio="xMidYMid meet"/);
 });
 test('Spotlight number centering follows the height of short and wrapped name blocks', () => {
@@ -321,9 +324,11 @@ test('Breakout exposes frame and avatar controls while fixing the name plate abo
 
   const originalPhoto = buildPremiumHypeCardArtwork({
     ...base,
+    position: 'Keeper',
     photoUrl: 'data:image/png;base64,BBBB',
     appearance: { ...appearance, removeBackground: false },
   });
   assert.doesNotMatch(originalPhoto, /data-photo-placement="cutout"/);
   assert.match(originalPhoto, /data-photo-placement="original"/);
+  assert.match(originalPhoto, /data-player-details="true"[^>]*>#01\s+\|\s+.*<\/text>/);
 });

@@ -206,6 +206,10 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const position = (input.position || a.position || '').trim().toUpperCase();
   const jersey = (input.jerseyNumber || a.jerseyNumber || '').trim().replace(/^#/, '');
   const team = (input.teamName || '').trim().toUpperCase();
+  const compactDetails = [
+    jersey && a.removeBackground === false ? `#${jersey}` : '',
+    position,
+  ].filter(Boolean).join('  |  ');
   const card = { x: 14, y: 14, w: 972, h: 1372 };
   const win = { x: 90, y: 170, w: 820, h: 850 };
   const nm = fitName(input.athleteName || 'Athlete', 720, 170, 100, 120);
@@ -272,7 +276,7 @@ ${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}
 <rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="26" filter="url(#s-grain2)" opacity=".6"/>
 ${nameText(nm.lines, plate.x + 40, nameY, nm.size, nm.tl, NAVY)}
 ${team ? `<text x="${plate.x + 44}" y="${detailY}" font-family="${FONT_TEXT}" font-weight="700" font-size="30" letter-spacing="6" fill="${NAVY}">${escapeXml(team.slice(0, 26))}</text><line x1="${plate.x + 44}" y1="${detailY + 22}" x2="${plate.x + 134}" y2="${detailY + 22}" stroke="${accent}" stroke-width="4"/>` : ''}
-${position ? (team ? `<line x1="${splitX - 20}" y1="${detailY - 32}" x2="${splitX - 20}" y2="${detailY + 12}" stroke="${NAVY}" stroke-opacity=".6" stroke-width="2"/>` : '') + `<text x="${plate.x + plate.w - 40}" y="${detailY}" text-anchor="end" font-family="${FONT_TEXT}" font-weight="700" font-size="26" letter-spacing="5" fill="${NAVY}">${escapeXml(position.slice(0, 22))}</text>` : ''}
+  ${compactDetails ? (team ? `<line x1="${splitX - 20}" y1="${detailY - 32}" x2="${splitX - 20}" y2="${detailY + 12}" stroke="${NAVY}" stroke-opacity=".6" stroke-width="2"/>` : '') + `<text data-player-details="true" x="${plate.x + plate.w - 40}" y="${detailY}" text-anchor="end" font-family="${FONT_TEXT}" font-weight="700" font-size="26" letter-spacing="5" fill="${NAVY}">${escapeXml(compactDetails.slice(0, 28))}</text>` : ''}
 </g>`;
   return (layer !== 'fg' ? bg : '') + (layer !== 'bg' ? fg : '');
 }
@@ -282,6 +286,11 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
   const border = hex(a.borderColor, '#B7C4D4'), accent = hex(a.accentColor, '#26A9FF');
   const sport = (input.sport || '').trim().toUpperCase();
   const team = (input.teamName || '').trim().toUpperCase();
+  const position = (input.position || a.position || '').trim().toUpperCase();
+  const jersey = (input.jerseyNumber || a.jerseyNumber || '').trim().replace(/^#/, '');
+  const compactDetails = a.removeBackground === false
+    ? [jersey ? `#${jersey}` : '', position].filter(Boolean).join('  |  ')
+    : '';
   const win = { x: 108, y: 150, w: 784, h: 820 };
   // Two lines share the fixed plate with the team label at y=1129.
   const nm = fitName(input.athleteName || 'Athlete', 760, 132, 96, 68);
@@ -323,7 +332,9 @@ ${initialsArt(input, 500, 560, accent)}
   const plate = `<g data-card-layer="name-plate" data-position="fixed" transform="translate(0 126)" filter="url(#b-name-shadow)"><path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="10" stroke-linejoin="round"/>
 <path d="M156 956H844" stroke="#FFFFFF" stroke-opacity=".24" stroke-width="2"/>
 ${nameText(nm.lines, 500, nameY, nm.size, nm.tl, '#F7F9FC', 'middle')}
-${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><text x="500" y="1129" text-anchor="middle" font-family="${FONT_TEXT}" font-size="30" font-weight="700" letter-spacing="8" fill="#DFE8F4">${escapeXml(team.slice(0, 24))}</text>` : ''}</g>`;
+  ${team || compactDetails ? `<path d="M156 1114h688" stroke="${accent}" stroke-opacity=".75" stroke-width="3"/>` : ''}
+  ${team ? `<text x="${compactDetails ? 176 : 500}" y="1144" text-anchor="${compactDetails ? 'start' : 'middle'}" font-family="${FONT_TEXT}" font-size="27" font-weight="700" letter-spacing="6" fill="#DFE8F4">${escapeXml(team.slice(0, compactDetails ? 17 : 24))}</text>` : ''}
+  ${compactDetails ? `<text data-player-details="true" x="824" y="1144" text-anchor="end" font-family="${FONT_TEXT}" font-size="25" font-weight="700" letter-spacing="4" fill="#DFE8F4">${escapeXml(compactDetails.slice(0, 26))}</text>` : ''}</g>`;
   const fg = `<defs><linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient><linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>${shadowFilter('b-cut', 14, 10, .42)}${shadowFilter('b-name-shadow', 8, 7, .6)}</defs>
 <g id="breakout-fg">
 <g data-card-layer="frame">${logo(input, 92, 62, 148)}${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
