@@ -25,4 +25,4 @@ Allow owners to choose a preset backdrop behind background-removed athletes inst
 
 **Why:** The user reported that the default venue did not match the athlete’s sport and supplied alternate background artwork for selection.
 
-**How to apply:** Keep a sport-matched default available, preserve the original photo, and carry the chosen backdrop consistently through the editor, shared card, and exports.
+**How to apply:** Keep a sport-matched default available, preserve the original photo, and carry the chosen backdrop consistently through the editor, shared card, and exports. On Spotlight, the chosen backdrop belongs inside the inner frame behind the avatar, not only on the outer shell.

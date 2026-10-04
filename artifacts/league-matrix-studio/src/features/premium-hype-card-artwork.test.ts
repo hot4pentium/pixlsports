@@ -29,6 +29,27 @@ test('sport backgrounds keep soccer goals out of baseball and football cards', (
   }
 });
 
+test('Spotlight paints the chosen backdrop inside its photo frame, above the opaque bezel and below the athlete', () => {
+  for (const background of ['sport', 'stadium', 'tunnel', 'studio'] as const) {
+    const appearance = { ...defaultCardAppearance('spotlight'), background };
+    const input = { athleteName: 'Player', sport: 'baseball', appearance, backgroundUrl: 'data:image/webp;base64,AAAA', cutoutUrl: 'data:image/png;base64,BBBB' };
+    for (const layer of ['all', 'bg'] as const) {
+      const svg = buildPremiumHypeCardArtwork(input, layer);
+      const window = svg.match(/<g data-spotlight-window-background="true"[^>]*>([\s\S]*?)<\/g>/)?.[1] ?? '';
+      assert.ok(window, 'the inner frame has its own backdrop');
+      assert.ok(svg.indexOf('data-spotlight-window-background') > svg.indexOf('fill="#050A14" stroke="url(#s-bezel)"'));
+      if (background === 'sport') assert.match(window, /s-window-venue/);
+      else assert.match(window, new RegExp(`data-card-background="${background}"`));
+      if (layer === 'all') {
+        assert.ok(svg.indexOf('data-spotlight-window-background') < svg.indexOf('data-photo-placement="cutout"'));
+        assert.match(preparePremiumCardPngExport(svg, appearance).markup, /data-spotlight-window-background="true"/);
+      }
+    }
+    const original = buildPremiumHypeCardArtwork({ ...input, appearance: { ...appearance, removeBackground: false } });
+    assert.doesNotMatch(original, /data-spotlight-window-background/);
+  }
+});
+
 test('selected backgrounds compose behind athletes and remain embedded in PNG artwork', () => {
   const backgroundUrl = 'data:image/webp;base64,AAAA';
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {

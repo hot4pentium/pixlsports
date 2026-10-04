@@ -259,6 +259,7 @@ ${a.removeBackground === false ? '' : photoFallback(input, { x: card.x, y: card.
 ${jersey && a.removeBackground !== false ? `<g data-card-layer="jersey-number"><text data-jersey-number="true" x="500" y="${numberBaseline.toFixed(2)}" text-anchor="middle" font-family="${FONT_NUMBER}" font-weight="400" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" stroke="${IVORY}" stroke-opacity=".85" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
 <g data-card-layer="photo-frame" data-photo-frame-theme="spotlight" filter="url(#s-frame-shadow)">
 <rect x="${win.x - 20}" y="${win.y - 20}" width="${win.w + 40}" height="${win.h + 40}" rx="58" fill="#050A14" stroke="url(#s-bezel)" stroke-width="12"/>
+${a.removeBackground !== false ? `<g data-spotlight-window-background="true" clip-path="url(#s-win)">${backdrop(input, 's-window-venue', win.x, win.y, win.w, win.h, true)}</g>` : ''}
 <rect x="${win.x - 8}" y="${win.y - 8}" width="${win.w + 16}" height="${win.h + 16}" rx="48" fill="none" stroke="${accent}" stroke-opacity=".68" stroke-width="4"/>
 <path d="M${win.x + 32} ${win.y - 20}H${win.x + 220}M${win.x + win.w - 220} ${win.y - 20}H${win.x + win.w - 32}" stroke="#F8F1E3" stroke-width="4" opacity=".75"/>
 <path d="M${win.x - 20} ${win.y + 90}V${win.y + 240}M${win.x + win.w + 20} ${win.y + win.h - 240}V${win.y + win.h - 90}" stroke="${accent}" stroke-width="12" stroke-linecap="round"/>

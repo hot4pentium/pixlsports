@@ -27,6 +27,8 @@ import './src/index.css';
 import './src/features/living-athlete-card.css';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
 let saved=JSON.parse(localStorage.getItem('premium-test-settings')||'null')||defaultCardAppearance(new URLSearchParams(location.search).has('classic-preview')?'classic':new URLSearchParams(location.search).has('spotlight-preview')?'spotlight':'gallery');
+const requestedBackground=new URLSearchParams(location.search).get('background');
+if(['stadium','tunnel','studio'].includes(requestedBackground))saved={...saved,background:requestedBackground,removeBackground:true};
 if(new URLSearchParams(location.search).has('nameplate-overlap'))saved={...saved,athleteY:.12,athleteScale:1.2};
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(url,init)=>{
@@ -375,6 +377,10 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] [data-card-background]")?.getAttribute("data-card-background")', value => value === 'studio', 10_000);
     assert.equal(await connection.evaluate(`document.querySelector('.living-card-frame[data-design="gallery"] [data-card-background]')?.getAttribute('data-card-background')`, session), 'studio', 'saved background reaches the live card after reopening');
+    assert.equal(await connection.evaluate(`document.querySelector('.living-card-frame[data-design="spotlight"] [data-photo-frame-theme="spotlight"] [data-spotlight-window-background] [data-card-background]')?.getAttribute('data-card-background')`, session), 'studio', 'Spotlight places the chosen backdrop inside the frame behind the athlete');
+    await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-spotlight"]').click()`, session);
+    await connection.evaluate(`const toggle=document.querySelector('[data-testid="toggle-remove-background"] input');if(!toggle.checked)toggle.click();`, session);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] [data-spotlight-window-background] [data-card-background]")?.getAttribute("data-card-background")', value => value === 'studio', 5_000);
     await connection.evaluate(`(()=>{
       const NativeImage=window.Image;
       window.backgroundExportMarkup=null;
@@ -384,7 +390,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       document.querySelector('[data-testid="button-export-appearance-png"]').click();
     })()`, session);
     await waitFor(connection, session, 'window.backgroundExportMarkup', Boolean, 10_000);
-    assert.equal(await connection.evaluate(`window.backgroundExportMarkup.includes('data-card-background="studio"') && window.backgroundExportMarkup.includes('data:image/webp;base64,')`, session), true, 'PNG export embeds the saved preset rather than referencing an external asset');
+    assert.equal(await connection.evaluate(`window.backgroundExportMarkup.includes('data-spotlight-window-background="true"') && window.backgroundExportMarkup.includes('data-card-background="studio"') && window.backgroundExportMarkup.includes('data:image/webp;base64,')`, session), true, 'Spotlight PNG export embeds the chosen background inside the athlete frame');
     await waitFor(connection, session, 'document.querySelector("[data-testid=button-export-appearance-png]")?.disabled', value => value === false, 15_000);
     await connection.evaluate(`document.querySelector('[data-testid="button-card-background-sport"]').click()`, session);
     await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-card-background]")', value => value === false, 5_000);
