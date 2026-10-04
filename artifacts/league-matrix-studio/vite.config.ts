@@ -23,6 +23,52 @@ if (Number.isNaN(port) || port <= 0) {
 const basePath = process.env.BASE_PATH;
 const dashboardHeroSizeBudget = 80 * 1024;
 
+function previewStartupDiagnostics(): Plugin {
+  return {
+    name: 'preview-startup-diagnostics',
+    apply: 'serve',
+    configureServer(server) {
+      const endpoint = `${basePath!.replace(/\/$/, '')}/__pixl-preview-startup`;
+      let reportCount = 0;
+      server.middlewares.use((request, response, next) => {
+        if (request.url?.split('?')[0] !== endpoint) return next();
+        if (request.method !== 'POST') {
+          response.writeHead(405).end();
+          return;
+        }
+        let body = '';
+        request.on('data', (chunk) => {
+          body += chunk.toString();
+          if (body.length > 2048) request.destroy();
+        });
+        request.on('end', () => {
+          try {
+            const report = JSON.parse(body);
+            if (!['html', 'app'].includes(report.phase)
+              || !['iOS', 'other'].includes(report.browser)
+              || typeof report.detail !== 'string') {
+              response.writeHead(400).end();
+              return;
+            }
+            if (reportCount++ < 100) {
+              const detail = report.detail
+                .replace(/https?:\/\/[^\s"'<>]+/g, '[module URL]')
+                .replace(/[\r\n\x00-\x1f]/g, ' ')
+                .slice(0, 240);
+              server.config.logger.warn(`[Pixl preview startup] ${JSON.stringify({
+                phase: report.phase, browser: report.browser, detail,
+              })}`);
+            }
+            response.writeHead(204, { 'Cache-Control': 'no-store' }).end();
+          } catch {
+            response.writeHead(400).end();
+          }
+        });
+      });
+    },
+  };
+}
+
 function dashboardHeroAssetGuard(): Plugin {
   return {
     name: 'dashboard-hero-asset-guard',
@@ -124,6 +170,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    previewStartupDiagnostics(),
     dashboardHeroAssetGuard(),
     offlineShellPrecache(),
     ...(process.env.NODE_ENV !== 'production' &&

@@ -66,10 +66,29 @@
         const message = document.getElementById('app-boot-message');
         const retry = document.getElementById('app-boot-retry');
         let booted = false;
+        let phase = 'html';
+        let failure = '';
+        let reports = 0;
+        const reportFailure = () => {
+          if ('%MODE%' !== 'development' || reports >= 3) return;
+          reports += 1;
+          const detail = failure.replace(/https?:\/\/[^\s"'<>]+/g, '[module URL]').slice(0, 240);
+          const browser = /iPhone|iPad|iPod/.test(navigator.userAgent || '') ? 'iOS' : 'other';
+          // No account, page URL, storage contents, or authentication data.
+          void window.fetch('%BASE_URL%__pixl-preview-startup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phase, detail, browser }),
+            cache: 'no-store',
+          }).catch(() => {});
+        };
         const showRetry = () => {
           if (booted || !fallback || !message || !retry) return;
-          message.textContent = 'The preview did not finish connecting. Reconnect the preview and try again.';
+          message.textContent = '%MODE%' === 'development'
+            ? `The app could not start (${phase}). ${failure || 'Startup files have not finished loading.'}`
+            : 'The preview did not finish connecting. Reconnect the preview and try again.';
           retry.hidden = false;
+          reportFailure();
         };
         retry?.addEventListener('click', async () => {
           retry.disabled = true;
@@ -111,8 +130,22 @@
           window.clearTimeout(timeout);
           window.clearTimeout(slowTimeout);
         }, { once: true });
-        window.addEventListener('error', showRetry, { once: true });
-        window.addEventListener('unhandledrejection', showRetry, { once: true });
+        window.addEventListener('leagueMatrix:starting', () => { phase = 'app'; }, { once: true });
+        window.addEventListener('leagueMatrix:boot-error', (event) => {
+          failure = String(event.detail || 'App module failed to load.').slice(0, 240);
+          showRetry();
+        }, { once: true });
+        window.addEventListener('error', (event) => {
+          if (booted) return;
+          // Optional images/fonts must not be mistaken for an app startup failure.
+          if (event.target !== window && event.target?.tagName !== 'SCRIPT') return;
+          failure = event.message || 'A startup script could not be downloaded.';
+          showRetry();
+        }, true);
+        window.addEventListener('unhandledrejection', (event) => {
+          failure = String(event.reason?.message || event.reason || 'Startup failed.').slice(0, 240);
+          showRetry();
+        }, { once: true });
         const slowTimeout = window.setTimeout(() => {
           if (booted || !message || !retry) return;
           message.textContent = 'The dev site is taking longer to load. You can keep waiting or reconnect.';
@@ -121,6 +154,6 @@
         const timeout = window.setTimeout(showRetry, 30000);
       })();
     </script>
-    <script type="module" src="./src/main.tsx"></script>
+    <script type="module" src="./src/bootstrap.ts"></script>
   </body>
 </html>

@@ -19,6 +19,8 @@ function harness(mode = 'development') {
   const deleted: string[] = [];
   const timers: { fn: () => void; delay: number }[] = [];
   const destinations: string[] = [];
+  const reports: any[] = [];
+  const listeners: Record<string, (event: any) => void> = {};
   const window = {
     location: {
       href: 'https://example.com/studio/fan/card?keep=1',
@@ -29,7 +31,8 @@ function harness(mode = 'development') {
       keys: async () => ['pixl-sports-shell-v1', 'other-app-cache'],
       delete: async (name: string) => { deleted.push(name); return true; },
     },
-    addEventListener: () => {},
+    addEventListener: (name: string, fn: (event: any) => void) => { listeners[name] = fn; },
+    fetch: async (_url: string, options: any) => { reports.push(JSON.parse(options.body)); },
     clearTimeout: () => {},
     setTimeout: (fn: () => void, delay: number) => { timers.push({ fn, delay }); return timers.length; },
   };
@@ -40,7 +43,7 @@ function harness(mode = 'development') {
         .map((scope) => ({ scope, unregister: async () => { unregistered.push(scope); return true; } })) } },
     URL, Date, console,
   });
-  return { click: () => click(), elements, timers, destinations, unregistered, deleted };
+  return { click: () => click(), elements, timers, destinations, unregistered, deleted, reports, listeners };
 }
 
 test('dev reconnect recovers before the app module without deleting unrelated caches or workers', async () => {
@@ -68,4 +71,20 @@ test('production reconnect preserves the installed offline shell', async () => {
   assert.deepEqual(state.unregistered, []);
   assert.deepEqual(state.deleted, []);
   assert.deepEqual(state.destinations, ['reload']);
+});
+
+test('startup import failures are visible and reported without page or module URLs', () => {
+  const state = harness();
+  state.listeners['leagueMatrix:starting']({});
+  state.listeners['leagueMatrix:boot-error']({ detail: 'TypeError: Failed to load https://example.com/src/main.tsx?private=token' });
+  assert.match(state.elements['app-boot-message'].textContent, /TypeError: Failed to load/);
+  assert.equal(state.reports[0].phase, 'app');
+  assert.equal(state.reports[0].detail, 'TypeError: Failed to load [module URL]');
+  assert.equal(JSON.stringify(state.reports).includes('keep=1'), false);
+});
+
+test('production boot failures are not sent to dev diagnostics', () => {
+  const state = harness('production');
+  state.listeners['leagueMatrix:boot-error']({ detail: 'Could not import app' });
+  assert.equal(state.reports.length, 0);
 });
