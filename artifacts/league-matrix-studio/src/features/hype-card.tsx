@@ -3362,7 +3362,9 @@ export function HypeCardEditor() {
                   {project.cardAppearance.design !== 'classic' && <HypeCardRepositionPreview appearance={project.cardAppearance} moving={positioningPhoto} onChange={(appearance) => updateProject('cardAppearance', appearance)}>
                     <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
                   </HypeCardRepositionPreview>}
-                  <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} onChange={(cardAppearance) => setProject((current) => ({
+                  <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} disabled={backgroundRemovalBusy} canEnableBackgroundRemoval={!!project.mediaId && !!project.photo} onEnableBackgroundRemoval={() => {
+                    if (!project.breakoutCutout) void preparePremiumCutout(project.mediaId, project.photo);
+                  }} onChange={(cardAppearance) => setProject((current) => ({
                     ...current, cardAppearance, cardSport: current.cardSport || profile.sport || '',
                     jerseyNumber: cardAppearance.jerseyNumber, position: cardAppearance.position,
                   }))} placementActions={<div>

@@ -153,6 +153,13 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate<string>(plateTransform, session), movedPlate, 'saved name plate position survives reopening');
     await connection.evaluate(`document.querySelector('[data-testid="button-layer-frame"]').click()`, session);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').disabled`, session), true, 'the frame is a fixed layer');
+    await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html?fallback=1' }, session);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=button-remove-card-background]")', Boolean, 10_000);
+    if (await connection.evaluate(`${backgroundToggle}.checked`, session)) await connection.evaluate(`${backgroundToggle}.click()`, session);
+    await connection.evaluate(`${backgroundToggle}.click()`, session);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=background-removal-status]")?.textContent?.includes("Preparing a transparent athlete cutout") ?? false', Boolean, 5_000);
+    await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=button-layer-name-plate]")', Boolean, 10_000);
     await connection.evaluate(`window.exportBlob=null;const create=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{if(b.type==='image/png')window.exportBlob=b;return create(b)};HTMLAnchorElement.prototype.click=function(){};document.querySelector('[data-testid="button-export-appearance-png"]').click()`, session);
     await waitFor(connection, session, '!!window.exportBlob', Boolean, 30_000);
     const dimensions = await connection.evaluate(`(async()=>{const image=await createImageBitmap(window.exportBlob);return {width:image.width,height:image.height}})()`, session);

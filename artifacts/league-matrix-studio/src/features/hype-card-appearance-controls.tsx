@@ -53,7 +53,7 @@ function HexField({ value, label, disabled, onValid }: { value: string; label: s
 
 const slider = 'w-full accent-[#EF3996] min-h-11';
 
-export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Athlete placement', showAthleteSize = true, showResetButton = true, onResetPlacement }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void }) {
+export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Athlete placement', showAthleteSize = true, showResetButton = true, onResetPlacement, canEnableBackgroundRemoval = true, onEnableBackgroundRemoval }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void; canEnableBackgroundRemoval?: boolean; onEnableBackgroundRemoval?: () => void }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set(appearance.accentLinked ? { borderColor: c, accentColor: c } : { borderColor: c });
   const swatches = (current: string, apply: (c: string) => void, label: string) => (
@@ -121,10 +121,14 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
         </div>
         <div className="rounded-lg border border-white/15 bg-white/5 p-3">
           <label className="flex min-h-11 items-center gap-3 text-sm font-bold" data-testid="toggle-remove-background">
-            <input type="checkbox" className="h-5 w-5" checked={appearance.removeBackground} disabled={disabled} onChange={(e) => set({ removeBackground: e.target.checked })} />
+            <input type="checkbox" className="h-5 w-5" checked={appearance.removeBackground} disabled={disabled || (!appearance.removeBackground && !canEnableBackgroundRemoval)} onChange={(e) => {
+              const enabled = e.target.checked;
+              set({ removeBackground: enabled });
+              if (enabled && !appearance.removeBackground) onEnableBackgroundRemoval?.();
+            }} />
             Remove photo background
           </label>
-          <p className="text-xs leading-relaxed text-white/65">Keep the original photo safe. When a cutout is ready, turn this off to place the full photo inside the frame instead.</p>
+          <p className="text-xs leading-relaxed text-white/65">Checking starts local background removal when a cutout is needed. Turn it off to use the full original photo; the original is always kept.</p>
         </div>
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>

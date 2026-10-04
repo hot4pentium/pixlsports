@@ -234,6 +234,8 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
           placementLabel={selectedLayer === 'name-plate' ? 'Name plate placement' : selectedLayer === 'frame' ? 'Frame layer' : 'Avatar placement'}
           showAthleteSize={selectedLayer === 'avatar'}
           showResetButton={selectedLayer !== 'frame'}
+          canEnableBackgroundRemoval={!!invite.photoUrl && !!invite.photoRevision}
+          onEnableBackgroundRemoval={() => { if (!usableCutout) void removeBackground(); }}
           onResetPlacement={() => {
             setDraft((current) => selectedLayer === 'avatar'
               ? normalizeCardAppearance({ ...current, athleteScale: 1, athleteX: 0, athleteY: 0 })
