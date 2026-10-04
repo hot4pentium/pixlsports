@@ -46,7 +46,7 @@
 .living-card-eyebrow, .living-card-overline { display: block; font-size: 10px; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; color: var(--lc-sky); }
 .living-card-layout { display: grid; grid-template-columns: minmax(0, 660px) minmax(280px, 1fr); gap: clamp(32px, 5vw, 84px); align-items: start; }
 .living-card-layout-solo { grid-template-columns: minmax(0, 660px); justify-content: center; }
-.living-card-stage { min-width: 0; }
+.living-card-stage { min-width: 0; width: 92%; margin-inline: auto; }
 .living-card-frame-outer { position: relative; padding: 9px; border: 1px solid #9fcaef62; border-radius: 25px; background: linear-gradient(130deg, #a4cdeb6b, #152c49 23%, #0b2039 77%, #ff784977); box-shadow: 0 31px 75px #010811aa, 0 0 0 7px #91c8f40a; }
 .living-card-frame-outer::after { content: ''; position: absolute; top: 16px; bottom: 16px; right: -18px; width: 1px; background: linear-gradient(transparent, #80bcf594, transparent); }
 .living-card-frame { position: relative; height: clamp(580px, 66vw, 790px); border: 1px solid #ffffff35; border-radius: 17px; overflow: hidden; background: radial-gradient(circle at 90% 0%, #2354869c, transparent 50%), linear-gradient(155deg, #113458, #081a30 75%); -webkit-perspective: 1400px; perspective: 1400px; }
@@ -321,7 +321,7 @@
 @keyframes lc-shimmer { to { background-position-x: -220%; } }
 @media (max-width: 800px) {
   .living-card-layout { grid-template-columns: 1fr; gap: 46px; }
-  .living-card-stage { max-width: 590px; width: 100%; margin: auto; }
+  .living-card-stage { max-width: 543px; width: 92%; margin: auto; }
   .living-card-story { max-width: 590px; width: 100%; margin: auto; }
   .living-card-frame { height: min(144vw, 790px); min-height: 540px; }
   .living-card-skeleton { grid-template-columns: 1fr; }
