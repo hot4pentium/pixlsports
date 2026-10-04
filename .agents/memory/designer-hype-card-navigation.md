@@ -3,8 +3,8 @@ name: Designer HYPE Card navigation
 description: User-approved presentation of the premium card preview's Replies, Stats, Taps, and Events strip.
 ---
 
-Keep the HYPE Card designer's nav-strip dressing, but render its strip separately below the premium card artwork rather than baking it into that on-page preview. Exported PNGs contain card artwork only, without the navigation strip.
+The saved Spotlight preview must use the real HYPE Card navigation bar: a rounded panel with four icon-and-label controls. Render it below the card artwork as a decorative, static version, not as the exported SVG strip. Keep PNG exports to card artwork only and preserve the public card's interactive controls.
 
-**Why:** The user likes the nav card dressing shown in the designer, explicitly asked for the strip to be separate, and then specified that PNG exports should omit it.
+**Why:** The user rejected the exported SVG strip because it did not match the real navigation bar shown in their reference.
 
-**How to apply:** Preserve the appearance and labels in the on-page preview, keep exported PNGs free of navigation UI, and retain the public card's interactive controls. The supporter dashboard's saved-card preview also shows the decorative strip for Spotlight only. For Breakout PNGs, calculate above-frame bleed from the cutout's natural dimensions and current placement; the image's aspect ratio changes whether it actually extends beyond the frame.
+**How to apply:** Share the real control items and Spotlight styling between the public card and saved preview. In the saved preview, keep the bar aria-hidden and non-interactive so it does not nest buttons inside the card link. Keep exported PNGs free of navigation UI. For Breakout PNGs, calculate above-frame bleed from the cutout's natural dimensions and current placement; the image's aspect ratio changes whether it actually extends beyond the frame.

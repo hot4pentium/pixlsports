@@ -4420,7 +4420,8 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
           const action = event.querySelector('[data-testid="button-open-featured-game-card-mobile"]');
           const navLink = slot.querySelector('[data-testid="link-mobile-hype-preview"]');
           const nav = slot.querySelector('[data-testid="saved-card-navigation"]');
-          const navLabels = Array.from(nav?.querySelectorAll('text') ?? []).map((label) => label.textContent?.trim());
+          const navLabels = Array.from(nav?.querySelectorAll('.living-card-control') ?? [])
+            .map((label) => label.textContent?.replace('👍', '').trim());
           const quickHypeLink = document.querySelector('[data-testid="link-mobile-independent-hype"]');
           return { equal: Math.abs(a.width-b.width)<1, paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
             cardsAligned: Math.abs(eventCard.width-c.width)<1 && Math.abs(eventCard.height-c.height)<1 && Math.abs(eventCard.top-c.top)<1,
@@ -4431,13 +4432,15 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
             cardPreviewStillLinks: navLink instanceof HTMLAnchorElement && Boolean(navLink.getAttribute('href')),
             navigationStateCorrect: '${design}' === 'spotlight'
               ? !!nav && nav.closest('a') === navLink && nav.getAttribute('aria-hidden') === 'true'
+                && nav.classList.contains('living-card-stage') && nav.dataset.design === 'spotlight'
+                && !!nav.querySelector('.living-card-controls[aria-hidden="true"]')
                 && nav.previousElementSibling === card && nav.nextElementSibling?.classList.contains('supporter-hype-preview__open')
               : nav === null,
             navigationVisible: !nav || nav.getBoundingClientRect().height >= 16,
             navigationLabels: navLabels,
             nativeArt: '${design}'==='classic' ? !!card.querySelector('.living-card-face') : !!card.querySelector('svg'),
             spillover: '${design}'==='classic' || getComputedStyle(card.querySelector('.living-card-premium-face')).overflow==='visible',
-            noControls: !slot.querySelector('.living-card-controls'),
+            noInteractiveControls: !slot.querySelector('[data-testid="saved-card-navigation"] button'),
             preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies'),
             desktopInboxRetained: !!document.querySelector('.supporter-game-on-summary--desktop .supporter-game-on-summary__replies') };
         })()`);
@@ -4445,8 +4448,8 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
           hypeQuickLinkRemoved: true, cardPreviewStillLinks: true,
           navigationStateCorrect: true,
           navigationVisible: true,
-          navigationLabels: design === 'spotlight' ? ['REPLIES', 'STATS', 'TAPS', 'EVENTS'] : [],
-          nativeArt: true, spillover: true, noControls: true, preserved: true, desktopInboxRetained: true }, `${design} at ${width}px`);
+          navigationLabels: design === 'spotlight' ? ['Replies', 'Stats', 'Taps', 'Events'] : [],
+          nativeArt: true, spillover: true, noInteractiveControls: true, preserved: true, desktopInboxRetained: true }, `${design} at ${width}px`);
         if (design === 'spotlight' && width === 390) {
           const screenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
           await writeFile('/tmp/supporter-hype-pair-390.png', Buffer.from(screenshot.data, 'base64'));

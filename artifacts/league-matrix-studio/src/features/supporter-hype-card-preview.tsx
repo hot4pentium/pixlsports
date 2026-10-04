@@ -1,10 +1,10 @@
-import { useId, useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 import { ArrowUpRight, Loader2 } from 'lucide-react';
 import type { OwnedAthleteInvite } from '@workspace/api-client-react';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { LivingCardControls } from './living-card-controls';
 import { normalizeCardAppearance } from './hype-card-appearance';
-import { buildPremiumNavStripPreview } from './premium-hype-card-artwork';
 import './supporter-hype-card-preview.css';
 
 type Props = {
@@ -32,13 +32,10 @@ export function SupporterHypeCardPreview({
   onRetry,
 }: Props) {
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
-  const navId = useId().replace(/[^A-Za-z0-9_-]/g, '');
   const unavailable = card?.paused || card?.showHypeCard === false;
   const appearance = card?.cardAppearance ? normalizeCardAppearance(card.cardAppearance) : null;
   const design = appearance?.design ?? 'classic';
-  const spotlightNavigation = appearance?.design === 'spotlight'
-    ? buildPremiumNavStripPreview(appearance, `saved${navId}`)
-    : '';
+  const spotlightNavigation = appearance?.design === 'spotlight';
   return (
     <section className="supporter-hype-preview" aria-label="Saved HYPE Card" data-testid="mobile-saved-hype-card">
       <span className="supporter-hype-preview__label">HYPE CARD</span>
@@ -100,11 +97,14 @@ export function SupporterHypeCardPreview({
           </div>
           {spotlightNavigation && (
             <div
-              className="supporter-hype-preview__navigation"
+              className="supporter-hype-preview__navigation living-card-stage"
+              data-design="spotlight"
               aria-hidden="true"
               data-testid="saved-card-navigation"
-              dangerouslySetInnerHTML={{ __html: spotlightNavigation }}
-            />
+              style={{ '--pixl-accent': appearance.accentColor } as CSSProperties}
+            >
+              <LivingCardControls decorative />
+            </div>
           )}
           <span className="supporter-hype-preview__open">View card<ArrowUpRight size={14} aria-hidden="true" /></span>
         </Link>

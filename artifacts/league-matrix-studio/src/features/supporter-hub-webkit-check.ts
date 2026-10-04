@@ -131,7 +131,7 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
         typeSupported: CSS.supports('font-size','12cqw'),
         typeScales: !name || (parseFloat(getComputedStyle(name).fontSize)/c.width>.10
           && parseFloat(getComputedStyle(name).fontSize)/c.width<.14),
-        noControls: !slot.querySelector('.living-card-controls'),
+        noControls: !slot.querySelector('[data-testid="saved-card-navigation"] button'),
         safeState: !!surface || !slot.querySelector('svg image'),
       };
     })()`);
