@@ -31,6 +31,9 @@ const tasks: DemoTask[] = [
   { id: "hypes", title: "Fan Shoutouts", description: "See messages from fans", Icon: MessageCircle, badge: "3 received" },
 ];
 
+const designOptions = ["Classic", "Gallery", "Spotlight", "Breakout"] as const;
+type DemoDesign = typeof designOptions[number];
+
 function TaskCard({
   task,
   index,
@@ -97,6 +100,13 @@ function TaskCard({
 function DesignPanel() {
   const [scale, setScale] = useState(100);
   const [accent, setAccent] = useState("#c4e64b");
+  const [design, setDesign] = useState<DemoDesign>("Classic");
+  const cardBackgrounds: Record<DemoDesign, string> = {
+    Classic: "radial-gradient(circle at 75% 35%, color-mix(in srgb, var(--demo-accent), transparent 72%), transparent 46%), linear-gradient(150deg, #16477b, #07182d 76%)",
+    Gallery: "linear-gradient(150deg, #fffdf6, #e9dcc6)",
+    Spotlight: "radial-gradient(circle at 68% 28%, #526c45, transparent 42%), linear-gradient(150deg, #14263e, #050b18 78%)",
+    Breakout: "radial-gradient(circle at 50% 35%, #607792, #091527 70%)",
+  };
 
   return (
     <section className="hype-demo-design" aria-label="Card design controls">
@@ -108,9 +118,9 @@ function DesignPanel() {
         </div>
         <span className="hype-demo-save-state">Saved</span>
       </div>
-      <div className="hype-demo-editor">
+        <div className="hype-demo-editor">
         <div className="hype-demo-preview-wrap">
-          <div className="hype-demo-player-card" style={{ "--demo-accent": accent, transform: `scale(${scale / 100})` } as CSSProperties}>
+          <div className="hype-demo-player-card" data-design={design.toLowerCase()} style={{ "--demo-accent": accent, background: cardBackgrounds[design], transform: `scale(${scale / 100})` } as CSSProperties}>
             <div className="hype-demo-card-topline"><span>PIXl SPORTS</span><span>FALL 2026</span></div>
             <div className="hype-demo-athlete">
               <span className="hype-demo-number">12</span>
@@ -119,7 +129,13 @@ function DesignPanel() {
             <div className="hype-demo-card-name">JORDAN<br />CARTER</div>
             <div className="hype-demo-team">CITY HOOPS · GUARD</div>
           </div>
-          <p className="hype-demo-preview-caption">LIVE PREVIEW · CLASSIC</p>
+          <p className="hype-demo-preview-caption">LIVE PREVIEW · {design.toUpperCase()}</p>
+        </div>
+        <div className="hype-demo-mobile-style-picker" role="group" aria-label="Choose card design">
+          <span>Card design</span>
+          <div className="hype-demo-mobile-style-options">
+            {designOptions.map((option) => <button key={option} type="button" aria-pressed={design === option} onClick={() => setDesign(option)}>{option}</button>)}
+          </div>
         </div>
         <div className="hype-demo-controls">
           <label className="hype-demo-control">
@@ -134,9 +150,9 @@ function DesignPanel() {
               ))}
             </div>
           </fieldset>
-          <div className="hype-demo-control">
+          <div className="hype-demo-control hype-demo-desktop-style-picker">
             <span><strong>Design style</strong></span>
-            <div className="hype-demo-style-options"><button type="button" aria-pressed="true">Classic</button><button type="button" aria-pressed="false">Gallery</button><button type="button" aria-pressed="false">Spotlight</button></div>
+            <div className="hype-demo-style-options">{designOptions.map((option) => <button key={option} type="button" aria-pressed={design === option} onClick={() => setDesign(option)}>{option}</button>)}</div>
           </div>
           <p className="hype-demo-helper">Your preview updates immediately. The save status remains visible as you move through settings.</p>
         </div>
