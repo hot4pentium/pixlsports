@@ -977,8 +977,28 @@
   }
   .game-on-collection { border-radius: 17px; }
   .game-on-collection__inner { padding: 22px 8px 16px; }
-  .game-on-collection__header { align-items: stretch; flex-direction: column; gap: 18px; }
-  .game-on-collection__create { align-self: flex-start; min-height: 44px; gap: 8px; padding: 10px 12px; font-size: 10px; }
+  .game-on-collection__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 9px 8px;
+  }
+  .game-on-collection__header-copy { display: contents; }
+  .game-on-collection__header .game-on-collection__eyebrow { grid-column: 1 / -1; grid-row: 1; margin: 0; }
+  .game-on-collection__header .game-on-collection__title { grid-column: 1; grid-row: 2; font-size: clamp(26px, 7vw, 36px); }
+  .game-on-collection__header .game-on-collection__intro { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+  .game-on-collection__create {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    min-width: 0;
+    min-height: 44px;
+    gap: 6px;
+    padding: 8px 9px;
+    font-size: 10px;
+    white-space: normal;
+  }
+  .game-on-collection__create svg { flex-shrink: 0; width: 16px; height: 16px; }
   .game-on-collection__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .game-on-collection__grid .game-on-collection__card { max-width: none; }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__summary { padding: 7px; }

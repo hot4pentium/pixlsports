@@ -608,7 +608,7 @@ export function GameOnDashboardCollection({
       </p>
       <div className="game-on-collection__inner">
         <div className="game-on-collection__header">
-          <div>
+          <div className="game-on-collection__header-copy">
             <p className="game-on-collection__eyebrow"><span className="game-on-collection__eyebrow-line" aria-hidden="true" /> Your season, one card at a time</p>
             <h2 className="game-on-collection__title" id={labelId}>Event Cards</h2>
             <p className="game-on-collection__intro">Everything for the next game or practice, right where you need it.</p>
@@ -621,7 +621,7 @@ export function GameOnDashboardCollection({
             title={createDisabled ? 'Finish or cancel your current draft before adding another.' : undefined}
             data-testid="button-create-game-on-card"
           >
-            <Plus size={19} strokeWidth={2.5} aria-hidden="true" /> Add an Event Card
+            <Plus size={19} strokeWidth={2.5} aria-hidden="true" /> <span>Add an Event Card</span>
           </button>
         </div>
 

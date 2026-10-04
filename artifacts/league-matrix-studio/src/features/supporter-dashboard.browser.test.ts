@@ -1143,7 +1143,7 @@ test('dashboard empty game notice and install reminder work across screen sizes'
   }
 });
 
-test('Game On card stays compact and opens cleanly at 320px and 375px', { concurrency: false }, async () => {
+test('Game On card stays compact and opens cleanly across phone widths', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-compact-game-on-card-test');
   let devServer: ChildProcess | undefined;
@@ -1186,9 +1186,16 @@ test('Game On card stays compact and opens cleanly at 320px and 375px', { concur
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
 
-    for (const width of [320, 375]) {
+    for (const width of [320, 360, 390, 430]) {
       await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
       await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"]'))`, Boolean);
+      assert.equal(await connection.evaluate(`(() => {
+        const header = document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__header');
+        const title = header.querySelector('h2').getBoundingClientRect();
+        const button = header.querySelector('[data-testid="button-create-game-on-card"]').getBoundingClientRect();
+        return button.left >= title.right && Math.abs((button.top + button.height / 2) - (title.top + title.height / 2)) < 2
+          && button.height >= 44 && button.right <= innerWidth;
+      })()`, page.sessionId), true, `create button beside Event Cards heading at ${width}px`);
       assert.deepEqual(await connection.evaluate<{
         square: boolean; contained: boolean; noOverflow: boolean; statusDraft: boolean;
         dateVisible: boolean; statusVisible: boolean; titleVisible: boolean;
