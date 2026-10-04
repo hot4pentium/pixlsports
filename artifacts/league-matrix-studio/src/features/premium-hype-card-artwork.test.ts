@@ -238,6 +238,32 @@ test('Spotlight uses outlined Anton numerals behind the avatar without changing 
     assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /font-family="'Anton'/);
   }
 });
+test('Spotlight shows the full original photo in its placeholder and hides the number when background removal is off', () => {
+  const appearance = { ...defaultCardAppearance('spotlight'), removeBackground: false };
+  const input = {
+    ...base,
+    jerseyNumber: '12',
+    photoUrl: 'data:image/png;base64,BBBB',
+    appearance,
+  };
+
+  for (const layer of ['all', 'bg', 'fg'] as const) {
+    const svg = buildPremiumHypeCardArtwork(input, layer);
+    assert.doesNotMatch(svg, /data-jersey-number/);
+    assert.doesNotMatch(svg, /data-photo-placement="cutout"/);
+    if (layer === 'bg') {
+      assert.doesNotMatch(svg, /data-photo-placement="original"/);
+    } else {
+      assert.match(svg, /data-photo-placement="original" transform=/);
+      assert.match(svg, /<image href="data:image\/png;base64,BBBB" x="90" y="120" width="820" height="1130" preserveAspectRatio="xMidYMid meet"/);
+    }
+  }
+
+  const artwork = buildPremiumHypeCardArtwork(input);
+  const png = preparePremiumCardPngExport(artwork, appearance, { width: 820, height: 1130 });
+  assert.doesNotMatch(png.markup, /data-jersey-number/);
+  assert.match(png.markup, /preserveAspectRatio="xMidYMid meet"/);
+});
 test('Spotlight number centering follows the height of short and wrapped name blocks', () => {
   for (const athleteName of ['Kimberly', 'Jordan Alexander Matthews']) {
     for (const jerseyNumber of ['9', '10', '123']) {

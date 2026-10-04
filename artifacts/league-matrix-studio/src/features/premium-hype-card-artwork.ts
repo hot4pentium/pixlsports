@@ -119,7 +119,13 @@ function athlete(input: PremiumHypeCardInput, box: { x: number; y: number; w: nu
 const initialsOf = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join('') || 'P';
 const initialsArt = (input: PremiumHypeCardInput, cx: number, cy: number, fill: string) =>
   (input.appearance.removeBackground !== false && safeUrl(input.cutoutUrl)) || safeUrl(input.photoUrl) ? '' : `<g aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="170" fill="${fill}" opacity=".35"/><text x="${cx}" y="${cy + 55}" text-anchor="middle" font-family="${FONT_DISPLAY}" font-weight="700" font-size="170" fill="#fff" opacity=".9">${escapeXml(initialsOf(input.athleteName))}</text></g>`;
-const photoFallback = (input: PremiumHypeCardInput, box: { x: number; y: number; w: number; h: number }, clip: string, opacity = 1) => {
+const photoFallback = (
+  input: PremiumHypeCardInput,
+  box: { x: number; y: number; w: number; h: number },
+  clip: string,
+  opacity = 1,
+  preserveAspectRatio = 'xMidYMid slice',
+) => {
   const url = safeUrl(input.photoUrl);
   if (!url || (input.appearance.removeBackground !== false && safeUrl(input.cutoutUrl))) return '';
   const a = input.appearance;
@@ -127,7 +133,7 @@ const photoFallback = (input: PremiumHypeCardInput, box: { x: number; y: number;
   const scale = Math.max(.65, Math.min(1.2, num(a.athleteScale, 1)));
   const x = Math.max(-.25, Math.min(.25, num(a.athleteX, 0))) * 1000;
   const y = Math.max(-.18, Math.min(.18, num(a.athleteY, 0))) * 1400;
-  return `<g clip-path="url(#${clip})" opacity="${opacity}"><g data-photo-placement="original" transform="translate(${cx + x} ${cy + y}) scale(${scale}) translate(${-cx} ${-cy})"><image href="${url}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid slice"/></g></g>`;
+   return `<g clip-path="url(#${clip})" opacity="${opacity}"><g data-photo-placement="original" transform="translate(${cx + x} ${cy + y}) scale(${scale}) translate(${-cx} ${-cy})"><image href="${url}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" preserveAspectRatio="${preserveAspectRatio}"/></g></g>`;
 };
 const shadowFilter = (id: string, blur: number, dy: number, op: number) => `<filter id="${id}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="${dy}" stdDeviation="${blur}" flood-color="#0A1020" flood-opacity="${op}"/></filter>`;
 
@@ -210,6 +216,9 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const numSize = jersey.length > 2 ? 520 : jersey.length === 2 ? 760 : 900;
   // Anton's cap height is 1760/2048 em. Center the visible numerals, not their baseline.
   const numberBaseline = (card.y + plate.y) / 2 + numSize * (1760 / 2048) / 2;
+  const originalPhoto = a.removeBackground === false
+    ? photoFallback(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-photo-placeholder', 1, 'xMidYMid meet')
+    : '';
   const bg = `
 <defs>${grainDef('s-grain', 0.2)}
 <clipPath id="s-card"><rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50"/></clipPath>
@@ -219,24 +228,26 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
 <g id="spotlight-bg"><g clip-path="url(#s-card)">
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" fill="#08101F"/>
 ${venue('s-venue', card.x, card.y, card.w, card.h, venueFor(input.sport), true)}
-${photoFallback(input, { x: card.x, y: card.y, w: card.w, h: card.h }, 's-card', 0.55)}${initialsArt(input, 500, 700, accent)}
+${a.removeBackground === false ? '' : photoFallback(input, { x: card.x, y: card.y, w: card.w, h: card.h }, 's-card', 0.55)}${initialsArt(input, 500, 700, accent)}
 <circle cx="150" cy="520" r="230" fill="#FFF3D6" opacity=".35" filter="url(#s-haze)"/>
 <circle cx="850" cy="520" r="230" fill="#FFF3D6" opacity=".35" filter="url(#s-haze)"/>
 <g id="s-lights">${[[110, 470], [890, 470]].map(([x, y]) => `<g fill="#FFFBEA"><rect x="${x - 58}" y="${y - 50}" width="116" height="100" rx="10" opacity=".95"/></g><g fill="#2B3350">${[0, 1, 2].flatMap((r) => [0, 1, 2, 3].map((c) => `<circle cx="${x - 39 + c * 26}" cy="${y - 30 + r * 30}" r="8" fill="#FFFFFF"/>`)).join('')}</g><rect x="${x - 4}" y="${y + 50}" width="8" height="260" fill="#0A1022" opacity=".8"/>`).join('')}</g>
 <ellipse cx="500" cy="760" rx="520" ry="420" fill="${accent}" opacity=".32" filter="url(#s-haze)"/>
 <ellipse cx="500" cy="300" rx="380" ry="220" fill="${accent}" opacity=".18" filter="url(#s-haze)"/>
-${jersey ? `<g data-card-layer="jersey-number"><text data-jersey-number="true" x="500" y="${numberBaseline.toFixed(2)}" text-anchor="middle" font-family="${FONT_NUMBER}" font-weight="400" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" stroke="${IVORY}" stroke-opacity=".85" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
+${jersey && a.removeBackground !== false ? `<g data-card-layer="jersey-number"><text data-jersey-number="true" x="500" y="${numberBaseline.toFixed(2)}" text-anchor="middle" font-family="${FONT_NUMBER}" font-weight="400" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" stroke="${IVORY}" stroke-opacity=".85" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" fill="url(#s-vig)"/>
 <rect x="${card.x}" y="900" width="${card.w}" height="${card.h - 900}" fill="url(#s-floor)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" filter="url(#s-grain)" opacity=".5"/>
 </g></g>`;
   const fg = `
-<defs>${shadowFilter('s-cut', 16, 10, .55)}
+<defs><clipPath id="s-photo-placeholder"><rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50"/></clipPath>
+${shadowFilter('s-cut', 16, 10, .55)}
 <filter id="s-glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="5"/></filter>
 <filter id="s-plate" x="-10%" y="-20%" width="120%" height="150%"><feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#02050C" flood-opacity=".6"/></filter>
 <linearGradient id="s-sheen" x1="0" y1="0" x2="1" y2="1"><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset=".56" stop-color="#C9BFA9" stop-opacity=".25"/><stop offset=".8" stop-color="#C9BFA9" stop-opacity=".25"/><stop offset=".81" stop-color="#fff" stop-opacity="0"/></linearGradient>
 ${grainDef('s-grain2', 0.14)}</defs>
 <g id="spotlight-fg">
+${originalPhoto}
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="10" opacity=".55" filter="url(#s-glow)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="5"/>
 ${input.logoUrl ? `<rect x="76" y="62" width="196" height="76" rx="14" fill="${IVORY}" opacity=".94"/>` : ''}${logo(input, 88, 70, 172)}
