@@ -624,6 +624,11 @@ test('player-page owner tools remain private across account changes and pause', 
     const ownerManage = await open('owner', 'manage', false, '#owner-fan-hypes');
     await waitFor(connection, ownerManage, element('[data-testid="owner-hype-page-management"]'), Boolean, 30_000);
     await waitFor(connection, ownerManage, "document.activeElement?.id === 'owner-fan-hypes'", Boolean, 30_000);
+    const taskOrder = await connection.evaluate<string[]>(
+      "Array.from(document.querySelectorAll('[data-testid^=\"button-hype-manager-\"]')).map(button => button.querySelector('.hype-manager-task-title')?.textContent?.trim() || '')",
+      ownerManage,
+    );
+    assert.deepEqual(taskOrder.slice(0, 4), ['Share Hype Card', 'Card Design', 'Family Live Taps', 'Upload Photo']);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === true && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'false'", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
