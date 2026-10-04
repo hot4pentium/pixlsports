@@ -4536,7 +4536,18 @@ import { SupporterDashboardView, SupporterProfileView } from './src/features/sup
 import { useCachedSupporterPhoto } from './src/features/supporter-photo-cache';
 import { LiveTrackerGame, StatTrackerPage } from './src/features/stat-tracker-page';
 import { getSportRule } from './src/features/stat-tracker';
+import { buildBrandedPremiumHypeCardArtwork } from './src/features/premium-hype-card-brand';
+import { preparePremiumCardPngExport } from './src/features/premium-hype-card-artwork';
+import { defaultCardAppearance } from './src/features/hype-card-appearance';
 import './src/index.css';
+
+window.__premiumNameExport = (design, layer = 'all') => {
+  const appearance = { ...defaultCardAppearance(design), athleteScale: 1.45, athleteX: .25, athleteY: -.18 };
+  return preparePremiumCardPngExport(buildBrandedPremiumHypeCardArtwork({
+    athleteName: 'Alexandria Montgomery-Williams', teamName: 'The Northside Comets Select Travel Club',
+    appearance, cutoutUrl: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="770" height="1020"><rect width="770" height="1020" fill="red"/></svg>'),
+  }, layer, 'name-export'), appearance, { width: 770, height: 1020 });
+};
 
 const profile = {
   displayName: 'Jamie Fan',

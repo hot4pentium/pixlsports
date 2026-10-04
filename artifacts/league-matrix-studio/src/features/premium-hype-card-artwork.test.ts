@@ -16,6 +16,28 @@ test('placement changes the original fallback as well as the cutout in every pre
 });
 import { defaultCardAppearance } from './hype-card-appearance';
 
+test('each name line has its own bounded advance in live, layered, and PNG artwork', () => {
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+    const maxWidth = design === 'gallery' ? 800 : 760;
+    for (const athleteName of ['Alexandria Montgomery-Williams', 'Maximilian Alexander Thornberry-Wells', 'W'.repeat(100), 'Li', '  Alexandria   Montgomery-Williams  ']) {
+      const appearance = { ...defaultCardAppearance(design), athleteScale: 1.45, athleteY: -.18 };
+      for (const layer of ['all', 'fg'] as const) {
+        const artwork = buildPremiumHypeCardArtwork({ athleteName, appearance, cutoutUrl: 'data:image/png;base64,AAAA' }, layer);
+        const exported = preparePremiumCardPngExport(artwork, appearance, { width: 770, height: 1020 });
+        for (const svg of [artwork, exported.markup]) {
+          const lines = [...svg.matchAll(/<text[^>]*data-athlete-name-line="true"[^>]*textLength="([\d.]+)"[^>]*lengthAdjust="spacingAndGlyphs"[^>]*>([^<]*)<\/text>/g)];
+          assert.ok(lines.length >= 1 && lines.length <= 2);
+          assert.equal(lines.map(line => line[2]).join(' '), athleteName.trim().replace(/\s+/g, ' ').toUpperCase());
+          for (const line of lines) assert.ok(Number(line[1]) > 0 && Number(line[1]) <= maxWidth - 8);
+        }
+        assert.match(artwork, /viewBox="0 0 1000 1400"/);
+        assert.match(artwork, /overflow="visible"/);
+        assert.ok(exported.height > 2800, 'export continues preserving maximum cutout spillover');
+      }
+    }
+  }
+});
+
 const base = { athleteName: 'A <b>&"', sport: 'Soccer', jerseyNumber: '01', cutoutUrl: 'data:image/png;base64,AAAA' };
 
 test('escapes text and keeps viewBox', () => {

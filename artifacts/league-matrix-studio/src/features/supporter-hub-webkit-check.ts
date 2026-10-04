@@ -152,6 +152,67 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
     assert.ok(Object.values(layout).every(Boolean), `${label}: ${JSON.stringify(layout)}`);
     if (design) assert.equal(await evaluate(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design`), design);
   }
+  async function inspectNames(selector: string, label: string) {
+    const bounds = await evaluate(`(() => {
+      const svg = document.querySelector('${selector}');
+      const design = svg.dataset.design;
+      const plate = design === 'gallery' ? {x:60,y:1060,width:880,height:285}
+        : design === 'spotlight' ? svg.querySelector('[data-spotlight-name-block]').getBBox()
+        : {x:116,y:934,width:768,height:226};
+      const lines = [...svg.querySelectorAll('[data-athlete-name-line]')];
+      return { text:lines.map(n=>n.textContent).join(' '), lines:lines.map(n=>{
+        const b=n.getBBox();
+        return {x:b.x,y:b.y,width:b.width,height:b.height,
+          fits:b.width>0 && b.height>0 && b.x>=plate.x && b.x+b.width<=plate.x+plate.width
+            && b.y>=plate.y && b.y+b.height<=plate.y+plate.height};
+      })};
+    })()`) as { text: string; lines: Array<{ fits: boolean }> };
+    assert.equal(bounds.text, 'ALEXANDRIA MONTGOMERY-WILLIAMS', `${label}: full name preserved`);
+    assert.ok(bounds.lines.length && bounds.lines.every(line => line.fits), `${label}: ${JSON.stringify(bounds)}`);
+  }
+  async function inspectRasterExport(label: string) {
+    const result = await command<{ fits: boolean; pixels: number; error?: string }>('POST', `${sessionPath}/execute/async`, {
+      script: `const done=arguments[arguments.length-1];
+        (async () => {
+          const svg=document.querySelector('#premium-name-export-check svg');
+          const view=svg.viewBox.baseVal;
+          const plate=svg.dataset.design==='gallery' ? {x:60,y:1060,width:880,height:285}
+            : svg.dataset.design==='spotlight' ? svg.querySelector('[data-spotlight-name-block]').getBBox()
+            : {x:116,y:934,width:768,height:226};
+          const canvas=document.createElement('canvas');
+          canvas.width=2000; canvas.height=Math.round(view.height*2);
+          const context=canvas.getContext('2d');
+          const raster=async markup=>{
+            const image=new Image();
+            image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(markup);
+            await image.decode();
+            context.clearRect(0,0,canvas.width,canvas.height);
+            context.drawImage(image,0,0,canvas.width,canvas.height);
+          };
+          // Rasterize the real export first, including independently rendered foregrounds.
+          await raster(new XMLSerializer().serializeToString(svg));
+          if (!canvas.toDataURL('image/png').startsWith('data:image/png;base64,')) throw Error('PNG unavailable');
+          // Isolate its actual name text to measure painted pixels, not font layout boxes.
+          const names=svg.cloneNode(false);
+          names.removeAttribute('style');
+          for (const line of svg.querySelectorAll('[data-athlete-name-line]')) names.append(line.cloneNode(true));
+          await raster(new XMLSerializer().serializeToString(names));
+          const data=context.getImageData(0,0,canvas.width,canvas.height).data;
+          let pixels=0, fits=true;
+          for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
+            if(data[(y*canvas.width+x)*4+3]>20){
+              pixels++;
+              const nx=x/2, ny=y/2+view.y;
+              fits=fits && nx>=plate.x && nx<=plate.x+plate.width
+                && ny>=plate.y && ny<=plate.y+plate.height;
+            }
+          }
+          return {fits,pixels};
+        })().then(done,error=>done({error:String(error)}));`,
+      args: [],
+    });
+    assert.ok(!result.error && result.fits && result.pixels > 100, `${label}: ${JSON.stringify(result)}`);
+  }
   try {
     // A fresh virtual display avoids depending on an interactive desktop.
     const display = launch('Xvfb', ['-displayfd', '1', '-screen', '0', '1280x1024x24', '-nolisten', 'tcp']);
@@ -208,6 +269,23 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
       for (const width of [320, 360, 390, 430]) {
         await viewport(width);
         await inspectRow(`${design} at ${width}px with long event details`, design);
+        if (design !== 'classic') {
+          await inspectNames('.living-card-premium-face svg', `${design} live ${width}px`);
+          for (const layer of ['all', 'fg']) {
+            await evaluate(`(() => {
+              const output=window.__premiumNameExport('${design}','${layer}');
+              const host=document.createElement('div'); host.id='premium-name-export-check';
+              host.style.cssText='position:absolute;left:0;top:1700px;width:${width}px';
+              host.innerHTML=output.markup;
+              host.querySelector('svg').style.cssText='width:100%;height:auto';
+              document.body.append(host);
+              return true;
+            })()`);
+            await inspectNames('#premium-name-export-check svg', `${design} ${layer} export ${width}px`);
+            if (width === 390) await inspectRasterExport(`${design} ${layer} rasterized PNG`);
+            await evaluate(`(document.querySelector('#premium-name-export-check').remove(), true)`);
+          }
+        }
         if (design === 'classic') {
           const font = await evaluate<number>(`parseFloat(getComputedStyle(document.querySelector('.living-card-athlete-name')).fontSize)`);
           assert.ok(font > previousFont, `Classic container-unit type grows at ${width}px`);

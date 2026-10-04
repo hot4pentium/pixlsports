@@ -77,12 +77,16 @@ function venue(id: string, x: number, y: number, w: number, h: number, kind: Ven
 }
 
 function fitName(name: string, maxW: number, maxSize: number, minSize: number, twoLineMax = maxSize * 0.8) {
-  const text = name.trim().toUpperCase();
+  const text = name.trim().replace(/\s+/g, ' ').toUpperCase();
   const est = (s: number, n: number) => n * s * 0.46;
+  // SVG fonts can change after load, and standalone exports use fallback fonts.
+  // Constrain each line's advance independently, leaving room for glyph bearings.
+  const lengths = (lines: string[], size: number) =>
+    lines.map(line => Math.min(maxW - 8, est(size, line.length) + Math.max(0, line.length - 1)));
   let size = Math.min(maxSize, maxW / Math.max(1, est(1, text.length)));
   if (size >= minSize || !text.includes(' ')) {
     size = Math.max(minSize * 0.6, size);
-    return { lines: [text], size, tl: est(size, text.length) > maxW ? maxW : 0 };
+    return { lines: [text], size, tl: lengths([text], size) };
   }
   const words = text.split(/\s+/);
   let best = 1, diff = 1e9;
@@ -93,11 +97,11 @@ function fitName(name: string, maxW: number, maxSize: number, minSize: number, t
   const lines = [words.slice(0, best).join(' '), words.slice(best).join(' ')];
   const longest = Math.max(lines[0].length, lines[1].length);
   size = Math.max(minSize * 0.6, Math.min(twoLineMax, maxW / est(1, longest)));
-  return { lines, size, tl: 0 };
+  return { lines, size, tl: lengths(lines, size) };
 }
 
-const nameText = (lines: string[], x: number, y: number, size: number, tl: number, fill: string, anchor = 'start') =>
-  lines.map((l, i) => `<text x="${x}" y="${y + i * size * 0.98}" font-family="${FONT_DISPLAY}" font-weight="700" font-size="${size.toFixed(1)}" fill="${fill}" text-anchor="${anchor}" letter-spacing="1"${tl ? ` textLength="${tl}" lengthAdjust="spacingAndGlyphs"` : ''}>${escapeXml(l)}</text>`).join('');
+const nameText = (lines: string[], x: number, y: number, size: number, tl: number[], fill: string, anchor = 'start') =>
+  lines.map((l, i) => `<text x="${x}" y="${y + i * size * 0.98}" font-family="${FONT_DISPLAY}" font-weight="700" font-size="${size.toFixed(1)}" fill="${fill}" text-anchor="${anchor}" letter-spacing="1" data-athlete-name-line="true" textLength="${tl[i].toFixed(2)}" lengthAdjust="spacingAndGlyphs">${escapeXml(l)}</text>`).join('');
 
 const grainDef = (id: string, op: number) => `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .3  0 0 0 0 .25  0 0 0 ${op} 0"/></filter>`;
 
@@ -258,8 +262,9 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
   const sport = (input.sport || '').trim().toUpperCase();
   const team = (input.teamName || '').trim().toUpperCase();
   const win = { x: 108, y: 150, w: 784, h: 820 };
-  const nm = fitName(input.athleteName || 'Athlete', 760, 132, 96, 96);
-  const nameY = nm.lines.length > 1 ? 988 : 1058;
+  // Two lines share the fixed plate with the team label at y=1129.
+  const nm = fitName(input.athleteName || 'Athlete', 760, 132, 96, 68);
+  const nameY = nm.lines.length > 1 ? 1016 : 1058;
   const bg = `
 <defs>
 <linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient>
