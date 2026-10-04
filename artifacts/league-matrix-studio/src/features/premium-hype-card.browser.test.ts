@@ -80,6 +80,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`document.querySelector('[data-testid="button-design-breakout"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'breakout', 5_000);
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="appearance-preview-surface"] > svg')).overflow`, session), 'visible', 'the editor does not crop the avatar at its SVG viewport when resizing');
+    assert.deepEqual(await connection.evaluate(`Array.from(document.querySelector('[data-testid="appearance-preview-surface"] svg > g[id$="breakout-fg"]').children).map(g=>g.getAttribute('data-card-layer'))`, session), ['frame', 'avatar', 'name-plate'], 'the editor paints the avatar over the frame while preserving the nameplate');
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('.living-card-frame[data-design="breakout"] .living-card-premium-art > svg')).overflow`, session), 'visible', 'the live card also permits avatar spillover');
     await connection.evaluate(`document.querySelector('[data-testid="button-design-spotlight"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'spotlight', 5_000);

@@ -285,9 +285,9 @@ ${nameText(nm.lines, 500, nameY, nm.size, nm.tl, '#F7F9FC', 'middle')}
 ${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><text x="500" y="1129" text-anchor="middle" font-family="${FONT_TEXT}" font-size="30" font-weight="700" letter-spacing="8" fill="#DFE8F4">${escapeXml(team.slice(0, 24))}</text>` : ''}</g>`;
   const fg = `<defs><linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient><linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>${shadowFilter('b-cut', 14, 10, .42)}${shadowFilter('b-name-shadow', 8, 7, .6)}</defs>
 <g id="breakout-fg">
+<g data-card-layer="frame">${logo(input, 92, 62, 148)}${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
 <g data-card-layer="avatar">${athlete(input, { x: 115, y: -210, w: 770, h: 1020 }, 'b-cut')}</g>
 ${plate}
-<g data-card-layer="frame">${logo(input, 92, 62, 148)}${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
 </g>`;
   return (layer !== 'fg' ? bg : '') + (layer !== 'bg' ? fg : '');
 }

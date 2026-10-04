@@ -27,8 +27,17 @@ test('Breakout keeps resized avatars intact outside the SVG card boundary', () =
   for (const layer of ['all', 'fg'] as const) {
     const svg = buildPremiumHypeCardArtwork({ ...base, appearance: { ...defaultCardAppearance('breakout'), athleteScale: 1.45, athleteY: -.18 } }, layer);
     assert.match(svg, /<svg[^>]*overflow="visible"/);
-    assert.match(svg, /<g id="breakout-fg">\s*<g data-card-layer="avatar"><g data-photo-placement="cutout"/);
+    assert.match(svg, /<g data-card-layer="avatar"><g data-photo-placement="cutout"/);
     assert.match(svg, /preserveAspectRatio="xMidYMax meet"/);
+  }
+});
+test('Breakout paints every frame layer below the avatar and the nameplate above it', () => {
+  for (const layer of ['all', 'fg'] as const) {
+    const svg = buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance('breakout') }, layer);
+    const avatar = svg.indexOf('data-card-layer="avatar"');
+    const plate = svg.indexOf('data-card-layer="name-plate"');
+    assert.ok(avatar >= 0 && plate > avatar);
+    for (const frame of svg.matchAll(/data-card-layer="frame"/g)) assert.ok(frame.index < avatar);
   }
 });
 test('splits layers', () => {
