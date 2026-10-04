@@ -176,7 +176,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`document.querySelector('[data-testid="button-layer-name-plate"]').click();document.querySelector('[data-testid="button-reset-placement"]').click()`, session);
     const plateTransform = `document.querySelector('[data-testid="appearance-preview-surface"] [data-card-layer="name-plate"]').getAttribute("transform")`;
     const beforePlate = await connection.evaluate<string>(plateTransform, session);
-    await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').click()`, session);
+    await connection.evaluate(`document.querySelector('[data-testid="button-layer-name-plate"]').click()`, session);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'true', 'selecting the name plate immediately activates the move tool');
     await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').scrollIntoView({block:'center'})`, session);
     const platePoint = await connection.evaluate<{ x: number; y: number }>(`(()=>{const r=document.querySelector('[data-testid="appearance-preview-surface"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`, session);
     await connection.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...platePoint, button: 'left', clickCount: 1 }, session);
@@ -191,6 +192,14 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate<string>(plateTransform, session), movedPlate, 'saved name plate position survives reopening');
     await connection.evaluate(`document.querySelector('[data-testid="button-layer-frame"]').click()`, session);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').disabled`, session), true, 'the frame is a fixed layer');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'false', 'selecting the locked frame turns the move tool off');
+    await connection.evaluate(`document.querySelector('[data-testid="button-layer-avatar"]').click()`, session);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'true', 'selecting the avatar immediately activates the move tool');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').tabIndex`, session), 0, 'the selected movable layer enables keyboard positioning');
+    await connection.evaluate(`document.querySelector('[data-testid="button-layer-name-plate"]').click()`, session);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'true', 'switching between movable layers keeps the move tool active');
+    await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').click()`, session);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'false', 'Done positioning still exits move mode');
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html?fallback=1' }, session);
     await waitFor(connection, session, '!!document.querySelector("[data-testid=button-remove-card-background]")', Boolean, 10_000);
     if (await connection.evaluate(`${backgroundToggle}.checked`, session)) await connection.evaluate(`${backgroundToggle}.click()`, session);

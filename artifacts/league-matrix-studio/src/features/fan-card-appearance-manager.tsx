@@ -242,7 +242,8 @@ export function FanCardAppearanceManager({ invite, profile }: {
               ['name-plate', 'Name plate'],
             ] as const).map(([layer, label]) => (
               <button key={layer} type="button" aria-pressed={selectedLayer === layer}
-                onClick={() => { setMoving(false); dragRef.current = null; setSelectedLayer(layer); }}
+                disabled={mutation.isPending || backgroundRemovalBusy}
+                onClick={() => { setMoving(layer !== 'frame'); dragRef.current = null; setSelectedLayer(layer); }}
                 className="min-h-11 rounded border border-white/20 px-2 text-xs font-bold aria-pressed:border-white aria-pressed:bg-white/15"
                 data-testid={`button-layer-${layer}`}>{label}{layer === 'frame' && <span className="block text-[10px] font-normal text-white/60">Locked</span>}</button>
             ))}
