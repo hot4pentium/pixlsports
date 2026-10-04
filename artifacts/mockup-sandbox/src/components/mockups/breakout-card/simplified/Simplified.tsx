@@ -33,7 +33,9 @@ export function Simplified() {
     <main className="breakout-simplified">
       <div className="breakout-preview">
         <section className="breakout-showcase" aria-label="Kimberly's Breakout HYPE Card">
-          <div className="breakout-art" role="img" aria-label="Kimberly, Hurricanes — Breakout HYPE Card" dangerouslySetInnerHTML={{ __html: artwork }} />
+          <div className="breakout-art-frame">
+            <div className="breakout-art" role="img" aria-label="Kimberly, Hurricanes — Breakout HYPE Card" dangerouslySetInnerHTML={{ __html: artwork }} />
+          </div>
           <nav className="breakout-side-nav" aria-label="HYPE Card sections">
             {sections.map(({ label, icon: Icon, emoji }) => (
               <button

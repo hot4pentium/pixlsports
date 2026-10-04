@@ -1,8 +1,14 @@
-/* Gallery / Spotlight presentation. Classic rules are untouched. */
+/* Premium fronts keep their artwork; Breakout adds a rounded light-blue sleeve outside the metal outline. */
 .living-card-frame[data-design="gallery"], .living-card-frame[data-design="spotlight"], .living-card-frame[data-design="breakout"] { height: auto; min-height: 0; max-height: none; aspect-ratio: 1000 / 1400; }
 .living-card-frame-outer:has(.living-card-frame[data-design="gallery"][data-side="front"]),
-.living-card-frame-outer:has(.living-card-frame[data-design="spotlight"][data-side="front"]),
-.living-card-frame-outer:has(.living-card-frame[data-design="breakout"][data-side="front"]) { padding: 0; border-color: transparent; background: none; box-shadow: none; border-radius: 0; }
+.living-card-frame-outer:has(.living-card-frame[data-design="spotlight"][data-side="front"]) { padding: 0; border-color: transparent; background: none; box-shadow: none; border-radius: 0; }
+.living-card-frame-outer:has(.living-card-frame[data-design="breakout"][data-side="front"]) {
+  padding: 9px;
+  border: 1px solid #9fcaef62;
+  border-radius: 32px;
+  background: linear-gradient(130deg, #a4cdeb6b, #152c49 23%, #0b2039 77%, #ff784977);
+  box-shadow: 0 31px 75px #010811aa, 0 0 0 7px #91c8f40a;
+}
 .living-card-frame-outer:has(.living-card-frame[data-design="gallery"][data-side="front"])::after,
 .living-card-frame-outer:has(.living-card-frame[data-design="spotlight"][data-side="front"])::after,
 .living-card-frame-outer:has(.living-card-frame[data-design="breakout"][data-side="front"])::after { display: none; }
