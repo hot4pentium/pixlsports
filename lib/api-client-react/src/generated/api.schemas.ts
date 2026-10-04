@@ -964,6 +964,30 @@ export interface HypeCardShare {
   createdAt: string;
 }
 
+export interface HypeCardAvatarPlacement {
+  /**
+     * @minimum -0.25
+     * @maximum 0.25
+     */
+  athleteX: number;
+  /**
+     * @minimum -0.18
+     * @maximum 0.18
+     */
+  athleteY: number;
+  /**
+     * @minimum 0.65
+     * @maximum 1.2
+     */
+  athleteScale: number;
+}
+
+export interface HypeCardAvatarPlacements {
+  gallery: HypeCardAvatarPlacement;
+  spotlight: HypeCardAvatarPlacement;
+  breakout: HypeCardAvatarPlacement;
+}
+
 export type HypeCardAppearanceDesign = typeof HypeCardAppearanceDesign[keyof typeof HypeCardAppearanceDesign];
 
 
@@ -1012,6 +1036,7 @@ export interface HypeCardAppearance {
      * @maximum 1.45
      */
   athleteScale: number;
+  avatarPlacements?: HypeCardAvatarPlacements;
   /**
      * @minimum -0.2
      * @maximum 0.2

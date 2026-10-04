@@ -26,3 +26,9 @@ Keep one placement workflow, not separate "Move athlete" and horizontal/vertical
 **Why:** The user called those controls redundant and reported that neither moved their photo. The original-photo fallback had not been receiving the placement transform.
 
 **How to apply:** Offer positioning, size, and one placement reset together. Verify visible movement and resize for both original photos and cutouts, not only changes in saved numeric settings.
+
+Keep Gallery, Spotlight, and Breakout avatar placement independent and restore each design's saved position when users switch between templates.
+
+**Why:** The user wants to compare and switch templates without losing the distinct avatar composition they set for each one.
+
+**How to apply:** Persist per-design position and scale in the card appearance, migrate legacy shared placement to all premium designs, and verify design switches plus save/reload.

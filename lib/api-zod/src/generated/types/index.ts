@@ -109,6 +109,8 @@ export * from './healthStatus';
 export * from './hypeCardAppearance';
 export * from './hypeCardAppearanceBackground';
 export * from './hypeCardAppearanceDesign';
+export * from './hypeCardAvatarPlacement';
+export * from './hypeCardAvatarPlacements';
 export * from './hypeCardProject';
 export * from './hypeCardProjectBackground';
 export * from './hypeCardProjectBreakoutTransform';

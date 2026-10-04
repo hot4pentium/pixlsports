@@ -178,6 +178,11 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
       design: "gallery", borderColor: "#EF3996", accentColor: "#22C55E", accentLinked: false,
       background: "tunnel",
       athleteX: 0.12, athleteY: -0.08, athleteScale: 1.1, jerseyNumber: "9", position: "Forward",
+      avatarPlacements: {
+        gallery: { athleteX: 0.12, athleteY: -0.08, athleteScale: 1.1 },
+        spotlight: { athleteX: -0.08, athleteY: 0.06, athleteScale: 0.9 },
+        breakout: { athleteX: 0.2, athleteY: -0.14, athleteScale: 1.2 },
+      },
     };
     const appearanceUrl = `${publicUrl}/appearance`;
     assert.equal((await fetch(appearanceUrl, {
@@ -202,6 +207,16 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.equal((await fetch(appearanceUrl, {
       method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" },
       body: JSON.stringify({ ...cardAppearance, background: "unknown" }),
+    })).status, 400);
+    assert.equal((await fetch(appearanceUrl, {
+      method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" },
+      body: JSON.stringify({
+        ...cardAppearance,
+        avatarPlacements: {
+          ...cardAppearance.avatarPlacements,
+          spotlight: { ...cardAppearance.avatarPlacements.spotlight, athleteY: 3 },
+        },
+      }),
     })).status, 400);
     const linkedAppearance = { ...cardAppearance, design: "spotlight", accentLinked: true };
     const linkedSaved = await fetch(appearanceUrl, {

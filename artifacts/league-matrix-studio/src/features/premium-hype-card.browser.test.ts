@@ -303,6 +303,17 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
         await connection.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x + 24, y: point.y + 24, button: 'left', clickCount: 1 }, session);
         const moved = await connection.evaluate<{ x: number; y: number; width: number }>(actorBounds, session);
         assert.ok(moved.x > before.x + 15 && moved.y > before.y + 15, `${design}/${fallback ? 'original' : 'cutout'} must visibly move`);
+        const movedTransform = await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement]').getAttribute('transform')`, session);
+        const otherDesign = design === 'gallery' ? 'spotlight' : design === 'spotlight' ? 'breakout' : 'gallery';
+        await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-${otherDesign}"]').click()`, session);
+        await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === otherDesign, 5_000);
+        await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-${design}"]').click()`, session);
+        await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === design, 5_000);
+        assert.equal(
+          await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement]').getAttribute('transform')`, session),
+          movedTransform,
+          `${design}/${fallback ? 'original' : 'cutout'} keeps its position after switching designs`,
+        );
         await connection.evaluate(`(()=>{const range=document.querySelector('[data-testid="hype-card-appearance-controls"] input[type="range"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(range,'1.2');range.dispatchEvent(new Event('input',{bubbles:true}));range.dispatchEvent(new Event('change',{bubbles:true}));})()`, session);
         const resized = await connection.evaluate<{ width: number }>(actorBounds, session);
         assert.ok(resized.width >= before.width * 1.19, `${design} can reach its supported 120% size`);

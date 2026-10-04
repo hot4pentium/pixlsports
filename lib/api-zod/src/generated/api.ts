@@ -1486,6 +1486,33 @@ export const listAthleteInvitesResponseCardAppearanceOneAthleteYMax = 0.18;
 export const listAthleteInvitesResponseCardAppearanceOneAthleteScaleMin = 0.65;
 export const listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax = 1.45;
 
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
+
 export const listAthleteInvitesResponseCardAppearanceOneNamePlateXMin = -0.2;
 export const listAthleteInvitesResponseCardAppearanceOneNamePlateXMax = 0.2;
 
@@ -1528,6 +1555,23 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "athleteX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteXMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteYMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteYMax),
   "athleteScale": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteScaleMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
   "namePlateX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneNamePlateXMin).max(listAthleteInvitesResponseCardAppearanceOneNamePlateXMax).optional(),
   "namePlateY": zod.number().min(listAthleteInvitesResponseCardAppearanceOneNamePlateYMin).max(listAthleteInvitesResponseCardAppearanceOneNamePlateYMax).optional(),
   "jerseyNumber": zod.string().max(listAthleteInvitesResponseCardAppearanceOneJerseyNumberMax),
@@ -1593,6 +1637,33 @@ export const createAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
 export const createAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
 export const createAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
 
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
+
 export const createAthleteInviteResponseCardAppearanceOneNamePlateXMin = -0.2;
 export const createAthleteInviteResponseCardAppearanceOneNamePlateXMax = 0.2;
 
@@ -1635,6 +1706,23 @@ export const CreateAthleteInviteResponse = zod.object({
   "athleteX": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteXMin).max(createAthleteInviteResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteYMin).max(createAthleteInviteResponseCardAppearanceOneAthleteYMax),
   "athleteScale": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(createAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
   "namePlateX": zod.number().min(createAthleteInviteResponseCardAppearanceOneNamePlateXMin).max(createAthleteInviteResponseCardAppearanceOneNamePlateXMax).optional(),
   "namePlateY": zod.number().min(createAthleteInviteResponseCardAppearanceOneNamePlateYMin).max(createAthleteInviteResponseCardAppearanceOneNamePlateYMax).optional(),
   "jerseyNumber": zod.string().max(createAthleteInviteResponseCardAppearanceOneJerseyNumberMax),
@@ -1676,6 +1764,33 @@ export const getAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
 
 export const getAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
 export const getAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
 
 export const getAthleteInviteResponseCardAppearanceOneNamePlateXMin = -0.2;
 export const getAthleteInviteResponseCardAppearanceOneNamePlateXMax = 0.2;
@@ -1752,6 +1867,23 @@ export const GetAthleteInviteResponse = zod.object({
   "athleteX": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteXMin).max(getAthleteInviteResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteYMin).max(getAthleteInviteResponseCardAppearanceOneAthleteYMax),
   "athleteScale": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(getAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
   "namePlateX": zod.number().min(getAthleteInviteResponseCardAppearanceOneNamePlateXMin).max(getAthleteInviteResponseCardAppearanceOneNamePlateXMax).optional(),
   "namePlateY": zod.number().min(getAthleteInviteResponseCardAppearanceOneNamePlateYMin).max(getAthleteInviteResponseCardAppearanceOneNamePlateYMax).optional(),
   "jerseyNumber": zod.string().max(getAthleteInviteResponseCardAppearanceOneJerseyNumberMax),
@@ -1894,6 +2026,33 @@ export const updateAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
 export const updateAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
 export const updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
 
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
+
 export const updateAthleteInviteResponseCardAppearanceOneNamePlateXMin = -0.2;
 export const updateAthleteInviteResponseCardAppearanceOneNamePlateXMax = 0.2;
 
@@ -1936,6 +2095,23 @@ export const UpdateAthleteInviteResponse = zod.object({
   "athleteX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteXMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteYMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteYMax),
   "athleteScale": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
   "namePlateX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneNamePlateXMin).max(updateAthleteInviteResponseCardAppearanceOneNamePlateXMax).optional(),
   "namePlateY": zod.number().min(updateAthleteInviteResponseCardAppearanceOneNamePlateYMin).max(updateAthleteInviteResponseCardAppearanceOneNamePlateYMax).optional(),
   "jerseyNumber": zod.string().max(updateAthleteInviteResponseCardAppearanceOneJerseyNumberMax),
@@ -1994,6 +2170,33 @@ export const getAthleteFanCardResponseCardAppearanceOneAthleteYMax = 0.18;
 
 export const getAthleteFanCardResponseCardAppearanceOneAthleteScaleMin = 0.65;
 export const getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
 
 export const getAthleteFanCardResponseCardAppearanceOneNamePlateXMin = -0.2;
 export const getAthleteFanCardResponseCardAppearanceOneNamePlateXMax = 0.2;
@@ -2082,6 +2285,23 @@ export const GetAthleteFanCardResponse = zod.object({
   "athleteX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteXMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteYMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteYMax),
   "athleteScale": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteScaleMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
   "namePlateX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneNamePlateXMin).max(getAthleteFanCardResponseCardAppearanceOneNamePlateXMax).optional(),
   "namePlateY": zod.number().min(getAthleteFanCardResponseCardAppearanceOneNamePlateYMin).max(getAthleteFanCardResponseCardAppearanceOneNamePlateYMax).optional(),
   "jerseyNumber": zod.string().max(getAthleteFanCardResponseCardAppearanceOneJerseyNumberMax),
@@ -2479,6 +2699,33 @@ export const updateAthleteInviteAppearanceBodyAthleteYMax = 0.18;
 export const updateAthleteInviteAppearanceBodyAthleteScaleMin = 0.65;
 export const updateAthleteInviteAppearanceBodyAthleteScaleMax = 1.45;
 
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
+
 export const updateAthleteInviteAppearanceBodyNamePlateXMin = -0.2;
 export const updateAthleteInviteAppearanceBodyNamePlateXMax = 0.2;
 
@@ -2501,6 +2748,23 @@ export const UpdateAthleteInviteAppearanceBody = zod.object({
   "athleteX": zod.number().min(updateAthleteInviteAppearanceBodyAthleteXMin).max(updateAthleteInviteAppearanceBodyAthleteXMax),
   "athleteY": zod.number().min(updateAthleteInviteAppearanceBodyAthleteYMin).max(updateAthleteInviteAppearanceBodyAthleteYMax),
   "athleteScale": zod.number().min(updateAthleteInviteAppearanceBodyAthleteScaleMin).max(updateAthleteInviteAppearanceBodyAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteYMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteScaleMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteXMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteYMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteXMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteYMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
   "namePlateX": zod.number().min(updateAthleteInviteAppearanceBodyNamePlateXMin).max(updateAthleteInviteAppearanceBodyNamePlateXMax).optional(),
   "namePlateY": zod.number().min(updateAthleteInviteAppearanceBodyNamePlateYMin).max(updateAthleteInviteAppearanceBodyNamePlateYMax).optional(),
   "jerseyNumber": zod.string().max(updateAthleteInviteAppearanceBodyJerseyNumberMax),
@@ -2519,6 +2783,33 @@ export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMax =
 
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMin = 0.65;
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax = 1.45;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
 
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneNamePlateXMin = -0.2;
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneNamePlateXMax = 0.2;
@@ -2562,6 +2853,23 @@ export const UpdateAthleteInviteAppearanceResponse = zod.object({
   "athleteX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMax),
   "athleteScale": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
   "namePlateX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneNamePlateXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneNamePlateXMax).optional(),
   "namePlateY": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneNamePlateYMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneNamePlateYMax).optional(),
   "jerseyNumber": zod.string().max(updateAthleteInviteAppearanceResponseCardAppearanceOneJerseyNumberMax),

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { appearanceSwatches, defaultCardAppearance, normalizeCardAppearance, type HypeCardAppearance, type HypeCardDesign } from './hype-card-appearance';
+import { appearanceSwatches, defaultCardAppearance, normalizeCardAppearance, switchCardAppearanceDesign, type HypeCardAppearance, type HypeCardDesign } from './hype-card-appearance';
 import { hypeCardBackgrounds } from './hype-card-backgrounds';
 
 const designs: Array<{ id: HypeCardDesign; name: string; blurb: string }> = [
@@ -44,11 +44,7 @@ export function HypeCardDesignPicker({ appearance, onChange, disabled = false, v
   className?: string;
 }) {
   const compact = variant === 'compact';
-  const choose = (design: HypeCardDesign) => onChange(
-    design === 'breakout' && appearance.design === 'classic'
-      ? normalizeCardAppearance({ ...defaultCardAppearance('breakout'), background: appearance.background, jerseyNumber: appearance.jerseyNumber, position: appearance.position })
-      : normalizeCardAppearance({ ...appearance, design }),
-  );
+  const choose = (design: HypeCardDesign) => onChange(switchCardAppearanceDesign(appearance, design));
 
   return (
     <fieldset className={className} disabled={disabled} data-testid={compact ? 'card-design-picker-compact' : 'card-design-picker-cards'}>

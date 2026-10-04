@@ -3097,6 +3097,20 @@ components:
         createdAt:
           type: string
           format: date-time
+    HypeCardAvatarPlacement:
+      type: object
+      required: [athleteX, athleteY, athleteScale]
+      properties:
+        athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
+        athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
+        athleteScale: { type: number, minimum: 0.65, maximum: 1.2 }
+    HypeCardAvatarPlacements:
+      type: object
+      required: [gallery, spotlight, breakout]
+      properties:
+        gallery: { $ref: "#/components/schemas/HypeCardAvatarPlacement" }
+        spotlight: { $ref: "#/components/schemas/HypeCardAvatarPlacement" }
+        breakout: { $ref: "#/components/schemas/HypeCardAvatarPlacement" }
     HypeCardAppearance:
       type: object
       required: [design, borderColor, accentColor, accentLinked, athleteX, athleteY, athleteScale, jerseyNumber, position]
@@ -3113,6 +3127,8 @@ components:
         athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
         athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
         athleteScale: { type: number, minimum: 0.65, maximum: 1.45 }
+        avatarPlacements:
+          $ref: "#/components/schemas/HypeCardAvatarPlacements"
         namePlateX: { type: number, minimum: -0.2, maximum: 0.2 }
         namePlateY: { type: number, minimum: -0.12, maximum: 0.12 }
         jerseyNumber: { type: string, maxLength: 12 }

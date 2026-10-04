@@ -7,6 +7,7 @@
  */
 import type { HypeCardAppearanceBackground } from './hypeCardAppearanceBackground';
 import type { HypeCardAppearanceDesign } from './hypeCardAppearanceDesign';
+import type { HypeCardAvatarPlacements } from './hypeCardAvatarPlacements';
 
 export interface HypeCardAppearance {
   design: HypeCardAppearanceDesign;
@@ -33,6 +34,7 @@ export interface HypeCardAppearance {
      * @maximum 1.45
      */
   athleteScale: number;
+  avatarPlacements?: HypeCardAvatarPlacements;
   /**
      * @minimum -0.2
      * @maximum 0.2

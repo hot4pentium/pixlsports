@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile } from './hype-card-appearance';
+import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, switchCardAppearanceDesign } from './hype-card-appearance';
 import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
 
 test('background choices survive normalization and saved projects while legacy cards match sport', () => {
@@ -11,6 +11,32 @@ test('background choices survive normalization and saved projects while legacy c
     assert.equal(normalizeCardAppearance(appearance).background, background);
     assert.equal(normalizeHypeCardProject({ ...defaultProject(), cardAppearance: appearance }).cardAppearance.background, background);
     assert.equal(designOnlyProject({ ...defaultProject(), cardAppearance: appearance }).cardAppearance.background, background);
+  }
+});
+
+test('switching card designs restores and saves an independent avatar placement for each style', () => {
+  let appearance = normalizeCardAppearance({ ...defaultCardAppearance('gallery'), athleteX: .18, athleteY: -.1, athleteScale: 1.15 });
+  appearance = switchCardAppearanceDesign(appearance, 'spotlight');
+  assert.deepEqual([appearance.athleteX, appearance.athleteY, appearance.athleteScale], [0, 0, 1]);
+  appearance = normalizeCardAppearance({ ...appearance, athleteX: -.2, athleteY: .12, athleteScale: .8 });
+  appearance = switchCardAppearanceDesign(appearance, 'breakout');
+  appearance = normalizeCardAppearance({ ...appearance, athleteX: .1, athleteY: -.05, athleteScale: 1.2 });
+  for (const [design, expected] of [
+    ['gallery', [.18, -.1, 1.15]],
+    ['spotlight', [-.2, .12, .8]],
+    ['breakout', [.1, -.05, 1.2]],
+  ] as const) {
+    appearance = switchCardAppearanceDesign(appearance, design);
+    assert.deepEqual([appearance.athleteX, appearance.athleteY, appearance.athleteScale], expected, `${design} restores its own placement`);
+    appearance = normalizeCardAppearance(JSON.parse(JSON.stringify(appearance)));
+  }
+});
+
+test('legacy shared avatar positions seed all three premium designs', () => {
+  const appearance = normalizeCardAppearance({ design: 'gallery', athleteX: .16, athleteY: -.12, athleteScale: 1.1 });
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+    const selected = switchCardAppearanceDesign(appearance, design);
+    assert.deepEqual([selected.athleteX, selected.athleteY, selected.athleteScale], [.16, -.12, 1.1]);
   }
 });
 
