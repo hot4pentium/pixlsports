@@ -26,6 +26,7 @@ import {
   getVisibleSupporterSelection,
   getSupporterGameStage,
   getSupporterFanCardHref,
+  getSupporterFanCard,
   getSupporterPreparationContext,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
@@ -65,6 +66,7 @@ import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './track
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
+import { SupporterHypeCardPreview } from './supporter-hype-card-preview';
 import { NotificationSettings } from './notification-settings';
 import {
   DashboardInstallInstructionsDialog,
@@ -369,6 +371,7 @@ export function SupporterDashboardView({
     },
   });
   const fanCardHref = getSupporterFanCardHref(athleteInvitesQuery.data ?? [], profile);
+  const savedFanCard = getSupporterFanCard(athleteInvitesQuery.data ?? [], profile);
   const updateActiveGameSelection = useUpdateSupporterActiveGame();
   const deleteOwnedGameOnCard = useDeleteOwnedGameOnCard();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
@@ -1200,6 +1203,16 @@ export function SupporterDashboardView({
             sport={recordSport}
             record={gameRecord}
             headerAction={!isDesktopDashboard ? dashboardChecklist : undefined}
+            mobileHypeCard={
+              <SupporterHypeCardPreview
+                key={`${userId ?? 'signed-out'}:${savedFanCard?.inviteToken ?? 'none'}`}
+                card={savedFanCard}
+                href={fanCardHref}
+                loading={Boolean(userId) && athleteInvitesQuery.isLoading}
+                failed={Boolean(userId) && athleteInvitesQuery.isError}
+                onRetry={() => { void athleteInvitesQuery.refetch(); }}
+              />
+            }
           >
             {renderGameOnEventContent('mobile')}
           </SupporterGameOnSummary>

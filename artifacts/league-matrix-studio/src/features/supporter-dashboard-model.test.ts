@@ -74,6 +74,20 @@ test('the Hype Card action falls back to setup when the card is missing or pause
   assert.equal(getSupporterFanCardHref([], { athleteName: 'Casey', teamName: 'North Stars' }), '/studio/athlete-page');
   assert.equal(
     getSupporterFanCardHref(
+      [{ inviteToken: 'wrong-athlete', athleteName: 'Jordan', teamName: 'North Stars', paused: false }],
+      { athleteName: 'Casey', teamName: 'North Stars' },
+    ),
+    '/studio/athlete-page',
+  );
+  assert.equal(
+    getSupporterFanCardHref(
+      [{ inviteToken: 'wrong-team', athleteName: 'Casey', teamName: 'South Stars', paused: false }],
+      { athleteName: 'Casey', teamName: 'North Stars' },
+    ),
+    '/studio/athlete-page',
+  );
+  assert.equal(
+    getSupporterFanCardHref(
       [
         { inviteToken: 'north-token', athleteName: 'Casey', teamName: 'North Stars', paused: false },
         { inviteToken: 'south-token', athleteName: 'Jordan', teamName: 'South Stars', paused: false },

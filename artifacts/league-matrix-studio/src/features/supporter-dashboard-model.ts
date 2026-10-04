@@ -77,8 +77,8 @@ type FanCardDestinationCandidate = {
   paused: boolean;
 };
 
-export function getSupporterFanCardHref(
-  invites: readonly FanCardDestinationCandidate[],
+export function getSupporterFanCard<T extends FanCardDestinationCandidate>(
+  invites: readonly T[],
   profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
 ) {
   const normalize = (value: string) => value.trim().toLowerCase();
@@ -88,7 +88,14 @@ export function getSupporterFanCardHref(
     ? invites.find((invite) => normalize(invite.athleteName) === athleteName
       && (!teamName || normalize(invite.teamName) === teamName))
     : undefined;
-  const invite = matchingInvite ?? (invites.length === 1 ? invites[0] : undefined);
+  return matchingInvite;
+}
+
+export function getSupporterFanCardHref(
+  invites: readonly FanCardDestinationCandidate[],
+  profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
+) {
+  const invite = getSupporterFanCard(invites, profile);
 
   return invite && !invite.paused
     ? `/fan/${encodeURIComponent(invite.inviteToken)}`

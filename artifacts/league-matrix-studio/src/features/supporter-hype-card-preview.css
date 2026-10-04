@@ -1,0 +1,79 @@
+.supporter-hype-preview {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #f7faff;
+}
+.supporter-hype-preview__label {
+  padding: 8px 4px 0;
+  color: #86c4ff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+.supporter-hype-preview__link {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  padding: 16% 10% 0;
+  color: inherit;
+  text-decoration: none;
+}
+.supporter-hype-preview__surface {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  container-type: inline-size;
+  overflow: visible;
+}
+.supporter-hype-preview__surface > .living-card-face { position: absolute; inset: 0; }
+.supporter-hype-preview__surface > .living-card-premium-face { overflow: visible; }
+.supporter-hype-preview__surface[data-design="classic"] { overflow: hidden; border-radius: 9px; background: #10243d; }
+.supporter-hype-preview__surface .living-card-athlete-name { font-size: 12cqw; line-height: .98; overflow-wrap: anywhere; }
+.supporter-hype-preview__surface .living-card-team-name { font-size: 3.8cqw; letter-spacing: .08em; }
+.supporter-hype-preview__surface .living-card-photo-watermark { font-size: 15cqw; }
+.supporter-hype-preview__surface .living-card-photo-fallback span { font-size: 50cqw; }
+.supporter-hype-preview__surface .living-card-photo-fallback small { font-size: 4cqw; letter-spacing: 0; }
+.supporter-hype-preview__open {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  color: #a1d1ff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.supporter-hype-preview__state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  min-height: 196px;
+  padding: 12px;
+  border: 1px dashed #80afee40;
+  border-radius: 11px;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.supporter-hype-preview__state p { margin: 0; }
+.supporter-hype-preview__state a, .supporter-hype-preview__state button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 4px;
+  color: #a1d1ff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.supporter-hype-preview__link:focus-visible,
+.supporter-hype-preview__state a:focus-visible,
+.supporter-hype-preview__state button:focus-visible { outline: 2px solid #a1d1ff; outline-offset: 2px; border-radius: 8px; }

@@ -105,3 +105,4 @@
 - [Designer HYPE Card navigation](designer-hype-card-navigation.md) — keep the designer's nav-strip dressing, but render the strip separately below premium card artwork.
 - [Animated HYPE Card browser checks](animated-card-browser-checks.md) — wait for the CSS 3D flip to settle before dispatching the next CDP click.
 - [Premium avatar spillover](premium-avatar-spillover.md) — let cutouts escape both the SVG viewport and every hidden-overflow live wrapper; enlarge PNG viewBoxes separately.
+- [Hub card identity](hub-card-identity.md) — the Hub must not use a sole saved card as proof it belongs to the currently selected athlete.

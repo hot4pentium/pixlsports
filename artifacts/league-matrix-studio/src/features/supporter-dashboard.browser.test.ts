@@ -4352,6 +4352,117 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
   }
 });
 
+test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh owner data', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-hype-pair');
+  let devServer: ChildProcess | undefined, browser: ChildProcess | undefined;
+  let devMonitor: ProcessMonitor | undefined, browserMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  try {
+    const probe = createServer();
+    const { port } = await listen(probe);
+    await new Promise<void>((done) => probe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource());
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)));
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory, env: { ...process.env, PORT: String(port), BASE_PATH: '/' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devMonitor = monitorProcess(devServer, 'HYPE fixture Vite');
+    await waitForUrl(`http://127.0.0.1:${port}/`, 20_000, devMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-hype-pair-'));
+    browser = spawn(chromiumPath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank'],
+      { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'HYPE fixture Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then(r => r.json());
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const fixtureUrl = `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?mobile-hype-pair`;
+    page = await openPage(connection, fixtureUrl);
+    const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
+    const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+    await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('Loading')`);
+    await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+    for (const design of ['classic', 'gallery', 'spotlight', 'breakout']) {
+      await evaluate(`window.__setHypePreviewState('${design}')`);
+      await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design === '${design}'`);
+      for (const width of [320, 360, 390, 430]) {
+        await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+        const layout = await evaluate<Record<string, boolean>>(`(() => {
+          const row = document.querySelector('[data-testid="mobile-calendar-hype-row"]');
+          const event = row.children[0], slot = row.children[1];
+          const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
+          const card = slot.querySelector('.supporter-hype-preview__surface'), c = card.getBoundingClientRect();
+          const action = event.querySelector('[data-testid="button-open-featured-game-card-mobile"]');
+          const nav = slot.querySelector('a'), quick = document.querySelector('[data-testid="link-mobile-independent-hype"]');
+          return { equal: Math.abs(a.width-b.width)<1, paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
+            ratio: Math.abs(c.width/c.height-5/7)<.01,
+            noOverflow: document.documentElement.scrollWidth<=innerWidth,
+            actionFits: !!action && action.getBoundingClientRect().right<=a.right+1,
+            sameDestination: nav.getAttribute('href')===quick.getAttribute('href'),
+            nativeArt: '${design}'==='classic' ? !!card.querySelector('.living-card-face') : !!card.querySelector('svg'),
+            spillover: '${design}'==='classic' || getComputedStyle(card.querySelector('.living-card-premium-face')).overflow==='visible',
+            noControls: !slot.querySelector('.living-card-controls'),
+            preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !!document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies') };
+        })()`);
+        assert.deepEqual(layout, { equal: true, paired: true, ratio: true, noOverflow: true, actionFits: true,
+          sameDestination: true, nativeArt: true, spillover: true, noControls: true, preserved: true }, `${design} at ${width}px`);
+        if (design === 'spotlight' && width === 390) {
+          const screenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
+          await writeFile('/tmp/supporter-hype-pair-390.png', Buffer.from(screenshot.data, 'base64'));
+        }
+      }
+    }
+    for (const state of ['empty', 'mismatch', 'paused', 'hidden', 'error']) {
+      await evaluate(`window.__setHypePreviewState('${state}')`);
+      await wait(`!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
+      await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('${state === 'error' ? 'couldn’t load' : state === 'paused' ? 'paused' : state === 'hidden' ? 'hidden' : 'belongs here'}')`);
+      assert.equal(await evaluate(`!!document.querySelector('[data-testid="mobile-saved-hype-card"] svg image')`), false);
+    }
+    await evaluate(`window.__hypePreviewState='gallery'; document.querySelector('[data-testid="mobile-saved-hype-card"] button').click()`);
+    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='gallery'`);
+    // Real return-to-Hub remount must fetch the saved update, not rely on a local invalidation.
+    await evaluate(`window.__navigateSupporterDashboardAwayForFilterTest('Card editor'); window.__hypePreviewState='spotlight'`);
+    await wait(`Boolean(document.querySelector('[data-testid="button-return-to-supporter-dashboard"]'))`);
+    await evaluate(`document.querySelector('[data-testid="button-return-to-supporter-dashboard"]').click()`);
+    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='spotlight'`);
+    await evaluate(`window.__setHypePreviewState('breakout')`);
+    await connection.send('Page.navigate', { url: fixtureUrl }, page.sessionId);
+    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='breakout'`);
+    await evaluate(`window.__setSupporterDashboardTrackerUserId('other-owner')`);
+    await wait(`!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
+    await evaluate(`window.__setSupporterDashboardTrackerUserId('hype-owner')`);
+    await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+    await evaluate(`window.__setSupporterDashboardEvents([])`);
+    await wait(`document.querySelector('[data-testid="mobile-featured-event-title"]')?.textContent.includes('No upcoming')`);
+    assert.equal(await evaluate(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`), true);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false }, page.sessionId);
+    assert.equal(await evaluate(`!!document.querySelector('[data-testid="desktop-game-on-summary"] [data-testid="mobile-calendar-hype-row"]')`), false);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+    await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').focus()`);
+    assert.equal(await evaluate(`document.activeElement?.getAttribute('data-testid')`), 'link-mobile-hype-preview');
+    await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
+    await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
+    await wait(`location.pathname==='/fan/saved-athlete-token'`);
+  } finally {
+    if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+    connection?.close();
+    if (browser && browserMonitor) { if (!browserMonitor.hasExited()) browser.kill('SIGTERM'); await browserMonitor.waitForExit(); }
+    if (devServer && devMonitor) { if (!devMonitor.hasExited()) devServer.kill('SIGTERM'); await devMonitor.waitForExit(); }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    release();
+  }
+});
+
 function harnessSource() {
   return `
 import { createElement, useEffect, useState } from 'react';
@@ -4996,6 +5107,43 @@ export function mount() {
     : window.location.search.includes('supporter-active-game-sync')
       ? 'supporter-sync-user'
       : undefined;
+  if (window.location.search.includes('mobile-hype-pair')) {
+    dashboardUserId = 'hype-owner';
+    window.__hypePreviewState = JSON.parse(localStorage.getItem('hype-preview-fixture') || '"loading"');
+    window.__hypeRequests = 0;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const requestUrl = input instanceof Request ? input.url : String(input);
+      if (new URL(requestUrl, location.href).pathname !== '/api/athlete-invites') return originalFetch(input, init);
+      window.__hypeRequests++;
+      const user = dashboardUserId;
+      const initial = window.__hypePreviewState;
+      if (initial === 'loading') await new Promise(resolve => setTimeout(resolve, 600));
+      const state = initial === 'loading' ? 'classic' : initial;
+      const headers = { 'Content-Type': 'application/json' };
+      if (state === 'error') return new Response('{"error":"Unavailable"}', { status: 503, headers });
+      const photo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><rect width="400" height="600" fill="#eaa44a"/><circle cx="200" cy="170" r="90" fill="#163f69"/><path d="M60 580V350Q200 230 340 350V580" fill="#163f69"/></svg>');
+      return new Response(JSON.stringify(state === 'empty' || user !== 'hype-owner' ? [] : [{
+        inviteToken: 'saved-athlete-token',
+        athleteName: state === 'mismatch' ? 'Another athlete' : profile.athleteName,
+        teamName: profile.teamName, seasonName: '2026', seasonEndsAt: '2030-01-01',
+        sport: profile.sport, timezone: 'America/New_York', trackerProjectId: null, scheduleProjectId: null,
+        showHypeCard: state !== 'hidden', showStats: true, showSchedule: true, showEvents: true,
+        hypesEnabled: true, paused: state === 'paused', liveTrackerShareToken: null,
+        photoUrl: photo, cutoutUrl: photo, photoRevision: 'portrait',
+        cardAppearance: { design: ['gallery','spotlight','breakout'].includes(state) ? state : 'classic',
+          jerseyNumber: '24', position: 'Guard', borderColor: '#eecc77', accentColor: '#00aadd',
+          accentLinked: true, removeBackground: true, athleteX: .02, athleteY: -.08, athleteScale: 1.2,
+          namePlateX: .02, namePlateY: .03 },
+        events: [], createdAt: '2026-01-01', updatedAt: new Date().toISOString()
+      }]), { status: 200, headers });
+    };
+    window.__setHypePreviewState = async (state) => {
+      window.__hypePreviewState = state;
+      localStorage.setItem('hype-preview-fixture', JSON.stringify(state));
+      await queryClient.invalidateQueries({ queryKey: ['/api/athlete-invites'] });
+    };
+  }
   if (window.location.search.includes('game-on-card-save-transition')) {
     dashboardUserId = 'supporter-save-transition';
     window.__gameOnCardMockSaveRequests = 0;

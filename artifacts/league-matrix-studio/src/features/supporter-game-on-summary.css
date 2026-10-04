@@ -954,3 +954,69 @@
     display: none;
   }
 }
+/* Mobile calendar + HYPE card row (all mobile widths) */
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-slot {
+  min-width: 0;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row > .supporter-game-on-summary__event {
+  grid-column: auto;
+  min-height: 0;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-content {
+  min-height: 0;
+  padding: 10px;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-main {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-utility {
+  height: auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  border-top: 1px solid rgba(115, 182, 255, .27);
+  border-left: 0;
+  padding: 8px 0 0;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-utility-copy { max-width: none; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-utility-copy p { display: none; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-utility button {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px;
+  font-size: 9px;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-kicker { font-size: 8px; letter-spacing: .08em; gap: 4px; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-badge { padding: 3px 6px; font-size: 7px; letter-spacing: .08em; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-top { flex-wrap: wrap; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-date { margin-top: 8px; font-size: 8px; letter-spacing: .1em; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-details { gap: 4px 8px; margin-top: 6px; font-size: 10px; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-empty { font-size: 10px; margin-top: 6px; }
+.pixl-dashboard-mobile .supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event h2.supporter-game-on-summary__event-title {
+  max-width: none;
+  font-size: clamp(15px, 4.6vw, 20px);
+  line-height: 1.08;
+}
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .dashboard-install-reminder { width: 100%; margin-bottom: 8px; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .dashboard-install-reminder__button { min-height: 40px; padding: 6px 8px; font-size: 9px; white-space: normal; }

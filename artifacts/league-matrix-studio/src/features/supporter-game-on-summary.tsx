@@ -18,6 +18,7 @@ type SupporterGameOnSummaryProps = {
   record: SupporterGameRecord;
   headerAction?: ReactNode;
   children: ReactNode;
+  mobileHypeCard?: ReactNode;
 };
 
 export function SupporterGameOnSummary({
@@ -31,6 +32,7 @@ export function SupporterGameOnSummary({
   record,
   headerAction,
   children,
+  mobileHypeCard,
 }: SupporterGameOnSummaryProps) {
   const isMobile = variant === 'mobile';
   const athleteHeadingId = isMobile ? 'mobile-athlete-summary-heading' : 'athlete-summary-heading';
@@ -72,15 +74,29 @@ export function SupporterGameOnSummary({
       </header>
 
       <div className={`supporter-game-on-summary__grid${isMobile ? ' mobile-hero-columns' : ''}`}>
-        <section
-          className="supporter-game-on-summary__event"
-          aria-labelledby={isMobile ? 'mobile-next-game-heading' : 'next-game-heading'}
-          data-testid={isMobile ? undefined : 'section-next-game-context'}
-        >
-          <div className="supporter-game-on-summary__event-content" data-testid={isMobile ? 'card-mobile-featured-event' : undefined}>
-            {children}
-          </div>
-        </section>
+        {(() => {
+          const hasHype = isMobile && !!mobileHypeCard;
+          const eventSection = (
+            <section
+              className="supporter-game-on-summary__event"
+              aria-labelledby={isMobile ? 'mobile-next-game-heading' : 'next-game-heading'}
+              data-testid={isMobile ? undefined : 'section-next-game-context'}
+            >
+              <div className="supporter-game-on-summary__event-content" data-testid={isMobile ? 'card-mobile-featured-event' : undefined}>
+                {children}
+              </div>
+            </section>
+          );
+          if (!hasHype) return eventSection;
+          return (
+            <div className="supporter-game-on-summary__hype-row" data-testid="mobile-calendar-hype-row">
+              {eventSection}
+              <div className="supporter-game-on-summary__hype-slot" data-testid="mobile-hype-card-slot">
+                {mobileHypeCard}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="supporter-game-on-summary__replies" aria-label="Recent Shoutouts and replies">
           <HypeCardReplyInboxTrigger variant="dashboard" />
