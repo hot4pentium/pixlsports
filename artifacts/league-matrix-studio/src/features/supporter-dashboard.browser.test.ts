@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { checkPairedHubInWebKit } from './supporter-hub-webkit-check';
 import {
   monitorProcess,
   waitForUrl,
@@ -4447,6 +4448,23 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     await wait(`!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
     await evaluate(`window.__setSupporterDashboardTrackerUserId('hype-owner')`);
     await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+     await connection.send('Emulation.setTouchEmulationEnabled', { enabled: true }, page.sessionId);
+     const tap = async (selector: string) => {
+       const point = await evaluate<{ x: number; y: number }>(`(() => {
+         const target = document.querySelector('${selector}');
+         target.scrollIntoView({ block: 'center' });
+         const rect = target.getBoundingClientRect();
+         return { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+       })()`);
+       await connection!.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] }, page!.sessionId);
+       await connection!.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, page!.sessionId);
+     };
+     await tap('[data-testid="button-open-featured-game-card-mobile"]');
+     await wait(`Boolean(document.querySelector('[role="dialog"]'))`);
+     await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, page.sessionId);
+     await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, page.sessionId);
+     await wait(`!document.querySelector('[role="dialog"]')`);
     await evaluate(`window.__setSupporterDashboardEvents([])`);
     await wait(`document.querySelector('[data-testid="mobile-featured-event-title"]')?.textContent.includes('No upcoming')`);
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`), true);
@@ -4458,6 +4476,10 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
     await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
     await wait(`location.pathname==='/fan/saved-athlete-token'`);
+     await connection.send('Page.navigate', { url: fixtureUrl }, page.sessionId);
+     await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+     await tap('[data-testid="link-mobile-hype-preview"]');
+     await wait(`location.pathname==='/fan/saved-athlete-token'`);
   } finally {
     if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
     connection?.close();
@@ -4466,6 +4488,26 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     await rm(fixtures.harnessPath, { force: true });
     await rm(fixtures.htmlPath, { force: true });
+    release();
+  }
+});
+
+test('paired mobile Hub cards stay readable and open in Linux WebKit (not Apple Safari)', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-hub-webkit');
+  const viewportPath = fixtures.htmlPath.replace('.html', '-viewport.html');
+  try {
+    await writeFile(fixtures.harnessPath, harnessSource());
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)));
+    await writeFile(viewportPath, `<!doctype html><html><body style="margin:0">
+      <iframe id="hub-viewport" style="border:0;width:390px;height:1600px"
+        src="/${fixtures.htmlPath.slice(appDirectory.length + 1)}?mobile-hype-pair&webkit-loading&viewer=hype-owner"></iframe>
+      </body></html>`);
+    await checkPairedHubInWebKit(appDirectory, viewportPath.slice(appDirectory.length + 1));
+  } finally {
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    await rm(viewportPath, { force: true });
     release();
   }
 });
@@ -5125,11 +5167,14 @@ export function mount() {
       window.__hypeRequests++;
       const user = dashboardUserId;
       const initial = window.__hypePreviewState;
-      if (initial === 'loading') await new Promise(resolve => setTimeout(resolve, 600));
+      if (initial === 'loading') await new Promise(resolve => {
+        if (location.search.includes('webkit-loading')) window.__releaseHypeLoading = resolve;
+        else setTimeout(resolve, 600);
+      });
       const state = initial === 'loading' ? 'classic' : initial;
       const headers = { 'Content-Type': 'application/json' };
       if (state === 'error') return new Response('{"error":"Unavailable"}', { status: 503, headers });
-      const photo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><rect width="400" height="600" fill="#eaa44a"/><circle cx="200" cy="170" r="90" fill="#163f69"/><path d="M60 580V350Q200 230 340 350V580" fill="#163f69"/></svg>');
+      const photo = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><circle cx="200" cy="170" r="90" fill="#eaa44a"/><path d="M60 580V350Q200 230 340 350V580" fill="#eaa44a"/></svg>');
       return new Response(JSON.stringify(state === 'empty' || user !== 'hype-owner' ? [] : [{
         inviteToken: 'saved-athlete-token',
         athleteName: state === 'mismatch' ? 'Another athlete' : profile.athleteName,
@@ -5140,7 +5185,9 @@ export function mount() {
         photoUrl: photo, cutoutUrl: photo, photoRevision: 'portrait',
         cardAppearance: { design: ['gallery','spotlight','breakout'].includes(state) ? state : 'classic',
           jerseyNumber: '24', position: 'Guard', borderColor: '#eecc77', accentColor: '#00aadd',
-          accentLinked: true, removeBackground: true, athleteX: .02, athleteY: -.08, athleteScale: 1.2,
+          accentLinked: true, removeBackground: true, athleteX: .02,
+          athleteY: location.search.includes('webkit-loading') ? -.18 : -.08,
+          athleteScale: location.search.includes('webkit-loading') ? 1.45 : 1.2,
           namePlateX: .02, namePlateY: .03 },
         events: [], createdAt: '2026-01-01', updatedAt: new Date().toISOString()
       }]), { status: 200, headers });
