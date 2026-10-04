@@ -14,3 +14,9 @@ Use Anton with a light outline for Spotlight's large background jersey number on
 **Why:** The user confirmed the outlined Anton number looks much better and clarified that centering means between the card top and the name block, not within the full card.
 
 **How to apply:** Maintain preview/export font parity and ensure PNGs embed the number font rather than depending on an external font request.
+
+Keep the area outside Spotlight's rounded glowing frame transparent, without a blue rectangular backing.
+
+**Why:** The user requested removal of the blue rectangle behind Spotlight while retaining the card.
+
+**How to apply:** Preserve the interior artwork, glow, and avatar spillover; inspect the live card wrappers as well as its SVG.

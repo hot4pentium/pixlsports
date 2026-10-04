@@ -64,7 +64,7 @@ window.verifyGalleryPlate=async()=>{
  function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};const below=true;const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
  if(new URLSearchParams(location.search).has('spillover')){a.athleteScale=1.45;a.athleteY=-.08;}
   return <div className="living-card-stage" data-design={design}><div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><div className="living-card-flip-inner"><div className="living-card-flip-face living-card-flip-front"><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/></div></div>{!below&&controls}</section></div>{below&&controls}</div>}
-   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')||new URLSearchParams(location.search).has('gallery-preview')||new URLSearchParams(location.search).has('spotlight-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="classic"/><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
+   function App(){const spotlightLive=new URLSearchParams(location.search).has('spotlight-live');return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')||new URLSearchParams(location.search).has('gallery-preview')||new URLSearchParams(location.search).has('spotlight-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}>{!spotlightLive&&<><Card design="classic"/><Card design="gallery"/></>}<Card design="spotlight"/>{!spotlightLive&&<Card design="breakout"/>}</div>{!spotlightLive&&<div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div>}</div>}
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);
 `);
   const directory = await mkdtemp(resolve(tmpdir(), 'premium-card-browser-'));
@@ -162,6 +162,14 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`document.querySelector('[data-testid="button-design-spotlight"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'spotlight', 5_000);
     const assertSpotlightNumber = async () => {
+      const backing = await connection!.evaluate(`(()=>{
+        const front=document.querySelector('.living-card-frame[data-design="spotlight"][data-side="front"] .living-card-flip-front'),s=getComputedStyle(front);
+        const classic=document.querySelector('.living-card-frame[data-design="classic"] .living-card-flip-front');
+        return {image:s.backgroundImage,color:s.backgroundColor,classicImage:getComputedStyle(classic).backgroundImage};
+      })()`, session) as { image: string; color: string; classicImage: string };
+      assert.equal(backing.image, 'none', 'Spotlight has no rectangular blue background behind its artwork');
+      assert.equal(backing.color, 'rgba(0, 0, 0, 0)', 'Spotlight rounded corners remain transparent');
+      assert.notEqual(backing.classicImage, 'none', 'Classic retains its existing background');
       const number = await connection!.evaluate<{ loaded: number; styles: Array<{ font: string; weight: string; stroke: string; width: string; behind: boolean; centerOffset: number }> }>(`(async()=>{
         const fonts=await document.fonts.load('400 72px Anton','09');
         const roots=[document.querySelector('.living-card-frame[data-design="spotlight"] .living-card-premium-art'),document.querySelector('[data-testid="appearance-preview-surface"]')];
