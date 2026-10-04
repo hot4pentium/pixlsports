@@ -58,7 +58,7 @@ test('new fan Shoutouts require public disclosure while older private responses 
 });
 test('real Hype Card replaces the front slot with responses and moves flip under the card', () => {
   assert.match(livingCardSource, /function LivingCardControls\(/);
-  assert.match(livingCardSource, /const controlsBelowCard = invite\.cardAppearance\?\.design === 'breakout' \|\| invite\.cardAppearance\?\.design === 'gallery';/);
+  assert.match(livingCardSource, /const controlsBelowCard = invite\.cardAppearance\?\.design === 'breakout'\s*\|\|\s*invite\.cardAppearance\?\.design === 'gallery'\s*\|\|\s*invite\.cardAppearance\?\.design === 'spotlight';/);
   assert.match(livingCardSource, /!controlsBelowCard && <LivingCardControls/);
   assert.match(livingCardSource, /<div className="living-card-frame-outer">[\s\S]*?<\/div>\s*\{controlsBelowCard && <LivingCardControls/);
   assert.match(livingCardSource, /data-testid="button-living-card-responses"/);

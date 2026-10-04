@@ -27,24 +27,27 @@ test('Gallery moves the name, details, and long team label down beneath the phot
   const svg = buildPremiumHypeCardArtwork({
     athleteName: 'Jordan Alexander Matthews',
     teamName: 'The Eastside Hurricanes',
+    jerseyNumber: '01',
+    position: 'Quarterback',
     appearance: defaultCardAppearance('gallery'),
   });
-  assert.match(svg, /<text x="500" y="1123\.0"[^>]*>JORDAN ALEXANDER<\/text>/);
-  assert.match(svg, /<text x="500" y="1221\.0"[^>]*>MATTHEWS<\/text>/);
+  assert.match(svg, /<text x="500" y="1123"[^>]*>JORDAN ALEXANDER<\/text>/);
+  assert.match(svg, /<text x="500" y="1221"[^>]*>MATTHEWS<\/text>/);
   assert.match(svg, /<text x="90" y="1063"/);
   assert.match(svg, /<text x="500" y="1273"[^>]*>#01\s+\|\s+QUARTERBACK<\/text>/);
   assert.match(svg, /<line x1="90" y1="1327" x2="910" y2="1327"/);
 });
 test('Spotlight keeps Gallery-style avatar placement and paints the full cutout over the frame', () => {
   const appearance = { ...defaultCardAppearance('spotlight'), athleteScale: 1.2, athleteX: .08, athleteY: -.04 };
-  const svg = buildPremiumHypeCardArtwork({ ...base, appearance });
+  const svg = buildPremiumHypeCardArtwork({ ...base, logoUrl: 'https://example.com/logo.png', appearance });
   const frame = svg.indexOf('stroke-width="5"/>');
   const avatar = svg.indexOf('data-photo-placement="cutout"');
   const logo = svg.indexOf('preserveAspectRatio="xMinYMin meet"');
   assert.ok(frame >= 0 && avatar > frame && logo > avatar, 'the avatar overlays the card frame while the brand mark stays above it');
-  assert.match(svg, /<svg[^>]*data-design="spotlight"[^>]*overflow="visible"/);
+  assert.match(svg, /<svg[^>]*overflow="visible"[^>]*data-design="spotlight"/);
   assert.match(svg, /<image href="data:image\/png;base64,AAAA" x="90" y="120" width="820" height="1130" preserveAspectRatio="xMidYMax meet"/);
   assert.match(svg, /translate\(580 1194\) scale\(1\.2\)/);
+  assert.match(svg, /id="s-plate"[^]*<g filter="url\(#s-plate\)">/);
 });
 test('the premium designer preview separates its dressed nav strip from the card artwork', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {

@@ -193,7 +193,7 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const card = { x: 14, y: 14, w: 972, h: 1372 };
   const nm = fitName(input.athleteName || 'Athlete', 760, 170, 100, 120);
   const plateH = Math.max(235, 34 + nm.size * 0.9 + (nm.lines.length - 1) * nm.size * 0.98 + 52 + 44);
-  const plate = { x: 70, y: 1235 - plateH, w: 860, h: plateH };
+  const plate = { x: 70, y: 1290 - plateH, w: 860, h: plateH };
   const nameY = plate.y + 30 + nm.size * 0.9;
   const detailY = nameY + (nm.lines.length - 1) * nm.size * 0.98 + 50;
   const splitX = 640;

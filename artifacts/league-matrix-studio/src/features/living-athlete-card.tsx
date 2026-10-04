@@ -353,7 +353,9 @@ export function LivingAthleteCardPage({
     if (side === next) return;
     setSide(next);
   };
-  const controlsBelowCard = invite.cardAppearance?.design === 'breakout' || invite.cardAppearance?.design === 'gallery';
+  const controlsBelowCard = invite.cardAppearance?.design === 'breakout'
+    || invite.cardAppearance?.design === 'gallery'
+    || invite.cardAppearance?.design === 'spotlight';
   const submitHype = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!publicConsent) return;
