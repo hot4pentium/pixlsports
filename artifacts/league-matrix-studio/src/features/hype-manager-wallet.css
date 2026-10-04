@@ -1,3 +1,10 @@
+.hype-manager-task-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
 .hype-manager-task {
   --hype-manager-ink: #102a4c;
   --hype-manager-blue: #285d9b;
@@ -7,6 +14,36 @@
   width: 100%;
   min-width: 0;
   max-width: 760px;
+}
+
+.hype-manager-task-grid > .hype-manager-task {
+  display: contents;
+}
+
+.hype-manager-task-grid .hype-manager-task-button {
+  grid-column: var(--hype-task-column-mobile);
+  grid-row: var(--hype-task-row-mobile);
+  gap: clamp(10px, 1.4vw, 16px);
+  min-width: 0;
+  min-height: 146px;
+  padding: clamp(14px, 1.7vw, 20px);
+}
+
+.hype-manager-task-grid .hype-manager-task-icon {
+  width: clamp(42px, 5vw, 54px);
+  height: clamp(42px, 5vw, 54px);
+}
+
+.hype-manager-task-grid .hype-manager-task-title {
+  overflow-wrap: anywhere;
+  font-size: clamp(21px, 2.3vw, 27px);
+}
+
+.hype-manager-task-grid .hype-manager-task-panel {
+  grid-column: 1 / -1;
+  grid-row: var(--hype-panel-row-mobile);
+  min-width: 0;
+  margin: 0;
 }
 
 .hype-manager-task-button {
@@ -180,6 +217,94 @@
 
 .hype-manager-task-panel[hidden] {
   display: none;
+}
+
+@media (min-width: 1024px) {
+  .hype-manager-task-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-button {
+    grid-column: var(--hype-task-column-desktop);
+    grid-row: var(--hype-task-row-desktop);
+  }
+
+  .hype-manager-task-grid .hype-manager-task-panel {
+    grid-row: var(--hype-panel-row-desktop);
+  }
+}
+
+@media (max-width: 767px) {
+  .hype-manager-task-grid .hype-manager-task-button {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) 26px;
+    grid-template-rows: 38px auto;
+    align-items: center;
+    gap: 8px 7px;
+    min-height: 142px;
+    padding: 11px;
+    border-radius: 16px;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-icon {
+    grid-column: 1;
+    grid-row: 1;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-copy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: 3px;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-badge {
+    margin-bottom: 1px;
+    padding: 3px 6px;
+    font-size: 8px;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-title {
+    font-size: clamp(18px, 5.4vw, 22px);
+  }
+
+  .hype-manager-task-grid .hype-manager-task-description {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 10px;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-preview {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    width: 38px;
+    height: 38px;
+    max-width: none;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-chevron {
+    grid-column: 3;
+    grid-row: 1;
+    width: 28px;
+    height: 28px;
+  }
+
+  .hype-manager-task-grid .hype-manager-task-panel {
+    padding: 16px;
+    border-radius: 16px;
+  }
 }
 
 @media (max-width: 520px) {

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { ChevronRight, type LucideIcon } from 'lucide-react';
 import './hype-manager-wallet.css';
 
@@ -9,6 +9,8 @@ export function HypeManagerTaskCard({
   Icon,
   active,
   onSelect,
+  taskIndex,
+  activeTaskIndex,
   children,
   badge,
   preview,
@@ -19,15 +21,33 @@ export function HypeManagerTaskCard({
   Icon: LucideIcon;
   active: boolean;
   onSelect: () => void;
+  taskIndex?: number;
+  activeTaskIndex?: number;
   children: ReactNode;
   badge?: string;
   preview?: ReactNode;
 }) {
   const panelId = `hype-manager-panel-${id}`;
   const triggerId = `hype-manager-trigger-${id}`;
+  const gridPositions: CSSProperties | undefined = taskIndex === undefined || activeTaskIndex === undefined
+    ? undefined
+    : (() => {
+      const mobileGroup = Math.floor(taskIndex / 2);
+      const mobileActiveGroup = activeTaskIndex < 0 ? -1 : Math.floor(activeTaskIndex / 2);
+      const desktopGroup = Math.floor(taskIndex / 3);
+      const desktopActiveGroup = activeTaskIndex < 0 ? -1 : Math.floor(activeTaskIndex / 3);
+      return {
+        '--hype-task-column-mobile': String((taskIndex % 2) + 1),
+        '--hype-task-row-mobile': String(mobileGroup + 1 + (activeTaskIndex >= 0 && mobileGroup > mobileActiveGroup ? 1 : 0)),
+        '--hype-panel-row-mobile': String(Math.max(1, mobileActiveGroup + 2)),
+        '--hype-task-column-desktop': String((taskIndex % 3) + 1),
+        '--hype-task-row-desktop': String(desktopGroup + 1 + (activeTaskIndex >= 0 && desktopGroup > desktopActiveGroup ? 1 : 0)),
+        '--hype-panel-row-desktop': String(Math.max(1, desktopActiveGroup + 2)),
+      } as CSSProperties;
+    })();
 
   return (
-    <div className="hype-manager-task">
+    <div className="hype-manager-task" style={gridPositions}>
       <button
         id={triggerId}
         type="button"

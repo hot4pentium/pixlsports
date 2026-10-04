@@ -629,6 +629,56 @@ test('player-page owner tools remain private across account changes and pause', 
       ownerManage,
     );
     assert.deepEqual(taskOrder.slice(0, 4), ['Share Hype Card', 'Card Design', 'Family Live Taps', 'Upload Photo']);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, ownerManage);
+    await waitFor(connection, ownerManage, 'window.innerWidth === 390', Boolean, 12_000);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-design\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-design')?.hidden === false", Boolean, 12_000);
+    const mobileTaskLayout = await connection.evaluate<{ columns: number; panelTop: number; rowBottom: number; panelBottom: number; nextRowTop: number }>(`(() => {
+      const grid = document.querySelector('.hype-manager-task-grid');
+      const rect = (id) => document.querySelector('[data-testid="button-hype-manager-' + id + '"]').getBoundingClientRect();
+      const panel = document.querySelector('#hype-manager-panel-design').getBoundingClientRect();
+      const firstRow = Math.max(rect('share').bottom, rect('design').bottom);
+      return {
+        columns: getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length,
+        panelTop: panel.top,
+        rowBottom: firstRow,
+        panelBottom: panel.bottom,
+        nextRowTop: Math.min(rect('live-taps').top, rect('photo').top),
+      };
+    })()`, ownerManage);
+    assert.equal(mobileTaskLayout.columns, 2, 'phone manager cards use two columns');
+    assert.ok(mobileTaskLayout.panelTop >= mobileTaskLayout.rowBottom, 'the phone editor opens beneath its card row');
+    assert.ok(mobileTaskLayout.nextRowTop > mobileTaskLayout.panelBottom, 'the next phone card row follows the full-width editor');
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 720,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, ownerManage);
+    await waitFor(connection, ownerManage, 'window.innerWidth === 1280', Boolean, 12_000);
+    const desktopTaskLayout = await connection.evaluate<{ columns: number; panelTop: number; rowBottom: number; panelBottom: number; nextRowTop: number }>(`(() => {
+      const grid = document.querySelector('.hype-manager-task-grid');
+      const rect = (id) => document.querySelector('[data-testid="button-hype-manager-' + id + '"]').getBoundingClientRect();
+      const panel = document.querySelector('#hype-manager-panel-design').getBoundingClientRect();
+      const firstRow = Math.max(rect('share').bottom, rect('design').bottom, rect('live-taps').bottom);
+      return {
+        columns: getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length,
+        panelTop: panel.top,
+        rowBottom: firstRow,
+        panelBottom: panel.bottom,
+        nextRowTop: Math.min(rect('photo').top, rect('sections').top, rect('events').top),
+      };
+    })()`, ownerManage);
+    assert.equal(desktopTaskLayout.columns, 3, 'wide manager layouts use three columns');
+    assert.ok(desktopTaskLayout.panelTop >= desktopTaskLayout.rowBottom, 'the desktop editor opens beneath its card row');
+    assert.ok(desktopTaskLayout.nextRowTop > desktopTaskLayout.panelBottom, 'the next desktop card row follows the full-width editor');
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === false && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'true'", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === true && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'false'", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
