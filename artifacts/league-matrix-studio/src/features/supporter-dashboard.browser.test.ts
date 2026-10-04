@@ -7,6 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { checkPairedHubInWebKit } from './supporter-hub-webkit-check';
+import { checkSavedHypeCardOwnerApi } from './supporter-hype-card-api-browser-check';
 import {
   monitorProcess,
   waitForUrl,
@@ -4488,6 +4489,15 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     await rm(fixtures.harnessPath, { force: true });
     await rm(fixtures.htmlPath, { force: true });
+    release();
+  }
+});
+
+test('mobile saved HYPE Card follows authenticated real owner API saves, reloads and isolation', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  try {
+    await checkSavedHypeCardOwnerApi(appDirectory, chromiumPath);
+  } finally {
     release();
   }
 });
