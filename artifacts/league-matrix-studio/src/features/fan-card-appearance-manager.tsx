@@ -50,8 +50,7 @@ async function readImageDimensions(dataUrl: string | null): Promise<{ width: num
 }
 
 function supportsImageSharing(file?: File): boolean {
-  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof File === 'undefined') return false;
-  if (typeof navigator.canShare !== 'function') return true;
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function' || typeof File === 'undefined') return false;
   try {
     return navigator.canShare({
       files: [file ?? new File([''], 'hype-card.png', { type: 'image/png' })],
