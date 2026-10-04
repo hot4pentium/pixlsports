@@ -149,6 +149,7 @@ import {
 import { readChecklistForEvent, useChecklistSave, type ChecklistSyncStatus } from '@/features/use-checklist-save';
 import MeetingCapture from '@/features/meeting-capture';
 import { PublicLandingPage } from '@/features/landing-home';
+import { SupporterToolsGuidePage } from '@/features/supporter-tools-guide';
 import heroBanner from '@/assets/hero-banner.webp';
 import footballFieldAsset from '@/assets/football-field.svg';
 import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
@@ -4117,6 +4118,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/live/:shareToken" component={PublicStatTrackerPage} />
               <Route path="/fan/:inviteToken" component={LivingAthleteCardRoute} />
+              <Route path="/supporter-guide" component={SupporterToolsGuidePage} />
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />

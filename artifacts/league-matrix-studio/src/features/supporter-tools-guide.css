@@ -1,0 +1,347 @@
+.supporter-tools-guide-shell {
+  min-height: 100dvh;
+  padding: 28px 18px;
+  background: #e8eef5;
+  color: #10233d;
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+.supporter-tools-guide {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #d7e0eb;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(16, 35, 61, .13);
+}
+
+.supporter-guide-hero {
+  padding: clamp(26px, 5vw, 54px);
+  background:
+    radial-gradient(circle at 88% 18%, rgba(85, 164, 255, .25), transparent 21rem),
+    linear-gradient(125deg, #0b1f3a, #12345a);
+  color: #f3f6fa;
+}
+
+.supporter-guide-eyebrow,
+.supporter-guide-kicker {
+  margin: 0;
+  color: #8ecbff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.supporter-guide-hero h1 {
+  margin: 15px 0 0;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(42px, 7vw, 66px);
+  font-weight: 900;
+  letter-spacing: -.025em;
+  line-height: .88;
+  text-transform: uppercase;
+}
+
+.supporter-guide-intro {
+  max-width: 590px;
+  margin: 18px 0 0;
+  color: rgba(243, 246, 250, .78);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.supporter-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.supporter-guide-actions button,
+.supporter-guide-actions a {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #8ecbff;
+  padding: 9px 14px;
+  background: #8ecbff;
+  color: #0b1f3a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.supporter-guide-actions a {
+  border-color: rgba(243, 246, 250, .35);
+  background: transparent;
+  color: #f3f6fa;
+}
+
+.supporter-guide-actions button:hover,
+.supporter-guide-actions a:hover {
+  filter: brightness(1.08);
+}
+
+.supporter-guide-actions button:focus-visible,
+.supporter-guide-actions a:focus-visible {
+  outline: 3px solid #ff986e;
+  outline-offset: 3px;
+}
+
+.supporter-guide-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: clamp(18px, 3vw, 30px);
+}
+
+.supporter-guide-column {
+  min-width: 0;
+  border: 1px solid #dce4ee;
+  padding: clamp(16px, 2.5vw, 24px);
+  background: #f8fafc;
+}
+
+.supporter-guide-account {
+  border-top: 4px solid #2878f5;
+}
+
+.supporter-guide-public {
+  border-top: 4px solid #ff6433;
+}
+
+.supporter-guide-column h2 {
+  margin: 7px 0 17px;
+  color: #10233d;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(25px, 3vw, 34px);
+  font-weight: 900;
+  letter-spacing: .01em;
+  line-height: .98;
+  text-transform: uppercase;
+}
+
+.supporter-guide-public .supporter-guide-kicker {
+  color: #bd431e;
+}
+
+.supporter-guide-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.supporter-guide-list li {
+  border-top: 1px solid #dce4ee;
+  padding-top: 11px;
+}
+
+.supporter-guide-list h3,
+.supporter-guide-live-taps h3 {
+  margin: 0;
+  color: #10233d;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.supporter-guide-list p,
+.supporter-guide-live-taps > p:last-child {
+  margin: 4px 0 0;
+  color: #42536a;
+  font-size: 12px;
+  line-height: 1.48;
+}
+
+.supporter-guide-live-taps {
+  margin-top: 16px;
+  border: 1px solid #ffd4c4;
+  border-left: 4px solid #ff6433;
+  padding: 12px 13px;
+  background: #fff4ef;
+}
+
+.supporter-guide-live-taps .supporter-guide-kicker {
+  margin-bottom: 5px;
+  color: #a63d1d;
+  font-size: 9px;
+  letter-spacing: .11em;
+}
+
+.supporter-guide-live-taps h3 {
+  font-size: 14px;
+}
+
+.supporter-guide-quick-rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin: 0 clamp(18px, 3vw, 30px);
+  padding: 14px 18px;
+  background: #10233d;
+  color: #f3f6fa;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.supporter-guide-quick-rule strong {
+  color: #8ecbff;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.supporter-guide-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 20px;
+  padding: 16px clamp(18px, 3vw, 30px) 20px;
+  color: #66758a;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+@media (max-width: 680px) {
+  .supporter-tools-guide-shell {
+    padding: 12px;
+  }
+
+  .supporter-guide-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .supporter-guide-footer {
+    display: grid;
+  }
+}
+
+@page {
+  size: letter portrait;
+  margin: .38in;
+}
+
+@media print {
+  html,
+  body {
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  .supporter-tools-guide-shell {
+    min-height: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .supporter-tools-guide {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    overflow: visible;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .supporter-guide-hero {
+    padding: 16pt 19pt;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .supporter-guide-hero h1 {
+    margin-top: 9pt;
+    font-size: 34pt;
+  }
+
+  .supporter-guide-intro {
+    max-width: 5.9in;
+    margin-top: 9pt;
+    font-size: 10pt;
+  }
+
+  .supporter-guide-actions {
+    display: none;
+  }
+
+  .supporter-guide-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10pt;
+    padding: 12pt 0;
+  }
+
+  .supporter-guide-column {
+    padding: 12pt;
+    break-inside: avoid;
+  }
+
+  .supporter-guide-column h2 {
+    margin: 5pt 0 10pt;
+    font-size: 20pt;
+  }
+
+  .supporter-guide-list {
+    gap: 7pt;
+  }
+
+  .supporter-guide-list li {
+    padding-top: 7pt;
+    break-inside: avoid;
+  }
+
+  .supporter-guide-list h3,
+  .supporter-guide-live-taps h3 {
+    font-size: 9.5pt;
+  }
+
+  .supporter-guide-list p,
+  .supporter-guide-live-taps > p:last-child {
+    margin-top: 2pt;
+    font-size: 8.5pt;
+    line-height: 1.35;
+  }
+
+  .supporter-guide-live-taps {
+    margin-top: 9pt;
+    padding: 8pt;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .supporter-guide-live-taps .supporter-guide-kicker {
+    margin-bottom: 3pt;
+    font-size: 7pt;
+  }
+
+  .supporter-guide-live-taps h3 {
+    font-size: 10pt;
+  }
+
+  .supporter-guide-quick-rule {
+    margin: 0;
+    padding: 9pt 12pt;
+    font-size: 9pt;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .supporter-guide-quick-rule strong {
+    font-size: 7.5pt;
+  }
+
+  .supporter-guide-footer {
+    padding: 10pt 0 0;
+    font-size: 7.5pt;
+  }
+}
