@@ -16,6 +16,19 @@ test('placement changes the original fallback as well as the cutout in every pre
 });
 import { defaultCardAppearance } from './hype-card-appearance';
 
+test('Breakout aligns the sport label with the main Pixl logo mark', () => {
+  const svg = buildPremiumHypeCardArtwork({
+    athleteName: 'Player',
+    sport: 'baseball',
+    logoUrl: 'data:image/png;base64,AAAA',
+    appearance: defaultCardAppearance('breakout'),
+  }, 'fg');
+  const logoY = Number(svg.match(/<image href="data:image\/png;base64,AAAA" x="92" y="(\d+(?:\.\d+)?)"/)?.[1]);
+  const sportY = Number(svg.match(/data-breakout-sport-label="true"[^>]*y="(\d+(?:\.\d+)?)"/)?.[1]);
+  assert.ok(Number.isFinite(logoY) && Number.isFinite(sportY), 'Breakout renders both header marks');
+  assert.ok(Math.abs(sportY - logoY - 30) <= 1, 'the sport label sits on the main logo mark’s visual row, not below it');
+});
+
 test('sport backgrounds keep soccer goals out of baseball and football cards', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     const input = { athleteName: 'Player', appearance: defaultCardAppearance(design) };
