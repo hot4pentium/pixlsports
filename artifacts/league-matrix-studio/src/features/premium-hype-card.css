@@ -16,12 +16,33 @@
 .living-card-premium-art, .living-card-premium-art > svg { display: block; width: 100%; height: 100%; pointer-events: none; }
 .living-card-premium-art > svg { overflow: visible; }
 
-/* Navigation sits inside the artwork's reserved bottom strip. */
-.living-card-frame[data-design="gallery"][data-side="front"] .living-card-controls { left: 9%; right: 9%; bottom: 3.4%; padding: 0; gap: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
-.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control { background: transparent; border: 0; border-radius: 0; color: #10243D; font-family: 'Montserrat', 'DM Sans', sans-serif; border-right: 1px solid #10243d26; }
-.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control:last-child { border-right: 0; }
-.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control:hover { background: #10243d0f; color: #10243D; transform: none; }
-.living-card-frame[data-design="gallery"][data-side="front"] .living-card-control[aria-pressed="true"] { background: transparent; color: #10243D; box-shadow: inset 0 -3px 0 var(--pixl-accent, #EF3996); }
+.living-card-stage[data-design="gallery"] .living-card-controls {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: min(88%, 520px);
+  margin: 14px auto 0;
+  padding: 3px;
+  gap: 0;
+  border: 1px solid var(--pixl-accent, #EF3996);
+  border-radius: 16px;
+  background: #F6EFE2;
+  box-shadow: 0 8px 20px #02050c55;
+  backdrop-filter: none;
+}
+.living-card-stage[data-design="gallery"] .living-card-control {
+  min-height: 48px;
+  border: 0;
+  border-right: 1px solid #10243d26;
+  border-radius: 0;
+  background: transparent;
+  color: #10243D;
+  font-family: 'Montserrat', 'DM Sans', sans-serif;
+}
+.living-card-stage[data-design="gallery"] .living-card-control:last-child { border-right: 0; }
+.living-card-stage[data-design="gallery"] .living-card-control:hover { background: #10243d0f; color: #10243D; transform: none; }
+.living-card-stage[data-design="gallery"] .living-card-control[aria-pressed="true"] { background: transparent; color: #10243D; box-shadow: inset 0 -3px 0 var(--pixl-accent, #EF3996); }
 .living-card-frame[data-design="gallery"][data-side="front"] .living-card-control:focus-visible, .living-card-frame[data-design="spotlight"] .living-card-control:focus-visible, .living-card-frame[data-design="breakout"] .living-card-control:focus-visible { outline: 2px solid var(--pixl-accent, #EF3996); outline-offset: -2px; }
 
 .living-card-frame[data-design="spotlight"] .living-card-controls { left: 7%; right: 7%; bottom: 3.4%; padding: 3px; gap: 0; border: 1px solid #ffffff2e; border-radius: 18px; background: #0B1A33f2; box-shadow: 0 8px 20px #02050c88; }
