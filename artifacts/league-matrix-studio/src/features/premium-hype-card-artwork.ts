@@ -333,7 +333,9 @@ export function buildPremiumNavStripExport(appearance: HypeCardAppearance): stri
 <text x="${cx}" y="${y + 46}" text-anchor="middle" font-family="${FONT_TEXT}" font-weight="800" font-size="13" letter-spacing="2" fill="${ink}">${label}</text>
 ${i > 0 ? `<line x1="${x + cw * i}" y1="${y + 8}" x2="${x + cw * i}" y2="${y + h - 8}" stroke="${ink}" stroke-opacity=".22"/>` : ''}`;
   }).join('');
-  const back = gallery ? '' : `<rect x="${x}" y="${y - 3}" width="${w}" height="${h + 6}" rx="22" fill="#0B1A33" stroke="#fff" stroke-opacity=".18"/>`;
+  const back = gallery
+    ? `<rect x="${x}" y="${y - 3}" width="${w}" height="${h + 6}" rx="10" fill="#F6EFE2"/>`
+    : `<rect x="${x}" y="${y - 3}" width="${w}" height="${h + 6}" rx="22" fill="#0B1A33" stroke="#fff" stroke-opacity=".18"/>`;
   return `<g id="export-nav">${back}${cells}</g>`;
 }
 

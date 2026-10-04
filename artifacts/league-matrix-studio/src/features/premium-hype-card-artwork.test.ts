@@ -33,6 +33,8 @@ test('the premium designer preview separates its dressed nav strip from the card
     assert.match(nav, /TAPS/);
     assert.match(nav, /EVENTS/);
     assert.match(nav, /id="test-nav-export-nav"/);
+    if (design === 'gallery') assert.match(nav, /fill="#F6EFE2"/, 'the detached Gallery strip retains its paper background');
+    else assert.match(nav, /fill="#0B1A33" stroke="#fff"/, `${design} retains its dark nav dressing`);
     assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /id="export-nav"/);
   }
 });
