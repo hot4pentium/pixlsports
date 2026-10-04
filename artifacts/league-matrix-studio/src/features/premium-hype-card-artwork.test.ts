@@ -18,7 +18,7 @@ import { defaultCardAppearance } from './hype-card-appearance';
 
 test('each name line has its own bounded advance in live, layered, and PNG artwork', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
-    const maxWidth = design === 'gallery' ? 800 : 760;
+    const maxWidth = design === 'gallery' ? 800 : design === 'spotlight' ? 720 : 760;
     for (const athleteName of ['Alexandria Montgomery-Williams', 'Maximilian Alexander Thornberry-Wells', 'W'.repeat(100), 'Li', '  Alexandria   Montgomery-Williams  ']) {
       const appearance = { ...defaultCardAppearance(design), athleteScale: 1.45, athleteY: -.18 };
       for (const layer of ['all', 'fg'] as const) {
@@ -138,7 +138,7 @@ test('Spotlight keeps Gallery-style avatar placement and paints the full cutout 
   assert.match(svg, /<svg[^>]*overflow="visible"[^>]*data-design="spotlight"/);
   assert.match(svg, /<image href="data:image\/png;base64,AAAA" x="90" y="120" width="820" height="1130" preserveAspectRatio="xMidYMax meet"/);
   assert.match(svg, /translate\(580 1194\) scale\(1\.2\)/);
-  assert.match(svg, /<rect x="70" y="1067" width="860" height="283" rx="28" fill="url\(#s-sheen\)"/);
+  assert.match(svg, /<rect x="90" y="1088" width="820" height="262" rx="26" fill="url\(#s-sheen\)"/);
 });
 test('the premium designer preview separates its dressed nav strip from the card artwork', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
@@ -224,7 +224,7 @@ test('Spotlight uses outlined Anton numerals behind the avatar without changing 
       const number = svg.match(/data-jersey-number="true"[^>]*y="([\d.]+)"[^>]*font-size="([\d.]+)"/)!;
       const visibleCenter = Number(number[1]) - Number(number[2]) * (1760 / 2048) / 2;
       const fg = buildPremiumHypeCardArtwork(input, 'fg');
-      const plateTop = Number(fg.match(/<rect x="70" y="([\d.]+)"[^>]*data-spotlight-name-block="true"/)![1]);
+      const plateTop = Number(fg.match(/<rect x="90" y="([\d.]+)"[^>]*data-spotlight-name-block="true"/)![1]);
       assert.ok(Math.abs(visibleCenter - (14 + plateTop) / 2) < .01, `${jerseyNumber} centers between the card top and name block`);
       assert.doesNotMatch(svg, /<g filter="url\(#[^"]*s-numtex\)">/);
       if (layer === 'all') {
@@ -242,7 +242,7 @@ test('Spotlight number centering follows the height of short and wrapped name bl
   for (const athleteName of ['Kimberly', 'Jordan Alexander Matthews']) {
     for (const jerseyNumber of ['9', '10', '123']) {
       const svg = buildPremiumHypeCardArtwork({ ...base, athleteName, jerseyNumber, appearance: defaultCardAppearance('spotlight') });
-      const plateTop = Number(svg.match(/<rect x="70" y="([\d.]+)"[^>]*data-spotlight-name-block="true"/)![1]);
+      const plateTop = Number(svg.match(/<rect x="90" y="([\d.]+)"[^>]*data-spotlight-name-block="true"/)![1]);
       const number = svg.match(/data-jersey-number="true"[^>]*y="([\d.]+)"[^>]*font-size="([\d.]+)"/)!;
       const center = Number(number[1]) - Number(number[2]) * (1760 / 2048) / 2;
       assert.ok(Math.abs(center - (14 + plateTop) / 2) < .01);

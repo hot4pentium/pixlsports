@@ -201,11 +201,11 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const jersey = (input.jerseyNumber || a.jerseyNumber || '').trim().replace(/^#/, '');
   const team = (input.teamName || '').trim().toUpperCase();
   const card = { x: 14, y: 14, w: 972, h: 1372 };
-  const nm = fitName(input.athleteName || 'Athlete', 760, 170, 100, 120);
-  const plateH = Math.max(235, 34 + nm.size * 0.9 + (nm.lines.length - 1) * nm.size * 0.98 + 52 + 44);
-  const plate = { x: 70, y: 1350 - plateH, w: 860, h: plateH };
-  const nameY = plate.y + 30 + nm.size * 0.9;
-  const detailY = nameY + (nm.lines.length - 1) * nm.size * 0.98 + 50;
+  const nm = fitName(input.athleteName || 'Athlete', 720, 170, 100, 120);
+  const plateH = Math.round(Math.max(220, 28 + nm.size * 0.86 + (nm.lines.length - 1) * nm.size * 0.94 + 46 + 42));
+  const plate = { x: 90, y: 1350 - plateH, w: 820, h: plateH };
+  const nameY = plate.y + 24 + nm.size * 0.86;
+  const detailY = nameY + (nm.lines.length - 1) * nm.size * 0.94 + 44;
   const splitX = 640;
   const numSize = jersey.length > 2 ? 520 : jersey.length === 2 ? 760 : 900;
   // Anton's cap height is 1760/2048 em. Center the visible numerals, not their baseline.
@@ -244,11 +244,11 @@ ${input.logoUrl ? `<rect x="76" y="62" width="196" height="76" rx="14" fill="${I
 ${sport ? `<text x="912" y="108" text-anchor="end" font-family="${FONT_TEXT}" font-weight="600" font-size="28" letter-spacing="8" fill="#F1ECE2">${sport}</text><line x1="860" y1="152" x2="914" y2="152" stroke="${accent}" stroke-width="4"/>` : ''}
 ${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}
 <g filter="url(#s-plate)">
-<rect x="${plate.x + 20}" y="${plate.y + 22}" width="${plate.w}" height="${plate.h}" rx="30" fill="${mix(accent, '#000000', .12)}" transform="rotate(-1.4 500 ${plate.y + plate.h / 2})"/>
-<rect x="${plate.x + 5}" y="${plate.y - 14}" width="${plate.w}" height="${plate.h}" rx="30" fill="${accent}" transform="rotate(1.6 500 ${plate.y + plate.h / 2})"/>
-<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="28" fill="${IVORY}" data-spotlight-name-block="true"/></g>
-<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="28" fill="url(#s-sheen)"/>
-<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="28" filter="url(#s-grain2)" opacity=".6"/>
+<rect x="${plate.x + 20}" y="${plate.y + 22}" width="${plate.w}" height="${plate.h}" rx="28" fill="${mix(accent, '#000000', .12)}" transform="rotate(-1.4 500 ${plate.y + plate.h / 2})"/>
+<rect x="${plate.x + 5}" y="${plate.y - 14}" width="${plate.w}" height="${plate.h}" rx="28" fill="${accent}" transform="rotate(1.6 500 ${plate.y + plate.h / 2})"/>
+<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="26" fill="${IVORY}" data-spotlight-name-block="true"/></g>
+<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="26" fill="url(#s-sheen)"/>
+<rect x="${plate.x}" y="${plate.y}" width="${plate.w}" height="${plate.h}" rx="26" filter="url(#s-grain2)" opacity=".6"/>
 ${nameText(nm.lines, plate.x + 40, nameY, nm.size, nm.tl, NAVY)}
 ${team ? `<text x="${plate.x + 44}" y="${detailY}" font-family="${FONT_TEXT}" font-weight="700" font-size="30" letter-spacing="6" fill="${NAVY}">${escapeXml(team.slice(0, 26))}</text><line x1="${plate.x + 44}" y1="${detailY + 22}" x2="${plate.x + 134}" y2="${detailY + 22}" stroke="${accent}" stroke-width="4"/>` : ''}
 ${position ? (team ? `<line x1="${splitX - 20}" y1="${detailY - 32}" x2="${splitX - 20}" y2="${detailY + 12}" stroke="${NAVY}" stroke-opacity=".6" stroke-width="2"/>` : '') + `<text x="${plate.x + plate.w - 40}" y="${detailY}" text-anchor="end" font-family="${FONT_TEXT}" font-weight="700" font-size="26" letter-spacing="5" fill="${NAVY}">${escapeXml(position.slice(0, 22))}</text>` : ''}
