@@ -5,6 +5,9 @@ import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './h
 
 test('legacy cards retain their existing presentation with no new appearance', () => {
   assert.deepEqual(normalizeCardAppearance(null), defaultCardAppearance());
+  const breakout = defaultCardAppearance('breakout');
+  assert.equal(breakout.accentLinked, true);
+  assert.equal(breakout.accentColor, breakout.borderColor);
   assert.equal(normalizeHypeCardProject({ ...defaultProject(), cardAppearance: undefined }).cardAppearance.design, 'classic');
 });
 test('accent always follows the border and normalized placement survives save/reopen', () => {

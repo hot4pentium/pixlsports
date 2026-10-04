@@ -97,6 +97,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
         const before = await connection.evaluate<{ x: number; y: number; width: number }>(actorBounds, session);
         await connection.evaluate(`(()=>{const button=document.querySelector('[data-testid="button-reposition-mode"]');if(button.getAttribute('aria-pressed')!=='true')button.click()})()`, session);
         assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').style.touchAction`, session), 'none');
+        assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').classList.contains('ring-2')`, session), false, 'positioning mode does not add a white square frame');
         const point = await connection.evaluate<{ x: number; y: number }>(`(()=>{const r=document.querySelector('[data-testid="appearance-preview-surface"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`, session);
         await connection.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 }, session);
         await connection.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x + 24, y: point.y + 24, button: 'left', buttons: 1 }, session);

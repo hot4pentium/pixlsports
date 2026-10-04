@@ -176,6 +176,7 @@ export function isSafeCutoutDataUrl(url: unknown): url is string {
 export function designOnlyProject(project: HypeCardProject): HypeCardProject {
   return {
     ...project,
+    cardAppearance: normalizeCardAppearance(project.cardAppearance),
     statSource: null,
     mediaType: null,
     mediaId: null,
