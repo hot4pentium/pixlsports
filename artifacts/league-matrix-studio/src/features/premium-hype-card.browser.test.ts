@@ -64,8 +64,12 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 45_000);
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="card-design-picker-cards"]')).display`, session), 'block', 'desktop keeps the full design picker');
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="mobile-card-design-controls"]')).display`, session), 'none', 'the compact picker is reserved for phones');
-    const breakoutFrame = await connection.evaluate<{ radius: string; padding: string; background: string }>(`(()=>{const frame=document.querySelector('.living-card-frame-outer:has(.living-card-frame[data-design="breakout"])'),style=getComputedStyle(frame);return {radius:style.borderTopLeftRadius,padding:style.paddingTop,background:style.backgroundImage}})()`, session);
-    assert.equal(breakoutFrame.radius, '32px', 'the existing blue outer wrapper has rounded corners');
+    const breakoutFrame = await connection.evaluate<{ radius: string; padding: string; border: string; background: string; shadow: string }>(`(()=>{const frame=document.querySelector('.living-card-frame-outer:has(.living-card-frame[data-design="breakout"])'),style=getComputedStyle(frame);return {radius:style.borderTopLeftRadius,padding:style.paddingTop,border:style.borderTopWidth,background:style.backgroundImage,shadow:style.boxShadow}})()`, session);
+    assert.equal(breakoutFrame.radius, '0px', 'the outer wrapper does not add a second frame');
+    assert.equal(breakoutFrame.padding, '0px', 'the outer wrapper adds no blue spacing around the metal');
+    assert.equal(breakoutFrame.border, '0px', 'the outer wrapper has no visible border');
+    assert.equal(breakoutFrame.background, 'none', 'the light-blue wrapper is removed');
+    assert.equal(breakoutFrame.shadow, 'none', 'the wrapper adds no frame shadow');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-jersey"]').value`, session), '9', 'the profile jersey number fills a blank appearance');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-card-position"]').value`, session), 'Quarterback', 'the profile position fills a blank appearance');
     assert.match(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').getAttribute('aria-label')`, session), /Jordan Alexander Matthews/, 'the card preview uses the profile-derived athlete name');

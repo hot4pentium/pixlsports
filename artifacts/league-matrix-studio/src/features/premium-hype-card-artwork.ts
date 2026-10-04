@@ -262,12 +262,14 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
 <filter id="b-cut" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="14" stdDeviation="13" flood-color="#020711" flood-opacity=".72"/></filter>
 <clipPath id="b-window"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56"/></clipPath>
 <clipPath id="b-card"><rect x="18" y="18" width="964" height="1364" rx="62"/></clipPath>
+<clipPath id="b-interior"><rect x="29" y="29" width="942" height="1342" rx="51"/></clipPath>
 </defs>
 <g id="breakout-bg" clip-path="url(#b-card)">
-<rect width="1000" height="1400" fill="#061225"/>
-<rect x="18" y="18" width="964" height="1364" rx="62" fill="url(#b-stage)"/>
+<g clip-path="url(#b-interior)">
+<rect x="29" y="29" width="942" height="1342" rx="51" fill="url(#b-stage)"/>
 <ellipse cx="500" cy="478" rx="470" ry="335" fill="${accent}" opacity=".17" filter="url(#b-glow)"/>
 ${venue('b-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}
+</g>
 <g data-card-layer="frame">
 <g clip-path="url(#b-window)">${venue('b-window-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}</g>
 ${photoFallback(input, win, 'b-window')}

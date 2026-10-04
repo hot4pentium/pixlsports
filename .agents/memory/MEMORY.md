@@ -101,4 +101,4 @@
 - [Browser-native control testing](browser-native-control-fixtures.md) — drive file, color, and range controls through native Chromium interactions so React state and disabled semantics are tested correctly.
 - [Premium card cutout runtime](premium-card-background-removal.md) — keep removal local and originals intact; prebundle inference dependencies so first-use Vite reloads cannot abort uploads.
 - [Premium artwork layer resources](premium-artwork-layers.md) — each independently rendered SVG layer must define all resources it uses; verify background, foreground, and combined output.
-- [Breakout frame terminology](breakout-frame-terminology.md) — round the existing blue outer wrapper in place; do not add another frame or alter the metallic outline.
+- [Breakout frame terminology](breakout-frame-terminology.md) — keep the silver outline as the only outer frame; remove both blue layers behind it.
