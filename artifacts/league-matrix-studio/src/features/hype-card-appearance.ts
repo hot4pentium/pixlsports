@@ -66,3 +66,7 @@ export function seedCardAppearanceFromProfile(
     position: appearance.position || position,
   });
 }
+
+export function resolveHypeCardAthleteName(profileAthleteName: string, inviteAthleteName: string) {
+  return profileAthleteName.trim() || inviteAthleteName.trim() || 'Athlete';
+}

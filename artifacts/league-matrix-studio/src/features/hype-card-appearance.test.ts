@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { defaultCardAppearance, normalizeCardAppearance, seedCardAppearanceFromProfile } from './hype-card-appearance';
+import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile } from './hype-card-appearance';
 import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
 
 test('legacy cards retain their existing presentation with no new appearance', () => {
@@ -35,6 +35,11 @@ test('card appearance fills blank player details from the profile without replac
   }, { jerseyNumber: '23', position: 'Forward' });
   assert.equal(saved.jerseyNumber, '12');
   assert.equal(saved.position, 'Guard');
+});
+test('HYPE Card artwork uses the current profile name before the saved invite name', () => {
+  assert.equal(resolveHypeCardAthleteName(' Current Profile Name ', 'Older Invite Name'), 'Current Profile Name');
+  assert.equal(resolveHypeCardAthleteName('', 'Saved Invite Name'), 'Saved Invite Name');
+  assert.equal(resolveHypeCardAthleteName('', ''), 'Athlete');
 });
 test('unsafe colors and placements are rejected or clamped without altering photo', () => {
   const appearance = normalizeCardAppearance({ design: 'spotlight', borderColor: 'url(x)', accentColor: '#22c55e', accentLinked: false, athleteX: 12, athleteY: -12, athleteScale: Infinity });
