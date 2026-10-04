@@ -8,3 +8,9 @@ Cold-start checks should measure first visible editor content and the first hand
 **Why:** A fast service-worker install can hide whether the app shell itself is responsive, and long downstream offline journeys can mask startup regressions with unrelated editor failures.
 
 **How to apply:** Keep startup budgets and resource reporting in the production browser journey, use a fresh browser profile without Clerk authentication, and keep later persistence/export assertions separate from the startup gate.
+
+Development preview recovery must be available before the app entry module loads, and must preserve production offline behavior and user data.
+
+**Why:** A startup screen can appear while the entry module is unavailable; recovery implemented only inside that module is then unreachable. A slow development module graph should not be reported as a failed connection after only seven seconds.
+
+**How to apply:** Keep dev-only shell recovery independent of React. Scope worker removal to the artifact and cache removal to the offline shell; never clear local storage, account data, or other apps' caches.

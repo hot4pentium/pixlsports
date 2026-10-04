@@ -71,14 +71,54 @@
           message.textContent = 'The preview did not finish connecting. Reconnect the preview and try again.';
           retry.hidden = false;
         };
-        retry?.addEventListener('click', () => window.location.reload());
+        retry?.addEventListener('click', async () => {
+          retry.disabled = true;
+          message.textContent = 'Reconnecting to Pixl Sports…';
+          try {
+            // Run recovery before the app module: a stale shell can prevent
+            // main.tsx (and its development-worker cleanup) from ever loading.
+            if ('%MODE%' === 'development') {
+              const baseUrl = new URL('%BASE_URL%', window.location.href);
+              if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(registrations
+                  .filter((registration) => {
+                    const scope = new URL(registration.scope);
+                    return scope.origin === baseUrl.origin && scope.pathname === baseUrl.pathname;
+                  })
+                  .map((registration) => registration.unregister()));
+              }
+              if ('caches' in window) {
+                const names = await window.caches.keys();
+                await Promise.all(names
+                  .filter((name) => name.startsWith('pixl-sports-shell'))
+                  .map((name) => window.caches.delete(name)));
+              }
+              const freshUrl = new URL(window.location.href);
+              freshUrl.searchParams.set('_pixlReconnect', String(Date.now()));
+              window.location.replace(freshUrl.toString());
+            } else {
+              window.location.reload();
+            }
+          } catch (error) {
+            console.warn('Pixl Sports preview recovery failed.', error);
+            message.textContent = 'The browser could not reconnect. Try opening this dev link in Safari.';
+            retry.disabled = false;
+          }
+        });
         window.addEventListener('leagueMatrix:booted', () => {
           booted = true;
           window.clearTimeout(timeout);
+          window.clearTimeout(slowTimeout);
         }, { once: true });
         window.addEventListener('error', showRetry, { once: true });
         window.addEventListener('unhandledrejection', showRetry, { once: true });
-        const timeout = window.setTimeout(showRetry, 7000);
+        const slowTimeout = window.setTimeout(() => {
+          if (booted || !message || !retry) return;
+          message.textContent = 'The dev site is taking longer to load. You can keep waiting or reconnect.';
+          retry.hidden = false;
+        }, 7000);
+        const timeout = window.setTimeout(showRetry, 30000);
       })();
     </script>
     <script type="module" src="./src/main.tsx"></script>
