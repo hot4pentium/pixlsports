@@ -79,7 +79,7 @@
 - [Game On status filtering](game-on-status-filtering.md) — hide nonmatching cards without unmounting editors, so filtering preserves in-progress changes.
 - [Concurrent merge patch context](concurrent-merge-patch-context.md) — after active task merges, re-check latest source before retrying patches so merged behavior remains intact.
 - [Living card Shoutouts boundary](living-card-hypes-boundary.md) — Shoutouts and media replies stay separate; preserve legacy Hypes identifiers and owner-off settings.
-- [Standalone game summary](standalone-game-summary.md) — the top Game On card is notification-only and includes standalone Game On cards as well as Calendar games.
+- [Upcoming Calendar event list](standalone-game-summary.md) — show every future Calendar game and practice; keep standalone Event Cards separate.
 - [Tracker result versus score](tracker-result-versus-score.md) — a marked win/loss/tie can exist without a score; never turn an unentered scoreboard into a 0–0 tie.
 - [Soccer period formats](soccer-period-formats.md) — ask for halves or quarters on new live soccer games; interpret older format-free games as halves.
 - [Season correction reconciliation](season-correction-reconciliation.md) — cloud finals supersede matching plays only; divergent offline plays require an explicit choice.

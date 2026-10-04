@@ -1016,71 +1016,105 @@ export function SupporterDashboardView({
   ]);
 
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const summaryGameStage = recommendedGameStage ?? 'upcoming';
-  const recommendedGameTitle = recommendedGame
-    ? `${profile.teamName || 'Your team'}${recommendedGame.opponent ? ` vs ${recommendedGame.opponent}` : ''}`
-    : 'No upcoming game';
+  const upcomingCalendarEvents = events
+    .filter((event) => event.type === 'game' || event.type === 'practice')
+    .filter((event) => (
+      getSupporterGameStage(event, currentTime, { includePregameCaptureWindow: false }) === 'upcoming'
+    ))
+    .sort((left, right) => (
+      left.date.localeCompare(right.date)
+      || left.time.localeCompare(right.time)
+    ));
+  const firstUpcomingEventWithCardId = upcomingCalendarEvents.find((event) => (
+    event.type === 'game'
+    && dashboardCards.some((card) => card.eventId === event.id && card.type === event.type)
+  ))?.id;
 
   const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
     <>
       <div className="supporter-game-on-summary__event-top">
         <div className="supporter-game-on-summary__event-kicker">
           <span className="supporter-game-on-summary__event-dot" aria-hidden="true" />
-          <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">{recommendedGame ? 'Next game' : 'No upcoming game'}</span>
+          <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">Calendar schedule</span>
         </div>
-        {recommendedGame && (
+        {upcomingCalendarEvents.length > 0 && (
           <span className="supporter-game-on-summary__event-badge">
-            {summaryGameStage === 'live' ? 'Live now' : summaryGameStage === 'completed' ? 'Final' : 'Up next'}
+            {upcomingCalendarEvents.length} {upcomingCalendarEvents.length === 1 ? 'event' : 'events'}
           </span>
         )}
       </div>
 
-      {recommendedGame ? (
-        <div className="supporter-game-on-summary__event-main">
-          <div className="supporter-game-on-summary__event-matchup">
-            <p
-              className="supporter-game-on-summary__event-date"
-              data-testid={variant === 'desktop' ? 'next-event-date' : 'mobile-next-event-date'}
-            >
-              {formatDateDisplay(recommendedGame.date)}
-            </p>
-            <h2 id={variant === 'desktop' ? 'next-game-heading' : 'mobile-next-game-heading'} className="supporter-game-on-summary__event-title" data-testid={variant === 'desktop' ? 'next-game-heading' : 'mobile-featured-event-title'}>
-              {recommendedGameTitle}
-            </h2>
-            <div className="supporter-game-on-summary__event-details">
-              <span>{formatTimeDisplay(recommendedGame.time)}</span>
-              {recommendedGame.location && (
-                <span className="supporter-game-on-summary__event-location">
-                  <MapPin size={14} aria-hidden="true" />
-                  {recommendedGame.location}
-                </span>
-              )}
-            </div>
-          </div>
-          {recommendedGameCard && (
-            <div className="supporter-game-on-summary__event-utility">
-              <div className="supporter-game-on-summary__event-utility-copy">
-                <span>YOUR GAME-DAY CARD</span>
-                <p>Prep, details and tracking in one place.</p>
-              </div>
-              <button type="button" onClick={() => selectCard(recommendedGameCard.id)} data-testid={`button-open-featured-game-card-${variant}`}>
-                Open game card <ArrowRight size={15} aria-hidden="true" />
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          <p className="supporter-game-on-summary__event-date">NEXT GAME</p>
-          <h2 id={variant === 'desktop' ? 'next-game-heading' : 'mobile-next-game-heading'} className="supporter-game-on-summary__event-title" data-testid={variant === 'desktop' ? 'next-game-heading' : 'mobile-featured-event-title'}>
-            {recommendedGameTitle}
-          </h2>
-          <p className="supporter-game-on-summary__event-empty">
-             {dashboardCards.every((card) => card.type !== 'game') ? 'Add a game to see your next matchup here.' : 'No upcoming game is scheduled right now.'}
-          </p>
-        </>
-      )}
+      <h2
+        id={variant === 'desktop' ? 'upcoming-calendar-events-heading' : 'mobile-upcoming-calendar-events-heading'}
+        className="supporter-game-on-summary__event-title"
+        data-testid="upcoming-calendar-events-heading"
+      >
+        Upcoming events
+      </h2>
 
+      {upcomingCalendarEvents.length > 0 ? (
+        <ul
+          className="supporter-game-on-summary__upcoming-list"
+          data-testid="upcoming-calendar-events"
+          aria-label="Upcoming Calendar games and practices"
+        >
+          {upcomingCalendarEvents.map((event) => {
+            const eventCard = event.type === 'game'
+              ? dashboardCards.find((card) => card.eventId === event.id && card.type === event.type)
+              : undefined;
+            const eventTitle = event.type === 'game'
+              ? event.opponent
+                ? `${profile.teamName || 'Your team'} vs ${event.opponent}`
+                : event.notes?.trim() || (profile.teamName ? `${profile.teamName} game` : 'Game')
+              : event.notes?.trim() || `${profile.teamName || 'Team'} practice`;
+
+            return (
+              <li
+                key={event.id}
+                className="supporter-game-on-summary__upcoming-item"
+                data-testid="upcoming-calendar-event"
+                data-event-id={event.id}
+                data-event-type={event.type}
+              >
+                <div className="supporter-game-on-summary__upcoming-meta">
+                  <span className="supporter-game-on-summary__upcoming-type">
+                    {event.type === 'game' ? 'Game' : 'Practice'}
+                  </span>
+                  <span className="supporter-game-on-summary__upcoming-date">
+                    {formatDateDisplay(event.date)} · {formatTimeDisplay(event.time)}
+                  </span>
+                </div>
+                <h3 className="supporter-game-on-summary__upcoming-title" data-testid="upcoming-calendar-event-title">
+                  {eventTitle}
+                </h3>
+                {event.location && (
+                  <p className="supporter-game-on-summary__upcoming-location">
+                    <MapPin size={13} aria-hidden="true" />
+                    {event.location}
+                  </p>
+                )}
+                {eventCard && (
+                  <button
+                    type="button"
+                    className="supporter-game-on-summary__upcoming-action"
+                    onClick={() => selectCard(eventCard.id)}
+                    data-testid={event.id === firstUpcomingEventWithCardId
+                      ? `button-open-upcoming-event-card-${variant}`
+                      : `button-open-upcoming-event-card-${variant}-${event.id}`}
+                    aria-label={`Open Event Card for ${eventTitle}`}
+                  >
+                    Open Event Card <ArrowRight size={14} aria-hidden="true" />
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="supporter-game-on-summary__event-empty" data-testid="upcoming-calendar-events-empty">
+          No upcoming games or practices are scheduled on Calendar.
+        </p>
+      )}
     </>
   );
 

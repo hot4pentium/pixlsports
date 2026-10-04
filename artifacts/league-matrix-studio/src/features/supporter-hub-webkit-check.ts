@@ -97,9 +97,9 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
       const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
       const surface = slot.querySelector('.supporter-hype-preview__surface');
       const c = surface?.getBoundingClientRect();
-      const button = event.querySelector('[data-testid="button-open-featured-game-card-mobile"]');
+      const button = event.querySelector('[data-testid="button-open-upcoming-event-card-mobile"]');
       const action = button?.getBoundingClientRect();
-      const text = event.querySelector('[data-testid="mobile-featured-event-title"]');
+      const text = event.querySelector('[data-testid="upcoming-calendar-event-title"]');
       const title = text?.getBoundingClientRect();
       const premium = surface?.querySelector('.living-card-premium-face');
       const svg = premium?.querySelector('svg');
@@ -144,7 +144,7 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
           width:getComputedStyle(document.querySelector('.supporter-hype-preview__surface')||document.body).width,
           container:getComputedStyle(document.querySelector('.supporter-hype-preview__surface')||document.body).containerType},
         nodes:[...document.querySelectorAll('[data-testid="mobile-calendar-hype-row"] *')]
-          .filter(n=>n.getBoundingClientRect().right>innerWidth || n.matches('[data-testid="button-open-featured-game-card-mobile"]'))
+          .filter(n=>n.getBoundingClientRect().right>innerWidth || n.matches('[data-testid="button-open-upcoming-event-card-mobile"]'))
           .map(n=>({tag:n.tagName,cls:n.className,text:n.textContent?.slice(0,90),rect:n.getBoundingClientRect().toJSON()})).slice(0,20)})`));
       const screenshot = await command<string>('GET', `${sessionPath}/screenshot`);
       await writeFile('/tmp/supporter-hub-webkit-failure.png', Buffer.from(screenshot, 'base64'));
@@ -261,7 +261,7 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
       time:'18:30', opponent:'The Westside Championship Invitational All Stars Montgomery-Williams',
       location:'Northside Community Recreation Center Championship Court Entrance B'
     }])`);
-    await wait(`document.querySelector('[data-testid="mobile-featured-event-title"]')?.textContent.includes('Westside')`);
+    await wait(`document.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent.includes('Westside')`);
     for (const design of ['classic', 'gallery', 'spotlight', 'breakout']) {
       await evaluate(`(window.__setHypePreviewState('${design}'), true)`);
       await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='${design}'`);
@@ -311,11 +311,11 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
     await click('[data-testid="mobile-saved-hype-card"] button');
     await wait(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
     // WebDriver sends native input, not DOM .click() or dispatched JS events.
-    await key('[data-testid="button-open-featured-game-card-mobile"]', '\uE007');
+    await key('[data-testid="button-open-upcoming-event-card-mobile"]', '\uE007');
     await wait(`!!document.querySelector('[role="dialog"]')`);
     await key('[role="dialog"] button', '\uE00C');
     await wait(`!document.querySelector('[role="dialog"]')`);
-    await click('[data-testid="button-open-featured-game-card-mobile"]');
+    await click('[data-testid="button-open-upcoming-event-card-mobile"]');
     await wait(`!!document.querySelector('[role="dialog"]')`);
     await key('[role="dialog"] button', '\uE00C');
     await wait(`!document.querySelector('[role="dialog"]')`);

@@ -1,16 +1,10 @@
 ---
-name: Standalone game summary
-description: Keep next-game guidance aligned with both Calendar games and independent Game On cards.
+name: Upcoming Calendar event list
+description: Keep the supporter dashboard event panel focused on every future Calendar game and practice.
 ---
 
-The dashboard's next-game summary should consider saved independent Game On cards alongside Calendar games, while preparation and Calendar selection remain tied to actual scheduled events.
+The supporter dashboard event panel lists all future Calendar games and practices in date order. Do not include meetings, past events, or standalone Event Cards in that list. Event Cards linked to a listed Calendar event may retain their open action, and standalone cards stay available in their separate collection.
 
-**Why:** A supporter can save a Game On card without adding it to Calendar. The event grid then shows a real upcoming game while a Calendar-only top summary incorrectly says there is none.
+**Why:** The supporter asked for every upcoming Calendar game and practice in the panel, replacing the single recommended-game and “No upcoming game” states. Standalone Event Cards are explicitly outside this list.
 
-**How to apply:** When changing next-game ranking or card persistence, cover a standalone game today before its start, an active game, and a completed game. Do not fabricate a Calendar event merely to populate the top summary.
-
-Keep the top Game On event card focused on the upcoming or live game notification, or its no-upcoming-game message. Do not put Prep & Tools Focus, an active-game selector, past-game review notices, or unrelated tool shortcuts inside that card; the separate Game On collection and dashboard actions provide access to tools and older games.
-
-**Why:** A previous-game focus and picker appeared directly under “No upcoming game,” making an old date look like the next event. The supporter asked for only an upcoming-game notification there.
-
-**How to apply:** Changes to the dashboard header should preserve the single next-game message while keeping Calendar, Game On cards, stats, and Hype Card reachable outside it.
+**How to apply:** Derive the list from Calendar events only, filter to game/practice events that are upcoming, sort chronologically, and keep standalone Event Cards in their existing collection.

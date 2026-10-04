@@ -14,3 +14,9 @@ Premium artwork can uppercase the actual SVG identity text, not just its CSS pre
 **Why:** The supporter Hype Card flow exposes the same user-visible state in different casing and changes which editor step is visible after reopening; title-text waits were brittle even when the route and behavior were correct.
 
 **How to apply:** For persisted local work, cover the full user path in one browser flow: create, export, navigate, assert the hub entry, reopen through its link, select the relevant editor section, and verify the saved fields. Keep cloud-route assertions separate from local-storage assertions. Prefer semantic attributes for exact copy, and normalize `innerText`/`textContent` before checking visual headings or labels.
+
+In browser fixtures, place route-specific `fetch` handlers before generic fallbacks, and scope interactions to the intended dialog or container when responsive layouts render duplicate controls.
+
+**Why:** A generic active-game mock shadowed a sync-specific request recorder, while an unscoped share selector hit the compact card’s hidden button instead of the dialog action.
+
+**How to apply:** Order request predicates from narrowest to broadest; for duplicated test IDs, scope both the click and its resulting-state assertion to the visible UI instance.

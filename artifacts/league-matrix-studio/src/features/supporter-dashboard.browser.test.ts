@@ -956,7 +956,65 @@ test('dashboard empty game notice and install reminder work across screen sizes'
     })()`, page.sessionId);
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"]\')?.textContent || ""', page.sessionId),
-      /No upcoming game/,
+      /No upcoming games or practices/,
+    );
+    await connection.evaluate(`(() => {
+      const dateAfterDays = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      window.__setSupporterDashboardEvents([
+        { id: 'past-game', type: 'game', date: '2020-01-01', time: '18:30', location: 'Old Gym', opponent: 'Past Team', status: 'final' },
+        { id: 'future-meeting', type: 'meeting', date: dateAfterDays(6), time: '18:00', location: 'Clubhouse', status: 'upcoming' },
+        { id: 'future-game-1', type: 'game', date: dateAfterDays(7), time: '18:30', location: 'Northside Gym', opponent: 'Visitors', status: 'upcoming' },
+        { id: 'future-practice', type: 'practice', date: dateAfterDays(8), time: '17:00', location: 'Field 2', notes: 'Team practice', status: 'upcoming' },
+        { id: 'future-game-2', type: 'game', date: dateAfterDays(9), time: '19:00', location: 'Eastside Gym', opponent: 'Rivals', status: 'upcoming' },
+      ]);
+    })()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelectorAll(\'[data-testid="section-next-game-context"] [data-testid="upcoming-calendar-event"]\').length === 3',
+      Boolean,
+    );
+    assert.deepEqual(
+      await connection.evaluate<Array<[string | null, string | null]>>(
+        `Array.from(document.querySelectorAll('[data-testid="section-next-game-context"] [data-testid="upcoming-calendar-event"]'))
+          .map((event) => [event.getAttribute('data-event-id'), event.getAttribute('data-event-type')])`,
+        page.sessionId,
+      ),
+      [
+        ['future-game-1', 'game'],
+        ['future-practice', 'practice'],
+        ['future-game-2', 'game'],
+      ],
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"] [data-testid="upcoming-calendar-events"]\')?.textContent || ""', page.sessionId),
+      /Visitors.*Team practice.*Rivals/s,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    assert.equal(
+      await connection.evaluate<number>(
+        'document.querySelector(\'[data-testid="mobile-hero-banner"] [data-testid="upcoming-calendar-events"]\')?.querySelectorAll(\'[data-testid="upcoming-calendar-event"]\').length || 0',
+        page.sessionId,
+      ),
+      3,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await connection.evaluate('window.__setSupporterDashboardEvents([])', page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector(\'[data-testid="section-next-game-context"] [data-testid="upcoming-calendar-events-empty"]\'))',
+      Boolean,
     );
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="supporter-tool-context"], [data-testid="select-active-supporter-game"]\'))', page.sessionId),
@@ -2179,6 +2237,10 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       return grid?.querySelectorAll('.game-on-collection__card').length === 4
         && ['live', 'complete', 'draft', 'published'].every((status) => grid.querySelector('[data-status="' + status + '"]'));
     })()`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid="stage-reminder-got-it"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `!Array.from(document.querySelectorAll('[data-testid="stage-reminder-got-it"]'))
+      .some((button) => button.getClientRects().length > 0)`, Boolean);
     await connection.evaluate(`(() => {
       const card = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:filter-test-published"]');
       card?.querySelector('.game-on-collection__summary')?.click();
@@ -2197,7 +2259,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         value: async (payload) => window.__eventCardShareCalls.push(payload),
       });
     })()`, page.sessionId);
-    await connection.evaluate(`document.querySelector('[data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card shared.'`, Boolean);
     const sharedCardDetails = await connection.evaluate<{
@@ -2229,7 +2291,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         value: { writeText: async (url) => { window.__eventCardCopiedUrl = url; } },
       });
     })()`, page.sessionId);
-    await click('[data-testid="button-share-game-on-card-share:filter-test-published"]', page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Boolean(window.__eventCardCopiedUrl)
       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card link copied.'`, Boolean);
     const copiedCardUrl = await connection.evaluate<string>('window.__eventCardCopiedUrl', page.sessionId);
@@ -4438,7 +4500,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
           const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
           const card = slot.querySelector('.supporter-hype-preview__surface'), c = card.getBoundingClientRect();
           const eventCard = event.querySelector('[data-testid="card-mobile-featured-event"]').getBoundingClientRect();
-          const action = event.querySelector('[data-testid="button-open-featured-game-card-mobile"]');
+          const action = event.querySelector('[data-testid="button-open-upcoming-event-card-mobile"]');
           const navLink = slot.querySelector('[data-testid="link-mobile-hype-preview"]');
           const nav = slot.querySelector('[data-testid="saved-card-navigation"]');
           const athleteLink = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
@@ -4534,13 +4596,13 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
        await connection!.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] }, page!.sessionId);
        await connection!.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, page!.sessionId);
      };
-     await tap('[data-testid="button-open-featured-game-card-mobile"]');
+     await tap('[data-testid="button-open-upcoming-event-card-mobile"]');
      await wait(`Boolean(document.querySelector('[role="dialog"]'))`);
      await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, page.sessionId);
      await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, page.sessionId);
      await wait(`!document.querySelector('[role="dialog"]')`);
     await evaluate(`window.__setSupporterDashboardEvents([])`);
-    await wait(`document.querySelector('[data-testid="mobile-featured-event-title"]')?.textContent.includes('No upcoming')`);
+    await wait(`document.querySelector('[data-testid="upcoming-calendar-events-empty"]')?.textContent.includes('No upcoming games or practices')`);
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`), true);
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false }, page.sessionId);
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="desktop-game-on-summary"] [data-testid="mobile-calendar-hype-row"]')`), false);
@@ -4969,14 +5031,9 @@ export function mount() {
         status: 200, headers: { 'Content-Type': 'application/json' },
       }));
     }
-    if (new URL(requestUrl, window.location.href).pathname === '/api/supporter/active-game') {
-      return Promise.resolve(new Response(JSON.stringify({ gameId: null }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      }));
-    }
     if (
       window.location.search.includes('supporter-active-game-sync')
-      && requestUrl.endsWith('/api/supporter/active-game')
+      && new URL(requestUrl, window.location.href).pathname === '/api/supporter/active-game'
     ) {
       const method = String(init?.method || 'GET').toUpperCase();
       // Shared across tabs like the account endpoint; request history remains per tab.
@@ -5010,6 +5067,11 @@ export function mount() {
       window.location.search.includes('supporter-game-record')
       && requestUrl.endsWith('/api/supporter/active-game')
     ) {
+      return Promise.resolve(new Response(JSON.stringify({ gameId: null }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
+    if (new URL(requestUrl, window.location.href).pathname === '/api/supporter/active-game') {
       return Promise.resolve(new Response(JSON.stringify({ gameId: null }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       }));
@@ -6005,7 +6067,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'final' },
       { id: 'game-2', type: 'game', date: '2026-09-22', time: '18:30', location: 'Eastside Gym', opponent: 'Visitors', status: 'upcoming' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"next-game-heading\\"]")?.textContent?.includes("Visitors") === true', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"upcoming-calendar-event-title\\"]")?.textContent?.includes("Visitors") === true', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-upcoming-next"]\'))', page.sessionId),
       true,
@@ -6022,7 +6084,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'final' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"next-game-heading\\"]")?.textContent === "No upcoming game"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"upcoming-calendar-events-empty\\"]")?.textContent?.includes("No upcoming games or practices") === true', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('!document.querySelector(\'[data-testid="link-desktop-independent-hype"]\')', page.sessionId),
       true,
@@ -6289,7 +6351,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"next-game-heading\\"]")?.textContent?.includes("RegionalTournamentVisitorsWithAnUnreasonablyLongName") === true',
+      'document.querySelector("[data-testid=\\"upcoming-calendar-event-title\\"]")?.textContent?.includes("RegionalTournamentVisitorsWithAnUnreasonablyLongName") === true',
       Boolean,
     );
     const narrowGameNoticeLayout = await connection.evaluate<{
@@ -6298,7 +6360,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       nextMarkerVisible: boolean;
     }>(`(() => {
       const context = document.querySelector('[data-testid="section-next-game-context"]');
-      const title = document.querySelector('[data-testid="next-game-heading"]');
+      const title = document.querySelector('[data-testid="upcoming-calendar-event-title"]');
       const nextMarker = document.querySelector('[data-testid="stage-upcoming-next"]');
       const viewportWidth = document.documentElement.clientWidth;
       const isVisible = (element) => {
@@ -6322,7 +6384,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       false,
     );
     assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="next-game-heading"]\')?.textContent || ""', page.sessionId),
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="upcoming-calendar-event-title"]\')?.textContent || ""', page.sessionId),
       /RegionalTournamentVisitorsWithAnUnreasonablyLongName/,
     );
 
@@ -6338,7 +6400,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       nextMarkerVisible: boolean;
     }>(`(() => {
       const context = document.querySelector('[data-testid="section-next-game-context"]');
-      const title = document.querySelector('[data-testid="next-game-heading"]');
+      const title = document.querySelector('[data-testid="upcoming-calendar-event-title"]');
       const nextMarker = document.querySelector('[data-testid="stage-upcoming-next"]');
       const viewportWidth = document.documentElement.clientWidth;
       const isVisible = (element) => {
@@ -6366,7 +6428,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       false,
     );
     assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="next-game-heading"]\')?.textContent || ""', page.sessionId),
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="upcoming-calendar-event-title"]\')?.textContent || ""', page.sessionId),
       /RegionalTournamentVisitorsWithAnUnreasonablyLongName/,
     );
     const desktopLayout = await connection.evaluate<{ summaryOverflow: boolean; heroToolCards: number }>(`(() => {
