@@ -70,7 +70,7 @@ import { HypeManagerTaskCard } from './hype-manager-wallet';
 import { OwnerEventNotifications } from './owner-event-notifications';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
-import { getUserProfile } from './supporter-dashboard-model';
+import { getUserProfile, type UserProfile } from './supporter-dashboard-model';
 import { MAX_HOSTED_VIDEO_BYTES, monotonicProgress, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
 import {
   deleteAthleteVideoDraft,
@@ -857,7 +857,10 @@ function OwnerVideoUpload({
   );
 }
 
-function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
+function OwnerHypePageManage({ invite, profile }: {
+  invite: OwnedAthleteInvite;
+  profile: Pick<UserProfile, 'athleteName' | 'jerseyNumber' | 'position'>;
+}) {
   const queryClient = useQueryClient();
   const updateInvite = useUpdateAthleteInvite();
   const deleteHypeCard = useDeleteHypeCardShare();
@@ -1364,7 +1367,8 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
 
 export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken?: string } }) {
   const inviteToken = params.inviteToken ?? '';
-  const { isLoaded, isSignedIn } = useUser();
+  const { user, isLoaded, isSignedIn } = useUser();
+  const profile = getUserProfile(user);
   const { data: ownedInvites, isLoading } = useListAthleteInvites({
     query: {
       enabled: Boolean(isSignedIn && inviteToken),
@@ -1400,7 +1404,7 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
       <PublicHeader />
       <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
         <BackNavigationLink href={`/fan/${inviteToken}`} label="Back to athlete Hype Card" testId="link-back-to-athlete-hype-page" variant="public" />
-        <OwnerHypePageManage invite={ownerInvite} />
+         <OwnerHypePageManage invite={ownerInvite} profile={profile} />
       </main>
     </div>
   );
