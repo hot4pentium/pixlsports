@@ -110,7 +110,7 @@ function athlete(input: PremiumHypeCardInput, box: { x: number; y: number; w: nu
   if (!url || input.appearance.removeBackground === false) return '';
   const a = input.appearance;
   const cx = box.x + box.w / 2, by = box.y + box.h;
-  const s = Math.max(0.65, Math.min(1.45, num(a.athleteScale, 1)));
+  const s = Math.max(0.65, Math.min(1.2, num(a.athleteScale, 1)));
   const tx = Math.max(-.25, Math.min(.25, num(a.athleteX, 0))) * 1000;
   const ty = Math.max(-.18, Math.min(.18, num(a.athleteY, 0))) * 1400;
   return `<g data-photo-placement="cutout" transform="translate(${cx + tx} ${by + ty}) scale(${s}) translate(${-cx} ${-by})">
@@ -124,7 +124,7 @@ const photoFallback = (input: PremiumHypeCardInput, box: { x: number; y: number;
   if (!url || (input.appearance.removeBackground !== false && safeUrl(input.cutoutUrl))) return '';
   const a = input.appearance;
   const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-  const scale = Math.max(.65, Math.min(1.45, num(a.athleteScale, 1)));
+  const scale = Math.max(.65, Math.min(1.2, num(a.athleteScale, 1)));
   const x = Math.max(-.25, Math.min(.25, num(a.athleteX, 0))) * 1000;
   const y = Math.max(-.18, Math.min(.18, num(a.athleteY, 0))) * 1400;
   return `<g clip-path="url(#${clip})" opacity="${opacity}"><g data-photo-placement="original" transform="translate(${cx + x} ${cy + y}) scale(${scale}) translate(${-cx} ${-cy})"><image href="${url}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid slice"/></g></g>`;
@@ -374,7 +374,7 @@ export function preparePremiumCardPngExport(
   let topBleed = 0;
   if (artwork.includes('data-photo-placement="cutout"')
     && cutoutSize && cutoutSize.width > 0 && cutoutSize.height > 0) {
-    const scale = Math.max(0.65, Math.min(1.45, Number(appearance.athleteScale) || 1));
+    const scale = Math.max(0.65, Math.min(1.2, Number(appearance.athleteScale) || 1));
     const y = Math.max(-0.18, Math.min(0.18, Number(appearance.athleteY) || 0)) * 1400;
     const box = appearance.design === 'gallery'
       ? { x: 120, y: 60, width: 760, height: 900 }

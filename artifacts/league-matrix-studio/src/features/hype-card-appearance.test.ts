@@ -48,4 +48,6 @@ test('unsafe colors and placements are rejected or clamped without altering phot
   assert.equal(appearance.athleteX, .25);
   assert.equal(appearance.athleteY, -.18);
   assert.equal(appearance.athleteScale, 1);
+  assert.equal(normalizeCardAppearance({ ...defaultCardAppearance('spotlight'), athleteScale: 1.45 }).athleteScale, 1.2,
+    'legacy designs above the supported limit are clamped to 120%');
 });

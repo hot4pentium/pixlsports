@@ -122,6 +122,13 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
       <HypeCardDesignPicker appearance={appearance} onChange={onChange} disabled={disabled} className={designPickerClassName} />
       {premium && <>
+        <div className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
+          {placementActions}
+          {showAthleteSize && range('Size', appearance.athleteScale, .65, 1.2, .01, 'athleteScale', (v) => `${Math.round(v * 100)}%`)}
+          {showResetButton && onResetPlacement && <button type="button" disabled={disabled} onClick={onResetPlacement} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset layer position</button>}
+          {showResetButton && !onResetPlacement && <button type="button" disabled={disabled} onClick={() => set({ athleteScale: 1, athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset placement</button>}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-xs font-bold uppercase tracking-widest text-white/80">Jersey number
             <input value={appearance.jerseyNumber} maxLength={12} disabled={disabled} onChange={(e) => set({ jerseyNumber: e.target.value })} className="mt-1 h-11 w-full rounded border border-white/30 bg-white/10 px-3 text-sm normal-case tracking-normal text-white" data-testid="input-card-jersey" />
@@ -145,13 +152,6 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
             Remove photo background
           </label>
           <p className="text-xs leading-relaxed text-white/65">Checking starts local background removal when a cutout is needed. Turn it off to use the full original photo; the original is always kept.</p>
-        </div>
-        <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
-          {placementActions}
-          {showAthleteSize && range('Size', appearance.athleteScale, .65, 1.45, .01, 'athleteScale', (v) => `${Math.round(v * 100)}%`)}
-          {showResetButton && onResetPlacement && <button type="button" disabled={disabled} onClick={onResetPlacement} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset layer position</button>}
-          {showResetButton && !onResetPlacement && <button type="button" disabled={disabled} onClick={() => set({ athleteScale: 1, athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset placement</button>}
         </div>
         <button type="button" disabled={disabled} onClick={() => onChange({ ...reset, jerseyNumber: appearance.jerseyNumber, position: appearance.position })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-appearance">Reset appearance</button>
       </>}

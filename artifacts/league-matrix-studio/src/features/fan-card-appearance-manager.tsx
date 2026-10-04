@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetAthleteFanCardQueryKey,
@@ -74,6 +74,8 @@ export function FanCardAppearanceManager({ invite, profile }: {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [moving, setMoving] = useState(false);
+  const [avatarPreviewTopGap, setAvatarPreviewTopGap] = useState(0);
+  const previewStackRef = useRef<HTMLDivElement>(null);
   const [selectedLayer, setSelectedLayer] = useState<'frame' | 'avatar'>('avatar');
   const [backgroundRemovalBusy, setBackgroundRemovalBusy] = useState(false);
   const [backgroundNotice, setBackgroundNotice] = useState('');
@@ -183,6 +185,23 @@ export function FanCardAppearanceManager({ invite, profile }: {
     photoUrl: invite.photoUrl, cutoutUrl: usableCutout, appearance: draft,
   }, 'all', `pv${uid}`), [uid, draft, displayAthleteName, invite.teamName, invite.sport, invite.photoUrl, usableCutout]);
   const navStrip = useMemo(() => draft.design === 'classic' ? '' : buildPremiumNavStripPreview(draft, `pv${uid}`), [uid, draft]);
+  useLayoutEffect(() => {
+    if (moving) return;
+    const stack = previewStackRef.current;
+    const measure = () => {
+      const svgRoot = stack?.querySelector('svg');
+      const avatarLayer = svgRoot?.querySelector('[data-photo-placement]');
+      const svgTop = svgRoot?.getBoundingClientRect().top ?? 0;
+      const avatarTop = avatarLayer?.getBoundingClientRect().top ?? svgTop;
+      const nextGap = svgRoot ? Math.ceil(Math.max(0, svgTop - avatarTop) + 24) : 0;
+      setAvatarPreviewTopGap((current) => current === nextGap ? current : nextGap);
+    };
+    measure();
+    if (!stack) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(stack);
+    return () => observer.disconnect();
+  }, [svg, draft.design, moving]);
 
   const save = () => {
     setStatus('idle');
@@ -238,7 +257,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
           <div className="mx-auto w-full max-w-[360px] overflow-visible rounded-2xl" data-testid="appearance-preview">
             {draft.design === 'classic'
               ? <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} />
-              : <div data-testid="premium-card-preview-stack">
+                : <div ref={previewStackRef} style={{ paddingTop: avatarPreviewTopGap ? `${avatarPreviewTopGap}px` : undefined }} data-testid="premium-card-preview-stack">
                   <div role="img" aria-label={`${draft.design} preview for ${displayAthleteName}${moving ? '. Use arrow keys to position the avatar.' : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={onPositionKeyDown} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />
                   <div className="mt-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" data-testid="appearance-navigation-preview" dangerouslySetInnerHTML={{ __html: navStrip }} />
                 </div>}

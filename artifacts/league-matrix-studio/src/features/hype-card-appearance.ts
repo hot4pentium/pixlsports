@@ -42,7 +42,7 @@ export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
     removeBackground: source.removeBackground !== false,
     athleteX: number(source.athleteX, -.25, .25, 0),
     athleteY: number(source.athleteY, -.18, .18, 0),
-    athleteScale: number(source.athleteScale, .65, 1.45, 1),
+    athleteScale: number(source.athleteScale, .65, 1.2, 1),
     namePlateX: number(source.namePlateX, -.2, .2, 0),
     namePlateY: number(source.namePlateY, -.12, .12, 0),
     jerseyNumber: typeof source.jerseyNumber === 'string' ? source.jerseyNumber.trim().slice(0, 12) : '',

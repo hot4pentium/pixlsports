@@ -40,6 +40,17 @@ test('each name line has its own bounded advance in live, layered, and PNG artwo
 
 const base = { athleteName: 'A <b>&"', sport: 'Soccer', jerseyNumber: '01', cutoutUrl: 'data:image/png;base64,AAAA' };
 
+test('caps legacy avatar scaling at 120% in every premium card and PNG export', () => {
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+    const appearance = { ...defaultCardAppearance(design), athleteScale: 1.45 };
+    const artwork = buildPremiumHypeCardArtwork({ ...base, appearance });
+    const exported = preparePremiumCardPngExport(artwork, appearance, { width: 1000, height: 1400 });
+    for (const svg of [artwork, exported.markup]) {
+      assert.match(svg, /data-photo-placement="cutout" transform="[^"]*scale\(1\.2\)/, `${design} renders the cutout at no more than 120%`);
+    }
+  }
+});
+
 test('escapes text and keeps viewBox', () => {
   const svg = buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance('gallery') });
   assert.match(svg, /viewBox="0 0 1000 1400"/);
@@ -168,7 +179,7 @@ test('PNG export omits navigation and preserves avatar spillover for every premi
       const enlarged = { ...appearance, athleteScale: 1.45, athleteY: -.18 };
       const movedArt = buildPremiumHypeCardArtwork({ ...base, appearance: enlarged });
       const spill = preparePremiumCardPngExport(movedArt, enlarged, { width: 770, height: 1020 });
-      assert.match(spill.markup, /viewBox="0 -\d+ 1000 2\d{3}"/);
+      assert.match(spill.markup, /viewBox="0 -\d+ 1000 1\d{3}"/);
       assert.ok(spill.height > 2800, `${design} export expands to show the whole avatar`);
     } else {
       assert.match(png.markup, /viewBox="0 0 1000 1400"/);

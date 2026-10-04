@@ -101,6 +101,10 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       session,
     );
     assert.ok(editorPreviewWidth >= 350, `the desktop card preview has room to show its detail (${editorPreviewWidth}px)`);
+    assert.equal(await connection.evaluate(`(()=>{const root=document.querySelector('[data-testid="hype-card-appearance-controls"]'),design=root.querySelector('[data-testid="button-design-classic"]'),placement=root.querySelector('[data-testid="button-reposition-mode"]'),jersey=root.querySelector('[data-testid="input-card-jersey"]');return !!design&&!!placement&&!!jersey&&(design.compareDocumentPosition(placement)&Node.DOCUMENT_POSITION_FOLLOWING)!==0&&(placement.compareDocumentPosition(jersey)&Node.DOCUMENT_POSITION_FOLLOWING)!==0})()`, session), true, 'avatar placement is the first control after the design picker');
+    assert.equal(await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid="hype-card-appearance-controls"] input[type="range"]')).find(input=>input.closest('label')?.textContent.includes('Size'))?.max`, session), '1.2', 'the editor limits every premium avatar size control to 120%');
+    const previewTopClearance = await connection.evaluate(`(()=>{const stack=document.querySelector('[data-testid="premium-card-preview-stack"]'),svg=stack.querySelector('svg'),avatar=svg.querySelector('[data-photo-placement]');return avatar.getBoundingClientRect().top-stack.getBoundingClientRect().top})()`, session);
+    assert.ok(previewTopClearance >= 20, `the preview reserves breathing room above the largest cutout (${previewTopClearance}px)`);
     const desktopStageRatios = await connection.evaluate(`Array.from(document.querySelectorAll('.living-card-stage[data-design]')).map(stage=>{const track=parseFloat(getComputedStyle(stage.parentElement).gridTemplateColumns.split(' ')[0]);return stage.getBoundingClientRect().width/track})`, session) as number[];
     assert.equal(desktopStageRatios.length, 4, 'all four HYPE Card designs are present in the width check');
     assert.ok(desktopStageRatios.every(ratio => ratio >= 0.90 && ratio <= 0.94), `desktop cards are about 8% narrower: ${desktopStageRatios.join(', ')}`);
@@ -273,11 +277,11 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
         await connection.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x + 24, y: point.y + 24, button: 'left', clickCount: 1 }, session);
         const moved = await connection.evaluate<{ x: number; y: number; width: number }>(actorBounds, session);
         assert.ok(moved.x > before.x + 15 && moved.y > before.y + 15, `${design}/${fallback ? 'original' : 'cutout'} must visibly move`);
-        await connection.evaluate(`(()=>{const range=document.querySelector('[data-testid="hype-card-appearance-controls"] input[type="range"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(range,'1.3');range.dispatchEvent(new Event('input',{bubbles:true}));range.dispatchEvent(new Event('change',{bubbles:true}));})()`, session);
+        await connection.evaluate(`(()=>{const range=document.querySelector('[data-testid="hype-card-appearance-controls"] input[type="range"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(range,'1.2');range.dispatchEvent(new Event('input',{bubbles:true}));range.dispatchEvent(new Event('change',{bubbles:true}));})()`, session);
         const resized = await connection.evaluate<{ width: number }>(actorBounds, session);
-        assert.ok(resized.width > before.width * 1.2, `${design} size must visibly change`);
+        assert.ok(resized.width >= before.width * 1.19, `${design} can reach its supported 120% size`);
         await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
-        await waitFor(connection, session, 'JSON.parse(localStorage.getItem("premium-test-settings")).athleteScale', value => value === 1.3, 5_000);
+        await waitFor(connection, session, 'JSON.parse(localStorage.getItem("premium-test-settings")).athleteScale', value => value === 1.2, 5_000);
         const placementSaved = await connection.evaluate<{ athleteX: number; athleteY: number }>('JSON.parse(localStorage.getItem("premium-test-settings"))', session);
         assert.ok(placementSaved.athleteX > 0 && placementSaved.athleteY > 0);
         const savedTransform = await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement]').getAttribute('transform')`, session);
