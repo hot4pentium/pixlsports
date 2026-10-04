@@ -177,6 +177,9 @@ test('Spotlight uses outlined Anton numerals behind the avatar without changing 
       const svg = buildPremiumHypeCardArtwork(input, layer);
       assert.match(svg, /data-jersey-number="true"[^>]*font-family="'Anton'[^>]*font-weight="400"/);
       assert.match(svg, /data-jersey-number="true"[^>]*stroke="#F6EFE2"[^>]*stroke-width="8"[^>]*paint-order="stroke fill"/);
+      const number = svg.match(/data-jersey-number="true"[^>]*y="([\d.]+)"[^>]*font-size="([\d.]+)"/)!;
+      const visibleCenter = Number(number[1]) - Number(number[2]) * (1760 / 2048) / 2;
+      assert.ok(Math.abs(visibleCenter - 700) < .01, `${jerseyNumber} centers vertically in the entire card`);
       assert.doesNotMatch(svg, /<g filter="url\(#[^"]*s-numtex\)">/);
       if (layer === 'all') {
         assert.ok(svg.indexOf('data-jersey-number') < svg.indexOf('data-photo-placement="cutout"'));

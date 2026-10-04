@@ -204,6 +204,8 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const detailY = nameY + (nm.lines.length - 1) * nm.size * 0.98 + 50;
   const splitX = 640;
   const numSize = jersey.length > 2 ? 520 : jersey.length === 2 ? 760 : 900;
+  // Anton's cap height is 1760/2048 em. Center the visible numerals, not their baseline.
+  const numberBaseline = card.y + card.h / 2 + numSize * (1760 / 2048) / 2;
   const bg = `
 <defs>${grainDef('s-grain', 0.2)}
 <clipPath id="s-card"><rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50"/></clipPath>
@@ -219,7 +221,7 @@ ${photoFallback(input, { x: card.x, y: card.y, w: card.w, h: card.h }, 's-card',
 <g id="s-lights">${[[110, 470], [890, 470]].map(([x, y]) => `<g fill="#FFFBEA"><rect x="${x - 58}" y="${y - 50}" width="116" height="100" rx="10" opacity=".95"/></g><g fill="#2B3350">${[0, 1, 2].flatMap((r) => [0, 1, 2, 3].map((c) => `<circle cx="${x - 39 + c * 26}" cy="${y - 30 + r * 30}" r="8" fill="#FFFFFF"/>`)).join('')}</g><rect x="${x - 4}" y="${y + 50}" width="8" height="260" fill="#0A1022" opacity=".8"/>`).join('')}</g>
 <ellipse cx="500" cy="760" rx="520" ry="420" fill="${accent}" opacity=".32" filter="url(#s-haze)"/>
 <ellipse cx="500" cy="300" rx="380" ry="220" fill="${accent}" opacity=".18" filter="url(#s-haze)"/>
-${jersey ? `<g data-card-layer="jersey-number"><text data-jersey-number="true" x="500" y="${numSize === 900 ? 780 : 740}" text-anchor="middle" font-family="${FONT_NUMBER}" font-weight="400" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" stroke="${IVORY}" stroke-opacity=".85" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
+${jersey ? `<g data-card-layer="jersey-number"><text data-jersey-number="true" x="500" y="${numberBaseline.toFixed(2)}" text-anchor="middle" font-family="${FONT_NUMBER}" font-weight="400" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" stroke="${IVORY}" stroke-opacity=".85" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" fill="url(#s-vig)"/>
 <rect x="${card.x}" y="900" width="${card.w}" height="${card.h - 900}" fill="url(#s-floor)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" filter="url(#s-grain)" opacity=".5"/>

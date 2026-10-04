@@ -162,11 +162,13 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`document.querySelector('[data-testid="button-design-spotlight"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'spotlight', 5_000);
     const assertSpotlightNumber = async () => {
-      const number = await connection!.evaluate<{ loaded: number; styles: Array<{ font: string; weight: string; stroke: string; width: string; behind: boolean }> }>(`(async()=>{
+      const number = await connection!.evaluate<{ loaded: number; styles: Array<{ font: string; weight: string; stroke: string; width: string; behind: boolean; centerOffset: number }> }>(`(async()=>{
         const fonts=await document.fonts.load('400 72px Anton','09');
         const roots=[document.querySelector('.living-card-frame[data-design="spotlight"] .living-card-premium-art'),document.querySelector('[data-testid="appearance-preview-surface"]')];
         return {loaded:fonts.length,styles:roots.map(root=>{const n=root.querySelector('[data-jersey-number]'),s=getComputedStyle(n),avatar=root.querySelector('[data-photo-placement]');
-          return {font:s.fontFamily,weight:s.fontWeight,stroke:s.stroke,width:s.strokeWidth,behind:!!(n.compareDocumentPosition(avatar)&Node.DOCUMENT_POSITION_FOLLOWING)};})};
+          const ctx=document.createElement('canvas').getContext('2d');ctx.font=s.fontWeight+' '+s.fontSize+' Anton';
+          const m=ctx.measureText(n.textContent),center=n.y.baseVal.getItem(0).value+(m.actualBoundingBoxDescent-m.actualBoundingBoxAscent)/2;
+          return {font:s.fontFamily,weight:s.fontWeight,stroke:s.stroke,width:s.strokeWidth,behind:!!(n.compareDocumentPosition(avatar)&Node.DOCUMENT_POSITION_FOLLOWING),centerOffset:Math.abs(center-700)};})};
       })()`, session);
       assert.ok(number.loaded > 0, 'the bundled Anton font loads, not just a fallback');
       for (const style of number.styles) {
@@ -175,6 +177,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
         assert.equal(style.stroke, 'rgb(246, 239, 226)');
         assert.equal(style.width, '8px');
         assert.ok(style.behind, 'the outlined number stays behind the avatar');
+        assert.ok(style.centerOffset < 6, `the visible number is centered vertically in the card: ${style.centerOffset}`);
       }
     };
     await assertSpotlightNumber();
