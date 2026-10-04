@@ -16,6 +16,7 @@ import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
 import { buildPremiumNavStripPreview, preparePremiumCardPngExport } from './premium-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
+import antonFontUrl from '../assets/anton-regular.ttf?url';
 
 export type FanCardAppearanceInvite = {
   inviteToken: string; athleteName: string; teamName: string; sport: string;
@@ -49,16 +50,19 @@ async function readImageDimensions(dataUrl: string | null): Promise<{ width: num
 }
 
 let fontCss: Promise<string> | null = null;
-/** Best effort: embed Barlow Condensed and DM Sans so exported text matches the live card. */
+/** Bundle Anton for number parity; retain best-effort embedding of existing web fonts. */
 function loadEmbeddedFonts(): Promise<string> {
   fontCss ??= (async () => {
+    const anton = await toDataUrl(antonFontUrl);
+    if (!anton) throw new Error('Could not load the jersey-number font.');
+    const numberFont = `@font-face{font-family:'Anton';src:url("${anton}") format('truetype');font-weight:400;font-style:normal;}`;
     try {
       const css = await (await fetch('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=DM+Sans:wght@600;800&display=swap')).text();
       const urls = Array.from(new Set(Array.from(css.matchAll(/url\((https:[^)]+)\)/g), (m) => m[1])));
       let out = css;
       for (const u of urls) out = out.split(u).join(await toDataUrl(u) ?? u);
-      return out.replace(/<\/?style/gi, '');
-    } catch { return ''; }
+      return numberFont + out.replace(/<\/?style/gi, '');
+    } catch { return numberFont; }
   })();
   return fontCss;
 }

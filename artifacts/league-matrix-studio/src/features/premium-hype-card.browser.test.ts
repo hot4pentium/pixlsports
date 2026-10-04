@@ -26,7 +26,7 @@ import cutout from './src/assets/youth-football-player-cutout.png';
 import './src/index.css';
 import './src/features/living-athlete-card.css';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
-let saved=JSON.parse(localStorage.getItem('premium-test-settings')||'null')||defaultCardAppearance(new URLSearchParams(location.search).has('classic-preview')?'classic':'gallery');
+let saved=JSON.parse(localStorage.getItem('premium-test-settings')||'null')||defaultCardAppearance(new URLSearchParams(location.search).has('classic-preview')?'classic':new URLSearchParams(location.search).has('spotlight-preview')?'spotlight':'gallery');
 if(new URLSearchParams(location.search).has('nameplate-overlap'))saved={...saved,athleteY:.12,athleteScale:1.2};
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(url,init)=>{
@@ -64,7 +64,7 @@ window.verifyGalleryPlate=async()=>{
  function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};const below=true;const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
  if(new URLSearchParams(location.search).has('spillover')){a.athleteScale=1.45;a.athleteY=-.08;}
   return <div className="living-card-stage" data-design={design}><div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><div className="living-card-flip-inner"><div className="living-card-flip-face living-card-flip-front"><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/></div></div>{!below&&controls}</section></div>{below&&controls}</div>}
-   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')||new URLSearchParams(location.search).has('gallery-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="classic"/><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
+   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')||new URLSearchParams(location.search).has('gallery-preview')||new URLSearchParams(location.search).has('spotlight-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="classic"/><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);
 `);
   const directory = await mkdtemp(resolve(tmpdir(), 'premium-card-browser-'));
@@ -161,6 +161,38 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('.living-card-frame[data-design="breakout"] .living-card-premium-art > svg')).overflow`, session), 'visible', 'the live card also permits avatar spillover');
     await connection.evaluate(`document.querySelector('[data-testid="button-design-spotlight"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'spotlight', 5_000);
+    const assertSpotlightNumber = async () => {
+      const number = await connection!.evaluate<{ loaded: number; styles: Array<{ font: string; weight: string; stroke: string; width: string; behind: boolean }> }>(`(async()=>{
+        const fonts=await document.fonts.load('400 72px Anton','09');
+        const roots=[document.querySelector('.living-card-frame[data-design="spotlight"] .living-card-premium-art'),document.querySelector('[data-testid="appearance-preview-surface"]')];
+        return {loaded:fonts.length,styles:roots.map(root=>{const n=root.querySelector('[data-jersey-number]'),s=getComputedStyle(n),avatar=root.querySelector('[data-photo-placement]');
+          return {font:s.fontFamily,weight:s.fontWeight,stroke:s.stroke,width:s.strokeWidth,behind:!!(n.compareDocumentPosition(avatar)&Node.DOCUMENT_POSITION_FOLLOWING)};})};
+      })()`, session);
+      assert.ok(number.loaded > 0, 'the bundled Anton font loads, not just a fallback');
+      for (const style of number.styles) {
+        assert.match(style.font, /^Anton/);
+        assert.equal(style.weight, '400');
+        assert.equal(style.stroke, 'rgb(246, 239, 226)');
+        assert.equal(style.width, '8px');
+        assert.ok(style.behind, 'the outlined number stays behind the avatar');
+      }
+    };
+    await assertSpotlightNumber();
+    await connection.evaluate(`(()=>{
+      window.spotlightExportBlob=null;window.spotlightExportMarkup=null;
+      window.originalSpotlightImage=window.Image;window.originalSpotlightUrl=URL.createObjectURL;window.originalSpotlightClick=HTMLAnchorElement.prototype.click;
+      window.Image=class extends window.originalSpotlightImage {set src(v){if(v.startsWith('data:image/svg+xml'))window.spotlightExportMarkup=decodeURIComponent(v.slice(v.indexOf(',')+1));super.src=v;}get src(){return super.src;}};
+      URL.createObjectURL=b=>{if(b.type==='image/png')window.spotlightExportBlob=b;return window.originalSpotlightUrl.call(URL,b);};
+      HTMLAnchorElement.prototype.click=function(){};
+      document.querySelector('[data-testid="button-export-appearance-png"]').click();
+    })()`, session);
+    await waitFor(connection, session, '!!window.spotlightExportBlob', Boolean, 30_000);
+    const spotlightExport = await connection.evaluate<{ embedsAnton: boolean; width: number; height: number }>(`(async()=>{
+      const image=await createImageBitmap(window.spotlightExportBlob),markup=window.spotlightExportMarkup;
+      const result={embedsAnton:markup.includes("@font-face{font-family:'Anton';src:url(\\"data:")&&markup.includes("format('truetype')")&&markup.includes('data-jersey-number'),width:image.width,height:image.height};
+      image.close();window.Image=window.originalSpotlightImage;URL.createObjectURL=window.originalSpotlightUrl;HTMLAnchorElement.prototype.click=window.originalSpotlightClick;return result;
+    })()`, session);
+    assert.deepEqual(spotlightExport, { embedsAnton: true, width: 2000, height: 2800 }, 'Spotlight PNG export embeds Anton and renders successfully');
     assert.equal(await connection.evaluate(`document.querySelectorAll('[data-testid="hype-card-appearance-controls"] input[type="checkbox"]').length`, session), 1, 'only the background-removal checkbox remains');
     assert.equal(await connection.evaluate(`!!document.querySelector('[aria-label="Accent color presets"]')`, session), false, 'the separate accent picker is removed');
     await waitFor(connection, session, '!!document.querySelector("[aria-label=\\"Border color presets\\"]")', Boolean, 5_000);
@@ -175,6 +207,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'spotlight', 10_000);
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, session);
+    await assertSpotlightNumber();
     const mobile = await connection.evaluate<{ contained: boolean; tap: boolean; compactPickerVisible: boolean; fullPickerHidden: boolean; inline: boolean; designChoices: number; stageRatios: number[] }>(`(()=>{const card=document.querySelector('[data-testid="appearance-preview"]').getBoundingClientRect(),picker=document.querySelector('[data-testid="mobile-card-design-controls"]'),pickerBox=picker.getBoundingClientRect(),stageRatios=Array.from(document.querySelectorAll('.living-card-stage[data-design]')).map(stage=>{const track=parseFloat(getComputedStyle(stage.parentElement).gridTemplateColumns.split(' ')[0]);return stage.getBoundingClientRect().width/track});return {contained:document.documentElement.scrollWidth<=390,tap:[...document.querySelectorAll('.living-card-controls button')].every(b=>b.getBoundingClientRect().height>=44),compactPickerVisible:getComputedStyle(picker).display!=='none',fullPickerHidden:getComputedStyle(document.querySelector('[data-testid="card-design-picker-cards"]')).display==='none',inline:card.right<=pickerBox.left+2&&Math.min(card.bottom,pickerBox.bottom)>Math.max(card.top,pickerBox.top),designChoices:picker.querySelectorAll('button').length,stageRatios}})()`, session);
     assert.ok(mobile.contained, 'phone content must not horizontally overflow');
     assert.ok(mobile.tap, 'navigation retains 44px touch targets');

@@ -19,6 +19,7 @@ export const PREMIUM_FONT_DISPLAY = "'Barlow Condensed','Arial Narrow','Helvetic
 export const PREMIUM_FONT_TEXT = "'DM Sans','Helvetica Neue',Arial,sans-serif";
 const FONT_DISPLAY = PREMIUM_FONT_DISPLAY;
 const FONT_TEXT = PREMIUM_FONT_TEXT;
+const FONT_NUMBER = "'Anton','Impact','Arial Narrow',sans-serif";
 
 export const escapeXml = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 const hex = (v: unknown, fb: string) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toUpperCase() : fb);
@@ -207,7 +208,6 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
 <defs>${grainDef('s-grain', 0.2)}
 <clipPath id="s-card"><rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50"/></clipPath>
 <filter id="s-haze" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="55"/></filter>
-<filter id="s-numtex" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".035 .06" numOctaves="3" seed="3" result="n"/><feColorMatrix in="n" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.7" result="m"/><feComposite in="SourceGraphic" in2="m" operator="in"/></filter>
 <radialGradient id="s-vig" cx=".5" cy=".42" r=".75"><stop offset=".5" stop-color="#050913" stop-opacity="0"/><stop offset="1" stop-color="#050913" stop-opacity=".85"/></radialGradient>
 <linearGradient id="s-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913" stop-opacity="0"/><stop offset="1" stop-color="#050913" stop-opacity=".85"/></linearGradient></defs>
 <g id="spotlight-bg"><g clip-path="url(#s-card)">
@@ -219,7 +219,7 @@ ${photoFallback(input, { x: card.x, y: card.y, w: card.w, h: card.h }, 's-card',
 <g id="s-lights">${[[110, 470], [890, 470]].map(([x, y]) => `<g fill="#FFFBEA"><rect x="${x - 58}" y="${y - 50}" width="116" height="100" rx="10" opacity=".95"/></g><g fill="#2B3350">${[0, 1, 2].flatMap((r) => [0, 1, 2, 3].map((c) => `<circle cx="${x - 39 + c * 26}" cy="${y - 30 + r * 30}" r="8" fill="#FFFFFF"/>`)).join('')}</g><rect x="${x - 4}" y="${y + 50}" width="8" height="260" fill="#0A1022" opacity=".8"/>`).join('')}</g>
 <ellipse cx="500" cy="760" rx="520" ry="420" fill="${accent}" opacity=".32" filter="url(#s-haze)"/>
 <ellipse cx="500" cy="300" rx="380" ry="220" fill="${accent}" opacity=".18" filter="url(#s-haze)"/>
-${jersey ? `<g filter="url(#s-numtex)"><text x="500" y="${numSize === 900 ? 780 : 740}" text-anchor="middle" font-family="${FONT_DISPLAY}" font-weight="700" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
+${jersey ? `<g data-card-layer="jersey-number"><text data-jersey-number="true" x="500" y="${numSize === 900 ? 780 : 740}" text-anchor="middle" font-family="${FONT_NUMBER}" font-weight="400" font-size="${numSize}" fill="${mix(accent, '#0A1226', .45)}" stroke="${IVORY}" stroke-opacity=".85" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill" opacity=".85" textLength="${Math.min(820, jersey.length * numSize * 0.55)}" lengthAdjust="spacingAndGlyphs">${escapeXml(jersey)}</text></g>` : ''}
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" fill="url(#s-vig)"/>
 <rect x="${card.x}" y="900" width="${card.w}" height="${card.h - 900}" fill="url(#s-floor)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" filter="url(#s-grain)" opacity=".5"/>

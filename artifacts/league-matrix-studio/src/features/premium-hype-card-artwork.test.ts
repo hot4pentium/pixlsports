@@ -168,7 +168,26 @@ test('splits layers', () => {
   assert.ok(!fg.includes('s-venue'));
 });
 test('omits number when missing', () => {
-  assert.ok(!buildPremiumHypeCardArtwork({ athleteName: 'X', appearance: defaultCardAppearance('spotlight') }, 'bg').includes('url(#s-numtex)'));
+  assert.ok(!buildPremiumHypeCardArtwork({ athleteName: 'X', appearance: defaultCardAppearance('spotlight') }, 'bg').includes('data-jersey-number'));
+});
+test('Spotlight uses outlined Anton numerals behind the avatar without changing name typography', () => {
+  for (const jerseyNumber of ['9', '10', '123']) {
+    const input = { ...base, jerseyNumber, appearance: defaultCardAppearance('spotlight') };
+    for (const layer of ['all', 'bg'] as const) {
+      const svg = buildPremiumHypeCardArtwork(input, layer);
+      assert.match(svg, /data-jersey-number="true"[^>]*font-family="'Anton'[^>]*font-weight="400"/);
+      assert.match(svg, /data-jersey-number="true"[^>]*stroke="#F6EFE2"[^>]*stroke-width="8"[^>]*paint-order="stroke fill"/);
+      assert.doesNotMatch(svg, /<g filter="url\(#[^"]*s-numtex\)">/);
+      if (layer === 'all') {
+        assert.ok(svg.indexOf('data-jersey-number') < svg.indexOf('data-photo-placement="cutout"'));
+        assert.match(svg, /font-family="'Barlow Condensed'[^>]*font-weight="700"/);
+      }
+    }
+    assert.doesNotMatch(buildPremiumHypeCardArtwork(input, 'fg'), /data-jersey-number/);
+  }
+  for (const design of ['gallery', 'breakout'] as const) {
+    assert.doesNotMatch(buildPremiumHypeCardArtwork({ ...base, appearance: defaultCardAppearance(design) }), /font-family="'Anton'/);
+  }
 });
 
 test('each layer is self-contained and fg has no bg venue', () => {
