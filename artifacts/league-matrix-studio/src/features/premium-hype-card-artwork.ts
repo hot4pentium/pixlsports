@@ -193,7 +193,7 @@ function spotlight(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): st
   const card = { x: 14, y: 14, w: 972, h: 1372 };
   const nm = fitName(input.athleteName || 'Athlete', 760, 170, 100, 120);
   const plateH = Math.max(235, 34 + nm.size * 0.9 + (nm.lines.length - 1) * nm.size * 0.98 + 52 + 44);
-  const plate = { x: 70, y: 1290 - plateH, w: 860, h: plateH };
+  const plate = { x: 70, y: 1350 - plateH, w: 860, h: plateH };
   const nameY = plate.y + 30 + nm.size * 0.9;
   const detailY = nameY + (nm.lines.length - 1) * nm.size * 0.98 + 50;
   const splitX = 640;
@@ -228,10 +228,10 @@ ${grainDef('s-grain2', 0.14)}</defs>
 <g id="spotlight-fg">
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="10" opacity=".55" filter="url(#s-glow)"/>
 <rect x="${card.x}" y="${card.y}" width="${card.w}" height="${card.h}" rx="50" fill="none" stroke="${border}" stroke-width="5"/>
-${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}
 ${input.logoUrl ? `<rect x="76" y="62" width="196" height="76" rx="14" fill="${IVORY}" opacity=".94"/>` : ''}${logo(input, 88, 70, 172)}
 <line x1="86" y1="152" x2="140" y2="152" stroke="${accent}" stroke-width="4"/>
 ${sport ? `<text x="912" y="108" text-anchor="end" font-family="${FONT_TEXT}" font-weight="600" font-size="28" letter-spacing="8" fill="#F1ECE2">${sport}</text><line x1="860" y1="152" x2="914" y2="152" stroke="${accent}" stroke-width="4"/>` : ''}
+${athlete(input, { x: 90, y: 120, w: 820, h: 1130 }, 's-cut')}
 <g filter="url(#s-plate)">
 <rect x="${plate.x + 20}" y="${plate.y + 22}" width="${plate.w}" height="${plate.h}" rx="30" fill="${mix(accent, '#000000', .12)}" transform="rotate(-1.4 500 ${plate.y + plate.h / 2})"/>
 <rect x="${plate.x + 5}" y="${plate.y - 14}" width="${plate.w}" height="${plate.h}" rx="30" fill="${accent}" transform="rotate(1.6 500 ${plate.y + plate.h / 2})"/>

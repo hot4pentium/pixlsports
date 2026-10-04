@@ -43,11 +43,13 @@ test('Spotlight keeps Gallery-style avatar placement and paints the full cutout 
   const frame = svg.indexOf('stroke-width="5"/>');
   const avatar = svg.indexOf('data-photo-placement="cutout"');
   const logo = svg.indexOf('preserveAspectRatio="xMinYMin meet"');
-  assert.ok(frame >= 0 && avatar > frame && logo > avatar, 'the avatar overlays the card frame while the brand mark stays above it');
+  const sport = svg.indexOf('>SOCCER</text>');
+  const plate = svg.indexOf('<g filter="url(#s-plate)">');
+  assert.ok(frame >= 0 && logo > frame && sport > logo && avatar > sport && plate > avatar, 'the avatar overlays the frame and sport label while the nameplate stays above the avatar');
   assert.match(svg, /<svg[^>]*overflow="visible"[^>]*data-design="spotlight"/);
   assert.match(svg, /<image href="data:image\/png;base64,AAAA" x="90" y="120" width="820" height="1130" preserveAspectRatio="xMidYMax meet"/);
   assert.match(svg, /translate\(580 1194\) scale\(1\.2\)/);
-  assert.match(svg, /id="s-plate"[^]*<g filter="url\(#s-plate\)">/);
+  assert.match(svg, /<rect x="70" y="1067" width="860" height="283" rx="28" fill="url\(#s-sheen\)"/);
 });
 test('the premium designer preview separates its dressed nav strip from the card artwork', () => {
   for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
