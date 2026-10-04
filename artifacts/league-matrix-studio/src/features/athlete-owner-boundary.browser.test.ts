@@ -843,20 +843,12 @@ test('player-page owner tools remain private across account changes and pause', 
       assert.equal(layout.design, design, `${design} renders at ${viewport} width`);
       assert.equal(layout.side, side, `${design} reaches the ${side} side at ${viewport} width`);
       assert.equal(layout.buttons.length, 4, `${design} keeps all four section controls`);
-      if (design === 'breakout') {
-        assert.equal(layout.navBelowFrame, true, `Breakout navigation stays below the artwork at ${viewport} width on ${side}`);
-      } else {
-        assert.equal(layout.navInsideCard, true, `${design} navigation stays in the card at ${viewport} width on ${side}`);
-      }
+      assert.equal(layout.navBelowFrame, true, `${design} navigation stays below the artwork at ${viewport} width on ${side}`);
       assert.equal(layout.returnFrontBelowFrame, true, `the return-to-front action stays below the card at ${viewport} width`);
       assert.ok(layout.returnFrontHeight >= 44, `the return-to-front action remains tappable at ${viewport} width`);
       for (const button of layout.buttons) {
         assert.equal(button.visible, true, `${design} section controls remain visible at ${viewport} width on ${side}`);
-        if (design === 'breakout') {
-          assert.ok(button.height >= 44, `Breakout controls keep 44px touch targets at ${viewport} width on ${side}`);
-        } else {
-          assert.ok(button.height > 0, `${design} controls retain their existing in-card size at ${viewport} width on ${side}`);
-        }
+        assert.ok(button.height >= 44, `${design} controls keep 44px touch targets at ${viewport} width on ${side}`);
         assert.ok(button.width > 0 && button.left >= 0 && button.right <= (viewport === 'phone' ? 390 : 1365),
           `${design} section controls fit horizontally at ${viewport} width on ${side}`);
         assert.equal(button.textFits, true, `${design} section labels fit their buttons at ${viewport} width on ${side}`);
@@ -883,7 +875,7 @@ test('player-page owner tools remain private across account changes and pause', 
       }, sessionId);
     };
 
-    for (const design of ['breakout', 'gallery', 'spotlight'] as const) {
+    for (const design of ['classic', 'breakout', 'gallery', 'spotlight'] as const) {
       fanCard.cardAppearance = defaultCardAppearance(design);
       const sharedCard = await open('visitor', 'fan');
       for (const viewport of cardViewports) {
@@ -904,7 +896,7 @@ test('player-page owner tools remain private across account changes and pause', 
         await assertSharedCardLayout(sharedCard, design, viewport.name, 'front');
 
         for (const section of cardNavigation) {
-          await clickSharedCardControl(sharedCard, section.id, design === 'breakout' ? 44 : 1);
+          await clickSharedCardControl(sharedCard, section.id);
           await waitFor(connection, sharedCard, `(() => {
             const card = document.querySelector('#living-card-display');
             const inner = document.querySelector('.living-card-flip-inner');

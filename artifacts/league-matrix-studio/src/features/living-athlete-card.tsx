@@ -353,9 +353,6 @@ export function LivingAthleteCardPage({
     if (side === next) return;
     setSide(next);
   };
-  const controlsBelowCard = invite.cardAppearance?.design === 'breakout'
-    || invite.cardAppearance?.design === 'gallery'
-    || invite.cardAppearance?.design === 'spotlight';
   const submitHype = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!publicConsent) return;
@@ -771,10 +768,9 @@ export function LivingAthleteCardPage({
                 )}
                   </div>
                 </div>
-                {!controlsBelowCard && <LivingCardControls side={side} eventToday={eventToday} eventCount={linkedEvents.length} onSelectSide={selectSide} />}
               </div>
             </div>
-            {controlsBelowCard && <LivingCardControls side={side} eventToday={eventToday} eventCount={linkedEvents.length} onSelectSide={selectSide} />}
+            <LivingCardControls side={side} eventToday={eventToday} eventCount={linkedEvents.length} onSelectSide={selectSide} />
             <button type="button" className="living-card-return-front" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Flip to card front</button>
 
              {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">

@@ -9,11 +9,11 @@ Keep background removal local to the device, preserve the original photo, and tr
 
 **How to apply:** Keep the original-photo fallback and an explicit retry available. Retain source identity checks when introducing new derivative-generation paths.
 
-Classic HYPE Cards always show the full original photo; only premium styles may use the background-removed cutout.
+Classic HYPE Cards always show the full original photo filling the card, with the athlete's name in a lower third and navigation beneath the card; only premium styles may use the background-removed cutout.
 
-**Why:** The user wants Classic to retain the photo's full background rather than display a transparent cutout.
+**Why:** The user rejected the contained-thumbnail preview and explicitly requested a photo-filled Classic card, a lower-third name, and navigation beneath it.
 
-**How to apply:** Classic previews and live renders should use the original photo URL even when a cutout exists.
+**How to apply:** Keep the owner design preview consistent with the live Classic card. Use the original photo even when a cutout exists; fill the frame rather than letterboxing it.
 
 Prebundle lazy browser-inference dependencies before the first upload in Vite development.
 

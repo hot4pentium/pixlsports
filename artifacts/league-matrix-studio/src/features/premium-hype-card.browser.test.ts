@@ -25,7 +25,7 @@ import cutout from './src/assets/youth-football-player-cutout.png';
 import './src/index.css';
 import './src/features/living-athlete-card.css';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
-let saved=JSON.parse(localStorage.getItem('premium-test-settings')||'null')||defaultCardAppearance('gallery');
+let saved=JSON.parse(localStorage.getItem('premium-test-settings')||'null')||defaultCardAppearance(new URLSearchParams(location.search).has('classic-preview')?'classic':'gallery');
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(url,init)=>{
  if(String(url).includes('/api/athlete-invites/fixture/appearance')){
@@ -44,10 +44,10 @@ window.runRemoval=async()=>{
 const profile={athleteName:'Jordan Alexander Matthews',jerseyNumber:'9',position:'Quarterback'};
 const invite={inviteToken:'fixture',athleteName:'Older Invite Name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,photoRevision:'fixture-revision',cutoutUrl:new URLSearchParams(location.search).has('fallback')?null:cutout,cardAppearance:saved};
 window.fixturePhotoUrl=photo;window.fixtureCutoutUrl=cutout;
- function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};const below=design==='gallery'||design==='spotlight'||design==='breakout';const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
+ function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};const below=true;const controls=<div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div>;
  if(new URLSearchParams(location.search).has('spillover')){a.athleteScale=1.45;a.athleteY=-.08;}
   return <div className="living-card-stage" data-design={design}><div className="living-card-frame-outer"><section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><div className="living-card-flip-inner"><div className="living-card-flip-face living-card-flip-front"><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/></div></div>{!below&&controls}</section></div>{below&&controls}</div>}
-   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="classic"/><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
+   function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20,paddingTop:new URLSearchParams(location.search).has('spillover')?240:20}}><h1 style={{fontSize:24,marginBottom:16}}>HYPE Card design verification</h1><div style={{display:new URLSearchParams(location.search).has('classic-preview')?'none':'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="classic"/><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div></div>}
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);
 `);
   const directory = await mkdtemp(resolve(tmpdir(), 'premium-card-browser-'));
@@ -64,6 +64,20 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, monitor.diagnostics);
     const page = await openPage(connection, 'http://localhost:80/premium-appearance-fixture.html', { viewport: { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false } });
     const session = page.sessionId;
+    const assertClassicPreview = async () => {
+      const layout = await connection!.evaluate<{ fills: boolean; lowerThird: boolean; navBelow: boolean; name: string; labels: string[] }>(`(()=>{
+        const card=document.querySelector('[data-testid="classic-card-preview-surface"]'),photo=card?.querySelector('img'),name=card?.querySelector('.living-card-athlete-name'),nav=document.querySelector('[data-testid="classic-card-preview-stack"] [data-testid="appearance-navigation-preview"]');
+        if(!card||!photo||!name||!nav)throw new Error('Classic preview is incomplete');
+        const c=card.getBoundingClientRect(),p=photo.getBoundingClientRect(),n=name.getBoundingClientRect();
+        return {fills:Math.abs(c.left-p.left)<=2&&Math.abs(c.right-p.right)<=2&&Math.abs(c.top-p.top)<=2&&Math.abs(c.bottom-p.bottom)<=2&&getComputedStyle(photo).objectFit==='cover',
+          lowerThird:n.top>=c.top+c.height*.6&&n.bottom<=c.bottom,navBelow:nav.getBoundingClientRect().top>=c.bottom,name:name.textContent,labels:[...nav.querySelectorAll('span')].map(s=>s.textContent)};
+      })()`, session);
+      assert.ok(layout.fills, 'the original Classic photo fills the card edge-to-edge');
+      assert.ok(layout.lowerThird, 'the Classic athlete name sits in the lower third');
+      assert.ok(layout.navBelow, 'Classic preview navigation sits beneath the card');
+      assert.equal(layout.name, 'Jordan Alexander Matthews');
+      assert.deepEqual(layout.labels, ['Replies', 'Stats', 'Taps', 'Events']);
+    };
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 45_000);
     const desktopStageRatios = await connection.evaluate(`Array.from(document.querySelectorAll('.living-card-stage[data-design]')).map(stage=>{const track=parseFloat(getComputedStyle(stage.parentElement).gridTemplateColumns.split(' ')[0]);return stage.getBoundingClientRect().width/track})`, session) as number[];
     assert.equal(desktopStageRatios.length, 4, 'all four HYPE Card designs are present in the width check');
@@ -96,6 +110,12 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(classicPreviewSources.rendered, classicPreviewSources.photo, 'Classic uses the full original photo');
     assert.equal(classicPreviewSources.live, classicPreviewSources.photo, 'the live Classic card uses the full original photo');
     assert.notEqual(classicPreviewSources.rendered, classicPreviewSources.cutout, 'Classic does not use the background-removed cutout');
+    await assertClassicPreview();
+    await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
+    await waitFor(connection, session, 'JSON.parse(localStorage.getItem("premium-test-settings")||"{}").design', value => value === 'classic', 5_000);
+    await connection.send('Page.navigate', { url: 'http://localhost:80/premium-appearance-fixture.html' }, session);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=classic-card-preview-surface] img")', Boolean, 10_000);
+    await assertClassicPreview();
     await connection.evaluate(`document.querySelector('[data-testid="button-design-breakout"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'breakout', 5_000);
     assert.equal(await connection.evaluate(`getComputedStyle(document.querySelector('[data-testid="appearance-preview-surface"] > svg')).overflow`, session), 'visible', 'the editor does not crop the avatar at its SVG viewport when resizing');
@@ -124,6 +144,9 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.ok(mobile.inline, 'the compact design buttons sit beside the HYPE Card preview');
     assert.equal(mobile.designChoices, 4, 'all card designs remain available on phones');
     assert.ok(mobile.stageRatios.length === 4 && mobile.stageRatios.every(ratio => ratio >= 0.90 && ratio <= 0.94), `all four mobile HYPE Card designs are about 8% narrower: ${mobile.stageRatios.join(', ')}`);
+    await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-classic"]').click()`, session);
+    await waitFor(connection, session, '!!document.querySelector("[data-testid=classic-card-preview-surface] img")', Boolean, 5_000);
+    await assertClassicPreview();
     await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-gallery"]').click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'gallery', 5_000);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-gallery"]').getAttribute('aria-pressed')`, session), 'true', 'the selected mobile button tracks the preview');

@@ -61,7 +61,7 @@
 .living-card-photo-fallback { height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, #2e6093, transparent 53%), repeating-linear-gradient(110deg, transparent 0 48px, #a2caff0d 49px 50px), #0b2544; }
 .living-card-photo-fallback span { font: 900 clamp(170px, 27vw, 360px)/1 'Barlow Condensed', sans-serif; color: #b5d8f71a; text-shadow: 1px 1px #c7eaff5c; }
 .living-card-photo-fallback small { position: absolute; top: 56%; color: #e2eff8af; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; font-weight: 800; }
-.living-card-photo-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #061427d9 0, #06142773 18%, transparent 43%); }
+.living-card-photo-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(0deg, #061427d9 0, #06142773 18%, transparent 43%); }
 .living-card-photo-watermark {
   position: absolute;
   right: clamp(16px, 4%, 32px);
@@ -83,7 +83,7 @@
   letter-spacing: .077em;
   z-index: 1;
 }
-.living-card-front-identity { position: absolute; z-index: 2; top: clamp(22px, 4vw, 38px); left: clamp(22px, 4vw, 38px); right: clamp(22px, 4vw, 38px); max-width: 480px; text-shadow: 0 2px 12px #061427e8; }
+.living-card-front-identity { position: absolute; z-index: 2; bottom: 0; left: 0; right: 0; padding: 12% 6% 7%; background: linear-gradient(transparent, #061427db); text-shadow: 0 2px 12px #061427e8; }
 .living-card-athlete-name { margin: 0; font: 900 clamp(45px, 7vw, 82px)/.9 'Barlow Condensed', sans-serif; letter-spacing: -.015em; text-transform: uppercase; overflow-wrap: anywhere; }
 .living-card-team-name { margin: 10px 0 0; color: #edf5ff; font-size: clamp(11px, 1.6vw, 16px); font-weight: 800; line-height: 1.25; letter-spacing: .16em; text-transform: uppercase; overflow-wrap: anywhere; }
 .living-card-face-alt { inset: 0 0 76px; padding: clamp(23px, 5vw, 42px); background: transparent; display: flex; flex-direction: column; overflow-y: auto; scrollbar-color: #6fa9d6 #0b2544; animation: lc-card-side-reveal .24s ease both; }
@@ -189,6 +189,8 @@
 .living-card-control { appearance: none; min-width: 0; min-height: 44px; padding: 5px 3px; border: 1px solid #b2d3ee4d; border-radius: 8px; background: #1534538c; color: #c0d2e3; display: flex; align-items: center; justify-content: center; gap: 4px; font: 800 8px 'DM Sans', sans-serif; letter-spacing: .045em; text-transform: uppercase; white-space: nowrap; transition: background .2s, color .2s, transform .2s; }
 .living-card-control:hover { background: #225480; color: var(--lc-paper); transform: translateY(-1px); }
 .living-card-control[aria-pressed="true"] { background: var(--lc-paper); border-color: var(--lc-paper); color: var(--lc-navy); }
+.living-card-stage[data-design="classic"] > .living-card-controls { position: relative; inset: auto; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; margin: 14px auto 0; background: #07172b; }
+.living-card-stage[data-design="classic"] .living-card-face-alt { inset: 0; }
 .living-card-control svg { width: 14px; height: 14px; flex: none; }
 .living-card-control-emoji { font-size: 16px; line-height: 1; }
 .living-card-return-front { display: flex; align-items: center; justify-content: center; gap: 10px; width: calc(100% - 20px); min-height: 46px; margin: 14px auto 0; border: 1px solid #9fcaef8c; border-radius: 11px; background: #143450; color: var(--lc-paper); font: 800 11px 'DM Sans', sans-serif; letter-spacing: .12em; text-transform: uppercase; transition: background .2s, border-color .2s; }
@@ -334,7 +336,6 @@
   .living-card-main { padding: 31px 17px 55px; }
   .living-card-intro { display: flex; }
   .living-card-frame { min-height: 540px; height: 144vw; max-height: 700px; }
-  .living-card-front-identity { left: 20px; right: 20px; top: 22px; }
   .living-card-athlete-name { font-size: clamp(42px, 12vw, 68px); }
   .living-card-controls { bottom: 12px; gap: 4px; padding: 4px; }
   .living-card-control { flex-direction: column; min-height: 44px; gap: 2px; padding: 4px 3px; font-size: 8px; line-height: 1.1; letter-spacing: .04em; text-align: center; }

@@ -1,0 +1,40 @@
+.classic-card-preview-surface {
+  position: relative;
+  aspect-ratio: 5 / 7;
+  overflow: hidden;
+  container-type: inline-size;
+  border: 1px solid #9fcaef62;
+  border-radius: 16px;
+  background: #10243d;
+}
+.classic-card-preview-surface .living-card-athlete-name { font-size: 12cqw; line-height: .98; }
+.classic-card-preview-surface .living-card-team-name { margin-top: 5px; font-size: 3.8cqw; letter-spacing: .12em; }
+.classic-card-preview-surface .living-card-photo-watermark { right: 7%; font-size: 15cqw; }
+.classic-card-preview-surface .living-card-photo-fallback span { font-size: 50cqw; }
+.classic-card-preview-surface .living-card-photo-fallback small { font-size: 3.5cqw; letter-spacing: .08em; }
+.classic-card-preview-navigation {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 8px;
+  padding: 4px;
+  border: 1px solid #9fcaef62;
+  border-radius: 12px;
+  background: #07172b;
+  color: #e9eef7;
+}
+.classic-card-preview-navigation span {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-right: 1px solid #ffffff22;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.classic-card-preview-navigation span:last-child { border-right: 0; }
+.classic-card-preview-navigation svg { width: 12px; height: 12px; }
