@@ -23,6 +23,14 @@ test('escapes text and keeps viewBox', () => {
   assert.match(svg, /viewBox="0 0 1000 1400"/);
   assert.ok(!svg.includes('<b>'));
 });
+test('Breakout keeps resized avatars intact outside the SVG card boundary', () => {
+  for (const layer of ['all', 'fg'] as const) {
+    const svg = buildPremiumHypeCardArtwork({ ...base, appearance: { ...defaultCardAppearance('breakout'), athleteScale: 1.45, athleteY: -.18 } }, layer);
+    assert.match(svg, /<svg[^>]*overflow="visible"/);
+    assert.match(svg, /<g id="breakout-fg">\s*<g data-card-layer="avatar"><g data-photo-placement="cutout"/);
+    assert.match(svg, /preserveAspectRatio="xMidYMax meet"/);
+  }
+});
 test('splits layers', () => {
   const appearance = defaultCardAppearance('spotlight');
   assert.ok(!buildPremiumHypeCardArtwork({ ...base, appearance }, 'bg').includes('data:image/png'));
