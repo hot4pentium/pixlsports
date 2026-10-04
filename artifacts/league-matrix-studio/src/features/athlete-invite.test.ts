@@ -13,6 +13,13 @@ const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', impor
 const eventNotificationsSource = readFileSync(new URL('./owner-event-notifications.tsx', import.meta.url), 'utf8');
 const supporterDashboardSource = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
 
+test('first-card creation discloses the public profile-photo copy without promising later sync', () => {
+  assert.match(source, /data-testid="first-card-profile-photo-disclosure"/);
+  assert.match(source, /prepared copy will appear on this public HYPE Card/);
+  assert.match(source, /Later profile-photo changes won’t replace the card photo/);
+  assert.match(supporterDashboardSource, /Creating your first HYPE Card copies this photo to the public card/);
+});
+
 test('HYPE Card sharing copy does not call links or pages stable', () => {
   assert.doesNotMatch(
     [source, hypeCardSource, appSource, supporterDashboardSource].join('\n'),

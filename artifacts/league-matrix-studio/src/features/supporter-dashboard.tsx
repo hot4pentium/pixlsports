@@ -1630,7 +1630,7 @@ export function SupporterProfileView({
                 testId="athlete-photo-settings-preview"
               />
               <div className="min-w-0 flex-1 space-y-3">
-                <p className="text-sm font-medium text-muted-foreground">Private to your signed-in account. JPG, PNG, or WebP, up to 5 MB.</p>
+                <p className="text-sm font-medium text-muted-foreground">The original is private to your signed-in account. Creating your first HYPE Card copies this photo to the public card; later changes here won’t replace its photo. JPG, PNG, or WebP, up to 5 MB.</p>
                 {photoError && <p className="text-sm font-bold text-destructive" role="alert">{photoError}</p>}
                 {!pendingPhotoUrl && (
                   <label className="inline-block cursor-pointer bg-foreground text-background px-5 py-3 text-center text-xs font-bold uppercase tracking-widest">

@@ -373,6 +373,7 @@ export function AthleteInviteManager() {
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
               <h2 className="mt-2 font-display text-3xl uppercase">Create the HYPE Card</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one HYPE Card for the season. Existing invite links will open it too.</p>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground" data-testid="first-card-profile-photo-disclosure">If you’ve saved an Athlete Profile photo, a prepared copy will appear on this public HYPE Card. Your profile original stays private. Later profile-photo changes won’t replace the card photo.</p>
             </div>
           )}
         </section>
