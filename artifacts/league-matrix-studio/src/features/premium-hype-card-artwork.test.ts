@@ -88,8 +88,9 @@ test('Breakout fixes the name plate over the avatar and ignores legacy plate off
   const avatar = svg.indexOf('data-card-layer="avatar"');
   const plate = svg.indexOf('data-card-layer="name-plate"');
   assert.ok(avatar >= 0 && plate > avatar, 'the fixed name plate paints over the lower avatar');
-  assert.match(svg, /data-card-layer="name-plate" data-position="fixed" filter=/);
-  assert.doesNotMatch(svg, /data-card-layer="name-plate"[^>]*transform=/);
+  assert.match(svg, /data-card-layer="name-plate" data-position="fixed" transform="translate\(0 126\)" filter=/);
+  const plateCenter = (934 + 1160) / 2 + 126;
+  assert.equal(plateCenter, (150 + 820 + 1376) / 2, 'the nameplate center sits midway between the background graphic and card bottoms');
   assert.match(svg, /M116 934H884L924 978V1128/);
 });
 test('Spotlight keeps Gallery-style avatar placement and paints the full cutout over the frame', () => {
@@ -254,8 +255,7 @@ test('Breakout exposes frame and avatar controls while fixing the name plate abo
   assert.match(bg, /data-card-layer="frame"/);
   assert.match(fg, /data-card-layer="frame"/);
   assert.match(fg, /data-card-layer="avatar"/);
-  assert.match(fg, /data-card-layer="name-plate" data-position="fixed"/);
-  assert.doesNotMatch(fg, /data-card-layer="name-plate"[^>]*transform=/);
+  assert.match(fg, /data-card-layer="name-plate" data-position="fixed" transform="translate\(0 126\)"/);
 
   const originalPhoto = buildPremiumHypeCardArtwork({
     ...base,

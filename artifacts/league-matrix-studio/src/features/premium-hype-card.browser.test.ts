@@ -96,6 +96,11 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       assert.deepEqual(layout.labels, ['Replies', 'Stats', 'Taps', 'Events']);
     };
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 45_000);
+    const editorPreviewWidth = await connection.evaluate<number>(
+      'document.querySelector("[data-testid=appearance-preview]").getBoundingClientRect().width',
+      session,
+    );
+    assert.ok(editorPreviewWidth >= 350, `the desktop card preview has room to show its detail (${editorPreviewWidth}px)`);
     const desktopStageRatios = await connection.evaluate(`Array.from(document.querySelectorAll('.living-card-stage[data-design]')).map(stage=>{const track=parseFloat(getComputedStyle(stage.parentElement).gridTemplateColumns.split(' ')[0]);return stage.getBoundingClientRect().width/track})`, session) as number[];
     assert.equal(desktopStageRatios.length, 4, 'all four HYPE Card designs are present in the width check');
     assert.ok(desktopStageRatios.every(ratio => ratio >= 0.90 && ratio <= 0.94), `desktop cards are about 8% narrower: ${desktopStageRatios.join(', ')}`);
@@ -220,11 +225,12 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, 'document.querySelector("[data-testid=appearance-preview-surface] svg")?.getAttribute("data-design")', value => value === 'spotlight', 10_000);
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, session);
     await assertSpotlightNumber();
-    const mobile = await connection.evaluate<{ contained: boolean; tap: boolean; compactPickerVisible: boolean; fullPickerHidden: boolean; inline: boolean; designChoices: number; stageRatios: number[] }>(`(()=>{const card=document.querySelector('[data-testid="appearance-preview"]').getBoundingClientRect(),picker=document.querySelector('[data-testid="mobile-card-design-controls"]'),pickerBox=picker.getBoundingClientRect(),stageRatios=Array.from(document.querySelectorAll('.living-card-stage[data-design]')).map(stage=>{const track=parseFloat(getComputedStyle(stage.parentElement).gridTemplateColumns.split(' ')[0]);return stage.getBoundingClientRect().width/track});return {contained:document.documentElement.scrollWidth<=390,tap:[...document.querySelectorAll('.living-card-controls button')].every(b=>b.getBoundingClientRect().height>=44),compactPickerVisible:getComputedStyle(picker).display!=='none',fullPickerHidden:getComputedStyle(document.querySelector('[data-testid="card-design-picker-cards"]')).display==='none',inline:card.right<=pickerBox.left+2&&Math.min(card.bottom,pickerBox.bottom)>Math.max(card.top,pickerBox.top),designChoices:picker.querySelectorAll('button').length,stageRatios}})()`, session);
+    const mobile = await connection.evaluate<{ contained: boolean; tap: boolean; compactPickerVisible: boolean; fullPickerHidden: boolean; stacked: boolean; previewWidth: number; designChoices: number; stageRatios: number[] }>(`(()=>{const card=document.querySelector('[data-testid="appearance-preview"]').getBoundingClientRect(),picker=document.querySelector('[data-testid="mobile-card-design-controls"]'),pickerBox=picker.getBoundingClientRect(),stageRatios=Array.from(document.querySelectorAll('.living-card-stage[data-design]')).map(stage=>{const track=parseFloat(getComputedStyle(stage.parentElement).gridTemplateColumns.split(' ')[0]);return stage.getBoundingClientRect().width/track});return {contained:document.documentElement.scrollWidth<=390,tap:[...document.querySelectorAll('.living-card-controls button')].every(b=>b.getBoundingClientRect().height>=44),compactPickerVisible:getComputedStyle(picker).display!=='none',fullPickerHidden:getComputedStyle(document.querySelector('[data-testid="card-design-picker-cards"]')).display==='none',stacked:pickerBox.top>=card.bottom-1,previewWidth:card.width,designChoices:picker.querySelectorAll('button').length,stageRatios}})()`, session);
     assert.ok(mobile.contained, 'phone content must not horizontally overflow');
     assert.ok(mobile.tap, 'navigation retains 44px touch targets');
     assert.ok(mobile.compactPickerVisible && mobile.fullPickerHidden, 'phones show the compact picker instead of the full design cards');
-    assert.ok(mobile.inline, 'the compact design buttons sit beside the HYPE Card preview');
+     assert.ok(mobile.stacked, 'the compact design buttons sit below the wider HYPE Card preview');
+     assert.ok(mobile.previewWidth >= 340, `the phone card preview uses the available panel width (${mobile.previewWidth}px)`);
     assert.equal(mobile.designChoices, 4, 'all card designs remain available on phones');
     assert.ok(mobile.stageRatios.length === 4 && mobile.stageRatios.every(ratio => ratio >= 0.90 && ratio <= 0.94), `all four mobile HYPE Card designs are about 8% narrower: ${mobile.stageRatios.join(', ')}`);
     await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-classic"]').click()`, session);
@@ -303,7 +309,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-photo-placement=cutout]")', Boolean, 5_000);
     const plateTransform = `document.querySelector('[data-testid="appearance-preview-surface"] [data-card-layer="name-plate"]').getAttribute("transform")`;
     const beforePlate = await connection.evaluate<string>(plateTransform, session);
-    assert.equal(beforePlate, null, 'the Breakout name plate uses its fixed artwork position');
+    assert.equal(beforePlate, 'translate(0 126)', 'the fixed name plate is centered below the background graphic');
     await connection.evaluate(`document.querySelector('[data-testid="button-layer-frame"]').click()`, session);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').disabled`, session), true, 'the frame is a fixed layer');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').getAttribute('aria-pressed')`, session), 'false', 'selecting the locked frame turns the move tool off');

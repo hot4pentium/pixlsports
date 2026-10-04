@@ -232,10 +232,10 @@ export function FanCardAppearanceManager({ invite, profile }: {
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-[minmax(0,280px)_1fr]" data-testid="fan-card-appearance-manager">
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3 md:block" data-testid="appearance-preview-and-mobile-design">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]" data-testid="fan-card-appearance-manager">
+      <div className="grid grid-cols-1 items-start gap-3 md:block" data-testid="appearance-preview-and-mobile-design">
         <div className="min-w-0">
-          <div className="mx-auto w-full max-w-[280px] overflow-visible rounded-2xl" data-testid="appearance-preview">
+          <div className="mx-auto w-full max-w-[360px] overflow-visible rounded-2xl" data-testid="appearance-preview">
             {draft.design === 'classic'
               ? <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} />
               : <div data-testid="premium-card-preview-stack">
