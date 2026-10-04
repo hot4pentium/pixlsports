@@ -95,17 +95,18 @@ const slider = 'w-full accent-[#EF3996] min-h-11';
 export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Athlete placement', showAthleteSize = true, showResetButton = true, onResetPlacement, canEnableBackgroundRemoval = true, onEnableBackgroundRemoval, designPickerClassName = '' }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void; canEnableBackgroundRemoval?: boolean; onEnableBackgroundRemoval?: () => void; designPickerClassName?: string }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set({ borderColor: c, accentColor: c, accentLinked: true });
-  const swatches = (current: string, apply: (c: string) => void, label: string) => (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+  const swatches = (current: string, apply: (c: string) => void, label: string, trailingControl?: ReactNode) => (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2">
       {appearanceSwatches.map(([name, color]) => (
         <button key={color} type="button" disabled={disabled} aria-label={name} aria-pressed={current.toUpperCase() === color} title={name}
           onClick={() => apply(color)} className="h-11 w-11 rounded-full border-2 border-white/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:ring-2 aria-pressed:ring-white"
           style={{ background: color }} />
       ))}
+      {trailingControl}
     </div>
   );
   const colorRow = (current: string, apply: (c: string) => void, label: string) => (
-    <div className="mt-3 flex items-center gap-3">
+    <div className="flex shrink-0 items-center gap-2">
       <input type="color" aria-label={`${label} custom color`} value={current} disabled={disabled} onChange={(e) => apply(e.target.value.toUpperCase())} className="h-11 w-14 cursor-pointer rounded border border-white/30 bg-transparent p-0.5" />
       <HexField value={current} label={label} disabled={disabled} onValid={apply} />
     </div>
@@ -139,8 +140,7 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
         </div>
         <div>
           <p className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Border color</p>
-          {swatches(appearance.borderColor, setBorder, 'Border color presets')}
-          {colorRow(appearance.borderColor, setBorder, 'Border')}
+          {swatches(appearance.borderColor, setBorder, 'Border color presets and custom color', colorRow(appearance.borderColor, setBorder, 'Border'))}
         </div>
         <div className="rounded-lg border border-white/15 bg-white/5 p-3">
           <label className="flex min-h-11 items-center gap-3 text-sm font-bold" data-testid="toggle-remove-background">

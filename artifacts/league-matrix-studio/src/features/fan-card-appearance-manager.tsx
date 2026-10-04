@@ -7,7 +7,7 @@ import {
   useUpdateAthleteInviteAppearance,
 } from '@workspace/api-client-react';
 import type React from 'react';
-import { Download } from 'lucide-react';
+import { Download, Share2 } from 'lucide-react';
 import { removeAthleteBackground } from './athlete-background-removal';
 import { saveAthleteCutout } from './athlete-cutout-upload';
 import { HypeCardAppearanceControls, HypeCardDesignPicker } from './hype-card-appearance-controls';
@@ -150,6 +150,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
     dragRef.current = { x: e.clientX, y: e.clientY };
     setDraft((d) => clampPlacement(d, d.athleteX + dx, d.athleteY + dy));
     setStatus('idle');
+    setExportMessage('');
   };
   const onUp = () => { dragRef.current = null; };
   const onPositionKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -160,6 +161,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
     event.preventDefault();
     setDraft(current => clampPlacement(current, current.athleteX + direction[0], current.athleteY + direction[1]));
     setStatus('idle');
+    setExportMessage('');
   };
   const removeBackground = async () => {
     if (!invite.photoUrl || !invite.photoRevision || backgroundRemovalBusy) return;
@@ -223,6 +225,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
 
   const save = () => {
     setStatus('idle');
+    setExportMessage('');
     mutation.mutate({ inviteToken: invite.inviteToken, data: draft }, {
       onSuccess: (res) => {
         const next = normalizeCardAppearance((res as { cardAppearance?: unknown } | undefined)?.cardAppearance ?? draft);
@@ -301,6 +304,11 @@ export function FanCardAppearanceManager({ invite, profile }: {
       canvas.getContext('2d')!.drawImage(img, 0, 0, png.width, png.height);
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
       if (!blob) throw new Error('png');
+      if (JSON.stringify(draftRef.current) !== currentDraftKey) {
+        setExportState('idle');
+        setExportMessage('The design changed while the PNG was being prepared. Save the current draft again.');
+        return;
+      }
       const file = new File(
         [blob],
         `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.png`,
@@ -373,7 +381,24 @@ export function FanCardAppearanceManager({ invite, profile }: {
           } />
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || mutation.isPending} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{mutation.isPending ? 'Saving…' : 'Save design'}</button>
-          {draft.design !== 'classic' && <button type="button" onClick={() => void exportPng()} disabled={exportState === 'working'} className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-export-appearance-png"><Download className="h-4 w-4" aria-hidden="true" />{exportState === 'working' ? 'Preparing…' : nativeImageSharing ? readyExport || dirty ? 'Save draft to Photos' : 'Save PNG to Photos' : dirty ? 'Download draft PNG' : 'Download PNG'}</button>}
+          {draft.design !== 'classic' && (
+            <button
+              type="button"
+              onClick={() => void exportPng()}
+              disabled={exportState === 'working'}
+              className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50"
+              data-testid="button-export-appearance-png"
+            >
+              {nativeImageSharing
+                ? <Share2 className="h-4 w-4" aria-hidden="true" />
+                : <Download className="h-4 w-4" aria-hidden="true" />}
+              {exportState === 'working'
+                ? 'Preparing…'
+                : nativeImageSharing
+                  ? dirty ? 'Save draft to Photos' : 'Save PNG to Photos'
+                  : dirty ? 'Download draft PNG' : 'Download PNG'}
+            </button>
+          )}
         </div>
         <p role="status" aria-live="polite" className="text-sm text-white/80">
           {status === 'saved' && 'Design saved. Supporters now see it.'}

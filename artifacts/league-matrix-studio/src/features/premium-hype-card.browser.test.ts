@@ -225,8 +225,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.match(spotlightExport.fileName, /^jordan-alexander-matthews-(?:draft|spotlight)\.png$/, 'the native share receives a named HYPE Card PNG');
     assert.equal(await connection.evaluate(`document.querySelectorAll('[data-testid="hype-card-appearance-controls"] input[type="checkbox"]').length`, session), 1, 'only the background-removal checkbox remains');
     assert.equal(await connection.evaluate(`!!document.querySelector('[aria-label="Accent color presets"]')`, session), false, 'the separate accent picker is removed');
-    await waitFor(connection, session, '!!document.querySelector("[aria-label=\\"Border color presets\\"]")', Boolean, 5_000);
-    await connection.evaluate(`document.querySelector('[aria-label="Border color presets"] [aria-label="Green"]').click()`, session);
+    await waitFor(connection, session, '!!document.querySelector("[aria-label=\\"Border color presets and custom color\\"]")', Boolean, 5_000);
+    await connection.evaluate(`document.querySelector('[aria-label="Border color presets and custom color"] [aria-label="Green"]').click()`, session);
     await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
     await waitFor(connection, session, 'localStorage.getItem("premium-test-settings")', value => String(value).includes('"design":"spotlight"'), 5_000);
     const savedColors = await connection.evaluate<{ accentLinked: boolean; borderColor: string; accentColor: string; jerseyNumber: string; position: string }>('JSON.parse(localStorage.getItem("premium-test-settings"))', session);
@@ -246,6 +246,9 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
      assert.ok(mobile.previewWidth >= 340, `the phone card preview uses the available panel width (${mobile.previewWidth}px)`);
     assert.equal(mobile.designChoices, 4, 'all card designs remain available on phones');
     assert.ok(mobile.stageRatios.length === 4 && mobile.stageRatios.every(ratio => ratio >= 0.90 && ratio <= 0.94), `all four mobile HYPE Card designs are about 8% narrower: ${mobile.stageRatios.join(', ')}`);
+    const mobileColorControlLayout = await connection.evaluate<{ pickerBesideNavy: boolean; hexBesidePicker: boolean }>(`(()=>{const group=document.querySelector('[aria-label="Border color presets and custom color"]'),navy=group.querySelector('[aria-label="Navy"]').getBoundingClientRect(),picker=group.querySelector('input[type="color"]').getBoundingClientRect(),hex=group.querySelector('[aria-label="Border hex"]').getBoundingClientRect();return {pickerBesideNavy:Math.abs(picker.top-navy.top)<2&&picker.left>=navy.right,hexBesidePicker:Math.abs(hex.top-picker.top)<2&&hex.left>=picker.right}})()`, session);
+    assert.equal(mobileColorControlLayout.pickerBesideNavy, true, 'the broad color picker sits beside the dark swatch on phones');
+    assert.equal(mobileColorControlLayout.hexBesidePicker, true, 'the hex input sits beside the broad color picker on phones');
     await connection.evaluate(`document.querySelector('[data-testid="button-design-compact-classic"]').click()`, session);
     await waitFor(connection, session, '!!document.querySelector("[data-testid=classic-card-preview-surface] img")', Boolean, 5_000);
     await assertClassicPreview();
