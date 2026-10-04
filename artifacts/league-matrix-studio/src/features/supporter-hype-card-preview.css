@@ -7,13 +7,6 @@
   gap: 8px;
   color: #f7faff;
 }
-.supporter-hype-preview__label {
-  padding: 8px 4px 0;
-  color: #86c4ff;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: .12em;
-}
 .supporter-hype-preview__link {
   display: flex;
   flex-direction: column;
@@ -39,18 +32,6 @@
 .supporter-hype-preview__surface .living-card-photo-watermark { font-size: 15cqw; }
 .supporter-hype-preview__surface .living-card-photo-fallback span { font-size: 50cqw; }
 .supporter-hype-preview__surface .living-card-photo-fallback small { font-size: 4cqw; letter-spacing: 0; }
-.supporter-hype-preview__navigation.living-card-stage { width: 100%; }
-.supporter-hype-preview__navigation .living-card-controls { pointer-events: none; }
-.supporter-hype-preview__open {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  color: #a1d1ff;
-  font-size: 10px;
-  font-weight: 800;
-}
 .supporter-hype-preview__state {
   display: flex;
   flex: 1;

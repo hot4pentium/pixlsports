@@ -85,7 +85,6 @@ export function SupporterGameOnSummary({
               aria-labelledby={isMobile ? 'mobile-next-game-heading' : 'next-game-heading'}
               data-testid={isMobile ? undefined : 'section-next-game-context'}
             >
-              {hasHype && <span className="supporter-hype-preview__label">EVENT CARD</span>}
               <div className="supporter-game-on-summary__event-content" data-testid={isMobile ? 'card-mobile-featured-event' : undefined}>
                 {children}
               </div>

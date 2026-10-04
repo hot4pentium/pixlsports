@@ -835,8 +835,10 @@
 }
 
 .supporter-game-on-summary--mobile .supporter-game-on-summary__athlete-link {
+  width: min(100%, 300px);
   max-width: 100%;
   gap: 6px;
+  justify-content: space-between;
   padding-right: 7px;
 }
 

@@ -4420,24 +4420,28 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
           const action = event.querySelector('[data-testid="button-open-featured-game-card-mobile"]');
           const navLink = slot.querySelector('[data-testid="link-mobile-hype-preview"]');
           const nav = slot.querySelector('[data-testid="saved-card-navigation"]');
-          const navLabels = Array.from(nav?.querySelectorAll('.living-card-control') ?? [])
-            .map((label) => label.textContent?.replace('👍', '').trim());
+          const athleteLink = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
+          const athleteHeader = athleteLink?.closest('.supporter-game-on-summary__header');
+          const headerStyle = athleteHeader ? getComputedStyle(athleteHeader) : null;
+          const headerContentWidth = athleteHeader && headerStyle
+            ? athleteHeader.clientWidth - parseFloat(headerStyle.paddingLeft) - parseFloat(headerStyle.paddingRight)
+            : 0;
+          const athleteLinkWidth = athleteLink?.getBoundingClientRect().width ?? 0;
           const quickHypeLink = document.querySelector('[data-testid="link-mobile-independent-hype"]');
           return { equal: Math.abs(a.width-b.width)<1, paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
             cardsAligned: Math.abs(eventCard.width-c.width)<1 && Math.abs(eventCard.height-c.height)<1 && Math.abs(eventCard.top-c.top)<1,
             ratio: Math.abs(c.width/c.height-5/7)<.01,
             noOverflow: document.documentElement.scrollWidth<=innerWidth,
+            athleteSwitcherUsesAvailableWidth: athleteLink instanceof HTMLElement
+              && Boolean(athleteHeader)
+              && Math.abs(athleteLinkWidth - Math.min(300, headerContentWidth)) < 1,
             actionFits: !!action && action.getBoundingClientRect().right<=a.right+1,
             hypeQuickLinkRemoved: quickHypeLink === null,
             cardPreviewStillLinks: navLink instanceof HTMLAnchorElement && Boolean(navLink.getAttribute('href')),
-            navigationStateCorrect: '${design}' === 'spotlight'
-              ? !!nav && nav.closest('a') === navLink && nav.getAttribute('aria-hidden') === 'true'
-                && nav.classList.contains('living-card-stage') && nav.dataset.design === 'spotlight'
-                && !!nav.querySelector('.living-card-controls[aria-hidden="true"]')
-                && nav.previousElementSibling === card && nav.nextElementSibling?.classList.contains('supporter-hype-preview__open')
-              : nav === null,
-            navigationVisible: !nav || nav.getBoundingClientRect().height >= 16,
-            navigationLabels: navLabels,
+            noLandingCardControls: nav === null,
+            noCardTextLabels: !event.querySelector('.supporter-hype-preview__label')
+              && !slot.querySelector('.supporter-hype-preview__label')
+              && !slot.querySelector('.supporter-hype-preview__open'),
             nativeArt: '${design}'==='classic' ? !!card.querySelector('.living-card-face') : !!card.querySelector('svg'),
             spillover: '${design}'==='classic' || getComputedStyle(card.querySelector('.living-card-premium-face')).overflow==='visible',
             noInteractiveControls: !slot.querySelector('[data-testid="saved-card-navigation"] button'),
@@ -4445,10 +4449,10 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
             desktopInboxRetained: !!document.querySelector('.supporter-game-on-summary--desktop .supporter-game-on-summary__replies') };
         })()`);
         assert.deepEqual(layout, { equal: true, paired: true, cardsAligned: true, ratio: true, noOverflow: true, actionFits: true,
+          athleteSwitcherUsesAvailableWidth: true,
           hypeQuickLinkRemoved: true, cardPreviewStillLinks: true,
-          navigationStateCorrect: true,
-          navigationVisible: true,
-          navigationLabels: design === 'spotlight' ? ['Replies', 'Stats', 'Taps', 'Events'] : [],
+          noLandingCardControls: true,
+          noCardTextLabels: true,
           nativeArt: true, spillover: true, noInteractiveControls: true, preserved: true, desktopInboxRetained: true }, `${design} at ${width}px`);
         if (design === 'spotlight' && width === 390) {
           const screenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
