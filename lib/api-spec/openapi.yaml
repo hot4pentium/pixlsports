@@ -3105,9 +3105,12 @@ components:
         borderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         accentColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         accentLinked: { type: boolean }
+        removeBackground: { type: boolean }
         athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
         athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
         athleteScale: { type: number, minimum: 0.65, maximum: 1.45 }
+        namePlateX: { type: number, minimum: -0.2, maximum: 0.2 }
+        namePlateY: { type: number, minimum: -0.12, maximum: 0.12 }
         jerseyNumber: { type: string, maxLength: 12 }
         position: { type: string, maxLength: 80 }
     AthleteInviteInput:

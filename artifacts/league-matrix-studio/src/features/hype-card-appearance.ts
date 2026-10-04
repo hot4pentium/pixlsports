@@ -4,9 +4,12 @@ export type HypeCardAppearance = {
   borderColor: string;
   accentColor: string;
   accentLinked: boolean;
+  removeBackground: boolean;
   athleteX: number;
   athleteY: number;
   athleteScale: number;
+  namePlateX: number;
+  namePlateY: number;
   jerseyNumber: string;
   position: string;
 };
@@ -20,7 +23,10 @@ export const defaultCardAppearance = (design: HypeCardDesign = 'classic'): HypeC
   borderColor: design === 'breakout' ? '#B7C4D4' : '#EF3996',
   accentColor: design === 'breakout' ? '#26A9FF' : '#EF3996',
   accentLinked: design !== 'breakout',
-  athleteX: 0, athleteY: 0, athleteScale: 1, jerseyNumber: '', position: '',
+  removeBackground: true,
+  athleteX: 0, athleteY: 0, athleteScale: 1,
+  namePlateX: 0, namePlateY: 0,
+  jerseyNumber: '', position: '',
 });
 export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
   const source = value && typeof value === 'object' ? value as Partial<HypeCardAppearance> : {};
@@ -34,9 +40,12 @@ export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
     borderColor,
     accentColor: accentLinked ? borderColor : color(source.accentColor, defaults.accentColor),
     accentLinked,
+    removeBackground: source.removeBackground !== false,
     athleteX: number(source.athleteX, -.25, .25, 0),
     athleteY: number(source.athleteY, -.18, .18, 0),
     athleteScale: number(source.athleteScale, .65, 1.45, 1),
+    namePlateX: number(source.namePlateX, -.2, .2, 0),
+    namePlateY: number(source.namePlateY, -.12, .12, 0),
     jerseyNumber: typeof source.jerseyNumber === 'string' ? source.jerseyNumber.trim().slice(0, 12) : '',
     position: typeof source.position === 'string' ? source.position.trim().slice(0, 80) : '',
   };

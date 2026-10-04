@@ -2342,7 +2342,6 @@ export function HypeCardEditor() {
         setValidation('');
         setAutosaveWarning('');
         if (cloudProjectId) setNotice('Photo attached on this phone. Cloud sync can continue in the background.');
-        if (project.cardAppearance.design !== 'classic') void preparePremiumCutout(id, res);
       } catch (error) {
         console.error('Failed to save image media', error);
         setNotice('That image could not be saved in this browser. Try another image or browser.');

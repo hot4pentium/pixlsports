@@ -55,3 +55,21 @@ test('Breakout layers keep a smaller stadium window, metallic frame and cutout e
   assert.match(fg, /<image href="data:image\/png;base64,AAAA" x="115" y="-210"/);
   assert.match(fg, /<path d="M116 934H884/);
 });
+
+test('Breakout exposes independent frame, avatar, and name plate layers', () => {
+  const appearance = { ...defaultCardAppearance('breakout'), namePlateX: .08, namePlateY: -.04 };
+  const bg = buildPremiumHypeCardArtwork({ ...base, appearance }, 'bg');
+  const fg = buildPremiumHypeCardArtwork({ ...base, appearance }, 'fg');
+  assert.match(bg, /data-card-layer="frame"/);
+  assert.match(fg, /data-card-layer="frame"/);
+  assert.match(fg, /data-card-layer="avatar"/);
+  assert.match(fg, /data-card-layer="name-plate" transform="translate\(80\.0 -56\.0\)"/);
+
+  const originalPhoto = buildPremiumHypeCardArtwork({
+    ...base,
+    photoUrl: 'data:image/png;base64,BBBB',
+    appearance: { ...appearance, removeBackground: false },
+  });
+  assert.doesNotMatch(originalPhoto, /data-photo-placement="cutout"/);
+  assert.match(originalPhoto, /data-photo-placement="original"/);
+});

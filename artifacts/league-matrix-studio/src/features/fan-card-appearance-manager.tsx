@@ -8,6 +8,8 @@ import {
 } from '@workspace/api-client-react';
 import type React from 'react';
 import { Download } from 'lucide-react';
+import { removeAthleteBackground } from './athlete-background-removal';
+import { saveAthleteCutout } from './athlete-cutout-upload';
 import { HypeCardAppearanceControls } from './hype-card-appearance-controls';
 import { defaultCardAppearance, normalizeCardAppearance, type HypeCardAppearance } from './hype-card-appearance';
 import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
@@ -15,7 +17,7 @@ import { buildPremiumNavStripExport } from './premium-hype-card-artwork';
 
 export type FanCardAppearanceInvite = {
   inviteToken: string; athleteName: string; teamName: string; sport: string;
-  photoUrl: string | null; cutoutUrl?: string | null; cardAppearance?: HypeCardAppearance | null;
+  photoUrl: string | null; cutoutUrl?: string | null; photoRevision?: string | null; cardAppearance?: unknown;
 };
 
 async function toDataUrl(url: string | null | undefined): Promise<string | null> {
@@ -51,6 +53,9 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [moving, setMoving] = useState(false);
+  const [selectedLayer, setSelectedLayer] = useState<'frame' | 'avatar' | 'name-plate'>('avatar');
+  const [backgroundRemovalBusy, setBackgroundRemovalBusy] = useState(false);
+  const [backgroundNotice, setBackgroundNotice] = useState('');
   const [failedCutout, setFailedCutout] = useState<string | null>(null);
   useEffect(() => {
     if (!invite.cutoutUrl) return;
@@ -75,6 +80,7 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
     if (loadedRef.current.token !== invite.inviteToken) {
       loadedRef.current = { token: invite.inviteToken, key: serverKey };
       setSaved(server); setDraft(server); setStatus('idle'); setMoving(false);
+      setSelectedLayer('avatar');
       return;
     }
     if (loadedRef.current.key === serverKey) return;
@@ -82,28 +88,68 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
     const wasClean = JSON.stringify(draftRef.current) === JSON.stringify(savedRef.current);
     setSaved(server);
     if (wasClean) setDraft(server);
+    setMoving(false);
+    setSelectedLayer('avatar');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite.inviteToken, serverKey]);
   const [exportState, setExportState] = useState<'idle' | 'working' | 'error'>('idle');
   const uid = useId().replace(/[^A-Za-z0-9_-]/g, '');
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const clampPlacement = (a: HypeCardAppearance, x: number, y: number) => normalizeCardAppearance({ ...a, athleteX: x, athleteY: y });
+  const clampNamePlate = (a: HypeCardAppearance, x: number, y: number) => normalizeCardAppearance({ ...a, namePlateX: x, namePlateY: y });
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!moving) return;
+    if (!moving || selectedLayer === 'frame') return;
     dragRef.current = { x: e.clientX, y: e.clientY };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const last = dragRef.current;
-    if (!moving || !last) return;
+    if (!moving || selectedLayer === 'frame' || !last) return;
     const rect = e.currentTarget.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const dx = (e.clientX - last.x) / rect.width, dy = (e.clientY - last.y) / rect.height;
     dragRef.current = { x: e.clientX, y: e.clientY };
-    setDraft((d) => clampPlacement(d, d.athleteX + dx, d.athleteY + dy));
+    setDraft((d) => selectedLayer === 'avatar'
+      ? clampPlacement(d, d.athleteX + dx, d.athleteY + dy)
+      : clampNamePlate(d, d.namePlateX + dx, d.namePlateY + dy));
     setStatus('idle');
   };
   const onUp = () => { dragRef.current = null; };
+  const onPositionKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!moving || selectedLayer === 'frame') return;
+    const directions: Record<string, [number, number]> = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] };
+    const direction = directions[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    setDraft(current => selectedLayer === 'avatar'
+      ? clampPlacement(current, current.athleteX + direction[0], current.athleteY + direction[1])
+      : clampNamePlate(current, current.namePlateX + direction[0], current.namePlateY + direction[1]));
+    setStatus('idle');
+  };
+  const removeBackground = async () => {
+    if (!invite.photoUrl || !invite.photoRevision || backgroundRemovalBusy) return;
+    setBackgroundRemovalBusy(true);
+    setBackgroundNotice('Preparing a transparent athlete cutout on this device…');
+    try {
+      const imageUrl = new URL(invite.photoUrl, window.location.href);
+      const response = await fetch(invite.photoUrl, { credentials: imageUrl.origin === window.location.origin ? 'include' : 'omit' });
+      if (!response.ok) throw new Error('The original photo could not be loaded.');
+      const cutout = await removeAthleteBackground(await response.blob(), setBackgroundNotice);
+      await saveAthleteCutout(invite.inviteToken, cutout, invite.photoRevision);
+      setDraft((current) => normalizeCardAppearance({ ...current, removeBackground: true }));
+      setBackgroundNotice('Background removed. The original photo is unchanged.');
+      setStatus('idle');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
+        queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(invite.inviteToken) }),
+      ]);
+    } catch (error) {
+      setBackgroundNotice(`Original photo kept. ${error instanceof Error ? error.message : 'Background removal failed.'}`);
+    } finally {
+      setBackgroundRemovalBusy(false);
+    }
+  };
   const mutation = useUpdateAthleteInviteAppearance();
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const previewCard = invite.cutoutUrl || invite.photoUrl;
@@ -164,25 +210,47 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
         <div className="mx-auto w-full max-w-[280px] overflow-visible rounded-2xl" data-testid="appearance-preview">
           {draft.design === 'classic'
             ? <div className="grid aspect-[5/7] place-items-center rounded-2xl border border-white/20 bg-[#10243D] p-4 text-center text-sm text-white/80">{previewCard ? <img src={previewCard} alt="" className="max-h-full rounded-lg object-cover" /> : 'Classic design uses your photo and team details.'}</div>
-            : <div role="img" aria-label={`${draft.design} preview for ${invite.athleteName}${moving ? '. Use arrow keys to position the photo.' : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={(event) => {
-              if (!moving) return;
-              const directions: Record<string, [number, number]> = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] };
-              const direction = directions[event.key];
-              if (!direction) return;
-              event.preventDefault();
-              setDraft(current => clampPlacement(current, current.athleteX + direction[0], current.athleteY + direction[1]));
-              setStatus('idle');
-            }} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab ring-2 ring-white' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />}
+              : <div role="img" aria-label={`${draft.design} preview for ${invite.athleteName}${moving ? `. Use arrow keys to position the ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}.` : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={onPositionKeyDown} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab ring-2 ring-white' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />}
         </div>
         <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
       </div>
       <div className="space-y-5">
-        <HypeCardAppearanceControls appearance={draft} onChange={(next) => { setDraft(next); setStatus('idle'); }} disabled={mutation.isPending} placementActions={
-          <div>
-            <button type="button" disabled={mutation.isPending} aria-pressed={moving} onClick={() => { dragRef.current = null; setMoving((m) => !m); }} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white aria-pressed:bg-white aria-pressed:text-[#10243D]" data-testid="button-reposition-mode">{moving ? 'Done positioning' : 'Position photo'}</button>
-            <p className="mt-2 text-xs text-white/70">{moving ? 'Drag the preview to position the photo. Choose Done positioning to scroll.' : 'Choose Position photo, then drag the preview.'}</p>
+        {draft.design === 'breakout' && <div className="rounded-xl border border-white/15 bg-white/5 p-3" role="group" aria-label="Breakout layers" data-testid="breakout-layer-list">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-white/70">Layers · back to front</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              ['frame', 'Frame'],
+              ['avatar', 'Avatar'],
+              ['name-plate', 'Name plate'],
+            ] as const).map(([layer, label]) => (
+              <button key={layer} type="button" aria-pressed={selectedLayer === layer}
+                onClick={() => { setMoving(false); dragRef.current = null; setSelectedLayer(layer); }}
+                className="min-h-11 rounded border border-white/20 px-2 text-xs font-bold aria-pressed:border-white aria-pressed:bg-white/15"
+                data-testid={`button-layer-${layer}`}>{label}{layer === 'frame' && <span className="block text-[10px] font-normal text-white/60">Locked</span>}</button>
+            ))}
           </div>
-        } />
+        </div>}
+        <HypeCardAppearanceControls appearance={draft} onChange={(next) => { setDraft(next); setStatus('idle'); if (next.design !== draft.design) { setMoving(false); setSelectedLayer('avatar'); } }} disabled={mutation.isPending || backgroundRemovalBusy}
+          placementLabel={selectedLayer === 'name-plate' ? 'Name plate placement' : selectedLayer === 'frame' ? 'Frame layer' : 'Avatar placement'}
+          showAthleteSize={selectedLayer === 'avatar'}
+          showResetButton={selectedLayer !== 'frame'}
+          onResetPlacement={() => {
+            setDraft((current) => selectedLayer === 'avatar'
+              ? normalizeCardAppearance({ ...current, athleteScale: 1, athleteX: 0, athleteY: 0 })
+              : selectedLayer === 'name-plate'
+                ? normalizeCardAppearance({ ...current, namePlateX: 0, namePlateY: 0 })
+                : current);
+            setMoving(false);
+            setStatus('idle');
+          }}
+          placementActions={
+            <div>
+              <button type="button" disabled={mutation.isPending || backgroundRemovalBusy || selectedLayer === 'frame'} aria-pressed={moving} onClick={() => { dragRef.current = null; setMoving((m) => !m); }} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white aria-pressed:bg-white aria-pressed:text-[#10243D]" data-testid="button-reposition-mode">{selectedLayer === 'frame' ? 'Frame stays fixed' : moving ? 'Done positioning' : `Position ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}`}</button>
+              {selectedLayer !== 'frame' && <p className="mt-2 text-xs text-white/70">{moving ? `Drag the preview to position the ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}. Choose Done positioning when finished.` : `Choose Position ${selectedLayer === 'name-plate' ? 'name plate' : 'avatar'}, then drag the preview or use the arrow keys.`}</p>}
+              {draft.design === 'breakout' && !usableCutout && <button type="button" disabled={!invite.photoUrl || !invite.photoRevision || backgroundRemovalBusy} onClick={() => void removeBackground()} className="mt-3 min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-remove-card-background">{backgroundRemovalBusy ? 'Removing background…' : 'Remove background'}</button>}
+              {backgroundNotice && <p role="status" className="mt-2 text-xs text-white/75" data-testid="background-removal-status">{backgroundNotice}</p>}
+            </div>
+          } />
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || mutation.isPending} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{mutation.isPending ? 'Saving…' : 'Save design'}</button>
           <button type="button" onClick={() => { setDraft(saved); setStatus('idle'); }} disabled={!dirty || mutation.isPending} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-revert-appearance">Revert to saved</button>

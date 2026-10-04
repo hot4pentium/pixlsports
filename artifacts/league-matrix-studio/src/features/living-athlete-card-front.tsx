@@ -10,7 +10,7 @@ export type LivingAthleteCardFrontProps = {
   photoUrl?: string | null;
   photoAlt?: string;
   onPhotoError?: () => void;
-  appearance?: HypeCardAppearance | null;
+  appearance?: Partial<HypeCardAppearance> | null;
   sport?: string;
   cutoutUrl?: string | null;
 };

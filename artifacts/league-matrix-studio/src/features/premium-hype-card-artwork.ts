@@ -102,7 +102,7 @@ const grainDef = (id: string, op: number) => `<filter id="${id}" x="0" y="0" wid
 
 function athlete(input: PremiumHypeCardInput, box: { x: number; y: number; w: number; h: number }, shadow: string): string {
   const url = safeUrl(input.cutoutUrl);
-  if (!url) return '';
+  if (!url || input.appearance.removeBackground === false) return '';
   const a = input.appearance;
   const cx = box.x + box.w / 2, by = box.y + box.h;
   const s = Math.max(0.65, Math.min(1.45, num(a.athleteScale, 1)));
@@ -113,10 +113,10 @@ function athlete(input: PremiumHypeCardInput, box: { x: number; y: number; w: nu
 }
 const initialsOf = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join('') || 'P';
 const initialsArt = (input: PremiumHypeCardInput, cx: number, cy: number, fill: string) =>
-  safeUrl(input.cutoutUrl) || safeUrl(input.photoUrl) ? '' : `<g aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="170" fill="${fill}" opacity=".35"/><text x="${cx}" y="${cy + 55}" text-anchor="middle" font-family="${FONT_DISPLAY}" font-weight="700" font-size="170" fill="#fff" opacity=".9">${escapeXml(initialsOf(input.athleteName))}</text></g>`;
+  (input.appearance.removeBackground !== false && safeUrl(input.cutoutUrl)) || safeUrl(input.photoUrl) ? '' : `<g aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="170" fill="${fill}" opacity=".35"/><text x="${cx}" y="${cy + 55}" text-anchor="middle" font-family="${FONT_DISPLAY}" font-weight="700" font-size="170" fill="#fff" opacity=".9">${escapeXml(initialsOf(input.athleteName))}</text></g>`;
 const photoFallback = (input: PremiumHypeCardInput, box: { x: number; y: number; w: number; h: number }, clip: string, opacity = 1) => {
   const url = safeUrl(input.photoUrl);
-  if (!url || safeUrl(input.cutoutUrl)) return '';
+  if (!url || (input.appearance.removeBackground !== false && safeUrl(input.cutoutUrl))) return '';
   const a = input.appearance;
   const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
   const scale = Math.max(.65, Math.min(1.45, num(a.athleteScale, 1)));
@@ -268,6 +268,7 @@ function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): str
 <rect x="18" y="18" width="964" height="1364" rx="62" fill="url(#b-stage)"/>
 <ellipse cx="500" cy="478" rx="470" ry="335" fill="${accent}" opacity=".17" filter="url(#b-glow)"/>
 ${venue('b-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}
+<g data-card-layer="frame">
 <rect x="45" y="92" width="910" height="1094" rx="74" fill="url(#b-metal)" stroke="${border}" stroke-width="5" stroke-opacity=".88"/>
 <rect x="68" y="115" width="864" height="1048" rx="58" fill="#0A172A" stroke="#FFFFFF" stroke-opacity=".68" stroke-width="3"/>
 <g clip-path="url(#b-window)">${venue('b-window-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}</g>
@@ -279,21 +280,20 @@ ${initialsArt(input, 500, 560, accent)}
 <rect x="${win.x - 5}" y="${win.y - 6}" width="${win.w + 10}" height="${win.h + 12}" rx="63" fill="none" stroke="${accent}" stroke-width="3"/>
 <rect x="${win.x - 17}" y="${win.y - 18}" width="${win.w + 34}" height="${win.h + 36}" rx="73" fill="none" stroke="#FFFFFF" stroke-opacity=".82" stroke-width="2"/>
 <g fill="#EAF6FF" filter="url(#b-glow)" opacity=".66"><ellipse cx="116" cy="382" rx="56" ry="30"/><ellipse cx="884" cy="382" rx="56" ry="30"/></g>
-<path d="M20 1260H980V1400H20Z" fill="#071326"/>
 <rect x="22" y="22" width="956" height="1356" rx="60" fill="none" stroke="${border}" stroke-opacity=".72" stroke-width="5"/>
+</g>
+<path d="M20 1260H980V1400H20Z" fill="#071326"/>
 </g>`;
-  const plate = `<path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="15" stroke-linejoin="round"/>
+  const plate = `<g data-card-layer="name-plate" transform="translate(${(num(a.namePlateX, 0) * 1000).toFixed(1)} ${(num(a.namePlateY, 0) * 1400).toFixed(1)})" filter="url(#b-name-shadow)"><path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="15" stroke-linejoin="round"/>
 <path d="M128 940H872L914 982V1125Q914 1148 889 1148H111Q86 1148 86 1125V982Z" fill="none" stroke="${accent}" stroke-width="3"/>
 <path d="M156 956H844" stroke="#FFFFFF" stroke-opacity=".24" stroke-width="2"/>
 ${nameText(nm.lines, 500, nameY, nm.size, nm.tl, '#F7F9FC', 'middle')}
-${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><text x="500" y="1129" text-anchor="middle" font-family="${FONT_TEXT}" font-size="30" font-weight="700" letter-spacing="8" fill="#DFE8F4">${escapeXml(team.slice(0, 24))}</text>` : ''}
-${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}
-${logo(input, 92, 62, 148)}`;
+${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><text x="500" y="1129" text-anchor="middle" font-family="${FONT_TEXT}" font-size="30" font-weight="700" letter-spacing="8" fill="#DFE8F4">${escapeXml(team.slice(0, 24))}</text>` : ''}</g>`;
   const fg = `<defs><linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient><linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>${shadowFilter('b-cut', 14, 10, .42)}${shadowFilter('b-name-shadow', 8, 7, .6)}</defs>
 <g id="breakout-fg">
-${athlete(input, { x: 115, y: -210, w: 770, h: 1020 }, 'b-cut')}
-<g filter="url(#b-name-shadow)">${plate}</g>
-<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/>
+<g data-card-layer="avatar">${athlete(input, { x: 115, y: -210, w: 770, h: 1020 }, 'b-cut')}</g>
+${plate}
+<g data-card-layer="frame">${logo(input, 92, 62, 148)}${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/></g>
 </g>`;
   return (layer !== 'fg' ? bg : '') + (layer !== 'bg' ? fg : '');
 }

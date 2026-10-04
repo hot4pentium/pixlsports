@@ -10,6 +10,7 @@ import {
   useRequestAthleteInvitePhotoUploadUrl,
 } from '@workspace/api-client-react';
 import { removeAthleteBackground } from './athlete-background-removal';
+import { saveAthleteCutout } from './athlete-cutout-upload';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -56,10 +57,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl, cutoutUrl, photoRev
 
   async function postCutout(blob: Blob, revision: string) {
     if (blob.size > MAX_PHOTO_BYTES) throw new Error('The transparent cutout is too large. Choose a smaller image.');
-    const claim = await requestUpload.mutateAsync({ inviteToken, data: { contentType: blob.type as 'image/png' | 'image/webp', size: blob.size } });
-    const response = await fetch(claim.uploadUrl, { method: 'PUT', headers: { 'Content-Type': blob.type }, body: blob });
-    if (!response.ok) throw new Error('The cutout upload did not finish.');
-    await confirm.mutateAsync({ inviteToken, data: { objectPath: claim.objectPath, mediaRole: 'cutout', sourcePhotoRevision: revision } });
+    await saveAthleteCutout(inviteToken, blob, revision);
     await refresh();
     setNotice('Original photo and transparent athlete cutout are ready.');
   }

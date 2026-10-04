@@ -981,6 +981,7 @@ export interface HypeCardAppearance {
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   accentColor: string;
   accentLinked: boolean;
+  removeBackground?: boolean;
   /**
      * @minimum -0.25
      * @maximum 0.25
@@ -996,6 +997,16 @@ export interface HypeCardAppearance {
      * @maximum 1.45
      */
   athleteScale: number;
+  /**
+     * @minimum -0.2
+     * @maximum 0.2
+     */
+  namePlateX?: number;
+  /**
+     * @minimum -0.12
+     * @maximum 0.12
+     */
+  namePlateY?: number;
   /** @maxLength 12 */
   jerseyNumber: string;
   /** @maxLength 80 */
