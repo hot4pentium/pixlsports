@@ -21,17 +21,21 @@ test('HYPE Card sharing copy does not call links or pages stable', () => {
 });
 
 test('HYPE Card events use one persistent all-or-none setting', () => {
-  assert.match(source, /title="Allow Events"/);
+  assert.match(source, /title="Event Notifications"/);
   assert.match(source, /label="Allow events"/);
   assert.match(source, /saveVisibilityChange\('showEvents', value\)/);
   assert.match(source, /including cards you create later/);
   assert.match(source, /OwnerEventNotifications/);
+  const visibleSectionsStart = source.indexOf('data-testid="section-visible-athlete-page"');
+  const visibleSectionsEnd = source.indexOf('</HypeManagerTaskCard>', visibleSectionsStart);
+  const allowEventsToggle = source.indexOf('label="Allow events"', visibleSectionsStart);
+  assert.ok(allowEventsToggle > visibleSectionsStart && allowEventsToggle < visibleSectionsEnd, 'event visibility belongs in the Visible Sections card');
   assert.doesNotMatch(source, /OwnerEventLinks|Link game days/);
   assert.match(athleteApiSource, /async function availableAthleteEvents/);
   assert.match(athleteApiSource, /invite\.showEvents \? availableAthleteEvents\(invite\) : Promise\.resolve\(\[\]\)/);
   assert.match(livingCardSource, /The card owner has turned off event sharing/);
   assert.match(livingCardSource, /All eligible Event Cards saved by/);
-  assert.match(eventNotificationsSource, /Turn on “Allow events” above/);
+  assert.match(eventNotificationsSource, /Turn on “Allow events” in Visible Sections/);
 });
 
 test('HYPE Card event details do not repeat the full Game On Card link', () => {

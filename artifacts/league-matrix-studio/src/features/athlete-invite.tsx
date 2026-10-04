@@ -1246,6 +1246,7 @@ function OwnerHypePageManage({ invite, profile }: {
         <p className="mt-1 text-xs text-white/60">Section switches save as soon as you change them.</p>
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showStats', value)} />
         <OwnerToggle label="Fan Shoutouts" detail="Fans can send a short encouragement from the HYPE Card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
+        <OwnerToggle label="Allow events" detail="When on, all your eligible saved Event Cards appear on the HYPE Card, including cards you create later. When off, none appear." checked={showEvents} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showEvents', value)} />
         {visibilityStatus !== 'idle' && (
           <p
             className={`mt-4 text-xs font-semibold ${visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'text-amber-200' : 'text-white/70'}`}
@@ -1264,34 +1265,13 @@ function OwnerHypePageManage({ invite, profile }: {
         id="events"
         taskIndex={5}
         activeTaskIndex={activeTaskIndex}
-        title="Allow Events"
-        description="Show all Event Cards, or none"
+        title="Event Notifications"
+        description="Notify followers about upcoming games"
         Icon={CalendarDays}
         active={activeTask === 'events'}
         onSelect={() => toggleTask('events')}
         badge={visibilitySaving ? 'Saving…' : showEvents ? 'Events on' : 'Events off'}
       >
-        <section aria-labelledby="owner-event-visibility-title" data-testid="section-owner-event-visibility">
-          <h3 id="owner-event-visibility-title" className="font-display text-2xl uppercase">Event Cards</h3>
-          <p className="mt-1 text-xs text-white/60">This setting saves as soon as you change it.</p>
-          <OwnerToggle
-            label="Allow events"
-            detail="When on, all your eligible saved Event Cards appear on the HYPE Card, including cards you create later. When off, none appear."
-            checked={showEvents}
-            disabled={visibilitySaving || updateInvite.isPending}
-            onChange={(value) => void saveVisibilityChange('showEvents', value)}
-          />
-          {visibilityStatus !== 'idle' && (
-            <p
-              className={`mt-4 text-xs font-semibold ${visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'text-amber-200' : 'text-white/70'}`}
-              role={visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'alert' : 'status'}
-              aria-live="polite"
-              data-testid="status-owner-events"
-            >
-              {visibilityStatus === 'saving' ? 'Saving event visibility…' : visibilityStatus === 'saved' ? 'Event visibility saved.' : visibilityStatus === 'refresh-error' ? 'Event visibility saved, but the page could not refresh. Reload to confirm.' : 'Event visibility could not be saved. The switch was restored; try again.'}
-            </p>
-          )}
-        </section>
         <OwnerEventNotifications invite={{ inviteToken: invite.inviteToken, showEvents, events: invite.events }} />
       </HypeManagerTaskCard>
 

@@ -125,7 +125,7 @@ export function OwnerEventNotifications({
       </div>
       {!invite.showEvents ? (
         <p className="mt-5 border-l-2 border-[#ff7849] bg-[#071b31] p-4 text-sm text-[#b9cede]">
-          Turn on “Allow events” above to share Event Cards and enable event announcements.
+          Turn on “Allow events” in Visible Sections to share Event Cards and enable event announcements.
         </p>
       ) : upcoming.length ? (
         <div className="mt-5">
