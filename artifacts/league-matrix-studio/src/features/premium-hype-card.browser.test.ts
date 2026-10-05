@@ -219,14 +219,14 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       }});
       document.querySelector('[data-testid="button-export-appearance-jpeg"]').click();
     })()`, session);
-    await waitFor(connection, session, 'document.querySelector("[data-testid=status-export-appearance-png]")?.textContent?.includes("Tap Save to Photos") ?? false', Boolean, 30_000);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=status-export-appearance-jpeg]")?.textContent?.includes("Tap Save to Photos") ?? false', Boolean, 30_000);
     assert.equal(await connection.evaluate('window.spotlightShareCalls', session), 1, 'the first share attempt is made with the generated file');
     await connection.evaluate(`document.querySelector('[data-testid="button-export-appearance-jpeg"]').click()`, session);
     await waitFor(connection, session, '!!window.spotlightExportBlob', Boolean, 5_000);
-    await waitFor(connection, session, 'document.querySelector("[data-testid=status-export-appearance-png]")?.textContent==="Share menu closed."', Boolean, 5_000);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=status-export-appearance-jpeg]")?.textContent==="Share menu closed."', Boolean, 5_000);
     const spotlightExport = await connection.evaluate<{ embedsAnton: boolean; width: number; height: number; fileName: string; mimeType: string; blackCorner: number[]; shareCalls: number; retrySameFile: boolean; recoveryMessage: string }>(`(async()=>{
       const image=await createImageBitmap(window.spotlightExportBlob),markup=window.spotlightExportMarkup,canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);const blackCorner=Array.from(context.getImageData(0,0,1,1).data);
-      const result={embedsAnton:markup.includes("@font-face{font-family:'Anton';src:url(\\"data:")&&markup.includes("format('truetype')")&&markup.includes('data-jersey-number'),width:image.width,height:image.height,fileName:window.spotlightExportBlob.name,mimeType:window.spotlightExportBlob.type,blackCorner,shareCalls:window.spotlightShareCalls,retrySameFile:window.spotlightFirstShareFile===window.spotlightRetriedShareFile,recoveryMessage:document.querySelector('[data-testid="status-export-appearance-png"]').textContent};
+      const result={embedsAnton:markup.includes("@font-face{font-family:'Anton';src:url(\\"data:")&&markup.includes("format('truetype')")&&markup.includes('data-jersey-number'),width:image.width,height:image.height,fileName:window.spotlightExportBlob.name,mimeType:window.spotlightExportBlob.type,blackCorner,shareCalls:window.spotlightShareCalls,retrySameFile:window.spotlightFirstShareFile===window.spotlightRetriedShareFile,recoveryMessage:document.querySelector('[data-testid="status-export-appearance-jpeg"]').textContent};
       image.close();window.Image=window.originalSpotlightImage;URL.createObjectURL=window.originalSpotlightUrl;HTMLAnchorElement.prototype.click=window.originalSpotlightClick;
       for(const [name,descriptor] of [['share',window.originalSpotlightShare],['canShare',window.originalSpotlightCanShare]]){if(descriptor)Object.defineProperty(navigator,name,descriptor);else delete navigator[name];}
       return result;
@@ -403,7 +403,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     })()`, session);
     await waitFor(connection, session, 'window.backgroundExportMarkup', Boolean, 10_000);
     assert.equal(await connection.evaluate(`window.backgroundExportMarkup.includes('data-spotlight-window-background="true"') && window.backgroundExportMarkup.includes('data-card-background="studio"') && window.backgroundExportMarkup.includes('data:image/webp;base64,')`, session), true, 'Spotlight JPEG export embeds the chosen background inside the athlete frame');
-    await waitFor(connection, session, 'document.querySelector("[data-testid=button-export-appearance-png]")?.disabled', value => value === false, 15_000);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=button-export-appearance-jpeg]")?.disabled', value => value === false, 15_000);
     await connection.evaluate(`document.querySelector('[data-testid="button-card-background-sport"]').click()`, session);
     await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-card-background]")', value => value === false, 5_000);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-card-background-sport"]').getAttribute('aria-pressed')`, session), 'true', 'sport default is selectable again');

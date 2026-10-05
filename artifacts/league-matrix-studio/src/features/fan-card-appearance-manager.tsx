@@ -406,7 +406,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
         <p role="status" aria-live="polite" className="text-sm text-white/80">
           {status === 'saved' && 'Design saved. Supporters now see it.'}
           {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline">Retry</button></span>}
-          {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-png">{exportMessage}</span>}
+          {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-jpeg">{exportMessage}</span>}
         </p>
         <p className="text-[11px] text-white/50">On supported phones, choose Save Image in the share menu to add the JPG to Photos. Other browsers download it. The JPG has a black background outside the rounded card. Replies, Stats, Taps and Events live on the interactive card.</p>
       </div>

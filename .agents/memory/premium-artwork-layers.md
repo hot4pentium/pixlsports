@@ -1,6 +1,6 @@
 ---
-name: Premium artwork layer resources
-description: SVG resource definitions for premium card background, foreground, and composed rendering modes.
+name: Premium artwork layers and export backgrounds
+description: SVG resource definitions and transparent versus JPEG matte behavior for premium cards.
 ---
 
 Every premium card art layer must define the SVG gradients, clips, and filters it references. A preview of the combined card is not enough validation.
@@ -26,3 +26,9 @@ Allow owners to choose a preset backdrop behind background-removed athletes inst
 **Why:** The user reported that the default venue did not match the athlete’s sport and supplied alternate background artwork for selection.
 
 **How to apply:** Keep a sport-matched default available, preserve the original photo, and carry the chosen backdrop consistently through the editor, shared card, and exports. On Spotlight, the chosen backdrop belongs inside the inner frame behind the avatar, not only on the outer shell.
+
+Keep live SVG card artwork transparent outside the rounded frame, but flatten premium phone-save JPEG exports onto black.
+
+**Why:** The user wants HYPE Card exports to save as JPEGs to phone Photos and chose black rather than white for the areas JPEG cannot leave transparent.
+
+**How to apply:** Fill the JPEG export canvas black before drawing the card artwork. Do not add that matte to the live preview or SVG source.
