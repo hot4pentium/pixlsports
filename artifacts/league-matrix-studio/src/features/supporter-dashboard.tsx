@@ -19,8 +19,8 @@ import {
 } from '@workspace/api-client-react';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
-  Users, ArrowLeft, ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, X,
-  Menu, RotateCcw, Bell, ShieldCheck, BookOpen
+  Users, ArrowLeft, ArrowRight, PenSquare, Loader2, AlertTriangle, X,
+  Menu, Bell, ShieldCheck, BookOpen
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -157,12 +157,6 @@ export interface SupporterScheduleOption {
   eventCount: number;
 }
 
-export interface AthletePhotoCrop {
-  x: number;
-  y: number;
-  zoom: number;
-}
-
 function athleteInitials(name: string): string {
   const initials = name
     .trim()
@@ -172,77 +166,6 @@ function athleteInitials(name: string): string {
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
   return initials || 'A';
-}
-
-interface AthleteCardPreviewProps {
-  profile: SupporterProfile;
-  athletePhotoUrl?: string;
-  athletePhotoCrop?: AthletePhotoCrop;
-  href?: string;
-  onClick?: () => void;
-  ariaLabel?: string;
-  testId?: string;
-  className?: string;
-}
-
-function AthleteCardPreview({
-  profile,
-  athletePhotoUrl,
-  athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
-  href,
-  onClick,
-  ariaLabel = 'Change athlete',
-  testId,
-  className,
-}: AthleteCardPreviewProps) {
-  const hasAthlete = Boolean(profile.athleteName);
-  const content = (
-    <>
-      <div className="mobile-athlete-lockup flex min-w-0 flex-1 items-center gap-3">
-        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white shadow-sm">
-          {athletePhotoUrl ? (
-            <div className="h-full w-full overflow-hidden rounded-full">
-              <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
-            </div>
-          ) : hasAthlete ? (
-            <span className="font-display text-xl font-bold text-primary" aria-label={`${athleteInitials(profile.athleteName)} initials`}>
-              {athleteInitials(profile.athleteName)}
-            </span>
-          ) : (
-            <Users className="h-6 w-6 opacity-20" />
-          )}
-        </div>
-        <div className="mobile-athlete-copy text-lg font-bold text-[#12213A] flex min-w-0 items-center flex-wrap gap-1.5 leading-none">
-          <span className="truncate">{hasAthlete ? profile.athleteName : 'Unassigned'}</span>
-          {profile.jerseyNumber && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold shrink-0">#{profile.jerseyNumber}</span></>}
-          {profile.teamName && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold break-words">{profile.teamName}</span></>}
-        </div>
-      </div>
-      <ChevronRight className="w-6 h-6 text-black/30 shrink-0" aria-hidden="true" />
-    </>
-  );
-
-  if (href) {
-    return (
-      <Link href={href} className={`athlete-card-preview${className ? ` ${className}` : ''}`} aria-label={ariaLabel} data-testid={testId}>
-        {content}
-      </Link>
-    );
-  }
-
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className={`athlete-card-preview${className ? ` ${className}` : ''}`} aria-label={ariaLabel} data-testid={testId}>
-        {content}
-      </button>
-    );
-  }
-
-  return (
-    <div className={`athlete-card-preview${className ? ` ${className}` : ''}`} role="img" aria-label="Athlete card preview" data-testid={testId}>
-      {content}
-    </div>
-  );
 }
 
 export interface SupporterDashboardViewProps {
@@ -257,8 +180,6 @@ export interface SupporterDashboardViewProps {
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
   selectionSyncReady?: boolean;
-  athletePhotoUrl?: string;
-  athletePhotoCrop?: AthletePhotoCrop;
   onSignOut?: () => void;
 }
 
@@ -348,8 +269,6 @@ export function SupporterDashboardView({
   onSaveCalendarEvent,
   onCompleteScheduledGame,
   selectionSyncReady = true,
-  athletePhotoUrl,
-  athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
   onSignOut,
 }: SupporterDashboardViewProps) {
   const queryClient = useQueryClient();
@@ -516,8 +435,8 @@ export function SupporterDashboardView({
   }, []);
 
   const hasAthlete = Boolean(profile.athleteName);
-  const summaryAthleteAvatar = athletePhotoUrl ? (
-    <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt="" />
+  const summaryAthleteAvatar = savedFanCard?.photoUrl ? (
+    <img src={savedFanCard.photoUrl} alt="" className="h-full w-full rounded-full object-cover" />
   ) : hasAthlete ? (
     <span>{athleteInitials(profile.athleteName)}</span>
   ) : (
@@ -1585,16 +1504,6 @@ export interface SupporterProfileViewProps {
   onChange: (field: keyof SupporterProfile, value: string) => void;
   onSave: () => void;
   onCancel: () => void;
-  athletePhotoUrl?: string;
-  athletePhotoCrop?: AthletePhotoCrop;
-  pendingPhotoUrl?: string;
-  pendingPhotoCrop: AthletePhotoCrop;
-  photoBusy: boolean;
-  photoError: string;
-  onPhotoChange: (file: File) => void;
-  onPhotoCropChange: (crop: AthletePhotoCrop) => void;
-  onPhotoUpload: () => void;
-  onPhotoCancel: () => void;
 }
 
 export function SupporterProfileView({
@@ -1607,16 +1516,6 @@ export function SupporterProfileView({
   onChange,
   onSave,
   onCancel,
-  athletePhotoUrl,
-  athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
-  pendingPhotoUrl,
-  pendingPhotoCrop,
-  photoBusy,
-  photoError,
-  onPhotoChange,
-  onPhotoCropChange,
-  onPhotoUpload,
-  onPhotoCancel,
 }: SupporterProfileViewProps) {
   const [activeSection, setActiveSection] = useState<'athlete' | 'alerts' | 'account' | null>(initialSection);
   const toggleSection = (section: 'athlete' | 'alerts' | 'account') =>
@@ -1638,7 +1537,7 @@ export function SupporterProfileView({
       </div>
 
       <div className="supporter-profile-stack">
-      <HypeManagerTaskCard id="athlete-profile" title="Athlete Profile" description="Photo, team and player details" Icon={User} active={activeSection === 'athlete'} onSelect={() => toggleSection('athlete')}>
+      <HypeManagerTaskCard id="athlete-profile" title="Athlete Profile" description="Athlete and team details" Icon={User} active={activeSection === 'athlete'} onSelect={() => toggleSection('athlete')}>
       <div className="supporter-profile-content bg-card border border-border p-5 sm:p-8 relative">
         <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
 
@@ -1649,88 +1548,6 @@ export function SupporterProfileView({
               <p>{error}</p>
             </div>
           )}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border/50 pb-2">
-              <Camera className="w-4 h-4" /> Athlete Photo
-            </h3>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <AthleteCardPreview
-                profile={profile}
-                athletePhotoUrl={athletePhotoUrl}
-                athletePhotoCrop={athletePhotoCrop}
-                className="athlete-card-preview-settings"
-                testId="athlete-photo-settings-preview"
-              />
-              <div className="min-w-0 flex-1 space-y-3">
-                <p className="text-sm font-medium text-muted-foreground">The original is private to your signed-in account. Creating your first HYPE Card copies this photo to the public card; later changes here won’t replace its photo. JPG, PNG, or WebP, up to 5 MB.</p>
-                {photoError && <p className="text-sm font-bold text-destructive" role="alert">{photoError}</p>}
-                {!pendingPhotoUrl && (
-                  <label className="inline-block cursor-pointer bg-foreground text-background px-5 py-3 text-center text-xs font-bold uppercase tracking-widest">
-                    {photoBusy ? 'Uploading…' : athletePhotoUrl ? 'Replace Photo' : 'Add Photo'}
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={photoBusy} onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) onPhotoChange(file);
-                      event.currentTarget.value = '';
-                    }} data-testid="input-athlete-photo" />
-                  </label>
-                )}
-              </div>
-            </div>
-            {pendingPhotoUrl && (
-              <div className="rounded-sm border border-border bg-background p-4 sm:p-5" data-testid="athlete-photo-crop-editor">
-                <div className="grid gap-5 sm:grid-cols-[minmax(220px,1fr)_1fr] sm:items-center">
-                  <AthleteCardPreview
-                    profile={profile}
-                    athletePhotoUrl={pendingPhotoUrl}
-                    athletePhotoCrop={pendingPhotoCrop}
-                    className="athlete-card-preview-settings"
-                    testId="athlete-photo-crop-preview"
-                  />
-                  <div className="space-y-4">
-                    {([
-                      ['Horizontal position', 'x', 0, 100],
-                      ['Vertical position', 'y', 0, 100],
-                      ['Zoom', 'zoom', 100, 250],
-                    ] as const).map(([label, key, min, max]) => (
-                      <label key={key} className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        <span className="flex justify-between"><span>{label}</span><span>{pendingPhotoCrop[key]}{key === 'zoom' ? '%' : ''}</span></span>
-                        <input
-                          type="range"
-                          min={min}
-                          max={max}
-                          value={pendingPhotoCrop[key]}
-                          disabled={photoBusy}
-                          onChange={(event) => onPhotoCropChange({ ...pendingPhotoCrop, [key]: Number(event.target.value) })}
-                          className="mt-2 h-10 w-full accent-primary disabled:opacity-50"
-                          aria-label={label}
-                        />
-                      </label>
-                    ))}
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs text-muted-foreground">Your replacement starts centered. Adjust it here before uploading.</p>
-                      <button
-                        type="button"
-                        disabled={photoBusy}
-                        onClick={() => onPhotoCropChange({ x: 50, y: 50, zoom: 100 })}
-                        className="athlete-photo-crop-reset inline-flex min-h-11 shrink-0 items-center gap-2 border px-3 py-2 text-xs font-bold uppercase tracking-widest disabled:opacity-50"
-                        aria-label="Reset photo crop"
-                        data-testid="btn-reset-athlete-photo-crop"
-                      >
-                        <RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset crop
-                      </button>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <button type="button" disabled={photoBusy} onClick={onPhotoUpload} className="bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="btn-upload-cropped-photo">
-                        {photoBusy ? 'Uploading…' : 'Upload Photo'}
-                      </button>
-                      <button type="button" disabled={photoBusy} onClick={onPhotoCancel} className="border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest disabled:opacity-50">Cancel</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="space-y-6">
             <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border/50 pb-2">
               <User className="w-4 h-4" /> Your Details
@@ -1909,31 +1726,3 @@ export function SupporterProfileView({
   );
 }
 
-function AthletePhoto({
-  url,
-  crop,
-  alt,
-}: {
-  url: string;
-  crop: AthletePhotoCrop;
-  alt: string;
-}) {
-  const x = Math.max(0, Math.min(100, Number.isFinite(crop.x) ? crop.x : 50));
-  const y = Math.max(0, Math.min(100, Number.isFinite(crop.y) ? crop.y : 50));
-  const zoom = Math.max(100, Math.min(250, Number.isFinite(crop.zoom) ? crop.zoom : 100));
-
-  return (
-    <span className="relative block h-full w-full overflow-hidden">
-      <img
-        src={url}
-        alt={alt}
-        className="absolute inset-0 block h-full w-full max-w-none object-cover"
-        style={{
-          objectPosition: `${x}% ${y}%`,
-          transform: `scale(${zoom / 100})`,
-          transformOrigin: `${x}% ${y}%`,
-        }}
-      />
-    </span>
-  );
-}

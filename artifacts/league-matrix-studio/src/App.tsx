@@ -24,9 +24,6 @@ import {
   useResumeAccount,
   useReactivateAccount,
   getGetAccountLifecycleQueryKey,
-  getGetSupporterPhotoQueryKey,
-  useRequestSupporterPhotoUploadUrl,
-  useSaveSupporterPhoto,
   useCreateChecklistShare,
   useDeleteChecklistShare,
 } from '@workspace/api-client-react';
@@ -93,10 +90,6 @@ import { useAppInstallPrompt } from '@/features/app-install-prompt';
 import { shouldRequireSupporterSetup } from '@/features/supporter-setup-routing';
 import { canShowInitialAccountSetup } from '@/features/initial-account-setup';
 import { getSportRule, sports, type Sport } from '@/features/stat-tracker';
-import {
-  updateSupporterPhotoCache,
-  useCachedSupporterPhoto,
-} from '@/features/supporter-photo-cache';
 import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
 import {
@@ -115,6 +108,7 @@ import {
   readOfflineDashboardSnapshot,
   updateOfflineDashboardSnapshot,
 } from '@/features/offline-dashboard-cache';
+import { clearCachedSupporterPhotoForAccount } from '@/features/supporter-photo-cache';
 import {
   buildWorkspaceToolHref,
   readWorkspaceEventContext,
@@ -1291,7 +1285,6 @@ function SupporterStudio() {
   const dashboardChecklistCheckedItemIds = getDashboardChecklistItemIds(user?.unsafeMetadata);
   const dashboardChecklistPending = getDashboardChecklistStatus(user?.unsafeMetadata) === 'pending'
     && !isDashboardChecklistComplete(dashboardChecklistCheckedItemIds);
-  const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const cachedDashboard = user?.id
     ? readOfflineDashboardSnapshot(window.localStorage, user.id)
     : null;
@@ -1401,11 +1394,8 @@ function SupporterStudio() {
           )}
            onSignOut={() => {
              if (user?.id) clearPrivateOfflineAccountData(window.localStorage, user.id);
-             athletePhoto.clearLocalCache();
              return signOut({ redirectUrl: basePath || "/" });
            }}
-           athletePhotoUrl={athletePhoto.imageUrl}
-           athletePhotoCrop={athletePhoto.data ? { x: athletePhoto.data.cropX, y: athletePhoto.data.cropY, zoom: athletePhoto.data.cropZoom } : undefined}
         />
       </main>
     </StudioLayout>
@@ -1419,13 +1409,6 @@ function SupporterProfilePage() {
   const [profile, setProfile] = useState<SupporterProfile>(() => supporterProfileFromUser(user));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [photoError, setPhotoError] = useState('');
-  const [pendingPhoto, setPendingPhoto] = useState<{ file: File; url: string } | null>(null);
-  const [pendingPhotoCrop, setPendingPhotoCrop] = useState({ x: 50, y: 50, zoom: 100 });
-  const requestPhotoUpload = useRequestSupporterPhotoUploadUrl();
-  const savePhoto = useSaveSupporterPhoto();
-  const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
-  const photoBusy = requestPhotoUpload.isPending || savePhoto.isPending;
   const ownedAthleteInvitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(isSignedIn && user?.id),
@@ -1519,45 +1502,6 @@ function SupporterProfilePage() {
     }
   };
 
-  useEffect(() => () => {
-    if (pendingPhoto) URL.revokeObjectURL(pendingPhoto.url);
-  }, [pendingPhoto]);
-
-  const choosePhoto = (file: File) => {
-    setPhotoError('');
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setPhotoError('Choose a JPG, PNG, or WebP photo.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setPhotoError('Photo must be 5 MB or smaller.');
-      return;
-    }
-    setPendingPhotoCrop({ x: 50, y: 50, zoom: 100 });
-    setPendingPhoto({ file, url: URL.createObjectURL(file) });
-  };
-
-  const uploadPhoto = async () => {
-    if (!pendingPhoto) return;
-    const { file } = pendingPhoto;
-    try {
-      const prepared = await requestPhotoUpload.mutateAsync({ data: { contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp', size: file.size } });
-      const uploaded = await fetch(prepared.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
-      if (!uploaded.ok) throw new Error('upload failed');
-      const savedPhoto = await savePhoto.mutateAsync({ data: {
-        objectPath: prepared.objectPath,
-        cropX: pendingPhotoCrop.x,
-        cropY: pendingPhotoCrop.y,
-        cropZoom: pendingPhotoCrop.zoom,
-      } });
-      updateSupporterPhotoCache(queryClient, savedPhoto);
-      await queryClient.invalidateQueries({ queryKey: getGetSupporterPhotoQueryKey() });
-      setPendingPhoto(null);
-    } catch {
-      setPhotoError('We could not upload that photo. Check your connection and try again.');
-    }
-  };
-
   return (
     <StudioLayout role="fan">
       <main className="flex-1">
@@ -1573,16 +1517,6 @@ function SupporterProfilePage() {
           }}
           onSave={() => void saveProfile()}
           onCancel={() => setLocation('/studio')}
-           athletePhotoUrl={athletePhoto.imageUrl}
-           athletePhotoCrop={athletePhoto.data ? { x: athletePhoto.data.cropX, y: athletePhoto.data.cropY, zoom: athletePhoto.data.cropZoom } : undefined}
-          pendingPhotoUrl={pendingPhoto?.url}
-          pendingPhotoCrop={pendingPhotoCrop}
-          photoBusy={photoBusy}
-          photoError={photoError}
-          onPhotoChange={choosePhoto}
-          onPhotoCropChange={setPendingPhotoCrop}
-          onPhotoUpload={() => void uploadPhoto()}
-          onPhotoCancel={() => setPendingPhoto(null)}
           accountInformation={
             <>
               <section className="supporter-profile-account-section" aria-labelledby="account-info-heading" data-testid="account-information">
@@ -4056,6 +3990,7 @@ function ClerkQueryClientCacheInvalidator() {
         queryClient.clear();
         if (prevUserIdRef.current) {
           clearPrivateOfflineAccountData(window.localStorage, prevUserIdRef.current);
+          void clearCachedSupporterPhotoForAccount(prevUserIdRef.current);
         }
       }
       prevUserIdRef.current = userId;

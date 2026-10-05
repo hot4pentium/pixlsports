@@ -753,7 +753,7 @@ test('recent activity exposes a mobile-sized attribution correction with its des
   assert.equal(changedGame.score, game.score);
 });
 
-test('athlete stat target uses the athlete portrait crop and falls back to initials when it fails', () => {
+test('athlete stat target can use the HYPE Card photo crop and falls back to initials when it fails', () => {
   const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('basketball');
   let renderer!: ReturnType<typeof create>;
@@ -763,7 +763,7 @@ test('athlete stat target uses the athlete portrait crop and falls back to initi
       currentGame: game,
       rule,
       athleteName: 'Jordan Lee',
-      athleteImageUrl: '/api/supporter-photo/image?v=1',
+      athleteImageUrl: '/api/athlete-invites/test-hype-card-photo.webp?v=1',
       athleteImageCrop: { x: 20, y: 70, zoom: 150 },
       teamName: 'Falcons',
       displayStats: rule.stats.filter((item) => item.featured),
@@ -780,7 +780,7 @@ test('athlete stat target uses the athlete portrait crop and falls back to initi
 
   const athleteTarget = renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-three-point' });
   const portrait = athleteTarget.findByType('img');
-  assert.equal(portrait.props.src, '/api/supporter-photo/image?v=1');
+  assert.equal(portrait.props.src, '/api/athlete-invites/test-hype-card-photo.webp?v=1');
   assert.equal(portrait.props.alt, '');
   assert.equal(portrait.props.style.objectPosition, '20% 70%');
   assert.equal(portrait.props.style.transform, 'scale(1.5)');

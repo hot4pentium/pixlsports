@@ -13,15 +13,14 @@ const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', impor
 const eventNotificationsSource = readFileSync(new URL('./owner-event-notifications.tsx', import.meta.url), 'utf8');
 const supporterDashboardSource = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
 
-test('first-card creation links to the athlete profile photo upload without promising later sync', () => {
-  assert.match(source, /data-testid="first-card-profile-photo-disclosure"/);
-  assert.match(source, /Before creating your first HYPE Card, add the athlete’s photo in Athlete Profile/);
-  assert.match(source, /data-testid="link-first-card-athlete-photo"/);
-  assert.match(source, /href="\/studio\/profile\?section=athlete"/);
-  assert.match(source, /later profile-photo changes won’t replace the card photo/);
-  assert.match(appSource, /new URLSearchParams\(window\.location\.search\)\.get\('section'\) === 'athlete'/);
-  assert.match(appSource, /initialSection=\{initialSection\}/);
-  assert.match(supporterDashboardSource, /Creating your first HYPE Card copies this photo to the public card/);
+test('HYPE Card creation directs athlete photo uploads to its manager, not Athlete Profile', () => {
+  assert.match(source, /data-testid="first-card-photo-guidance"/);
+  assert.match(source, /After creating your HYPE Card, open Manage HYPE Card to upload the athlete’s photo/);
+  assert.doesNotMatch(source, /link-first-card-athlete-photo|Upload athlete photo in Athlete Profile/);
+  assert.match(source, /title="Upload Photo"/);
+  assert.match(source, /<FanCardPhotoManager inviteToken=\{invite\.inviteToken\}/);
+  assert.doesNotMatch(supporterDashboardSource, /input-athlete-photo|Athlete Photo/);
+  assert.doesNotMatch(appSource, /useRequestSupporterPhotoUploadUrl|useSaveSupporterPhoto|useCachedSupporterPhoto/);
 });
 
 test('HYPE Card sharing copy does not call links or pages stable', () => {

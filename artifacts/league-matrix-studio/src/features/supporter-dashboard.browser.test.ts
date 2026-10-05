@@ -4756,6 +4756,8 @@ import { preparePremiumCardPngExport } from './src/features/premium-hype-card-ar
 import { defaultCardAppearance } from './src/features/hype-card-appearance';
 import './src/index.css';
 
+const testHypeCardPhotoUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iODAiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIGZpbGw9IiNGOTczMTYiLz48L3N2Zz4=';
+
 window.__premiumNameExport = (design, layer = 'all') => {
   const appearance = { ...defaultCardAppearance(design), athleteScale: 1.45, athleteX: .25, athleteY: -.18 };
   return preparePremiumCardPngExport(buildBrandedPremiumHypeCardArtwork({
@@ -4795,8 +4797,6 @@ function ProfilePropagationHarness() {
     displayName: 'Jamie Fan',
     teamName: 'Northside Comets',
     athleteName: '',
-    athleteImageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="80"%3E%3Crect width="120" height="80" fill="%23007A78"/%3E%3C/svg%3E',
-    athleteImageCrop: { x: 20, y: 70, zoom: 150 },
     jerseyNumber: '',
     position: '',
     relationship: 'Parent',
@@ -4815,8 +4815,6 @@ function ProfilePropagationHarness() {
     }
   });
   const [draft, setDraft] = useState(profile);
-  const [pendingPhoto, setPendingPhoto] = useState(null);
-  const [pendingPhotoCrop, setPendingPhotoCrop] = useState({ x: 50, y: 50, zoom: 100 });
   const rule = getSportRule('basketball');
   const currentGame = {
     id: 'live-game',
@@ -4833,14 +4831,6 @@ function ProfilePropagationHarness() {
   const openProfile = () => {
     setDraft(profile);
     setRoute('profile');
-  };
-  const handlePhotoChange = (file) => {
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
-      setPendingPhoto({ url: String(reader.result || '') });
-      setPendingPhotoCrop({ x: 50, y: 50, zoom: 100 });
-    });
-    reader.readAsDataURL(file);
   };
   const fanToolNav = createElement('nav', { 'data-testid': 'fan-tool-nav', className: 'flex gap-3 p-4' },
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-dashboard', onClick: () => setRoute('dashboard') }, 'Dashboard'),
@@ -4871,27 +4861,7 @@ function ProfilePropagationHarness() {
           window.history.replaceState({}, '', window.location.pathname + '?' + search.toString());
           setRoute('dashboard');
         },
-         athletePhotoUrl: profile.athleteImageUrl,
-         athletePhotoCrop: profile.athleteImageCrop,
-         pendingPhotoUrl: pendingPhoto?.url,
-         pendingPhotoCrop,
-         onPhotoChange: handlePhotoChange,
-         onPhotoCropChange: setPendingPhotoCrop,
-         onPhotoUpload: () => {
-           if (!pendingPhoto) return;
-           const nextProfile = {
-             ...profile,
-             athleteImageUrl: pendingPhoto.url,
-             athleteImageCrop: pendingPhotoCrop,
-           };
-           setProfile(nextProfile);
-           window.localStorage.setItem(profileStorageKey, JSON.stringify(nextProfile));
-           setPendingPhoto(null);
-         },
-         onPhotoCancel: () => setPendingPhoto(null),
-          initialSection: 'athlete',
-        photoBusy: false,
-        photoError: '',
+        initialSection: 'athlete',
       }),
     );
   }
@@ -4903,8 +4873,7 @@ function ProfilePropagationHarness() {
         currentGame,
         rule,
         athleteName: profile.athleteName,
-        athleteImageUrl: profile.athleteImageUrl,
-        athleteImageCrop: profile.athleteImageCrop,
+        athleteImageUrl: testHypeCardPhotoUrl,
         teamName: profile.teamName,
         displayStats: rule.stats.slice(0, 6),
         showAllStats: false,
@@ -4934,8 +4903,6 @@ function ProfilePropagationHarness() {
       nextGameIsUpcoming: false,
       scheduleSource: null,
       connectionLabel: '',
-      athletePhotoUrl: profile.athleteImageUrl,
-      athletePhotoCrop: profile.athleteImageCrop,
       onOpenStatTracker: () => setRoute('tracker'),
       onOpenChecklist: () => {},
     }),
@@ -4953,10 +4920,6 @@ function CachedPhotoStartupHarness() {
       nextGameIsUpcoming: false,
       scheduleSource: null,
       connectionLabel: '',
-      athletePhotoUrl: photo.imageUrl,
-      athletePhotoCrop: photo.data
-        ? { x: photo.data.cropX, y: photo.data.cropY, zoom: photo.data.cropZoom }
-        : undefined,
       onOpenStatTracker: () => {},
       onOpenChecklist: () => {},
     }),
@@ -8036,7 +7999,7 @@ test('saved athlete profile names reach game tools and HYPE Card setup stays the
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?profile-propagation`);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-profile-save\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-profile-save\\"]") !== null', Boolean, 30_000);
 
     await connection.evaluate(`(() => {
       const athlete = document.querySelector('#athleteName');
@@ -8098,14 +8061,14 @@ test('saved athlete profile names reach game tools and HYPE Card setup stays the
           height: rect.height,
         };
       })()`, page.sessionId),
-      {
-        accessibleName: 'Record Three-point field goal for Taylor Morgan',
-        objectPosition: '20% 70%',
-        transform: 'scale(1.5)',
-        transformOrigin: '20% 70%',
-        width: 44,
-        height: 44,
-      },
+    {
+      accessibleName: 'Record Three-point field goal for Taylor Morgan',
+      objectPosition: '50% 50%',
+      transform: 'scale(1)',
+      transformOrigin: '50% 50%',
+      width: 44,
+      height: 44,
+    },
     );
     await connection.evaluate(`document.querySelector('[data-testid="athlete-stat-target-three-point"] img')?.dispatchEvent(new Event('error'))`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") === null', Boolean);
@@ -8124,287 +8087,17 @@ test('saved athlete profile names reach game tools and HYPE Card setup stays the
     );
 
     await connection.evaluate(`document.querySelector('[data-testid="button-test-edit-profile"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-athlete-photo\\"]") !== null', Boolean);
-    await connection.evaluate(`(() => {
-      const input = document.querySelector('[data-testid="input-athlete-photo"]');
-      if (!(input instanceof HTMLInputElement)) throw new Error('Athlete photo input not found');
-      const transfer = new DataTransfer();
-      transfer.items.add(new File([
-        '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="#F97316"/></svg>',
-      ], 'updated-athlete.svg', { type: 'image/svg+xml' }));
-      Object.defineProperty(input, 'files', { value: transfer.files, configurable: true });
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-editor\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-profile-save\\"]") !== null', Boolean);
     assert.deepEqual(
-      await connection.evaluate(`(() => {
-        const card = document.querySelector('[data-testid="athlete-photo-crop-preview"]');
-        const image = card?.querySelector('img');
-        return {
-          hasGradientCard: Boolean(card?.classList.contains('athlete-photo-settings-preview')),
-          hasSwitchAffordance: Boolean(card?.querySelector('svg')),
-          details: card?.textContent?.replace(/\\s+/g, ' ').trim() || '',
-          objectPosition: image?.style.objectPosition || '',
-          transform: image?.style.transform || '',
-        };
-      })()`, page.sessionId),
-      {
-        hasGradientCard: true,
-        hasSwitchAffordance: true,
-        details: 'Taylor Morgan#00 · Northside Comets',
-        objectPosition: '50% 50%',
-        transform: 'scale(1)',
-      },
+      await connection.evaluate(`(() => ({
+        fileInputs: document.querySelectorAll('input[type="file"]').length,
+        athletePhotoHeading: /Athlete Photo/i.test(document.body.innerText),
+        cropEditor: Boolean(document.querySelector('[data-testid="athlete-photo-crop-editor"]')),
+      }))()`, page.sessionId),
+      { fileInputs: 0, athletePhotoHeading: false, cropEditor: false },
     );
-    await connection.evaluate(`(() => {
-      const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === 'Horizontal position');
-      if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: Horizontal position');
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-      setter?.call(input, '72');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "72% 50%"', Boolean);
-    await connection.evaluate(`(() => {
-      const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === 'Vertical position');
-      if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: Vertical position');
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-      setter?.call(input, '34');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
-    await connection.evaluate(`(() => {
-      const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === 'Zoom');
-      if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: Zoom');
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-      setter?.call(input, '185');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.transform === "scale(1.85)"', Boolean);
-    assert.deepEqual(
-      await connection.evaluate(`(() => {
-        const resetButton = document.querySelector('[data-testid="btn-reset-athlete-photo-crop"]');
-        const controls = Object.fromEntries(Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input')).map((input) => [input.getAttribute('aria-label') || '', input instanceof HTMLInputElement ? input.value : '']));
-        return {
-          buttonLabel: resetButton?.textContent?.replace(/\\s+/g, ' ').trim() || '',
-          crop: controls,
-        };
-      })()`, page.sessionId),
-      {
-        buttonLabel: 'Reset crop',
-        crop: {
-          'Horizontal position': '72',
-          'Vertical position': '34',
-          Zoom: '185',
-        },
-      },
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="btn-reset-athlete-photo-crop"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "50% 50%" && document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.transform === "scale(1)"', Boolean);
-    assert.deepEqual(
-      await connection.evaluate(`(() => Object.fromEntries(Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input')).map((input) => [input.getAttribute('aria-label') || '', input instanceof HTMLInputElement ? input.value : ''])))()`, page.sessionId),
-      {
-        'Horizontal position': '50',
-        'Vertical position': '50',
-        Zoom: '100',
-      },
-    );
-    await connection.evaluate(`(() => {
-      const values = { 'Horizontal position': '72', 'Vertical position': '34', Zoom: '185' };
-      for (const [label, value] of Object.entries(values)) {
-        const input = Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input')).find((element) => element.getAttribute('aria-label') === label);
-        if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: ' + label);
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-        setter?.call(input, value);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "72% 34%" && document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.transform === "scale(1.85)"', Boolean);
-    await connection.send('Emulation.setDeviceMetricsOverride', {
-      width: 320,
-      height: 844,
-      deviceScaleFactor: 1,
-      mobile: true,
-    }, page.sessionId);
-    assert.deepEqual(
-      await connection.evaluate(`(() => {
-        const card = document.querySelector('[data-testid="athlete-photo-crop-preview"]');
-        const editor = document.querySelector('[data-testid="athlete-photo-crop-editor"]');
-        const controls = Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input'));
-        const cardRect = card?.getBoundingClientRect();
-        const editorRect = editor?.getBoundingClientRect();
-        return {
-          cardWithinViewport: Boolean(cardRect && cardRect.left >= 0 && cardRect.right <= window.innerWidth),
-          editorWithinViewport: Boolean(editorRect && editorRect.left >= 0 && editorRect.right <= window.innerWidth),
-          controlsWithinViewport: controls.every((control) => {
-            const rect = control.getBoundingClientRect();
-            return rect.left >= 0 && rect.right <= window.innerWidth;
-          }),
-           resetWithinViewport: (() => {
-             const reset = document.querySelector('[data-testid="btn-reset-athlete-photo-crop"]');
-             const rect = reset?.getBoundingClientRect();
-             return Boolean(reset && rect && rect.left >= 0 && rect.right <= window.innerWidth && rect.height >= 44);
-           })(),
-          documentOverflow: document.documentElement.scrollWidth > window.innerWidth,
-        };
-      })()`, page.sessionId),
-      {
-        cardWithinViewport: true,
-        editorWithinViewport: true,
-        controlsWithinViewport: true,
-         resetWithinViewport: true,
-        documentOverflow: false,
-      },
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="btn-upload-cropped-photo"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-editor\\"]") === null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="btn-back"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
-    await connection.send('Emulation.setDeviceMetricsOverride', {
-      width: 1280,
-      height: 900,
-      deviceScaleFactor: 1,
-      mobile: false,
-    }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"desktop-athlete-photo\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
-    const desktopFraming = await connection.evaluate<{
-      objectPosition: string;
-      transform: string;
-      cardRadius: string;
-      cardWidth: number;
-      cardHeight: number;
-      editVisible: boolean;
-      details: string;
-    }>(`(() => {
-        const desktopCard = document.querySelector('[data-testid="desktop-athlete-photo"]');
-        const desktopImage = desktopCard?.querySelector('img');
-        const editButton = document.querySelector('[data-testid="btn-edit-athlete-avatar"]');
-        const desktopRect = desktopCard?.getBoundingClientRect();
-        const editRect = editButton?.getBoundingClientRect();
-        return {
-          objectPosition: desktopImage?.style.objectPosition || '',
-          transform: desktopImage?.style.transform || '',
-          cardRadius: desktopCard ? getComputedStyle(desktopCard).borderRadius : '',
-          cardWidth: desktopRect ? Math.round(desktopRect.width) : 0,
-          cardHeight: desktopRect ? Math.round(desktopRect.height) : 0,
-          editVisible: Boolean(editButton && editRect && editRect.width > 0 && editRect.height > 0),
-          details: document.querySelector('[data-testid="athlete-summary"]')?.textContent?.replace(/\\s+/g, ' ').trim() || '',
-        };
-      })()`, page.sessionId);
-    assert.deepEqual(
-      {
-        objectPosition: desktopFraming.objectPosition,
-        transform: desktopFraming.transform,
-        cardRadius: desktopFraming.cardRadius,
-      },
-      {
-        objectPosition: '72% 34%',
-        transform: 'scale(1.85)',
-        cardRadius: '20px',
-      },
-    );
-    assert.ok(desktopFraming.cardWidth >= 132 && desktopFraming.cardHeight >= 220);
-    assert.equal(desktopFraming.editVisible, true);
-    assert.match(desktopFraming.details, /Taylor Morgan/);
-    assert.match(desktopFraming.details, /Northside Comets/);
-    await connection.send('Emulation.setDeviceMetricsOverride', {
-      width: 320,
-      height: 844,
-      deviceScaleFactor: 1,
-      mobile: true,
-    }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-mobile-athlete-switcher\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
-    assert.deepEqual(
-      await connection.evaluate(`(() => {
-        const card = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
-        const image = card?.querySelector('img');
-        return {
-          objectPosition: image?.style.objectPosition || '',
-          transform: image?.style.transform || '',
-          details: card?.textContent?.replace(/\\s+/g, ' ').trim() || '',
-        };
-      })()`, page.sessionId),
-      {
-        objectPosition: '72% 34%',
-        transform: 'scale(1.85)',
-        details: 'Taylor Morgan•Northside Comets',
-      },
-    );
-    await reloadPage(connection, page);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-mobile-athlete-switcher\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
-    assert.deepEqual(
-      await connection.evaluate(`(() => {
-        const image = document.querySelector('[data-testid="btn-mobile-athlete-switcher"] img');
-        return {
-          objectPosition: image?.style.objectPosition || '',
-          transform: image?.style.transform || '',
-        };
-      })()`, page.sessionId),
-      {
-        objectPosition: '72% 34%',
-        transform: 'scale(1.85)',
-      },
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") !== null', Boolean);
-    assert.deepEqual(
-      await connection.evaluate(`(() => {
-        const target = document.querySelector('[data-testid="athlete-stat-target-three-point"]');
-        const image = target?.querySelector('img');
-        const rect = target?.getBoundingClientRect();
-        return {
-          imageSource: image?.getAttribute('src') || '',
-          objectPosition: image?.style.objectPosition || '',
-          transform: image?.style.transform || '',
-          width: rect ? rect.width : 0,
-          height: rect ? rect.height : 0,
-          accessibleName: target?.getAttribute('aria-label') || '',
-        };
-      })()`, page.sessionId),
-      {
-        imageSource: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iODAiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIGZpbGw9IiNGOTczMTYiLz48L3N2Zz4=',
-        objectPosition: '72% 34%',
-        transform: 'scale(1.85)',
-        width: 44,
-        height: 44,
-        accessibleName: 'Record Three-point field goal for Taylor Morgan',
-      },
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="button-test-edit-profile"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-athlete-photo\\"]") !== null', Boolean);
-    assert.equal(
-      await connection.evaluate(`document.querySelector('[data-testid="btn-remove-athlete-photo"]') === null`, page.sessionId),
-      true,
-    );
-    assert.match(
-      await connection.evaluate(`document.querySelector('[data-testid="input-athlete-photo"]')?.parentElement?.textContent || ''`, page.sessionId),
-      /Replace Photo/,
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="btn-back"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") !== null', Boolean);
-    assert.deepEqual(
-      await connection.evaluate(`(() => {
-        const target = document.querySelector('[data-testid="athlete-stat-target-three-point"]');
-        const image = target?.querySelector('img');
-        return {
-          accessibleName: target?.getAttribute('aria-label') || '',
-          imageSource: image?.getAttribute('src') || '',
-          width: target?.getBoundingClientRect().width || 0,
-          height: target?.getBoundingClientRect().height || 0,
-        };
-      })()`, page.sessionId),
-      {
-        accessibleName: 'Record Three-point field goal for Taylor Morgan',
-        imageSource: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iODAiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIGZpbGw9IiNGOTczMTYiLz48L3N2Zz4=',
-        width: 44,
-        height: 44,
-      },
-    );
+    await connection.evaluate(`document.querySelector('[data-testid="btn-profile-cancel"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-athlete-fan-card\\"]") !== null', Boolean);
 
     await connection.evaluate(`document.querySelector('[data-testid="button-test-open-athlete-fan-card"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-athlete-fan-card-manager\\"]") !== null', Boolean);
@@ -8443,7 +8136,7 @@ test('saved athlete profile names reach game tools and HYPE Card setup stays the
       athlete.dispatchEvent(new Event('change', { bubbles: true }));
       document.querySelector('[data-testid="btn-profile-save"]')?.click();
     })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.body?.innerText.includes("Unassigned")', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
     assert.match(

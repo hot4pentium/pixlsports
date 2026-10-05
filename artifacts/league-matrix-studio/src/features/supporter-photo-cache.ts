@@ -122,6 +122,12 @@ async function clearCachedSupporterPhotoImage(userId: string): Promise<void> {
   }
 }
 
+export async function clearCachedSupporterPhotoForAccount(userId: string | null | undefined): Promise<void> {
+  if (!userId || typeof window === 'undefined') return;
+  clearCachedSupporterPhoto(window.localStorage, userId);
+  await clearCachedSupporterPhotoImage(userId);
+}
+
 export function useCachedSupporterPhoto(userId: string | null | undefined, enabled: boolean) {
   const cachedPhoto = useMemo(
     () => (

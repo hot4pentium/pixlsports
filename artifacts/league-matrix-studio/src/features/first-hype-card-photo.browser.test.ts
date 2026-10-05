@@ -22,10 +22,8 @@ async function freePort() {
   return port;
 }
 
-test('first-card creation shows photo-copy errors, retries, and keeps the copied photo visible after reload and public viewing', async () => {
-  const photoUrl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120"><rect width="80" height="120" fill="#339966"/></svg>');
+test('first-card creation directs photo uploads to Manage HYPE Card and does not depend on a profile photo', async () => {
   let card: Record<string, unknown> | null = null;
-  let failPhoto = true;
   let creates = 0;
   const api = createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -38,11 +36,10 @@ test('first-card creation shows photo-copy errors, retries, and keeps the copied
     };
     if (path === '/api/athlete-invites' && req.method === 'POST') {
       creates++;
-      if (failPhoto) { json(500, { error: 'Your athlete profile photo could not be copied. Check the saved photo and try creating the HYPE Card again.' }); return; }
       const chunks: Buffer[] = [];
       for await (const chunk of req) chunks.push(Buffer.from(chunk));
       card = { ...JSON.parse(Buffer.concat(chunks).toString()), inviteToken: 'owner-boundary-test-token',
-        photoUrl, photoRevision: 'test-copy', cutoutUrl: null, events: [], stats: null,
+        photoUrl: null, photoRevision: null, cutoutUrl: null, events: [], stats: null,
         latestHypeCard: null, latestVideo: null, videos: [], liveGame: null,
         hypeCard: null, replies: [], scheduleEvents: [], liveScoreboard: null,
         updatedAt: new Date().toISOString(),
@@ -84,31 +81,21 @@ test('first-card creation shows photo-copy errors, retries, and keeps the copied
       url: `${origin}/athlete-owner-boundary-test.html?view=${view}&viewer=${viewer}&testApiOrigin=${encodeURIComponent(`http://127.0.0.1:${apiPort}`)}`,
     }, sessionId);
     await navigate('create');
-    await waitFor(connection, sessionId, "Boolean(document.querySelector('[data-testid=\"first-card-profile-photo-disclosure\"]'))", Boolean, 30000);
-    const profilePhotoLink = await connection.evaluate<{ href: string; label: string }>(`(() => {
-      const link = document.querySelector('[data-testid="link-first-card-athlete-photo"]');
-      return { href: link?.getAttribute('href') || '', label: link?.textContent?.trim() || '' };
+    await waitFor(connection, sessionId, "Boolean(document.querySelector('[data-testid=\"first-card-photo-guidance\"]'))", Boolean, 30000);
+    const photoGuidance = await connection.evaluate<{ text: string; profileUploadLink: boolean }>(`(() => {
+      const guidance = document.querySelector('[data-testid="first-card-photo-guidance"]');
+      return {
+        text: guidance?.textContent?.trim() || '',
+        profileUploadLink: Boolean(document.querySelector('[data-testid="link-first-card-athlete-photo"]')),
+      };
     })()`, sessionId);
-    assert.deepEqual(profilePhotoLink, {
-      href: '/studio/profile?section=athlete',
-      label: 'Upload athlete photo in Athlete Profile',
-    });
+    assert.match(photoGuidance.text, /Manage HYPE Card to upload the athlete’s photo/);
+    assert.equal(photoGuidance.profileUploadLink, false);
     await connection.evaluate("document.querySelector('button[type=\"submit\"]').click()", sessionId);
-    await waitFor(connection, sessionId, "document.body.innerText.includes('profile photo could not be copied')", Boolean);
-    assert.equal(card, null);
-    failPhoto = false;
-    await connection.evaluate("document.querySelector('button[type=\"submit\"]').click()", sessionId);
-    await waitFor(connection, sessionId, "Boolean(document.querySelector('[data-testid=\"link-open-fan-hype-card\"]'))", Boolean);
-    assert.equal(creates, 2);
-    await navigate('create');
-    await waitFor(connection, sessionId, "Boolean(document.querySelector('[data-testid=\"link-open-fan-hype-card\"]'))", Boolean, 30000);
-    for (const viewer of ['owner', 'visitor']) {
-      await navigate('fan', viewer);
-      await waitFor(connection, sessionId, `(() => {
-        const image = document.querySelector('[data-testid="img-living-card-athlete"]');
-        return image?.src === ${JSON.stringify(photoUrl)} && image.complete && image.naturalWidth > 0;
-      })()`, Boolean, 30000);
-    }
+    await waitFor(connection, sessionId, "Boolean(document.querySelector('[data-testid=\"link-manage-athlete-card\"]'))", Boolean);
+    assert.equal(creates, 1);
+    assert.equal(card?.photoUrl, null);
+    assert.equal(card?.photoRevision, null);
   } finally {
     connection?.close();
     browser?.kill('SIGTERM');

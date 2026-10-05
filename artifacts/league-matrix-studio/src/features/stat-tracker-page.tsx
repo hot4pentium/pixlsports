@@ -5,11 +5,9 @@ import { useUser } from '@clerk/react';
 import {
   useCreateProject,
   useGetAccountAccess,
-  useGetSupporterPhoto,
   useListProjects,
   useUpdateProject,
   getGetAccountAccessQueryKey,
-  getGetSupporterPhotoQueryKey,
   getListProjectsQueryKey,
   getListAthleteInvitesQueryKey,
   useCreateStatTrackerShare,
@@ -25,7 +23,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 
 import { getGuestUsageKey } from './guest-access';
-import { getUserProfile } from './supporter-dashboard-model';
+import { getSupporterFanCard, getUserProfile } from './supporter-dashboard-model';
 import {
   readScheduleDraft,
   saveScheduleDraft,
@@ -1286,13 +1284,6 @@ export function StatTrackerPage() {
       queryKey: [...getGetAccountAccessQueryKey(), accountId],
     },
   });
-  const { data: athletePortrait } = useGetSupporterPhoto({
-    query: {
-      enabled: Boolean(accountId),
-      retry: false,
-      queryKey: [...getGetSupporterPhotoQueryKey(), accountId],
-    },
-  });
   const { data: projects } = useListProjects({
     query: {
       enabled: Boolean(accountId && accountAccess),
@@ -1324,6 +1315,7 @@ export function StatTrackerPage() {
       staleTime: 10_000,
     },
   });
+  const athleteFanCard = getSupporterFanCard(athleteInvitesQuery.data ?? [], profile);
   const startAthleteInviteLive = useStartAthleteInviteLive();
 
   const ownedScheduleProject = useMemo(
@@ -2331,12 +2323,7 @@ export function StatTrackerPage() {
           currentGame={currentGame}
           rule={rule}
           athleteName={profile.athleteName}
-          athleteImageUrl={athletePortrait ? `${athletePortrait.url}?v=${encodeURIComponent(String(athletePortrait.updatedAt))}` : undefined}
-          athleteImageCrop={athletePortrait ? {
-            x: athletePortrait.cropX,
-            y: athletePortrait.cropY,
-            zoom: athletePortrait.cropZoom,
-          } : undefined}
+          athleteImageUrl={athleteFanCard?.photoUrl ?? undefined}
           teamName={profile.teamName}
           displayStats={displayStats}
           showAllStats={showAllStats}

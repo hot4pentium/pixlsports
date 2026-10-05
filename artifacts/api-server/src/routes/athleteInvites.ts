@@ -42,7 +42,6 @@ import {
   hypeCardSharesTable,
   statTrackerSharesTable,
   scheduleSharesTable,
-  supporterPhotosTable,
 } from "@workspace/db";
 
 import { isAccountActive } from "../lib/accountLifecycle";
@@ -449,9 +448,6 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
     res.status(400).json({ error: "Choose tracker and schedule projects owned by this account." });
     return;
   }
-  let photoObjectPath: string | null = null;
-  let inviteCreated = false;
-  let preparingProfilePhoto = false;
   try {
     const [existing] = await db.select({ id: athleteInvitesTable.id })
       .from(athleteInvitesTable)
@@ -460,22 +456,9 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
       res.status(409).json({ error: "This account already has an athlete invite. Update or revoke it first." });
       return;
     }
-    const [profilePhoto] = await db.select().from(supporterPhotosTable)
-      .where(eq(supporterPhotosTable.ownerClerkUserId, ownerClerkUserId)).limit(1);
-    if (profilePhoto) {
-      preparingProfilePhoto = true;
-      const source = await photoStorage.getObjectEntityFile(profilePhoto.objectPath);
-      const [bytes] = await source.download();
-      const prepared = await sanitizeAthleteInvitePhoto(bytes, profilePhoto.contentType);
-      // The publicly served card copy must not share the private profile object's lifecycle.
-      photoObjectPath = await photoStorage.savePrivateObjectEntity(
-        prepared.contents, prepared.contentType, ownerClerkUserId,
-      );
-      preparingProfilePhoto = false;
-    }
     const [created] = await db.insert(athleteInvitesTable).values({
       ...parsed.data,
-      photoObjectPath,
+      photoObjectPath: null,
       scheduleProjectId: null,
       showSchedule: false,
       paused: parsed.data.paused ?? false,
@@ -485,14 +468,8 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
       ownerClerkUserId,
       publicToken: randomBytes(24).toString("base64url"),
     }).returning();
-    inviteCreated = true;
     res.status(201).json(CreateAthleteInviteResponse.parse(await ownedInviteResponse(created)));
   } catch (error) {
-    if (photoObjectPath && !inviteCreated) {
-      try { await photoStorage.deleteObjectEntity(photoObjectPath); } catch (cleanupError) {
-        req.log.warn({ err: cleanupError }, "Unable to remove unpublished first-card photo");
-      }
-    }
     const duplicate = [error, error instanceof Error ? error.cause : null]
       .some(cause => cause && typeof cause === "object" && "code" in cause && cause.code === "23505");
     if (duplicate) {
@@ -500,11 +477,7 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
       return;
     }
     req.log.error({ err: error }, "Unable to create athlete invite");
-    res.status(500).json({
-      error: preparingProfilePhoto
-        ? "Your athlete profile photo could not be copied. Check the saved photo and try creating the HYPE Card again."
-        : "Unable to create athlete invite",
-    });
+    res.status(500).json({ error: "Unable to create athlete invite" });
   }
 });
 

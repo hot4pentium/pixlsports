@@ -3,10 +3,10 @@ name: Athlete identity visuals
 description: Keeps supporter account identity separate from the athlete represented in game-day tools.
 ---
 
-Only show a photo beside a named athlete when the image comes from an athlete-specific profile or media source. A signed-in supporter’s account photo must not stand in for the athlete; use the athlete’s initials when no athlete-owned image is available.
+Athlete photo uploads belong only in the HYPE Card manager. The dashboard and tracker may reuse a HYPE Card photo only when that card matches the selected athlete; otherwise use the athlete’s initials. Never use the supporter’s account photo.
 
-Before creating a first HYPE Card, direct the owner to add the athlete photo in Athlete Profile. The first public card receives a prepared copy; the private profile original remains separate, and later profile-photo changes do not replace the card photo.
+Athlete Profile contains names and team details, not a separate photo upload. New HYPE Cards start without a photo until the owner uploads one through Manage HYPE Card. Keep existing server-side Athlete Profile photo records intact, but do not copy or surface them in the app. Clear the departed account’s local photo metadata and cached image bytes on sign-out or account switch.
 
-**Why:** Pixl Sports is supporter-first, so the signed-in account often belongs to a parent or fan rather than the athlete being tracked. The user also specified that the first HYPE Card photo is uploaded in Athlete Profile, not chosen from the supporter account.
+**Why:** The user said multiple avatars are confusing and photo uploads should live only in the HYPE Card process. Existing private profile-photo data is preserved rather than deleted.
 
-**How to apply:** Any athlete avatar, stat target, public profile, or report should verify the image source belongs to the athlete. Otherwise render a neutral initials fallback with the athlete’s accessible name. On first-card creation, show this upload step and link directly to the Athlete Profile photo section.
+**How to apply:** Before showing an athlete image in dashboard or tracker UI, match the saved HYPE Card to the current athlete and use its photo. If there is no match or photo, render initials. Keep the owner upload/edit flow in Manage HYPE Card and do not couple card creation to legacy profile-photo storage.

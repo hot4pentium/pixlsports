@@ -4,6 +4,7 @@ import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { getGetSupporterPhotoQueryKey } from '@workspace/api-client-react';
 import {
   clearCachedSupporterPhoto,
+  clearCachedSupporterPhotoForAccount,
   clearSupporterPhotoCache,
   readCachedSupporterPhoto,
   updateSupporterPhotoCache,
@@ -40,6 +41,45 @@ test('local supporter photo metadata is isolated by signed-in account', () => {
   clearCachedSupporterPhoto(storage, 'user-a');
 
   assert.equal(readCachedSupporterPhoto(storage, 'user-a'), null);
+});
+
+test('account changes clear the private supporter photo cache only for the previous account', async () => {
+  const storage = createStorage();
+  writeCachedSupporterPhoto(storage, 'user-a', cachedPhoto);
+  writeCachedSupporterPhoto(storage, 'user-b', cachedPhoto);
+  const photoCacheRequests = [
+    new Request('https://pixl-sports-photo-cache.invalid/user-a/2026-09-17T19%3A00%3A00.000Z'),
+    new Request('https://pixl-sports-photo-cache.invalid/user-b/2026-09-17T19%3A00%3A00.000Z'),
+  ];
+  const deletedPhotoRequests: string[] = [];
+  const cache = {
+    keys: async () => photoCacheRequests,
+    delete: async (request: Request) => {
+      deletedPhotoRequests.push(request.url);
+      return true;
+    },
+  };
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      localStorage: storage,
+      caches: {
+        open: async () => cache,
+      },
+    },
+  });
+
+  try {
+    await clearCachedSupporterPhotoForAccount('user-a');
+    assert.equal(readCachedSupporterPhoto(storage, 'user-a'), null);
+    assert.deepEqual(readCachedSupporterPhoto(storage, 'user-b'), cachedPhoto);
+    assert.equal(deletedPhotoRequests.length, 1);
+    assert.match(deletedPhotoRequests[0], /\/user-a\//);
+  } finally {
+    if (windowDescriptor) Object.defineProperty(globalThis, 'window', windowDescriptor);
+    else Reflect.deleteProperty(globalThis, 'window');
+  }
 });
 
 test('invalid local supporter photo metadata falls back to the remote query', () => {
