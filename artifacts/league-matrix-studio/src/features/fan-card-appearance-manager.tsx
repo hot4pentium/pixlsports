@@ -53,7 +53,7 @@ function supportsImageSharing(file?: File): boolean {
   if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function' || typeof File === 'undefined') return false;
   try {
     return navigator.canShare({
-      files: [file ?? new File([''], 'hype-card.png', { type: 'image/png' })],
+      files: [file ?? new File([''], 'hype-card.jpg', { type: 'image/jpeg' })],
     });
   } catch {
     return false;
@@ -240,7 +240,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
     });
   };
 
-  const downloadPng = (file: File) => {
+  const downloadJpeg = (file: File) => {
     const url = URL.createObjectURL(file);
     const link = document.createElement('a');
     link.href = url;
@@ -251,12 +251,12 @@ export function FanCardAppearanceManager({ invite, profile }: {
     window.setTimeout(() => URL.revokeObjectURL(url), 2000);
     setPreparedExport(null);
     setExportState('idle');
-    setExportMessage('PNG downloaded. Open it from Downloads to save it to Photos.');
+    setExportMessage('JPG downloaded. Open it from Downloads to save it to Photos.');
   };
 
   const openImageShare = async (image: { file: File; draftKey: string }) => {
     if (!supportsImageSharing(image.file)) {
-      downloadPng(image.file);
+      downloadJpeg(image.file);
       return;
     }
     try {
@@ -272,12 +272,12 @@ export function FanCardAppearanceManager({ invite, profile }: {
       setExportMessage(
         error instanceof Error && error.name === 'AbortError'
           ? 'Share menu closed without saving. Tap Save to Photos to open it again.'
-          : 'The PNG is ready. Tap Save to Photos to open your device share menu.',
+          : 'The JPG is ready. Tap Save to Photos to open your device share menu.',
       );
     }
   };
 
-  const exportPng = async () => {
+  const exportJpeg = async () => {
     if (readyExport) {
       await openImageShare(readyExport);
       return;
@@ -300,26 +300,30 @@ export function FanCardAppearanceManager({ invite, profile }: {
       await loaded;
       const canvas = document.createElement('canvas');
       canvas.width = png.width; canvas.height = png.height;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, png.width, png.height);
-      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
-      if (!blob) throw new Error('png');
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('canvas');
+      context.fillStyle = '#000000';
+      context.fillRect(0, 0, png.width, png.height);
+      context.drawImage(img, 0, 0, png.width, png.height);
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.95));
+      if (!blob) throw new Error('jpeg');
       if (JSON.stringify(draftRef.current) !== currentDraftKey) {
         setExportState('idle');
-        setExportMessage('The design changed while the PNG was being prepared. Save the current draft again.');
+        setExportMessage('The design changed while the JPG was being prepared. Save the current draft again.');
         return;
       }
       const file = new File(
         [blob],
-        `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.png`,
-        { type: 'image/png' },
+        `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.jpg`,
+        { type: 'image/jpeg' },
       );
       const image = { file, draftKey: currentDraftKey };
       setPreparedExport(image);
       if (supportsImageSharing(file)) await openImageShare(image);
-      else downloadPng(file);
+      else downloadJpeg(file);
     } catch {
       setExportState('error');
-      setExportMessage('Could not prepare the PNG. Try again.');
+      setExportMessage('Could not prepare the JPG. Try again.');
     }
   };
 
@@ -383,10 +387,10 @@ export function FanCardAppearanceManager({ invite, profile }: {
           {draft.design !== 'classic' && (
             <button
               type="button"
-              onClick={() => void exportPng()}
+              onClick={() => void exportJpeg()}
               disabled={exportState === 'working'}
               className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50"
-              data-testid="button-export-appearance-png"
+              data-testid="button-export-appearance-jpeg"
             >
               {nativeImageSharing
                 ? <Share2 className="h-4 w-4" aria-hidden="true" />
@@ -394,8 +398,8 @@ export function FanCardAppearanceManager({ invite, profile }: {
               {exportState === 'working'
                 ? 'Preparing…'
                 : nativeImageSharing
-                  ? dirty ? 'Save draft to Photos' : 'Save PNG to Photos'
-                  : dirty ? 'Download draft PNG' : 'Download PNG'}
+                  ? dirty ? 'Save draft to Photos' : 'Save JPG to Photos'
+                  : dirty ? 'Download draft JPG' : 'Download JPG'}
             </button>
           )}
         </div>
@@ -404,7 +408,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
           {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline">Retry</button></span>}
           {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-png">{exportMessage}</span>}
         </p>
-        <p className="text-[11px] text-white/50">On supported phones, choose Save Image in the share menu to add the PNG to Photos. Other browsers download it. The PNG shows card artwork only; Replies, Stats, Taps and Events live on the interactive card.</p>
+        <p className="text-[11px] text-white/50">On supported phones, choose Save Image in the share menu to add the JPG to Photos. Other browsers download it. The JPG has a black background outside the rounded card. Replies, Stats, Taps and Events live on the interactive card.</p>
       </div>
     </div>
   );
