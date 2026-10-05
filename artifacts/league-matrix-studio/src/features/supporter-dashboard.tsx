@@ -1065,7 +1065,7 @@ export function SupporterDashboardView({
               ? card.opponent
                 ? `${profile.teamName || 'Your team'} vs ${card.opponent}`
                 : (profile.teamName ? `${profile.teamName} game` : 'Game')
-              : card.opponent.trim() || `${profile.teamName || 'Team'} practice`;
+              : card.opponent.trim() || 'Practice';
 
             return (
               <li

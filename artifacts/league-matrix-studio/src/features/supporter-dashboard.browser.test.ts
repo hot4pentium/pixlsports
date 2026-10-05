@@ -887,7 +887,7 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
   }
 });
 
-test('dashboard empty game notice and install reminder work across screen sizes', { concurrency: false }, async () => {
+test('dashboard shows upcoming Event Cards and install reminders across screen sizes', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-add-event-navigation-test');
   let devServer: ChildProcess | undefined;
@@ -988,7 +988,7 @@ test('dashboard empty game notice and install reminder work across screen sizes'
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"] [data-testid="upcoming-calendar-events"]\')?.textContent || ""', page.sessionId),
-      /Visitors.*Team practice.*Rivals/s,
+      /Visitors.*Practice.*Rivals/s,
     );
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -1205,6 +1205,86 @@ test('dashboard empty game notice and install reminder work across screen sizes'
       await connection.evaluate<number>('window.__dashboardInstallPromptCalls || 0', page.sessionId),
       2,
       'the install prompt still runs when analytics throws',
+    );
+    const standaloneCardFixture = await connection.evaluate<{ userId: string }>(`(() => {
+      const userId = 'supporter-standalone-event-card';
+      const date = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const standaloneCard = {
+        shareToken: 'standalone-830',
+        title: 'Standalone Event Card',
+        savedAt: new Date().toISOString(),
+        event: {
+          id: 'standalone-event-830',
+          type: 'game',
+          date,
+          time: '20:30',
+          timezone: 'America/New_York',
+          location: 'Northside Gym',
+          opponent: 'Night Owls',
+          status: 'upcoming',
+        },
+      };
+      localStorage.setItem(\`pixlsports-game-on-cards:\${userId}\`, JSON.stringify([standaloneCard]));
+      return { userId };
+    })()`, page.sessionId);
+    await connection.evaluate(
+      `window.__setSupporterDashboardTrackerUserId(${JSON.stringify(standaloneCardFixture.userId)})`,
+      page.sessionId,
+    );
+    await connection.evaluate('window.__setSupporterDashboardEvents([])', page.sessionId);
+    await waitFor(connection, page.sessionId, `Boolean(
+      document.querySelector('[data-testid="upcoming-calendar-event"][data-event-id="standalone-event-830"]')
+    )`, Boolean);
+    const standaloneCardSummary = await connection.evaluate<{
+      calendarEventCount: number;
+      rowCount: number;
+      title: string;
+      time: string;
+      listLabel: string;
+      sourceLabel: string;
+    }>(`(() => {
+      const row = document.querySelector('[data-testid="upcoming-calendar-event"][data-event-id="standalone-event-830"]');
+      return {
+        calendarEventCount: window.__getSupporterDashboardEvents().length,
+        rowCount: document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="upcoming-calendar-event"]').length,
+        title: row?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
+        time: row?.querySelector('.supporter-game-on-summary__upcoming-date')?.textContent?.split('·').pop()?.trim() || '',
+        listLabel: row?.parentElement?.getAttribute('aria-label') || '',
+        sourceLabel: document.querySelector('[data-testid="mobile-featured-event-kicker"]')?.textContent?.trim() || '',
+      };
+    })()`, page.sessionId);
+    assert.deepEqual(standaloneCardSummary, {
+      calendarEventCount: 0,
+      rowCount: 1,
+      title: standaloneCardSummary.title,
+      time: '8:30 PM',
+      listLabel: 'Upcoming Event Cards',
+      sourceLabel: 'Event Cards',
+    });
+    assert.match(standaloneCardSummary.title, /Night Owls/);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    assert.equal(
+      await connection.evaluate<number>(
+        'document.querySelector(\'[data-testid="mobile-hero-banner"] [data-testid="upcoming-calendar-events"]\')?.querySelectorAll(\'[data-testid="upcoming-calendar-event"]\').length || 0',
+        page.sessionId,
+      ),
+      1,
+      'a standalone Event Card appears in the mobile upcoming list without a Calendar event',
+    );
+    await connection.evaluate(
+      'document.querySelector(\'.supporter-dashboard-mobile-shell [data-testid="button-open-upcoming-event-card-mobile"]\')?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector(\'.supporter-dashboard-mobile-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\'))',
+      Boolean,
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

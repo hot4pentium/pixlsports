@@ -1,10 +1,10 @@
 ---
-name: Upcoming Calendar event list
-description: Keep the supporter dashboard event panel focused on every future Calendar game and practice.
+name: Upcoming Event Card list
+description: Use Event Card entries for the supporter dashboard upcoming panel without requiring Calendar records.
 ---
 
-The supporter dashboard event panel lists all future Calendar games and practices in date order. Do not include meetings, past events, or standalone Event Cards in that list. Event Cards linked to a listed Calendar event may retain their open action, and standalone cards stay available in their separate collection.
+The supporter dashboard upcoming panel is sourced from Event Cards. Include future game and practice cards in date order, including standalone published cards; exclude completed or past cards. The panel must not require a linked Calendar record.
 
-**Why:** The supporter asked for every upcoming Calendar game and practice in the panel, replacing the single recommended-game and “No upcoming game” states. Standalone Event Cards are explicitly outside this list.
+**Why:** The user clarified that this view uses Event Cards only and that the 8:30 PM item is standalone; Calendar is not used for this flow.
 
-**How to apply:** Derive the list from Calendar events only, filter to game/practice events that are upcoming, sort chronologically, and keep standalone Event Cards in their existing collection.
+**How to apply:** Derive the list from the existing Event Card entries, including published shares with no schedule link, filter to upcoming game/practice cards, and sort chronologically.
