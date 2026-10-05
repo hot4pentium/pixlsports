@@ -1415,6 +1415,7 @@ function SupporterStudio() {
 function SupporterProfilePage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded, isSignedIn } = useUser();
+  const initialSection = new URLSearchParams(window.location.search).get('section') === 'athlete' ? 'athlete' : null;
   const [profile, setProfile] = useState<SupporterProfile>(() => supporterProfileFromUser(user));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -1561,6 +1562,7 @@ function SupporterProfilePage() {
     <StudioLayout role="fan">
       <main className="flex-1">
         <SupporterProfileView
+          initialSection={initialSection}
           profile={profile}
           userId={user?.id}
           saving={saving}

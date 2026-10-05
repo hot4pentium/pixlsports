@@ -13,10 +13,14 @@ const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', impor
 const eventNotificationsSource = readFileSync(new URL('./owner-event-notifications.tsx', import.meta.url), 'utf8');
 const supporterDashboardSource = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
 
-test('first-card creation discloses the public profile-photo copy without promising later sync', () => {
+test('first-card creation links to the athlete profile photo upload without promising later sync', () => {
   assert.match(source, /data-testid="first-card-profile-photo-disclosure"/);
-  assert.match(source, /prepared copy will appear on this public HYPE Card/);
-  assert.match(source, /Later profile-photo changes won’t replace the card photo/);
+  assert.match(source, /Before creating your first HYPE Card, add the athlete’s photo in Athlete Profile/);
+  assert.match(source, /data-testid="link-first-card-athlete-photo"/);
+  assert.match(source, /href="\/studio\/profile\?section=athlete"/);
+  assert.match(source, /later profile-photo changes won’t replace the card photo/);
+  assert.match(appSource, /new URLSearchParams\(window\.location\.search\)\.get\('section'\) === 'athlete'/);
+  assert.match(appSource, /initialSection=\{initialSection\}/);
   assert.match(supporterDashboardSource, /Creating your first HYPE Card copies this photo to the public card/);
 });
 

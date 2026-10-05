@@ -85,6 +85,14 @@ test('first-card creation shows photo-copy errors, retries, and keeps the copied
     }, sessionId);
     await navigate('create');
     await waitFor(connection, sessionId, "Boolean(document.querySelector('[data-testid=\"first-card-profile-photo-disclosure\"]'))", Boolean, 30000);
+    const profilePhotoLink = await connection.evaluate<{ href: string; label: string }>(`(() => {
+      const link = document.querySelector('[data-testid="link-first-card-athlete-photo"]');
+      return { href: link?.getAttribute('href') || '', label: link?.textContent?.trim() || '' };
+    })()`, sessionId);
+    assert.deepEqual(profilePhotoLink, {
+      href: '/studio/profile?section=athlete',
+      label: 'Upload athlete photo in Athlete Profile',
+    });
     await connection.evaluate("document.querySelector('button[type=\"submit\"]').click()", sessionId);
     await waitFor(connection, sessionId, "document.body.innerText.includes('profile photo could not be copied')", Boolean);
     assert.equal(card, null);
