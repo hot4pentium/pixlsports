@@ -143,6 +143,7 @@ import {
 import { readChecklistForEvent, useChecklistSave, type ChecklistSyncStatus } from '@/features/use-checklist-save';
 import MeetingCapture from '@/features/meeting-capture';
 import { PublicLandingPage } from '@/features/landing-home';
+import { SiteFeedbackWidget } from '@/features/site-feedback-widget';
 import { SupporterToolsGuidePage } from '@/features/supporter-tools-guide';
 import heroBanner from '@/assets/hero-banner.webp';
 import footballFieldAsset from '@/assets/football-field.svg';
@@ -4040,6 +4041,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <SiteFeedbackWidget />
         <TooltipProvider>
           <AccountLifecycleGate>
             <ErrorBoundary resetKey={useLocation()[0]}>

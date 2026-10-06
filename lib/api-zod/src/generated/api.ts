@@ -18,6 +18,31 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Sends an anonymous feature request or problem report to the support inbox.
+ * @summary Send feedback to Pixl Sports support
+ */
+export const sendSiteFeedbackBodyMessageMin = 10;
+export const sendSiteFeedbackBodyMessageMax = 5000;
+
+export const sendSiteFeedbackBodyReplyEmailMax = 320;
+
+export const sendSiteFeedbackBodyWebsiteMax = 200;
+
+
+
+export const SendSiteFeedbackBody = zod.object({
+  "feedbackType": zod.enum(['feature', 'problem']),
+  "message": zod.string().min(sendSiteFeedbackBodyMessageMin).max(sendSiteFeedbackBodyMessageMax),
+  "replyEmail": zod.string().email().max(sendSiteFeedbackBodyReplyEmailMax).optional(),
+  "website": zod.string().max(sendSiteFeedbackBodyWebsiteMax).optional()
+})
+
+export const SendSiteFeedbackResponse = zod.object({
+  "accepted": zod.literal(true)
+})
+
+
+/**
  * Creates a public snapshot containing schedule details only.
  * @summary Create a public schedule share
  */

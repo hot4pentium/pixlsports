@@ -5,6 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type SiteFeedbackInputFeedbackType = typeof SiteFeedbackInputFeedbackType[keyof typeof SiteFeedbackInputFeedbackType];
+
+
+export const SiteFeedbackInputFeedbackType = {
+  feature: 'feature',
+  problem: 'problem',
+} as const;
+
+export interface SiteFeedbackInput {
+  feedbackType: SiteFeedbackInputFeedbackType;
+  /**
+     * @minLength 10
+     * @maxLength 5000
+     */
+  message: string;
+  /** @maxLength 320 */
+  replyEmail?: string;
+  /** @maxLength 200 */
+  website?: string;
+}
+
+export interface SiteFeedbackSubmission {
+  accepted: true;
+}
+
 export interface SupporterPhoto {
   url: string;
   contentType: string;

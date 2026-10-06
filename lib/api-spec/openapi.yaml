@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: site-feedback
+    description: Anonymous Pixl Sports feedback submissions
   - name: projects
     description: Cloud project operations
   - name: storage
@@ -50,6 +52,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /site-feedback:
+    post:
+      operationId: sendSiteFeedback
+      tags: [site-feedback]
+      summary: Send feedback to Pixl Sports support
+      description: Sends an anonymous feature request or problem report to the support inbox.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteFeedbackInput"
+      responses:
+        "200":
+          description: Feedback was accepted for delivery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteFeedbackSubmission"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Too many feedback submissions from this address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: The email provider could not deliver the message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Email delivery is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /schedule-shares:
     post:
       operationId: createScheduleShare
@@ -2472,6 +2513,21 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
+    SiteFeedbackInput:
+      type: object
+      additionalProperties: false
+      required: [feedbackType, message]
+      properties:
+        feedbackType: { type: string, enum: [feature, problem] }
+        message: { type: string, minLength: 10, maxLength: 5000 }
+        replyEmail: { type: string, format: email, maxLength: 320 }
+        website: { type: string, maxLength: 200 }
+    SiteFeedbackSubmission:
+      type: object
+      additionalProperties: false
+      required: [accepted]
+      properties:
+        accepted: { type: boolean, enum: [true] }
     SupporterPhoto:
       type: object
       required: [url, contentType, size, cropX, cropY, cropZoom, updatedAt]
