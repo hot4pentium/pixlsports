@@ -58,7 +58,11 @@ import type {
   SupporterEvent,
   SupporterProfile,
 } from '@/features/supporter-dashboard';
-import { buildAuthEntryHref } from '@/features/auth-entry-routing';
+import {
+  buildAuthEntryHref,
+  getHomeEntryState,
+  shouldBypassAccountLifecycle,
+} from '@/features/auth-entry-routing';
 import { navigateToGameOnSection } from '@/features/game-on-navigation';
 import {
   createScheduleAutosaveQueue,
@@ -3866,16 +3870,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
   const queryClient = useQueryClient();
-  const bypassLifecycle = location === '/'
-    || location === '/season-pass-preview'
-    || location.startsWith('/schedule/')
-    || location.startsWith('/checklist/')
-    || location.startsWith('/watch/')
-    || location.startsWith('/live/')
-    || location.startsWith('/h/')
-    || location.startsWith('/player/')
-    || location.startsWith('/sign-in')
-    || location.startsWith('/sign-up');
+  const bypassLifecycle = shouldBypassAccountLifecycle(location, isLoaded, Boolean(isSignedIn));
   const cachedDashboard = user?.id
     ? readOfflineDashboardSnapshot(window.localStorage, user.id)
     : null;
@@ -3951,6 +3946,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   }
   if (isSignedIn && !bypassLifecycle && lifecycle?.status === 'not_provisioned') {
     if (location.startsWith('/studio/setup') && canShowInitialAccountSetup(user)) return <>{children}</>;
+    if (location === '/' && canShowInitialAccountSetup(user)) return <Redirect to="/studio/setup" />;
     return <AccountUnavailablePage />;
   }
   if (isSignedIn && !bypassLifecycle && lifecycle?.adminSuspended === true) {
@@ -3977,7 +3973,9 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
 
 function HomeRedirect() {
   const { isLoaded, isSignedIn } = useUser();
-  if (isLoaded && isSignedIn) return <Redirect to="/studio" />;
+  const homeEntryState = getHomeEntryState(isLoaded, Boolean(isSignedIn));
+  if (homeEntryState === 'loading') return <AccountLoadingScreen />;
+  if (homeEntryState === 'dashboard') return <Redirect to="/studio" />;
   return <PublicLandingPage />;
 }
 
