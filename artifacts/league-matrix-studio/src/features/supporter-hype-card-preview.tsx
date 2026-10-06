@@ -240,6 +240,5 @@ export function SupporterHypeCardPreview({
         </div>
       </DialogContent>
     </Dialog>
-    </Dialog>
   );
 }
