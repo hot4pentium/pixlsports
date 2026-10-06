@@ -4428,19 +4428,31 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
     }, session);
     const desktopActions = await connection.evaluate<{
       mobileHidden: boolean;
+      desktopHypeCardVisible: boolean;
+      desktopHypePreviewVisible: boolean;
+      quickLinksBelowHypeCard: boolean;
+      eventCardsCentered: boolean;
       statsVisible: boolean;
       statsLabel: string;
       statsPath: string;
       statsEventId: string;
       hypeQuickLinkRemoved: boolean;
-      actionsUseSingleStatsButton: boolean;
+      actionsUseTwoColumnQuickLinks: boolean;
       statsMatchesReference: boolean;
     }>(`(() => {
       const mobile = document.querySelector('.supporter-dashboard-mobile-shell');
       const shell = document.querySelector('.supporter-dashboard-desktop-shell');
+      const sidebar = shell?.querySelector('[data-testid="dashboard-desktop-sidebar"]');
+      const hypeCard = sidebar?.querySelector('[data-testid="dashboard-hype-card-desktop"]');
+      const preview = hypeCard?.querySelector('[data-testid="desktop-saved-hype-card"]');
+      const quickLinks = sidebar?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
+      const hypeRect = hypeCard instanceof HTMLElement ? hypeCard.getBoundingClientRect() : null;
+      const quickLinksRect = quickLinks instanceof HTMLElement ? quickLinks.getBoundingClientRect() : null;
+      const collectionGrid = shell?.querySelector('[data-testid="game-on-dashboard-collection"] .game-on-collection__grid');
       const stats = shell?.querySelector('[data-testid="link-desktop-independent-stats"]');
       const group = shell?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
       const grid = group?.querySelector('[data-testid="dashboard-primary-actions-grid"]');
+      const familyGuide = group?.querySelector('[data-testid="link-desktop-supporter-guide"]');
       const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
       const statsRect = stats instanceof HTMLElement ? stats.getBoundingClientRect() : null;
       const gridRect = grid instanceof HTMLElement ? grid.getBoundingClientRect() : null;
@@ -4451,14 +4463,19 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         && element.getBoundingClientRect().height > 0;
       return {
         mobileHidden: mobile instanceof HTMLElement && getComputedStyle(mobile).display === 'none',
+        desktopHypeCardVisible: visible(hypeCard),
+        desktopHypePreviewVisible: visible(preview),
+        quickLinksBelowHypeCard: Boolean(hypeRect && quickLinksRect && quickLinksRect.top >= hypeRect.bottom - 1),
+        eventCardsCentered: collectionGrid instanceof HTMLElement && getComputedStyle(collectionGrid).justifyContent === 'center',
         statsVisible: visible(stats),
         statsLabel: stats?.textContent?.trim() || '',
         statsPath: statsUrl?.pathname || '',
         statsEventId: statsUrl?.searchParams.get('eventId') || '',
         hypeQuickLinkRemoved: !shell?.querySelector('[data-testid="link-desktop-independent-hype"]'),
-        actionsUseSingleStatsButton: Boolean(
-          group && grid && stats?.parentElement === grid && statsStyle?.display === 'flex'
-          && getComputedStyle(grid).display === 'flex' && statsRect && gridRect && statsRect.width < gridRect.width,
+        actionsUseTwoColumnQuickLinks: Boolean(
+          group && grid && stats?.parentElement === grid && familyGuide?.parentElement === grid
+          && statsStyle?.display === 'flex' && getComputedStyle(grid).display === 'grid'
+          && statsRect && gridRect && statsRect.width < gridRect.width,
         ),
         statsMatchesReference: Boolean(
           statsStyle && stats?.querySelector('svg')
@@ -4471,12 +4488,16 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
     })()`, session);
     assert.deepEqual(desktopActions, {
       mobileHidden: true,
+      desktopHypeCardVisible: true,
+      desktopHypePreviewVisible: true,
+      quickLinksBelowHypeCard: true,
+      eventCardsCentered: true,
       statsVisible: true,
       statsLabel: 'View stats',
       statsPath: '/studio/season-stats',
       statsEventId: '',
       hypeQuickLinkRemoved: true,
-      actionsUseSingleStatsButton: true,
+      actionsUseTwoColumnQuickLinks: true,
       statsMatchesReference: true,
     });
     assert.deepEqual(await connection.evaluate<{
@@ -4623,6 +4644,34 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
         }
       }
     }
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await wait(`document.querySelector('[data-testid="desktop-saved-hype-card"] .supporter-hype-preview__surface')?.dataset.design==='breakout'`);
+    assert.deepEqual(await evaluate(`(() => {
+      const desktop = document.querySelector('.supporter-dashboard-desktop-shell');
+      const mobile = document.querySelector('.supporter-dashboard-mobile-shell');
+      const preview = desktop?.querySelector('[data-testid="desktop-saved-hype-card"]');
+      const surface = preview?.querySelector('.supporter-hype-preview__surface');
+      const link = preview?.querySelector('[data-testid="link-desktop-hype-preview"]');
+      const rect = surface?.getBoundingClientRect();
+      return {
+        previewVisible: preview instanceof HTMLElement && preview.getClientRects().length > 0,
+        linkPath: link instanceof HTMLAnchorElement ? new URL(link.href).pathname : '',
+        cardRatio: Boolean(rect && Math.abs(rect.width / rect.height - 5 / 7) < .01),
+        mobileShellHidden: mobile instanceof HTMLElement && getComputedStyle(mobile).display === 'none',
+      };
+    })()`), {
+      previewVisible: true,
+      linkPath: '/fan/saved-athlete-token',
+      cardRatio: true,
+      mobileShellHidden: true,
+    });
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+
     await evaluate(`window.__setHypePreviewState('mismatch')`);
     await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('different athlete details')`);
     await wait(`Boolean(document.querySelector('[data-testid="button-reconnect-hype-card-saved-athlete-token"]'))`);

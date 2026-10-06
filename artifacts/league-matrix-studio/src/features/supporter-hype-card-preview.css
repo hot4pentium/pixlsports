@@ -90,3 +90,20 @@
 .supporter-hype-preview__link:focus-visible,
 .supporter-hype-preview__state a:focus-visible,
 .supporter-hype-preview__state button:focus-visible { outline: 2px solid #a1d1ff; outline-offset: 2px; border-radius: 8px; }
+
+.supporter-hype-preview--desktop {
+  height: auto;
+  gap: 0;
+}
+.supporter-hype-preview--desktop .supporter-hype-preview__link {
+  flex: 0 0 auto;
+  width: min(100%, 190px);
+  margin-inline: auto;
+  padding: 0;
+}
+.supporter-hype-preview--desktop .supporter-hype-preview__state {
+  flex: none;
+  width: 100%;
+  min-height: 160px;
+  padding: 10px;
+}

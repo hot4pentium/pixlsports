@@ -7,6 +7,7 @@ import { normalizeCardAppearance } from './hype-card-appearance';
 import './supporter-hype-card-preview.css';
 
 type Props = {
+  placement?: 'mobile' | 'desktop';
   card?: OwnedAthleteInvite;
   href: string;
   reconnectionCandidates?: OwnedAthleteInvite[];
@@ -20,6 +21,7 @@ type Props = {
 
 /** A saved front only: editing, flipping, and sharing stay on the full card. */
 export function SupporterHypeCardPreview({
+  placement = 'mobile',
   card,
   href,
   reconnectionCandidates = [],
@@ -34,8 +36,13 @@ export function SupporterHypeCardPreview({
   const unavailable = card?.paused || card?.showHypeCard === false;
   const appearance = card?.cardAppearance ? normalizeCardAppearance(card.cardAppearance) : null;
   const design = appearance?.design ?? 'classic';
+  const isMobile = placement === 'mobile';
   return (
-    <section className="supporter-hype-preview" aria-label="Saved HYPE Card" data-testid="mobile-saved-hype-card">
+    <section
+      className={`supporter-hype-preview${isMobile ? '' : ' supporter-hype-preview--desktop'}`}
+      aria-label="Saved HYPE Card"
+      data-testid={isMobile ? 'mobile-saved-hype-card' : 'desktop-saved-hype-card'}
+    >
       {loading ? (
         <div className="supporter-hype-preview__state" role="status">
           <Loader2 size={20} className="animate-spin" aria-hidden="true" />
@@ -68,7 +75,7 @@ export function SupporterHypeCardPreview({
                     onClick={() => onReconnect?.(candidate)}
                     disabled={!onReconnect || Boolean(reconnectingToken)}
                     aria-label={`Reconnect ${candidate.athleteName}'s HYPE Card to the current athlete`}
-                    data-testid={`button-reconnect-hype-card-${candidate.inviteToken}`}
+                    data-testid={`${isMobile ? 'button-reconnect-hype-card' : 'button-reconnect-hype-card-desktop'}-${candidate.inviteToken}`}
                   >
                     {reconnectingToken === candidate.inviteToken ? 'Reconnecting…' : 'Reconnect'}
                   </button>
@@ -80,7 +87,12 @@ export function SupporterHypeCardPreview({
           <Link href="/studio/athlete-page">{card ? 'Manage card' : 'Set up card'}<ArrowUpRight size={14} aria-hidden="true" /></Link>
         </div>
       ) : (
-        <Link href={href} className="supporter-hype-preview__link" aria-label={`View ${card.athleteName}'s HYPE Card`} data-testid="link-mobile-hype-preview">
+        <Link
+          href={href}
+          className="supporter-hype-preview__link"
+          aria-label={`View ${card.athleteName}'s HYPE Card`}
+          data-testid={isMobile ? 'link-mobile-hype-preview' : 'link-desktop-hype-preview'}
+        >
           <div className="supporter-hype-preview__surface" data-design={design}>
             <LivingAthleteCardFront
               athleteName={card.athleteName}

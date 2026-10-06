@@ -1196,6 +1196,7 @@ export function SupporterDashboardView({
             mobileHypeCard={
               <SupporterHypeCardPreview
                 key={`${userId ?? 'signed-out'}:${savedFanCard?.inviteToken ?? 'none'}`}
+                placement="mobile"
                 card={savedFanCard}
                 href={fanCardHref}
                 reconnectionCandidates={fanCardReconnectionCandidates}
@@ -1326,22 +1327,58 @@ export function SupporterDashboardView({
         statTrackerTeamName={profile.teamName}
         onCompleteScheduledGame={onCompleteScheduledGame}
       />
-      <section className="combined-actions-card" aria-label="Quick links" data-testid="dashboard-primary-actions-desktop">
-        <div className="combined-actions-card__heading">
-          <span className="combined-actions-card__heading-mark" aria-hidden="true" />
-          <span>Quick links</span>
-        </div>
-        <div className="combined-actions-card__grid combined-actions-card__grid--single" data-testid="dashboard-primary-actions-grid">
-          <Link href={dashboardStatsHref} className="combined-actions-card__stats-link" data-testid="link-desktop-independent-stats">
-            <ArrowLeft size={16} aria-hidden="true" />
-            <span>View stats</span>
-          </Link>
-          <Link href="/supporter-guide" className="combined-actions-card__stats-link" data-testid="link-desktop-supporter-guide">
-            <BookOpen size={16} aria-hidden="true" />
-            <span>Family guide</span>
-          </Link>
-        </div>
-      </section>
+      <aside className="supporter-dashboard-desktop-sidebar" aria-label="HYPE Card and quick links" data-testid="dashboard-desktop-sidebar">
+        <section
+          className="combined-actions-card dashboard-hype-card-panel"
+          aria-labelledby="dashboard-hype-card-heading-desktop"
+          data-testid="dashboard-hype-card-desktop"
+        >
+          <div className="combined-actions-card__heading">
+            <span className="combined-actions-card__heading-mark" aria-hidden="true" />
+            <span id="dashboard-hype-card-heading-desktop">
+              {profile.athleteName ? `${profile.athleteName}’s HYPE Card` : 'HYPE Card'}
+            </span>
+          </div>
+          <div className="dashboard-hype-card-panel__body">
+            <div className="dashboard-hype-card-panel__meta">
+              <span>Player spotlight</span>
+              <span>
+                {profile.jerseyNumber ? `#${profile.jerseyNumber} · ` : ''}
+                {recordSport?.toUpperCase() || 'Athlete'}
+              </span>
+            </div>
+            <SupporterHypeCardPreview
+              key={`${userId ?? 'signed-out'}:${savedFanCard?.inviteToken ?? 'none'}:desktop`}
+              placement="desktop"
+              card={savedFanCard}
+              href={fanCardHref}
+              reconnectionCandidates={fanCardReconnectionCandidates}
+              onReconnect={reconnectFanCard}
+              reconnectingToken={reconnectingFanCardToken}
+              reconnectError={fanCardReconnectError}
+              loading={Boolean(userId) && athleteInvitesQuery.isLoading}
+              failed={Boolean(userId) && athleteInvitesQuery.isError}
+              onRetry={() => { void athleteInvitesQuery.refetch(); }}
+            />
+          </div>
+        </section>
+        <section className="combined-actions-card" aria-label="Quick links" data-testid="dashboard-primary-actions-desktop">
+          <div className="combined-actions-card__heading">
+            <span className="combined-actions-card__heading-mark" aria-hidden="true" />
+            <span>Quick links</span>
+          </div>
+          <div className="combined-actions-card__grid combined-actions-card__grid--single" data-testid="dashboard-primary-actions-grid">
+            <Link href={dashboardStatsHref} className="combined-actions-card__stats-link" data-testid="link-desktop-independent-stats">
+              <ArrowLeft size={16} aria-hidden="true" />
+              <span>View stats</span>
+            </Link>
+            <Link href="/supporter-guide" className="combined-actions-card__stats-link" data-testid="link-desktop-supporter-guide">
+              <BookOpen size={16} aria-hidden="true" />
+              <span>Family guide</span>
+            </Link>
+          </div>
+        </section>
+      </aside>
       {selectionSyncError && <p role="status" className="text-sm text-red-300" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
