@@ -4567,7 +4567,13 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     await writeFile(fixtures.harnessPath, harnessSource());
     await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)));
     devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
-      cwd: appDirectory, env: { ...process.env, PORT: String(port), BASE_PATH: '/' },
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(port),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     devMonitor = monitorProcess(devServer, 'HYPE fixture Vite');
@@ -4587,9 +4593,64 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     page = await openPage(connection, fixtureUrl);
     const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
     const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean);
+    const verifyHypeCardShare = async (variant: 'mobile' | 'desktop') => {
+      const expectedUrl = new URL('/fan/saved-athlete-token', fixtureUrl).toString();
+      await wait(`Boolean(document.querySelector('[data-testid="button-${variant}-hype-card-share"]'))`);
+      await evaluate(`document.querySelector('[data-testid="button-${variant}-hype-card-share"]').click()`);
+      await wait(`Boolean(document.querySelector('[data-testid="img-${variant}-hype-card-qr"]'))`);
+      const revealed = await evaluate<{ link: string; qrSrc: string; qrAlt: string }>(`(() => {
+        const link = document.querySelector('[data-testid="input-${variant}-hype-card-share-link"]');
+        const qr = document.querySelector('[data-testid="img-${variant}-hype-card-qr"]');
+        return {
+          link: link instanceof HTMLInputElement ? link.value : '',
+          qrSrc: qr instanceof HTMLImageElement ? qr.src : '',
+          qrAlt: qr instanceof HTMLImageElement ? qr.alt : '',
+        };
+      })()`);
+      assert.deepEqual(revealed, {
+        link: expectedUrl,
+        qrSrc: revealed.qrSrc,
+        qrAlt: "QR code for Alexandria Montgomery-Williams's public HYPE Card",
+      });
+      assert.match(revealed.qrSrc, /^data:image\/png;base64,/);
+      await evaluate(`Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (text) => { window.__copiedHypeCardUrl = text; } },
+      });
+      document.querySelector('[data-testid="button-${variant}-copy-hype-card-link"]').click()`);
+      await wait(`document.querySelector('[data-testid="text-${variant}-hype-card-copy-status"]')?.textContent === 'Link copied.'`);
+      assert.equal(await evaluate<string>('window.__copiedHypeCardUrl'), expectedUrl);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Escape',
+        code: 'Escape',
+        windowsVirtualKeyCode: 27,
+      }, page!.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Escape',
+        code: 'Escape',
+        windowsVirtualKeyCode: 27,
+      }, page!.sessionId);
+      await wait(`!document.querySelector('[data-testid="dialog-${variant}-hype-card-share"]')`);
+      assert.equal(
+        await evaluate(`document.activeElement?.getAttribute('data-testid')`),
+        `button-${variant}-hype-card-share`,
+        `${variant} share dialog returns focus to its button`,
+      );
+    };
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
-    await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('Loading')`);
+    await wait(`document.body.textContent.includes('Loading your card')`);
+    const initialPreviewStates = await evaluate<Array<{ testId: string | null; text: string }>>(`Array.from(document.querySelectorAll('.supporter-hype-preview')).map((preview) => ({
+      testId: preview.getAttribute('data-testid'),
+      text: preview.textContent || '',
+    }))`);
+    assert.ok(
+      initialPreviewStates.some((preview) => preview.testId === 'mobile-saved-hype-card' && preview.text.includes('Loading')),
+      `the mobile card preview should expose its loading state: ${JSON.stringify(initialPreviewStates)}`,
+    );
     await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+    await verifyHypeCardShare('mobile');
     for (const design of ['classic', 'gallery', 'spotlight', 'breakout']) {
       await evaluate(`window.__setHypePreviewState('${design}')`);
       await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design === '${design}'`);
@@ -4670,6 +4731,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       cardRatio: true,
       mobileShellHidden: true,
     });
+    await verifyHypeCardShare('desktop');
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
 
     await evaluate(`window.__setHypePreviewState('mismatch')`);
@@ -4698,6 +4760,11 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       await wait(`!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
       await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('${state === 'error' ? 'couldn’t load' : state === 'paused' ? 'paused' : state === 'hidden' ? 'hidden' : 'belongs here'}')`);
       assert.equal(await evaluate(`!!document.querySelector('[data-testid="mobile-saved-hype-card"] svg image')`), false);
+      assert.equal(
+        await evaluate(`!!document.querySelector('[data-testid="button-mobile-hype-card-share"]')`),
+        false,
+        `${state} cards do not offer a public share link`,
+      );
     }
     await evaluate(`window.__hypePreviewState='gallery'; document.querySelector('[data-testid="mobile-saved-hype-card"] button').click()`);
     await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='gallery'`);
