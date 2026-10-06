@@ -20,3 +20,9 @@ Keep the mobile Shoutouts & Replies summary card out of the overview grid. Surfa
 **Why:** The user asked to remove that card on mobile and make available shoutouts visible from the header.
 
 **How to apply:** Keep the inbox reachable from the header; use the existing unread reply count and the available Fan Shoutouts list to control the glow.
+
+For the desktop supporter dashboard, keep the HYPE Card in a compact, content-height right-side panel, put Quick Links directly beneath it, and center the Event Cards within their panel.
+
+**Why:** The user approved this revised dashboard arrangement.
+
+**How to apply:** Preserve this as the desktop layout direction; keep mobile layout decisions separate.
