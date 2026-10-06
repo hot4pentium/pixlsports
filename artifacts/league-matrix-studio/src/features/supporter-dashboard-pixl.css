@@ -45,7 +45,9 @@
 
 :is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__grid--single {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
+  gap: 8px;
   margin: 0 16px 16px;
   overflow: visible;
   border: 0;

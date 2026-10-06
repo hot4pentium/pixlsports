@@ -30,6 +30,10 @@ test('supporter guide separates account tools from public-card actions', async (
   }
 
   assert.match(app, /<Route path="\/supporter-guide" component={SupporterToolsGuidePage} \/>/);
+  assert.match(
+    guide,
+    /<Link href="\/studio" data-testid="link-supporter-guide-hub">[\s\S]*?<ArrowLeft size=\{16\} aria-hidden="true" \/>[\s\S]*?Back to dashboard[\s\S]*?<\/Link>/,
+  );
   assert.match(dashboard, /href="\/supporter-guide"[^>]*data-testid="link-mobile-supporter-guide"/);
   assert.match(dashboard, /href="\/supporter-guide"[^>]*data-testid="link-desktop-supporter-guide"/);
   const printStyles = styles.slice(styles.indexOf('@media print'));

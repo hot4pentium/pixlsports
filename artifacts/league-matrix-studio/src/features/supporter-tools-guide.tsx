@@ -32,7 +32,7 @@ export function SupporterToolsGuidePage() {
             </button>
             <Link href="/studio" data-testid="link-supporter-guide-hub">
               <ArrowLeft size={16} aria-hidden="true" />
-              Supporter Hub
+              Back to dashboard
             </Link>
           </div>
         </header>
