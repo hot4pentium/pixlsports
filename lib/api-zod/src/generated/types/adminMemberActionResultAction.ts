@@ -12,6 +12,9 @@ export type AdminMemberActionResultAction = typeof AdminMemberActionResultAction
 export const AdminMemberActionResultAction = {
   account_suspended: 'account_suspended',
   account_reactivated: 'account_reactivated',
+  account_cancellation_reversed: 'account_cancellation_reversed',
+  identity_blocked: 'identity_blocked',
+  identity_unblocked: 'identity_unblocked',
   account_deleted: 'account_deleted',
   administrator_granted: 'administrator_granted',
   administrator_revoked: 'administrator_revoked',

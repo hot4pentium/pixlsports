@@ -38,7 +38,10 @@ export interface AdminMember {
   /** @nullable */
   accessMode: AdminMemberAccessMode;
   lifecycleStatus: AdminMemberLifecycleStatus;
+  /** @nullable */
+  deletionEligibleAt: Date | null;
   adminSuspended: boolean;
+  identityBlocked: boolean;
   isAdministrator: boolean;
   profile: AdminMemberProfile;
 }

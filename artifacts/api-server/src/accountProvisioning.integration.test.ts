@@ -1,14 +1,21 @@
 import assert from "node:assert/strict";
 import express from "express";
 import test from "node:test";
-import { eq, inArray } from "drizzle-orm";
-import { accountAccessTable, db } from "@workspace/db";
+import { eq, inArray, or } from "drizzle-orm";
+import {
+  accountAccessTable,
+  adminActionAuditTable,
+  adminIdentityBlocksTable,
+  adminUsersTable,
+  db,
+} from "@workspace/db";
 import accountLifecycleRouter from "./routes/accountLifecycle";
 import { createAccountAccessRouter } from "./routes/accountAccess";
 import {
   createAccountProvisioning,
   type AccountProvisioningClerkClient,
 } from "./lib/accountProvisioning";
+import { updateAdminMemberIdentityBlock } from "./lib/memberAdmin";
 
 type TestClerkIdentity = {
   id: string;
@@ -185,6 +192,70 @@ test("first supporter save creates the account and Clerk-owned provisioning mark
       server.close((error) => error ? reject(error) : resolve());
     });
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+  }
+});
+
+test("an Admin block wins when first-time setup is already in progress", async () => {
+  const administratorId = `admin-setup-block-${crypto.randomUUID()}`;
+  const ownerClerkUserId = `setup-block-race-${crypto.randomUUID()}`;
+  const emailAddress = `setup-block-race-${crypto.randomUUID()}@example.test`;
+  await db.insert(adminUsersTable).values({ clerkUserId: administratorId });
+  const identities = new Map([[ownerClerkUserId, createTestIdentity(ownerClerkUserId, emailAddress)]]);
+  const provisioning = createAccountProvisioning(() => createTestClerk(identities));
+  const originalGetInitialSetup = provisioning.getInitialAccountSetup.bind(provisioning);
+  let markSetupStarted!: () => void;
+  const setupStarted = new Promise<void>((resolve) => { markSetupStarted = resolve; });
+  let releaseSetup!: () => void;
+  const setupGate = new Promise<void>((resolve) => { releaseSetup = resolve; });
+  provisioning.getInitialAccountSetup = async (ownerId) => {
+    const setup = await originalGetInitialSetup(ownerId);
+    markSetupStarted();
+    await setupGate;
+    return setup;
+  };
+
+  const app = createAuthenticatedTestApp(provisioning);
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const request = fetch(`http://127.0.0.1:${address.port}/api/account/access`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user": ownerClerkUserId,
+      },
+      body: JSON.stringify({ role: "fan", accessMode: "full" }),
+    });
+    await setupStarted;
+
+    const block = await updateAdminMemberIdentityBlock(
+      administratorId,
+      ownerClerkUserId,
+      true,
+      "Prevent account creation during review",
+    );
+    assert.equal(block.action, "identity_blocked");
+    releaseSetup();
+
+    const response = await request;
+    assert.equal(response.status, 423);
+    assert.equal((await response.json()).code, "ACCOUNT_IDENTITY_BLOCKED");
+    assert.deepEqual(await db.select().from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId)), []);
+  } finally {
+    releaseSetup();
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(adminIdentityBlocksTable)
+      .where(eq(adminIdentityBlocksTable.clerkUserId, ownerClerkUserId));
+    await db.delete(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+    await db.delete(adminActionAuditTable)
+      .where(or(
+        eq(adminActionAuditTable.actorClerkUserId, administratorId),
+        eq(adminActionAuditTable.targetClerkUserId, ownerClerkUserId),
+      ));
+    await db.delete(adminUsersTable).where(eq(adminUsersTable.clerkUserId, administratorId));
   }
 });
 

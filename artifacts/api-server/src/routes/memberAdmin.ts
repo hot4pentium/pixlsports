@@ -19,6 +19,12 @@ import {
   UpdateAdminMemberSuspensionBody,
   UpdateAdminMemberSuspensionParams,
   UpdateAdminMemberSuspensionResponse,
+  UpdateAdminMemberIdentityBlockBody,
+  UpdateAdminMemberIdentityBlockParams,
+  UpdateAdminMemberIdentityBlockResponse,
+  RestoreAdminMemberCancellationBody,
+  RestoreAdminMemberCancellationParams,
+  RestoreAdminMemberCancellationResponse,
 } from "@workspace/api-zod";
 import { getRequiredClerkUserId, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { hasAdminAccess, requireAdmin } from "../lib/adminAccess";
@@ -32,6 +38,8 @@ import {
   updateAdminMemberProfile,
   updateAdminMemberAdministrator,
   updateAdminMemberSuspension,
+  updateAdminMemberIdentityBlock,
+  restoreAdminMemberCancellation,
 } from "../lib/memberAdmin";
 
 const router: IRouter = Router();
@@ -132,6 +140,71 @@ router.patch("/admin/members/:userId/suspension", requireAdmin, async (req, res,
       body.data.reason,
     );
     res.json(UpdateAdminMemberSuspensionResponse.parse(action));
+  } catch (error) {
+    if (error instanceof AdminRequestError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.patch("/admin/members/:userId/identity-block", requireAdmin, async (req, res, next): Promise<void> => {
+  const params = UpdateAdminMemberIdentityBlockParams.safeParse(req.params);
+  const body = UpdateAdminMemberIdentityBlockBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  try {
+    const member = await getAdminMember(params.data.userId);
+    if (!member) {
+      res.status(404).json({ error: "Member account was not found." });
+      return;
+    }
+    const action = await updateAdminMemberIdentityBlock(
+      getRequiredClerkUserId(res),
+      params.data.userId,
+      body.data.blocked,
+      body.data.reason,
+    );
+    res.json(UpdateAdminMemberIdentityBlockResponse.parse(action));
+  } catch (error) {
+    if (error instanceof AdminRequestError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.post("/admin/members/:userId/cancellation/restore", requireAdmin, async (req, res, next): Promise<void> => {
+  const params = RestoreAdminMemberCancellationParams.safeParse(req.params);
+  const body = RestoreAdminMemberCancellationBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  try {
+    const member = await getAdminMember(params.data.userId);
+    if (!member) {
+      res.status(404).json({ error: "Member account was not found." });
+      return;
+    }
+    const action = await restoreAdminMemberCancellation(
+      getRequiredClerkUserId(res),
+      params.data.userId,
+      body.data.reason,
+    );
+    res.json(RestoreAdminMemberCancellationResponse.parse(action));
   } catch (error) {
     if (error instanceof AdminRequestError) {
       res.status(error.statusCode).json({ error: error.message });

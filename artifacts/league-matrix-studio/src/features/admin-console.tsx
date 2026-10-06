@@ -11,6 +11,8 @@ import {
   useUpdateAdminMemberProfile,
   useUpdateAdminMemberAdministrator,
   useUpdateAdminMemberSuspension,
+  useUpdateAdminMemberIdentityBlock,
+  useRestoreAdminMemberCancellation,
   type AdminMember,
   type AdminMemberProfileUpdate,
   type AdminMemberActionResult,
@@ -31,6 +33,9 @@ const AUDIT_ACTIONS = [
   ['profile_updated', 'Profile updated'],
   ['account_suspended', 'Account suspended'],
   ['account_reactivated', 'Account reactivated'],
+  ['account_cancellation_reversed', 'Cancellation reversed'],
+  ['identity_blocked', 'Pixl access blocked'],
+  ['identity_unblocked', 'Pixl access unblocked'],
   ['account_deleted', 'Account deleted'],
   ['administrator_granted', 'Administrator access granted'],
   ['administrator_revoked', 'Administrator access revoked'],
@@ -300,6 +305,8 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
   const profileMutation = useUpdateAdminMemberProfile();
   const administratorMutation = useUpdateAdminMemberAdministrator();
   const suspensionMutation = useUpdateAdminMemberSuspension();
+  const identityBlockMutation = useUpdateAdminMemberIdentityBlock();
+  const cancellationRestoreMutation = useRestoreAdminMemberCancellation();
   const deleteMutation = useDeleteAdminMember();
   const member = detail.data;
   const [profile, setProfile] = useState<AdminMemberProfileUpdate>({});
@@ -308,6 +315,7 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
   const [administratorMessage, setAdministratorMessage] = useState('');
   const [confirmText, setConfirmText] = useState('');
   const [actionError, setActionError] = useState('');
+  const [accessActionMessage, setAccessActionMessage] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
   const [lastDeletion, setLastDeletion] = useState<AdminMemberActionResult | null>(null);
   const protectedTarget = Boolean(member && (member.clerkUserId === user?.id || member.isAdministrator));
@@ -351,9 +359,44 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
   const setSuspension = (suspended: boolean) => {
     if (!member || protectedTarget) return;
     setActionError('');
+    setAccessActionMessage('');
     suspensionMutation.mutate({ userId, data: { suspended, reason: reason.trim() || null } }, {
       onSuccess: () => { setReason(''); refreshAfterMutation(); },
       onError: () => setActionError(`Could not ${suspended ? 'suspend' : 'reactivate'} this member. Their current access has not been changed.`),
+    });
+  };
+
+  const setIdentityBlock = (blocked: boolean) => {
+    if (!member || protectedTarget || member.lifecycleStatus !== 'not_provisioned' || reason.trim().length < 3) return;
+    setActionError('');
+    setAccessActionMessage('');
+    identityBlockMutation.mutate({ userId, data: { blocked, reason: reason.trim() } }, {
+      onSuccess: (result) => {
+        setReason('');
+        setAccessActionMessage(result.message);
+        refreshAfterMutation();
+      },
+      onError: () => {
+        setActionError(`Could not ${blocked ? 'block' : 'unblock'} Pixl Sports access. Refresh the member and audit history before retrying.`);
+        refreshAfterMutation();
+      },
+    });
+  };
+
+  const restoreCancellation = () => {
+    if (!member || protectedTarget || member.lifecycleStatus !== 'cancelled' || reason.trim().length < 3) return;
+    setActionError('');
+    setAccessActionMessage('');
+    cancellationRestoreMutation.mutate({ userId, data: { reason: reason.trim() } }, {
+      onSuccess: (result) => {
+        setReason('');
+        setAccessActionMessage(result.message);
+        refreshAfterMutation();
+      },
+      onError: () => {
+        setActionError('Could not reverse this cancellation. The account may be outside its recovery window; refresh the member and audit history.');
+        refreshAfterMutation();
+      },
     });
   };
 
@@ -379,6 +422,7 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
     event.preventDefault();
     if (!member || protectedTarget || confirmText !== userId || reason.trim().length < 3) return;
     setActionError('');
+    setAccessActionMessage('');
     deleteMutation.mutate({ userId, data: { confirmationText: confirmText, reason: reason.trim() } }, {
       onSuccess: (result) => {
         setLastDeletion(result);
@@ -414,6 +458,7 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
         <span className={`admin-chip ${member.adminSuspended ? 'admin-chip-danger' : ''}`}>{member.adminSuspended ? 'Admin suspended' : 'Access available'}</span>
         <span className="admin-chip">{statusLabel(member.lifecycleStatus)}</span>
         <span className="admin-chip">{member.accessMode ?? 'Access mode unknown'}</span>
+        {member.identityBlocked && <span className="admin-chip admin-chip-danger">Pixl Sports blocked</span>}
         {protectedTarget && <span className="admin-chip admin-chip-warn">Protected administrator account</span>}
       </div>
       {lastDeletion && (
@@ -430,6 +475,7 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
         </div>
       )}
       {actionError && <div className="admin-error mt-5" role="alert">{actionError}</div>}
+      {accessActionMessage && <div className="mt-5 border border-[#cbded2] bg-[#f2f8f2] p-3 text-sm text-[#286044]" role="status">{accessActionMessage}</div>}
 
       <form className="mt-7" onSubmit={submitProfile}>
         <div className="mb-4 flex items-end justify-between gap-3">
@@ -474,26 +520,59 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
         <p className="admin-eyebrow">Access controls</p>
         <h3 className="admin-display mt-1 text-2xl uppercase">Member access</h3>
           {protectedTarget ? (
-          <p className="mt-3 border border-[#ead2b7] bg-[#fff9ef] p-3 text-sm text-[#795327]">Administrative accounts cannot be suspended or deleted from this workspace.</p>
+          <p className="mt-3 border border-[#ead2b7] bg-[#fff9ef] p-3 text-sm text-[#795327]">Administrative accounts cannot be blocked, suspended, cancellation-restored, or deleted from this workspace.</p>
         ) : (
           <>
-            <label className="mt-4 block"><span className="admin-label">Reason (optional for access change; required for deletion)</span><textarea className="admin-input min-h-20 resize-y" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+            <label className="mt-4 block"><span className="admin-label">Reason (required for Pixl block, cancellation restore, and deletion; optional for suspension)</span><textarea className="admin-input min-h-20 resize-y" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
               {member.lifecycleStatus === 'not_provisioned' ? (
-                <p className="mt-3 border border-[#d5dfda] bg-[#f4f7f3] p-3 text-sm text-[#39566b]">This sign-in does not have a Pixl Sports app account, so an app-level suspension cannot be applied.</p>
+                <div className="mt-3 border border-[#d5dfda] bg-[#f4f7f3] p-3 text-sm text-[#39566b]">
+                  <p>{member.identityBlocked
+                    ? 'Pixl Sports access is blocked for this sign-in. The Clerk identity and stored app data remain separate and are not deleted.'
+                    : 'This sign-in has no Pixl Sports app-account record. Blocking it prevents private app access and first-time setup without deleting the Clerk identity or stored app data. Public share links are not revoked.'}</p>
+                  <button
+                    type="button"
+                    className={`admin-button mt-3 ${member.identityBlocked ? 'admin-button-primary' : ''}`}
+                    disabled={identityBlockMutation.isPending || reason.trim().length < 3}
+                    onClick={() => setIdentityBlock(!member.identityBlocked)}
+                  >
+                    <ShieldOff className="h-4 w-4" />
+                    {identityBlockMutation.isPending
+                      ? (member.identityBlocked ? 'Unblocking…' : 'Blocking…')
+                      : (member.identityBlocked ? 'Unblock Pixl Sports access' : 'Block Pixl Sports access')}
+                  </button>
+                  {reason.trim().length < 3 && <p className="mt-2 text-xs">Enter a reason of at least 3 characters to continue.</p>}
+                </div>
               ) : member.lifecycleStatus === 'deletion_pending' ? (
                 <p className="mt-3 border border-[#e5c3a8] bg-[#fff8ed] p-3 text-sm text-[#795327]">Access changes are disabled while account cleanup is pending.</p>
               ) : (
                 <div className="mt-3 flex flex-wrap gap-2">
+                  {member.lifecycleStatus === 'cancelled' && member.deletionEligibleAt && new Date(member.deletionEligibleAt).getTime() > Date.now() && (
+                    <button
+                      type="button"
+                      className="admin-button admin-button-primary"
+                      disabled={cancellationRestoreMutation.isPending || reason.trim().length < 3}
+                      onClick={restoreCancellation}
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      {cancellationRestoreMutation.isPending ? 'Restoring cancellation…' : 'Restore cancelled account'}
+                    </button>
+                  )}
+                  {member.lifecycleStatus === 'cancelled' && member.adminSuspended && (
+                    <p className="w-full border border-[#ead2b7] bg-[#fff9ef] p-3 text-sm text-[#795327]">Restoring cancellation will not remove the separate administrator suspension.</p>
+                  )}
                   {member.adminSuspended ? (
                     <button type="button" className="admin-button admin-button-primary" disabled={suspensionMutation.isPending} onClick={() => setSuspension(false)}><ShieldCheck className="h-4 w-4" />{suspensionMutation.isPending ? 'Reactivating…' : 'Reactivate access'}</button>
                   ) : (
                     <button type="button" className="admin-button" disabled={suspensionMutation.isPending} onClick={() => setSuspension(true)}><ShieldOff className="h-4 w-4" />{suspensionMutation.isPending ? 'Suspending…' : 'Suspend access'}</button>
                   )}
+                  {member.lifecycleStatus === 'cancelled' && (!member.deletionEligibleAt || new Date(member.deletionEligibleAt).getTime() <= Date.now()) && (
+                    <p className="w-full border border-[#e5c3a8] bg-[#fff8ed] p-3 text-sm text-[#795327]">The recovery window has ended; this cancellation can no longer be reversed.</p>
+                  )}
                 </div>
               )}
             <form className="mt-6 border-t border-[#e3e9e5] pt-5" onSubmit={deleteMember}>
               <div className="flex items-center gap-2 text-[#a33e25]"><AlertTriangle className="h-4 w-4" /><p className="text-xs font-extrabold uppercase tracking-[.12em]">Permanent deletion</p></div>
-              <p className="mt-2 max-w-2xl text-xs leading-relaxed text-[#60778a]">This cannot be undone. Enter the member’s exact account ID and provide a reason of at least 3 characters. Failed or pending outcomes are recorded in the audit history.</p>
+              <p className="mt-2 max-w-2xl text-xs leading-relaxed text-[#60778a]">This permanently removes Pixl Sports data and also asks Clerk to delete the sign-in identity. If Clerk refuses deletion, stored app data may already be gone. To keep the sign-in but block Pixl Sports only, use the reversible app-only control instead. Enter the exact account ID and a reason of at least 3 characters.</p>
               <label className="mt-4 block"><span className="admin-label">Type exact account ID: {userId}</span><input className="admin-input admin-mono" autoComplete="off" spellCheck={false} value={confirmText} onChange={(event) => setConfirmText(event.target.value)} /></label>
               <button type="submit" className="admin-button admin-button-danger mt-3" disabled={deleteMutation.isPending || confirmText !== userId || reason.trim().length < 3}>
                 <Trash2 className="h-4 w-4" />{deleteMutation.isPending ? 'Submitting deletion…' : previousDeletionRequest?.status === 'failed' || member.lifecycleStatus === 'deletion_pending' ? 'Retry deletion cleanup' : 'Request permanent deletion'}
@@ -505,6 +584,7 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
       <dl className="mt-7 grid gap-3 border-t border-[#d5dfda] pt-5 text-xs sm:grid-cols-2">
         <div><dt className="admin-label">Member since</dt><dd>{formatDate(member.createdAt)}</dd></div>
         <div><dt className="admin-label">Account role</dt><dd>{member.role ?? 'Not set'}</dd></div>
+        {member.deletionEligibleAt && <div><dt className="admin-label">Recovery deadline</dt><dd>{formatDate(member.deletionEligibleAt)}</dd></div>}
         <div className="sm:col-span-2"><dt className="admin-label">Account ID</dt><dd className="admin-mono break-all">{member.clerkUserId}</dd></div>
       </dl>
       <button type="button" className="mt-6 inline-flex items-center gap-2 text-xs font-bold text-[#60778a] hover:text-[#16334b]" onClick={() => void detail.refetch()}><RefreshCw className="h-3.5 w-3.5" />Refresh member from server</button>

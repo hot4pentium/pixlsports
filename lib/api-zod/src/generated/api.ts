@@ -3667,7 +3667,9 @@ export const ListAdminMembersResponse = zod.object({
   "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
   "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
   "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
   "adminSuspended": zod.boolean(),
+  "identityBlocked": zod.boolean(),
   "isAdministrator": zod.boolean(),
   "profile": zod.object({
   "displayName": zod.string().max(listAdminMembersResponseItemsItemProfileDisplayNameMax).nullable(),
@@ -3730,7 +3732,9 @@ export const GetAdminMemberResponse = zod.object({
   "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
   "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
   "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
   "adminSuspended": zod.boolean(),
+  "identityBlocked": zod.boolean(),
   "isAdministrator": zod.boolean(),
   "profile": zod.object({
   "displayName": zod.string().max(getAdminMemberResponseProfileDisplayNameMax).nullable(),
@@ -3816,7 +3820,9 @@ export const UpdateAdminMemberProfileResponse = zod.object({
   "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
   "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
   "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
   "adminSuspended": zod.boolean(),
+  "identityBlocked": zod.boolean(),
   "isAdministrator": zod.boolean(),
   "profile": zod.object({
   "displayName": zod.string().max(updateAdminMemberProfileResponseProfileDisplayNameMax).nullable(),
@@ -3859,7 +3865,7 @@ export const updateAdminMemberSuspensionResponseMessageMax = 500;
 
 export const UpdateAdminMemberSuspensionResponse = zod.object({
   "actionId": zod.string().uuid(),
-  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_cancellation_reversed', 'identity_blocked', 'identity_unblocked', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
   "status": zod.enum(['pending', 'failed', 'completed']),
   "targetClerkUserId": zod.string().min(1).max(updateAdminMemberSuspensionResponseTargetClerkUserIdMax),
   "message": zod.string().max(updateAdminMemberSuspensionResponseMessageMax)
@@ -3894,10 +3900,81 @@ export const updateAdminMemberAdministratorResponseMessageMax = 500;
 
 export const UpdateAdminMemberAdministratorResponse = zod.object({
   "actionId": zod.string().uuid(),
-  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_cancellation_reversed', 'identity_blocked', 'identity_unblocked', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
   "status": zod.enum(['pending', 'failed', 'completed']),
   "targetClerkUserId": zod.string().min(1).max(updateAdminMemberAdministratorResponseTargetClerkUserIdMax),
   "message": zod.string().max(updateAdminMemberAdministratorResponseMessageMax)
+})
+
+
+/**
+ * @summary Block or unblock Pixl Sports access for an identity without an app account
+ */
+export const updateAdminMemberIdentityBlockPathUserIdMax = 200;
+
+
+
+export const UpdateAdminMemberIdentityBlockParams = zod.object({
+  "userId": zod.coerce.string().min(1).max(updateAdminMemberIdentityBlockPathUserIdMax)
+})
+
+export const updateAdminMemberIdentityBlockBodyReasonMin = 3;
+export const updateAdminMemberIdentityBlockBodyReasonMax = 500;
+
+
+
+export const UpdateAdminMemberIdentityBlockBody = zod.object({
+  "blocked": zod.boolean(),
+  "reason": zod.string().min(updateAdminMemberIdentityBlockBodyReasonMin).max(updateAdminMemberIdentityBlockBodyReasonMax)
+})
+
+export const updateAdminMemberIdentityBlockResponseTargetClerkUserIdMax = 200;
+
+export const updateAdminMemberIdentityBlockResponseMessageMax = 500;
+
+
+
+export const UpdateAdminMemberIdentityBlockResponse = zod.object({
+  "actionId": zod.string().uuid(),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_cancellation_reversed', 'identity_blocked', 'identity_unblocked', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
+  "status": zod.enum(['pending', 'failed', 'completed']),
+  "targetClerkUserId": zod.string().min(1).max(updateAdminMemberIdentityBlockResponseTargetClerkUserIdMax),
+  "message": zod.string().max(updateAdminMemberIdentityBlockResponseMessageMax)
+})
+
+
+/**
+ * @summary Reverse cancellation during the account recovery window
+ */
+export const restoreAdminMemberCancellationPathUserIdMax = 200;
+
+
+
+export const RestoreAdminMemberCancellationParams = zod.object({
+  "userId": zod.coerce.string().min(1).max(restoreAdminMemberCancellationPathUserIdMax)
+})
+
+export const restoreAdminMemberCancellationBodyReasonMin = 3;
+export const restoreAdminMemberCancellationBodyReasonMax = 500;
+
+
+
+export const RestoreAdminMemberCancellationBody = zod.object({
+  "reason": zod.string().min(restoreAdminMemberCancellationBodyReasonMin).max(restoreAdminMemberCancellationBodyReasonMax)
+})
+
+export const restoreAdminMemberCancellationResponseTargetClerkUserIdMax = 200;
+
+export const restoreAdminMemberCancellationResponseMessageMax = 500;
+
+
+
+export const RestoreAdminMemberCancellationResponse = zod.object({
+  "actionId": zod.string().uuid(),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_cancellation_reversed', 'identity_blocked', 'identity_unblocked', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
+  "status": zod.enum(['pending', 'failed', 'completed']),
+  "targetClerkUserId": zod.string().min(1).max(restoreAdminMemberCancellationResponseTargetClerkUserIdMax),
+  "message": zod.string().max(restoreAdminMemberCancellationResponseMessageMax)
 })
 
 
@@ -3932,7 +4009,7 @@ export const deleteAdminMemberResponseMessageMax = 500;
 
 export const DeleteAdminMemberResponse = zod.object({
   "actionId": zod.string().uuid(),
-  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_cancellation_reversed', 'identity_blocked', 'identity_unblocked', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
   "status": zod.enum(['pending', 'failed', 'completed']),
   "targetClerkUserId": zod.string().min(1).max(deleteAdminMemberResponseTargetClerkUserIdMax),
   "message": zod.string().max(deleteAdminMemberResponseMessageMax)
@@ -3958,7 +4035,7 @@ export const ListAdminAuditQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(listAdminAuditQueryLimitMax).default(listAdminAuditQueryLimitDefault),
   "offset": zod.coerce.number().int().min(listAdminAuditQueryOffsetMin).default(listAdminAuditQueryOffsetDefault),
   "memberClerkUserId": zod.coerce.string().min(1).max(listAdminAuditQueryMemberClerkUserIdMax).optional().describe('Filter by the affected member\'s Clerk user ID.'),
-  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']).optional().describe('Filter by the recorded administrative action.'),
+  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_cancellation_reversed', 'identity_blocked', 'identity_unblocked', 'account_deleted', 'administrator_granted', 'administrator_revoked']).optional().describe('Filter by the recorded administrative action.'),
   "status": zod.enum(['pending', 'failed', 'completed']).optional().describe('Filter by the recorded action outcome.'),
   "fromDate": zod.coerce.string().regex(listAdminAuditQueryFromDateRegExp).optional().describe('Include entries created on or after this UTC calendar date (YYYY-MM-DD).'),
   "toDate": zod.coerce.string().regex(listAdminAuditQueryToDateRegExp).optional().describe('Include entries created on or before this UTC calendar date (YYYY-MM-DD).')
@@ -3987,7 +4064,7 @@ export const ListAdminAuditResponse = zod.object({
   "id": zod.string().uuid(),
   "actorClerkUserId": zod.string().min(1).max(listAdminAuditResponseItemsItemActorClerkUserIdMax),
   "targetClerkUserId": zod.string().min(1).max(listAdminAuditResponseItemsItemTargetClerkUserIdMax),
-  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
+  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_cancellation_reversed', 'identity_blocked', 'identity_unblocked', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
   "status": zod.enum(['pending', 'failed', 'completed']),
   "changedFields": zod.array(zod.string().max(listAdminAuditResponseItemsItemChangedFieldsItemMax)),
   "reason": zod.string().max(listAdminAuditResponseItemsItemReasonMax).nullable(),
@@ -4125,7 +4202,8 @@ export const GetAccountLifecycleResponse = zod.object({
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
   "expired": zod.boolean(),
-  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
+  "adminSuspended": zod.boolean().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.'),
+  "identityBlocked": zod.boolean().describe('Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity.')
 })
 
 
@@ -4144,7 +4222,8 @@ export const CancelAccountResponse = zod.object({
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
   "expired": zod.boolean(),
-  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
+  "adminSuspended": zod.boolean().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.'),
+  "identityBlocked": zod.boolean().describe('Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity.')
 })
 
 
@@ -4163,7 +4242,8 @@ export const PauseAccountResponse = zod.object({
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
   "expired": zod.boolean(),
-  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
+  "adminSuspended": zod.boolean().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.'),
+  "identityBlocked": zod.boolean().describe('Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity.')
 })
 
 
@@ -4182,7 +4262,8 @@ export const ResumeAccountResponse = zod.object({
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
   "expired": zod.boolean(),
-  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
+  "adminSuspended": zod.boolean().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.'),
+  "identityBlocked": zod.boolean().describe('Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity.')
 })
 
 
@@ -4201,7 +4282,8 @@ export const ReactivateAccountResponse = zod.object({
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
   "expired": zod.boolean(),
-  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
+  "adminSuspended": zod.boolean().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.'),
+  "identityBlocked": zod.boolean().describe('Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity.')
 })
 
 

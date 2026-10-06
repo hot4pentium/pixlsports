@@ -1,5 +1,5 @@
 import { and, desc, eq, gt, isNull, lte, sql } from "drizzle-orm";
-import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
+import { adminIdentityBlocksTable, accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
 
 export const ACCOUNT_RETENTION_DAYS = 90;
 export const PROJECT_MEDIA_QUOTA_BYTES = 1024 * 1024 * 1024;
@@ -33,6 +33,12 @@ export async function getAccountLifecycleSnapshot(
     .from(accountAccessTable)
     .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
     .limit(1);
+  const [identityBlock] = await db
+    .select({ clerkUserId: adminIdentityBlocksTable.clerkUserId })
+    .from(adminIdentityBlocksTable)
+    .where(eq(adminIdentityBlocksTable.clerkUserId, ownerClerkUserId))
+    .limit(1);
+  const identityBlocked = Boolean(identityBlock);
 
   const now = new Date();
   if (!access) {
@@ -46,6 +52,7 @@ export async function getAccountLifecycleSnapshot(
       retentionDays: ACCOUNT_RETENTION_DAYS,
       expired: false,
       adminSuspended: false,
+      identityBlocked,
     };
   }
 
@@ -112,6 +119,7 @@ export async function getAccountLifecycleSnapshot(
     retentionDays: ACCOUNT_RETENTION_DAYS,
     expired,
     adminSuspended: Boolean(access?.adminSuspendedAt),
+    identityBlocked,
   };
 }
 

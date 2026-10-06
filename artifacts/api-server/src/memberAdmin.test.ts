@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   accountAccessTable,
   adminActionAuditTable,
+  adminIdentityBlocksTable,
   adminUsersTable,
   db,
 } from "@workspace/db";
@@ -22,6 +23,8 @@ import {
   AdminRequestError,
   requestAdminMemberDeletion,
   updateAdminMemberAdministrator,
+  restoreAdminMemberCancellation,
+  updateAdminMemberIdentityBlock,
   updateAdminMemberProfile,
   updateAdminMemberSuspension,
 } from "./lib/memberAdmin";
@@ -100,6 +103,8 @@ function fakeClerkUser(id: string, emailAddress: string) {
 
 async function cleanFixture(ids: string[]) {
   if (!ids.length) return;
+  await db.delete(adminIdentityBlocksTable)
+    .where(inArray(adminIdentityBlocksTable.clerkUserId, ids));
   await db.delete(accountAccessTable)
     .where(inArray(accountAccessTable.ownerClerkUserId, ids));
   await db.delete(adminActionAuditTable)
@@ -109,6 +114,106 @@ async function cleanFixture(ids: string[]) {
     ));
   await db.delete(adminUsersTable).where(inArray(adminUsersTable.clerkUserId, ids));
 }
+
+test("admin-only identity blocks are reversible, audited, and enforced by private APIs", async () => {
+  const administratorId = `admin-identity-block-${crypto.randomUUID()}`;
+  const targetId = `identity-block-target-${crypto.randomUUID()}`;
+  await db.insert(adminUsersTable).values({ clerkUserId: administratorId });
+  try {
+    const blocked = await updateAdminMemberIdentityBlock(
+      administratorId,
+      targetId,
+      true,
+      "Repeated abusive sign-in attempts",
+    );
+    assert.equal(blocked.action, "identity_blocked");
+    assert.equal(blocked.status, "completed");
+    assert.match(blocked.message, /identity and app data were not deleted/i);
+
+    const blockedLifecycle = await getAccountLifecycleSnapshot(targetId);
+    assert.equal(blockedLifecycle.status, "not_provisioned");
+    assert.equal(blockedLifecycle.identityBlocked, true);
+    await withTestServer(async (baseUrl) => {
+      const denied = await fetch(`${baseUrl}/__test/private`, {
+        headers: { "x-test-user": targetId },
+      });
+      assert.equal(denied.status, 423);
+      assert.equal((await denied.json()).code, "ACCOUNT_IDENTITY_BLOCKED");
+    });
+
+    const unblocked = await updateAdminMemberIdentityBlock(
+      administratorId,
+      targetId,
+      false,
+      "Review completed; restore setup eligibility",
+    );
+    assert.equal(unblocked.action, "identity_unblocked");
+    assert.equal(unblocked.status, "completed");
+    assert.equal((await getAccountLifecycleSnapshot(targetId)).identityBlocked, false);
+
+    const audit = await db.select().from(adminActionAuditTable)
+      .where(and(
+        eq(adminActionAuditTable.actorClerkUserId, administratorId),
+        eq(adminActionAuditTable.targetClerkUserId, targetId),
+      ));
+    assert.deepEqual(audit.map((entry) => entry.action).sort(), ["identity_blocked", "identity_unblocked"]);
+    assert.ok(audit.every((entry) => entry.status === "completed" && entry.reason));
+  } finally {
+    await cleanFixture([administratorId, targetId]);
+  }
+});
+
+test("admins can reverse an unexpired cancellation without clearing a separate suspension", async () => {
+  const administratorId = `admin-cancel-restore-${crypto.randomUUID()}`;
+  const targetId = `cancel-restore-target-${crypto.randomUUID()}`;
+  const suspendedAt = new Date();
+  await db.insert(adminUsersTable).values({ clerkUserId: administratorId });
+  await db.insert(accountAccessTable).values({
+    ownerClerkUserId: targetId,
+    role: "fan",
+    accessMode: "full",
+    lifecycleStatus: "cancelled",
+    cancelledAt: new Date(),
+    deletionEligibleAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    adminSuspendedAt: suspendedAt,
+    adminSuspendedByClerkUserId: administratorId,
+  });
+  try {
+    const result = await restoreAdminMemberCancellation(
+      administratorId,
+      targetId,
+      "Member confirmed they want to return",
+    );
+    assert.equal(result.action, "account_cancellation_reversed");
+    assert.match(result.message, /separate administrator suspension remains/i);
+    const [restored] = await db.select().from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, targetId));
+    assert.equal(restored.lifecycleStatus, "active");
+    assert.equal(restored.cancelledAt, null);
+    assert.equal(restored.deletionEligibleAt, null);
+    assert.equal(restored.adminSuspendedAt?.getTime(), suspendedAt.getTime());
+
+    const expiredTargetId = `expired-cancel-restore-${crypto.randomUUID()}`;
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: expiredTargetId,
+      role: "fan",
+      accessMode: "full",
+      lifecycleStatus: "cancelled",
+      cancelledAt: new Date(Date.now() - 91 * 24 * 60 * 60 * 1000),
+      deletionEligibleAt: new Date(Date.now() - 1),
+    });
+    await assert.rejects(
+      restoreAdminMemberCancellation(administratorId, expiredTargetId, "Recovery window already ended"),
+      (error: unknown) => error instanceof AdminRequestError && error.statusCode === 409,
+    );
+    const [expiredAccount] = await db.select().from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, expiredTargetId));
+    assert.equal(expiredAccount.lifecycleStatus, "cancelled");
+    await cleanFixture([expiredTargetId]);
+  } finally {
+    await cleanFixture([administratorId, targetId]);
+  }
+});
 
 test("admin routes reject unauthenticated and non-admin requests, while administrators can read audit history", async () => {
   const administratorId = `admin-route-${crypto.randomUUID()}`;

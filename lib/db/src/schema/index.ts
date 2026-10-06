@@ -310,6 +310,7 @@ export * from "./athleteInviteFans";
 export * from "./supporterActiveGames";
 export * from "./gameOnReminders";
 export * from "./admin";
+export * from "./adminIdentityBlocks";
 
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,

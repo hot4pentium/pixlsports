@@ -9,6 +9,7 @@ import {
   UpdateAccountAccessResponse,
 } from "@workspace/api-zod";
 import {
+  adminIdentityBlocksTable,
   accountAccessTable,
   db,
   guestUsageEventsTable,
@@ -227,6 +228,13 @@ export function createAccountAccessRouter(
 
     const ownerClerkUserId = getRequiredClerkUserId(res);
     const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId, { touchCancelledActivity: true });
+    if (lifecycle.identityBlocked) {
+      res.status(423).json({
+        error: "Pixl Sports access is blocked for this sign-in.",
+        code: "ACCOUNT_IDENTITY_BLOCKED",
+      });
+      return;
+    }
     if (lifecycle.adminSuspended) {
       res.status(423).json({
         error: "This account is temporarily suspended by an administrator.",
@@ -270,7 +278,7 @@ export function createAccountAccessRouter(
     const lockClient = await pool.connect();
     const lockDb = drizzle(lockClient);
     const acquiredLocks: string[] = [];
-    let saveResult: "saved" | "email_already_in_use" | "account_mode_fixed";
+    let saveResult: "saved" | "email_already_in_use" | "account_mode_fixed" | "identity_blocked";
 
     try {
       const lockNames = [
@@ -304,6 +312,14 @@ export function createAccountAccessRouter(
 
       const otherMatchingUserIds = matchingClerkUserIds.filter((userId) => userId !== ownerClerkUserId);
       saveResult = await lockDb.transaction(async (tx) => {
+        if (initialSetup) {
+          const [identityBlock] = await tx
+            .select({ clerkUserId: adminIdentityBlocksTable.clerkUserId })
+            .from(adminIdentityBlocksTable)
+            .where(eq(adminIdentityBlocksTable.clerkUserId, ownerClerkUserId))
+            .limit(1);
+          if (identityBlock) return "identity_blocked";
+        }
         if (otherMatchingUserIds.length > 0) {
           const [existingOwner] = await tx
             .select({ ownerClerkUserId: accountAccessTable.ownerClerkUserId })
@@ -359,6 +375,13 @@ export function createAccountAccessRouter(
       lockClient.release(unlockError);
     }
 
+    if (saveResult === "identity_blocked") {
+      res.status(423).json({
+        error: "Pixl Sports access is blocked for this sign-in.",
+        code: "ACCOUNT_IDENTITY_BLOCKED",
+      });
+      return;
+    }
     if (saveResult === "email_already_in_use") {
       res.status(409).json({
         error: "This verified email is already linked to an app account. Sign in or recover that account instead.",

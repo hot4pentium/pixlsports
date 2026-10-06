@@ -28,7 +28,9 @@ import type {
   AdminMember,
   AdminMemberActionResult,
   AdminMemberAdministratorUpdate,
+  AdminMemberCancellationRestoreInput,
   AdminMemberDeleteInput,
+  AdminMemberIdentityBlockUpdate,
   AdminMemberList,
   AdminMemberProfileUpdate,
   AdminMemberSuspensionInput,
@@ -5810,6 +5812,184 @@ export const useUpdateAdminMemberAdministrator = <TError = ErrorType<BadRequestR
         TContext
       > => {
       return useMutation(getUpdateAdminMemberAdministratorMutationOptions(options));
+    }
+
+export const getUpdateAdminMemberIdentityBlockUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/members/${userId}/identity-block`
+}
+
+/**
+ * @summary Block or unblock Pixl Sports access for an identity without an app account
+ */
+export const updateAdminMemberIdentityBlock = async (userId: string,
+    adminMemberIdentityBlockUpdate: AdminMemberIdentityBlockUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminMemberActionResult>(getUpdateAdminMemberIdentityBlockUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminMemberIdentityBlockUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminMemberIdentityBlockMutationKey = () => ['updateAdminMemberIdentityBlock'] as const;
+
+export const getUpdateAdminMemberIdentityBlockMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberIdentityBlock>>, TError,UpdateAdminMemberIdentityBlockMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberIdentityBlock>>, TError,UpdateAdminMemberIdentityBlockMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminMemberIdentityBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminMemberIdentityBlock>>, UpdateAdminMemberIdentityBlockMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updateAdminMemberIdentityBlock(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminMemberIdentityBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminMemberIdentityBlock>>>
+    export type UpdateAdminMemberIdentityBlockMutationBody = BodyType<AdminMemberIdentityBlockUpdate>
+    export type UpdateAdminMemberIdentityBlockMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
+    export type UpdateAdminMemberIdentityBlockMutationVariables = {userId: string;data: BodyType<AdminMemberIdentityBlockUpdate>}
+
+    /**
+ * @summary Block or unblock Pixl Sports access for an identity without an app account
+ */
+export const useUpdateAdminMemberIdentityBlock = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberIdentityBlock>>, TError,UpdateAdminMemberIdentityBlockMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminMemberIdentityBlock>>,
+        TError,
+        UpdateAdminMemberIdentityBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminMemberIdentityBlockMutationOptions(options));
+    }
+
+export const getRestoreAdminMemberCancellationUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/members/${userId}/cancellation/restore`
+}
+
+/**
+ * @summary Reverse cancellation during the account recovery window
+ */
+export const restoreAdminMemberCancellation = async (userId: string,
+    adminMemberCancellationRestoreInput: AdminMemberCancellationRestoreInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminMemberActionResult>(getRestoreAdminMemberCancellationUrl(userId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminMemberCancellationRestoreInput)
+  }
+);}
+
+
+
+
+
+export const getRestoreAdminMemberCancellationMutationKey = () => ['restoreAdminMemberCancellation'] as const;
+
+export const getRestoreAdminMemberCancellationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAdminMemberCancellation>>, TError,RestoreAdminMemberCancellationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreAdminMemberCancellation>>, TError,RestoreAdminMemberCancellationMutationVariables, TContext> => {
+
+const mutationKey = getRestoreAdminMemberCancellationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreAdminMemberCancellation>>, RestoreAdminMemberCancellationMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  restoreAdminMemberCancellation(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreAdminMemberCancellationMutationResult = NonNullable<Awaited<ReturnType<typeof restoreAdminMemberCancellation>>>
+    export type RestoreAdminMemberCancellationMutationBody = BodyType<AdminMemberCancellationRestoreInput>
+    export type RestoreAdminMemberCancellationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
+    export type RestoreAdminMemberCancellationMutationVariables = {userId: string;data: BodyType<AdminMemberCancellationRestoreInput>}
+
+    /**
+ * @summary Reverse cancellation during the account recovery window
+ */
+export const useRestoreAdminMemberCancellation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAdminMemberCancellation>>, TError,RestoreAdminMemberCancellationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreAdminMemberCancellation>>,
+        TError,
+        RestoreAdminMemberCancellationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreAdminMemberCancellationMutationOptions(options));
     }
 
 export const getDeleteAdminMemberUrl = (userId: string,) => {

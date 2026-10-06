@@ -23,5 +23,7 @@ export interface AccountLifecycle {
   retentionDays: number;
   expired: boolean;
   /** Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state. */
-  adminSuspended?: boolean;
+  adminSuspended: boolean;
+  /** Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity. */
+  identityBlocked: boolean;
 }

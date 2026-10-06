@@ -38,6 +38,13 @@ export const requireAuth: RequestHandler = async (req, res, next): Promise<void>
   res.locals.clerkUserId = userId;
   try {
     const lifecycle = await getAccountLifecycleSnapshot(userId, { touchCancelledActivity: true });
+    if (lifecycle.identityBlocked) {
+      res.status(423).json({
+        error: "Pixl Sports access is blocked for this sign-in.",
+        code: "ACCOUNT_IDENTITY_BLOCKED",
+      });
+      return;
+    }
     if (lifecycle.adminSuspended) {
       res.status(423).json({
         error: "This account is temporarily suspended by an administrator.",

@@ -4,6 +4,7 @@ import {
   desc,
   eq,
   gte,
+  gt,
   inArray,
   isNotNull,
   isNull,
@@ -14,6 +15,7 @@ import {
 import {
   accountAccessTable,
   adminActionAuditTable,
+  adminIdentityBlocksTable,
   adminUsersTable,
   db,
 } from "@workspace/db";
@@ -49,6 +51,9 @@ const AUDIT_ACTIONS = new Set([
   "profile_updated",
   "account_suspended",
   "account_reactivated",
+  "account_cancellation_reversed",
+  "identity_blocked",
+  "identity_unblocked",
   "account_deleted",
   "administrator_granted",
   "administrator_revoked",
@@ -104,6 +109,7 @@ function toAdminMember(
   user: Awaited<ReturnType<ReturnType<typeof getAdminClerkClient>["users"]["getUser"]>>,
   access?: typeof accountAccessTable.$inferSelect,
   isAdministrator = false,
+  identityBlocked = false,
 ) {
   const createdAt = Number.isFinite(user.createdAt) ? new Date(user.createdAt).toISOString() : null;
   const primaryEmail = user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)?.emailAddress ?? null;
@@ -116,7 +122,9 @@ function toAdminMember(
     role: access?.role === "fan" ? "fan" : null,
     accessMode: access?.accessMode === "full" || access?.accessMode === "guest" ? access.accessMode : null,
     lifecycleStatus: lifecycleStatus(access?.lifecycleStatus),
+    deletionEligibleAt: access?.deletionEligibleAt?.toISOString() ?? null,
     adminSuspended: Boolean(access?.adminSuspendedAt),
+    identityBlocked,
     isAdministrator,
     profile: readMemberProfile(user.unsafeMetadata),
   };
@@ -145,6 +153,14 @@ async function accountAccessByIds(clerkUserIds: string[]) {
   return new Map(rows.map((row) => [row.ownerClerkUserId, row]));
 }
 
+async function blockedIdentityIds(clerkUserIds: string[]) {
+  if (!clerkUserIds.length) return new Set<string>();
+  const rows = await db.select({ clerkUserId: adminIdentityBlocksTable.clerkUserId })
+    .from(adminIdentityBlocksTable)
+    .where(inArray(adminIdentityBlocksTable.clerkUserId, clerkUserIds));
+  return new Set(rows.map((row) => row.clerkUserId));
+}
+
 export async function listAdminMembers(options: { search?: string; limit: number; offset: number }) {
   const query = options.search?.trim() || undefined;
   const page = await getAdminClerkClient().users.getUserList({
@@ -153,13 +169,14 @@ export async function listAdminMembers(options: { search?: string; limit: number
     ...(query ? { query } : {}),
   });
   const userIds = page.data.map((user) => user.id);
-  const [accounts, administrators] = await Promise.all([
+  const [accounts, administrators, blockedIds] = await Promise.all([
     accountAccessByIds(userIds),
     userIds.length
       ? db.select({ clerkUserId: adminUsersTable.clerkUserId })
         .from(adminUsersTable)
         .where(inArray(adminUsersTable.clerkUserId, userIds))
       : Promise.resolve([]),
+    blockedIdentityIds(userIds),
   ]);
   const administratorIds = new Set(administrators.map((row) => row.clerkUserId));
   return {
@@ -167,6 +184,7 @@ export async function listAdminMembers(options: { search?: string; limit: number
       user,
       accounts.get(user.id),
       administratorIds.has(user.id),
+      blockedIds.has(user.id),
     )),
     totalCount: page.totalCount,
     limit: options.limit,
@@ -177,14 +195,19 @@ export async function listAdminMembers(options: { search?: string; limit: number
 export async function getAdminMember(clerkUserId: string) {
   const user = await getClerkUser(clerkUserId);
   if (!user) return null;
-  const [access, administrator] = await Promise.all([
+  const [access, administrator, identityBlock] = await Promise.all([
     db.select().from(accountAccessTable)
       .where(eq(accountAccessTable.ownerClerkUserId, clerkUserId))
       .limit(1)
       .then(([row]) => row),
     isAdminUser(clerkUserId),
+    db.select({ clerkUserId: adminIdentityBlocksTable.clerkUserId })
+      .from(adminIdentityBlocksTable)
+      .where(eq(adminIdentityBlocksTable.clerkUserId, clerkUserId))
+      .limit(1)
+      .then(([row]) => row),
   ]);
-  return toAdminMember(user, access, administrator);
+  return toAdminMember(user, access, administrator, Boolean(identityBlock));
 }
 
 async function writeAudit(
@@ -342,6 +365,161 @@ export async function updateAdminMemberSuspension(
     status: "completed" as const,
     targetClerkUserId,
     message: suspended ? "Member account suspended." : "Administrator suspension removed.",
+  };
+}
+
+export async function updateAdminMemberIdentityBlock(
+  actorClerkUserId: string,
+  targetClerkUserId: string,
+  blocked: boolean,
+  reason: string,
+) {
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 3) {
+    throw new AdminRequestError(400, "Provide a reason of at least 3 characters.");
+  }
+
+  const action = blocked ? "identity_blocked" : "identity_unblocked";
+  const audit = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ADMIN_MEMBERSHIP_LOCK_KEY}, 0))`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetClerkUserId}, 0))`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${"account-access-owner:" + targetClerkUserId}, 0))`);
+    const [administrator] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
+      .from(adminUsersTable)
+      .where(eq(adminUsersTable.clerkUserId, targetClerkUserId))
+      .limit(1);
+    if (administrator) {
+      throw new AdminRequestError(409, "Administrator identities cannot be blocked from member management.");
+    }
+
+    const [access] = await tx.select({ id: accountAccessTable.id })
+      .from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, targetClerkUserId))
+      .limit(1);
+    if (access) {
+      throw new AdminRequestError(409, "This identity has an app account. Use the separate account suspension control instead.");
+    }
+
+    const [existingBlock] = await tx.select({ clerkUserId: adminIdentityBlocksTable.clerkUserId })
+      .from(adminIdentityBlocksTable)
+      .where(eq(adminIdentityBlocksTable.clerkUserId, targetClerkUserId))
+      .limit(1);
+    if (blocked && existingBlock) {
+      throw new AdminRequestError(409, "Pixl Sports access is already blocked for this sign-in.");
+    }
+    if (!blocked && !existingBlock) {
+      throw new AdminRequestError(409, "This sign-in does not have an active Pixl Sports block.");
+    }
+
+    if (blocked) {
+      await tx.insert(adminIdentityBlocksTable).values({
+        clerkUserId: targetClerkUserId,
+        blockedByClerkUserId: actorClerkUserId,
+        reason: cleanReason,
+      });
+    } else {
+      await tx.delete(adminIdentityBlocksTable)
+        .where(eq(adminIdentityBlocksTable.clerkUserId, targetClerkUserId));
+    }
+
+    const [createdAudit] = await tx.insert(adminActionAuditTable).values({
+      actorClerkUserId,
+      targetClerkUserId,
+      action,
+      status: "completed",
+      changedFields: ["identityBlocked"],
+      reason: cleanReason,
+      completedAt: new Date(),
+    }).returning();
+    return createdAudit;
+  });
+
+  return {
+    actionId: audit.id,
+    action,
+    status: "completed" as const,
+    targetClerkUserId,
+    message: blocked
+      ? "Pixl Sports access is blocked for this sign-in. Its Clerk identity and app data were not deleted."
+      : "The Pixl Sports-only block was removed. This sign-in still needs an app account before private access is available.",
+  };
+}
+
+export async function restoreAdminMemberCancellation(
+  actorClerkUserId: string,
+  targetClerkUserId: string,
+  reason: string,
+) {
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 3) {
+    throw new AdminRequestError(400, "Provide a reason of at least 3 characters.");
+  }
+  const restoration = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ADMIN_MEMBERSHIP_LOCK_KEY}, 0))`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetClerkUserId}, 0))`);
+    const now = new Date();
+    const [administrator] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
+      .from(adminUsersTable)
+      .where(eq(adminUsersTable.clerkUserId, targetClerkUserId))
+      .limit(1);
+    if (administrator) {
+      throw new AdminRequestError(409, "Administrator accounts cannot be restored through member cancellation controls.");
+    }
+
+    const [existing] = await tx.select().from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, targetClerkUserId))
+      .limit(1);
+    if (!existing) throw new AdminRequestError(404, "Member account was not found.");
+    if (existing.lifecycleStatus !== "cancelled") {
+      throw new AdminRequestError(409, "Only a cancelled account can be restored through this control.");
+    }
+    if (
+      !existing.deletionEligibleAt
+      || existing.deletionEligibleAt <= now
+      || existing.adminDeletionActionId
+    ) {
+      throw new AdminRequestError(409, "The account recovery window has expired or cleanup has already started.");
+    }
+
+    const [updated] = await tx.update(accountAccessTable).set({
+      lifecycleStatus: "active",
+      pauseEndsAt: null,
+      cancelledAt: null,
+      deletionEligibleAt: null,
+      purgeStartedAt: null,
+      purgeError: null,
+      lastActivityAt: now,
+      updatedAt: now,
+    }).where(and(
+      eq(accountAccessTable.id, existing.id),
+      eq(accountAccessTable.lifecycleStatus, "cancelled"),
+      gt(accountAccessTable.deletionEligibleAt, now),
+      isNull(accountAccessTable.adminDeletionActionId),
+    )).returning({ ownerClerkUserId: accountAccessTable.ownerClerkUserId });
+    if (!updated) {
+      throw new AdminRequestError(409, "The account recovery window expired while the request was being processed.");
+    }
+
+    const [createdAudit] = await tx.insert(adminActionAuditTable).values({
+      actorClerkUserId,
+      targetClerkUserId,
+      action: "account_cancellation_reversed",
+      status: "completed",
+      changedFields: ["lifecycleStatus", "cancelledAt", "deletionEligibleAt"],
+      reason: cleanReason,
+      completedAt: now,
+    }).returning();
+    return { audit: createdAudit, remainsSuspended: Boolean(existing.adminSuspendedAt) };
+  });
+
+  return {
+    actionId: restoration.audit.id,
+    action: "account_cancellation_reversed",
+    status: "completed" as const,
+    targetClerkUserId,
+    message: restoration.remainsSuspended
+      ? "Cancellation was reversed. A separate administrator suspension remains in effect."
+      : "Cancellation was reversed and the account is active again.",
   };
 }
 

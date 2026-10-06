@@ -3804,22 +3804,24 @@ function LockedAccountPage({ status, pauseEndsAt, deletionEligibleAt, expired, u
   );
 }
 
-function AccountUnavailablePage() {
+function AccountUnavailablePage({ identityBlocked = false }: { identityBlocked?: boolean } = {}) {
   const { signOut } = useClerk();
 
   return (
     <div className="noise min-h-dvh bg-background">
       <SiteNav dark />
       <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-5xl items-center px-5 py-12 sm:px-8">
-        <section className="relative w-full overflow-hidden border-l-4 border-primary bg-card p-7 text-white clip-angled-sm sm:p-10" data-testid="account-unavailable-page">
+        <section className="relative w-full overflow-hidden border-l-4 border-primary bg-card p-7 text-white clip-angled-sm sm:p-10" data-testid={identityBlocked ? 'identity-blocked-account-page' : 'account-unavailable-page'}>
           <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
           <div className="relative z-10 max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">Account unavailable</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">{identityBlocked ? 'Pixl Sports access blocked' : 'Account unavailable'}</p>
             <h1 className="mt-4 font-display text-5xl uppercase leading-[0.9] tracking-tight sm:text-7xl">
-              THIS STUDIO<br /><span className="text-primary">IS UNAVAILABLE.</span>
+              {identityBlocked ? <>ACCESS TO THIS STUDIO<br /><span className="text-primary">IS BLOCKED.</span></> : <>THIS STUDIO<br /><span className="text-primary">IS UNAVAILABLE.</span></>}
             </h1>
             <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/70 sm:text-lg">
-              There is no active Pixl Sports account for this sign-in. Private dashboard access and saved account data are unavailable.
+              {identityBlocked
+                ? 'An administrator has blocked Pixl Sports access for this sign-in. This does not delete your sign-in identity or change access to other services.'
+                : 'There is no active Pixl Sports account for this sign-in. Private dashboard access and saved account data are unavailable.'}
             </p>
             <button
               type="button"
@@ -3942,6 +3944,9 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   }
   if (isSignedIn && !bypassLifecycle && (isError || !lifecycle) && !canUseCachedLifecycle) {
     return <AccountLoadingScreen error onRetry={() => void refetch()} />;
+  }
+  if (isSignedIn && !bypassLifecycle && lifecycle?.identityBlocked === true) {
+    return <AccountUnavailablePage identityBlocked />;
   }
   if (isSignedIn && !bypassLifecycle && lifecycle?.status === 'not_provisioned') {
     if (location.startsWith('/studio/setup') && canShowInitialAccountSetup(user)) return <>{children}</>;

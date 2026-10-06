@@ -1751,7 +1751,9 @@ export interface AccountLifecycle {
   retentionDays: number;
   expired: boolean;
   /** Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state. */
-  adminSuspended?: boolean;
+  adminSuspended: boolean;
+  /** Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity. */
+  identityBlocked: boolean;
 }
 
 export interface AdminSession {
@@ -1926,7 +1928,10 @@ export interface AdminMember {
   /** @nullable */
   accessMode: AdminMemberAccessMode;
   lifecycleStatus: AdminMemberLifecycleStatus;
+  /** @nullable */
+  deletionEligibleAt: string | null;
   adminSuspended: boolean;
+  identityBlocked: boolean;
   isAdministrator: boolean;
   profile: AdminMemberProfile;
 }
@@ -1951,6 +1956,23 @@ export interface AdminMemberSuspensionInput {
      * @nullable
      */
   reason?: string | null;
+}
+
+export interface AdminMemberIdentityBlockUpdate {
+  blocked: boolean;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface AdminMemberCancellationRestoreInput {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
 }
 
 export interface AdminMemberAdministratorUpdate {
@@ -1981,6 +2003,9 @@ export type AdminMemberActionResultAction = typeof AdminMemberActionResultAction
 export const AdminMemberActionResultAction = {
   account_suspended: 'account_suspended',
   account_reactivated: 'account_reactivated',
+  account_cancellation_reversed: 'account_cancellation_reversed',
+  identity_blocked: 'identity_blocked',
+  identity_unblocked: 'identity_unblocked',
   account_deleted: 'account_deleted',
   administrator_granted: 'administrator_granted',
   administrator_revoked: 'administrator_revoked',
@@ -2016,6 +2041,9 @@ export const AdminAuditEntryAction = {
   profile_updated: 'profile_updated',
   account_suspended: 'account_suspended',
   account_reactivated: 'account_reactivated',
+  account_cancellation_reversed: 'account_cancellation_reversed',
+  identity_blocked: 'identity_blocked',
+  identity_unblocked: 'identity_unblocked',
   account_deleted: 'account_deleted',
   administrator_granted: 'administrator_granted',
   administrator_revoked: 'administrator_revoked',
@@ -2547,6 +2575,9 @@ export const ListAdminAuditAction = {
   profile_updated: 'profile_updated',
   account_suspended: 'account_suspended',
   account_reactivated: 'account_reactivated',
+  account_cancellation_reversed: 'account_cancellation_reversed',
+  identity_blocked: 'identity_blocked',
+  identity_unblocked: 'identity_unblocked',
   account_deleted: 'account_deleted',
   administrator_granted: 'administrator_granted',
   administrator_revoked: 'administrator_revoked',

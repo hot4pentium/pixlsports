@@ -108,3 +108,4 @@
 - [Hub card identity](hub-card-identity.md) — the Hub must not use a sole saved card as proof it belongs to the currently selected athlete.
 - [Premium nameplate font independence](premium-nameplate-font-independence.md) — name fitting must remain bounded when standalone SVG/PNG exports substitute fonts.
 - [Themed premium photo frames](themed-premium-photo-frames.md) — Spotlight and Breakout share Gallery’s strong framed-photo structure while theming the shell around it.
+- [App-only identity blocks](admin-identity-blocks.md) — block only unprovisioned identities within Pixl Sports; preserve Clerk identity, app data, and public shares.
