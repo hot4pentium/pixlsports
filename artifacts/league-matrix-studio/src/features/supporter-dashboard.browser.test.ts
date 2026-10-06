@@ -1722,11 +1722,16 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const card = collection?.querySelector('.game-on-collection__card');
         const columns = document.querySelector('.mobile-hero-columns');
         const athleteCard = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
+        const summaryHeader = hero?.querySelector('[data-testid="mobile-athlete-summary"]');
+        const installReminder = summaryHeader?.querySelector('[data-testid="dashboard-install-reminder-mobile"]');
+        const installButton = installReminder?.querySelector('button');
         const eventCard = document.querySelector('[data-testid="card-mobile-featured-event"]');
         const eventKicker = document.querySelector('.mobile-featured-event-kicker');
         if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)
           || !(collection instanceof HTMLElement) || !(grid instanceof HTMLElement) || !(card instanceof HTMLElement)
           || !(columns instanceof HTMLElement) || !(athleteCard instanceof HTMLElement)
+          || !(summaryHeader instanceof HTMLElement) || !(installReminder instanceof HTMLElement)
+          || !(installButton instanceof HTMLButtonElement)
           || !(eventCard instanceof HTMLElement) || !(eventKicker instanceof HTMLElement)) {
           throw new Error('Mobile dashboard shell is incomplete');
         }
@@ -1737,6 +1742,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const heroRect = hero.getBoundingClientRect();
         const collectionRect = collection.getBoundingClientRect();
         const cardRect = card.getBoundingClientRect();
+        const summaryHeaderRect = summaryHeader.getBoundingClientRect();
+        const installReminderRect = installReminder.getBoundingClientRect();
+        const installButtonFits = installButton.scrollWidth <= installButton.clientWidth;
         const kind = card.querySelector('.game-on-collection__kind');
         const date = card.querySelector('.game-on-collection__date');
         const status = card.querySelector('.game-on-collection__status');
@@ -1750,6 +1758,14 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const summaryRect = summary?.getBoundingClientRect();
         const cardActions = Array.from(card.querySelectorAll('.game-on-collection__actions > button'));
         const athleteRect = athleteCard.getBoundingClientRect();
+        const headerControlsShareRow = innerWidth >= 640 || Math.abs(
+          (installReminderRect.top + installReminderRect.bottom) / 2
+          - (athleteRect.top + athleteRect.bottom) / 2,
+        ) <= 1;
+        const headerControlsContained = installReminderRect.left >= summaryHeaderRect.left - 1
+          && installReminderRect.right <= summaryHeaderRect.right + 1
+          && athleteRect.left >= summaryHeaderRect.left - 1
+          && athleteRect.right <= summaryHeaderRect.right + 1;
         const eventRect = eventCard.getBoundingClientRect();
         const repliesRect = hero.querySelector('.supporter-game-on-summary__replies')?.getBoundingClientRect();
       const headerHorn = header.querySelector('[data-testid="reply-inbox-header-horn"]');
@@ -1788,6 +1804,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           headerTop: Math.round(initialHeaderRect.top - rootRect.top),
           headerTopAfterScroll: Math.round(scrolledHeaderRect.top),
           heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
+          headerControlsShareRow,
+          headerControlsContained,
+          installButtonFits,
           heroColumnCount: heroColumns.length,
           heroCardsShareRow: Boolean(repliesRect && Math.abs(eventRect.top - repliesRect.top) <= 1),
         mobileShoutoutsCardRemoved: !hero.querySelector('.supporter-game-on-summary__replies'),
@@ -1822,6 +1841,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerTop: 0,
         headerTopAfterScroll: 0,
         heroClearsHeader: true,
+        headerControlsShareRow: true,
+        headerControlsContained: true,
+        installButtonFits: true,
         heroColumnCount: width < 640 ? 1 : 2,
         heroCardsShareRow: false,
         mobileShoutoutsCardRemoved: true,

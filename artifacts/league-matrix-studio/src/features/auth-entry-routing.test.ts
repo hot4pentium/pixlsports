@@ -33,6 +33,14 @@ test('only signed-out or unresolved home visits bypass account lifecycle checks'
   assert.equal(shouldBypassAccountLifecycle('/studio', true, true), false);
 });
 
+test('the app gates signed-in home visits, opens the studio, and preserves eligible setup', () => {
+  assert.match(appSource, /shouldBypassAccountLifecycle\(location, isLoaded, Boolean\(isSignedIn\)\)/);
+  assert.match(appSource, /location === '\/' && canShowInitialAccountSetup\(user\)/);
+  assert.match(appSource, /const homeEntryState = getHomeEntryState\(isLoaded, Boolean\(isSignedIn\)\)/);
+  assert.match(appSource, /if \(homeEntryState === 'loading'\) return <AccountLoadingScreen \/>;/);
+  assert.match(appSource, /if \(homeEntryState === 'dashboard'\) return <Redirect to="\/studio" \/>;/);
+});
+
 test('generic account entry points show the choice before Google sign-in', () => {
   assert.match(appSource, /<Route path="\/auth" component=\{AuthChoicePage\} \/>/);
   assert.match(appSource, /New to Pixl Sports\?<\/strong> Create your account first/);

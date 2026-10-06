@@ -77,17 +77,36 @@
 
 @media (max-width: 639px) {
   .supporter-game-on-summary__header--with-action {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, .88fr) minmax(0, 1fr);
+    align-items: center;
   }
 
   .supporter-game-on-summary__header-action {
-    flex-basis: 100%;
+    grid-column: 1 / -1;
     max-width: none;
   }
 
+  .supporter-game-on-summary__header .dashboard-install-reminder {
+    grid-column: 1;
+    justify-self: stretch;
+    width: 100%;
+    max-width: 236px;
+    min-width: 0;
+  }
+
+  .supporter-game-on-summary__header .dashboard-install-reminder__button {
+    gap: 6px;
+    padding-inline: 8px;
+    font-size: clamp(8px, 2.4vw, 9px);
+    letter-spacing: .04em;
+  }
+
   .supporter-game-on-summary__header--with-action .supporter-game-on-summary__athlete-link {
+    width: 100%;
+    min-width: 0;
     max-width: 100%;
-    margin-left: auto;
+    margin-left: 0;
   }
 }
 
