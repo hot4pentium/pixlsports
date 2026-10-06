@@ -167,13 +167,22 @@ function HypeCardSidebarPreview() {
 
 function QuickLinks() {
   return (
-    <nav className="quick-links-under-events" aria-label="Quick links">
-      <div className="quick-links-under-events__label"><span className="combined-actions-card__heading-mark" aria-hidden="true" /><span>Quick links</span></div>
-      <div className="quick-links-under-events__links">
+    <nav className="quick-links-under-hype" aria-label="Quick links">
+      <div className="quick-links-under-hype__label"><span className="combined-actions-card__heading-mark" aria-hidden="true" /><span>Quick links</span></div>
+      <div className="quick-links-under-hype__links">
         <a href="#stats" className="combined-actions-card__stats-link"><ArrowLeft size={16} aria-hidden="true" /><span>View stats</span></a>
         <a href="#family-guide" className="combined-actions-card__stats-link"><BookOpen size={16} aria-hidden="true" /><span>Family guide</span></a>
       </div>
     </nav>
+  );
+}
+
+function HypeCardSidebarStack() {
+  return (
+    <aside className="hype-sidebar-stack" aria-label="HYPE Card and quick links">
+      <HypeCardSidebarPreview />
+      <QuickLinks />
+    </aside>
   );
 }
 
@@ -217,8 +226,7 @@ export function HypeCardSidebar() {
         </SupporterGameOnSummary>
 
         <EventCards />
-        <HypeCardSidebarPreview />
-        <QuickLinks />
+        <HypeCardSidebarStack />
       </div>
     </main>
   );
