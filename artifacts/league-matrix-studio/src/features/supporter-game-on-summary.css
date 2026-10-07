@@ -216,11 +216,9 @@
   position: relative;
   overflow: hidden;
   container-type: inline-size;
-  background:
-    linear-gradient(90deg, rgba(4, 16, 33, .94) 0%, rgba(5, 18, 37, .83) 54%, rgba(8, 28, 56, .7) 100%),
-    repeating-linear-gradient(0deg, transparent 0 24px, rgba(130, 184, 255, .1) 25px 26px),
-    radial-gradient(ellipse at 72% 88%, rgba(20, 92, 151, .4), transparent 45%),
-    linear-gradient(135deg, #183b5e 0%, #0d2748 48%, #07162d 100%);
+  border-color: rgba(11, 31, 58, .12);
+  background: #f8fafc;
+  box-shadow: 0 14px 30px rgba(3, 17, 36, .16);
 }
 
 .pixl-dashboard .supporter-game-on-summary__grid > .supporter-game-on-summary__event {
@@ -228,16 +226,12 @@
   grid-column: auto;
   grid-row: auto;
   min-height: 196px;
-  border: 1px solid rgba(128, 175, 238, .25);
+  border: 1px solid rgba(11, 31, 58, .12);
   border-radius: 13px;
   padding: 0;
   clip-path: none;
-  box-shadow: none;
-  background:
-    linear-gradient(90deg, rgba(4, 16, 33, .94) 0%, rgba(5, 18, 37, .83) 54%, rgba(8, 28, 56, .7) 100%),
-    repeating-linear-gradient(0deg, transparent 0 24px, rgba(130, 184, 255, .1) 25px 26px),
-    radial-gradient(ellipse at 72% 88%, rgba(20, 92, 151, .4), transparent 45%),
-    linear-gradient(135deg, #183b5e 0%, #0d2748 48%, #07162d 100%);
+  box-shadow: 0 14px 30px rgba(3, 17, 36, .16);
+  background: #f8fafc;
 }
 
 .pixl-dashboard .supporter-game-on-summary__event::after {
@@ -254,13 +248,11 @@
   bottom: -34px;
   left: 0;
   height: 100px;
-  border-top: 1px solid rgba(159, 202, 255, .17);
+  border-top: 1px solid rgba(11, 31, 58, .1);
   content: "";
   pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent 49.8%, rgba(159, 202, 255, .18) 50%, transparent 50.2%),
-    radial-gradient(ellipse at 50% 0%, transparent 0 35px, rgba(159, 202, 255, .16) 36px 37px, transparent 38px);
-  opacity: .8;
+  background: none;
+  opacity: 1;
 }
 
 .supporter-game-on-summary__event-content {
@@ -270,7 +262,50 @@
   height: 100%;
   min-height: 196px;
   flex-direction: column;
-  padding: 16px 18px;
+  padding: 0;
+}
+
+.supporter-event-pass {
+  position: relative;
+  display: flex;
+  min-height: 196px;
+  flex: 1;
+  flex-direction: column;
+  padding: 15px 18px 14px;
+  color: #0b1f3a;
+}
+
+.supporter-event-pass__slot {
+  width: 48px;
+  height: 10px;
+  flex: 0 0 auto;
+  align-self: center;
+  margin: -4px 0 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #eef2f6;
+  box-shadow: inset 0 2px 4px rgba(11, 31, 58, .18);
+}
+
+.supporter-event-pass__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #d5deea;
+  padding-bottom: 9px;
+  color: #0b1f3a;
+  font-family: "Barlow Condensed", ui-sans-serif, sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -.01em;
+}
+
+.supporter-event-pass__brand span:last-child {
+  color: #2878f5;
+  font-family: "DM Sans", ui-sans-serif, sans-serif;
+  font-size: 8px;
+  letter-spacing: .2em;
 }
 
 .dashboard-install-reminder {
@@ -400,7 +435,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
-  color: #73b6ff;
+  color: #2878f5;
   font-size: 9px;
   font-weight: 900;
   letter-spacing: .15em;
@@ -422,11 +457,11 @@
 
 .supporter-game-on-summary__event-badge {
   flex: 0 0 auto;
-  border: 1px solid rgba(115, 182, 255, .45);
+  border: 1px solid #c7d3e1;
   border-radius: 999px;
   padding: 4px 8px;
-  color: #eaf4ff;
-  background: rgba(40, 120, 245, .3);
+  color: #52657d;
+  background: #eef3f8;
   font-size: 8px;
   font-weight: 900;
   letter-spacing: .12em;
@@ -445,7 +480,7 @@
 .supporter-game-on-summary__event-title {
   max-width: 25ch;
   margin: 6px 0 0;
-  color: #fff;
+  color: #0b1f3a;
   font-size: clamp(22px, 2.3vw, 34px);
   font-weight: 900;
   letter-spacing: -.025em;
@@ -456,7 +491,7 @@
 .pixl-dashboard .supporter-game-on-summary__event h2.supporter-game-on-summary__event-title {
   max-width: 25ch;
   margin: 6px 0 0;
-  color: #fff;
+  color: #0b1f3a;
   font-size: clamp(22px, 2.3vw, 34px);
   font-weight: 900;
   letter-spacing: -.025em;
@@ -491,7 +526,7 @@
 .supporter-game-on-summary__event-empty {
   max-width: 36ch;
   margin: 10px 0 0;
-  color: rgba(219, 232, 250, .72);
+  color: #52657d;
   font-size: 11px;
   line-height: 1.5;
 }
@@ -510,7 +545,7 @@
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
   gap: 5px;
-  border-top: 1px solid rgba(159, 202, 255, .16);
+  border-top: 2px solid #0b1f3a;
   padding: 9px 0;
 }
 
@@ -528,12 +563,12 @@
 }
 
 .supporter-game-on-summary__upcoming-type {
-  border: 1px solid rgba(115, 182, 255, .4);
-  border-radius: 999px;
-  padding: 3px 7px;
-  color: #d7eaff;
-  background: rgba(40, 120, 245, .2);
-  font-size: 8px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  color: #2878f5;
+  background: transparent;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: .1em;
   line-height: 1;
@@ -541,7 +576,7 @@
 }
 
 .supporter-game-on-summary__upcoming-date {
-  color: rgba(221, 234, 251, .72);
+  color: #52657d;
   font-size: 9px;
   font-weight: 700;
   line-height: 1.35;
@@ -550,7 +585,7 @@
 .supporter-game-on-summary__upcoming-title {
   min-width: 0;
   margin: 0;
-  color: #fff;
+  color: #0b1f3a;
   font-size: clamp(14px, 1.15vw, 18px);
   font-weight: 850;
   line-height: 1.15;
@@ -563,7 +598,7 @@
   align-items: flex-start;
   gap: 5px;
   margin: 0;
-  color: rgba(219, 232, 250, .7);
+  color: #52657d;
   font-size: 10px;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -571,7 +606,7 @@
 
 .supporter-game-on-summary__upcoming-location svg {
   flex: 0 0 auto;
-  color: #73b6ff;
+  color: #2878f5;
 }
 
 .supporter-game-on-summary__upcoming-action {
@@ -580,22 +615,22 @@
   min-height: 32px;
   align-items: center;
   gap: 7px;
-  border: 1px solid rgba(131, 191, 255, .65);
-  border-radius: 6px;
+  border: 1px solid #2878f5;
+  border-radius: 4px;
   padding: 6px 9px;
-  color: #dcedff;
-  background: rgba(40, 120, 245, .18);
+  color: #fff;
+  background: #2878f5;
   font-size: 9px;
   font-weight: 850;
   cursor: pointer;
 }
 
 .supporter-game-on-summary__upcoming-action:hover {
-  background: rgba(40, 120, 245, .34);
+  background: #1f64d0;
 }
 
 .supporter-game-on-summary__upcoming-action:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid #0b1f3a;
   outline-offset: 2px;
 }
 
@@ -617,6 +652,32 @@
   .supporter-game-on-summary__event-utility-copy { max-width: 45%; }
   .supporter-game-on-summary__event-utility-copy p { display: none; }
   .supporter-game-on-summary__event-utility button { width: auto; }
+}
+
+.supporter-event-pass--desktop .supporter-event-pass__slot {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+.supporter-event-pass--desktop .supporter-event-pass__brand {
+  padding-right: 0;
+}
+
+.supporter-event-pass--desktop .supporter-game-on-summary__event-top {
+  margin-top: 13px;
+}
+
+.supporter-event-pass--desktop .supporter-game-on-summary__upcoming-item {
+  grid-template-columns: minmax(105px, .7fr) minmax(140px, 1.25fr) minmax(100px, .8fr) auto;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.supporter-event-pass--desktop .supporter-game-on-summary__upcoming-action {
+  justify-self: end;
 }
 
 @container (max-width: 310px) {
@@ -1157,9 +1218,31 @@
   aspect-ratio: 5 / 7;
   margin-top: 16%;
   padding: 10px;
-  border: 1px solid rgba(128, 175, 238, .4);
+  border: 1px solid rgba(11, 31, 58, .14);
   border-radius: 11px;
-  background: linear-gradient(145deg, #2878d6, #143861);
+  background: #f8fafc;
+  box-shadow: 0 12px 26px rgba(3, 17, 36, .18);
+}
+
+.supporter-game-on-summary--mobile .supporter-event-pass {
+  min-height: 0;
+  padding: 9px;
+}
+
+.supporter-game-on-summary--mobile .supporter-event-pass__slot {
+  width: 40px;
+  height: 8px;
+  margin: -3px 0 6px;
+}
+
+.supporter-game-on-summary--mobile .supporter-event-pass__brand {
+  padding-bottom: 6px;
+  font-size: 10px;
+}
+
+.supporter-game-on-summary--mobile .supporter-event-pass__brand span:last-child {
+  font-size: 6px;
+  letter-spacing: .12em;
 }
 
 .supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-main {
@@ -1191,9 +1274,20 @@
 .supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-utility-copy p { display: none; }
 .supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-utility button {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 44px;
   padding: 6px 8px;
   font-size: 9px;
+}
+
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__upcoming-action {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+  padding-inline: 6px;
+  font-size: 8px;
 }
 
 .supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-kicker { font-size: 8px; letter-spacing: .08em; gap: 4px; }

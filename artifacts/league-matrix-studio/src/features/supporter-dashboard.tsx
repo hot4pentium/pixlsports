@@ -952,11 +952,15 @@ export function SupporterDashboardView({
   }));
 
   const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
-    <>
+    <div className={`supporter-event-pass supporter-event-pass--${variant}`}>
+      <div className="supporter-event-pass__slot" aria-hidden="true" />
+      <div className="supporter-event-pass__brand" aria-hidden="true">
+        <span>PIXL SPORTS</span>
+        <span>EVENT CARD</span>
+      </div>
       <div className="supporter-game-on-summary__event-top">
         <div className="supporter-game-on-summary__event-kicker">
-          <span className="supporter-game-on-summary__event-dot" aria-hidden="true" />
-          <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">Event Cards</span>
+          <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">Upcoming Event</span>
         </div>
         {upcomingEventCards.length > 0 && (
           <span className="supporter-game-on-summary__event-badge">
@@ -970,7 +974,7 @@ export function SupporterDashboardView({
         className="supporter-game-on-summary__event-title"
         data-testid="upcoming-calendar-events-heading"
       >
-        Upcoming events
+        Next up
       </h2>
 
       {upcomingEventCards.length > 0 ? (
@@ -1032,7 +1036,7 @@ export function SupporterDashboardView({
           No upcoming games or practices are available as Event Cards.
         </p>
       )}
-    </>
+    </div>
   );
 
   const ownerDayEventRows = visibleEventDayReminders.flatMap((reminder) => (
