@@ -216,9 +216,9 @@
   position: relative;
   overflow: hidden;
   container-type: inline-size;
-  border-color: rgba(11, 31, 58, .12);
-  background: #f8fafc;
-  box-shadow: 0 14px 30px rgba(3, 17, 36, .16);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .pixl-dashboard .supporter-game-on-summary__grid > .supporter-game-on-summary__event {
@@ -226,12 +226,12 @@
   grid-column: auto;
   grid-row: auto;
   min-height: 196px;
-  border: 1px solid rgba(11, 31, 58, .12);
+  border: 0;
   border-radius: 13px;
   padding: 0;
   clip-path: none;
-  box-shadow: 0 14px 30px rgba(3, 17, 36, .16);
-  background: #f8fafc;
+  box-shadow: none;
+  background: transparent;
 }
 
 .pixl-dashboard .supporter-game-on-summary__event::after {
@@ -1205,11 +1205,11 @@
   height: auto;
   aspect-ratio: 5 / 7;
   margin-top: 16%;
-  padding: 10px;
-  border: 1px solid rgba(11, 31, 58, .14);
+  padding: 3px;
+  border: 0;
   border-radius: 11px;
-  background: #f8fafc;
-  box-shadow: 0 12px 26px rgba(3, 17, 36, .18);
+  background: transparent;
+  box-shadow: none;
 }
 
 .supporter-game-on-summary--mobile .supporter-event-graphic--mobile {

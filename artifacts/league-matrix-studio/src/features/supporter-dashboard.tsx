@@ -965,7 +965,7 @@ export function SupporterDashboardView({
         <>
           <img
             className="supporter-event-graphic__image"
-            src={`${basePath}/assets/upcoming-event-card.png`}
+            src={`${basePath}/assets/upcoming-event-card-finished.png`}
             alt=""
             data-testid={`img-upcoming-event-card-${variant}`}
           />
