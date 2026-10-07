@@ -3,11 +3,13 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/breakout-card/Current.tsx": () => import("../components/mockups/breakout-card/Current.tsx"),
   "./components/mockups/hype-manager-grid/Current.tsx": () => import("../components/mockups/hype-manager-grid/Current.tsx"),
-  "./components/mockups/live-tracker/RecipientView.tsx": () => import("../components/mockups/live-tracker/RecipientView.tsx"),
   "./components/mockups/pixl/PixlSportsMatchdayCommandVariant.tsx": () => import("../components/mockups/pixl/PixlSportsMatchdayCommandVariant.tsx"),
   "./components/mockups/pixl/PixlSportsResponsiveUnified.tsx": () => import("../components/mockups/pixl/PixlSportsResponsiveUnified.tsx"),
   "./components/mockups/pixl/PixlSportsSplitVariant.tsx": () => import("../components/mockups/pixl/PixlSportsSplitVariant.tsx"),
   "./components/mockups/pixl/PixlSportsThumbDeckVariant.tsx": () => import("../components/mockups/pixl/PixlSportsThumbDeckVariant.tsx"),
+  "./components/mockups/live-tracker/RecipientView.tsx": () => import("../components/mockups/live-tracker/RecipientView.tsx"),
+  "./components/mockups/pixl-auth-path/AccountChoice.tsx": () => import("../components/mockups/pixl-auth-path/AccountChoice.tsx"),
+  "./components/mockups/pixl-auth-path/Current.tsx": () => import("../components/mockups/pixl-auth-path/Current.tsx"),
   "./components/mockups/pixl-background/Current.tsx": () => import("../components/mockups/pixl-background/Current.tsx"),
   "./components/mockups/pixl-background/QuietDepth.tsx": () => import("../components/mockups/pixl-background/QuietDepth.tsx"),
   "./components/mockups/pixl-background/TechnicalGrid.tsx": () => import("../components/mockups/pixl-background/TechnicalGrid.tsx"),
@@ -18,8 +20,6 @@ export const modules: ModuleMap = {
   "./components/mockups/pixl-supporter-dashboard/SupporterGameOnSummary.tsx": () => import("../components/mockups/pixl-supporter-dashboard/SupporterGameOnSummary.tsx"),
   "./components/mockups/supporter-actions-redesign/CombinedCard.tsx": () => import("../components/mockups/supporter-actions-redesign/CombinedCard.tsx"),
   "./components/mockups/supporter-actions-redesign/Current.tsx": () => import("../components/mockups/supporter-actions-redesign/Current.tsx"),
-  "./components/mockups/pixl-auth-path/AccountChoice.tsx": () => import("../components/mockups/pixl-auth-path/AccountChoice.tsx"),
-  "./components/mockups/pixl-auth-path/Current.tsx": () => import("../components/mockups/pixl-auth-path/Current.tsx"),
   "./components/mockups/breakout-card/simplified/Simplified.tsx": () => import("../components/mockups/breakout-card/simplified/Simplified.tsx"),
   "./components/mockups/breakout-card/current/features/living-athlete-card-front.tsx": () => import("../components/mockups/breakout-card/current/features/living-athlete-card-front.tsx")
 };
