@@ -208,6 +208,18 @@ function formatTimeDisplay(time: string) {
   return `${displayHour}:${match[2]} ${suffix}`;
 }
 
+function getUpcomingEventCardTitle(
+  card: Pick<DashboardGameOnCard, 'type' | 'opponent'>,
+  teamName: string,
+) {
+  if (card.type === 'game') {
+    return card.opponent
+      ? `${teamName || 'Your team'} vs ${card.opponent}`
+      : (teamName ? `${teamName} game` : 'Game');
+  }
+  return card.opponent.trim() || 'Practice';
+}
+
 function formatDaysUntil(dateStr: string) {
   const date = parseISO(dateStr);
   if (!isValid(date)) return 'Next event';
@@ -215,6 +227,46 @@ function formatDaysUntil(dateStr: string) {
   if (days <= 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `${days} days`;
+}
+
+function SupporterUpcomingEventBadge({
+  src,
+  category,
+  title,
+  dateTime,
+}: {
+  src: string;
+  category: string;
+  title: string;
+  dateTime: string;
+}) {
+  return (
+    <div className="supporter-upcoming-event-badge" data-testid="upcoming-event-badge">
+      <img
+        className="supporter-event-graphic__image"
+        src={src}
+        alt=""
+        data-testid="img-upcoming-event-card-mobile"
+      />
+      <div className="supporter-upcoming-event-badge__copy" aria-hidden="true">
+        <span
+          className="supporter-upcoming-event-badge__category"
+          data-testid="upcoming-event-badge-category"
+        >
+          {category}
+        </span>
+        <span className="supporter-upcoming-event-badge__title">
+          <span data-testid="upcoming-event-badge-title">{title}</span>
+        </span>
+        <span
+          className="supporter-upcoming-event-badge__date-time"
+          data-testid="upcoming-event-badge-date-time"
+        >
+          {dateTime}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function getEventDateParts(dateStr: string) {
@@ -952,6 +1004,7 @@ export function SupporterDashboardView({
       status,
     }, currentTime, { includePregameCaptureWindow: false }) === 'upcoming';
   }));
+  const nextUpcomingEvent = upcomingEventCards[0] ?? null;
 
   const renderUpcomingEventsList = (variant: 'mobile' | 'desktop') => {
     if (upcomingEventCards.length === 0) {
@@ -972,11 +1025,7 @@ export function SupporterDashboardView({
         aria-label="Upcoming Event Cards"
       >
         {upcomingEventCards.map((card) => {
-          const eventTitle = card.type === 'game'
-            ? card.opponent
-              ? `${profile.teamName || 'Your team'} vs ${card.opponent}`
-              : (profile.teamName ? `${profile.teamName} game` : 'Game')
-            : card.opponent.trim() || 'Practice';
+          const eventTitle = getUpcomingEventCardTitle(card, profile.teamName);
 
           return (
             <li
@@ -991,7 +1040,10 @@ export function SupporterDashboardView({
                 <span className="supporter-game-on-summary__upcoming-type">
                   {card.type === 'game' ? 'Game' : 'Practice'}
                 </span>
-                <span className="supporter-game-on-summary__upcoming-date">
+                <span
+                  className="supporter-game-on-summary__upcoming-date"
+                  data-testid="upcoming-calendar-event-date"
+                >
                   {formatDateDisplay(card.date)} · {formatTimeDisplay(card.time)}
                 </span>
               </div>
@@ -1047,12 +1099,15 @@ export function SupporterDashboardView({
         >
           Upcoming events
         </h2>
-        {upcomingEventCards.length > 0 ? (
-          <img
-            className="supporter-event-graphic__image"
+        {nextUpcomingEvent ? (
+          <SupporterUpcomingEventBadge
             src={`${basePath}/assets/upcoming-event-card-enlarged.png`}
-            alt=""
-            data-testid="img-upcoming-event-card-mobile"
+            category={nextUpcomingEvent.type === 'game' ? 'Upcoming game' : 'Upcoming practice'}
+            title={getUpcomingEventCardTitle(nextUpcomingEvent, profile.teamName)}
+            dateTime={[
+              formatDateDisplay(nextUpcomingEvent.date),
+              formatTimeDisplay(nextUpcomingEvent.time),
+            ].filter(Boolean).join(' · ')}
           />
         ) : (
           renderUpcomingEventsList('mobile')

@@ -1270,12 +1270,23 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       eventFaceRatio: number;
       noInteractiveWrapper: boolean;
       pairedWithHypeCard: boolean;
+      badgeCategory: string;
+      badgeTitle: string;
+      expectedBadgeTitle: string;
+      badgeDateTime: string;
+      expectedBadgeDateTime: string;
+      badgeTitleFontSize: number;
+      badgeDateTimeFontSize: number;
     }>(`(() => {
       const image = document.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
       const rect = image?.getBoundingClientRect();
       const face = document.querySelector('[data-testid="card-mobile-featured-event"]');
       const faceRect = face?.getBoundingClientRect();
       const row = document.querySelector('[data-testid="mobile-calendar-hype-row"]');
+      const nextEvent = document.querySelector('[data-testid="mobile-hero-banner"] [data-testid="upcoming-calendar-event"]');
+      const badgeCategory = document.querySelector('[data-testid="upcoming-event-badge-category"]');
+      const badgeTitle = document.querySelector('[data-testid="upcoming-event-badge-title"]');
+      const badgeDateTime = document.querySelector('[data-testid="upcoming-event-badge-date-time"]');
       return {
         visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
@@ -1287,6 +1298,13 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
         pairedWithHypeCard: row instanceof HTMLElement && row.children.length === 2
           && Boolean(row.querySelector('[data-testid="card-mobile-featured-event"]'))
           && Boolean(row.querySelector('[data-testid="mobile-saved-hype-card"]')),
+        badgeCategory: badgeCategory?.textContent?.trim() || '',
+        badgeTitle: badgeTitle?.textContent?.trim() || '',
+        expectedBadgeTitle: nextEvent?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
+        badgeDateTime: badgeDateTime?.textContent?.trim() || '',
+        expectedBadgeDateTime: nextEvent?.querySelector('[data-testid="upcoming-calendar-event-date"]')?.textContent?.trim() || '',
+        badgeTitleFontSize: badgeTitle instanceof HTMLElement ? Number.parseFloat(getComputedStyle(badgeTitle).fontSize) : 0,
+        badgeDateTimeFontSize: badgeDateTime instanceof HTMLElement ? Number.parseFloat(getComputedStyle(badgeDateTime).fontSize) : 0,
       };
     })()`, page.sessionId);
     assert.equal(mobileGraphic.visible, true, 'the supplied Event Card graphic is visible on mobile');
@@ -1294,6 +1312,11 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       mobileGraphic.source.endsWith('/assets/upcoming-event-card-enlarged.png'),
       `the mobile Event Card uses the standalone artwork: ${mobileGraphic.source}`,
     );
+    assert.equal(mobileGraphic.badgeCategory, 'Upcoming game');
+    assert.equal(mobileGraphic.badgeTitle, mobileGraphic.expectedBadgeTitle, 'the badge names the next upcoming Event Card');
+    assert.equal(mobileGraphic.badgeDateTime, mobileGraphic.expectedBadgeDateTime, 'the badge shows the next event date and time');
+    assert.ok(mobileGraphic.badgeTitleFontSize >= 16, 'the event name stays large at phone width');
+    assert.ok(mobileGraphic.badgeDateTimeFontSize >= 11, 'the event date and time stay readable at phone width');
     assert.ok(Math.abs(mobileGraphic.naturalRatio - mobileGraphic.renderedRatio) < 0.01,
       `the mobile Event Card graphic keeps its native proportions: ${JSON.stringify(mobileGraphic)}`);
     assert.ok(Math.abs(mobileGraphic.eventFaceRatio - 5 / 7) < 0.01,
