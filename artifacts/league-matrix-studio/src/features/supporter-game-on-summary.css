@@ -296,69 +296,6 @@
   object-fit: contain;
 }
 
-.supporter-upcoming-event-badge__copy {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.supporter-upcoming-event-badge__copy > * {
-  position: absolute;
-  left: 11.8%;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  padding: 0 1.6%;
-  background: #fff;
-}
-
-.supporter-upcoming-event-badge__category {
-  top: 27%;
-  width: 76%;
-  height: 5.5%;
-  color: #3474d3;
-  font-size: clamp(11px, 3vw, 42px);
-  font-size: clamp(11px, 4.5cqw, 42px);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.supporter-upcoming-event-badge__title {
-  top: 31.3%;
-  width: 82%;
-  height: 13.2%;
-  color: #0b1f3a;
-  font-family: Impact, "Arial Narrow", Arial, sans-serif;
-  font-size: clamp(16px, 4.1vw, 74px);
-  font-size: clamp(16px, 6.4cqw, 74px);
-  font-weight: 900;
-  line-height: 0.98;
-}
-
-.supporter-upcoming-event-badge__title > span {
-  display: -webkit-box;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.supporter-upcoming-event-badge__date-time {
-  top: 58.4%;
-  width: 82%;
-  height: 5.8%;
-  color: #0b1f3a;
-  font-size: clamp(11px, 2.8vw, 45px);
-  font-size: clamp(11px, 4.7cqw, 45px);
-  font-weight: 750;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 .supporter-stat-trends-stage {
   position: relative;
   z-index: 2;

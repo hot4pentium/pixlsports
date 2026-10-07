@@ -14,3 +14,9 @@ The dashboard event badge must show the actual next upcoming Event Card, includi
 **Why:** The user reported that a tomorrow Event Card was absent from the badge and repeated that the badge text still needed to be larger.
 
 **How to apply:** Preserve the lanyard artwork while displaying the current next event; do not treat blank generic artwork as a complete dashboard badge.
+
+Native long-press image previews must retain the same current event details as the dashboard badge.
+
+**Why:** The user confirmed the correct event appeared on the dashboard, but it disappeared when long-pressing for an enlarged image view.
+
+**How to apply:** Verify the image independently from the surrounding page; visible page overlays alone do not satisfy the enlarged-view requirement.

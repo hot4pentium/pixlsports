@@ -1262,6 +1262,9 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       ),
       3,
     );
+    await waitFor(connection, page.sessionId,
+      '(() => { const image = document.querySelector(\'[data-testid="img-upcoming-event-card-mobile"]\'); return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0; })()',
+      Boolean);
     const mobileGraphic = await connection.evaluate<{
       visible: boolean;
       source: string;
@@ -1275,8 +1278,6 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       expectedBadgeTitle: string;
       badgeDateTime: string;
       expectedBadgeDateTime: string;
-      badgeTitleFontSize: number;
-      badgeDateTimeFontSize: number;
     }>(`(() => {
       const image = document.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
       const rect = image?.getBoundingClientRect();
@@ -1284,9 +1285,6 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       const faceRect = face?.getBoundingClientRect();
       const row = document.querySelector('[data-testid="mobile-calendar-hype-row"]');
       const nextEvent = document.querySelector('[data-testid="mobile-hero-banner"] [data-testid="upcoming-calendar-event"]');
-      const badgeCategory = document.querySelector('[data-testid="upcoming-event-badge-category"]');
-      const badgeTitle = document.querySelector('[data-testid="upcoming-event-badge-title"]');
-      const badgeDateTime = document.querySelector('[data-testid="upcoming-event-badge-date-time"]');
       return {
         visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
@@ -1298,25 +1296,62 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
         pairedWithHypeCard: row instanceof HTMLElement && row.children.length === 2
           && Boolean(row.querySelector('[data-testid="card-mobile-featured-event"]'))
           && Boolean(row.querySelector('[data-testid="mobile-saved-hype-card"]')),
-        badgeCategory: badgeCategory?.textContent?.trim() || '',
-        badgeTitle: badgeTitle?.textContent?.trim() || '',
+        badgeCategory: image?.getAttribute('data-event-category') || '',
+        badgeTitle: image?.getAttribute('data-event-title') || '',
         expectedBadgeTitle: nextEvent?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
-        badgeDateTime: badgeDateTime?.textContent?.trim() || '',
+        badgeDateTime: image?.getAttribute('data-event-date-time') || '',
         expectedBadgeDateTime: nextEvent?.querySelector('[data-testid="upcoming-calendar-event-date"]')?.textContent?.trim() || '',
-        badgeTitleFontSize: badgeTitle instanceof HTMLElement ? Number.parseFloat(getComputedStyle(badgeTitle).fontSize) : 0,
-        badgeDateTimeFontSize: badgeDateTime instanceof HTMLElement ? Number.parseFloat(getComputedStyle(badgeDateTime).fontSize) : 0,
       };
     })()`, page.sessionId);
     assert.equal(mobileGraphic.visible, true, 'the supplied Event Card graphic is visible on mobile');
     assert.ok(
-      mobileGraphic.source.endsWith('/assets/upcoming-event-card-enlarged.png'),
-      `the mobile Event Card uses the standalone artwork: ${mobileGraphic.source}`,
+      mobileGraphic.source.startsWith('data:image/png;base64,'),
+      'the native image preview receives a complete PNG, not the blank background artwork',
     );
     assert.equal(mobileGraphic.badgeCategory, 'Upcoming game');
     assert.equal(mobileGraphic.badgeTitle, mobileGraphic.expectedBadgeTitle, 'the badge names the next upcoming Event Card');
     assert.equal(mobileGraphic.badgeDateTime, mobileGraphic.expectedBadgeDateTime, 'the badge shows the next event date and time');
-    assert.ok(mobileGraphic.badgeTitleFontSize >= 16, 'the event name stays large at phone width');
-    assert.ok(mobileGraphic.badgeDateTimeFontSize >= 11, 'the event date and time stay readable at phone width');
+    const imagePixels = await connection.evaluate<{ title: number; dateTime: number }>(`(async () => {
+      const displayed = document.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
+      const load = (src) => new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = src;
+      });
+      // Load the image source on its own, as a native long-press preview does.
+      const standalone = await load(displayed.src);
+      const base = await load(displayed.dataset.baseArtwork);
+      const pixels = (image) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0);
+        return context.getImageData(0, 0, canvas.width, canvas.height).data;
+      };
+      const actual = pixels(standalone);
+      const original = pixels(base);
+      const differences = (top, bottom) => {
+        let count = 0;
+        for (let y = Math.floor(standalone.height * top); y < standalone.height * bottom; y++) {
+          for (let x = Math.floor(standalone.width * 0.134); x < standalone.width * 0.92; x++) {
+            const index = (y * standalone.width + x) * 4;
+            if (Math.abs(actual[index] - original[index]) > 30
+              || Math.abs(actual[index + 1] - original[index + 1]) > 30
+              || Math.abs(actual[index + 2] - original[index + 2]) > 30) count++;
+          }
+        }
+        return count;
+      };
+      return { title: differences(0.313, 0.463), dateTime: differences(0.584, 0.642) };
+    })()`, page.sessionId);
+    assert.ok(imagePixels.title > 1000, 'the event name is embedded in the standalone image pixels');
+    assert.ok(imagePixels.dateTime > 1000, 'the date and time are embedded in the standalone image pixels');
+    if (process.env.EVENT_BADGE_TEST_IMAGE_PATH) {
+      await writeFile(process.env.EVENT_BADGE_TEST_IMAGE_PATH,
+        Buffer.from(mobileGraphic.source.split(',')[1], 'base64'));
+    }
     assert.ok(Math.abs(mobileGraphic.naturalRatio - mobileGraphic.renderedRatio) < 0.01,
       `the mobile Event Card graphic keeps its native proportions: ${JSON.stringify(mobileGraphic)}`);
     assert.ok(Math.abs(mobileGraphic.eventFaceRatio - 5 / 7) < 0.01,

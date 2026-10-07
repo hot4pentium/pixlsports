@@ -1,5 +1,6 @@
 import { lazy, Suspense, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
+import { renderSupporterEventBadgeImage } from './supporter-event-badge-image';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -240,31 +241,39 @@ function SupporterUpcomingEventBadge({
   title: string;
   dateTime: string;
 }) {
+  const imageKey = JSON.stringify([src, category, title, dateTime]);
+  const [preparedImage, setPreparedImage] = useState<{ key: string; src: string } | null>(null);
+  const [failedKey, setFailedKey] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    renderSupporterEventBadgeImage({ src, category, title, dateTime })
+      .then((imageSrc) => {
+        if (!cancelled) setPreparedImage({ key: imageKey, src: imageSrc });
+      })
+      .catch(() => {
+        if (!cancelled) setFailedKey(imageKey);
+      });
+    return () => { cancelled = true; };
+  }, [src, category, title, dateTime, imageKey]);
+
   return (
     <div className="supporter-upcoming-event-badge" data-testid="upcoming-event-badge">
-      <img
-        className="supporter-event-graphic__image"
-        src={src}
-        alt=""
-        data-testid="img-upcoming-event-card-mobile"
-      />
-      <div className="supporter-upcoming-event-badge__copy" aria-hidden="true">
-        <span
-          className="supporter-upcoming-event-badge__category"
-          data-testid="upcoming-event-badge-category"
-        >
-          {category}
+      {preparedImage?.key === imageKey ? (
+        <img
+          className="supporter-event-graphic__image"
+          src={preparedImage.src}
+          alt=""
+          data-testid="img-upcoming-event-card-mobile"
+          data-base-artwork={src}
+          data-event-category={category}
+          data-event-title={title}
+          data-event-date-time={dateTime}
+        />
+      ) : (
+        <span role="status">
+          {failedKey === imageKey ? 'Event badge could not load. Refresh to retry.' : 'Preparing event badge…'}
         </span>
-        <span className="supporter-upcoming-event-badge__title">
-          <span data-testid="upcoming-event-badge-title">{title}</span>
-        </span>
-        <span
-          className="supporter-upcoming-event-badge__date-time"
-          data-testid="upcoming-event-badge-date-time"
-        >
-          {dateTime}
-        </span>
-      </div>
+      )}
     </div>
   );
 }
