@@ -744,10 +744,60 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       checkedItemIds: ['profile'],
       saveCount: 1,
     }, 'the Event Card flow should start with saved checklist progress');
-    await connection.evaluate(
-      'document.querySelector("[data-testid=\\"dashboard-checklist-action-event-card\\"]")?.click()',
-      page.sessionId,
+    let eventCardActionFocused = false;
+    for (let tabCount = 0; tabCount < 100; tabCount += 1) {
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Tab',
+        code: 'Tab',
+        windowsVirtualKeyCode: 9,
+        nativeVirtualKeyCode: 9,
+      }, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Tab',
+        code: 'Tab',
+        windowsVirtualKeyCode: 9,
+        nativeVirtualKeyCode: 9,
+      }, page.sessionId);
+      eventCardActionFocused = await connection.evaluate(
+        'document.activeElement === document.querySelector("[data-testid=\\"dashboard-checklist-action-event-card\\"]")',
+        page.sessionId,
+      );
+      if (eventCardActionFocused) break;
+    }
+    assert.equal(
+      eventCardActionFocused,
+      true,
+      'keyboard Tab navigation should focus the Create an Event Card action',
     );
+    assert.equal(
+      await connection.evaluate<string>(
+        `(() => {
+          const action = document.activeElement;
+          return action instanceof HTMLButtonElement
+            ? action.textContent?.replace(/\\s+/g, ' ').trim() ?? ''
+            : '';
+        })()`,
+        page.sessionId,
+      ),
+      'Create an Event Card',
+      'the focused checklist action should expose its expected button label',
+    );
+    await connection.send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: ' ',
+      code: 'Space',
+      windowsVirtualKeyCode: 32,
+      nativeVirtualKeyCode: 32,
+    }, page.sessionId);
+    await connection.send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: ' ',
+      code: 'Space',
+      windowsVirtualKeyCode: 32,
+      nativeVirtualKeyCode: 32,
+    }, page.sessionId);
     await waitFor(
       connection,
       page.sessionId,
