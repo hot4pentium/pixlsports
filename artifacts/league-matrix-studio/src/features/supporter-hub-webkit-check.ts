@@ -97,8 +97,8 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
       const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
       const surface = slot.querySelector('.supporter-hype-preview__surface');
       const c = surface?.getBoundingClientRect();
-      const button = event.querySelector('[data-testid="button-open-upcoming-event-card-mobile"]');
-      const action = button?.getBoundingClientRect();
+      const graphic = event.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
+      const graphicRect = graphic?.getBoundingClientRect();
       const text = event.querySelector('[data-testid="upcoming-calendar-event-title"]');
       const title = text?.getBoundingClientRect();
       const premium = surface?.querySelector('.living-card-premium-face');
@@ -120,7 +120,11 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
         equal: Math.abs(a.width-b.width)<1,
         paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
         noOverflow: document.documentElement.scrollWidth<=innerWidth+1,
-        actionFits: !action || (action.left>=a.left-1 && action.right<=a.right+1 && action.height>=43.9),
+        graphicFits: !graphic || (graphic instanceof HTMLImageElement && graphic.complete && graphic.naturalWidth>0
+          && !!graphicRect && graphicRect.left>=a.left && graphicRect.right<=a.right
+          && graphicRect.top>=a.top && graphicRect.bottom<=a.bottom
+          && Math.abs(graphicRect.width/graphicRect.height-graphic.naturalWidth/graphic.naturalHeight)<.01),
+        noEventAction: !event.querySelector('a,button'),
         titleFits: !title || (title.left>=a.left && title.right<=a.right+1 && title.height>0),
         ratio: !c || Math.abs(c.width/c.height-5/7)<.01,
         nativeArt: !surface || (surface.dataset.design==='classic'
@@ -144,7 +148,7 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
           width:getComputedStyle(document.querySelector('.supporter-hype-preview__surface')||document.body).width,
           container:getComputedStyle(document.querySelector('.supporter-hype-preview__surface')||document.body).containerType},
         nodes:[...document.querySelectorAll('[data-testid="mobile-calendar-hype-row"] *')]
-          .filter(n=>n.getBoundingClientRect().right>innerWidth || n.matches('[data-testid="button-open-upcoming-event-card-mobile"]'))
+          .filter(n=>n.getBoundingClientRect().right>innerWidth)
           .map(n=>({tag:n.tagName,cls:n.className,text:n.textContent?.slice(0,90),rect:n.getBoundingClientRect().toJSON()})).slice(0,20)})`));
       const screenshot = await command<string>('GET', `${sessionPath}/screenshot`);
       await writeFile('/tmp/supporter-hub-webkit-failure.png', Buffer.from(screenshot, 'base64'));
@@ -311,14 +315,6 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
     await click('[data-testid="mobile-saved-hype-card"] button');
     await wait(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
     // WebDriver sends native input, not DOM .click() or dispatched JS events.
-    await key('[data-testid="button-open-upcoming-event-card-mobile"]', '\uE007');
-    await wait(`!!document.querySelector('[role="dialog"]')`);
-    await key('[role="dialog"] button', '\uE00C');
-    await wait(`!document.querySelector('[role="dialog"]')`);
-    await click('[data-testid="button-open-upcoming-event-card-mobile"]');
-    await wait(`!!document.querySelector('[role="dialog"]')`);
-    await key('[role="dialog"] button', '\uE00C');
-    await wait(`!document.querySelector('[role="dialog"]')`);
     await key('[data-testid="link-mobile-hype-preview"]', '\uE007');
     await wait(`location.pathname==='/fan/saved-athlete-token'`);
     await evaluate(`(history.back(), true)`);

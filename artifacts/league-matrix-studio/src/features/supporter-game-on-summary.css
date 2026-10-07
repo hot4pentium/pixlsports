@@ -265,6 +265,26 @@
   padding: 0;
 }
 
+.supporter-event-graphic {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.supporter-event-graphic__image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.supporter-event-graphic--desktop .supporter-event-graphic__image {
+  flex: 0 1 auto;
+}
+
 .supporter-event-pass {
   position: relative;
   display: flex;
@@ -609,35 +629,6 @@
   color: #2878f5;
 }
 
-.supporter-game-on-summary__upcoming-action {
-  display: inline-flex;
-  width: max-content;
-  min-height: 32px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid #2878f5;
-  border-radius: 4px;
-  padding: 6px 9px;
-  color: #fff;
-  background: #2878f5;
-  font-size: 9px;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.supporter-game-on-summary__upcoming-action:hover {
-  background: #1f64d0;
-}
-
-.supporter-game-on-summary__upcoming-action:focus-visible {
-  outline: 2px solid #0b1f3a;
-  outline-offset: 2px;
-}
-
-.supporter-game-on-summary__upcoming-action svg {
-  flex: 0 0 auto;
-}
-
 @container (max-width: 440px) {
   .supporter-game-on-summary__event-main { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .supporter-game-on-summary__event-utility {
@@ -674,10 +665,6 @@
   grid-template-columns: minmax(105px, .7fr) minmax(140px, 1.25fr) minmax(100px, .8fr) auto;
   align-items: center;
   column-gap: 12px;
-}
-
-.supporter-event-pass--desktop .supporter-game-on-summary__upcoming-action {
-  justify-self: end;
 }
 
 @container (max-width: 310px) {
@@ -1211,6 +1198,7 @@
 }
 
 .supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-content {
+  display: flex;
   min-height: 0;
   flex: 0 0 auto;
   width: 100%;
@@ -1222,6 +1210,15 @@
   border-radius: 11px;
   background: #f8fafc;
   box-shadow: 0 12px 26px rgba(3, 17, 36, .18);
+}
+
+.supporter-game-on-summary--mobile .supporter-event-graphic--mobile {
+  height: 100%;
+  min-height: 0;
+}
+
+.supporter-game-on-summary--mobile .supporter-event-graphic--mobile .supporter-event-graphic__image {
+  max-height: 100%;
 }
 
 .supporter-game-on-summary--mobile .supporter-event-pass {
@@ -1279,15 +1276,6 @@
   min-height: 44px;
   padding: 6px 8px;
   font-size: 9px;
-}
-
-.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__upcoming-action {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  justify-content: space-between;
-  padding-inline: 6px;
-  font-size: 8px;
 }
 
 .supporter-game-on-summary--mobile .supporter-game-on-summary__hype-row .supporter-game-on-summary__event-kicker { font-size: 8px; letter-spacing: .08em; gap: 4px; }

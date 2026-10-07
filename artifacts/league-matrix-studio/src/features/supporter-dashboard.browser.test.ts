@@ -942,7 +942,7 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
   }
 });
 
-test('dashboard shows visible upcoming Event Card actions and install reminders across screen sizes', { concurrency: false }, async () => {
+test('dashboard shows the upcoming Event Card graphic inline and install reminders across screen sizes', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-add-event-navigation-test');
   let devServer: ChildProcess | undefined;
@@ -1045,6 +1045,26 @@ test('dashboard shows visible upcoming Event Card actions and install reminders 
       await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"] [data-testid="upcoming-calendar-events"]\')?.textContent || ""', page.sessionId),
       /Visitors.*Practice.*Rivals/s,
     );
+    const desktopGraphic = await connection.evaluate<{
+      visible: boolean;
+      naturalRatio: number;
+      renderedRatio: number;
+      noInteractiveWrapper: boolean;
+    }>(`(() => {
+      const image = document.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
+      const rect = image?.getBoundingClientRect();
+      return {
+        visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+          && Boolean(rect && rect.width > 0 && rect.height > 0),
+        naturalRatio: image instanceof HTMLImageElement ? image.naturalWidth / image.naturalHeight : 0,
+        renderedRatio: rect && rect.height > 0 ? rect.width / rect.height : 0,
+        noInteractiveWrapper: image instanceof HTMLImageElement && image.closest('a, button') === null,
+      };
+    })()`, page.sessionId);
+    assert.equal(desktopGraphic.visible, true, 'the supplied Event Card graphic is visible on desktop');
+    assert.ok(Math.abs(desktopGraphic.naturalRatio - desktopGraphic.renderedRatio) < 0.01,
+      `the desktop Event Card graphic keeps its native proportions: ${JSON.stringify(desktopGraphic)}`);
+    assert.equal(desktopGraphic.noInteractiveWrapper, true, 'the Event Card graphic is not a link or button');
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
@@ -1058,6 +1078,38 @@ test('dashboard shows visible upcoming Event Card actions and install reminders 
       ),
       3,
     );
+    const mobileGraphic = await connection.evaluate<{
+      visible: boolean;
+      naturalRatio: number;
+      renderedRatio: number;
+      eventFaceRatio: number;
+      noInteractiveWrapper: boolean;
+      pairedWithHypeCard: boolean;
+    }>(`(() => {
+      const image = document.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
+      const rect = image?.getBoundingClientRect();
+      const face = document.querySelector('[data-testid="card-mobile-featured-event"]');
+      const faceRect = face?.getBoundingClientRect();
+      const row = document.querySelector('[data-testid="mobile-calendar-hype-row"]');
+      return {
+        visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+          && Boolean(rect && rect.width > 0 && rect.height > 0),
+        naturalRatio: image instanceof HTMLImageElement ? image.naturalWidth / image.naturalHeight : 0,
+        renderedRatio: rect && rect.height > 0 ? rect.width / rect.height : 0,
+        eventFaceRatio: faceRect && faceRect.height > 0 ? faceRect.width / faceRect.height : 0,
+        noInteractiveWrapper: image instanceof HTMLImageElement && image.closest('a, button') === null,
+        pairedWithHypeCard: row instanceof HTMLElement && row.children.length === 2
+          && Boolean(row.querySelector('[data-testid="card-mobile-featured-event"]'))
+          && Boolean(row.querySelector('[data-testid="mobile-saved-hype-card"]')),
+      };
+    })()`, page.sessionId);
+    assert.equal(mobileGraphic.visible, true, 'the supplied Event Card graphic is visible on mobile');
+    assert.ok(Math.abs(mobileGraphic.naturalRatio - mobileGraphic.renderedRatio) < 0.01,
+      `the mobile Event Card graphic keeps its native proportions: ${JSON.stringify(mobileGraphic)}`);
+    assert.ok(Math.abs(mobileGraphic.eventFaceRatio - 5 / 7) < 0.01,
+      `the mobile Event Card face keeps the matching portrait card footprint: ${JSON.stringify(mobileGraphic)}`);
+    assert.equal(mobileGraphic.noInteractiveWrapper, true, 'the mobile graphic is not a link or button');
+    assert.equal(mobileGraphic.pairedWithHypeCard, true, 'the mobile Event Card remains paired with the HYPE Card');
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 1000,
@@ -1324,72 +1376,40 @@ test('dashboard shows visible upcoming Event Card actions and install reminders 
       mobile: false,
     }, page.sessionId);
     await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
-    const desktopActionViewport = await connection.evaluate<{
+    const desktopGraphicViewport = await connection.evaluate<{
       visible: boolean;
       eventId: string;
       title: string;
       scrollY: number;
-      actionTop: number | null;
-      actionBottom: number | null;
-      viewportHeight: number;
-      summaryTop: number | null;
-      summaryBottom: number | null;
+      noInteractiveControls: boolean;
+      preservesIntrinsicRatio: boolean;
     }>(`(() => {
-      const action = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-open-upcoming-event-card-desktop"]');
-      const event = action?.closest('[data-testid="upcoming-calendar-event"]');
-      const rect = action?.getBoundingClientRect();
-      const summaryRect = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="desktop-game-on-summary"]')?.getBoundingClientRect();
+      const section = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="section-next-game-context"]');
+      const image = section?.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
+      const event = section?.querySelector('[data-testid="upcoming-calendar-event"]');
+      const rect = image?.getBoundingClientRect();
       return {
-        visible: action instanceof HTMLElement
-          && action.getClientRects().length > 0
-          && getComputedStyle(action).visibility !== 'hidden'
-          && Boolean(rect && rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth),
+        visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+          && image.getClientRects().length > 0
+          && Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= innerWidth),
         eventId: event?.getAttribute('data-event-id') || '',
         title: event?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
         scrollY: window.scrollY,
-        actionTop: rect?.top ?? null,
-        actionBottom: rect?.bottom ?? null,
-        viewportHeight: innerHeight,
-        summaryTop: summaryRect?.top ?? null,
-        summaryBottom: summaryRect?.bottom ?? null,
+        noInteractiveControls: section?.querySelector('a, button') === null,
+        preservesIntrinsicRatio: image instanceof HTMLImageElement && Boolean(rect && rect.height > 0)
+          && Math.abs(rect.width / rect.height - image.naturalWidth / image.naturalHeight) < .01,
       };
     })()`, page.sessionId);
     assert.equal(
-      desktopActionViewport.visible,
+      desktopGraphicViewport.visible,
       true,
-      `the returning supporter can see the standalone Event Card action before scrolling on desktop: ${JSON.stringify(desktopActionViewport)}`,
+      `the returning supporter can see the standalone Event Card graphic inline on desktop: ${JSON.stringify(desktopGraphicViewport)}`,
     );
-    assert.equal(desktopActionViewport.eventId, 'standalone-event-830');
-    assert.equal(desktopActionViewport.scrollY, 0);
-    assert.match(desktopActionViewport.title, /Night Owls/);
-    await connection.evaluate(
-      'document.querySelector(\'.supporter-dashboard-desktop-shell [data-testid="button-open-upcoming-event-card-desktop"]\')?.click()',
-      page.sessionId,
-    );
-    await waitFor(
-      connection,
-      page.sessionId,
-      'Boolean(document.querySelector(\'.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\'))',
-      Boolean,
-    );
-    assert.equal(
-      await connection.evaluate<string>(
-        'document.querySelector(\'.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\')?.getAttribute("data-testid") || ""',
-        page.sessionId,
-      ),
-      'dialog-game-on-card-share:standalone-830',
-      'the desktop action opens the matching Event Card',
-    );
-    await connection.evaluate(
-      'document.querySelector(\'.supporter-dashboard-desktop-shell [data-testid="button-open-upcoming-event-card-desktop"]\')?.click()',
-      page.sessionId,
-    );
-    await waitFor(
-      connection,
-      page.sessionId,
-      '!document.querySelector(\'.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\')',
-      Boolean,
-    );
+    assert.equal(desktopGraphicViewport.eventId, 'standalone-event-830');
+    assert.equal(desktopGraphicViewport.scrollY, 0);
+    assert.match(desktopGraphicViewport.title, /Night Owls/);
+    assert.equal(desktopGraphicViewport.noInteractiveControls, true);
+    assert.equal(desktopGraphicViewport.preservesIntrinsicRatio, true);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
@@ -1405,49 +1425,50 @@ test('dashboard shows visible upcoming Event Card actions and install reminders 
       1,
       'a standalone Event Card appears in the mobile upcoming list without a Calendar event',
     );
-    const mobileActionViewport = await connection.evaluate<{
-      visible: boolean;
+    const mobileGraphicViewport = await connection.evaluate<{
+      imageVisible: boolean;
+      naturalRatio: number;
+      renderedRatio: number;
       eventId: string;
       title: string;
       scrollY: number;
+      noInteractiveControls: boolean;
       eventAndHypeCardsPaired: boolean;
     }>(`(() => {
-      const action = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-open-upcoming-event-card-mobile"]');
-      const event = action?.closest('[data-testid="upcoming-calendar-event"]');
-      const rect = action?.getBoundingClientRect();
+      const section = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="mobile-calendar-hype-row"] > .supporter-game-on-summary__event');
+      const image = section?.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
+      const event = section?.querySelector('[data-testid="upcoming-calendar-event"]');
+      const rect = image?.getBoundingClientRect();
       const row = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="mobile-calendar-hype-row"]');
       return {
-        visible: action instanceof HTMLElement
-          && action.getClientRects().length > 0
-          && getComputedStyle(action).visibility !== 'hidden'
-          && Boolean(rect && rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth),
+        imageVisible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+          && image.getClientRects().length > 0
+          && Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= innerWidth),
+        naturalRatio: image instanceof HTMLImageElement ? image.naturalWidth / image.naturalHeight : 0,
+        renderedRatio: rect && rect.height > 0 ? rect.width / rect.height : 0,
         eventId: event?.getAttribute('data-event-id') || '',
         title: event?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
         scrollY: window.scrollY,
+        noInteractiveControls: section?.querySelector('a, button') === null,
         eventAndHypeCardsPaired: row instanceof HTMLElement
           && row.children.length === 2
           && Boolean(row.querySelector('[data-testid="card-mobile-featured-event"]'))
           && Boolean(row.querySelector('[data-testid="mobile-saved-hype-card"]')),
       };
     })()`, page.sessionId);
-    assert.deepEqual(mobileActionViewport, {
-      visible: true,
+    assert.deepEqual(mobileGraphicViewport, {
+      imageVisible: true,
+      naturalRatio: mobileGraphicViewport.naturalRatio,
+      renderedRatio: mobileGraphicViewport.renderedRatio,
       eventId: 'standalone-event-830',
-      title: mobileActionViewport.title,
+      title: mobileGraphicViewport.title,
       scrollY: 0,
+      noInteractiveControls: true,
       eventAndHypeCardsPaired: true,
-    }, 'the returning supporter can see the Event Card action before scrolling without losing the mobile HYPE Card pairing');
-    assert.match(mobileActionViewport.title, /Night Owls/);
-    await connection.evaluate(
-      'document.querySelector(\'.supporter-dashboard-mobile-shell [data-testid="button-open-upcoming-event-card-mobile"]\')?.click()',
-      page.sessionId,
-    );
-    await waitFor(
-      connection,
-      page.sessionId,
-      'Boolean(document.querySelector(\'.supporter-dashboard-mobile-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\'))',
-      Boolean,
-    );
+    }, 'the standalone Event Card graphic remains inline, non-interactive, and paired with the mobile HYPE Card');
+    assert.ok(Math.abs(mobileGraphicViewport.naturalRatio - mobileGraphicViewport.renderedRatio) < 0.01,
+      `the mobile Event Card graphic keeps its native proportions: ${JSON.stringify(mobileGraphicViewport)}`);
+    assert.match(mobileGraphicViewport.title, /Night Owls/);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -4872,7 +4893,8 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
           const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
           const card = slot.querySelector('.supporter-hype-preview__surface'), c = card.getBoundingClientRect();
           const eventCard = event.querySelector('[data-testid="card-mobile-featured-event"]').getBoundingClientRect();
-          const action = event.querySelector('[data-testid="button-open-upcoming-event-card-mobile"]');
+          const graphic = event.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
+          const graphicRect = graphic?.getBoundingClientRect();
           const navLink = slot.querySelector('[data-testid="link-mobile-hype-preview"]');
           const nav = slot.querySelector('[data-testid="saved-card-navigation"]');
           const athleteLink = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
@@ -4885,12 +4907,16 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
           const quickHypeLink = document.querySelector('[data-testid="link-mobile-independent-hype"]');
           return { equal: Math.abs(a.width-b.width)<1, paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
             cardsAligned: Math.abs(eventCard.width-c.width)<1 && Math.abs(eventCard.height-c.height)<1 && Math.abs(eventCard.top-c.top)<1,
+            graphicFits: !graphic || Boolean(graphicRect && graphicRect.left>=eventCard.left && graphicRect.right<=eventCard.right
+              && graphicRect.top>=eventCard.top && graphicRect.bottom<=eventCard.bottom),
+            graphicKeepsRatio: !graphic || (graphic instanceof HTMLImageElement && graphic.naturalWidth>0
+              && graphicRect?.height>0 && Math.abs(graphicRect.width/graphicRect.height-graphic.naturalWidth/graphic.naturalHeight)<.01),
+            noEventAction: !event.querySelector('a,button'),
             ratio: Math.abs(c.width/c.height-5/7)<.01,
             noOverflow: document.documentElement.scrollWidth<=innerWidth,
             athleteSwitcherUsesAvailableWidth: athleteLink instanceof HTMLElement
               && Boolean(athleteHeader)
               && Math.abs(athleteLinkWidth - Math.min(300, headerContentWidth)) < 1,
-            actionFits: !!action && action.getBoundingClientRect().right<=a.right+1,
             hypeQuickLinkRemoved: quickHypeLink === null,
             cardPreviewStillLinks: navLink instanceof HTMLAnchorElement && Boolean(navLink.getAttribute('href')),
             noLandingCardControls: nav === null,
@@ -4903,7 +4929,8 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
             preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies'),
             desktopInboxRetained: !!document.querySelector('.supporter-game-on-summary--desktop .supporter-game-on-summary__replies') };
         })()`);
-        assert.deepEqual(layout, { equal: true, paired: true, cardsAligned: true, ratio: true, noOverflow: true, actionFits: true,
+        assert.deepEqual(layout, { equal: true, paired: true, cardsAligned: true, graphicFits: true, graphicKeepsRatio: true,
+          noEventAction: true, ratio: true, noOverflow: true,
           athleteSwitcherUsesAvailableWidth: true,
           hypeQuickLinkRemoved: true, cardPreviewStillLinks: true,
           noLandingCardControls: true,
@@ -5002,11 +5029,10 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
        await connection!.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] }, page!.sessionId);
        await connection!.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, page!.sessionId);
      };
-     await tap('[data-testid="button-open-upcoming-event-card-mobile"]');
-     await wait(`Boolean(document.querySelector('[role="dialog"]'))`);
-     await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, page.sessionId);
-     await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, page.sessionId);
-     await wait(`!document.querySelector('[role="dialog"]')`);
+      assert.equal(await evaluate(`(() => {
+        const graphic = document.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
+        return graphic instanceof HTMLImageElement && graphic.closest('a,button') === null;
+      })()`), true, 'the Upcoming Event graphic remains inline and non-interactive');
     await evaluate(`window.__setSupporterDashboardEvents([])`);
     await wait(`document.querySelector('[data-testid="upcoming-calendar-events-empty"]')?.textContent.includes('No upcoming games or practices')`);
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`), true);
