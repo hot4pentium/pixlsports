@@ -69,7 +69,6 @@ import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './track
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
-const SupporterStatTrends = lazy(() => import('./supporter-stat-trends'));
 import { SupporterHypeCardPreview } from './supporter-hype-card-preview';
 import { NotificationSettings } from './notification-settings';
 import {
@@ -93,6 +92,8 @@ import {
 import './supporter-dashboard-pixl.css';
 import './supporter-game-on-summary.css';
 import './supporter-profile-wallet.css';
+
+const SupporterStatTrends = lazy(() => import('./supporter-stat-trends'));
 
 export interface SupporterProfile {
   displayName: string;
@@ -1013,7 +1014,16 @@ export function SupporterDashboardView({
   const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
     variant === 'desktop' ? (
       <div className="supporter-stat-trends-stage">
-        <Suspense fallback={<div className="supporter-stat-trends supporter-stat-trends--loading" role="status">Loading stat trends…</div>}>
+        <Suspense fallback={(
+          <div
+            className="supporter-stat-trends supporter-stat-trends--loading"
+            role="status"
+            aria-labelledby="supporter-stat-trends-heading"
+          >
+            <h2 id="supporter-stat-trends-heading" className="sr-only">Stat trends</h2>
+            <span>Loading stat trends…</span>
+          </div>
+        )}>
           <SupporterStatTrends games={completedLocalGames} profileSport={profile.sport ?? null} />
         </Suspense>
         {renderUpcomingEventsList('desktop')}
@@ -1030,7 +1040,7 @@ export function SupporterDashboardView({
         {upcomingEventCards.length > 0 ? (
           <img
             className="supporter-event-graphic__image"
-            src={`${basePath}/assets/upcoming-event-card-enlarged.png`}
+            src={`${basePath}/assets/upcoming-event-card-readable.svg`}
             alt=""
             data-testid="img-upcoming-event-card-mobile"
           />

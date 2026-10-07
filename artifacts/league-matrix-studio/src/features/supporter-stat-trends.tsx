@@ -61,7 +61,7 @@ export default function SupporterStatTrends({ games, profileSport }: SupporterSt
     <section className="supporter-stat-trends" aria-labelledby="supporter-stat-trends-heading" data-testid="supporter-stat-trends">
       <header className="supporter-stat-trends__header">
         <div>
-          <span className="supporter-stat-trends__eyebrow">RECENT GAMES</span>
+          <span className="supporter-stat-trends__eyebrow">COMBINED TEAM TREND</span>
           <h2 id="supporter-stat-trends-heading">STAT TRENDS</h2>
         </div>
         {selectedMetric && model.metrics.length > 1 ? (

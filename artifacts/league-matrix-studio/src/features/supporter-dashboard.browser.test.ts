@@ -307,14 +307,20 @@ async function waitFor<T>(
     if (predicate(value)) return value;
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
   }
-  const diagnostic = await page.evaluate<{ body: string; testError?: string }>(
-    '({ body: document.body?.innerText || "", testError: document.body?.dataset.testError })',
+  const diagnostic = await page.evaluate<{ body: string; html: string; readyState: string; url: string; testError?: string }>(
+    '({ body: document.body?.innerText || "", html: document.documentElement?.outerHTML || "", readyState: document.readyState, url: location.href, testError: document.body?.dataset.testError })',
     sessionId,
   ).catch((error) => ({
     body: `unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    html: '',
+    readyState: 'unavailable',
+    url: 'unavailable',
     testError: undefined,
   }));
-  throw new Error(`Timed out waiting for browser condition: ${expression}; testError=${diagnostic.testError || 'none'}; body=${diagnostic.body.slice(0, 700)}`);
+  throw new Error(
+    `Timed out waiting for browser condition: ${expression}; testError=${diagnostic.testError || 'none'}; `
+    + `url=${diagnostic.url}; readyState=${diagnostic.readyState}; body=${diagnostic.body.slice(0, 400)}; html=${diagnostic.html.slice(0, 700)}`,
+  );
 }
 
 test('supporter browser assertion failures still clean up Chromium and generated state', { concurrency: false }, async () => {
@@ -1096,7 +1102,7 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
   }
 });
 
-test('dashboard shows the upcoming Event Card graphic inline and install reminders across screen sizes', { concurrency: false }, async () => {
+test('desktop dashboard shows stat trends while mobile keeps the Event Card graphic', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-add-event-navigation-test');
   let devServer: ChildProcess | undefined;
@@ -1199,44 +1205,49 @@ test('dashboard shows the upcoming Event Card graphic inline and install reminde
       await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"] [data-testid="upcoming-calendar-events"]\')?.textContent || ""', page.sessionId),
       /Visitors.*Practice.*Rivals/s,
     );
-    const desktopGraphic = await connection.evaluate<{
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector(\'[data-testid="supporter-stat-trends"]\'))',
+      Boolean,
+    );
+    const desktopTrend = await connection.evaluate<{
       visible: boolean;
-      naturalRatio: number;
-      renderedRatio: number;
-      noInteractiveWrapper: boolean;
-      imageHeight: number;
+      heading: string;
+      noDesktopBadge: boolean;
+      hasTrendContent: boolean;
+      trendHeight: number;
       eventPanelHeight: number;
       shoutoutsPanelHeight: number;
       recordPanelHeight: number;
     }>(`(() => {
-      const image = document.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
-      const rect = image?.getBoundingClientRect();
-      const summary = image?.closest('.supporter-game-on-summary--desktop');
+      const trend = document.querySelector('[data-testid="supporter-stat-trends"]');
+      const rect = trend?.getBoundingClientRect();
+      const summary = trend?.closest('.supporter-game-on-summary--desktop');
       const panelHeight = (selector) => summary?.querySelector(selector)?.getBoundingClientRect().height || 0;
       return {
-        visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+        visible: trend instanceof HTMLElement && trend.getClientRects().length > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
-        naturalRatio: image instanceof HTMLImageElement ? image.naturalWidth / image.naturalHeight : 0,
-        renderedRatio: rect && rect.height > 0 ? rect.width / rect.height : 0,
-        noInteractiveWrapper: image instanceof HTMLImageElement && image.closest('a, button') === null,
-        imageHeight: rect?.height || 0,
+        heading: trend?.querySelector('h2')?.textContent?.trim() || '',
+        noDesktopBadge: document.querySelector('[data-testid="img-upcoming-event-card-desktop"]') === null,
+        hasTrendContent: Boolean(trend?.querySelector('[data-testid="supporter-stat-trends-chart"], [data-testid="supporter-stat-trends-empty"]')),
+        trendHeight: rect?.height || 0,
         eventPanelHeight: panelHeight('.supporter-game-on-summary__event'),
         shoutoutsPanelHeight: panelHeight('.supporter-game-on-summary__replies'),
         recordPanelHeight: panelHeight('.supporter-game-on-summary__record'),
       };
     })()`, page.sessionId);
-    assert.equal(desktopGraphic.visible, true, 'the supplied Event Card graphic is visible on desktop');
-    assert.ok(Math.abs(desktopGraphic.naturalRatio - desktopGraphic.renderedRatio) < 0.01,
-      `the desktop Event Card graphic keeps its native proportions: ${JSON.stringify(desktopGraphic)}`);
-    assert.equal(desktopGraphic.noInteractiveWrapper, true, 'the Event Card graphic is not a link or button');
-    assert.ok(desktopGraphic.imageHeight <= 210,
-      `the desktop Event Card stays compact: ${JSON.stringify(desktopGraphic)}`);
+    assert.equal(desktopTrend.visible, true, 'the desktop summary displays the stat trends panel');
+    assert.equal(desktopTrend.heading, 'STAT TRENDS');
+    assert.equal(desktopTrend.noDesktopBadge, true, 'the Event Card badge is replaced on desktop');
+    assert.equal(desktopTrend.hasTrendContent, true, 'the chart or its honest empty state is visible');
     assert.ok([
-      desktopGraphic.eventPanelHeight,
-      desktopGraphic.shoutoutsPanelHeight,
-      desktopGraphic.recordPanelHeight,
+      desktopTrend.trendHeight,
+      desktopTrend.eventPanelHeight,
+      desktopTrend.shoutoutsPanelHeight,
+      desktopTrend.recordPanelHeight,
     ].every((height) => height > 0 && height <= 220),
-    `the desktop Event Card, Shoutouts, and record remain compact: ${JSON.stringify(desktopGraphic)}`);
+    `the desktop trend, Shoutouts, and record remain compact: ${JSON.stringify(desktopTrend)}`);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
@@ -1504,6 +1515,29 @@ test('dashboard shows the upcoming Event Card graphic inline and install reminde
         },
       };
       localStorage.setItem(\`pixlsports-game-on-cards:\${userId}\`, JSON.stringify([standaloneCard]));
+      const finalGames = [2, 1].map((daysAgo, index) => {
+        const startedAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+        return {
+          id: \`trend-game-\${index + 1}\`,
+          sport: 'basketball',
+          status: 'final',
+          date: startedAt.toISOString().slice(0, 10),
+          opponent: index === 0 ? 'Falcons' : 'Wolves',
+          period: 4,
+          score: index === 0 ? 38 : 51,
+          opponentScore: index === 0 ? 34 : 48,
+          scoreRecorded: true,
+          notes: '',
+          stats: { 'one-point': index + 2 },
+          events: [],
+          startedAt: startedAt.toISOString(),
+          endedAt: new Date(startedAt.getTime() + 90 * 60 * 1000).toISOString(),
+        };
+      });
+      localStorage.setItem(
+        \`leaguematrix-stat-tracker:\${encodeURIComponent(userId)}\`,
+        JSON.stringify({ version: 1, games: finalGames }),
+      );
       return { userId };
     })()`, page.sessionId);
     await connection.evaluate(
@@ -1514,22 +1548,33 @@ test('dashboard shows the upcoming Event Card graphic inline and install reminde
     await waitFor(connection, page.sessionId, `Boolean(
       document.querySelector('[data-testid="upcoming-calendar-event"][data-event-id="standalone-event-830"]')
     )`, Boolean);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector(\'[data-testid="supporter-stat-trends"]\'))',
+      Boolean,
+    );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 150));
     const standaloneCardSummary = await connection.evaluate<{
       calendarEventCount: number;
       rowCount: number;
       title: string;
       time: string;
       listLabel: string;
-      sourceLabel: string;
+      trendPointCount: number;
+      statSelectorOptions: string[];
     }>(`(() => {
       const row = document.querySelector('[data-testid="upcoming-calendar-event"][data-event-id="standalone-event-830"]');
+      const trend = document.querySelector('[data-testid="supporter-stat-trends"]');
       return {
         calendarEventCount: window.__getSupporterDashboardEvents().length,
         rowCount: document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="upcoming-calendar-event"]').length,
         title: row?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
         time: row?.querySelector('.supporter-game-on-summary__upcoming-date')?.textContent?.split('·').pop()?.trim() || '',
         listLabel: row?.parentElement?.getAttribute('aria-label') || '',
-        sourceLabel: document.querySelector('[data-testid="mobile-featured-event-kicker"]')?.textContent?.trim() || '',
+        trendPointCount: trend?.querySelector('[aria-label="Team score trend values"]')?.children.length || 0,
+        statSelectorOptions: Array.from(trend?.querySelectorAll('[data-testid="supporter-stat-trends-selector"] option') ?? [])
+          .map((option) => option.textContent?.trim() || ''),
       };
     })()`, page.sessionId);
     assert.deepEqual(standaloneCardSummary, {
@@ -1538,9 +1583,12 @@ test('dashboard shows the upcoming Event Card graphic inline and install reminde
       title: standaloneCardSummary.title,
       time: '8:30 PM',
       listLabel: 'Upcoming Event Cards',
-      sourceLabel: 'Event Cards',
+      trendPointCount: 2,
+      statSelectorOptions: ['Team score', 'Free throw'],
     });
     assert.match(standaloneCardSummary.title, /Night Owls/);
+    assert.equal(standaloneCardSummary.trendPointCount, 2, 'the graph includes real saved completed games');
+    assert.deepEqual(standaloneCardSummary.statSelectorOptions, ['Team score', 'Free throw']);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 1000,
@@ -1548,40 +1596,47 @@ test('dashboard shows the upcoming Event Card graphic inline and install reminde
       mobile: false,
     }, page.sessionId);
     await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
-    const desktopGraphicViewport = await connection.evaluate<{
+    await waitFor(connection, page.sessionId, `Boolean(
+      document.querySelector('.supporter-dashboard-desktop-shell [data-testid="supporter-stat-trends-chart"] svg .recharts-line-curve')
+    )`, Boolean);
+    const desktopTrendViewport = await connection.evaluate<{
       visible: boolean;
+      noDesktopBadge: boolean;
+      hasTrendContent: boolean;
+      trendChartSvg: boolean;
+      trendCurveCount: number;
       eventId: string;
       title: string;
       scrollY: number;
-      noInteractiveControls: boolean;
-      preservesIntrinsicRatio: boolean;
     }>(`(() => {
       const section = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="section-next-game-context"]');
-      const image = section?.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
+      const trend = section?.querySelector('[data-testid="supporter-stat-trends"]');
       const event = section?.querySelector('[data-testid="upcoming-calendar-event"]');
-      const rect = image?.getBoundingClientRect();
       return {
-        visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
-          && image.getClientRects().length > 0
-          && Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= innerWidth),
+        visible: trend instanceof HTMLElement && trend.getClientRects().length > 0
+          && trend.getBoundingClientRect().width > 0
+          && trend.getBoundingClientRect().right <= innerWidth,
+        noDesktopBadge: section?.querySelector('[data-testid="img-upcoming-event-card-desktop"]') === null,
+        hasTrendContent: Boolean(trend?.querySelector('[data-testid="supporter-stat-trends-chart"], [data-testid="supporter-stat-trends-empty"]')),
+        trendChartSvg: Boolean(trend?.querySelector('[data-testid="supporter-stat-trends-chart"] svg')),
+        trendCurveCount: trend?.querySelectorAll('.recharts-line-curve').length || 0,
         eventId: event?.getAttribute('data-event-id') || '',
         title: event?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
         scrollY: window.scrollY,
-        noInteractiveControls: section?.querySelector('a, button') === null,
-        preservesIntrinsicRatio: image instanceof HTMLImageElement && Boolean(rect && rect.height > 0)
-          && Math.abs(rect.width / rect.height - image.naturalWidth / image.naturalHeight) < .01,
       };
     })()`, page.sessionId);
     assert.equal(
-      desktopGraphicViewport.visible,
+      desktopTrendViewport.visible,
       true,
-      `the returning supporter can see the standalone Event Card graphic inline on desktop: ${JSON.stringify(desktopGraphicViewport)}`,
+      `the returning supporter can see the stat trend panel inline on desktop: ${JSON.stringify(desktopTrendViewport)}`,
     );
-    assert.equal(desktopGraphicViewport.eventId, 'standalone-event-830');
-    assert.equal(desktopGraphicViewport.scrollY, 0);
-    assert.match(desktopGraphicViewport.title, /Night Owls/);
-    assert.equal(desktopGraphicViewport.noInteractiveControls, true);
-    assert.equal(desktopGraphicViewport.preservesIntrinsicRatio, true);
+    assert.equal(desktopTrendViewport.noDesktopBadge, true);
+    assert.equal(desktopTrendViewport.hasTrendContent, true);
+    assert.equal(desktopTrendViewport.trendChartSvg, true);
+    assert.equal(desktopTrendViewport.trendCurveCount, 1);
+    assert.equal(desktopTrendViewport.eventId, 'standalone-event-830');
+    assert.equal(desktopTrendViewport.scrollY, 0);
+    assert.match(desktopTrendViewport.title, /Night Owls/);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
