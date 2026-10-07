@@ -1026,6 +1026,16 @@ export function SupporterDashboardView({
         )}>
           <SupporterStatTrends games={completedLocalGames} profileSport={profile.sport ?? null} />
         </Suspense>
+        {upcomingEventCards.length > 0 && (
+          <div className="supporter-event-graphic supporter-event-graphic--desktop">
+            <img
+              className="supporter-event-graphic__image"
+              src={`${basePath}/assets/upcoming-event-card.png`}
+              alt=""
+              data-testid="img-upcoming-event-card-desktop"
+            />
+          </div>
+        )}
         {renderUpcomingEventsList('desktop')}
       </div>
     ) : (
