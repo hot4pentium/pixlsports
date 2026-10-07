@@ -722,6 +722,29 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       `the Event Card checklist action should be visible without scrolling on phone: ${JSON.stringify(phoneEventCardAction)}`,
     );
     await connection.evaluate(
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.checked === true && window.__dashboardChecklistSaves?.length === 1',
+      Boolean,
+    );
+    const checklistProgressBeforeEventCard = await connection.evaluate<{
+      checkedItemIds: string[];
+      saveCount: number;
+    }>(`(() => ({
+      checkedItemIds: Array.from(document.querySelectorAll('[data-testid^="dashboard-checklist-checkbox-"]'))
+        .filter((checkbox) => checkbox instanceof HTMLInputElement && checkbox.checked)
+        .map((checkbox) => checkbox.getAttribute('data-testid')?.replace('dashboard-checklist-checkbox-', '') ?? ''),
+      saveCount: window.__dashboardChecklistSaves?.length ?? 0,
+    }))()`, page.sessionId);
+    assert.deepEqual(checklistProgressBeforeEventCard, {
+      checkedItemIds: ['profile'],
+      saveCount: 1,
+    }, 'the Event Card flow should start with saved checklist progress');
+    await connection.evaluate(
       'document.querySelector("[data-testid=\\"dashboard-checklist-action-event-card\\"]")?.click()',
       page.sessionId,
     );
@@ -731,13 +754,94 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       'document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null',
       Boolean,
     );
+    await connection.evaluate(`(() => {
+      const trigger = Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-open-game-on-card-new-card-"]'))
+        .find((button) => button.getClientRects().length > 0);
+      trigger?.click();
+    })()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid^=\\"dialog-game-on-card-new-card-\\"] [data-testid=\\"panel-game-on-card-draft\\"]") !== null',
+      Boolean,
+    );
     assert.equal(
       await connection.evaluate(
         'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
         page.sessionId,
       ),
       true,
-      'the Event Card action should open the existing editor without dismissing the checklist',
+      'the Event Card editor should open without dismissing the checklist',
+    );
+    assert.deepEqual(
+      await connection.evaluate<{
+        checkedItemIds: string[];
+        saveCount: number;
+      }>(`(() => ({
+        checkedItemIds: Array.from(document.querySelectorAll('[data-testid^="dashboard-checklist-checkbox-"]'))
+          .filter((checkbox) => checkbox instanceof HTMLInputElement && checkbox.checked)
+          .map((checkbox) => checkbox.getAttribute('data-testid')?.replace('dashboard-checklist-checkbox-', '') ?? ''),
+        saveCount: window.__dashboardChecklistSaves?.length ?? 0,
+      }))()`, page.sessionId),
+      checklistProgressBeforeEventCard,
+      'opening the Event Card editor should leave checklist progress unchanged',
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid^=\\"dialog-game-on-card-new-card-\\"] [aria-label=\\"Close Event Card\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid^=\\"dialog-game-on-card-new-card-\\"]") === null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
+        page.sessionId,
+      ),
+      true,
+      'closing the Event Card editor should return supporters to the checklist',
+    );
+    assert.deepEqual(
+      await connection.evaluate<{
+        checkedItemIds: string[];
+        saveCount: number;
+      }>(`(() => ({
+        checkedItemIds: Array.from(document.querySelectorAll('[data-testid^="dashboard-checklist-checkbox-"]'))
+          .filter((checkbox) => checkbox instanceof HTMLInputElement && checkbox.checked)
+          .map((checkbox) => checkbox.getAttribute('data-testid')?.replace('dashboard-checklist-checkbox-', '') ?? ''),
+        saveCount: window.__dashboardChecklistSaves?.length ?? 0,
+      }))()`, page.sessionId),
+      checklistProgressBeforeEventCard,
+      'closing the Event Card editor should preserve the same saved checklist progress',
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-shoutouts\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-shoutouts\\"]")?.checked === true && window.__dashboardChecklistSaves?.length === 2',
+      Boolean,
+    );
+    assert.deepEqual(
+      await connection.evaluate<{
+        checkedItemIds: string[];
+        saveCount: number;
+      }>(`(() => ({
+        checkedItemIds: Array.from(document.querySelectorAll('[data-testid^="dashboard-checklist-checkbox-"]'))
+          .filter((checkbox) => checkbox instanceof HTMLInputElement && checkbox.checked)
+          .map((checkbox) => checkbox.getAttribute('data-testid')?.replace('dashboard-checklist-checkbox-', '') ?? ''),
+        saveCount: window.__dashboardChecklistSaves?.length ?? 0,
+      }))()`, page.sessionId),
+      {
+        checkedItemIds: ['profile', 'shoutouts'],
+        saveCount: 2,
+      },
+      'supporters should be able to continue and save checklist progress after closing the Event Card editor',
     );
 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=complete`);
