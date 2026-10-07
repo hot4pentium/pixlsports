@@ -952,38 +952,29 @@ export function SupporterDashboardView({
   }));
 
   const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
-    <div className={`supporter-event-pass supporter-event-pass--${variant}`}>
-      <div className="supporter-event-pass__slot" aria-hidden="true" />
-      <div className="supporter-event-pass__brand" aria-hidden="true">
-        <span>PIXL SPORTS</span>
-        <span>EVENT CARD</span>
-      </div>
-      <div className="supporter-game-on-summary__event-top">
-        <div className="supporter-game-on-summary__event-kicker">
-          <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">Upcoming Event</span>
-        </div>
-        {upcomingEventCards.length > 0 && (
-          <span className="supporter-game-on-summary__event-badge">
-            {upcomingEventCards.length} {upcomingEventCards.length === 1 ? 'card' : 'cards'}
-          </span>
-        )}
-      </div>
-
+    <div className={`supporter-event-graphic supporter-event-graphic--${variant}`}>
       <h2
         id={variant === 'desktop' ? 'upcoming-calendar-events-heading' : 'mobile-upcoming-calendar-events-heading'}
-        className="supporter-game-on-summary__event-title"
+        className="sr-only"
         data-testid="upcoming-calendar-events-heading"
       >
-        Next up
+        Upcoming events
       </h2>
 
       {upcomingEventCards.length > 0 ? (
-        <ul
-          className="supporter-game-on-summary__upcoming-list"
-          data-testid="upcoming-calendar-events"
-          aria-label="Upcoming Event Cards"
-        >
-          {upcomingEventCards.map((card, index) => {
+        <>
+          <img
+            className="supporter-event-graphic__image"
+            src={`${basePath}/assets/upcoming-event-card.png`}
+            alt=""
+            data-testid={`img-upcoming-event-card-${variant}`}
+          />
+          <ul
+            className="sr-only"
+            data-testid="upcoming-calendar-events"
+            aria-label="Upcoming Event Cards"
+          >
+            {upcomingEventCards.map((card) => {
             const eventTitle = card.type === 'game'
               ? card.opponent
                 ? `${profile.teamName || 'Your team'} vs ${card.opponent}`
@@ -1016,21 +1007,11 @@ export function SupporterDashboardView({
                     {card.location}
                   </p>
                 )}
-                <button
-                  type="button"
-                  className="supporter-game-on-summary__upcoming-action"
-                  onClick={() => selectCard(card.id)}
-                  data-testid={index === 0
-                      ? `button-open-upcoming-event-card-${variant}`
-                      : `button-open-upcoming-event-card-${variant}-${card.id}`}
-                  aria-label={`Open Event Card for ${eventTitle}`}
-                >
-                  Open Event Card <ArrowRight size={14} aria-hidden="true" />
-                </button>
               </li>
             );
-          })}
-        </ul>
+            })}
+          </ul>
+        </>
       ) : (
         <p className="supporter-game-on-summary__event-empty" data-testid="upcoming-calendar-events-empty">
           No upcoming games or practices are available as Event Cards.
