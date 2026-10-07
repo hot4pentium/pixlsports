@@ -887,7 +887,7 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
   }
 });
 
-test('dashboard shows upcoming Event Cards and install reminders across screen sizes', { concurrency: false }, async () => {
+test('dashboard shows visible upcoming Event Card actions and install reminders across screen sizes', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-add-event-navigation-test');
   let devServer: ChildProcess | undefined;
@@ -1263,11 +1263,85 @@ test('dashboard shows upcoming Event Cards and install reminders across screen s
     });
     assert.match(standaloneCardSummary.title, /Night Owls/);
     await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
+    const desktopActionViewport = await connection.evaluate<{
+      visible: boolean;
+      eventId: string;
+      title: string;
+      scrollY: number;
+      actionTop: number | null;
+      actionBottom: number | null;
+      viewportHeight: number;
+      summaryTop: number | null;
+      summaryBottom: number | null;
+    }>(`(() => {
+      const action = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-open-upcoming-event-card-desktop"]');
+      const event = action?.closest('[data-testid="upcoming-calendar-event"]');
+      const rect = action?.getBoundingClientRect();
+      const summaryRect = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="desktop-game-on-summary"]')?.getBoundingClientRect();
+      return {
+        visible: action instanceof HTMLElement
+          && action.getClientRects().length > 0
+          && getComputedStyle(action).visibility !== 'hidden'
+          && Boolean(rect && rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth),
+        eventId: event?.getAttribute('data-event-id') || '',
+        title: event?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
+        scrollY: window.scrollY,
+        actionTop: rect?.top ?? null,
+        actionBottom: rect?.bottom ?? null,
+        viewportHeight: innerHeight,
+        summaryTop: summaryRect?.top ?? null,
+        summaryBottom: summaryRect?.bottom ?? null,
+      };
+    })()`, page.sessionId);
+    assert.equal(
+      desktopActionViewport.visible,
+      true,
+      `the returning supporter can see the standalone Event Card action before scrolling on desktop: ${JSON.stringify(desktopActionViewport)}`,
+    );
+    assert.equal(desktopActionViewport.eventId, 'standalone-event-830');
+    assert.equal(desktopActionViewport.scrollY, 0);
+    assert.match(desktopActionViewport.title, /Night Owls/);
+    await connection.evaluate(
+      'document.querySelector(\'.supporter-dashboard-desktop-shell [data-testid="button-open-upcoming-event-card-desktop"]\')?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector(\'.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\'))',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<string>(
+        'document.querySelector(\'.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\')?.getAttribute("data-testid") || ""',
+        page.sessionId,
+      ),
+      'dialog-game-on-card-share:standalone-830',
+      'the desktop action opens the matching Event Card',
+    );
+    await connection.evaluate(
+      'document.querySelector(\'.supporter-dashboard-desktop-shell [data-testid="button-open-upcoming-event-card-desktop"]\')?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      '!document.querySelector(\'.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:standalone-830"]\')',
+      Boolean,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
       deviceScaleFactor: 1,
       mobile: true,
     }, page.sessionId);
+    await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
     assert.equal(
       await connection.evaluate<number>(
         'document.querySelector(\'[data-testid="mobile-hero-banner"] [data-testid="upcoming-calendar-events"]\')?.querySelectorAll(\'[data-testid="upcoming-calendar-event"]\').length || 0',
@@ -1276,6 +1350,39 @@ test('dashboard shows upcoming Event Cards and install reminders across screen s
       1,
       'a standalone Event Card appears in the mobile upcoming list without a Calendar event',
     );
+    const mobileActionViewport = await connection.evaluate<{
+      visible: boolean;
+      eventId: string;
+      title: string;
+      scrollY: number;
+      eventAndHypeCardsPaired: boolean;
+    }>(`(() => {
+      const action = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-open-upcoming-event-card-mobile"]');
+      const event = action?.closest('[data-testid="upcoming-calendar-event"]');
+      const rect = action?.getBoundingClientRect();
+      const row = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="mobile-calendar-hype-row"]');
+      return {
+        visible: action instanceof HTMLElement
+          && action.getClientRects().length > 0
+          && getComputedStyle(action).visibility !== 'hidden'
+          && Boolean(rect && rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth),
+        eventId: event?.getAttribute('data-event-id') || '',
+        title: event?.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent?.trim() || '',
+        scrollY: window.scrollY,
+        eventAndHypeCardsPaired: row instanceof HTMLElement
+          && row.children.length === 2
+          && Boolean(row.querySelector('[data-testid="card-mobile-featured-event"]'))
+          && Boolean(row.querySelector('[data-testid="mobile-saved-hype-card"]')),
+      };
+    })()`, page.sessionId);
+    assert.deepEqual(mobileActionViewport, {
+      visible: true,
+      eventId: 'standalone-event-830',
+      title: mobileActionViewport.title,
+      scrollY: 0,
+      eventAndHypeCardsPaired: true,
+    }, 'the returning supporter can see the Event Card action before scrolling without losing the mobile HYPE Card pairing');
+    assert.match(mobileActionViewport.title, /Night Owls/);
     await connection.evaluate(
       'document.querySelector(\'.supporter-dashboard-mobile-shell [data-testid="button-open-upcoming-event-card-mobile"]\')?.click()',
       page.sessionId,

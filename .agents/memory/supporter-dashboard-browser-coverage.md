@@ -56,3 +56,9 @@ When a fixed card dialog opens, compare the background tile's position relative 
 **Why:** Dialog focus and scroll-lock behavior can move viewport-relative bounds without reflowing the grid, making exact `getBoundingClientRect()` snapshots fail spuriously.
 
 **How to apply:** Measure both the tile and grid before and after opening; compare their relative offsets, size, and selected/expanded state.
+
+Chromium device-metrics overrides persist for the inspected page until another override is applied.
+
+**Why:** A desktop visibility assertion can accidentally run at the phone dimensions left by an earlier mobile check, making a correctly hidden desktop shell look like a layout failure.
+
+**How to apply:** Explicitly restore the intended width, height, and mobile setting before measuring each viewport class in a shared browser session.
