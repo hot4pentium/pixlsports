@@ -1071,6 +1071,16 @@
   .supporter-game-on-summary__grid {
     grid-template-columns: minmax(0, 1.18fr) minmax(210px, .7fr) minmax(270px, .95fr);
   }
+
+  .supporter-game-on-summary--desktop .supporter-game-on-summary__grid {
+    align-items: start;
+  }
+
+  .supporter-event-graphic--desktop .supporter-event-graphic__image {
+    width: auto;
+    height: 210px;
+    max-width: 100%;
+  }
 }
 
 @media (min-width: 1024px) and (max-width: 1199px) {

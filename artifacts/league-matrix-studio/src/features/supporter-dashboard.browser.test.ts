@@ -1154,21 +1154,39 @@ test('dashboard shows the upcoming Event Card graphic inline and install reminde
       naturalRatio: number;
       renderedRatio: number;
       noInteractiveWrapper: boolean;
+      imageHeight: number;
+      eventPanelHeight: number;
+      shoutoutsPanelHeight: number;
+      recordPanelHeight: number;
     }>(`(() => {
       const image = document.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
       const rect = image?.getBoundingClientRect();
+      const summary = image?.closest('.supporter-game-on-summary--desktop');
+      const panelHeight = (selector: string) => summary?.querySelector(selector)?.getBoundingClientRect().height || 0;
       return {
         visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
         naturalRatio: image instanceof HTMLImageElement ? image.naturalWidth / image.naturalHeight : 0,
         renderedRatio: rect && rect.height > 0 ? rect.width / rect.height : 0,
         noInteractiveWrapper: image instanceof HTMLImageElement && image.closest('a, button') === null,
+        imageHeight: rect?.height || 0,
+        eventPanelHeight: panelHeight('.supporter-game-on-summary__event'),
+        shoutoutsPanelHeight: panelHeight('.supporter-game-on-summary__replies'),
+        recordPanelHeight: panelHeight('.supporter-game-on-summary__record'),
       };
     })()`, page.sessionId);
     assert.equal(desktopGraphic.visible, true, 'the supplied Event Card graphic is visible on desktop');
     assert.ok(Math.abs(desktopGraphic.naturalRatio - desktopGraphic.renderedRatio) < 0.01,
       `the desktop Event Card graphic keeps its native proportions: ${JSON.stringify(desktopGraphic)}`);
     assert.equal(desktopGraphic.noInteractiveWrapper, true, 'the Event Card graphic is not a link or button');
+    assert.ok(desktopGraphic.imageHeight <= 210,
+      `the desktop Event Card stays compact: ${JSON.stringify(desktopGraphic)}`);
+    assert.ok([
+      desktopGraphic.eventPanelHeight,
+      desktopGraphic.shoutoutsPanelHeight,
+      desktopGraphic.recordPanelHeight,
+    ].every((height) => height > 0 && height <= 220),
+    `the desktop Event Card, Shoutouts, and record remain compact: ${JSON.stringify(desktopGraphic)}`);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,

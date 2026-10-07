@@ -21,8 +21,8 @@ Keep the mobile Shoutouts & Replies summary card out of the overview grid. Surfa
 
 **How to apply:** Keep the inbox reachable from the header; use the existing unread reply count and the available Fan Shoutouts list to control the glow.
 
-For the desktop supporter dashboard, keep the HYPE Card in a compact, content-height right-side panel, put Quick Links directly beneath it, and center the Event Cards within their panel. Represent the upcoming event with the white Pixl Sports lanyard-style Event Card visual; use a portrait card beside the HYPE Card on phones and adapt the Event Card to a horizontal layout on desktop.
+For the desktop supporter dashboard, keep the HYPE Card in a compact, content-height right-side panel, put Quick Links directly beneath it, and center the Event Cards within their panel. Represent the upcoming event with the white Pixl Sports lanyard-style Event Card visual; use a portrait card beside the HYPE Card on phones, and keep the desktop badge bounded so its intrinsic portrait size cannot stretch the Shoutouts or record panels.
 
-**Why:** The user approved the revised dashboard arrangement and later supplied the white Event Card reference for the upcoming event, explicitly requesting a horizontal desktop adaptation.
+**Why:** The user approved the revised dashboard arrangement and later supplied the white Event Card reference for the upcoming event, explicitly requesting a horizontal desktop adaptation. An unbounded portrait asset made the desktop Event Card, Shoutouts, and record panels excessively tall.
 
-**How to apply:** Preserve this as the desktop layout direction. Keep the Event Card’s real event data and open action, using responsive presentation rather than a static image.
+**How to apply:** Preserve this as the desktop layout direction. Keep the Event Card’s real event data and open action, use responsive presentation rather than a static image, and limit desktop media dimensions independently from neighboring panel heights.
