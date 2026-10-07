@@ -460,6 +460,49 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
     );
   };
 
+  const eventCardActionViewportStatus = async () => {
+    if (!connection || !page) throw new Error('Browser page is not ready');
+    return connection.evaluate<{
+      visible: boolean;
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+      viewportWidth: number;
+      viewportHeight: number;
+      scrollY: number;
+    }>(`(() => {
+      const action = document.querySelector('[data-testid="dashboard-checklist-action-event-card"]');
+      if (!(action instanceof HTMLElement)) {
+        return {
+          visible: false, left: -1, right: -1, top: -1, bottom: -1,
+          viewportWidth: window.innerWidth, viewportHeight: window.innerHeight, scrollY: window.scrollY,
+        };
+      }
+      const rect = action.getBoundingClientRect();
+      const style = getComputedStyle(action);
+      return {
+        visible: action.getClientRects().length > 0
+          && rect.width > 0
+          && rect.height > 0
+          && style.display !== 'none'
+          && style.visibility !== 'hidden'
+          && rect.left >= 0
+          && rect.right <= window.innerWidth
+          && rect.top >= 0
+          && rect.bottom <= window.innerHeight
+          && window.scrollY === 0,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        scrollY: window.scrollY,
+      };
+    })()`, page.sessionId);
+  };
+
   try {
     const viteProbe = createServer();
     const { port: vitePort } = await listen(viteProbe);
@@ -520,6 +563,12 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       ),
       'Get to know your Dashboard',
       'the getting-started checklist should be visible inline',
+    );
+    const desktopEventCardAction = await eventCardActionViewportStatus();
+    assert.equal(
+      desktopEventCardAction.visible,
+      true,
+      `the Event Card checklist action should be visible without scrolling on desktop: ${JSON.stringify(desktopEventCardAction)}`,
     );
     assert.equal(
       await connection.evaluate(
@@ -665,6 +714,12 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       })()`, page.sessionId),
       true,
       'the checklist should fit within a phone viewport',
+    );
+    const phoneEventCardAction = await eventCardActionViewportStatus();
+    assert.equal(
+      phoneEventCardAction.visible,
+      true,
+      `the Event Card checklist action should be visible without scrolling on phone: ${JSON.stringify(phoneEventCardAction)}`,
     );
     await connection.evaluate(
       'document.querySelector("[data-testid=\\"dashboard-checklist-action-event-card\\"]")?.click()',
