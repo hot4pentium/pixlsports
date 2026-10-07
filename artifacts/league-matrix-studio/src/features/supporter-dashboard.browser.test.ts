@@ -1214,7 +1214,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     const desktopTrend = await connection.evaluate<{
       visible: boolean;
       heading: string;
-      noDesktopBadge: boolean;
+      desktopBadgeVisible: boolean;
       hasTrendContent: boolean;
       trendHeight: number;
       eventPanelHeight: number;
@@ -1224,12 +1224,13 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       const trend = document.querySelector('[data-testid="supporter-stat-trends"]');
       const rect = trend?.getBoundingClientRect();
       const summary = trend?.closest('.supporter-game-on-summary--desktop');
+      const badge = document.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
       const panelHeight = (selector) => summary?.querySelector(selector)?.getBoundingClientRect().height || 0;
       return {
         visible: trend instanceof HTMLElement && trend.getClientRects().length > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
         heading: trend?.querySelector('h2')?.textContent?.trim() || '',
-        noDesktopBadge: document.querySelector('[data-testid="img-upcoming-event-card-desktop"]') === null,
+        desktopBadgeVisible: badge instanceof HTMLImageElement && badge.complete && badge.naturalWidth > 0,
         hasTrendContent: Boolean(trend?.querySelector('[data-testid="supporter-stat-trends-chart"], [data-testid="supporter-stat-trends-empty"]')),
         trendHeight: rect?.height || 0,
         eventPanelHeight: panelHeight('.supporter-game-on-summary__event'),
@@ -1239,7 +1240,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     })()`, page.sessionId);
     assert.equal(desktopTrend.visible, true, 'the desktop summary displays the stat trends panel');
     assert.equal(desktopTrend.heading, 'STAT TRENDS');
-    assert.equal(desktopTrend.noDesktopBadge, true, 'the Event Card badge is replaced on desktop');
+    assert.equal(desktopTrend.desktopBadgeVisible, true, 'the generic Event Card artwork remains visible beside desktop trends');
     assert.equal(desktopTrend.hasTrendContent, true, 'the chart or its honest empty state is visible');
     assert.ok([
       desktopTrend.trendHeight,
@@ -1263,6 +1264,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     );
     const mobileGraphic = await connection.evaluate<{
       visible: boolean;
+      source: string;
       naturalRatio: number;
       renderedRatio: number;
       eventFaceRatio: number;
@@ -1277,6 +1279,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       return {
         visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
+        source: image instanceof HTMLImageElement ? image.getAttribute('src') ?? '' : '',
         naturalRatio: image instanceof HTMLImageElement ? image.naturalWidth / image.naturalHeight : 0,
         renderedRatio: rect && rect.height > 0 ? rect.width / rect.height : 0,
         eventFaceRatio: faceRect && faceRect.height > 0 ? faceRect.width / faceRect.height : 0,
@@ -1287,6 +1290,10 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       };
     })()`, page.sessionId);
     assert.equal(mobileGraphic.visible, true, 'the supplied Event Card graphic is visible on mobile');
+    assert.ok(
+      mobileGraphic.source.endsWith('/assets/upcoming-event-card-enlarged.png'),
+      `the mobile Event Card uses the standalone artwork: ${mobileGraphic.source}`,
+    );
     assert.ok(Math.abs(mobileGraphic.naturalRatio - mobileGraphic.renderedRatio) < 0.01,
       `the mobile Event Card graphic keeps its native proportions: ${JSON.stringify(mobileGraphic)}`);
     assert.ok(Math.abs(mobileGraphic.eventFaceRatio - 5 / 7) < 0.01,
@@ -1601,7 +1608,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     )`, Boolean);
     const desktopTrendViewport = await connection.evaluate<{
       visible: boolean;
-      noDesktopBadge: boolean;
+      desktopBadgeVisible: boolean;
       hasTrendContent: boolean;
       trendChartSvg: boolean;
       trendCurveCount: number;
@@ -1611,12 +1618,13 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     }>(`(() => {
       const section = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="section-next-game-context"]');
       const trend = section?.querySelector('[data-testid="supporter-stat-trends"]');
+      const badge = section?.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
       const event = section?.querySelector('[data-testid="upcoming-calendar-event"]');
       return {
         visible: trend instanceof HTMLElement && trend.getClientRects().length > 0
           && trend.getBoundingClientRect().width > 0
           && trend.getBoundingClientRect().right <= innerWidth,
-        noDesktopBadge: section?.querySelector('[data-testid="img-upcoming-event-card-desktop"]') === null,
+        desktopBadgeVisible: badge instanceof HTMLImageElement && badge.complete && badge.naturalWidth > 0,
         hasTrendContent: Boolean(trend?.querySelector('[data-testid="supporter-stat-trends-chart"], [data-testid="supporter-stat-trends-empty"]')),
         trendChartSvg: Boolean(trend?.querySelector('[data-testid="supporter-stat-trends-chart"] svg')),
         trendCurveCount: trend?.querySelectorAll('.recharts-line-curve').length || 0,
@@ -1630,7 +1638,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       true,
       `the returning supporter can see the stat trend panel inline on desktop: ${JSON.stringify(desktopTrendViewport)}`,
     );
-    assert.equal(desktopTrendViewport.noDesktopBadge, true);
+    assert.equal(desktopTrendViewport.desktopBadgeVisible, true);
     assert.equal(desktopTrendViewport.hasTrendContent, true);
     assert.equal(desktopTrendViewport.trendChartSvg, true);
     assert.equal(desktopTrendViewport.trendCurveCount, 1);

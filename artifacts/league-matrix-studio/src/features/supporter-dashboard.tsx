@@ -1050,7 +1050,7 @@ export function SupporterDashboardView({
         {upcomingEventCards.length > 0 ? (
           <img
             className="supporter-event-graphic__image"
-            src={`${basePath}/assets/upcoming-event-card-readable.svg`}
+            src={`${basePath}/assets/upcoming-event-card-enlarged.png`}
             alt=""
             data-testid="img-upcoming-event-card-mobile"
           />
