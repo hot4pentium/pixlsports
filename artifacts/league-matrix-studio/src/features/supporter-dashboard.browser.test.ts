@@ -1162,7 +1162,7 @@ test('dashboard shows the upcoming Event Card graphic inline and install reminde
       const image = document.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
       const rect = image?.getBoundingClientRect();
       const summary = image?.closest('.supporter-game-on-summary--desktop');
-      const panelHeight = (selector: string) => summary?.querySelector(selector)?.getBoundingClientRect().height || 0;
+      const panelHeight = (selector) => summary?.querySelector(selector)?.getBoundingClientRect().height || 0;
       return {
         visible: image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
