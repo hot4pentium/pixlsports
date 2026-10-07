@@ -1,4 +1,4 @@
-import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { useQueryClient } from '@tanstack/react-query';
@@ -69,6 +69,7 @@ import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './track
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
+const SupporterStatTrends = lazy(() => import('./supporter-stat-trends'));
 import { SupporterHypeCardPreview } from './supporter-hype-card-preview';
 import { NotificationSettings } from './notification-settings';
 import {
@@ -951,73 +952,94 @@ export function SupporterDashboardView({
     }, currentTime, { includePregameCaptureWindow: false }) === 'upcoming';
   }));
 
-  const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
-    <div className={`supporter-event-graphic supporter-event-graphic--${variant}`}>
-      <h2
-        id={variant === 'desktop' ? 'upcoming-calendar-events-heading' : 'mobile-upcoming-calendar-events-heading'}
-        className="sr-only"
-        data-testid="upcoming-calendar-events-heading"
-      >
-        Upcoming events
-      </h2>
+  const renderUpcomingEventsList = (variant: 'mobile' | 'desktop') => {
+    if (upcomingEventCards.length === 0) {
+      return (
+        <p
+          className={variant === 'desktop' ? 'sr-only' : 'supporter-game-on-summary__event-empty'}
+          data-testid="upcoming-calendar-events-empty"
+        >
+          No upcoming games or practices are available as Event Cards.
+        </p>
+      );
+    }
 
-      {upcomingEventCards.length > 0 ? (
-        <>
+    return (
+      <ul
+        className="sr-only"
+        data-testid="upcoming-calendar-events"
+        aria-label="Upcoming Event Cards"
+      >
+        {upcomingEventCards.map((card) => {
+          const eventTitle = card.type === 'game'
+            ? card.opponent
+              ? `${profile.teamName || 'Your team'} vs ${card.opponent}`
+              : (profile.teamName ? `${profile.teamName} game` : 'Game')
+            : card.opponent.trim() || 'Practice';
+
+          return (
+            <li
+              key={card.id}
+              className="supporter-game-on-summary__upcoming-item"
+              data-testid="upcoming-calendar-event"
+              data-event-id={card.eventId}
+              data-event-card-id={card.id}
+              data-event-type={card.type}
+            >
+              <div className="supporter-game-on-summary__upcoming-meta">
+                <span className="supporter-game-on-summary__upcoming-type">
+                  {card.type === 'game' ? 'Game' : 'Practice'}
+                </span>
+                <span className="supporter-game-on-summary__upcoming-date">
+                  {formatDateDisplay(card.date)} · {formatTimeDisplay(card.time)}
+                </span>
+              </div>
+              <h3 className="supporter-game-on-summary__upcoming-title" data-testid="upcoming-calendar-event-title">
+                {eventTitle}
+              </h3>
+              {card.location && (
+                <p className="supporter-game-on-summary__upcoming-location">
+                  <MapPin size={13} aria-hidden="true" />
+                  {card.location}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
+
+  const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
+    variant === 'desktop' ? (
+      <div className="supporter-stat-trends-stage">
+        <Suspense fallback={<div className="supporter-stat-trends supporter-stat-trends--loading" role="status">Loading stat trends…</div>}>
+          <SupporterStatTrends games={completedLocalGames} profileSport={profile.sport ?? null} />
+        </Suspense>
+        {renderUpcomingEventsList('desktop')}
+      </div>
+    ) : (
+      <div className="supporter-event-graphic supporter-event-graphic--mobile">
+        <h2
+          id="mobile-upcoming-calendar-events-heading"
+          className="sr-only"
+          data-testid="upcoming-calendar-events-heading"
+        >
+          Upcoming events
+        </h2>
+        {upcomingEventCards.length > 0 ? (
           <img
             className="supporter-event-graphic__image"
             src={`${basePath}/assets/upcoming-event-card-enlarged.png`}
             alt=""
-            data-testid={`img-upcoming-event-card-${variant}`}
+            data-testid="img-upcoming-event-card-mobile"
           />
-          <ul
-            className="sr-only"
-            data-testid="upcoming-calendar-events"
-            aria-label="Upcoming Event Cards"
-          >
-            {upcomingEventCards.map((card) => {
-            const eventTitle = card.type === 'game'
-              ? card.opponent
-                ? `${profile.teamName || 'Your team'} vs ${card.opponent}`
-                : (profile.teamName ? `${profile.teamName} game` : 'Game')
-              : card.opponent.trim() || 'Practice';
-
-            return (
-              <li
-                key={card.id}
-                className="supporter-game-on-summary__upcoming-item"
-                data-testid="upcoming-calendar-event"
-                data-event-id={card.eventId}
-                data-event-card-id={card.id}
-                data-event-type={card.type}
-              >
-                <div className="supporter-game-on-summary__upcoming-meta">
-                  <span className="supporter-game-on-summary__upcoming-type">
-                    {card.type === 'game' ? 'Game' : 'Practice'}
-                  </span>
-                  <span className="supporter-game-on-summary__upcoming-date">
-                    {formatDateDisplay(card.date)} · {formatTimeDisplay(card.time)}
-                  </span>
-                </div>
-                <h3 className="supporter-game-on-summary__upcoming-title" data-testid="upcoming-calendar-event-title">
-                  {eventTitle}
-                </h3>
-                {card.location && (
-                  <p className="supporter-game-on-summary__upcoming-location">
-                    <MapPin size={13} aria-hidden="true" />
-                    {card.location}
-                  </p>
-                )}
-              </li>
-            );
-            })}
-          </ul>
-        </>
-      ) : (
-        <p className="supporter-game-on-summary__event-empty" data-testid="upcoming-calendar-events-empty">
-          No upcoming games or practices are available as Event Cards.
-        </p>
-      )}
-    </div>
+        ) : (
+          renderUpcomingEventsList('mobile')
+        )}
+        {upcomingEventCards.length > 0 && renderUpcomingEventsList('mobile')}
+      </div>
+    )
   );
 
   const ownerDayEventRows = visibleEventDayReminders.flatMap((reminder) => (

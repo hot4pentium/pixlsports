@@ -82,7 +82,7 @@ export function SupporterGameOnSummary({
           const eventSection = (
             <section
               className="supporter-game-on-summary__event"
-              aria-labelledby={isMobile ? 'mobile-upcoming-calendar-events-heading' : 'upcoming-calendar-events-heading'}
+              aria-labelledby={isMobile ? 'mobile-upcoming-calendar-events-heading' : 'supporter-stat-trends-heading'}
               data-testid={isMobile ? undefined : 'section-next-game-context'}
             >
               <div className="supporter-game-on-summary__event-content" data-testid={isMobile ? 'card-mobile-featured-event' : undefined}>
