@@ -139,16 +139,17 @@ export function buildSupportDiagnosticReport(input: {
 export function getSupportReportShareActions(report: string, consented: boolean) {
   if (!consented || !report.trim()) return null;
 
-  const reference = report.match(/^Reference: (PS-[0-9a-f-]{36})$/im)?.[1] ?? 'Pixl Sports support report';
-  const subject = encodeURIComponent(`Pixl Sports support ${reference}`);
-  const body = encodeURIComponent(report);
-
   return {
     copyText: report,
-    emailHref: `mailto:support@pixlsports.com?subject=${subject}&body=${body}`,
   };
 }
 
 export function createSupportReference() {
-  return `PS-${crypto.randomUUID()}`;
+  const uuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : (() => {
+      const hex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+    })();
+  return `PS-${uuid}`;
 }

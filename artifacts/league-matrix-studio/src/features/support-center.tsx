@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { healthCheck } from '@workspace/api-client-react';
-import { Check, Clipboard, Mail, ShieldCheck, Wifi } from 'lucide-react';
+import React, { useState } from 'react';
+import { healthCheck, sendSiteFeedback } from '@workspace/api-client-react';
+import { Check, Clipboard, Send, ShieldCheck, Wifi } from 'lucide-react';
 
 import {
   buildSupportDiagnosticReport,
@@ -17,10 +17,11 @@ import {
 function diagnosticText(value: string) {
   switch (value) {
     case 'online':
-    case 'available':
-      return 'Available';
+      return 'Online';
     case 'offline':
       return 'Offline';
+    case 'available':
+      return 'Available';
     case 'unavailable':
       return 'Could not confirm';
     default:
@@ -35,6 +36,8 @@ export function SupportCenter() {
   const [report, setReport] = useState<{ reference: string; text: string } | null>(null);
   const [shareConsent, setShareConsent] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
+  const [sendMessage, setSendMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const [checkMessage, setCheckMessage] = useState('');
 
   const selectedIssue = getSupportIssue(issueId);
@@ -45,6 +48,7 @@ export function SupportCenter() {
     setReport(null);
     setShareConsent(false);
     setCopyMessage('');
+    setSendMessage('');
   };
 
   const runChecks = async () => {
@@ -53,17 +57,23 @@ export function SupportCenter() {
     setReport(null);
     setShareConsent(false);
     setCopyMessage('');
+    setSendMessage('');
 
     const connection = navigator.onLine ? 'online' : 'offline';
-    const browserStorage = probeBrowserStorage(
-      window.localStorage,
-      typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : String(Date.now()),
-    ) ? 'available' : 'unavailable';
+    let browserStorage: SupportDiagnostics['browserStorage'] = 'unavailable';
+    try {
+      const probeId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : String(Date.now());
+      browserStorage = probeBrowserStorage(window.localStorage, probeId) ? 'available' : 'unavailable';
+    } catch {
+      browserStorage = 'unavailable';
+    }
     let service: SupportDiagnostics['service'] = 'not-run';
 
     if (connection === 'online') {
       try {
-        const result = await healthCheck();
+        const result = await healthCheck({ credentials: 'omit' });
         service = result.status === 'ok' ? 'available' : 'unavailable';
       } catch {
         service = 'unavailable';
@@ -87,6 +97,7 @@ export function SupportCenter() {
     setReport({ reference, text });
     setShareConsent(false);
     setCopyMessage('');
+    setSendMessage('');
   };
 
   const copyReport = async () => {
@@ -99,10 +110,35 @@ export function SupportCenter() {
     }
   };
 
+  const sendReport = async () => {
+    if (!report || !sharing || sending) return;
+    setSending(true);
+    setSendMessage('');
+    try {
+      const result = await sendSiteFeedback(
+        { feedbackType: 'problem', message: report.text },
+        { credentials: 'omit' },
+      );
+      setSendMessage(result.accepted
+        ? `Report sent to support@pixlsports.com. Keep reference ${report.reference} if you contact support again.`
+        : 'The report was not accepted. You can copy it and send it another way.');
+    } catch (error) {
+      const status = typeof error === 'object' && error !== null && 'status' in error
+        ? error.status
+        : undefined;
+      setSendMessage(status === 429
+        ? 'Please wait a few minutes before trying to send again. You can still copy the report.'
+        : 'The report could not be sent. You can copy it and send it another way.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const cancelReport = () => {
     setReport(null);
     setShareConsent(false);
     setCopyMessage('');
+    setSendMessage('');
   };
 
   return (
@@ -215,7 +251,7 @@ export function SupportCenter() {
               {report.text}
             </pre>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Pixl Sports does not save an in-app copy. Email opens a draft and does not send it until you press Send. If sent, it is retained in the support mailbox under that mailbox’s retention practices; this feature does not set or display a deletion date.
+              Pixl Sports does not save an in-app copy. If you choose Send, this report is emailed to support@pixlsports.com. Sent email follows the support mailbox’s retention practices; this feature does not set or display a deletion date.
             </p>
             <label className="flex cursor-pointer items-start gap-3 border border-border p-3 text-sm leading-relaxed text-foreground">
               <input
@@ -232,14 +268,17 @@ export function SupportCenter() {
             </label>
             {sharing && (
               <div className="flex flex-wrap gap-3">
-                <a
-                  href={sharing.emailHref}
+                <button
+                  type="button"
+                  onClick={() => void sendReport()}
+                  disabled={sending || sendMessage.startsWith('Report sent')}
+                  aria-busy={sending}
                   className="inline-flex min-h-11 items-center justify-center gap-2 bg-primary px-4 text-sm font-bold text-primary-foreground hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  data-testid="link-email-support-report"
+                  data-testid="button-send-support-report"
                 >
-                  <Mail aria-hidden="true" className="h-4 w-4" />
-                  Open email to support
-                </a>
+                  <Send aria-hidden="true" className="h-4 w-4" />
+                  {sending ? 'Sending…' : sendMessage.startsWith('Report sent') ? 'Sent to support' : 'Send report to support'}
+                </button>
                 <button
                   type="button"
                   onClick={() => void copyReport()}
@@ -251,6 +290,7 @@ export function SupportCenter() {
                 </button>
               </div>
             )}
+            {sendMessage && <p className="text-sm text-muted-foreground" role={sendMessage.startsWith('Report sent') ? 'status' : 'alert'} data-testid="status-send-support-report">{sendMessage}</p>}
             {copyMessage && <p className="text-sm text-muted-foreground" role="status" data-testid="status-copy-support-report">{copyMessage}</p>}
             <p className="text-xs text-muted-foreground">
               Sharing is optional. No AI processes this report. For more complex issues, you can review and share the redacted report separately with a support person.
