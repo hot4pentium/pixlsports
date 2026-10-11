@@ -29,11 +29,17 @@ import {
   type SupportTicketMessage,
 } from "@workspace/db";
 import { requireAdmin } from "../lib/adminAccess";
+import {
+  generateSupportTicketReference,
+  insertSupportTicketWithUniqueReference,
+  SupportTicketReferenceUnavailableError,
+} from "../lib/supportTicketReference";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 
 type TicketEmail = { reference: string; replyEmail: string; body: string };
 type SupportTicketDependencies = {
   sendReplyEmail?: (message: TicketEmail) => Promise<void>;
+  createReference?: () => string;
   now?: () => number;
   maxRequests?: number;
   windowMs?: number;
@@ -119,6 +125,7 @@ async function sendReplyWithResend(message: TicketEmail): Promise<void> {
 export function createSupportTicketsRouter(dependencies: SupportTicketDependencies = {}) {
   const router: IRouter = Router();
   const sendReplyEmail = dependencies.sendReplyEmail ?? sendReplyWithResend;
+  const createReference = dependencies.createReference ?? generateSupportTicketReference;
   const now = dependencies.now ?? Date.now;
   const maxRequests = dependencies.maxRequests ?? 5;
   const windowMs = dependencies.windowMs ?? 10 * 60 * 1000;
@@ -146,18 +153,32 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
     else current.count += 1;
 
     const accessToken = randomBytes(32).toString("base64url");
-    const reference = `PS-${new Date(timestamp).toISOString().slice(0, 10).replaceAll("-", "")}-${randomBytes(3).toString("hex").toUpperCase()}`;
-    const [ticket] = await db.insert(supportTicketsTable).values({
-      reference,
-      ownerClerkUserId: getOptionalClerkUserId(req),
-      accessTokenHash: hashToken(accessToken),
-      replyEmail: parsed.data.replyEmail.trim().toLowerCase(),
-      issueId: parsed.data.issueId,
-      description: parsed.data.description.trim(),
-      deviceType: parsed.data.deviceType,
-      connectionType: parsed.data.connectionType,
-      diagnostics: parsed.data.diagnostics ?? null,
-    }).returning();
+    let ticket: SupportTicket;
+    try {
+      ticket = await insertSupportTicketWithUniqueReference(
+        async (reference) => {
+          const [created] = await db.insert(supportTicketsTable).values({
+            reference,
+            ownerClerkUserId: getOptionalClerkUserId(req),
+            accessTokenHash: hashToken(accessToken),
+            replyEmail: parsed.data.replyEmail.trim().toLowerCase(),
+            issueId: parsed.data.issueId,
+            description: parsed.data.description.trim(),
+            deviceType: parsed.data.deviceType,
+            connectionType: parsed.data.connectionType,
+            diagnostics: parsed.data.diagnostics ?? null,
+          }).onConflictDoNothing({ target: supportTicketsTable.reference }).returning();
+          return created ?? null;
+        },
+        createReference,
+      );
+    } catch (error) {
+      if (!(error instanceof SupportTicketReferenceUnavailableError)) throw error;
+      req.log.error({ attempts: error.attempts }, "Unable to assign a unique support ticket reference");
+      res.status(503).json({ error: "Your ticket could not be created right now. Please try again." });
+      return;
+    }
+
     res.status(201).json(CreateSupportTicketResponse.parse({
       ticket: publicTicket(ticket),
       accessToken,

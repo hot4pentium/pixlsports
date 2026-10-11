@@ -79,6 +79,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          description: A unique ticket reference could not be assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     get:
       operationId: listSupportTickets
       tags: [support-tickets]
