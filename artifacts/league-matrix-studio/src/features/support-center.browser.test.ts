@@ -100,12 +100,24 @@ test('new support tickets are easy to find after confirmation for members and gu
           const ticketReference = 'PS-20261011-ABC123';
           const accessToken = 'browser-test-private-access-token-0123456789';
           let savedTicket;
+          let memberListReads = 0;
+          let guestTicketReads = 0;
+          window.__supportCenterPublishReply = () => {
+            savedTicket.messages = [{
+              id: 'admin-reply-1', senderRole: 'admin', body: 'We have replied to your request.',
+              deliveryStatus: 'sent', createdAt: new Date().toISOString(),
+            }];
+          };
+          window.__supportCenterReadCounts = () => ({ memberListReads, guestTicketReads });
           window.fetch = async (input, init = {}) => {
             const requestUrl = typeof input === 'string' ? input : input.url;
             const url = new URL(requestUrl, location.origin);
             const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
             if (url.pathname === '/api/support/tickets' && method === 'GET') {
-              return new Response(JSON.stringify([]), { status: 200, headers: { 'content-type': 'application/json' } });
+              memberListReads += 1;
+              return new Response(JSON.stringify(savedTicket ? [savedTicket] : []), {
+                status: 200, headers: { 'content-type': 'application/json' },
+              });
             }
             if (url.pathname === '/api/support/tickets' && method === 'POST') {
               const submitted = JSON.parse(init.body);
@@ -122,6 +134,13 @@ test('new support tickets are easy to find after confirmation for members and gu
               });
             }
             if (url.pathname === '/api/support/tickets/' + ticketId && method === 'GET' && savedTicket) {
+              guestTicketReads += 1;
+              const headers = new Headers(init.headers ?? (input instanceof Request ? input.headers : undefined));
+              if (headers.get('X-Support-Ticket-Token') !== accessToken) {
+                return new Response(JSON.stringify({ error: 'Guest ticket access token missing' }), {
+                  status: 403, headers: { 'content-type': 'application/json' },
+                });
+              }
               return new Response(JSON.stringify(savedTicket), {
                 status: 200, headers: { 'content-type': 'application/json' },
               });
@@ -218,6 +237,32 @@ test('new support tickets are easy to find after confirmation for members and gu
         `${scenario.name} history should scroll into view: ${JSON.stringify(historyState)}`);
       assert.equal(historyState.expanded, true, `${scenario.name} new ticket should be expanded`);
       assert.equal(historyState.hasDescription, true, `${scenario.name} new ticket should be visible in history`);
+
+      const draftFollowup = `I am adding context as a ${scenario.name}.`;
+      await connection.evaluate(
+        'document.querySelector("[data-testid=textarea-followup-f83c88a2-e651-4e09-8e1d-02172e6ca707]").focus()',
+        page.sessionId,
+      );
+      await connection.send('Input.insertText', { text: draftFollowup }, page.sessionId);
+      await connection.evaluate('window.__supportCenterPublishReply()', page.sessionId);
+      await waitFor(connection, page.sessionId, `(() => {
+        const ticket = document.querySelector("[data-testid='ticket-f83c88a2-e651-4e09-8e1d-02172e6ca707']");
+        const draft = ticket?.querySelector("textarea")?.value;
+        return Boolean(ticket?.innerText.includes("We have replied to your request.")
+          && draft === ${JSON.stringify(draftFollowup)});
+      })()`, Boolean, 30_000);
+
+      const refreshPath = await connection.evaluate<{ memberListReads: number; guestTicketReads: number }>(
+        'window.__supportCenterReadCounts()',
+        page.sessionId,
+      );
+      if (scenario.name === 'member') {
+        assert.ok(refreshPath.memberListReads >= 2, 'member ticket history should refresh through the authenticated ticket list');
+        assert.equal(refreshPath.guestTicketReads, 0, 'members should not switch to guest token access');
+      } else {
+        assert.equal(refreshPath.memberListReads, 0, 'guest ticket history should not call the member-only ticket list');
+        assert.ok(refreshPath.guestTicketReads >= 2, 'guest ticket details should refresh with their private access token');
+      }
     }
   } finally {
     for (const page of pages) {

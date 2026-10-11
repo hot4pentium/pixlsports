@@ -42,6 +42,7 @@ const STATUS_STYLE = {
   active: 'border-primary-ink/60 bg-primary/20 text-primary-ink',
   resolved: 'border-emerald-400/50 bg-emerald-400/10 text-emerald-300',
 } as const;
+const SUPPORT_TICKET_REFRESH_INTERVAL_MS = 10_000;
 
 function diagnosticText(value: string) {
   return ({ online: 'Online', offline: 'Offline', available: 'Available', unavailable: 'Could not confirm' } as Record<string, string>)[value] ?? 'Not checked';
@@ -71,14 +72,19 @@ function Segmented<T extends string>({ legend, name, options, value, onChange }:
 
 function TicketCard({ id, token, preloaded, defaultOpen, onForget }: { id: string; token?: string; preloaded?: SupportTicket; defaultOpen?: boolean; onForget?: () => void }) {
   const qc = useQueryClient();
+  const [open, setOpen] = useState(Boolean(defaultOpen));
   const headers = token ? { 'X-Support-Ticket-Token': token } : undefined;
   const fetched = useGetSupportTicket(id, {
-    query: { enabled: Boolean(token), queryKey: getGetSupportTicketQueryKey(id), retry: false },
+    query: {
+      enabled: Boolean(token),
+      queryKey: getGetSupportTicketQueryKey(id),
+      refetchInterval: open ? SUPPORT_TICKET_REFRESH_INTERVAL_MS : false,
+      retry: false,
+    },
     request: headers ? { headers } : undefined,
   });
   const ticket = fetched.data ?? preloaded;
   const send = useCreateSupportTicketMessage();
-  const [open, setOpen] = useState(Boolean(defaultOpen));
   const [body, setBody] = useState('');
   const [feedback, setFeedback] = useState('');
   const [failed, setFeedbackFailed] = useState(false);
@@ -163,7 +169,12 @@ export function SupportCenter() {
   const { isSignedIn, user } = useUser();
   const qc = useQueryClient();
   const create = useCreateSupportTicket();
-  const owned = useListSupportTickets({ query: { enabled: Boolean(isSignedIn), queryKey: getListSupportTicketsQueryKey(), retry: false } });
+  const owned = useListSupportTickets({ query: {
+    enabled: Boolean(isSignedIn),
+    queryKey: getListSupportTicketsQueryKey(),
+    refetchInterval: isSignedIn ? SUPPORT_TICKET_REFRESH_INTERVAL_MS : false,
+    retry: false,
+  } });
 
   const [issueId, setIssueId] = useState<SupportTicketInput['issueId']>('account');
   const [description, setDescription] = useState('');
