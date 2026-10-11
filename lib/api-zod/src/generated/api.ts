@@ -18,6 +18,31 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Resend calls this endpoint for received emails. The server verifies the Svix signature, ticket-specific reply address, and sender before storing a message.
+ * @summary Import a verified customer email reply into its support ticket
+ */
+export const ReceiveResendSupportTicketEmailReplyHeader = zod.object({
+  "svix-id": zod.string(),
+  "svix-timestamp": zod.string(),
+  "svix-signature": zod.string()
+})
+
+export const ReceiveResendSupportTicketEmailReplyBody = zod.object({
+  "type": zod.enum(['email.received']),
+  "created_at": zod.coerce.date().optional(),
+  "data": zod.object({
+  "email_id": zod.string().uuid()
+})
+})
+
+export const ReceiveResendSupportTicketEmailReplyResponse = zod.object({
+  "ok": zod.boolean(),
+  "imported": zod.boolean().optional(),
+  "ignored": zod.boolean().optional()
+})
+
+
+/**
  * Creates a persistent ticket without notifying an administrator by email.
  * @summary Create a private support ticket
  */

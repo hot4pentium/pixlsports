@@ -224,6 +224,29 @@ export interface SupportTicketMessageInput {
   body: string;
 }
 
+export type ResendEmailReceivedEventType = typeof ResendEmailReceivedEventType[keyof typeof ResendEmailReceivedEventType];
+
+
+export const ResendEmailReceivedEventType = {
+  emailreceived: 'email.received',
+} as const;
+
+export type ResendEmailReceivedEventData = {
+  email_id: string;
+};
+
+export interface ResendEmailReceivedEvent {
+  type: ResendEmailReceivedEventType;
+  created_at?: string;
+  data: ResendEmailReceivedEventData;
+}
+
+export interface SupportEmailWebhookResult {
+  ok: boolean;
+  imported?: boolean;
+  ignored?: boolean;
+}
+
 export type SupportTicketStatusUpdateStatus = typeof SupportTicketStatusUpdateStatus[keyof typeof SupportTicketStatusUpdateStatus];
 
 

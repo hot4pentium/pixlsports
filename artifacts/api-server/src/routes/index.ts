@@ -19,6 +19,7 @@ import supporterActiveGameRouter from "./supporterActiveGame";
 import internalJobsRouter from "./internalJobs";
 import memberAdminRouter from "./memberAdmin";
 import supportTicketsRouter from "./supportTickets";
+import supportTicketEmailRepliesRouter from "./supportTicketEmailReplies";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(internalJobsRouter);
 router.use(supporterActiveGameRouter);
 router.use(memberAdminRouter);
 router.use(supportTicketsRouter);
+router.use(supportTicketEmailRepliesRouter);
 
 export default router;

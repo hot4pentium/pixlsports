@@ -30,6 +30,14 @@ export const supportTicketsTable = pgTable("support_tickets", {
   statusUpdatedIndex: index("support_tickets_status_updated_index").on(table.status, table.updatedAt),
 }));
 
+export const supportTicketEmailReplyTokensTable = pgTable("support_ticket_email_reply_tokens", {
+  tokenHash: text("token_hash").primaryKey(),
+  ticketId: uuid("ticket_id").notNull().references(() => supportTicketsTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  ticketCreatedIndex: index("support_ticket_email_reply_tokens_ticket_created_index").on(table.ticketId, table.createdAt),
+}));
+
 export const supportTicketMessagesTable = pgTable("support_ticket_messages", {
   id: uuid("id").defaultRandom().primaryKey(),
   ticketId: uuid("ticket_id").notNull().references(() => supportTicketsTable.id, { onDelete: "cascade" }),
@@ -37,9 +45,11 @@ export const supportTicketMessagesTable = pgTable("support_ticket_messages", {
   senderClerkUserId: text("sender_clerk_user_id"),
   body: text("body").notNull(),
   deliveryStatus: text("delivery_status").notNull().default("not_applicable"),
+  emailProviderMessageId: text("email_provider_message_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   ticketCreatedIndex: index("support_ticket_messages_ticket_created_index").on(table.ticketId, table.createdAt),
+  emailProviderMessageUnique: uniqueIndex("support_ticket_messages_email_provider_message_id_unique").on(table.emailProviderMessageId),
 }));
 
 export type SupportTicket = typeof supportTicketsTable.$inferSelect;

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
 import {
   CreateAdminSupportTicketReplyBody,
   CreateAdminSupportTicketReplyParams,
@@ -27,6 +27,7 @@ import {
 } from "@workspace/api-zod";
 import {
   db,
+  supportTicketEmailReplyTokensTable,
   supportTicketMessagesTable,
   supportTicketsTable,
   type SupportTicket,
@@ -34,18 +35,25 @@ import {
 } from "@workspace/db";
 import { requireAdmin } from "../lib/adminAccess";
 import {
+  buildSupportTicketReplyAddress,
+  hashSupportTicketReplyToken,
+  normalizeSupportReplyDomain,
+} from "../lib/supportTicketEmailReply";
+import {
   generateSupportTicketReference,
   insertSupportTicketWithUniqueReference,
   SupportTicketReferenceUnavailableError,
 } from "../lib/supportTicketReference";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 
-type TicketEmail = { reference: string; replyEmail: string; body: string };
+type TicketEmail = { reference: string; replyEmail: string; body: string; replyTo?: string };
 type TicketRecoveryEmail = { reference: string; replyEmail: string; code: string };
 type SupportTicketDependencies = {
   sendReplyEmail?: (message: TicketEmail) => Promise<void>;
   sendRecoveryEmail?: (message: TicketRecoveryEmail) => Promise<void>;
   createReference?: () => string;
+  supportReplyDomain?: string | null;
+  requireAdmin?: RequestHandler;
   now?: () => number;
   maxRequests?: number;
   windowMs?: number;
@@ -113,14 +121,16 @@ async function sendReplyWithResend(message: TicketEmail): Promise<void> {
     body: JSON.stringify({
       from: "Pixl Sports Support <support@pixlsports.com>",
       to: [message.replyEmail],
-      reply_to: "support@pixlsports.com",
+      reply_to: message.replyTo ?? "support@pixlsports.com",
       subject: `Update on Pixl Sports support ticket ${message.reference}`,
       text: [
         `Pixl Sports support replied to ticket ${message.reference}.`,
         "",
         message.body,
         "",
-        "Sign in and open Help to review the complete ticket conversation. Replies sent from your email app are not added to the ticket.",
+        message.replyTo
+          ? "You can reply directly to this email. Your reply will be added to the same ticket."
+          : "Sign in and open Help to review the complete ticket conversation. Email-app replies are not being added yet.",
       ].join("\n"),
     }),
     signal: AbortSignal.timeout(10_000),
@@ -157,9 +167,17 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
   const sendReplyEmail = dependencies.sendReplyEmail ?? sendReplyWithResend;
   const sendRecoveryEmail = dependencies.sendRecoveryEmail ?? sendRecoveryWithResend;
   const createReference = dependencies.createReference ?? generateSupportTicketReference;
+  const adminGuard = dependencies.requireAdmin ?? requireAdmin;
   const now = dependencies.now ?? Date.now;
   const maxRequests = dependencies.maxRequests ?? 5;
   const windowMs = dependencies.windowMs ?? 10 * 60 * 1000;
+  const supportReplyDomain = normalizeSupportReplyDomain(
+    dependencies.supportReplyDomain !== undefined
+      ? dependencies.supportReplyDomain
+      : process.env.RESEND_WEBHOOK_SECRET
+        ? process.env.RESEND_INBOUND_DOMAIN
+        : undefined,
+  );
   const attempts = new Map<string, RateLimitEntry>();
   const recoveryAttempts = new Map<string, RateLimitEntry>();
 
@@ -408,7 +426,7 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
     res.status(201).json(CreateSupportTicketMessageResponse.parse(publicMessage(message)));
   });
 
-  router.get("/admin/support/tickets", requireAdmin, async (req, res): Promise<void> => {
+  router.get("/admin/support/tickets", adminGuard, async (req, res): Promise<void> => {
     const parsed = ListAdminSupportTicketsQueryParams.safeParse(req.query);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
@@ -440,7 +458,7 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
     }));
   });
 
-  router.get("/admin/support/tickets/:ticketId", requireAdmin, async (req, res): Promise<void> => {
+  router.get("/admin/support/tickets/:ticketId", adminGuard, async (req, res): Promise<void> => {
     const params = GetAdminSupportTicketParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -454,7 +472,7 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
     res.json(GetAdminSupportTicketResponse.parse(await ticketWithMessages(ticket)));
   });
 
-  router.patch("/admin/support/tickets/:ticketId", requireAdmin, async (req, res): Promise<void> => {
+  router.patch("/admin/support/tickets/:ticketId", adminGuard, async (req, res): Promise<void> => {
     const params = UpdateAdminSupportTicketParams.safeParse(req.params);
     const parsed = UpdateAdminSupportTicketBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -472,7 +490,7 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
     res.json(UpdateAdminSupportTicketResponse.parse(await ticketWithMessages(ticket)));
   });
 
-  router.post("/admin/support/tickets/:ticketId/replies", requireAdmin, async (req, res): Promise<void> => {
+  router.post("/admin/support/tickets/:ticketId/replies", adminGuard, async (req, res): Promise<void> => {
     const params = CreateAdminSupportTicketReplyParams.safeParse(req.params);
     const parsed = CreateAdminSupportTicketReplyBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -486,7 +504,21 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
     }
     let deliveryStatus: "sent" | "failed" = "sent";
     try {
-      await sendReplyEmail({ reference: ticket.reference, replyEmail: ticket.replyEmail, body: parsed.data.body.trim() });
+      let replyTo: string | undefined;
+      if (supportReplyDomain) {
+        const replyToken = randomBytes(28).toString("hex");
+        replyTo = buildSupportTicketReplyAddress(replyToken, supportReplyDomain);
+        await db.insert(supportTicketEmailReplyTokensTable).values({
+          ticketId: ticket.id,
+          tokenHash: hashSupportTicketReplyToken(replyToken),
+        });
+      }
+      await sendReplyEmail({
+        reference: ticket.reference,
+        replyEmail: ticket.replyEmail,
+        body: parsed.data.body.trim(),
+        replyTo,
+      });
     } catch (error) {
       deliveryStatus = "failed";
       req.log.error({ err: error, ticketId: ticket.id }, "Support reply email delivery failed");

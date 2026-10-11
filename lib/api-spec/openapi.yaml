@@ -52,6 +52,50 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /support/tickets/email-replies/resend:
+    post:
+      operationId: receiveResendSupportTicketEmailReply
+      tags: [support-tickets]
+      summary: Import a verified customer email reply into its support ticket
+      description: Resend calls this endpoint for received emails. The server verifies the Svix signature, ticket-specific reply address, and sender before storing a message.
+      parameters:
+        - name: svix-id
+          in: header
+          required: true
+          schema: { type: string }
+        - name: svix-timestamp
+          in: header
+          required: true
+          schema: { type: string }
+        - name: svix-signature
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendEmailReceivedEvent"
+      responses:
+        "200":
+          description: Event imported or safely ignored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportEmailWebhookResult"
+        "401":
+          description: Invalid webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: The webhook is not configured or the received email could not be fetched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /support/tickets:
     post:
       operationId: createSupportTicket
@@ -2787,6 +2831,24 @@ components:
       required: [body]
       properties:
         body: { type: string, minLength: 1, maxLength: 5000 }
+    ResendEmailReceivedEvent:
+      type: object
+      required: [type, data]
+      properties:
+        type: { type: string, enum: [email.received] }
+        created_at: { type: string, format: date-time }
+        data:
+          type: object
+          required: [email_id]
+          properties:
+            email_id: { type: string, format: uuid }
+    SupportEmailWebhookResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        imported: { type: boolean }
+        ignored: { type: boolean }
     SupportTicketStatusUpdate:
       type: object
       additionalProperties: false
