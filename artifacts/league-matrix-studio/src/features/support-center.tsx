@@ -6,12 +6,14 @@ import {
   useCreateSupportTicketMessage,
   useGetSupportTicket,
   useListSupportTickets,
+  useRequestSupportTicketRecovery,
+  useVerifySupportTicketRecovery,
   type SupportTicket,
   type SupportTicketInput,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/react';
-import { AlertCircle, Check, ChevronDown, Inbox, LifeBuoy, Lock, Send, Wifi } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Inbox, KeyRound, LifeBuoy, Lock, Send, Wifi } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   Dialog,
@@ -169,6 +171,8 @@ export function SupportCenter() {
   const { isSignedIn, user } = useUser();
   const qc = useQueryClient();
   const create = useCreateSupportTicket();
+  const requestRecovery = useRequestSupportTicketRecovery();
+  const verifyRecovery = useVerifySupportTicketRecovery();
   const owned = useListSupportTickets({ query: {
     enabled: Boolean(isSignedIn),
     queryKey: getListSupportTicketsQueryKey(),
@@ -191,6 +195,13 @@ export function SupportCenter() {
   const [created, setCreated] = useState<{ reference: string; id: string } | null>(null);
   const [createError, setCreateError] = useState('');
   const [stored, setStored] = useState<StoredTicketAccess[]>(() => readStoredTicketAccess());
+  const [recoveryReference, setRecoveryReference] = useState('');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recoveryCodeSent, setRecoveryCodeSent] = useState(false);
+  const [recoveryFeedback, setRecoveryFeedback] = useState('');
+  const [recoveryFailed, setRecoveryFailed] = useState(false);
+  const [recoveredTicketId, setRecoveredTicketId] = useState<string | null>(null);
   const ticketsHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const goToTickets = () => {
@@ -258,6 +269,58 @@ export function SupportCenter() {
   const forget = (id: string) => { const next = readStoredTicketAccess().filter((s) => s.id !== id); writeStoredTicketAccess(next); setStored(next); };
   const total = ownedList.length + anon.length;
   const issue = getSupportIssue(issueId);
+  const normalizedRecoveryReference = recoveryReference.trim();
+  const normalizedRecoveryEmail = recoveryEmail.trim();
+  const recoveryRequestValid = normalizedRecoveryReference.length >= 6
+    && normalizedRecoveryReference.length <= 40
+    && isValidSupportReplyEmail(normalizedRecoveryEmail);
+
+  const submitRecoveryRequest = (e: FormEvent) => {
+    e.preventDefault();
+    if (!recoveryRequestValid || requestRecovery.isPending) return;
+    setRecoveryFeedback('');
+    setRecoveryFailed(false);
+    requestRecovery.mutate({
+      data: { reference: normalizedRecoveryReference, email: normalizedRecoveryEmail },
+    }, {
+      onSuccess: () => {
+        setRecoveryCodeSent(true);
+        setRecoveryCode('');
+        setRecoveryFeedback('If those details match a guest ticket, a code is on its way to the original reply email. Check your inbox and spam folder; if it does not arrive, try again after a minute.');
+      },
+      onError: () => {
+        setRecoveryFailed(true);
+        setRecoveryFeedback('We could not send a recovery email right now. Please try again later.');
+      },
+    });
+  };
+
+  const submitRecoveryCode = (e: FormEvent) => {
+    e.preventDefault();
+    if (!/^[0-9]{8}$/.test(recoveryCode) || verifyRecovery.isPending) return;
+    setRecoveryFeedback('');
+    setRecoveryFailed(false);
+    verifyRecovery.mutate({
+      data: { reference: normalizedRecoveryReference, email: normalizedRecoveryEmail, code: recoveryCode },
+    }, {
+      onSuccess: ({ ticket, accessToken }) => {
+        const next = [{ id: ticket.id, token: accessToken }, ...readStoredTicketAccess().filter((entry) => entry.id !== ticket.id)];
+        writeStoredTicketAccess(next);
+        setStored(next);
+        qc.setQueryData(getGetSupportTicketQueryKey(ticket.id), ticket);
+        setRecoveredTicketId(ticket.id);
+        setRecoveryCodeSent(false);
+        setRecoveryCode('');
+        setRecoveryReference('');
+        setRecoveryEmail('');
+        setRecoveryFeedback(`Ticket ${ticket.reference} is open below. This browser now has private access to it.`);
+      },
+      onError: () => {
+        setRecoveryFailed(true);
+        setRecoveryFeedback('That code could not be verified. Check the reference, email, and code, or request a new code.');
+      },
+    });
+  };
 
   return (
     <section className="mt-14" aria-labelledby="support-center-heading" data-testid="support-center">
@@ -357,8 +420,60 @@ export function SupportCenter() {
         </div>
         <p className="mt-2 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
           <Lock aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          {isSignedIn ? 'Tickets on your account appear here, plus any created in this browser while signed out.' : 'Tickets created while signed out stay available on this browser through a private access key. Clearing browser data removes access to them.'}
+          {isSignedIn ? 'Tickets on your account appear here, plus any created in this browser while signed out.' : 'Tickets created while signed out stay available on this browser through a private access key. If browser data is cleared, use ticket recovery below to restore access.'}
         </p>
+        <div className="mt-4 border border-border bg-card/70 p-4 sm:p-5" data-testid="section-recover-support-ticket">
+          <div className="flex items-start gap-3">
+            <KeyRound aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+            <div>
+              <h3 className="font-bold">Reopen a guest ticket on this device</h3>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+                Enter the ticket reference and the same reply email used when it was created. We’ll email an eight-digit code to that address; the code expires after 10 minutes and can be used once. You must be able to access that inbox to restore the conversation.
+              </p>
+            </div>
+          </div>
+          <form onSubmit={submitRecoveryRequest} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div>
+              <label htmlFor="support-recovery-reference" className="mb-1 block text-xs font-bold">Ticket reference</label>
+              <input id="support-recovery-reference" autoComplete="off" maxLength={40} value={recoveryReference}
+                onChange={(e) => setRecoveryReference(e.target.value)} className={field}
+                data-testid="input-support-recovery-reference" />
+            </div>
+            <div>
+              <label htmlFor="support-recovery-email" className="mb-1 block text-xs font-bold">Original reply email</label>
+              <input id="support-recovery-email" type="email" autoComplete="email" maxLength={320} value={recoveryEmail}
+                onChange={(e) => setRecoveryEmail(e.target.value)} className={field}
+                data-testid="input-support-recovery-email" />
+            </div>
+            <button type="submit" disabled={!recoveryRequestValid || requestRecovery.isPending}
+              className="min-h-11 bg-accent px-4 text-sm font-bold text-accent-foreground disabled:opacity-50"
+              data-testid="button-request-support-recovery">
+              {requestRecovery.isPending ? 'Sending…' : recoveryCodeSent ? 'Send a new code' : 'Email me a code'}
+            </button>
+          </form>
+          {recoveryCodeSent && (
+            <form onSubmit={submitRecoveryCode} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end" data-testid="form-verify-support-recovery">
+              <div className="w-full sm:max-w-xs">
+                <label htmlFor="support-recovery-code" className="mb-1 block text-xs font-bold">Eight-digit email code</label>
+                <input id="support-recovery-code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{8}"
+                  maxLength={8} value={recoveryCode} onChange={(e) => setRecoveryCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  className={field} data-testid="input-support-recovery-code" />
+              </div>
+              <button type="submit" disabled={!/^[0-9]{8}$/.test(recoveryCode) || verifyRecovery.isPending}
+                className="min-h-11 bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"
+                data-testid="button-verify-support-recovery">
+                {verifyRecovery.isPending ? 'Checking…' : 'Reopen ticket'}
+              </button>
+            </form>
+          )}
+          {recoveryFeedback && (
+            <p role={recoveryFailed ? 'alert' : 'status'} aria-live="polite"
+              className={`mt-3 text-sm ${recoveryFailed ? 'text-destructive' : 'text-emerald-300'}`}
+              data-testid="text-support-recovery-feedback">
+              {recoveryFeedback}
+            </p>
+          )}
+        </div>
         {isSignedIn && owned.isError && (
           <p className="mt-3 border border-destructive/60 p-3 text-sm" role="alert">Your account tickets could not load. <button type="button" className="font-bold underline" onClick={() => void owned.refetch()}>Try again</button></p>
         )}
@@ -372,7 +487,7 @@ export function SupportCenter() {
         ) : (
           <ul className="mt-4 space-y-3" data-testid="list-support-tickets">
             {ownedList.map((t) => <TicketCard key={t.id} id={t.id} preloaded={t} defaultOpen={created?.id === t.id} />)}
-            {anon.map((s) => <TicketCard key={s.id} id={s.id} token={s.token} defaultOpen={created?.id === s.id} onForget={() => forget(s.id)} />)}
+            {anon.map((s) => <TicketCard key={s.id} id={s.id} token={s.token} defaultOpen={created?.id === s.id || recoveredTicketId === s.id} onForget={() => forget(s.id)} />)}
           </ul>
         )}
       </div>

@@ -1,5 +1,5 @@
-import { createHash, randomBytes } from "node:crypto";
-import { count, desc, eq, inArray } from "drizzle-orm";
+import { createHash, randomBytes, randomInt } from "node:crypto";
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAdminSupportTicketReplyBody,
@@ -10,6 +10,10 @@ import {
   CreateSupportTicketMessageParams,
   CreateSupportTicketMessageResponse,
   CreateSupportTicketResponse,
+  RequestSupportTicketRecoveryBody,
+  RequestSupportTicketRecoveryResponse,
+  VerifySupportTicketRecoveryBody,
+  VerifySupportTicketRecoveryResponse,
   GetAdminSupportTicketParams,
   GetAdminSupportTicketResponse,
   GetSupportTicketParams,
@@ -37,8 +41,10 @@ import {
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 
 type TicketEmail = { reference: string; replyEmail: string; body: string };
+type TicketRecoveryEmail = { reference: string; replyEmail: string; code: string };
 type SupportTicketDependencies = {
   sendReplyEmail?: (message: TicketEmail) => Promise<void>;
+  sendRecoveryEmail?: (message: TicketRecoveryEmail) => Promise<void>;
   createReference?: () => string;
   now?: () => number;
   maxRequests?: number;
@@ -122,14 +128,45 @@ async function sendReplyWithResend(message: TicketEmail): Promise<void> {
   if (!response.ok) throw new Error(`Resend rejected support reply with status ${response.status}`);
 }
 
+async function sendRecoveryWithResend(message: TicketRecoveryEmail): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Pixl Sports Support <support@pixlsports.com>",
+      to: [message.replyEmail],
+      reply_to: "support@pixlsports.com",
+      subject: `Your Pixl Sports support ticket ${message.reference}`,
+      text: [
+        `Use this code to reopen support ticket ${message.reference}:`,
+        "",
+        message.code,
+        "",
+        "This code expires in 10 minutes and can only be used once. If you did not request it, you can ignore this email.",
+      ].join("\n"),
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`Resend rejected support recovery email with status ${response.status}`);
+}
+
 export function createSupportTicketsRouter(dependencies: SupportTicketDependencies = {}) {
   const router: IRouter = Router();
   const sendReplyEmail = dependencies.sendReplyEmail ?? sendReplyWithResend;
+  const sendRecoveryEmail = dependencies.sendRecoveryEmail ?? sendRecoveryWithResend;
   const createReference = dependencies.createReference ?? generateSupportTicketReference;
   const now = dependencies.now ?? Date.now;
   const maxRequests = dependencies.maxRequests ?? 5;
   const windowMs = dependencies.windowMs ?? 10 * 60 * 1000;
   const attempts = new Map<string, RateLimitEntry>();
+  const recoveryAttempts = new Map<string, RateLimitEntry>();
+
+  router.use("/support/tickets/recovery", (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
 
   router.post("/support/tickets", async (req, res): Promise<void> => {
     const parsed = CreateSupportTicketBody.safeParse(req.body);
@@ -178,11 +215,139 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
       res.status(503).json({ error: "Your ticket could not be created right now. Please try again." });
       return;
     }
-
     res.status(201).json(CreateSupportTicketResponse.parse({
       ticket: publicTicket(ticket),
       accessToken,
     }));
+  });
+
+  router.post("/support/tickets/recovery/request", async (req, res): Promise<void> => {
+    const parsed = RequestSupportTicketRecoveryBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Enter the ticket reference and the reply email used on that ticket." });
+      return;
+    }
+    const timestamp = now();
+    const ip = req.ip || "unknown";
+    const current = recoveryAttempts.get(ip);
+    if (current && current.resetAt > timestamp && current.count >= 5) {
+      res.set("Retry-After", String(Math.max(1, Math.ceil((current.resetAt - timestamp) / 1000))));
+      res.status(429).json({ error: "Please wait before requesting another recovery code." });
+      return;
+    }
+    if (!current || current.resetAt <= timestamp) recoveryAttempts.set(ip, { count: 1, resetAt: timestamp + 15 * 60 * 1000 });
+    else current.count += 1;
+
+    const reference = parsed.data.reference.trim().toUpperCase();
+    const email = parsed.data.email.trim().toLowerCase();
+    const [ticket] = await db.select().from(supportTicketsTable)
+      .where(and(
+        eq(supportTicketsTable.reference, reference),
+        eq(supportTicketsTable.replyEmail, email),
+        isNull(supportTicketsTable.ownerClerkUserId),
+      ))
+      .limit(1);
+
+    const accepted = { message: "If a guest ticket matches those details, recovery instructions were sent or are on their way to its original reply email." };
+    if (!ticket) {
+      res.status(202).json(RequestSupportTicketRecoveryResponse.parse(accepted));
+      return;
+    }
+
+    const recoveryCode = String(randomInt(10_000_000, 100_000_000));
+    const codeHash = hashToken(recoveryCode);
+    const sentAt = new Date(timestamp);
+    const [claim] = await db.update(supportTicketsTable)
+      .set({
+        recoveryCodeHash: codeHash,
+        recoveryCodeExpiresAt: new Date(timestamp + 10 * 60 * 1000),
+        recoveryRequestedAt: sentAt,
+        recoveryAttempts: 0,
+      })
+      .where(and(
+        eq(supportTicketsTable.id, ticket.id),
+        isNull(supportTicketsTable.ownerClerkUserId),
+        or(isNull(supportTicketsTable.recoveryRequestedAt), lt(supportTicketsTable.recoveryRequestedAt, new Date(timestamp - 60 * 1000))),
+      ))
+      .returning({ id: supportTicketsTable.id });
+    if (!claim) {
+      res.status(202).json(RequestSupportTicketRecoveryResponse.parse(accepted));
+      return;
+    }
+
+    void sendRecoveryEmail({ reference: ticket.reference, replyEmail: ticket.replyEmail, code: recoveryCode })
+      .catch(async () => {
+        try {
+          await db.update(supportTicketsTable)
+            .set({ recoveryCodeHash: null, recoveryCodeExpiresAt: null, recoveryRequestedAt: null, recoveryAttempts: 0 })
+            .where(and(eq(supportTicketsTable.id, ticket.id), eq(supportTicketsTable.recoveryCodeHash, codeHash)));
+        } catch {
+          // Do not log the email payload, which includes the one-time recovery code.
+        }
+        req.log.error({ ticketId: ticket.id }, "Support ticket recovery email delivery failed");
+      });
+    res.status(202).json(RequestSupportTicketRecoveryResponse.parse(accepted));
+  });
+
+  router.post("/support/tickets/recovery/verify", async (req, res): Promise<void> => {
+    const parsed = VerifySupportTicketRecoveryBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Enter the ticket reference, reply email, and eight-digit code." });
+      return;
+    }
+    const reference = parsed.data.reference.trim().toUpperCase();
+    const email = parsed.data.email.trim().toLowerCase();
+    const codeHash = hashToken(parsed.data.code);
+    const timestamp = new Date(now());
+    const [ticket] = await db.select().from(supportTicketsTable)
+      .where(and(
+        eq(supportTicketsTable.reference, reference),
+        eq(supportTicketsTable.replyEmail, email),
+        isNull(supportTicketsTable.ownerClerkUserId),
+      ))
+      .limit(1);
+    if (!ticket) {
+      res.status(400).json({ error: "The code could not be verified. Check the details or request a new code." });
+      return;
+    }
+
+    const accessToken = randomBytes(32).toString("base64url");
+    const updated = await db.transaction(async (tx) => {
+      const [verified] = await tx.update(supportTicketsTable)
+        .set({
+          accessTokenHash: hashToken(accessToken),
+          recoveryCodeHash: null,
+          recoveryCodeExpiresAt: null,
+          recoveryRequestedAt: null,
+          recoveryAttempts: 0,
+        })
+        .where(and(
+          eq(supportTicketsTable.id, ticket.id),
+          eq(supportTicketsTable.recoveryCodeHash, codeHash),
+          gt(supportTicketsTable.recoveryCodeExpiresAt, timestamp),
+          lt(supportTicketsTable.recoveryAttempts, 5),
+          isNull(supportTicketsTable.ownerClerkUserId),
+        ))
+        .returning();
+      if (verified) return verified;
+
+      await tx.update(supportTicketsTable)
+        .set({ recoveryAttempts: sql`${supportTicketsTable.recoveryAttempts} + 1` })
+        .where(and(
+          eq(supportTicketsTable.id, ticket.id),
+          isNotNull(supportTicketsTable.recoveryCodeHash),
+          gt(supportTicketsTable.recoveryCodeExpiresAt, timestamp),
+          lt(supportTicketsTable.recoveryAttempts, 5),
+          isNull(supportTicketsTable.ownerClerkUserId),
+        ));
+      return undefined;
+    });
+    if (!updated) {
+      res.status(400).json({ error: "The code could not be verified. Check the details or request a new code." });
+      return;
+    }
+
+    res.json(VerifySupportTicketRecoveryResponse.parse({ ticket: await ticketWithMessages(updated), accessToken }));
   });
 
   router.get("/support/tickets", requireAuthenticatedIdentity, async (_req, res): Promise<void> => {

@@ -86,6 +86,32 @@ export interface SupportTicketInput {
   diagnostics?: SupportDiagnostics;
 }
 
+export interface SupportTicketRecoveryRequestInput {
+  /**
+     * @minLength 6
+     * @maxLength 40
+     */
+  reference: string;
+  /** @maxLength 320 */
+  email: string;
+}
+
+export interface SupportTicketRecoveryCodeInput {
+  /**
+     * @minLength 6
+     * @maxLength 40
+     */
+  reference: string;
+  /** @maxLength 320 */
+  email: string;
+  /** @pattern ^[0-9]{8}$ */
+  code: string;
+}
+
+export interface SupportTicketRecoveryRequestResponse {
+  message: string;
+}
+
 export type SupportTicketIssueId = typeof SupportTicketIssueId[keyof typeof SupportTicketIssueId];
 
 
@@ -170,6 +196,15 @@ export interface SupportTicket {
   createdAt: string;
   updatedAt: string;
   messages: SupportTicketMessage[];
+}
+
+export interface SupportTicketRecovered {
+  ticket: SupportTicket;
+  /**
+     * @minLength 32
+     * @maxLength 200
+     */
+  accessToken: string;
 }
 
 export interface SupportTicketCreated {

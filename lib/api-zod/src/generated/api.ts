@@ -121,6 +121,84 @@ export const ListSupportTicketsResponse = zod.array(ListSupportTicketsResponseIt
 
 
 /**
+ * Sends a short-lived verification code to the ticket's original reply email. The response does not reveal whether a matching ticket exists.
+ * @summary Send a guest ticket recovery code
+ */
+export const requestSupportTicketRecoveryBodyReferenceMin = 6;
+export const requestSupportTicketRecoveryBodyReferenceMax = 40;
+
+export const requestSupportTicketRecoveryBodyEmailMax = 320;
+
+
+
+export const RequestSupportTicketRecoveryBody = zod.object({
+  "reference": zod.string().min(requestSupportTicketRecoveryBodyReferenceMin).max(requestSupportTicketRecoveryBodyReferenceMax),
+  "email": zod.string().email().max(requestSupportTicketRecoveryBodyEmailMax)
+})
+
+export const RequestSupportTicketRecoveryResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * Verifies the short-lived email code and returns a fresh private access key in the response body.
+ * @summary Verify a guest ticket recovery code
+ */
+export const verifySupportTicketRecoveryBodyReferenceMin = 6;
+export const verifySupportTicketRecoveryBodyReferenceMax = 40;
+
+export const verifySupportTicketRecoveryBodyEmailMax = 320;
+
+export const verifySupportTicketRecoveryBodyCodeRegExp = new RegExp('^[0-9]{8}$');
+
+
+export const VerifySupportTicketRecoveryBody = zod.object({
+  "reference": zod.string().min(verifySupportTicketRecoveryBodyReferenceMin).max(verifySupportTicketRecoveryBodyReferenceMax),
+  "email": zod.string().email().max(verifySupportTicketRecoveryBodyEmailMax),
+  "code": zod.string().regex(verifySupportTicketRecoveryBodyCodeRegExp)
+})
+
+export const verifySupportTicketRecoveryResponseTicketReferenceMin = 6;
+export const verifySupportTicketRecoveryResponseTicketReferenceMax = 40;
+
+export const verifySupportTicketRecoveryResponseTicketReplyEmailMax = 320;
+
+export const verifySupportTicketRecoveryResponseAccessTokenMin = 32;
+export const verifySupportTicketRecoveryResponseAccessTokenMax = 200;
+
+
+
+export const VerifySupportTicketRecoveryResponse = zod.object({
+  "ticket": zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string().min(verifySupportTicketRecoveryResponseTicketReferenceMin).max(verifySupportTicketRecoveryResponseTicketReferenceMax),
+  "replyEmail": zod.string().email().max(verifySupportTicketRecoveryResponseTicketReplyEmailMax),
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string(),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "diagnostics": zod.union([zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}),zod.null()]),
+  "status": zod.enum(['unread', 'active', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+}),
+  "accessToken": zod.string().min(verifySupportTicketRecoveryResponseAccessTokenMin).max(verifySupportTicketRecoveryResponseAccessTokenMax)
+})
+
+
+/**
  * @summary Get one owned or access-token-authorized support ticket
  */
 export const GetSupportTicketParams = zod.object({

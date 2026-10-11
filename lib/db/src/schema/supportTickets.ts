@@ -1,4 +1,4 @@
-import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export type SupportDiagnostics = {
   connection: "online" | "offline" | "not-run";
@@ -11,6 +11,10 @@ export const supportTicketsTable = pgTable("support_tickets", {
   reference: text("reference").notNull(),
   ownerClerkUserId: text("owner_clerk_user_id"),
   accessTokenHash: text("access_token_hash").notNull(),
+  recoveryCodeHash: text("recovery_code_hash"),
+  recoveryCodeExpiresAt: timestamp("recovery_code_expires_at", { withTimezone: true }),
+  recoveryRequestedAt: timestamp("recovery_requested_at", { withTimezone: true }),
+  recoveryAttempts: integer("recovery_attempts").notNull().default(0),
   replyEmail: text("reply_email").notNull(),
   issueId: text("issue_id").notNull(),
   description: text("description").notNull(),

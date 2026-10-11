@@ -100,6 +100,54 @@ paths:
                   $ref: "#/components/schemas/SupportTicket"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /support/tickets/recovery/request:
+    post:
+      operationId: requestSupportTicketRecovery
+      tags: [support-tickets]
+      summary: Send a guest ticket recovery code
+      description: Sends a short-lived verification code to the ticket's original reply email. The response does not reveal whether a matching ticket exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketRecoveryRequestInput"
+      responses:
+        "202":
+          description: Recovery request accepted without disclosing ticket existence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketRecoveryRequestResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Too many recovery requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /support/tickets/recovery/verify:
+    post:
+      operationId: verifySupportTicketRecovery
+      tags: [support-tickets]
+      summary: Verify a guest ticket recovery code
+      description: Verifies the short-lived email code and returns a fresh private access key in the response body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketRecoveryCodeInput"
+      responses:
+        "200":
+          description: Recovery verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketRecovered"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /support/tickets/{ticketId}:
     parameters:
       - $ref: "#/components/parameters/SupportTicketId"
@@ -2696,6 +2744,35 @@ components:
         website: { type: string, maxLength: 200 }
         diagnostics:
           $ref: "#/components/schemas/SupportDiagnostics"
+    SupportTicketRecoveryRequestInput:
+      type: object
+      additionalProperties: false
+      required: [reference, email]
+      properties:
+        reference: { type: string, minLength: 6, maxLength: 40 }
+        email: { type: string, format: email, maxLength: 320 }
+    SupportTicketRecoveryCodeInput:
+      type: object
+      additionalProperties: false
+      required: [reference, email, code]
+      properties:
+        reference: { type: string, minLength: 6, maxLength: 40 }
+        email: { type: string, format: email, maxLength: 320 }
+        code: { type: string, pattern: "^[0-9]{8}$" }
+    SupportTicketRecoveryRequestResponse:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message: { type: string }
+    SupportTicketRecovered:
+      type: object
+      additionalProperties: false
+      required: [ticket, accessToken]
+      properties:
+        ticket:
+          $ref: "#/components/schemas/SupportTicket"
+        accessToken: { type: string, minLength: 32, maxLength: 200 }
     SupportTicketCreated:
       type: object
       additionalProperties: false

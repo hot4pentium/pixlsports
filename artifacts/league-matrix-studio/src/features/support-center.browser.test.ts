@@ -99,14 +99,19 @@ test('new support tickets are easy to find after confirmation for members and gu
           const ticketId = 'f83c88a2-e651-4e09-8e1d-02172e6ca707';
           const ticketReference = 'PS-20261011-ABC123';
           const accessToken = 'browser-test-private-access-token-0123456789';
-          let savedTicket;
           let memberListReads = 0;
           let guestTicketReads = 0;
+          const serverStateKey = 'support-center-test-server:' + ticketId;
+          const readServerState = () => JSON.parse(localStorage.getItem(serverStateKey) || 'null')
+            || { ticket: null, accessToken };
+          const saveServerState = (state) => localStorage.setItem(serverStateKey, JSON.stringify(state));
           window.__supportCenterPublishReply = () => {
-            savedTicket.messages = [{
+            const state = readServerState();
+            state.ticket.messages = [{
               id: 'admin-reply-1', senderRole: 'admin', body: 'We have replied to your request.',
               deliveryStatus: 'sent', createdAt: new Date().toISOString(),
             }];
+            saveServerState(state);
           };
           window.__supportCenterReadCounts = () => ({ memberListReads, guestTicketReads });
           window.fetch = async (input, init = {}) => {
@@ -115,33 +120,59 @@ test('new support tickets are easy to find after confirmation for members and gu
             const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
             if (url.pathname === '/api/support/tickets' && method === 'GET') {
               memberListReads += 1;
-              return new Response(JSON.stringify(savedTicket ? [savedTicket] : []), {
+              const state = readServerState();
+              return new Response(JSON.stringify(state.ticket ? [state.ticket] : []), {
                 status: 200, headers: { 'content-type': 'application/json' },
               });
             }
             if (url.pathname === '/api/support/tickets' && method === 'POST') {
               const submitted = JSON.parse(init.body);
               const now = new Date().toISOString();
-              savedTicket = {
+              const state = readServerState();
+              state.ticket = {
                 id: ticketId, reference: ticketReference, replyEmail: submitted.replyEmail,
                 issueId: submitted.issueId, description: submitted.description,
                 deviceType: submitted.deviceType, connectionType: submitted.connectionType,
                 diagnostics: submitted.diagnostics ?? null, status: 'unread',
                 createdAt: now, updatedAt: now, messages: [],
               };
-              return new Response(JSON.stringify({ ticket: savedTicket, accessToken }), {
+              state.accessToken = accessToken;
+              saveServerState(state);
+              return new Response(JSON.stringify({ ticket: state.ticket, accessToken }), {
                 status: 201, headers: { 'content-type': 'application/json' },
               });
             }
-            if (url.pathname === '/api/support/tickets/' + ticketId && method === 'GET' && savedTicket) {
+            if (url.pathname === '/api/support/tickets/recovery/request' && method === 'POST') {
+              const submitted = JSON.parse(init.body);
+              localStorage.setItem('support-center-test-recovery-request', JSON.stringify(submitted));
+              return new Response(JSON.stringify({
+                message: 'If a guest ticket matches those details, a recovery code has been sent to its original reply email.',
+              }), { status: 202, headers: { 'content-type': 'application/json' } });
+            }
+            if (url.pathname === '/api/support/tickets/recovery/verify' && method === 'POST') {
+              const submitted = JSON.parse(init.body);
+              if (submitted.reference !== ticketReference || submitted.email !== 'guest@example.com' || submitted.code !== '12345678') {
+                return new Response(JSON.stringify({ error: 'Code could not be verified' }), {
+                  status: 400, headers: { 'content-type': 'application/json' },
+                });
+              }
+              const state = readServerState();
+              state.accessToken = 'recovered-private-access-token-0123456789';
+              saveServerState(state);
+              return new Response(JSON.stringify({ ticket: state.ticket, accessToken: state.accessToken }), {
+                status: 200, headers: { 'content-type': 'application/json' },
+              });
+            }
+            const state = readServerState();
+            if (url.pathname === '/api/support/tickets/' + ticketId && method === 'GET' && state.ticket) {
               guestTicketReads += 1;
               const headers = new Headers(init.headers ?? (input instanceof Request ? input.headers : undefined));
-              if (headers.get('X-Support-Ticket-Token') !== accessToken) {
+              if (headers.get('X-Support-Ticket-Token') !== state.accessToken) {
                 return new Response(JSON.stringify({ error: 'Guest ticket access token missing' }), {
                   status: 403, headers: { 'content-type': 'application/json' },
                 });
               }
-              return new Response(JSON.stringify(savedTicket), {
+              return new Response(JSON.stringify(state.ticket), {
                 status: 200, headers: { 'content-type': 'application/json' },
               });
             }
@@ -264,6 +295,82 @@ test('new support tickets are easy to find after confirmation for members and gu
         assert.ok(refreshPath.guestTicketReads >= 2, 'guest ticket details should refresh with their private access token');
       }
     }
+
+    const lastCreatedPage = pages[pages.length - 1];
+    await connection.evaluate(
+      'localStorage.removeItem("pixlsports.support.anonymous-tickets.v1")',
+      lastCreatedPage.sessionId,
+    );
+    const recoveryPage = await openPage(connection, 'about:blank', {
+      viewport: { width: 900, height: 700, mobile: false },
+    });
+    pages.push(recoveryPage);
+    await connection.send('Page.navigate', {
+      url: `http://127.0.0.1:${port}/support-center-browser-fixture-${process.pid}.html`,
+    }, recoveryPage.sessionId);
+    await waitFor(connection, recoveryPage.sessionId,
+      'Boolean(document.querySelector("[data-testid=section-recover-support-ticket]"))', Boolean);
+    assert.equal(
+      await connection.evaluate<string>(
+        'localStorage.getItem("pixlsports.support.anonymous-tickets.v1")',
+        recoveryPage.sessionId,
+      ),
+      null,
+      'a new browser should begin without the original guest access key',
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=input-support-recovery-reference]").focus()',
+      recoveryPage.sessionId,
+    );
+    await connection.send('Input.insertText', { text: 'PS-20261011-ABC123' }, recoveryPage.sessionId);
+    await connection.evaluate(
+      'document.querySelector("[data-testid=input-support-recovery-email]").focus()',
+      recoveryPage.sessionId,
+    );
+    await connection.send('Input.insertText', { text: 'guest@example.com' }, recoveryPage.sessionId);
+    await connection.evaluate(
+      'document.querySelector("[data-testid=button-request-support-recovery]").click()',
+      recoveryPage.sessionId,
+    );
+    await waitFor(connection, recoveryPage.sessionId,
+      'Boolean(document.querySelector("[data-testid=form-verify-support-recovery]"))', Boolean);
+    assert.match(
+      await connection.evaluate<string>(
+        'document.querySelector("[data-testid=text-support-recovery-feedback]")?.textContent || ""',
+        recoveryPage.sessionId,
+      ),
+      /If those details match a guest ticket/,
+      'recovery request should not reveal whether the reference and email matched',
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=input-support-recovery-code]").focus()',
+      recoveryPage.sessionId,
+    );
+    await connection.send('Input.insertText', { text: '12345678' }, recoveryPage.sessionId);
+    await connection.evaluate(
+      'document.querySelector("[data-testid=button-verify-support-recovery]").click()',
+      recoveryPage.sessionId,
+    );
+    await waitFor(connection, recoveryPage.sessionId, `(() => {
+      const ticket = document.querySelector("[data-testid='ticket-f83c88a2-e651-4e09-8e1d-02172e6ca707']");
+      return Boolean(ticket && ticket.querySelector("button[aria-expanded='true']")
+        && ticket.innerText.includes("A guest needs help with a saved ticket."));
+    })()`, Boolean);
+    const recoveredState = await connection.evaluate<{ path: string; stored: string; request: string; ticketReadCount: number }>(`(() => ({
+      path: location.href,
+      stored: localStorage.getItem("pixlsports.support.anonymous-tickets.v1"),
+      request: localStorage.getItem("support-center-test-recovery-request"),
+      ticketReadCount: window.__supportCenterReadCounts().guestTicketReads,
+    }))()`, recoveryPage.sessionId);
+    assert.equal(new URL(recoveredState.path).search, '', 'recovery credentials must not be placed in the public URL');
+    assert.deepEqual(JSON.parse(recoveredState.request), {
+      reference: 'PS-20261011-ABC123', email: 'guest@example.com',
+    });
+    assert.deepEqual(JSON.parse(recoveredState.stored), [{
+      id: 'f83c88a2-e651-4e09-8e1d-02172e6ca707',
+      token: 'recovered-private-access-token-0123456789',
+    }], 'verified access should be saved only in the new browser storage');
+    assert.ok(recoveredState.ticketReadCount > 0, 'the recovered ticket should load with its replacement private key');
   } finally {
     for (const page of pages) {
       await connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
