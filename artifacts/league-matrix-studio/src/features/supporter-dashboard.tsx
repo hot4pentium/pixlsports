@@ -1343,7 +1343,7 @@ export function SupporterDashboardView({
 
         </div>
 
-        <footer className="mx-4 mt-8 flex items-center justify-center gap-6 border-t border-[#12213A]/15 pt-5 text-xs font-bold uppercase tracking-wider text-[#334969]">
+        <footer className="mx-4 mt-8 flex items-center justify-center gap-6 border-t border-[#12213A]/15 pt-5 pb-8 text-xs font-bold uppercase tracking-wider text-[#334969]">
           <Link href="/help" className="hover:text-[#2474F5]" data-testid="link-mobile-dashboard-footer-help">Help / FAQ</Link>
           <Link href="/privacy" className="hover:text-[#2474F5]" data-testid="link-mobile-dashboard-footer-privacy">Privacy</Link>
         </footer>

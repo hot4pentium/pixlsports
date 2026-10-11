@@ -4893,11 +4893,13 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       helpVisible: boolean;
       privacyPath: string;
       privacyVisible: boolean;
+      footerPaddingBottom: string;
     }>(`(() => {
       const profile = document.querySelector('[data-testid="btn-mobile-open-profile"]');
       const menu = document.querySelector('[data-testid="button-mobile-dashboard-menu"]');
       const help = document.querySelector('[data-testid="link-mobile-dashboard-footer-help"]');
       const privacy = document.querySelector('[data-testid="link-mobile-dashboard-footer-privacy"]');
+      const footer = help?.closest('footer');
       const visible = (element) => element instanceof HTMLElement
         && getComputedStyle(element).display !== 'none'
         && element.getBoundingClientRect().width > 0
@@ -4910,6 +4912,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         helpVisible: visible(help),
         privacyPath: privacy instanceof HTMLAnchorElement ? new URL(privacy.href).pathname : '',
         privacyVisible: visible(privacy),
+        footerPaddingBottom: footer instanceof HTMLElement ? getComputedStyle(footer).paddingBottom : '',
       };
     })()`, session);
     assert.deepEqual(mobileAccess, {
@@ -4920,6 +4923,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       helpVisible: true,
       privacyPath: '/privacy',
       privacyVisible: true,
+      footerPaddingBottom: '32px',
     });
     await connection.evaluate(`document.querySelector('[data-testid="button-mobile-dashboard-menu"]')?.click()`, session);
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]"))', Boolean);
