@@ -35,6 +35,8 @@ export function SupportCenter() {
   const [checking, setChecking] = useState(false);
   const [report, setReport] = useState<{ reference: string; text: string } | null>(null);
   const [shareConsent, setShareConsent] = useState(false);
+  const [replyEmail, setReplyEmail] = useState('');
+  const [replyEmailConsent, setReplyEmailConsent] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
   const [sendMessage, setSendMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -47,6 +49,8 @@ export function SupportCenter() {
     setIssueId(value as SupportIssueId);
     setReport(null);
     setShareConsent(false);
+    setReplyEmail('');
+    setReplyEmailConsent(false);
     setCopyMessage('');
     setSendMessage('');
   };
@@ -56,6 +60,8 @@ export function SupportCenter() {
     setCheckMessage('');
     setReport(null);
     setShareConsent(false);
+    setReplyEmail('');
+    setReplyEmailConsent(false);
     setCopyMessage('');
     setSendMessage('');
 
@@ -96,6 +102,8 @@ export function SupportCenter() {
     });
     setReport({ reference, text });
     setShareConsent(false);
+    setReplyEmail('');
+    setReplyEmailConsent(false);
     setCopyMessage('');
     setSendMessage('');
   };
@@ -112,11 +120,16 @@ export function SupportCenter() {
 
   const sendReport = async () => {
     if (!report || !sharing || sending) return;
+    const includedReplyEmail = replyEmailConsent ? replyEmail.trim() : '';
     setSending(true);
     setSendMessage('');
     try {
       const result = await sendSiteFeedback(
-        { feedbackType: 'problem', message: report.text },
+        {
+          feedbackType: 'problem',
+          message: report.text,
+          ...(includedReplyEmail ? { replyEmail: includedReplyEmail } : {}),
+        },
         { credentials: 'omit' },
       );
       setSendMessage(result.accepted
@@ -137,6 +150,8 @@ export function SupportCenter() {
   const cancelReport = () => {
     setReport(null);
     setShareConsent(false);
+    setReplyEmail('');
+    setReplyEmailConsent(false);
     setCopyMessage('');
     setSendMessage('');
   };
@@ -250,8 +265,44 @@ export function SupportCenter() {
             <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground" data-testid="support-report-preview">
               {report.text}
             </pre>
+            <div className="space-y-3 border border-border p-3">
+              <label className="block">
+                <span className="mb-1 block text-sm font-bold text-foreground">Optional reply email</span>
+                <span className="mb-2 block text-xs leading-relaxed text-muted-foreground">
+                  Leave blank to omit a reply address. This is never filled from your account and is not part of the copied report.
+                </span>
+                <input
+                  type="email"
+                  autoComplete="off"
+                  value={replyEmail}
+                  onChange={(event) => {
+                    setReplyEmail(event.target.value);
+                    setReplyEmailConsent(false);
+                    setSendMessage('');
+                  }}
+                  placeholder="you@example.com"
+                  className="min-h-11 w-full border border-border bg-background px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                  data-testid="input-support-reply-email"
+                />
+              </label>
+              <p className="text-sm text-foreground" data-testid="preview-support-reply-email">
+                Reply address for email: <span className="font-semibold">{replyEmail.trim() || 'Not provided'}</span>
+              </p>
+              {replyEmail.trim() && (
+                <label className="flex cursor-pointer items-start gap-3 border border-border p-3 text-sm leading-relaxed text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={replyEmailConsent}
+                    onChange={(event) => setReplyEmailConsent(event.target.checked)}
+                    className="mt-1 h-4 w-4 accent-primary"
+                    data-testid="checkbox-share-support-reply-email"
+                  />
+                  <span>I consent to sending this reply address to support with my report.</span>
+                </label>
+              )}
+            </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Pixl Sports does not save an in-app copy. If you choose Send, this report is emailed to support@pixlsports.com. Sent email follows the support mailbox’s retention practices; this feature does not set or display a deletion date.
+              Pixl Sports does not save an in-app copy. If you choose Send, this report is emailed to support@pixlsports.com. The reply address is included only if you enter it and check its consent box. Sent email follows the support mailbox’s retention practices; this feature does not set or display a deletion date.
             </p>
             <label className="flex cursor-pointer items-start gap-3 border border-border p-3 text-sm leading-relaxed text-foreground">
               <input
@@ -264,7 +315,7 @@ export function SupportCenter() {
                 className="mt-1 h-4 w-4 accent-primary"
                 data-testid="checkbox-share-support-report"
               />
-              <span>I reviewed the report and choose to share these fields using one of the options below.</span>
+              <span>I reviewed the report and choose to share it using one of the options below. Copying includes only the report text.</span>
             </label>
             {sharing && (
               <div className="flex flex-wrap gap-3">

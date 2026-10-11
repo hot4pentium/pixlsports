@@ -83,12 +83,18 @@ test('blocked browser storage probe reports unavailable and attempts cleanup', (
   assert.deepEqual(removed, ['pixlsports-support-check:blocked-test']);
 });
 
-test('report sending stays hidden until consent, sends the reviewed body, and closing clears the preview', async () => {
+test('report sending stays hidden until consent, sends the reviewed body, and reports remain in page memory', async () => {
   let renderer: ReactTestRenderer | undefined;
   const originalFetch = globalThis.fetch;
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   let requestUrl = '';
   let requestInit: RequestInit | undefined;
   let requestBody: Record<string, unknown> | undefined;
+  let copiedText = '';
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { clipboard: { writeText: async (value: string) => { copiedText = value; } } },
+  });
   globalThis.fetch = async (input, init) => {
     requestUrl = String(input);
     requestInit = init;
@@ -112,6 +118,11 @@ test('report sending stays hidden until consent, sends the reviewed body, and cl
     await act(async () => {
       find('button-prepare-support-report').props.onClick();
     });
+    assert.equal(find('input-support-reply-email').props.value, '');
+    assert.equal(
+      find('preview-support-reply-email').findAllByType('span')[0].props.children,
+      'Not provided',
+    );
     assert.equal(root.findAllByProps({ 'data-testid': 'button-send-support-report' }).length, 0);
     assert.equal(root.findAllByProps({ 'data-testid': 'button-copy-support-report' }).length, 0);
 
@@ -123,6 +134,12 @@ test('report sending stays hidden until consent, sends the reviewed body, and cl
     assert.equal(root.findAllByProps({ 'data-testid': 'button-copy-support-report' }).length, 1);
 
     await act(async () => {
+      await find('button-copy-support-report').props.onClick();
+    });
+    assert.equal(copiedText, preview);
+    assert.doesNotMatch(copiedText, /member@example\.com/);
+
+    await act(async () => {
       await find('button-send-support-report').props.onClick();
     });
     assert.equal(requestUrl, '/api/site-feedback');
@@ -130,6 +147,8 @@ test('report sending stays hidden until consent, sends the reviewed body, and cl
     assert.equal(requestBody?.feedbackType, 'problem');
     assert.equal(requestBody?.message, preview);
     assert.deepEqual(Object.keys(requestBody ?? {}).sort(), ['feedbackType', 'message']);
+    assert.match(root.findAllByProps({ 'data-testid': 'support-report' })[0].findAllByType('p')
+      .map((node) => String(node.props.children)).join(' '), /does not save an in-app copy/);
     const reference = preview.match(/^Reference: (PS-[0-9a-f-]{36})$/im)?.[1];
     assert.ok(reference);
     assert.equal(root.findByProps({ 'data-testid': 'status-send-support-report' }).props.role, 'status');
@@ -139,10 +158,97 @@ test('report sending stays hidden until consent, sends the reviewed body, and cl
       find('button-cancel-support-report').props.onClick();
     });
     assert.equal(root.findAllByProps({ 'data-testid': 'support-report' }).length, 0);
+    await act(async () => {
+      renderer?.unmount();
+      renderer = create(createElement(SupportCenter));
+    });
+    assert.equal(renderer.root.findAllByProps({ 'data-testid': 'support-report' }).length, 0);
   } finally {
     await act(async () => {
       renderer?.unmount();
     });
     globalThis.fetch = originalFetch;
+    if (originalNavigator) {
+      Object.defineProperty(globalThis, 'navigator', originalNavigator);
+    } else {
+      delete (globalThis as { navigator?: Navigator }).navigator;
+    }
+  }
+});
+
+test('reply address is previewed exactly and sent only after its separate consent', async () => {
+  let renderer: ReactTestRenderer | undefined;
+  const originalFetch = globalThis.fetch;
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const requests: Array<Record<string, unknown>> = [];
+  let copiedText = '';
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { clipboard: { writeText: async (value: string) => { copiedText = value; } } },
+  });
+  globalThis.fetch = async (_input, init) => {
+    requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    return new Response(JSON.stringify({ accepted: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    await act(async () => {
+      renderer = create(createElement(SupportCenter));
+    });
+    assert.ok(renderer);
+    const root = renderer.root;
+    const find = (testId: string) => root.findByProps({ 'data-testid': testId });
+    await act(async () => {
+      find('button-prepare-support-report').props.onClick();
+    });
+    const reportText = find('support-report-preview').props.children as string;
+    await act(async () => {
+      find('input-support-reply-email').props.onChange({ target: { value: 'family@example.com' } });
+      find('checkbox-share-support-report').props.onChange({ target: { checked: true } });
+    });
+    assert.match(
+      find('preview-support-reply-email').findAllByType('span')[0].props.children,
+      /family@example\.com/,
+    );
+    assert.equal(root.findAllByProps({ 'data-testid': 'checkbox-share-support-reply-email' }).length, 1);
+
+    await act(async () => {
+      await find('button-copy-support-report').props.onClick();
+    });
+    assert.equal(copiedText, reportText);
+    assert.doesNotMatch(copiedText, /family@example\.com/);
+
+    await act(async () => {
+      await find('button-send-support-report').props.onClick();
+    });
+    assert.deepEqual(Object.keys(requests[0]).sort(), ['feedbackType', 'message']);
+
+    await act(async () => {
+      find('input-support-reply-email').props.onChange({ target: { value: 'family@example.com' } });
+      find('checkbox-share-support-reply-email').props.onChange({ target: { checked: true } });
+    });
+    assert.equal(find('checkbox-share-support-report').props.checked, true);
+    await act(async () => {
+      await find('button-send-support-report').props.onClick();
+    });
+    assert.deepEqual(requests[1], {
+      feedbackType: 'problem',
+      message: reportText,
+      replyEmail: 'family@example.com',
+    });
+    assert.equal(find('input-support-reply-email').props.autoComplete, 'off');
+  } finally {
+    await act(async () => {
+      renderer?.unmount();
+    });
+    globalThis.fetch = originalFetch;
+    if (originalNavigator) {
+      Object.defineProperty(globalThis, 'navigator', originalNavigator);
+    } else {
+      delete (globalThis as { navigator?: Navigator }).navigator;
+    }
   }
 });

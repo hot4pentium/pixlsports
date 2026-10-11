@@ -57,6 +57,29 @@ test("valid feedback is passed to the sender and acknowledged", async () => {
   }
 });
 
+test("feedback without a reply address is delivered without one and its message is not returned", async () => {
+  const delivered: Array<{ feedbackType: string; message: string; replyEmail?: string }> = [];
+  const server = await startServer(createSiteFeedbackRouter({
+    sendEmail: async (feedback) => { delivered.push(feedback); },
+  }));
+
+  try {
+    const response = await fetch(server.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(FEEDBACK),
+    });
+    const responseBody = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(JSON.parse(responseBody), { accepted: true });
+    assert.doesNotMatch(responseBody, /Please add a way to duplicate/);
+    assert.deepEqual(delivered, [FEEDBACK]);
+  } finally {
+    await server.close();
+  }
+});
+
 test("the honeypot acknowledges bots without sending email", async () => {
   let sends = 0;
   const server = await startServer(createSiteFeedbackRouter({
