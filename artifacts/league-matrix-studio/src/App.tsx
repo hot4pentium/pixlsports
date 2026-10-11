@@ -148,6 +148,7 @@ import { readChecklistForEvent, useChecklistSave, type ChecklistSyncStatus } fro
 import MeetingCapture from '@/features/meeting-capture';
 import { PublicLandingPage } from '@/features/landing-home';
 import { SiteFeedbackWidget } from '@/features/site-feedback-widget';
+import { SupportCenter } from '@/features/support-center';
 import { SupporterToolsGuidePage } from '@/features/supporter-tools-guide';
 import heroBanner from '@/assets/hero-banner.webp';
 import footballFieldAsset from '@/assets/football-field.svg';
@@ -3263,6 +3264,7 @@ function Help() {
             <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Your studio keeps game-day cards, checklists, and stats together. Open a game card to access its available preparation and tracking actions.</p>
           </section>
         </div>
+        <SupportCenter />
         <div className="mt-16 rounded-none bg-primary p-8 clip-angled text-primary-foreground sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-4">
             <MessageCircleQuestion className="h-10 w-10" />
@@ -3300,6 +3302,8 @@ function Privacy() {
           <p>Project settings and attached media may be kept in local browser storage so they can survive a reload. If you create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
           <h3>4. Your Media</h3>
             <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. Source media remains local by default, while a published Hype Card uses a prepared hosted copy so the public player page can display it. {PUBLIC_SHARE_MEDIA}</p>
+           <h3>5. Optional Support Checks</h3>
+           <p>The Help page's browser and storage checks run on your device. If you choose to run the service check, the app sends a basic health request without account or dashboard data. A generated report contains only its reference, issue category, creation time, and check results; it remains in the page's memory until you close or reload it. Nothing is emailed automatically: choosing email opens a draft that you send yourself. Pixl Sports does not save an in-app report copy or set a deletion date for messages sent to the support mailbox. No AI processes these checks or reports.</p>
         </div>
       </main>
     </StudioLayout>
