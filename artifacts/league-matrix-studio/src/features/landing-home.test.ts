@@ -104,11 +104,11 @@ test('visitor actions use real destinations without the week-path video link', (
   assert.doesNotMatch(source, /pricing|#pricing/i);
 });
 
-test('support email is available from public contact points without replacing existing contact options', () => {
-  assert.match(source, /<a href="mailto:support@pixlsports\.com"[^>]*>support@pixlsports\.com<\/a>/);
-  assert.match(appSource, /<a href="mailto:support@pixlsports\.com"[^>]*data-testid="link-footer-support">support@pixlsports\.com<\/a>/);
-  assert.match(appSource, /<a href="mailto:support@pixlsports\.com"[^>]*data-testid="link-help-support-email">support@pixlsports\.com<\/a>/);
-  assert.match(appSource, /href="mailto:hello@pixlsports\.com"[^>]*data-testid="link-help-contact-team">Contact Team<\/a>/);
+test('public support entry points open the managed help desk instead of email', () => {
+  assert.match(source, /<Link href="\/help" data-testid="link-footer-support">Contact support<\/Link>/);
+  assert.match(appSource, /<SupportCenter \/>/);
+  assert.doesNotMatch(source, /mailto:support@pixlsports\.com/);
+  assert.doesNotMatch(appSource, /mailto:support@pixlsports\.com/);
 });
 
 test('mobile navigation and accessibility basics are built in', () => {

@@ -1,3 +1,5 @@
+import { Link } from "wouter";
+
 type PublicSupportLinkProps = {
   variant?: "dark" | "light";
   placement?: "footer" | "header";
@@ -11,14 +13,14 @@ export function PublicSupportLink({ variant = "dark", placement = "footer" }: Pu
 
   if (placement === "header") {
     return (
-      <a
-        href="mailto:support@pixlsports.com"
-        aria-label="Email Pixl Sports support at support@pixlsports.com"
+      <Link
+        href="/help"
+        aria-label="Open Pixl Sports help"
         data-testid="link-public-support-header"
         className={`inline-flex min-h-11 shrink-0 items-center justify-center border px-3 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${colorClass}`}
       >
         Support
-      </a>
+      </Link>
     );
   }
 
@@ -30,9 +32,9 @@ export function PublicSupportLink({ variant = "dark", placement = "footer" }: Pu
     >
       <p>
         Need help?{" "}
-        <a
-          href="mailto:support@pixlsports.com"
-          aria-label="Email Pixl Sports support at support@pixlsports.com"
+        <Link
+          href="/help"
+          aria-label="Open Pixl Sports help"
           data-testid="link-public-support-email"
           className={`inline-flex min-h-11 items-center underline underline-offset-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
             dark
@@ -40,8 +42,8 @@ export function PublicSupportLink({ variant = "dark", placement = "footer" }: Pu
               : "text-[#2474f5] hover:text-[#0b1f3a] focus-visible:outline-[#2474f5]"
           }`}
         >
-          support@pixlsports.com
-        </a>
+          Open the help desk
+        </Link>
       </p>
     </footer>
   );

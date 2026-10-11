@@ -311,6 +311,7 @@ export * from "./supporterActiveGames";
 export * from "./gameOnReminders";
 export * from "./admin";
 export * from "./adminIdentityBlocks";
+export * from "./supportTickets";
 
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,

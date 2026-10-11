@@ -194,7 +194,7 @@ test('public Game On Card flips by keyboard and limits links to the active face 
       }, page.sessionId);
       assert.equal(
         await connection.evaluate<boolean>(
-          '(() => { const link = document.querySelector("[data-testid=\\"link-public-support-email\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.left >= -1 && rect.right <= innerWidth + 1 && getComputedStyle(link).visibility === "visible"; })()',
+          '(() => { const link = document.querySelector("[data-testid=\\"link-public-support-email\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "/help" && !!rect && rect.width > 0 && rect.height >= 44 && rect.left >= -1 && rect.right <= innerWidth + 1 && getComputedStyle(link).visibility === "visible"; })()',
           page.sessionId,
         ),
         true,
@@ -202,7 +202,7 @@ test('public Game On Card flips by keyboard and limits links to the active face 
       );
       assert.equal(
         await connection.evaluate<boolean>(
-          '(() => { const link = document.querySelector("[data-testid=\\"link-public-support-header\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.top >= -1 && rect.bottom <= innerHeight + 1; })()',
+          '(() => { const link = document.querySelector("[data-testid=\\"link-public-support-header\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "/help" && !!rect && rect.width > 0 && rect.height >= 44 && rect.top >= -1 && rect.bottom <= innerHeight + 1; })()',
           page.sessionId,
         ),
         true,

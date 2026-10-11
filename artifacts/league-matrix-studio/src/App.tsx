@@ -41,7 +41,7 @@ import {
 import {
   ArrowRight, ArrowUpRight, Bell, CalendarDays, Check, Clipboard, ClipboardCheck,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, Grid2X2,
-  Heart, Lightbulb, LogIn, Menu, MessageCircleQuestion, Minus,
+  Heart, Lightbulb, LogIn, Menu, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
   SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
   Download, Star, Link2, UserRoundPlus
@@ -147,7 +147,6 @@ import {
 import { readChecklistForEvent, useChecklistSave, type ChecklistSyncStatus } from '@/features/use-checklist-save';
 import MeetingCapture from '@/features/meeting-capture';
 import { PublicLandingPage } from '@/features/landing-home';
-import { SiteFeedbackWidget } from '@/features/site-feedback-widget';
 import { SupportCenter } from '@/features/support-center';
 import { SupporterToolsGuidePage } from '@/features/supporter-tools-guide';
 import heroBanner from '@/assets/hero-banner.webp';
@@ -503,7 +502,7 @@ function Footer() {
         </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
-          <a href="mailto:support@pixlsports.com" className="transition-colors hover:text-foreground" data-testid="link-footer-support">support@pixlsports.com</a>
+          <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-support">Contact support</Link>
           <Link href="/privacy" className="transition-colors hover:text-foreground" data-testid="link-footer-privacy">Privacy</Link>
         </div>
       </div>
@@ -3265,19 +3264,6 @@ function Help() {
           </section>
         </div>
         <SupportCenter />
-        <div className="mt-16 rounded-none bg-primary p-8 clip-angled text-primary-foreground sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4">
-            <MessageCircleQuestion className="h-10 w-10" />
-            <div>
-              <p className="font-display text-2xl uppercase tracking-wide">Still stuck?</p>
-              <p className="text-sm font-bold uppercase tracking-widest opacity-80 mt-1">Reach out for tactical support</p>
-            </div>
-          </div>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <a href="mailto:support@pixlsports.com" className="inline-flex min-h-11 items-center justify-center bg-card text-card-foreground font-bold tracking-wide px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-support-email">support@pixlsports.com</a>
-              <a href="mailto:hello@pixlsports.com" className="inline-flex min-h-11 items-center justify-center border border-primary-foreground/40 text-primary-foreground font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-contact-team">Contact Team</a>
-            </div>
-        </div>
       </main>
     </StudioLayout>
   );
@@ -3302,8 +3288,8 @@ function Privacy() {
           <p>Project settings and attached media may be kept in local browser storage so they can survive a reload. If you create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
           <h3>4. Your Media</h3>
             <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. Source media remains local by default, while a published Hype Card uses a prepared hosted copy so the public player page can display it. {PUBLIC_SHARE_MEDIA}</p>
-           <h3>5. Optional Support Checks</h3>
-           <p>The Help page's browser and storage checks run on your device. If you choose to run the service check, the app sends a basic health request without account or dashboard data. A generated report contains its reference, issue category, your description, creation time, and check results; it remains in the page's memory until you close or reload it. A report is emailed to support@pixlsports.com only after you review it, check the sharing box, and choose Send. Sending requires a reply address that you enter and separately consent to share; it is never taken from your account and is used as the email Reply-To. Copying the report does not include the reply address or send anything. Pixl Sports does not save an in-app report copy or set a deletion date for messages sent to the support mailbox. No AI processes these checks or reports.</p>
+           <h3>5. Support Tickets and Optional Checks</h3>
+          <p>When you create a help ticket, Pixl Sports stores it persistently: your issue category, description, device and connection choices, the reply email you chose, any optional check results you attach, and the conversation. Signed-in tickets are owned by your account. Tickets created while signed out are tied to a private access key that this browser keeps (an id and key only, never your description or email) so you can reopen them; anyone holding that key can read the ticket. Only Pixl Sports administrators can open tickets, and their access is limited to the ticket itself. The Help page's browser and storage checks run on your device and are optional; the service check sends a basic health request without account or dashboard data, and only the three displayed results are attached if you choose. Your reply email is used only to send you copies of administrator replies; replies sent from an email app do not reach the ticket. No AI processes tickets, checks, or replies.</p>
         </div>
       </main>
     </StudioLayout>
@@ -3861,7 +3847,7 @@ function AdminSuspendedAccountPage() {
             <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/75 sm:text-lg">
               An administrator has temporarily suspended access to this Pixl Sports account. Private dashboard data is hidden on this device while the restriction is active. Contact Pixl Sports support for help restoring access.
             </p>
-            <a href="mailto:support@pixlsports.com?subject=Pixl%20Sports%20account%20access" className="mt-8 inline-flex items-center justify-center gap-2 bg-primary px-6 py-4 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">Contact support <ArrowRight className="h-4 w-4" /></a>
+            <Link href="/help" className="mt-8 inline-flex items-center justify-center gap-2 bg-primary px-6 py-4 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">Contact support <ArrowRight className="h-4 w-4" /></Link>
             <button type="button" onClick={() => void signOut({ redirectUrl: `${basePath}/sign-in` })} className="ml-3 mt-8 inline-flex items-center justify-center border border-white/20 bg-white/5 px-6 py-4 text-sm font-bold uppercase tracking-widest text-white clip-angled-sm">Sign out</button>
           </div>
         </section>
@@ -4043,7 +4029,6 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
-        <SiteFeedbackWidget />
         <TooltipProvider>
           <AccountLifecycleGate>
             <ErrorBoundary resetKey={useLocation()[0]}>

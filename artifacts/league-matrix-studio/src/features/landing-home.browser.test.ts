@@ -174,7 +174,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
       assert.equal(layout.hypeCardBeforeOffline, true);
       assert.equal(layout.cta, '/sign-up');
       assert.equal(layout.help, '/help');
-      assert.equal(layout.support, 'mailto:support@pixlsports.com');
+      assert.equal(layout.support, '/help');
       assert.equal(layout.privacy, '/privacy');
       assert.equal(layout.explainer, false);
       assert.equal(layout.menuVisible, width < 700);
@@ -445,7 +445,7 @@ test('Help contact actions remain visible without overflow on phone and desktop 
       assert.equal(helpPage.viewportWidth, width);
       assert.ok(helpPage.support, `Support email should be present at ${width}px`);
       assert.ok(helpPage.contactTeam, `Contact Team email should be present at ${width}px`);
-      assert.equal(helpPage.support.href, 'mailto:support@pixlsports.com');
+      assert.equal(helpPage.support.href, '/help');
       assert.equal(helpPage.support.visible, true);
       assert.equal(helpPage.support.withinViewport, true);
       assert.equal(helpPage.contactTeam.href, 'mailto:hello@pixlsports.com');

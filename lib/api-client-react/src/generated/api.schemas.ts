@@ -5,29 +5,224 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export type SiteFeedbackInputFeedbackType = typeof SiteFeedbackInputFeedbackType[keyof typeof SiteFeedbackInputFeedbackType];
+export type SupportDiagnosticsConnection = typeof SupportDiagnosticsConnection[keyof typeof SupportDiagnosticsConnection];
 
 
-export const SiteFeedbackInputFeedbackType = {
-  feature: 'feature',
-  problem: 'problem',
+export const SupportDiagnosticsConnection = {
+  online: 'online',
+  offline: 'offline',
+  'not-run': 'not-run',
 } as const;
 
-export interface SiteFeedbackInput {
-  feedbackType: SiteFeedbackInputFeedbackType;
+export type SupportDiagnosticsBrowserStorage = typeof SupportDiagnosticsBrowserStorage[keyof typeof SupportDiagnosticsBrowserStorage];
+
+
+export const SupportDiagnosticsBrowserStorage = {
+  available: 'available',
+  unavailable: 'unavailable',
+  'not-run': 'not-run',
+} as const;
+
+export type SupportDiagnosticsService = typeof SupportDiagnosticsService[keyof typeof SupportDiagnosticsService];
+
+
+export const SupportDiagnosticsService = {
+  available: 'available',
+  unavailable: 'unavailable',
+  'not-run': 'not-run',
+} as const;
+
+export interface SupportDiagnostics {
+  connection: SupportDiagnosticsConnection;
+  browserStorage: SupportDiagnosticsBrowserStorage;
+  service: SupportDiagnosticsService;
+}
+
+export type SupportTicketInputIssueId = typeof SupportTicketInputIssueId[keyof typeof SupportTicketInputIssueId];
+
+
+export const SupportTicketInputIssueId = {
+  account: 'account',
+  billing: 'billing',
+  schedule: 'schedule',
+  'game-day': 'game-day',
+  'hype-card': 'hype-card',
+  other: 'other',
+} as const;
+
+export type SupportTicketInputDeviceType = typeof SupportTicketInputDeviceType[keyof typeof SupportTicketInputDeviceType];
+
+
+export const SupportTicketInputDeviceType = {
+  mobile: 'mobile',
+  desktop: 'desktop',
+  other: 'other',
+  unsure: 'unsure',
+} as const;
+
+export type SupportTicketInputConnectionType = typeof SupportTicketInputConnectionType[keyof typeof SupportTicketInputConnectionType];
+
+
+export const SupportTicketInputConnectionType = {
+  wifi: 'wifi',
+  'mobile-data': 'mobile-data',
+  other: 'other',
+  unsure: 'unsure',
+} as const;
+
+export interface SupportTicketInput {
+  issueId: SupportTicketInputIssueId;
   /**
      * @minLength 10
      * @maxLength 5000
      */
-  message: string;
+  description: string;
+  deviceType: SupportTicketInputDeviceType;
+  connectionType: SupportTicketInputConnectionType;
   /** @maxLength 320 */
-  replyEmail?: string;
+  replyEmail: string;
   /** @maxLength 200 */
   website?: string;
+  diagnostics?: SupportDiagnostics;
 }
 
-export interface SiteFeedbackSubmission {
-  accepted: true;
+export type SupportTicketIssueId = typeof SupportTicketIssueId[keyof typeof SupportTicketIssueId];
+
+
+export const SupportTicketIssueId = {
+  account: 'account',
+  billing: 'billing',
+  schedule: 'schedule',
+  'game-day': 'game-day',
+  'hype-card': 'hype-card',
+  other: 'other',
+} as const;
+
+export type SupportTicketDeviceType = typeof SupportTicketDeviceType[keyof typeof SupportTicketDeviceType];
+
+
+export const SupportTicketDeviceType = {
+  mobile: 'mobile',
+  desktop: 'desktop',
+  other: 'other',
+  unsure: 'unsure',
+} as const;
+
+export type SupportTicketConnectionType = typeof SupportTicketConnectionType[keyof typeof SupportTicketConnectionType];
+
+
+export const SupportTicketConnectionType = {
+  wifi: 'wifi',
+  'mobile-data': 'mobile-data',
+  other: 'other',
+  unsure: 'unsure',
+} as const;
+
+export type SupportTicketStatus = typeof SupportTicketStatus[keyof typeof SupportTicketStatus];
+
+
+export const SupportTicketStatus = {
+  unread: 'unread',
+  active: 'active',
+  resolved: 'resolved',
+} as const;
+
+export type SupportTicketMessageSenderRole = typeof SupportTicketMessageSenderRole[keyof typeof SupportTicketMessageSenderRole];
+
+
+export const SupportTicketMessageSenderRole = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type SupportTicketMessageDeliveryStatus = typeof SupportTicketMessageDeliveryStatus[keyof typeof SupportTicketMessageDeliveryStatus];
+
+
+export const SupportTicketMessageDeliveryStatus = {
+  not_applicable: 'not_applicable',
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
+export interface SupportTicketMessage {
+  id: string;
+  senderRole: SupportTicketMessageSenderRole;
+  body: string;
+  deliveryStatus: SupportTicketMessageDeliveryStatus;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  /**
+     * @minLength 6
+     * @maxLength 40
+     */
+  reference: string;
+  /** @maxLength 320 */
+  replyEmail: string;
+  issueId: SupportTicketIssueId;
+  description: string;
+  deviceType: SupportTicketDeviceType;
+  connectionType: SupportTicketConnectionType;
+  diagnostics: SupportDiagnostics | null;
+  status: SupportTicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  messages: SupportTicketMessage[];
+}
+
+export interface SupportTicketCreated {
+  ticket: SupportTicket;
+  /**
+     * @minLength 32
+     * @maxLength 200
+     */
+  accessToken: string;
+}
+
+export interface SupportTicketMessageInput {
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
+}
+
+export type SupportTicketStatusUpdateStatus = typeof SupportTicketStatusUpdateStatus[keyof typeof SupportTicketStatusUpdateStatus];
+
+
+export const SupportTicketStatusUpdateStatus = {
+  unread: 'unread',
+  active: 'active',
+  resolved: 'resolved',
+} as const;
+
+export interface SupportTicketStatusUpdate {
+  status: SupportTicketStatusUpdateStatus;
+}
+
+export interface SupportTicketStatusCounts {
+  /** @minimum 0 */
+  unread: number;
+  /** @minimum 0 */
+  active: number;
+  /** @minimum 0 */
+  resolved: number;
+}
+
+export interface AdminSupportTicketList {
+  items: SupportTicket[];
+  counts: SupportTicketStatusCounts;
+  /** @minimum 0 */
+  totalCount: number;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  limit: number;
+  /** @minimum 0 */
+  offset: number;
 }
 
 export interface SupporterPhoto {
@@ -2513,6 +2708,30 @@ export type UnauthorizedResponse = Error;
  * Resource not found
  */
 export type NotFoundResponse = Error;
+
+export type SupportTicketAccessTokenParameter = string;
+
+export type ListAdminSupportTicketsParams = {
+status?: ListAdminSupportTicketsStatusItem[];
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListAdminSupportTicketsStatusItem = typeof ListAdminSupportTicketsStatusItem[keyof typeof ListAdminSupportTicketsStatusItem];
+
+
+export const ListAdminSupportTicketsStatusItem = {
+  unread: 'unread',
+  active: 'active',
+  resolved: 'resolved',
+} as const;
 
 export type ListHypeCardSharesParams = {
 shareMode?: ListHypeCardSharesShareMode;

@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SiteFeedbackSubmission {
-  accepted: true;
+export interface SupportTicketMessageInput {
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
 }

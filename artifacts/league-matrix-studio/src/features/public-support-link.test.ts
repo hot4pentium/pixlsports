@@ -10,10 +10,11 @@ const hypeCardSource = readFeature("public-hype-card.tsx");
 const eventCardSource = readFeature("game-on-card.tsx");
 const spectatorSource = readFeature("stat-tracker-spectator.tsx");
 
-test("public support email is a visible, keyboard-accessible, phone-friendly mail link", () => {
-  assert.match(supportLinkSource, /href="mailto:support@pixlsports\.com"/);
-  assert.match(supportLinkSource, />\s*support@pixlsports\.com\s*<\/a>/);
-  assert.match(supportLinkSource, /aria-label="Email Pixl Sports support at support@pixlsports\.com"/);
+test("public support is a visible, keyboard-accessible, phone-friendly help desk link", () => {
+  assert.match(supportLinkSource, /href="\/help"/);
+  assert.match(supportLinkSource, /Open the help desk/);
+  assert.match(supportLinkSource, /aria-label="Open Pixl Sports help"/);
+  assert.doesNotMatch(supportLinkSource, /mailto:support@pixlsports\.com/);
   assert.match(supportLinkSource, /min-h-11/);
   assert.match(supportLinkSource, /focus-visible:outline/);
   assert.doesNotMatch(supportLinkSource, /\bhidden\b/);

@@ -18,27 +18,367 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Sends an anonymous feature request or problem report to the support inbox.
- * @summary Send feedback to Pixl Sports support
+ * Creates a persistent ticket without notifying an administrator by email.
+ * @summary Create a private support ticket
  */
-export const sendSiteFeedbackBodyMessageMin = 10;
-export const sendSiteFeedbackBodyMessageMax = 5000;
+export const createSupportTicketBodyDescriptionMin = 10;
+export const createSupportTicketBodyDescriptionMax = 5000;
 
-export const sendSiteFeedbackBodyReplyEmailMax = 320;
+export const createSupportTicketBodyReplyEmailMax = 320;
 
-export const sendSiteFeedbackBodyWebsiteMax = 200;
+export const createSupportTicketBodyWebsiteMax = 200;
 
 
 
-export const SendSiteFeedbackBody = zod.object({
-  "feedbackType": zod.enum(['feature', 'problem']),
-  "message": zod.string().min(sendSiteFeedbackBodyMessageMin).max(sendSiteFeedbackBodyMessageMax),
-  "replyEmail": zod.string().email().max(sendSiteFeedbackBodyReplyEmailMax).optional(),
-  "website": zod.string().max(sendSiteFeedbackBodyWebsiteMax).optional()
+export const CreateSupportTicketBody = zod.object({
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string().min(createSupportTicketBodyDescriptionMin).max(createSupportTicketBodyDescriptionMax),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "replyEmail": zod.string().email().max(createSupportTicketBodyReplyEmailMax),
+  "website": zod.string().max(createSupportTicketBodyWebsiteMax).optional(),
+  "diagnostics": zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}).optional()
 })
 
-export const SendSiteFeedbackResponse = zod.object({
-  "accepted": zod.literal(true)
+export const createSupportTicketResponseTicketReferenceMin = 6;
+export const createSupportTicketResponseTicketReferenceMax = 40;
+
+export const createSupportTicketResponseTicketReplyEmailMax = 320;
+
+export const createSupportTicketResponseAccessTokenMin = 32;
+export const createSupportTicketResponseAccessTokenMax = 200;
+
+
+
+export const CreateSupportTicketResponse = zod.object({
+  "ticket": zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string().min(createSupportTicketResponseTicketReferenceMin).max(createSupportTicketResponseTicketReferenceMax),
+  "replyEmail": zod.string().email().max(createSupportTicketResponseTicketReplyEmailMax),
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string(),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "diagnostics": zod.union([zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}),zod.null()]),
+  "status": zod.enum(['unread', 'active', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+}),
+  "accessToken": zod.string().min(createSupportTicketResponseAccessTokenMin).max(createSupportTicketResponseAccessTokenMax)
+})
+
+
+/**
+ * @summary List support tickets owned by the authenticated member
+ */
+export const listSupportTicketsResponseReferenceMin = 6;
+export const listSupportTicketsResponseReferenceMax = 40;
+
+export const listSupportTicketsResponseReplyEmailMax = 320;
+
+
+
+export const ListSupportTicketsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string().min(listSupportTicketsResponseReferenceMin).max(listSupportTicketsResponseReferenceMax),
+  "replyEmail": zod.string().email().max(listSupportTicketsResponseReplyEmailMax),
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string(),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "diagnostics": zod.union([zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}),zod.null()]),
+  "status": zod.enum(['unread', 'active', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+})
+export const ListSupportTicketsResponse = zod.array(ListSupportTicketsResponseItem)
+
+
+/**
+ * @summary Get one owned or access-token-authorized support ticket
+ */
+export const GetSupportTicketParams = zod.object({
+  "ticketId": zod.coerce.string().uuid()
+})
+
+export const getSupportTicketHeaderXSupportTicketTokenMin = 32;
+export const getSupportTicketHeaderXSupportTicketTokenMax = 200;
+
+
+
+export const GetSupportTicketHeader = zod.object({
+  "X-Support-Ticket-Token": zod.string().min(getSupportTicketHeaderXSupportTicketTokenMin).max(getSupportTicketHeaderXSupportTicketTokenMax).optional()
+})
+
+export const getSupportTicketResponseReferenceMin = 6;
+export const getSupportTicketResponseReferenceMax = 40;
+
+export const getSupportTicketResponseReplyEmailMax = 320;
+
+
+
+export const GetSupportTicketResponse = zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string().min(getSupportTicketResponseReferenceMin).max(getSupportTicketResponseReferenceMax),
+  "replyEmail": zod.string().email().max(getSupportTicketResponseReplyEmailMax),
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string(),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "diagnostics": zod.union([zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}),zod.null()]),
+  "status": zod.enum(['unread', 'active', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Add a member follow-up to an owned support ticket
+ */
+export const CreateSupportTicketMessageParams = zod.object({
+  "ticketId": zod.coerce.string().uuid()
+})
+
+export const createSupportTicketMessageHeaderXSupportTicketTokenMin = 32;
+export const createSupportTicketMessageHeaderXSupportTicketTokenMax = 200;
+
+
+
+export const CreateSupportTicketMessageHeader = zod.object({
+  "X-Support-Ticket-Token": zod.string().min(createSupportTicketMessageHeaderXSupportTicketTokenMin).max(createSupportTicketMessageHeaderXSupportTicketTokenMax).optional()
+})
+
+export const createSupportTicketMessageBodyBodyMax = 5000;
+
+
+
+export const CreateSupportTicketMessageBody = zod.object({
+  "body": zod.string().min(1).max(createSupportTicketMessageBodyBodyMax)
+})
+
+export const CreateSupportTicketMessageResponse = zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List and filter the administrator help-desk queue
+ */
+export const listAdminSupportTicketsQueryLimitDefault = 50;
+export const listAdminSupportTicketsQueryLimitMax = 100;
+
+export const listAdminSupportTicketsQueryOffsetDefault = 0;
+export const listAdminSupportTicketsQueryOffsetMin = 0;
+
+
+
+export const ListAdminSupportTicketsQueryParams = zod.object({
+  "status": zod.array(zod.enum(['unread', 'active', 'resolved'])).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listAdminSupportTicketsQueryLimitMax).default(listAdminSupportTicketsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminSupportTicketsQueryOffsetMin).default(listAdminSupportTicketsQueryOffsetDefault)
+})
+
+export const listAdminSupportTicketsResponseItemsItemReferenceMin = 6;
+export const listAdminSupportTicketsResponseItemsItemReferenceMax = 40;
+
+export const listAdminSupportTicketsResponseItemsItemReplyEmailMax = 320;
+
+export const listAdminSupportTicketsResponseCountsUnreadMin = 0;
+
+export const listAdminSupportTicketsResponseCountsActiveMin = 0;
+
+export const listAdminSupportTicketsResponseCountsResolvedMin = 0;
+
+export const listAdminSupportTicketsResponseTotalCountMin = 0;
+
+export const listAdminSupportTicketsResponseLimitMax = 100;
+
+export const listAdminSupportTicketsResponseOffsetMin = 0;
+
+
+
+export const ListAdminSupportTicketsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string().min(listAdminSupportTicketsResponseItemsItemReferenceMin).max(listAdminSupportTicketsResponseItemsItemReferenceMax),
+  "replyEmail": zod.string().email().max(listAdminSupportTicketsResponseItemsItemReplyEmailMax),
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string(),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "diagnostics": zod.union([zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}),zod.null()]),
+  "status": zod.enum(['unread', 'active', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "counts": zod.object({
+  "unread": zod.number().int().min(listAdminSupportTicketsResponseCountsUnreadMin),
+  "active": zod.number().int().min(listAdminSupportTicketsResponseCountsActiveMin),
+  "resolved": zod.number().int().min(listAdminSupportTicketsResponseCountsResolvedMin)
+}),
+  "totalCount": zod.number().int().min(listAdminSupportTicketsResponseTotalCountMin),
+  "limit": zod.number().int().min(1).max(listAdminSupportTicketsResponseLimitMax),
+  "offset": zod.number().int().min(listAdminSupportTicketsResponseOffsetMin)
+})
+
+
+/**
+ * @summary Get one ticket from the administrator help desk
+ */
+export const GetAdminSupportTicketParams = zod.object({
+  "ticketId": zod.coerce.string().uuid()
+})
+
+export const getAdminSupportTicketResponseReferenceMin = 6;
+export const getAdminSupportTicketResponseReferenceMax = 40;
+
+export const getAdminSupportTicketResponseReplyEmailMax = 320;
+
+
+
+export const GetAdminSupportTicketResponse = zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string().min(getAdminSupportTicketResponseReferenceMin).max(getAdminSupportTicketResponseReferenceMax),
+  "replyEmail": zod.string().email().max(getAdminSupportTicketResponseReplyEmailMax),
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string(),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "diagnostics": zod.union([zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}),zod.null()]),
+  "status": zod.enum(['unread', 'active', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Change a ticket status
+ */
+export const UpdateAdminSupportTicketParams = zod.object({
+  "ticketId": zod.coerce.string().uuid()
+})
+
+export const UpdateAdminSupportTicketBody = zod.object({
+  "status": zod.enum(['unread', 'active', 'resolved'])
+})
+
+export const updateAdminSupportTicketResponseReferenceMin = 6;
+export const updateAdminSupportTicketResponseReferenceMax = 40;
+
+export const updateAdminSupportTicketResponseReplyEmailMax = 320;
+
+
+
+export const UpdateAdminSupportTicketResponse = zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string().min(updateAdminSupportTicketResponseReferenceMin).max(updateAdminSupportTicketResponseReferenceMax),
+  "replyEmail": zod.string().email().max(updateAdminSupportTicketResponseReplyEmailMax),
+  "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
+  "description": zod.string(),
+  "deviceType": zod.enum(['mobile', 'desktop', 'other', 'unsure']),
+  "connectionType": zod.enum(['wifi', 'mobile-data', 'other', 'unsure']),
+  "diagnostics": zod.union([zod.object({
+  "connection": zod.enum(['online', 'offline', 'not-run']),
+  "browserStorage": zod.enum(['available', 'unavailable', 'not-run']),
+  "service": zod.enum(['available', 'unavailable', 'not-run'])
+}),zod.null()]),
+  "status": zod.enum(['unread', 'active', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Store an administrator reply and email it to the ticket reply address
+ */
+export const CreateAdminSupportTicketReplyParams = zod.object({
+  "ticketId": zod.coerce.string().uuid()
+})
+
+export const createAdminSupportTicketReplyBodyBodyMax = 5000;
+
+
+
+export const CreateAdminSupportTicketReplyBody = zod.object({
+  "body": zod.string().min(1).max(createAdminSupportTicketReplyBodyBodyMax)
+})
+
+export const CreateAdminSupportTicketReplyResponse = zod.object({
+  "id": zod.string().uuid(),
+  "senderRole": zod.enum(['member', 'admin']),
+  "body": zod.string(),
+  "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
+  "createdAt": zod.coerce.date()
 })
 
 

@@ -10,8 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
-  - name: site-feedback
-    description: Anonymous Pixl Sports feedback submissions
+  - name: support-tickets
+    description: Private member support tickets and administrator help-desk operations
   - name: projects
     description: Cloud project operations
   - name: storage
@@ -52,45 +52,186 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
-  /site-feedback:
+  /support/tickets:
     post:
-      operationId: sendSiteFeedback
-      tags: [site-feedback]
-      summary: Send feedback to Pixl Sports support
-      description: Sends an anonymous feature request or problem report to the support inbox.
+      operationId: createSupportTicket
+      tags: [support-tickets]
+      summary: Create a private support ticket
+      description: Creates a persistent ticket without notifying an administrator by email.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SiteFeedbackInput"
+              $ref: "#/components/schemas/SupportTicketInput"
       responses:
-        "200":
-          description: Feedback was accepted for delivery
+        "201":
+          description: Ticket created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SiteFeedbackSubmission"
+                $ref: "#/components/schemas/SupportTicketCreated"
         "400":
           $ref: "#/components/responses/BadRequest"
         "429":
-          description: Too many feedback submissions from this address
+          description: Too many support submissions from this address
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "502":
-          description: The email provider could not deliver the message
+    get:
+      operationId: listSupportTickets
+      tags: [support-tickets]
+      summary: List support tickets owned by the authenticated member
+      responses:
+        "200":
+          description: Member ticket list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /support/tickets/{ticketId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - $ref: "#/components/parameters/SupportTicketAccessToken"
+    get:
+      operationId: getSupportTicket
+      tags: [support-tickets]
+      summary: Get one owned or access-token-authorized support ticket
+      responses:
+        "200":
+          description: Ticket details and conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicket"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /support/tickets/{ticketId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - $ref: "#/components/parameters/SupportTicketAccessToken"
+    post:
+      operationId: createSupportTicketMessage
+      tags: [support-tickets]
+      summary: Add a member follow-up to an owned support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketMessageInput"
+      responses:
+        "201":
+          description: Follow-up stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketMessage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support/tickets:
+    get:
+      operationId: listAdminSupportTickets
+      tags: [support-tickets]
+      summary: List and filter the administrator help-desk queue
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [unread, active, resolved] }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Filtered help-desk queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSupportTicketList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "503":
-          description: Email delivery is not configured
+  /admin/support/tickets/{ticketId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+    get:
+      operationId: getAdminSupportTicket
+      tags: [support-tickets]
+      summary: Get one ticket from the administrator help desk
+      responses:
+        "200":
+          description: Ticket details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: "#/components/schemas/SupportTicket"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAdminSupportTicket
+      tags: [support-tickets]
+      summary: Change a ticket status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketStatusUpdate"
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicket"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support/tickets/{ticketId}/replies:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+    post:
+      operationId: createAdminSupportTicketReply
+      tags: [support-tickets]
+      summary: Store an administrator reply and email it to the ticket reply address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketMessageInput"
+      responses:
+        "201":
+          description: Reply stored with its delivery result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketMessage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /schedule-shares:
     post:
       operationId: createScheduleShare
@@ -2493,6 +2634,21 @@ components:
       schema:
         type: string
         enum: [video, poster]
+    SupportTicketId:
+      name: ticketId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SupportTicketAccessToken:
+      name: X-Support-Ticket-Token
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 200
   responses:
     BadRequest:
       description: Invalid request
@@ -2513,21 +2669,102 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
-    SiteFeedbackInput:
+    SupportDiagnostics:
       type: object
       additionalProperties: false
-      required: [feedbackType, message]
+      required: [connection, browserStorage, service]
       properties:
-        feedbackType: { type: string, enum: [feature, problem] }
-        message: { type: string, minLength: 10, maxLength: 5000 }
+        connection: { type: string, enum: [online, offline, not-run] }
+        browserStorage: { type: string, enum: [available, unavailable, not-run] }
+        service: { type: string, enum: [available, unavailable, not-run] }
+    SupportTicketInput:
+      type: object
+      additionalProperties: false
+      required: [issueId, description, deviceType, connectionType, replyEmail]
+      properties:
+        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, other] }
+        description: { type: string, minLength: 10, maxLength: 5000 }
+        deviceType: { type: string, enum: [mobile, desktop, other, unsure] }
+        connectionType: { type: string, enum: [wifi, mobile-data, other, unsure] }
         replyEmail: { type: string, format: email, maxLength: 320 }
         website: { type: string, maxLength: 200 }
-    SiteFeedbackSubmission:
+        diagnostics:
+          $ref: "#/components/schemas/SupportDiagnostics"
+    SupportTicketCreated:
       type: object
       additionalProperties: false
-      required: [accepted]
+      required: [ticket, accessToken]
       properties:
-        accepted: { type: boolean, enum: [true] }
+        ticket:
+          $ref: "#/components/schemas/SupportTicket"
+        accessToken: { type: string, minLength: 32, maxLength: 200 }
+    SupportTicketMessageInput:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+    SupportTicketStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [unread, active, resolved] }
+    SupportTicketMessage:
+      type: object
+      additionalProperties: false
+      required: [id, senderRole, body, deliveryStatus, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        senderRole: { type: string, enum: [member, admin] }
+        body: { type: string }
+        deliveryStatus: { type: string, enum: [not_applicable, sent, failed] }
+        createdAt: { type: string, format: date-time }
+    SupportTicket:
+      type: object
+      additionalProperties: false
+      required: [id, reference, replyEmail, issueId, description, deviceType, connectionType, diagnostics, status, createdAt, updatedAt, messages]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string, minLength: 6, maxLength: 40 }
+        replyEmail: { type: string, format: email, maxLength: 320 }
+        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, other] }
+        description: { type: string }
+        deviceType: { type: string, enum: [mobile, desktop, other, unsure] }
+        connectionType: { type: string, enum: [wifi, mobile-data, other, unsure] }
+        diagnostics:
+          oneOf:
+            - $ref: "#/components/schemas/SupportDiagnostics"
+            - type: "null"
+        status: { type: string, enum: [unread, active, resolved] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportTicketMessage"
+    SupportTicketStatusCounts:
+      type: object
+      additionalProperties: false
+      required: [unread, active, resolved]
+      properties:
+        unread: { type: integer, minimum: 0 }
+        active: { type: integer, minimum: 0 }
+        resolved: { type: integer, minimum: 0 }
+    AdminSupportTicketList:
+      type: object
+      additionalProperties: false
+      required: [items, counts, totalCount, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportTicket"
+        counts:
+          $ref: "#/components/schemas/SupportTicketStatusCounts"
+        totalCount: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
     SupporterPhoto:
       type: object
       required: [url, contentType, size, cropX, cropY, cropZoom, updatedAt]

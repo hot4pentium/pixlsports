@@ -110,3 +110,4 @@
 - [Themed premium photo frames](themed-premium-photo-frames.md) — Spotlight and Breakout share Gallery’s strong framed-photo structure while theming the shell around it.
 - [App-only identity blocks](admin-identity-blocks.md) — block only unprovisioned identities within Pixl Sports; preserve Clerk identity, app data, and public shares.
 - [Standalone Clerk browser fixtures](standalone-clerk-browser-fixtures.md) — test-owned Vite servers need a harmless Clerk publishable-key fallback or React may stay unmounted.
+- [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — generic arguments on JSX components can be corrupted by source instrumentation; infer generics or pass casts through callback parameters.
