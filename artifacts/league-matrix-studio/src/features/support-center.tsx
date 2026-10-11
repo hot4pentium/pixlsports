@@ -8,6 +8,7 @@ import {
   EMPTY_SUPPORT_DIAGNOSTICS,
   getSupportIssue,
   getSupportReportShareActions,
+  isValidSupportReplyEmail,
   probeBrowserStorage,
   SUPPORT_ISSUES,
   type SupportDiagnostics,
@@ -31,6 +32,7 @@ function diagnosticText(value: string) {
 
 export function SupportCenter() {
   const [issueId, setIssueId] = useState<SupportIssueId>('account');
+  const [issueDescription, setIssueDescription] = useState('');
   const [diagnostics, setDiagnostics] = useState<SupportDiagnostics>(EMPTY_SUPPORT_DIAGNOSTICS);
   const [checking, setChecking] = useState(false);
   const [report, setReport] = useState<{ reference: string; text: string } | null>(null);
@@ -44,6 +46,8 @@ export function SupportCenter() {
 
   const selectedIssue = getSupportIssue(issueId);
   const sharing = report ? getSupportReportShareActions(report.text, shareConsent) : null;
+  const replyEmailIsValid = isValidSupportReplyEmail(replyEmail);
+  const canSendReport = replyEmailIsValid && replyEmailConsent;
 
   const chooseIssue = (value: string) => {
     setIssueId(value as SupportIssueId);
@@ -93,10 +97,13 @@ export function SupportCenter() {
   };
 
   const prepareReport = () => {
+    const description = issueDescription.trim();
+    if (!description) return;
     const reference = createSupportReference();
     const text = buildSupportDiagnosticReport({
       reference,
       issueId,
+      description,
       createdAt: new Date().toISOString(),
       diagnostics,
     });
@@ -119,8 +126,8 @@ export function SupportCenter() {
   };
 
   const sendReport = async () => {
-    if (!report || !sharing || sending) return;
-    const includedReplyEmail = replyEmailConsent ? replyEmail.trim() : '';
+    if (!report || !sharing || sending || !replyEmailIsValid || !replyEmailConsent) return;
+    const includedReplyEmail = replyEmail.trim();
     setSending(true);
     setSendMessage('');
     try {
@@ -168,7 +175,7 @@ export function SupportCenter() {
             Get help without sharing your dashboard
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Choose what is going wrong and try guided steps first. Checks run only when you ask. No AI, dashboard records, account identifiers, messages, photos, or files are collected.
+            Choose what is going wrong and try guided steps first. Checks run only when you ask and do not read account identifiers, dashboard content, chat messages, photos, or files. A report includes the issue category, your description, reference, time, and check results. Sending also requires a reply email you enter and explicitly approve.
           </p>
         </div>
       </div>
@@ -238,14 +245,35 @@ export function SupportCenter() {
 
       <div className="mt-6 border-t border-border pt-5">
         {!report ? (
-          <button
-            type="button"
-            onClick={prepareReport}
-            className="inline-flex min-h-11 items-center justify-center gap-2 border border-primary px-4 text-sm font-bold text-primary transition hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            data-testid="button-prepare-support-report"
-          >
-            Prepare optional report
-          </button>
+          <div className="max-w-3xl space-y-3">
+            <label className="block">
+              <span className="mb-1 block text-sm font-bold text-foreground">Describe what happened</span>
+              <span id="support-description-help" className="mb-2 block text-xs leading-relaxed text-muted-foreground">
+                Include what you expected and what happened. Do not include passwords, sign-in codes, or private account details.
+              </span>
+              <textarea
+                value={issueDescription}
+                onChange={(event) => setIssueDescription(event.target.value)}
+                rows={4}
+                maxLength={1000}
+                required
+                aria-describedby="support-description-help"
+                placeholder="For example: I changed a game time, but the schedule still shows the old time after refreshing."
+                className="w-full border border-border bg-background p-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                data-testid="textarea-support-description"
+              />
+            </label>
+            <p className="text-right text-xs text-muted-foreground">{issueDescription.length}/1000</p>
+            <button
+              type="button"
+              onClick={prepareReport}
+              disabled={!issueDescription.trim()}
+              className="inline-flex min-h-11 items-center justify-center gap-2 border border-primary px-4 text-sm font-bold text-primary transition hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
+              data-testid="button-prepare-support-report"
+            >
+              Prepare optional report
+            </button>
+          </div>
         ) : (
           <div className="space-y-4" data-testid="support-report">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -260,20 +288,21 @@ export function SupportCenter() {
               </button>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              This report contains only its reference, issue category, creation time, and the three quick-check results. It stays in this page’s memory until you close or reload it.
+              This report contains its reference, issue category, your description, creation time, and the three quick-check results. It stays in this page’s memory until you close or reload it.
             </p>
             <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground" data-testid="support-report-preview">
               {report.text}
             </pre>
             <div className="space-y-3 border border-border p-3">
               <label className="block">
-                <span className="mb-1 block text-sm font-bold text-foreground">Optional reply email</span>
+                <span className="mb-1 block text-sm font-bold text-foreground">Reply email for support (required to send)</span>
                 <span className="mb-2 block text-xs leading-relaxed text-muted-foreground">
-                  Leave blank to omit a reply address. This is never filled from your account and is not part of the copied report.
+                  Enter the address support should respond to. It is never filled from your account. Copying the report does not include it.
                 </span>
                 <input
                   type="email"
                   autoComplete="off"
+                  maxLength={254}
                   value={replyEmail}
                   onChange={(event) => {
                     setReplyEmail(event.target.value);
@@ -281,28 +310,40 @@ export function SupportCenter() {
                     setSendMessage('');
                   }}
                   placeholder="you@example.com"
+                  required
                   className="min-h-11 w-full border border-border bg-background px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                   data-testid="input-support-reply-email"
                 />
               </label>
               <p className="text-sm text-foreground" data-testid="preview-support-reply-email">
-                Reply address for email: <span className="font-semibold">{replyEmail.trim() || 'Not provided'}</span>
+                Reply address for support: <span className="font-semibold">{replyEmail.trim() || 'Not provided'}</span>
               </p>
+              {replyEmail.trim() && !replyEmailIsValid && (
+                <p className="text-sm text-destructive" role="alert">Enter a valid reply email address.</p>
+              )}
               {replyEmail.trim() && (
                 <label className="flex cursor-pointer items-start gap-3 border border-border p-3 text-sm leading-relaxed text-foreground">
                   <input
                     type="checkbox"
                     checked={replyEmailConsent}
-                    onChange={(event) => setReplyEmailConsent(event.target.checked)}
+                    onChange={(event) => {
+                      setReplyEmailConsent(event.target.checked);
+                      setSendMessage('');
+                    }}
                     className="mt-1 h-4 w-4 accent-primary"
                     data-testid="checkbox-share-support-reply-email"
                   />
-                  <span>I consent to sending this reply address to support with my report.</span>
+                  <span>I consent to include this reply email with my report and use it as the Reply-To address.</span>
                 </label>
+              )}
+              {!canSendReport && (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  To send, enter a valid reply email and check its consent box. You can still copy the report without sharing an address.
+                </p>
               )}
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Pixl Sports does not save an in-app copy. If you choose Send, this report is emailed to support@pixlsports.com. The reply address is included only if you enter it and check its consent box. Sent email follows the support mailbox’s retention practices; this feature does not set or display a deletion date.
+              Pixl Sports does not save an in-app copy. If you choose Send, the report and consented reply email are emailed to support@pixlsports.com; support can respond to that address. Sent email follows the support mailbox’s retention practices; this feature does not set or display a deletion date.
             </p>
             <label className="flex cursor-pointer items-start gap-3 border border-border p-3 text-sm leading-relaxed text-foreground">
               <input
@@ -322,7 +363,7 @@ export function SupportCenter() {
                 <button
                   type="button"
                   onClick={() => void sendReport()}
-                  disabled={sending || sendMessage.startsWith('Report sent')}
+                  disabled={sending || sendMessage.startsWith('Report sent') || !canSendReport}
                   aria-busy={sending}
                   className="inline-flex min-h-11 items-center justify-center gap-2 bg-primary px-4 text-sm font-bold text-primary-foreground hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   data-testid="button-send-support-report"
@@ -344,7 +385,7 @@ export function SupportCenter() {
             {sendMessage && <p className="text-sm text-muted-foreground" role={sendMessage.startsWith('Report sent') ? 'status' : 'alert'} data-testid="status-send-support-report">{sendMessage}</p>}
             {copyMessage && <p className="text-sm text-muted-foreground" role="status" data-testid="status-copy-support-report">{copyMessage}</p>}
             <p className="text-xs text-muted-foreground">
-              Sharing is optional. No AI processes this report. For more complex issues, you can review and share the redacted report separately with a support person.
+              Sharing is optional. No AI processes this report. The reply email is separate from the report text and is sent only with your separate consent.
             </p>
           </div>
         )}

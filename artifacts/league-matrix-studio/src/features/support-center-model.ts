@@ -114,12 +114,14 @@ export function probeBrowserStorage(
 export function buildSupportDiagnosticReport(input: {
   reference: string;
   issueId: string;
+  description: string;
   createdAt: string;
   diagnostics: SupportDiagnostics;
 }) {
   const issue = isKnownIssue(input.issueId)
     ? getSupportIssue(input.issueId)
     : getSupportIssue('other');
+  const description = input.description.trim().slice(0, 1000);
   const diagnosticLines = (Object.keys(diagnosticLabels) as (keyof SupportDiagnostics)[])
     .map((key) => `- ${diagnosticLabels[key]}: ${diagnosticValues[input.diagnostics[key]]}`);
 
@@ -127,13 +129,21 @@ export function buildSupportDiagnosticReport(input: {
     'Pixl Sports support report',
     `Reference: ${safeReference(input.reference)}`,
     `Issue category: ${issue.label}`,
+    '',
+    'Description:',
+    description || 'Not provided',
     `Created: ${safeTimestamp(input.createdAt)}`,
     '',
     'Quick-check results:',
     ...diagnosticLines,
     '',
-    'This report contains only the issue category, reference, timestamp, and check results.',
+    'This report contains only the issue category, member-provided description, reference, timestamp, and check results.',
   ].join('\n');
+}
+
+export function isValidSupportReplyEmail(value: string) {
+  const email = value.trim();
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export function getSupportReportShareActions(report: string, consented: boolean) {
