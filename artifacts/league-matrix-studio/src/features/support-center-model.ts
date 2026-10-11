@@ -132,6 +132,7 @@ export function buildSupportDiagnosticReport(input: {
     '',
     'Description:',
     description || 'Not provided',
+    '',
     `Created: ${safeTimestamp(input.createdAt)}`,
     '',
     'Quick-check results:',

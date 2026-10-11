@@ -9,6 +9,7 @@ import {
   EMPTY_SUPPORT_DIAGNOSTICS,
   getSupportIssue,
   getSupportReportShareActions,
+  isValidSupportReplyEmail,
   probeBrowserStorage,
   SUPPORT_ISSUES,
   type SupportDiagnostics,
@@ -43,6 +44,7 @@ test('diagnostic report contains only its allowlisted values and no account or d
   const report = buildSupportDiagnosticReport({
     reference: 'PS-123e4567-e89b-12d3-a456-426614174000',
     issueId: 'sync',
+    description: 'Schedule changes disappear after refresh.',
     createdAt: '2026-10-10T14:30:00.000Z',
     diagnostics,
     accountId: 'private-account-id',
@@ -52,6 +54,7 @@ test('diagnostic report contains only its allowlisted values and no account or d
   } as Parameters<typeof buildSupportDiagnosticReport>[0]);
 
   assert.match(report, /Issue category: Schedule or sync/);
+  assert.match(report, /Description:\nSchedule changes disappear after refresh\./);
   assert.match(report, /Browser connection indicator: Online/);
   assert.match(report, /Browser storage check: Available/);
   assert.match(report, /Pixl Sports service check: Not available/);
@@ -62,6 +65,7 @@ test('report sharing actions are unavailable until the member opts in', () => {
   const report = buildSupportDiagnosticReport({
     reference: 'PS-123e4567-e89b-12d3-a456-426614174000',
     issueId: 'account',
+    description: 'I cannot access my schedule.',
     createdAt: '2026-10-10T14:30:00.000Z',
     diagnostics: EMPTY_SUPPORT_DIAGNOSTICS,
   });
@@ -70,6 +74,12 @@ test('report sharing actions are unavailable until the member opts in', () => {
   const actions = getSupportReportShareActions(report, true);
   assert.ok(actions);
   assert.equal(actions.copyText, report);
+});
+
+test('support reply email validation accepts normal addresses and rejects malformed input', () => {
+  assert.equal(isValidSupportReplyEmail(' parent@example.com '), true);
+  assert.equal(isValidSupportReplyEmail('parent@localhost'), false);
+  assert.equal(isValidSupportReplyEmail('not-an-email'), false);
 });
 
 test('blocked browser storage probe reports unavailable and attempts cleanup', () => {
@@ -83,7 +93,7 @@ test('blocked browser storage probe reports unavailable and attempts cleanup', (
   assert.deepEqual(removed, ['pixlsports-support-check:blocked-test']);
 });
 
-test('report sending stays hidden until consent, sends the reviewed body, and reports remain in page memory', async () => {
+test('report sending requires a description and separately consented reply email', async () => {
   let renderer: ReactTestRenderer | undefined;
   const originalFetch = globalThis.fetch;
   const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -114,7 +124,14 @@ test('report sending stays hidden until consent, sends the reviewed body, and re
     const root = renderer.root;
     const find = (testId: string) => root.findByProps({ 'data-testid': testId });
     assert.equal(root.findAllByProps({ 'data-testid': 'button-send-support-report' }).length, 0);
+    assert.equal(find('button-prepare-support-report').props.disabled, true);
 
+    await act(async () => {
+      find('textarea-support-description').props.onChange({
+        target: { value: 'A schedule change disappears after refreshing.' },
+      });
+    });
+    assert.equal(find('button-prepare-support-report').props.disabled, false);
     await act(async () => {
       find('button-prepare-support-report').props.onClick();
     });
@@ -131,6 +148,7 @@ test('report sending stays hidden until consent, sends the reviewed body, and re
       find('checkbox-share-support-report').props.onChange({ target: { checked: true } });
     });
     assert.equal(root.findAllByProps({ 'data-testid': 'button-send-support-report' }).length, 1);
+    assert.equal(find('button-send-support-report').props.disabled, true);
     assert.equal(root.findAllByProps({ 'data-testid': 'button-copy-support-report' }).length, 1);
 
     await act(async () => {
@@ -140,13 +158,22 @@ test('report sending stays hidden until consent, sends the reviewed body, and re
     assert.doesNotMatch(copiedText, /member@example\.com/);
 
     await act(async () => {
+      find('input-support-reply-email').props.onChange({ target: { value: 'member@example.com' } });
+    });
+    assert.equal(find('button-send-support-report').props.disabled, true);
+    await act(async () => {
+      find('checkbox-share-support-reply-email').props.onChange({ target: { checked: true } });
+    });
+    assert.equal(find('button-send-support-report').props.disabled, false);
+    await act(async () => {
       await find('button-send-support-report').props.onClick();
     });
     assert.equal(requestUrl, '/api/site-feedback');
     assert.equal(requestInit?.credentials, 'omit');
     assert.equal(requestBody?.feedbackType, 'problem');
     assert.equal(requestBody?.message, preview);
-    assert.deepEqual(Object.keys(requestBody ?? {}).sort(), ['feedbackType', 'message']);
+    assert.equal(requestBody?.replyEmail, 'member@example.com');
+    assert.deepEqual(Object.keys(requestBody ?? {}).sort(), ['feedbackType', 'message', 'replyEmail']);
     assert.match(root.findAllByProps({ 'data-testid': 'support-report' })[0].findAllByType('p')
       .map((node) => String(node.props.children)).join(' '), /does not save an in-app copy/);
     const reference = preview.match(/^Reference: (PS-[0-9a-f-]{36})$/im)?.[1];
@@ -202,6 +229,11 @@ test('reply address is previewed exactly and sent only after its separate consen
     const root = renderer.root;
     const find = (testId: string) => root.findByProps({ 'data-testid': testId });
     await act(async () => {
+      find('textarea-support-description').props.onChange({
+        target: { value: 'The Event Card preview does not update.' },
+      });
+    });
+    await act(async () => {
       find('button-prepare-support-report').props.onClick();
     });
     const reportText = find('support-report-preview').props.children as string;
@@ -214,6 +246,7 @@ test('reply address is previewed exactly and sent only after its separate consen
       /family@example\.com/,
     );
     assert.equal(root.findAllByProps({ 'data-testid': 'checkbox-share-support-reply-email' }).length, 1);
+    assert.equal(find('button-send-support-report').props.disabled, true);
 
     await act(async () => {
       await find('button-copy-support-report').props.onClick();
@@ -224,17 +257,17 @@ test('reply address is previewed exactly and sent only after its separate consen
     await act(async () => {
       await find('button-send-support-report').props.onClick();
     });
-    assert.deepEqual(Object.keys(requests[0]).sort(), ['feedbackType', 'message']);
+    assert.equal(requests.length, 0);
 
     await act(async () => {
-      find('input-support-reply-email').props.onChange({ target: { value: 'family@example.com' } });
       find('checkbox-share-support-reply-email').props.onChange({ target: { checked: true } });
     });
     assert.equal(find('checkbox-share-support-report').props.checked, true);
+    assert.equal(find('button-send-support-report').props.disabled, false);
     await act(async () => {
       await find('button-send-support-report').props.onClick();
     });
-    assert.deepEqual(requests[1], {
+    assert.deepEqual(requests[0], {
       feedbackType: 'problem',
       message: reportText,
       replyEmail: 'family@example.com',
