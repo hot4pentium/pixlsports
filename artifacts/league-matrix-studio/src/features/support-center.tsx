@@ -186,7 +186,7 @@ export function SupportCenter() {
     window.requestAnimationFrame(() => {
       const heading = ticketsHeadingRef.current;
       heading?.focus({ preventScroll: true });
-      heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      heading?.scrollIntoView({ behavior: 'auto', block: 'start' });
     });
   };
 

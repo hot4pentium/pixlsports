@@ -21,6 +21,7 @@
     "test:admin-audit-filter-browser": "tsx --test --test-concurrency=1 src/features/admin-audit-filter.browser.test.ts",
     "test:schedule-install-browser": "tsx --test --test-concurrency=1 src/features/schedule-install.browser.test.ts",
     "test:game-on-card-browser": "tsx --test --test-concurrency=1 src/features/game-on-card.browser.test.ts",
+    "test:support-center-browser": "tsx --test --test-concurrency=1 src/features/support-center.browser.test.ts",
     "test:supporter-dashboard-browser": "tsx --test --test-concurrency=1 src/features/supporter-dashboard.browser.test.ts",
     "test:supporter-dashboard-browser-cleanup": "tsx --test --test-concurrency=1 --test-name-pattern=\"assertion failures still clean up\" src/features/supporter-dashboard.browser.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

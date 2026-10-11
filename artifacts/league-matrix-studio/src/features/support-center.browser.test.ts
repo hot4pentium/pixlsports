@@ -1,0 +1,235 @@
+import assert from 'node:assert/strict';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createServer, type Server } from 'node:http';
+import { tmpdir } from 'node:os';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+import {
+  DevToolsConnection,
+  monitorProcess,
+  openPage,
+  waitFor,
+  waitForUrl,
+  type BrowserPage,
+  type ProcessMonitor,
+} from './browser-test-diagnostics';
+
+const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const chromiumPath = process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium';
+
+async function freePort() {
+  const server: Server = createServer();
+  await new Promise<void>((done, reject) => server.once('error', reject).listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Expected TCP port');
+  const port = address.port;
+  await new Promise<void>((done) => server.close(() => done()));
+  return port;
+}
+
+async function stopProcess(child: ChildProcess, monitor: ProcessMonitor) {
+  if (monitor.hasExited()) return;
+  child.kill('SIGTERM');
+  await Promise.race([monitor.waitForExit(), new Promise((resolveDelay) => setTimeout(resolveDelay, 2_000))]);
+  if (!monitor.hasExited()) {
+    child.kill('SIGKILL');
+    await monitor.waitForExit();
+  }
+}
+
+test('new support tickets are easy to find after confirmation for members and guests', async () => {
+  const port = await freePort();
+  const debugPort = await freePort();
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-support-center-browser-'));
+  const fixturePath = resolve(appDirectory, `support-center-browser-fixture-${process.pid}.html`);
+  const configPath = resolve(appDirectory, `support-center-browser-vite-${process.pid}.mjs`);
+  const server = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
+    cwd: appDirectory,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      BASE_PATH: '/',
+      VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const serverMonitor = monitorProcess(server, 'support center Vite');
+  let chromium: ChildProcess | undefined;
+  let chromiumMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  const pages: BrowserPage[] = [];
+
+  try {
+    await writeFile(configPath, `
+      import baseConfig from './vite.config.ts';
+      export default {
+        ...baseConfig,
+        plugins: [{
+          name: 'support-center-browser-clerk-fixture',
+          enforce: 'pre',
+          resolveId(source) {
+            return source === '@clerk/react' ? '\\0support-center-browser-clerk' : null;
+          },
+          load(id) {
+            if (id === '\\0support-center-browser-clerk') {
+              return 'export function useUser() { return window.__supportCenterUser; }';
+            }
+            return null;
+          },
+        }, ...(baseConfig.plugins || [])],
+      };
+    `);
+    await writeFile(fixturePath, `<!doctype html>
+      <html><head><meta charset="utf-8"><title>Support ticket browser check</title></head>
+      <body><div id="root"></div>
+        <script type="module">
+          import React from 'react';
+          import { createRoot } from 'react-dom/client';
+          import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+          const params = new URLSearchParams(location.search);
+          const member = params.get('member') === '1';
+          window.__supportCenterUser = member
+            ? { isSignedIn: true, user: { primaryEmailAddress: {
+                emailAddress: 'member@example.com', verification: { status: 'verified' }
+              } } }
+            : { isSignedIn: false, user: null };
+
+          const ticketId = 'f83c88a2-e651-4e09-8e1d-02172e6ca707';
+          const ticketReference = 'PS-20261011-ABC123';
+          const accessToken = 'browser-test-private-access-token-0123456789';
+          let savedTicket;
+          window.fetch = async (input, init = {}) => {
+            const requestUrl = typeof input === 'string' ? input : input.url;
+            const url = new URL(requestUrl, location.origin);
+            const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+            if (url.pathname === '/api/support/tickets' && method === 'GET') {
+              return new Response(JSON.stringify([]), { status: 200, headers: { 'content-type': 'application/json' } });
+            }
+            if (url.pathname === '/api/support/tickets' && method === 'POST') {
+              const submitted = JSON.parse(init.body);
+              const now = new Date().toISOString();
+              savedTicket = {
+                id: ticketId, reference: ticketReference, replyEmail: submitted.replyEmail,
+                issueId: submitted.issueId, description: submitted.description,
+                deviceType: submitted.deviceType, connectionType: submitted.connectionType,
+                diagnostics: submitted.diagnostics ?? null, status: 'unread',
+                createdAt: now, updatedAt: now, messages: [],
+              };
+              return new Response(JSON.stringify({ ticket: savedTicket, accessToken }), {
+                status: 201, headers: { 'content-type': 'application/json' },
+              });
+            }
+            if (url.pathname === '/api/support/tickets/' + ticketId && method === 'GET' && savedTicket) {
+              return new Response(JSON.stringify(savedTicket), {
+                status: 200, headers: { 'content-type': 'application/json' },
+              });
+            }
+            return new Response(JSON.stringify({ error: 'Unexpected support API request', path: url.pathname }), {
+              status: 500, headers: { 'content-type': 'application/json' },
+            });
+          };
+
+          const { SupportCenter } = await import('/src/features/support-center.tsx');
+          const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+          createRoot(document.getElementById('root')).render(
+            React.createElement(QueryClientProvider, { client: queryClient },
+              React.createElement(SupportCenter),
+            ),
+          );
+        </script>
+      </body></html>`);
+
+    await waitForUrl(`http://127.0.0.1:${port}/support-center-browser-fixture-${process.pid}.html`, 30_000, serverMonitor);
+    chromium = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    chromiumMonitor = monitorProcess(chromium, 'support center Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, chromiumMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, chromiumMonitor.diagnostics);
+
+    for (const scenario of [
+      { name: 'member', query: '?member=1', email: 'member@example.com' },
+      { name: 'guest', query: '', email: 'guest@example.com' },
+    ]) {
+      const page = await openPage(connection, 'about:blank', {
+        viewport: { width: 900, height: 700, mobile: false },
+      });
+      pages.push(page);
+      await connection.send('Page.navigate', {
+        url: `http://127.0.0.1:${port}/support-center-browser-fixture-${process.pid}.html${scenario.query}`,
+      }, page.sessionId);
+      await waitFor(connection, page.sessionId,
+        'Boolean(document.querySelector("[data-testid=button-submit-support-ticket]"))', Boolean);
+
+      await connection.evaluate(
+        'document.querySelector("[data-testid=textarea-support-description]").focus()',
+        page.sessionId,
+      );
+      await connection.send('Input.insertText', { text: `A ${scenario.name} needs help with a saved ticket.` }, page.sessionId);
+      const emailValue = await connection.evaluate<string>(
+        'document.querySelector("[data-testid=input-support-reply-email]").value',
+        page.sessionId,
+      );
+      if (!emailValue) {
+        await connection.evaluate('document.querySelector("[data-testid=input-support-reply-email]").focus()', page.sessionId);
+        await connection.send('Input.insertText', { text: scenario.email }, page.sessionId);
+      }
+      await connection.evaluate('document.querySelector("[data-testid=button-submit-support-ticket]").click()', page.sessionId);
+      await waitFor(connection, page.sessionId,
+        'Boolean(document.querySelector("[data-testid=dialog-ticket-created]"))', Boolean);
+      assert.equal(
+        await connection.evaluate<string>(
+          'document.querySelector("[data-testid=text-ticket-reference]")?.textContent?.trim() || ""',
+          page.sessionId,
+        ),
+        'PS-20261011-ABC123',
+        `${scenario.name} confirmation should show the created ticket reference`,
+      );
+
+      await connection.evaluate('document.querySelector("[data-testid=button-view-your-tickets]").click()', page.sessionId);
+      await waitFor(connection, page.sessionId, `(() => {
+        const heading = document.querySelector("#ticket-history-heading");
+        const ticket = document.querySelector("[data-testid='ticket-f83c88a2-e651-4e09-8e1d-02172e6ca707']");
+        return Boolean(heading && document.activeElement === heading && ticket
+          && heading.getBoundingClientRect().top < 250
+          && ticket.querySelector("button[aria-expanded='true']")
+          && ticket.innerText.includes("A ${scenario.name} needs help with a saved ticket."));
+      })()`, Boolean);
+      const historyState = await connection.evaluate<{
+        focused: boolean; headingTop: number; windowScrollY: number; expanded: boolean; hasDescription: boolean;
+      }>(`(() => {
+        const heading = document.querySelector("#ticket-history-heading");
+        const ticket = document.querySelector("[data-testid='ticket-f83c88a2-e651-4e09-8e1d-02172e6ca707']");
+        return {
+          focused: document.activeElement === heading,
+          headingTop: heading.getBoundingClientRect().top,
+          windowScrollY: window.scrollY,
+          expanded: ticket?.querySelector("button[aria-expanded='true']") !== null,
+          hasDescription: ticket?.innerText.includes("A ${scenario.name} needs help with a saved ticket.") ?? false,
+        };
+      })()`, page.sessionId);
+      assert.equal(historyState.focused, true, `${scenario.name} View your tickets should focus the history heading`);
+      assert.ok(historyState.windowScrollY > 0 && historyState.headingTop < 250,
+        `${scenario.name} history should scroll into view: ${JSON.stringify(historyState)}`);
+      assert.equal(historyState.expanded, true, `${scenario.name} new ticket should be expanded`);
+      assert.equal(historyState.hasDescription, true, `${scenario.name} new ticket should be visible in history`);
+    }
+  } finally {
+    for (const page of pages) {
+      await connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    }
+    connection?.close();
+    if (chromium && chromiumMonitor) await stopProcess(chromium, chromiumMonitor);
+    await stopProcess(server, serverMonitor);
+    await Promise.all([
+      rm(fixturePath, { force: true }),
+      rm(configPath, { force: true }),
+      rm(profile, { recursive: true, force: true }),
+    ]);
+  }
+});
