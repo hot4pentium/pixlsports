@@ -13,6 +13,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/react';
 import { AlertCircle, Check, ChevronDown, Inbox, LifeBuoy, Lock, Send, Wifi } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 import {
   EMPTY_SUPPORT_DIAGNOSTICS,
@@ -164,6 +172,7 @@ export function SupportCenter() {
   const [replyEmail, setReplyEmail] = useState('');
   const emailTouched = useRef(false);
   const [submitted, setSubmitted] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [diagnostics, setDiagnostics] = useState<SupportDiagnostics>(EMPTY_SUPPORT_DIAGNOSTICS);
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState('');
@@ -171,6 +180,15 @@ export function SupportCenter() {
   const [created, setCreated] = useState<{ reference: string; id: string } | null>(null);
   const [createError, setCreateError] = useState('');
   const [stored, setStored] = useState<StoredTicketAccess[]>(() => readStoredTicketAccess());
+  const ticketsHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  const goToTickets = () => {
+    window.requestAnimationFrame(() => {
+      const heading = ticketsHeadingRef.current;
+      heading?.focus({ preventScroll: true });
+      heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   const primary = user?.primaryEmailAddress;
   const defaultEmail = primary && primary.verification?.status === 'verified' ? primary.emailAddress : '';
@@ -209,6 +227,7 @@ export function SupportCenter() {
     create.mutate({ data }, {
       onSuccess: ({ ticket, accessToken }) => {
         setCreated({ reference: ticket.reference, id: ticket.id });
+        setConfirmationOpen(true);
         if (isSignedIn) {
           qc.setQueryData<SupportTicket[]>(getListSupportTicketsQueryKey(), (old) => [ticket, ...(old ?? []).filter((t) => t.id !== ticket.id)]);
         } else {
@@ -243,14 +262,6 @@ export function SupportCenter() {
             </p>
           </div>
         </div>
-
-        {created && (
-          <div className="mt-6 border border-emerald-400/50 bg-emerald-400/10 p-4 animate-slide-up" role="status" aria-live="polite" data-testid="status-ticket-created">
-            <p className="flex items-center gap-2 font-bold text-emerald-300"><Check aria-hidden className="h-5 w-5" /> Ticket created</p>
-            <p className="mt-1 text-sm">Your reference is <span className="font-mono text-lg font-bold text-foreground" data-testid="text-ticket-reference">{created.reference}</span>. It is now in your history below.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Creating a ticket does not email an administrator; we answer from the help desk queue.</p>
-          </div>
-        )}
 
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_.85fr]" data-testid="form-support-ticket">
           <div className="space-y-5">
@@ -328,9 +339,9 @@ export function SupportCenter() {
         </form>
       </div>
 
-      <div className="mt-8" aria-labelledby="ticket-history-heading">
+      <div className="mt-8 scroll-mt-6" aria-labelledby="ticket-history-heading" data-testid="section-your-tickets">
         <div className="flex items-end justify-between gap-3">
-          <h2 id="ticket-history-heading" className="font-display text-3xl uppercase tracking-wide">Your tickets</h2>
+          <h2 ref={ticketsHeadingRef} id="ticket-history-heading" tabIndex={-1} className="font-display text-3xl uppercase tracking-wide focus:outline-none">Your tickets</h2>
           <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{total} total</span>
         </div>
         <p className="mt-2 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
@@ -354,6 +365,45 @@ export function SupportCenter() {
           </ul>
         )}
       </div>
+
+      <Dialog
+        open={confirmationOpen}
+        onOpenChange={(open) => {
+          setConfirmationOpen(open);
+          if (!open) goToTickets();
+        }}
+      >
+        <DialogContent className="border-emerald-400/50 sm:max-w-md" data-testid="dialog-ticket-created">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display text-3xl uppercase">
+              <Check aria-hidden className="h-6 w-6 text-emerald-400" />
+              Ticket created
+            </DialogTitle>
+            <DialogDescription className="text-left leading-relaxed">
+              Your support request is saved. You can follow the conversation and see replies in Your tickets.
+            </DialogDescription>
+          </DialogHeader>
+          {created && (
+            <p className="border border-border bg-background/50 p-3 text-sm">
+              Reference: <span className="font-mono font-bold text-foreground" data-testid="text-ticket-reference">{created.reference}</span>
+            </p>
+          )}
+          <p className="text-xs leading-relaxed text-muted-foreground">Creating a ticket does not email an administrator; we answer from the help desk queue.</p>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmationOpen(false);
+                goToTickets();
+              }}
+              className="inline-flex min-h-11 w-full items-center justify-center bg-accent px-5 text-sm font-extrabold uppercase tracking-widest text-accent-foreground transition hover:-translate-y-0.5 sm:w-auto"
+              data-testid="button-view-your-tickets"
+            >
+              View your tickets
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
