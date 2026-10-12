@@ -306,6 +306,7 @@ export interface AdminSupportTicketList {
   offset: number;
 }
 
+export type SupportEmailReplyRejectionReason = typeof SupportEmailReplyRejectionReason[keyof typeof SupportEmailReplyRejectionReason];
 export interface SupporterPhoto {
   url: string;
   contentType: string;
@@ -2924,3 +2925,21 @@ export type GetNotificationSubscriptionStatusParams = {
 endpoint: string;
 };
 
+
+export const SupportEmailReplyRejectionReason = {
+  unknown_reply_address: 'unknown_reply_address',
+  unmatched_legacy_thread: 'unmatched_legacy_thread',
+  ambiguous_reply_address: 'ambiguous_reply_address',
+  sender_mismatch: 'sender_mismatch',
+} as const;
+
+export interface SupportEmailReplyRejection {
+  /** Opaque provider message identifier for staff investigation. */
+  emailProviderId: string;
+  reason: SupportEmailReplyRejectionReason;
+  rejectedAt: string;
+}
+
+export interface AdminSupportEmailReplyRejectionList {
+  items: SupportEmailReplyRejection[];
+}

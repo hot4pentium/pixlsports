@@ -20,6 +20,7 @@ import {
   GetSupportTicketResponse,
   ListAdminSupportTicketsQueryParams,
   ListAdminSupportTicketsResponse,
+  ListAdminSupportEmailReplyRejectionsResponse,
   ListSupportTicketsResponse,
   UpdateAdminSupportTicketBody,
   UpdateAdminSupportTicketParams,
@@ -28,6 +29,7 @@ import {
 import {
   db,
   supportTicketEmailReplyTokensTable,
+  supportTicketEmailReplyRejectionsTable,
   supportTicketMessagesTable,
   supportTicketMessageAttachmentsTable,
   supportTicketsTable,
@@ -628,6 +630,21 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
       limit: parsed.data.limit ?? 50,
       offset: parsed.data.offset ?? 0,
     }));
+  });
+
+  router.get("/admin/support/email-rejections", adminGuard, async (_req, res): Promise<void> => {
+    const retentionCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await db.delete(supportTicketEmailReplyRejectionsTable)
+      .where(lt(supportTicketEmailReplyRejectionsTable.rejectedAt, retentionCutoff));
+    const items = await db.select({
+      emailProviderId: supportTicketEmailReplyRejectionsTable.emailProviderId,
+      reason: supportTicketEmailReplyRejectionsTable.reason,
+      rejectedAt: supportTicketEmailReplyRejectionsTable.rejectedAt,
+    }).from(supportTicketEmailReplyRejectionsTable)
+      .where(gt(supportTicketEmailReplyRejectionsTable.rejectedAt, retentionCutoff))
+      .orderBy(desc(supportTicketEmailReplyRejectionsTable.rejectedAt))
+      .limit(100);
+    res.json(ListAdminSupportEmailReplyRejectionsResponse.parse({ items }));
   });
 
   router.get("/admin/support/tickets/:ticketId", adminGuard, async (req, res): Promise<void> => {

@@ -54,7 +54,6 @@ export const createSupportTicketBodyReplyEmailMax = 320;
 export const createSupportTicketBodyWebsiteMax = 200;
 
 
-
 export const CreateSupportTicketBody = zod.object({
   "issueId": zod.enum(['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other']),
   "description": zod.string().min(createSupportTicketBodyDescriptionMin).max(createSupportTicketBodyDescriptionMax),
@@ -80,7 +79,6 @@ export const createSupportTicketResponseTicketMessagesItemAttachmentsItemSizeOne
 
 export const createSupportTicketResponseAccessTokenMin = 32;
 export const createSupportTicketResponseAccessTokenMax = 200;
-
 
 
 export const CreateSupportTicketResponse = zod.object({
@@ -133,7 +131,6 @@ export const listSupportTicketsResponseMessagesItemAttachmentsItemFilenameMax = 
 export const listSupportTicketsResponseMessagesItemAttachmentsItemSizeOneMin = 0;
 
 
-
 export const ListSupportTicketsResponseItem = zod.object({
   "id": zod.string().uuid(),
   "reference": zod.string().min(listSupportTicketsResponseReferenceMin).max(listSupportTicketsResponseReferenceMax),
@@ -179,7 +176,6 @@ export const requestSupportTicketRecoveryBodyReferenceMax = 40;
 export const requestSupportTicketRecoveryBodyEmailMax = 320;
 
 
-
 export const RequestSupportTicketRecoveryBody = zod.object({
   "reference": zod.string().min(requestSupportTicketRecoveryBodyReferenceMin).max(requestSupportTicketRecoveryBodyReferenceMax),
   "email": zod.string().email().max(requestSupportTicketRecoveryBodyEmailMax)
@@ -219,7 +215,6 @@ export const verifySupportTicketRecoveryResponseTicketMessagesItemAttachmentsIte
 
 export const verifySupportTicketRecoveryResponseAccessTokenMin = 32;
 export const verifySupportTicketRecoveryResponseAccessTokenMax = 200;
-
 
 
 export const VerifySupportTicketRecoveryResponse = zod.object({
@@ -270,7 +265,6 @@ export const getSupportTicketHeaderXSupportTicketTokenMin = 32;
 export const getSupportTicketHeaderXSupportTicketTokenMax = 200;
 
 
-
 export const GetSupportTicketHeader = zod.object({
   "X-Support-Ticket-Token": zod.string().min(getSupportTicketHeaderXSupportTicketTokenMin).max(getSupportTicketHeaderXSupportTicketTokenMax).optional()
 })
@@ -283,7 +277,6 @@ export const getSupportTicketResponseReplyEmailMax = 320;
 export const getSupportTicketResponseMessagesItemAttachmentsItemFilenameMax = 180;
 
 export const getSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin = 0;
-
 
 
 export const GetSupportTicketResponse = zod.object({
@@ -331,13 +324,11 @@ export const createSupportTicketMessageHeaderXSupportTicketTokenMin = 32;
 export const createSupportTicketMessageHeaderXSupportTicketTokenMax = 200;
 
 
-
 export const CreateSupportTicketMessageHeader = zod.object({
   "X-Support-Ticket-Token": zod.string().min(createSupportTicketMessageHeaderXSupportTicketTokenMin).max(createSupportTicketMessageHeaderXSupportTicketTokenMax).optional()
 })
 
 export const createSupportTicketMessageBodyBodyMax = 5000;
-
 
 
 export const CreateSupportTicketMessageBody = zod.object({
@@ -347,7 +338,6 @@ export const CreateSupportTicketMessageBody = zod.object({
 export const createSupportTicketMessageResponseAttachmentsItemFilenameMax = 180;
 
 export const createSupportTicketMessageResponseAttachmentsItemSizeOneMin = 0;
-
 
 
 export const CreateSupportTicketMessageResponse = zod.object({
@@ -380,7 +370,6 @@ export const getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMin = 32;
 export const getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMax = 200;
 
 
-
 export const GetSupportTicketMessageAttachmentHeader = zod.object({
   "X-Support-Ticket-Token": zod.string().min(getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMin).max(getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMax).optional()
 })
@@ -396,7 +385,6 @@ export const listAdminSupportTicketsQueryLimitMax = 100;
 
 export const listAdminSupportTicketsQueryOffsetDefault = 0;
 export const listAdminSupportTicketsQueryOffsetMin = 0;
-
 
 
 export const ListAdminSupportTicketsQueryParams = zod.object({
@@ -425,7 +413,6 @@ export const listAdminSupportTicketsResponseTotalCountMin = 0;
 export const listAdminSupportTicketsResponseLimitMax = 100;
 
 export const listAdminSupportTicketsResponseOffsetMin = 0;
-
 
 
 export const ListAdminSupportTicketsResponse = zod.object({
@@ -471,7 +458,17 @@ export const ListAdminSupportTicketsResponse = zod.object({
   "offset": zod.number().int().min(listAdminSupportTicketsResponseOffsetMin)
 })
 
-
+/**
+ * Returns privacy-minimized rejection metadata for the previous 30 days. Does not include sender addresses, message content, ticket details, or reply tokens.
+ * @summary List recent support email replies that could not be matched
+ */
+export const ListAdminSupportEmailReplyRejectionsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "emailProviderId": zod.string().uuid().describe('Opaque provider message identifier for staff investigation.'),
+  "reason": zod.enum(['unknown_reply_address', 'unmatched_legacy_thread', 'ambiguous_reply_address', 'sender_mismatch']),
+  "rejectedAt": zod.coerce.date()
+}))
+})
 /**
  * @summary Get one ticket from the administrator help desk
  */
@@ -487,7 +484,6 @@ export const getAdminSupportTicketResponseReplyEmailMax = 320;
 export const getAdminSupportTicketResponseMessagesItemAttachmentsItemFilenameMax = 180;
 
 export const getAdminSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin = 0;
-
 
 
 export const GetAdminSupportTicketResponse = zod.object({
@@ -543,7 +539,6 @@ export const updateAdminSupportTicketResponseReplyEmailMax = 320;
 export const updateAdminSupportTicketResponseMessagesItemAttachmentsItemFilenameMax = 180;
 
 export const updateAdminSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin = 0;
-
 
 
 export const UpdateAdminSupportTicketResponse = zod.object({
@@ -602,7 +597,6 @@ export const CreateAdminSupportTicketReplyParams = zod.object({
 export const createAdminSupportTicketReplyBodyBodyMax = 5000;
 
 
-
 export const CreateAdminSupportTicketReplyBody = zod.object({
   "body": zod.string().min(1).max(createAdminSupportTicketReplyBodyBodyMax)
 })
@@ -610,7 +604,6 @@ export const CreateAdminSupportTicketReplyBody = zod.object({
 export const createAdminSupportTicketReplyResponseAttachmentsItemFilenameMax = 180;
 
 export const createAdminSupportTicketReplyResponseAttachmentsItemSizeOneMin = 0;
-
 
 
 export const CreateAdminSupportTicketReplyResponse = zod.object({
@@ -657,7 +650,6 @@ export const createScheduleShareBodyEventsItemNotesMax = 1000;
 export const createScheduleShareBodyEventsMax = 50;
 
 
-
 export const CreateScheduleShareBody = zod.object({
   "title": zod.string().min(1).max(createScheduleShareBodyTitleMax),
   "teamSeason": zod.string().max(createScheduleShareBodyTeamSeasonMax),
@@ -693,7 +685,6 @@ export const createScheduleShareResponseEventsItemSnacksMax = 300;
 export const createScheduleShareResponseEventsItemDrinksMax = 300;
 
 export const createScheduleShareResponseEventsItemNotesMax = 1000;
-
 
 
 export const CreateScheduleShareResponse = zod.object({
@@ -740,7 +731,6 @@ export const getScheduleShareResponseEventsItemSnacksMax = 300;
 export const getScheduleShareResponseEventsItemDrinksMax = 300;
 
 export const getScheduleShareResponseEventsItemNotesMax = 1000;
-
 
 
 export const GetScheduleShareResponse = zod.object({
@@ -795,7 +785,6 @@ export const updateScheduleShareBodyEventsItemNotesMax = 1000;
 export const updateScheduleShareBodyEventsMax = 50;
 
 
-
 export const UpdateScheduleShareBody = zod.object({
   "title": zod.string().min(1).max(updateScheduleShareBodyTitleMax),
   "teamSeason": zod.string().max(updateScheduleShareBodyTeamSeasonMax),
@@ -831,7 +820,6 @@ export const updateScheduleShareResponseEventsItemSnacksMax = 300;
 export const updateScheduleShareResponseEventsItemDrinksMax = 300;
 
 export const updateScheduleShareResponseEventsItemNotesMax = 1000;
-
 
 
 export const UpdateScheduleShareResponse = zod.object({
@@ -887,7 +875,6 @@ export const listOwnedGameOnCardsResponseEventsItemDrinksMax = 300;
 export const listOwnedGameOnCardsResponseEventsItemNotesMax = 1000;
 
 
-
 export const ListOwnedGameOnCardsResponseItem = zod.object({
   "shareToken": zod.string().uuid(),
   "title": zod.string(),
@@ -935,7 +922,6 @@ export const GetGameOnCardParams = zod.object({
 export const getGameOnCardResponseAthletePageTokenMax = 100;
 
 export const getGameOnCardResponseAthleteNameMax = 200;
-
 
 
 export const GetGameOnCardResponse = zod.object({
@@ -991,7 +977,6 @@ export const createChecklistShareBodySelectedGameOneLocationMax = 240;
 export const createChecklistShareBodySelectedGameOneOpponentMax = 240;
 
 
-
 export const CreateChecklistShareBody = zod.object({
   "title": zod.string().min(1).max(createChecklistShareBodyTitleMax),
   "notes": zod.string().max(createChecklistShareBodyNotesMax).optional(),
@@ -1033,8 +1018,6 @@ export const createChecklistShareResponseOneSelectedGameOneTimeMax = 20;
 export const createChecklistShareResponseOneSelectedGameOneLocationMax = 240;
 
 export const createChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
-
-
 
 
 export const CreateChecklistShareResponse = zod.object({
@@ -1092,8 +1075,6 @@ export const getChecklistShareResponseOneSelectedGameOneTimeMax = 20;
 export const getChecklistShareResponseOneSelectedGameOneLocationMax = 240;
 
 export const getChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
-
-
 
 
 export const GetChecklistShareResponse = zod.object({
@@ -1154,8 +1135,6 @@ export const updateChecklistShareBodyOneSelectedGameOneLocationMax = 240;
 export const updateChecklistShareBodyOneSelectedGameOneOpponentMax = 240;
 
 
-
-
 export const UpdateChecklistShareBody = zod.object({
   "title": zod.string().min(1).max(updateChecklistShareBodyOneTitleMax),
   "notes": zod.string().max(updateChecklistShareBodyOneNotesMax).optional(),
@@ -1201,8 +1180,6 @@ export const updateChecklistShareResponseOneSelectedGameOneLocationMax = 240;
 export const updateChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
 
 
-
-
 export const UpdateChecklistShareResponse = zod.object({
   "title": zod.string().min(1).max(updateChecklistShareResponseOneTitleMax),
   "notes": zod.string().max(updateChecklistShareResponseOneNotesMax).optional(),
@@ -1245,7 +1222,6 @@ export const DeleteChecklistShareResponse = zod.void()
  * @summary Get the authenticated owner's meeting workspace
  */
 export const getMeetingWorkspacePathMeetingIdMax = 160;
-
 
 
 export const GetMeetingWorkspaceParams = zod.object({
@@ -1300,8 +1276,6 @@ export const getMeetingWorkspaceResponseWorkspaceContextLocationMax = 240;
 export const getMeetingWorkspaceResponseWorkspaceContextTitleMax = 240;
 
 
-
-
 export const GetMeetingWorkspaceResponse = zod.object({
   "id": zod.string().uuid(),
   "ownerClerkUserId": zod.string().min(1).max(getMeetingWorkspaceResponseOwnerClerkUserIdMax),
@@ -1353,7 +1327,6 @@ export const GetMeetingWorkspaceResponse = zod.object({
 export const upsertMeetingWorkspacePathMeetingIdMax = 160;
 
 
-
 export const UpsertMeetingWorkspaceParams = zod.object({
   "meetingId": zod.coerce.string().min(1).max(upsertMeetingWorkspacePathMeetingIdMax)
 })
@@ -1399,8 +1372,6 @@ export const upsertMeetingWorkspaceBodyWorkspaceContextTimeMax = 20;
 export const upsertMeetingWorkspaceBodyWorkspaceContextLocationMax = 240;
 
 export const upsertMeetingWorkspaceBodyWorkspaceContextTitleMax = 240;
-
-
 
 
 export const UpsertMeetingWorkspaceBody = zod.object({
@@ -1488,8 +1459,6 @@ export const upsertMeetingWorkspaceResponseWorkspaceContextLocationMax = 240;
 export const upsertMeetingWorkspaceResponseWorkspaceContextTitleMax = 240;
 
 
-
-
 export const UpsertMeetingWorkspaceResponse = zod.object({
   "id": zod.string().uuid(),
   "ownerClerkUserId": zod.string().min(1).max(upsertMeetingWorkspaceResponseOwnerClerkUserIdMax),
@@ -1539,7 +1508,6 @@ export const UpsertMeetingWorkspaceResponse = zod.object({
  * @summary Revoke the authenticated owner's meeting recap link
  */
 export const deleteMeetingWorkspacePathMeetingIdMax = 160;
-
 
 
 export const DeleteMeetingWorkspaceParams = zod.object({
@@ -1600,8 +1568,6 @@ export const getMeetingRecapResponseWorkspaceContextTimeMax = 20;
 export const getMeetingRecapResponseWorkspaceContextLocationMax = 240;
 
 export const getMeetingRecapResponseWorkspaceContextTitleMax = 240;
-
-
 
 
 export const GetMeetingRecapResponse = zod.object({
@@ -1677,8 +1643,6 @@ export const listStatTrackerSharesResponseOneGameEventsItemYardsMin = 0;
 export const listStatTrackerSharesResponseOneGameEventsMax = 10;
 
 
-
-
 export const ListStatTrackerSharesResponseItem = zod.object({
   "athleteName": zod.string().max(listStatTrackerSharesResponseOneAthleteNameMax),
   "teamName": zod.string().max(listStatTrackerSharesResponseOneTeamNameMax),
@@ -1750,7 +1714,6 @@ export const createStatTrackerShareBodyGameEventsItemYardsMin = 0;
 export const createStatTrackerShareBodyGameEventsMax = 10;
 
 
-
 export const CreateStatTrackerShareBody = zod.object({
   "athleteName": zod.string().max(createStatTrackerShareBodyAthleteNameMax),
   "teamName": zod.string().max(createStatTrackerShareBodyTeamNameMax),
@@ -1808,8 +1771,6 @@ export const createStatTrackerShareResponseOneGameEventsItemPlayIdMax = 160;
 export const createStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const createStatTrackerShareResponseOneGameEventsMax = 10;
-
-
 
 
 export const CreateStatTrackerShareResponse = zod.object({
@@ -1886,8 +1847,6 @@ export const getStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 export const getStatTrackerShareResponseOneGameEventsMax = 10;
 
 
-
-
 export const GetStatTrackerShareResponse = zod.object({
   "athleteName": zod.string().max(getStatTrackerShareResponseOneAthleteNameMax),
   "teamName": zod.string().max(getStatTrackerShareResponseOneTeamNameMax),
@@ -1962,8 +1921,6 @@ export const updateStatTrackerShareBodyOneGameEventsItemYardsMin = 0;
 export const updateStatTrackerShareBodyOneGameEventsMax = 10;
 
 
-
-
 export const UpdateStatTrackerShareBody = zod.object({
   "athleteName": zod.string().max(updateStatTrackerShareBodyOneAthleteNameMax),
   "teamName": zod.string().max(updateStatTrackerShareBodyOneTeamNameMax),
@@ -2023,8 +1980,6 @@ export const updateStatTrackerShareResponseOneGameEventsItemPlayIdMax = 160;
 export const updateStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const updateStatTrackerShareResponseOneGameEventsMax = 10;
-
-
 
 
 export const UpdateStatTrackerShareResponse = zod.object({
@@ -2135,7 +2090,6 @@ export const listAthleteInvitesResponseCardAppearanceOneNamePlateYMax = 0.12;
 export const listAthleteInvitesResponseCardAppearanceOneJerseyNumberMax = 12;
 
 export const listAthleteInvitesResponseCardAppearanceOnePositionMax = 80;
-
 
 
 export const ListAthleteInvitesResponseItem = zod.object({
@@ -2286,7 +2240,6 @@ export const createAthleteInviteResponseCardAppearanceOneNamePlateYMax = 0.12;
 export const createAthleteInviteResponseCardAppearanceOneJerseyNumberMax = 12;
 
 export const createAthleteInviteResponseCardAppearanceOnePositionMax = 80;
-
 
 
 export const CreateAthleteInviteResponse = zod.object({
@@ -2458,7 +2411,6 @@ export const getAthleteInviteResponseRepliesItemReactionMax = 40;
 export const getAthleteInviteResponseRepliesItemMessageMax = 240;
 
 export const getAthleteInviteResponseLiveTapsCheersItemCountMin = 0;
-
 
 
 export const GetAthleteInviteResponse = zod.object({
@@ -2677,7 +2629,6 @@ export const updateAthleteInviteResponseCardAppearanceOneJerseyNumberMax = 12;
 export const updateAthleteInviteResponseCardAppearanceOnePositionMax = 80;
 
 
-
 export const UpdateAthleteInviteResponse = zod.object({
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
@@ -2876,7 +2827,6 @@ export const getAthleteFanCardResponseLiveScoreboardOneTeamNameMax = 160;
 export const getAthleteFanCardResponseLiveTapsCheersItemCountMin = 0;
 
 
-
 export const GetAthleteFanCardResponse = zod.object({
   "inviteToken": zod.string(),
   "hypesEnabled": zod.boolean(),
@@ -3034,7 +2984,6 @@ export const notifyAthleteInviteEventFollowersResponsePendingMin = 0;
 export const notifyAthleteInviteEventFollowersResponseRemainingMin = 0;
 
 
-
 export const NotifyAthleteInviteEventFollowersResponse = zod.object({
   "eligible": zod.number().int().min(notifyAthleteInviteEventFollowersResponseEligibleMin),
   "sent": zod.number().int().min(notifyAthleteInviteEventFollowersResponseSentMin),
@@ -3064,7 +3013,6 @@ export const getAthleteInviteEventNotificationProgressResponseFailedMin = 0;
 export const getAthleteInviteEventNotificationProgressResponsePendingMin = 0;
 
 export const getAthleteInviteEventNotificationProgressResponseRemainingMin = 0;
-
 
 
 export const GetAthleteInviteEventNotificationProgressResponse = zod.object({
@@ -3104,7 +3052,6 @@ export const SendAthleteLiveTapBody = zod.object({
 })
 
 export const sendAthleteLiveTapResponseCheersItemCountMin = 0;
-
 
 
 export const SendAthleteLiveTapResponse = zod.object({
@@ -3350,7 +3297,6 @@ export const updateAthleteInviteAppearanceBodyJerseyNumberMax = 12;
 export const updateAthleteInviteAppearanceBodyPositionMax = 80;
 
 
-
 export const UpdateAthleteInviteAppearanceBody = zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(updateAthleteInviteAppearanceBodyBorderColorRegExp),
@@ -3435,7 +3381,6 @@ export const updateAthleteInviteAppearanceResponseCardAppearanceOneJerseyNumberM
 export const updateAthleteInviteAppearanceResponseCardAppearanceOnePositionMax = 80;
 
 
-
 export const UpdateAthleteInviteAppearanceResponse = zod.object({
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
@@ -3517,7 +3462,6 @@ export const RequestAthleteInvitePhotoUploadUrlParams = zod.object({
 export const requestAthleteInvitePhotoUploadUrlBodySizeMax = 5242880;
 
 
-
 export const RequestAthleteInvitePhotoUploadUrlBody = zod.object({
   "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp']),
   "size": zod.number().int().min(1).max(requestAthleteInvitePhotoUploadUrlBodySizeMax)
@@ -3542,7 +3486,6 @@ export const ConfirmAthleteInvitePhotoParams = zod.object({
 export const confirmAthleteInvitePhotoBodyObjectPathMax = 500;
 
 export const confirmAthleteInvitePhotoBodySourcePhotoRevisionMax = 64;
-
 
 
 export const ConfirmAthleteInvitePhotoBody = zod.object({
@@ -3611,7 +3554,6 @@ export const GetAthleteInviteManifestParams = zod.object({
 export const getAthleteInviteManifestResponseIconsMin = 2;
 
 
-
 export const GetAthleteInviteManifestResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3668,7 +3610,6 @@ export const createAthleteInviteFanFollowResponseTwoFollowTokenMin = 40;
 export const createAthleteInviteFanFollowResponseTwoFollowTokenMax = 100;
 
 
-
 export const CreateAthleteInviteFanFollowResponse = zod.object({
   "liveAlerts": zod.boolean(),
   "eventAlerts": zod.boolean(),
@@ -3692,7 +3633,6 @@ export const GetAthleteInviteFanFollowParams = zod.object({
 
 export const getAthleteInviteFanFollowHeaderXFanFollowTokenMin = 40;
 export const getAthleteInviteFanFollowHeaderXFanFollowTokenMax = 100;
-
 
 
 export const GetAthleteInviteFanFollowHeader = zod.object({
@@ -3720,7 +3660,6 @@ export const UpdateAthleteInviteFanFollowParams = zod.object({
 
 export const updateAthleteInviteFanFollowHeaderXFanFollowTokenMin = 40;
 export const updateAthleteInviteFanFollowHeaderXFanFollowTokenMax = 100;
-
 
 
 export const UpdateAthleteInviteFanFollowHeader = zod.object({
@@ -3757,7 +3696,6 @@ export const deleteAthleteInviteFanFollowHeaderXFanFollowTokenMin = 40;
 export const deleteAthleteInviteFanFollowHeaderXFanFollowTokenMax = 100;
 
 
-
 export const DeleteAthleteInviteFanFollowHeader = zod.object({
   "X-Fan-Follow-Token": zod.string().min(deleteAthleteInviteFanFollowHeaderXFanFollowTokenMin).max(deleteAthleteInviteFanFollowHeaderXFanFollowTokenMax)
 })
@@ -3770,7 +3708,6 @@ export const DeleteAthleteInviteFanFollowResponse = zod.void()
  */
 export const listHypeCardSharesQueryLimitDefault = 25;
 export const listHypeCardSharesQueryLimitMax = 100;
-
 
 
 export const ListHypeCardSharesQueryParams = zod.object({
@@ -3808,7 +3745,6 @@ export const listHypeCardSharesResponseOneStatsOneGamesItemAthleteStatsMinOne = 
 export const listHypeCardSharesResponseOneStatsOneStatsMinOne = 0;
 
 export const listHypeCardSharesResponseTwoExpiresInDaysMax = 365;
-
 
 
 export const ListHypeCardSharesResponseItem = zod.object({
@@ -3924,7 +3860,6 @@ export const createHypeCardShareResponseStatsOneGamesItemAthleteStatsMinOne = 0;
 export const createHypeCardShareResponseStatsOneStatsMinOne = 0;
 
 
-
 export const CreateHypeCardShareResponse = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
@@ -4019,7 +3954,6 @@ export const getHypeCardShareResponseStatsOneGamesItemAthleteStatsMinOne = 0;
 export const getHypeCardShareResponseStatsOneStatsMinOne = 0;
 
 
-
 export const GetHypeCardShareResponse = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
@@ -4095,7 +4029,6 @@ export const getHypeCardReplyInboxResponseUnreadCountMin = 0;
 export const getHypeCardReplyInboxResponseGroupsItemUnreadCountMin = 0;
 
 
-
 export const GetHypeCardReplyInboxResponse = zod.object({
   "totalCount": zod.number().int().min(getHypeCardReplyInboxResponseTotalCountMin),
   "unreadCount": zod.number().int().min(getHypeCardReplyInboxResponseUnreadCountMin),
@@ -4134,7 +4067,6 @@ export const CreateHypeCardShareReplyParams = zod.object({
 export const createHypeCardShareReplyBodyMessageMax = 240;
 
 
-
 export const CreateHypeCardShareReplyBody = zod.object({
   "reaction": zod.enum(['🔥', '👏', '💪', '⭐', '❤️']),
   "message": zod.string().max(createHypeCardShareReplyBodyMessageMax).nullish()
@@ -4156,7 +4088,6 @@ export const ListHypeCardShareRepliesParams = zod.object({
 })
 
 export const listHypeCardShareRepliesResponseUnreadCountMin = 0;
-
 
 
 export const ListHypeCardShareRepliesResponse = zod.object({
@@ -4233,7 +4164,6 @@ export const listAdminMembersQueryOffsetDefault = 0;
 export const listAdminMembersQueryOffsetMin = 0;
 
 
-
 export const ListAdminMembersQueryParams = zod.object({
   "search": zod.coerce.string().max(listAdminMembersQuerySearchMax).optional(),
   "limit": zod.coerce.number().int().min(1).max(listAdminMembersQueryLimitMax).default(listAdminMembersQueryLimitDefault),
@@ -4267,7 +4197,6 @@ export const listAdminMembersResponseTotalCountMin = 0;
 export const listAdminMembersResponseLimitMax = 100;
 
 export const listAdminMembersResponseOffsetMin = 0;
-
 
 
 export const ListAdminMembersResponse = zod.object({
@@ -4307,7 +4236,6 @@ export const ListAdminMembersResponse = zod.object({
 export const getAdminMemberPathUserIdMax = 200;
 
 
-
 export const GetAdminMemberParams = zod.object({
   "userId": zod.coerce.string().min(1).max(getAdminMemberPathUserIdMax)
 })
@@ -4333,7 +4261,6 @@ export const getAdminMemberResponseProfileJerseyNumberMax = 20;
 export const getAdminMemberResponseProfilePositionMax = 60;
 
 export const getAdminMemberResponseProfileRelationshipMax = 60;
-
 
 
 export const GetAdminMemberResponse = zod.object({
@@ -4368,7 +4295,6 @@ export const GetAdminMemberResponse = zod.object({
 export const updateAdminMemberProfilePathUserIdMax = 200;
 
 
-
 export const UpdateAdminMemberProfileParams = zod.object({
   "userId": zod.coerce.string().min(1).max(updateAdminMemberProfilePathUserIdMax)
 })
@@ -4386,7 +4312,6 @@ export const updateAdminMemberProfileBodyJerseyNumberMax = 20;
 export const updateAdminMemberProfileBodyPositionMax = 60;
 
 export const updateAdminMemberProfileBodyRelationshipMax = 60;
-
 
 
 export const UpdateAdminMemberProfileBody = zod.object({
@@ -4423,7 +4348,6 @@ export const updateAdminMemberProfileResponseProfilePositionMax = 60;
 export const updateAdminMemberProfileResponseProfileRelationshipMax = 60;
 
 
-
 export const UpdateAdminMemberProfileResponse = zod.object({
   "clerkUserId": zod.string().min(1).max(updateAdminMemberProfileResponseClerkUserIdMax),
   "primaryEmailAddress": zod.string().max(updateAdminMemberProfileResponsePrimaryEmailAddressMax).nullable(),
@@ -4456,13 +4380,11 @@ export const UpdateAdminMemberProfileResponse = zod.object({
 export const updateAdminMemberSuspensionPathUserIdMax = 200;
 
 
-
 export const UpdateAdminMemberSuspensionParams = zod.object({
   "userId": zod.coerce.string().min(1).max(updateAdminMemberSuspensionPathUserIdMax)
 })
 
 export const updateAdminMemberSuspensionBodyReasonMax = 500;
-
 
 
 export const UpdateAdminMemberSuspensionBody = zod.object({
@@ -4473,7 +4395,6 @@ export const UpdateAdminMemberSuspensionBody = zod.object({
 export const updateAdminMemberSuspensionResponseTargetClerkUserIdMax = 200;
 
 export const updateAdminMemberSuspensionResponseMessageMax = 500;
-
 
 
 export const UpdateAdminMemberSuspensionResponse = zod.object({
@@ -4491,13 +4412,11 @@ export const UpdateAdminMemberSuspensionResponse = zod.object({
 export const updateAdminMemberAdministratorPathUserIdMax = 200;
 
 
-
 export const UpdateAdminMemberAdministratorParams = zod.object({
   "userId": zod.coerce.string().min(1).max(updateAdminMemberAdministratorPathUserIdMax)
 })
 
 export const updateAdminMemberAdministratorBodyReasonMax = 500;
-
 
 
 export const UpdateAdminMemberAdministratorBody = zod.object({
@@ -4508,7 +4427,6 @@ export const UpdateAdminMemberAdministratorBody = zod.object({
 export const updateAdminMemberAdministratorResponseTargetClerkUserIdMax = 200;
 
 export const updateAdminMemberAdministratorResponseMessageMax = 500;
-
 
 
 export const UpdateAdminMemberAdministratorResponse = zod.object({
@@ -4526,14 +4444,12 @@ export const UpdateAdminMemberAdministratorResponse = zod.object({
 export const updateAdminMemberIdentityBlockPathUserIdMax = 200;
 
 
-
 export const UpdateAdminMemberIdentityBlockParams = zod.object({
   "userId": zod.coerce.string().min(1).max(updateAdminMemberIdentityBlockPathUserIdMax)
 })
 
 export const updateAdminMemberIdentityBlockBodyReasonMin = 3;
 export const updateAdminMemberIdentityBlockBodyReasonMax = 500;
-
 
 
 export const UpdateAdminMemberIdentityBlockBody = zod.object({
@@ -4544,7 +4460,6 @@ export const UpdateAdminMemberIdentityBlockBody = zod.object({
 export const updateAdminMemberIdentityBlockResponseTargetClerkUserIdMax = 200;
 
 export const updateAdminMemberIdentityBlockResponseMessageMax = 500;
-
 
 
 export const UpdateAdminMemberIdentityBlockResponse = zod.object({
@@ -4562,14 +4477,12 @@ export const UpdateAdminMemberIdentityBlockResponse = zod.object({
 export const restoreAdminMemberCancellationPathUserIdMax = 200;
 
 
-
 export const RestoreAdminMemberCancellationParams = zod.object({
   "userId": zod.coerce.string().min(1).max(restoreAdminMemberCancellationPathUserIdMax)
 })
 
 export const restoreAdminMemberCancellationBodyReasonMin = 3;
 export const restoreAdminMemberCancellationBodyReasonMax = 500;
-
 
 
 export const RestoreAdminMemberCancellationBody = zod.object({
@@ -4579,7 +4492,6 @@ export const RestoreAdminMemberCancellationBody = zod.object({
 export const restoreAdminMemberCancellationResponseTargetClerkUserIdMax = 200;
 
 export const restoreAdminMemberCancellationResponseMessageMax = 500;
-
 
 
 export const RestoreAdminMemberCancellationResponse = zod.object({
@@ -4597,7 +4509,6 @@ export const RestoreAdminMemberCancellationResponse = zod.object({
 export const deleteAdminMemberPathUserIdMax = 200;
 
 
-
 export const DeleteAdminMemberParams = zod.object({
   "userId": zod.coerce.string().min(1).max(deleteAdminMemberPathUserIdMax)
 })
@@ -4608,7 +4519,6 @@ export const deleteAdminMemberBodyReasonMin = 3;
 export const deleteAdminMemberBodyReasonMax = 500;
 
 
-
 export const DeleteAdminMemberBody = zod.object({
   "confirmationText": zod.string().min(1).max(deleteAdminMemberBodyConfirmationTextMax),
   "reason": zod.string().min(deleteAdminMemberBodyReasonMin).max(deleteAdminMemberBodyReasonMax)
@@ -4617,7 +4527,6 @@ export const DeleteAdminMemberBody = zod.object({
 export const deleteAdminMemberResponseTargetClerkUserIdMax = 200;
 
 export const deleteAdminMemberResponseMessageMax = 500;
-
 
 
 export const DeleteAdminMemberResponse = zod.object({
@@ -4671,7 +4580,6 @@ export const listAdminAuditResponseLimitMax = 100;
 export const listAdminAuditResponseOffsetMin = 0;
 
 
-
 export const ListAdminAuditResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -4713,8 +4621,6 @@ export const getAccountAccessResponseLimitsScheduleEventsMin = 0;
 export const getAccountAccessResponseLimitsLineupsMin = 0;
 
 export const getAccountAccessResponseStorageUsedBytesMin = 0;
-
-
 
 
 export const GetAccountAccessResponse = zod.object({
@@ -4772,8 +4678,6 @@ export const updateAccountAccessResponseLimitsLineupsMin = 0;
 export const updateAccountAccessResponseStorageUsedBytesMin = 0;
 
 
-
-
 export const UpdateAccountAccessResponse = zod.object({
   "accessMode": zod.enum(['full', 'guest']),
   "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
@@ -4805,7 +4709,6 @@ export const UpdateAccountAccessResponse = zod.object({
  */
 
 
-
 export const GetAccountLifecycleResponse = zod.object({
   "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
@@ -4823,7 +4726,6 @@ export const GetAccountLifecycleResponse = zod.object({
 /**
  * @summary Cancel and immediately lock the authenticated account
  */
-
 
 
 export const CancelAccountResponse = zod.object({
@@ -4845,7 +4747,6 @@ export const CancelAccountResponse = zod.object({
  */
 
 
-
 export const PauseAccountResponse = zod.object({
   "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
@@ -4865,7 +4766,6 @@ export const PauseAccountResponse = zod.object({
  */
 
 
-
 export const ResumeAccountResponse = zod.object({
   "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
@@ -4883,7 +4783,6 @@ export const ResumeAccountResponse = zod.object({
 /**
  * @summary Reactivate an account during its recovery window
  */
-
 
 
 export const ReactivateAccountResponse = zod.object({
@@ -4913,7 +4812,6 @@ export const receiveBillingWebhookBodyIdMax = 200;
 export const receiveBillingWebhookBodyOwnerClerkUserIdMax = 200;
 
 
-
 export const ReceiveBillingWebhookBody = zod.object({
   "type": zod.enum(['paid_entitlement']),
   "id": zod.string().min(1).max(receiveBillingWebhookBodyIdMax),
@@ -4935,7 +4833,6 @@ export const ReceiveBillingWebhookResponse = zod.object({
  * @summary Consume one Guest allowance
  */
 export const consumeAccountUsageBodyUsageKeyMax = 120;
-
 
 
 export const ConsumeAccountUsageBody = zod.object({
@@ -4962,8 +4859,6 @@ export const consumeAccountUsageResponseLimitsScheduleEventsMin = 0;
 export const consumeAccountUsageResponseLimitsLineupsMin = 0;
 
 export const consumeAccountUsageResponseStorageUsedBytesMin = 0;
-
-
 
 
 export const ConsumeAccountUsageResponse = zod.object({
@@ -4997,8 +4892,6 @@ export const ConsumeAccountUsageResponse = zod.object({
  */
 
 
-
-
 export const ListProjectsResponseItem = zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
@@ -5027,15 +4920,11 @@ export const createProjectBodyNameMax = 200;
 export const createProjectBodyGuestUsageKeyMax = 120;
 
 
-
 export const CreateProjectBody = zod.object({
   "name": zod.string().min(1).max(createProjectBodyNameMax),
   "project": zod.record(zod.string(), zod.unknown()),
   "guestUsageKey": zod.string().min(1).max(createProjectBodyGuestUsageKeyMax).optional()
 })
-
-
-
 
 
 export const CreateProjectResponse = zod.object({
@@ -5063,9 +4952,6 @@ export const CreateProjectResponse = zod.object({
 export const GetProjectParams = zod.object({
   "projectId": zod.coerce.string().uuid()
 })
-
-
-
 
 
 export const GetProjectResponse = zod.object({
@@ -5097,16 +4983,11 @@ export const UpdateProjectParams = zod.object({
 export const updateProjectBodyNameMax = 200;
 
 
-
-
 export const UpdateProjectBody = zod.object({
   "name": zod.string().min(1).max(updateProjectBodyNameMax).optional(),
   "project": zod.record(zod.string(), zod.unknown()).optional(),
   "expectedRevision": zod.number().int().min(1)
 })
-
-
-
 
 
 export const UpdateProjectResponse = zod.object({
@@ -5144,8 +5025,6 @@ export const DeleteProjectResponse = zod.void()
 export const requestProjectMediaUploadUrlBodyNameMax = 255;
 
 
-
-
 export const RequestProjectMediaUploadUrlBody = zod.object({
   "projectId": zod.string().uuid().optional(),
   "name": zod.string().min(1).max(requestProjectMediaUploadUrlBodyNameMax),
@@ -5154,8 +5033,6 @@ export const RequestProjectMediaUploadUrlBody = zod.object({
   "mediaType": zod.enum(['image', 'video']),
   "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download'])
 })
-
-
 
 
 export const RequestProjectMediaUploadUrlResponse = zod.object({
@@ -5181,12 +5058,9 @@ export const RequestProjectMediaUploadUrlResponse = zod.object({
 export const completeProjectMediaUploadBodyObjectPathMin = 10;
 
 
-
 export const CompleteProjectMediaUploadBody = zod.object({
   "objectPath": zod.string().min(completeProjectMediaUploadBodyObjectPathMin)
 })
-
-
 
 
 export const CompleteProjectMediaUploadResponse = zod.object({
@@ -5244,7 +5118,6 @@ export const getSupporterPhotoResponseCropZoomMin = 100;
 export const getSupporterPhotoResponseCropZoomMax = 250;
 
 
-
 export const GetSupporterPhotoResponse = zod.object({
   "url": zod.string(),
   "contentType": zod.string(),
@@ -5271,7 +5144,6 @@ export const saveSupporterPhotoBodyCropZoomMin = 100;
 export const saveSupporterPhotoBodyCropZoomMax = 250;
 
 
-
 export const SaveSupporterPhotoBody = zod.object({
   "objectPath": zod.string().min(saveSupporterPhotoBodyObjectPathMin),
   "cropX": zod.number().int().min(saveSupporterPhotoBodyCropXMin).max(saveSupporterPhotoBodyCropXMax),
@@ -5288,7 +5160,6 @@ export const saveSupporterPhotoResponseCropYMax = 100;
 
 export const saveSupporterPhotoResponseCropZoomMin = 100;
 export const saveSupporterPhotoResponseCropZoomMax = 250;
-
 
 
 export const SaveSupporterPhotoResponse = zod.object({
@@ -5314,7 +5185,6 @@ export const DeleteSupporterPhotoResponse = zod.void()
 export const requestSupporterPhotoUploadUrlBodySizeMax = 5242880;
 
 
-
 export const RequestSupporterPhotoUploadUrlBody = zod.object({
   "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp']),
   "size": zod.number().int().min(1).max(requestSupporterPhotoUploadUrlBodySizeMax)
@@ -5332,7 +5202,6 @@ export const RequestSupporterPhotoUploadUrlResponse = zod.object({
 export const getNotificationConfigResponsePublicKeyMax = 300;
 
 
-
 export const GetNotificationConfigResponse = zod.object({
   "available": zod.boolean(),
   "publicKey": zod.string().max(getNotificationConfigResponsePublicKeyMax).nullable(),
@@ -5344,7 +5213,6 @@ export const GetNotificationConfigResponse = zod.object({
  * @summary Get schedule reminder preferences
  */
 export const getNotificationPreferencesResponseTimezoneMax = 100;
-
 
 
 export const GetNotificationPreferencesResponse = zod.object({
@@ -5360,7 +5228,6 @@ export const GetNotificationPreferencesResponse = zod.object({
 export const updateNotificationPreferencesBodyTimezoneMax = 100;
 
 
-
 export const UpdateNotificationPreferencesBody = zod.object({
   "oneHourBefore": zod.boolean(),
   "dayOf": zod.boolean(),
@@ -5368,7 +5235,6 @@ export const UpdateNotificationPreferencesBody = zod.object({
 })
 
 export const updateNotificationPreferencesResponseTimezoneMax = 100;
-
 
 
 export const UpdateNotificationPreferencesResponse = zod.object({
@@ -5384,7 +5250,6 @@ export const UpdateNotificationPreferencesResponse = zod.object({
 export const getSupporterActiveGameResponseGameIdMax = 255;
 
 
-
 export const GetSupporterActiveGameResponse = zod.object({
   "gameId": zod.string().min(1).max(getSupporterActiveGameResponseGameIdMax).nullable()
 })
@@ -5396,13 +5261,11 @@ export const GetSupporterActiveGameResponse = zod.object({
 export const updateSupporterActiveGameBodyGameIdMax = 255;
 
 
-
 export const UpdateSupporterActiveGameBody = zod.object({
   "gameId": zod.string().min(1).max(updateSupporterActiveGameBodyGameIdMax).nullable()
 })
 
 export const updateSupporterActiveGameResponseGameIdMax = 255;
-
 
 
 export const UpdateSupporterActiveGameResponse = zod.object({
@@ -5420,7 +5283,6 @@ export const saveNotificationSubscriptionBodyTimezoneMax = 100;
 export const saveNotificationSubscriptionBodyKeysP256dhMax = 300;
 
 export const saveNotificationSubscriptionBodyKeysAuthMax = 300;
-
 
 
 export const SaveNotificationSubscriptionBody = zod.object({
@@ -5441,7 +5303,6 @@ export const SaveNotificationSubscriptionResponse = zod.void()
 export const deleteNotificationSubscriptionBodyEndpointMax = 2048;
 
 
-
 export const DeleteNotificationSubscriptionBody = zod.object({
   "endpoint": zod.string().url().max(deleteNotificationSubscriptionBodyEndpointMax)
 })
@@ -5453,7 +5314,6 @@ export const DeleteNotificationSubscriptionResponse = zod.void()
  * @summary Check ownership of a browser push subscription
  */
 export const getNotificationSubscriptionStatusQueryEndpointMax = 2048;
-
 
 
 export const GetNotificationSubscriptionStatusQueryParams = zod.object({
@@ -5482,11 +5342,9 @@ export const AcknowledgeNotificationDisplayedParams = zod.object({
 export const acknowledgeNotificationDisplayedBodySubscriptionEndpointMax = 2048;
 
 
-
 export const AcknowledgeNotificationDisplayedBody = zod.object({
   "subscriptionEndpoint": zod.string().url().max(acknowledgeNotificationDisplayedBodySubscriptionEndpointMax)
 })
 
 export const AcknowledgeNotificationDisplayedResponse = zod.void()
-
 

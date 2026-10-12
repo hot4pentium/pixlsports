@@ -1,10 +1,13 @@
 import {
   getGetAdminSupportTicketQueryKey,
+  getListAdminSupportEmailReplyRejectionsQueryKey,
   getListAdminSupportTicketsQueryKey,
   useCreateAdminSupportTicketReply,
   useGetAdminSupportTicket,
+  useListAdminSupportEmailReplyRejections,
   useListAdminSupportTickets,
   useUpdateAdminSupportTicket,
+  type SupportEmailReplyRejectionReason,
   type SupportTicket,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,6 +24,12 @@ const SIZE = 20;
 const when = (v: string) => { const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); };
 const chip = (s: Status) => (s === 'unread' ? 'admin-chip admin-chip-warn' : s === 'resolved' ? 'admin-chip' : 'admin-chip admin-chip-danger');
 
+const REJECTION_REASON_LABEL: Record<SupportEmailReplyRejectionReason, string> = {
+  unknown_reply_address: 'No support ticket matched the reply address',
+  unmatched_legacy_thread: 'No support conversation could be verified',
+  ambiguous_reply_address: 'The reply address matched multiple possible conversations',
+  sender_mismatch: 'The sender did not match the ticket reply address',
+};
 function Detail({ ticketId, onChanged }: { ticketId: string; onChanged: () => void }) {
   const qc = useQueryClient();
   const detail = useGetAdminSupportTicket(ticketId, { query: { queryKey: getGetAdminSupportTicketQueryKey(ticketId), staleTime: 0, refetchOnMount: 'always' } });
@@ -110,6 +119,14 @@ export function AdminHelpDesk() {
   const [openId, setOpenId] = useState('');
   const params = useMemo(() => ({ limit: SIZE, offset, ...(selected.length ? { status: selected } : {}) }), [selected, offset]);
   const list = useListAdminSupportTickets(params, { query: { queryKey: getListAdminSupportTicketsQueryKey(params), staleTime: 0, refetchOnMount: 'always' } });
+  const rejections = useListAdminSupportEmailReplyRejections({
+    query: {
+      queryKey: getListAdminSupportEmailReplyRejectionsQueryKey(),
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchInterval: 60_000,
+    },
+  });
   const counts = list.data?.counts;
   const toggle = (s: Status) => { setOffset(0); setSelected((c) => (c.includes(s) ? c.filter((x) => x !== s) : [...c, s])); };
   const changed = () => void qc.invalidateQueries({ queryKey: ['/api/admin/support/tickets'] });
@@ -118,8 +135,37 @@ export function AdminHelpDesk() {
     <section className="admin-card admin-section" aria-labelledby="admin-helpdesk-heading" data-testid="admin-help-desk">
       <div className="flex items-start justify-between gap-3">
         <div><p className="admin-eyebrow">Help desk</p><h2 id="admin-helpdesk-heading" className="admin-display admin-section-title mt-1">Support queue</h2></div>
-        <button type="button" className="admin-button" onClick={() => void list.refetch()} aria-label="Refresh support queue"><RefreshCw className="h-4 w-4" /> Refresh</button>
+        <button type="button" className="admin-button" onClick={() => { void list.refetch(); void rejections.refetch(); }} aria-label="Refresh support queue and unmatched email replies"><RefreshCw className="h-4 w-4" /> Refresh</button>
       </div>
+      <section className="mt-5 border border-[#e5c6aa] bg-[#fff9f3] p-4" aria-labelledby="unmatched-email-replies-heading" data-testid="support-email-rejections">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="admin-eyebrow">Email follow-up</p>
+            <h3 id="unmatched-email-replies-heading" className="admin-display mt-1 text-lg">Unmatched email replies</h3>
+            <p className="mt-1 text-xs text-[#60778a]">Recent replies that were not added to a ticket. Records expire after 30 days and contain no sender address or message text.</p>
+          </div>
+          <span className="admin-chip admin-chip-warn">{rejections.data?.items.length ?? '–'} recent</span>
+        </div>
+        {rejections.isLoading ? (
+          <p className="mt-3 text-sm text-[#60778a]" role="status">Loading unmatched email replies…</p>
+        ) : rejections.isError ? (
+          <p className="mt-3 text-sm font-bold text-[#a33e25]" role="alert">Unmatched email replies could not be loaded. <button type="button" className="underline" onClick={() => void rejections.refetch()}>Try again</button></p>
+        ) : rejections.data?.items.length ? (
+          <ul className="mt-3 divide-y divide-[#ead8c8] border-y border-[#ead8c8]">
+            {rejections.data.items.map((item) => (
+              <li key={item.emailProviderId} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3" data-testid={`support-email-rejection-${item.emailProviderId}`}>
+                <div>
+                  <p className="text-sm font-bold text-[#663f26]">{REJECTION_REASON_LABEL[item.reason]}</p>
+                  <p className="mt-1 text-xs text-[#60778a]">Provider reference: <span className="admin-mono break-all">{item.emailProviderId}</span></p>
+                </div>
+                <time className="text-xs text-[#60778a]" dateTime={item.rejectedAt}>{when(item.rejectedAt)}</time>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-[#60778a]" role="status">No unmatched email replies in the last 30 days.</p>
+        )}
+      </section>
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filter by status">
         {STATUSES.map((s) => (
           <button key={s} type="button" aria-pressed={selected.includes(s)} onClick={() => toggle(s)} className={`admin-button ${selected.includes(s) ? 'admin-button-primary' : ''}`} data-testid={`filter-ticket-${s}`}>

@@ -6,6 +6,11 @@ export type SupportDiagnostics = {
   service: "available" | "unavailable" | "not-run";
 };
 
+export type SupportTicketEmailReplyRejectionReason =
+  | "unknown_reply_address"
+  | "unmatched_legacy_thread"
+  | "ambiguous_reply_address"
+  | "sender_mismatch";
 export const supportTicketsTable = pgTable("support_tickets", {
   id: uuid("id").defaultRandom().primaryKey(),
   reference: text("reference").notNull(),
@@ -83,3 +88,11 @@ export const supportTicketMessageAttachmentsTable = pgTable("support_ticket_mess
 export type SupportTicket = typeof supportTicketsTable.$inferSelect;
 export type SupportTicketMessage = typeof supportTicketMessagesTable.$inferSelect;
 export type SupportTicketMessageAttachment = typeof supportTicketMessageAttachmentsTable.$inferSelect;
+
+export const supportTicketEmailReplyRejectionsTable = pgTable("support_ticket_email_reply_rejections", {
+  emailProviderId: uuid("email_provider_id").primaryKey(),
+  reason: text("reason").$type<SupportTicketEmailReplyRejectionReason>().notNull(),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  rejectedAtIndex: index("support_ticket_email_reply_rejections_rejected_at_index").on(table.rejectedAt),
+}));

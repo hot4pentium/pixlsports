@@ -1,13 +1,15 @@
 import { htmlToText } from "html-to-text";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import { Webhook } from "svix";
 import { Router, type IRouter, type Request } from "express";
 import {
   db,
   supportTicketEmailReplyTokensTable,
+  supportTicketEmailReplyRejectionsTable,
   supportTicketMessagesTable,
   supportTicketMessageAttachmentsTable,
   supportTicketsTable,
+  type SupportTicketEmailReplyRejectionReason,
 } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {
@@ -28,6 +30,8 @@ const RESEND_EMAIL_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab
 const RESEND_ATTACHMENT_ID_PATTERN = RESEND_EMAIL_ID_PATTERN;
 const LEGACY_SUPPORT_ADDRESS = "support@pixlsports.com";
 const LEGACY_TICKET_SUBJECT = /^Update on Pixl Sports support ticket (PS-[A-Z0-9-]{6,32})$/i;
+
+const REJECTION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const SUPPORTED_ATTACHMENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -480,6 +484,19 @@ function extractEmailId(event: unknown): string | undefined {
   return typeof emailId === "string" && RESEND_EMAIL_ID_PATTERN.test(emailId) ? emailId : undefined;
 }
 
+async function recordRejectedReply(
+  emailProviderId: string,
+  reason: SupportTicketEmailReplyRejectionReason,
+): Promise<void> {
+  await db.delete(supportTicketEmailReplyRejectionsTable)
+    .where(lt(
+      supportTicketEmailReplyRejectionsTable.rejectedAt,
+      new Date(Date.now() - REJECTION_RETENTION_MS),
+    ));
+  await db.insert(supportTicketEmailReplyRejectionsTable)
+    .values({ emailProviderId, reason })
+    .onConflictDoNothing();
+}
 export function formatReceivedSupportEmailBody(email: ReceivedEmail): string | undefined {
   let body = typeof email.text === "string" ? email.text : "";
   if (!body.trim() && typeof email.html === "string") {
@@ -525,16 +542,19 @@ function sentEmailTicketReference(sentEmail: SentEmail, sender: string): string 
 async function findLegacyTicket(
   email: ReceivedEmail,
   findSentEmails: (messageIds: string[]) => Promise<unknown[]>,
-): Promise<{ ticketId: string; replyEmail: string } | undefined> {
+): Promise<{
+  match?: { ticketId: string; replyEmail: string };
+  ambiguous: boolean;
+}> {
   const sender = normalizeSupportSender(email.from as string);
   if (
     !getRecipients(email).some((recipient) => normalizeSupportSender(recipient) === LEGACY_SUPPORT_ADDRESS)
   ) {
-    return undefined;
+    return { ambiguous: false };
   }
 
   const threadMessageIds = getThreadMessageIds(email);
-  if (!threadMessageIds.length) return undefined;
+  if (!threadMessageIds.length) return { ambiguous: false };
 
   const storedMatches = await db.select({
     ticketId: supportTicketMessagesTable.ticketId,
@@ -560,6 +580,7 @@ async function findLegacyTicket(
     : [];
 
   const ticketMatches = new Map<string, { ticketId: string; replyEmail: string }>();
+  let ambiguous = false;
   for (const match of trustedStoredMatches) {
     ticketMatches.set(match.ticketId, { ticketId: match.ticketId, replyEmail: match.replyEmail });
   }
@@ -576,7 +597,10 @@ async function findLegacyTicket(
 
   for (const sentEmails of recordsByMessageId.values()) {
     // A repeated or conflicting provider record is ambiguous; do not choose one.
-    if (sentEmails.length !== 1) continue;
+    if (sentEmails.length !== 1) {
+      ambiguous = true;
+      continue;
+    }
     const reference = sentEmailTicketReference(sentEmails[0], sender);
     if (!reference) continue;
     const [ticket] = await db.select({
@@ -591,7 +615,8 @@ async function findLegacyTicket(
     if (ticket) ticketMatches.set(ticket.id, { ticketId: ticket.id, replyEmail: ticket.replyEmail });
   }
 
-  return ticketMatches.size === 1 ? [...ticketMatches.values()][0] : undefined;
+  if (ticketMatches.size > 1) return { ambiguous: true };
+  return { match: ticketMatches.size === 1 ? [...ticketMatches.values()][0] : undefined, ambiguous };
 }
 
 export function createSupportTicketEmailRepliesRouter(
@@ -714,6 +739,7 @@ export function createSupportTicketEmailRepliesRouter(
     );
 
     let match: { ticketId: string; replyEmail: string } | undefined;
+    let ambiguousLegacyThread = false;
     if (tokens.size === 1) {
       const replyToken = [...tokens][0];
       [match] = await db.select({
@@ -728,7 +754,9 @@ export function createSupportTicketEmailRepliesRouter(
         .limit(1);
     } else if (tokens.size === 0) {
       try {
-        match = await findLegacyTicket(email, findSentEmails);
+        const legacyMatch = await findLegacyTicket(email, findSentEmails);
+        match = legacyMatch.match;
+        ambiguousLegacyThread = legacyMatch.ambiguous;
       } catch (error) {
         req.log.error({ err: error }, "Unable to correlate legacy support email reply");
         res.status(503).json({ error: "Could not verify the support email reply thread." });
@@ -736,7 +764,25 @@ export function createSupportTicketEmailRepliesRouter(
       }
     }
 
-    if (!match || normalizeSupportSender(email.from) !== match.replyEmail.trim().toLowerCase()) {
+    const senderMatchesTicket = Boolean(
+      match && normalizeSupportSender(email.from) === match.replyEmail.trim().toLowerCase(),
+    );
+    if (!match || !senderMatchesTicket) {
+      const reason: SupportTicketEmailReplyRejectionReason = !match
+        ? tokens.size > 1 || ambiguousLegacyThread
+          ? "ambiguous_reply_address"
+          : tokens.size === 1
+            ? "unknown_reply_address"
+            : "unmatched_legacy_thread"
+        : "sender_mismatch";
+      try {
+        await recordRejectedReply(emailId, reason);
+      } catch {
+        req.log.error({ reason }, "Unable to record rejected support email reply");
+        res.status(503).json({ error: "Could not record the received support email." });
+        return;
+      }
+      req.log.warn({ reason }, "Support email reply could not be matched");
       res.json({ ok: true, ignored: true });
       return;
     }

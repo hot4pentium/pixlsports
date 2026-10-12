@@ -293,6 +293,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/support/email-rejections:
+    get:
+      operationId: listAdminSupportEmailReplyRejections
+      tags: [support-tickets]
+      summary: List recent support email replies that could not be matched
+      description: Returns privacy-minimized rejection metadata for the previous 30 days. Does not include sender addresses, message content, ticket details, or reply tokens.
+      responses:
+        "200":
+          description: Recent email reply rejection records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSupportEmailReplyRejectionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/support/tickets/{ticketId}:
     parameters:
       - $ref: "#/components/parameters/SupportTicketId"
@@ -2987,6 +3008,23 @@ components:
         totalCount: { type: integer, minimum: 0 }
         limit: { type: integer, minimum: 1, maximum: 100 }
         offset: { type: integer, minimum: 0 }
+    SupportEmailReplyRejection:
+      type: object
+      additionalProperties: false
+      required: [emailProviderId, reason, rejectedAt]
+      properties:
+        emailProviderId: { type: string, format: uuid, description: Opaque provider message identifier for staff investigation. }
+        reason: { type: string, enum: [unknown_reply_address, unmatched_legacy_thread, ambiguous_reply_address, sender_mismatch] }
+        rejectedAt: { type: string, format: date-time }
+    AdminSupportEmailReplyRejectionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportEmailReplyRejection"
     SupporterPhoto:
       type: object
       required: [url, contentType, size, cropX, cropY, cropZoom, updatedAt]
