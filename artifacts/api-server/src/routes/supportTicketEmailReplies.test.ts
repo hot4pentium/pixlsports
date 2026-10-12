@@ -22,12 +22,14 @@ import {
 
 const replyDomain = "inbound.example.resend.app";
 const replyEmail = "family@example.com";
+const legacySupportAddress = "support@pixlsports.com";
 const adminUserId = "support-reply-test-admin";
 
 function createTestServer(
   webhookSecret: string,
   fetchReceivedEmail: (emailId: string) => Promise<unknown>,
-  onAdminReply?: (message: { reference: string; replyEmail: string; body: string; replyTo?: string }) => Promise<void>,
+  onAdminReply?: (message: { reference: string; replyEmail: string; body: string; replyTo?: string }) => Promise<{ messageId?: string } | void>,
+  findSentEmailsByMessageIds?: (messageIds: string[]) => Promise<unknown[]>,
 ) {
   const app = express();
   app.use(express.json({
@@ -46,6 +48,7 @@ function createTestServer(
     webhookSecret,
     replyDomain,
     fetchReceivedEmail,
+    findSentEmailsByMessageIds,
   }));
   app.use("/api", createSupportTicketsRouter({
     supportReplyDomain: onAdminReply ? replyDomain : null,
@@ -120,6 +123,8 @@ test("signed customer replies are imported once into the matching ticket thread"
     from: replyEmail,
     to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
     text: "Thanks, I can reproduce this on my phone.",
+    authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
+    message_id: `<reply-${emailId}@example.com>`,
   }));
 
   try {
@@ -147,6 +152,7 @@ test("signed customer replies are imported once into the matching ticket thread"
     assert.equal(messages[0].senderClerkUserId, null);
     assert.equal(messages[0].body, "Thanks, I can reproduce this on my phone.");
     assert.equal(messages[0].emailProviderMessageId, emailId);
+    assert.equal(messages[0].emailMessageId, `reply-${emailId}@example.com`.toLowerCase());
 
     const storedTicket = await db.select().from(supportTicketsTable)
       .where(eq(supportTicketsTable.id, ticket.id));
@@ -183,12 +189,14 @@ test("email replies are ignored when the ticket token or sender does not match",
       from: "stranger@example.com",
       to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
       text: "This should not be imported.",
+      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
     }],
     [emailIds[1], {
       id: emailIds[1],
       from: replyEmail,
       to: [buildSupportTicketReplyAddress(unknownToken, replyDomain)],
       text: "This should not be imported either.",
+      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
     }],
   ]);
   const server = createTestServer(secret, async (emailId) => emails.get(emailId));
@@ -210,6 +218,186 @@ test("email replies are ignored when the ticket token or sender does not match",
     const messages = await db.select().from(supportTicketMessagesTable)
       .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
     assert.equal(messages.length, 0);
+  } finally {
+    await closeServer(server);
+    await deleteTicket(ticket.id);
+  }
+});
+
+test("legacy support-address replies match a unique authenticated sent-email thread", async () => {
+  const secret = `whsec_${randomBytes(32).toString("base64")}`;
+  const { ticket } = await createTicket();
+  const inboundEmailId = randomUUID();
+  const notificationMessageId = `<legacy-notification-${randomUUID()}@pixlsports.com>`;
+  const sentNotification = {
+    message_id: notificationMessageId,
+    from: "Pixl Sports Support <support@pixlsports.com>",
+    to: [replyEmail],
+    reply_to: [legacySupportAddress],
+    subject: `Update on Pixl Sports support ticket ${ticket.reference}`,
+  };
+  let lookedUpMessageIds: string[] = [];
+  const server = createTestServer(
+    secret,
+    async (requestedId) => ({
+      id: requestedId,
+      from: replyEmail,
+      to: [legacySupportAddress],
+      text: "Here is the information you asked for.",
+      headers: { "in-reply-to": notificationMessageId },
+      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
+      message_id: `<legacy-reply-${inboundEmailId}@example.com>`,
+    }),
+    undefined,
+    async (messageIds) => {
+      lookedUpMessageIds = messageIds;
+      return [sentNotification];
+    },
+  );
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const body = createWebhookPayload(inboundEmailId);
+    const headers = signWebhook(secret, body);
+    const post = () => fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
+      method: "POST",
+      headers,
+      body,
+    });
+
+    const first = await post();
+    assert.equal(first.status, 200);
+    assert.deepEqual(lookedUpMessageIds, [notificationMessageId.slice(1, -1).toLowerCase()]);
+    assert.deepEqual(await first.json(), { ok: true, imported: true });
+    const duplicate = await post();
+    assert.equal(duplicate.status, 200);
+    assert.deepEqual(await duplicate.json(), { ok: true, imported: false });
+
+    const messages = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0].body, "Here is the information you asked for.");
+    assert.equal(messages[0].emailProviderMessageId, inboundEmailId);
+    assert.equal(messages[0].emailMessageId, `legacy-reply-${inboundEmailId}@example.com`.toLowerCase());
+  } finally {
+    await closeServer(server);
+    await deleteTicket(ticket.id);
+  }
+});
+
+test("legacy thread evidence matching multiple tickets is rejected as ambiguous", async () => {
+  const secret = `whsec_${randomBytes(32).toString("base64")}`;
+  const [firstTicket, secondTicket] = await Promise.all([createTicket(), createTicket()]);
+  const inboundEmailId = randomUUID();
+  const firstMessageId = `<legacy-first-${randomUUID()}@pixlsports.com>`;
+  const secondMessageId = `<legacy-second-${randomUUID()}@pixlsports.com>`;
+  const server = createTestServer(
+    secret,
+    async (requestedId) => ({
+      id: requestedId,
+      from: replyEmail,
+      to: [legacySupportAddress],
+      text: "This reply includes conflicting thread history.",
+      headers: { references: `${firstMessageId} ${secondMessageId}` },
+      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
+    }),
+    undefined,
+    async () => [
+      {
+        message_id: firstMessageId,
+        from: "support@pixlsports.com",
+        to: [replyEmail],
+        reply_to: [legacySupportAddress],
+        subject: `Update on Pixl Sports support ticket ${firstTicket.ticket.reference}`,
+      },
+      {
+        message_id: secondMessageId,
+        from: "support@pixlsports.com",
+        to: [replyEmail],
+        reply_to: [legacySupportAddress],
+        subject: `Update on Pixl Sports support ticket ${secondTicket.ticket.reference}`,
+      },
+    ],
+  );
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const body = createWebhookPayload(inboundEmailId);
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
+      method: "POST",
+      headers: signWebhook(secret, body),
+      body,
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, ignored: true });
+    const imported = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.emailProviderMessageId, inboundEmailId));
+    assert.equal(imported.length, 0);
+  } finally {
+    await closeServer(server);
+    await deleteTicket(firstTicket.ticket.id);
+    await deleteTicket(secondTicket.ticket.id);
+  }
+});
+
+test("legacy replies are rejected without authenticated sender and exact thread evidence", async () => {
+  const secret = `whsec_${randomBytes(32).toString("base64")}`;
+  const { ticket } = await createTicket();
+  const notificationMessageId = `<old-${randomUUID()}@pixlsports.com>`;
+  const emailIds = [randomUUID(), randomUUID()];
+  const messages = new Map<string, unknown>([
+    [emailIds[0], {
+      id: emailIds[0],
+      from: replyEmail,
+      to: [legacySupportAddress],
+      text: "A subject and reference are not enough.",
+      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
+    }],
+    [emailIds[1], {
+      id: emailIds[1],
+      from: replyEmail,
+      to: [legacySupportAddress],
+      text: "A forged sender should not be imported.",
+      headers: { "in-reply-to": notificationMessageId },
+      authentication: { spf: "fail", dkim: "fail", dmarc: "fail" },
+    }],
+  ]);
+  let lookupCount = 0;
+  const server = createTestServer(
+    secret,
+    async (emailId) => messages.get(emailId),
+    undefined,
+    async () => {
+      lookupCount += 1;
+      return [{
+        message_id: notificationMessageId,
+        from: "support@pixlsports.com",
+        to: [replyEmail],
+        subject: `Update on Pixl Sports support ticket ${ticket.reference}`,
+      }];
+    },
+  );
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    for (const emailId of emailIds) {
+      const body = createWebhookPayload(emailId);
+      const response: globalThis.Response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
+        method: "POST",
+        headers: signWebhook(secret, body),
+        body,
+      });
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { ok: true, ignored: true });
+    }
+
+    assert.equal(lookupCount, 0);
+    const imported = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
+    assert.equal(imported.length, 0);
   } finally {
     await closeServer(server);
     await deleteTicket(ticket.id);
@@ -260,6 +448,7 @@ test("admin email replies use a unique reply address that is stored only as a ha
     async () => ({}),
     async (message) => {
       delivered = message;
+      return { messageId: `<sent-${ticket.id}@pixlsports.com>` };
     },
   );
 
@@ -285,6 +474,10 @@ test("admin email replies use a unique reply address that is stored only as a ha
     assert.equal(storedTokens.length, 1);
     assert.equal(storedTokens[0].tokenHash, hashSupportTicketReplyToken(token!));
     assert.notEqual(storedTokens[0].tokenHash, token);
+    const sentMessages = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
+    assert.equal(sentMessages.length, 1);
+    assert.equal(sentMessages[0].emailMessageId, `sent-${ticket.id}@pixlsports.com`);
   } finally {
     await closeServer(server);
     await deleteTicket(ticket.id);

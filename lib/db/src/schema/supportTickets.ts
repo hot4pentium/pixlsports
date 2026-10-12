@@ -46,10 +46,12 @@ export const supportTicketMessagesTable = pgTable("support_ticket_messages", {
   body: text("body").notNull(),
   deliveryStatus: text("delivery_status").notNull().default("not_applicable"),
   emailProviderMessageId: text("email_provider_message_id"),
+  emailMessageId: text("email_message_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   ticketCreatedIndex: index("support_ticket_messages_ticket_created_index").on(table.ticketId, table.createdAt),
   emailProviderMessageUnique: uniqueIndex("support_ticket_messages_email_provider_message_id_unique").on(table.emailProviderMessageId),
+  emailMessageUnique: uniqueIndex("support_ticket_messages_email_message_id_unique").on(table.emailMessageId),
 }));
 
 export type SupportTicket = typeof supportTicketsTable.$inferSelect;

@@ -47,3 +47,13 @@ export function getSupportTicketReplyToken(recipient: string, domain: string): s
 export function normalizeSupportSender(address: string): string {
   return normalizeEmailAddress(address);
 }
+
+export function normalizeSupportEmailMessageId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  const messageId = trimmed.startsWith("<") && trimmed.endsWith(">")
+    ? trimmed.slice(1, -1)
+    : trimmed;
+  if (!messageId || /[\s<>]/.test(messageId) || !messageId.includes("@")) return undefined;
+  return messageId.toLowerCase();
+}

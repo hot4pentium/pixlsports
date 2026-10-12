@@ -37,6 +37,7 @@ import { requireAdmin } from "../lib/adminAccess";
 import {
   buildSupportTicketReplyAddress,
   hashSupportTicketReplyToken,
+  normalizeSupportEmailMessageId,
   normalizeSupportReplyDomain,
 } from "../lib/supportTicketEmailReply";
 import {
@@ -47,9 +48,10 @@ import {
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 
 type TicketEmail = { reference: string; replyEmail: string; body: string; replyTo?: string };
+type TicketEmailSendResult = { messageId?: string };
 type TicketRecoveryEmail = { reference: string; replyEmail: string; code: string };
 type SupportTicketDependencies = {
-  sendReplyEmail?: (message: TicketEmail) => Promise<void>;
+  sendReplyEmail?: (message: TicketEmail) => Promise<TicketEmailSendResult | void>;
   sendRecoveryEmail?: (message: TicketRecoveryEmail) => Promise<void>;
   createReference?: () => string;
   supportReplyDomain?: string | null;
@@ -112,7 +114,7 @@ function canAccessTicket(ticket: SupportTicket, clerkUserId: string | null, toke
   return hashToken(token) === ticket.accessTokenHash;
 }
 
-async function sendReplyWithResend(message: TicketEmail): Promise<void> {
+async function sendReplyWithResend(message: TicketEmail): Promise<TicketEmailSendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
   const response = await fetch("https://api.resend.com/emails", {
@@ -136,6 +138,30 @@ async function sendReplyWithResend(message: TicketEmail): Promise<void> {
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`Resend rejected support reply with status ${response.status}`);
+  const sendResult = await response.json().catch(() => undefined) as { id?: unknown; message_id?: unknown } | undefined;
+  if (typeof sendResult?.message_id === "string") {
+    return { messageId: normalizeSupportEmailMessageId(sendResult.message_id) };
+  }
+  if (typeof sendResult?.id !== "string") return {};
+
+  // The send response has historically returned only the provider ID. Retrieve the
+  // sent record to capture its RFC Message-ID for reliable replies to this thread.
+  try {
+    const sentEmailResponse = await fetch(
+      `https://api.resend.com/emails/${encodeURIComponent(sendResult.id)}`,
+      {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!sentEmailResponse.ok) return {};
+    const sentEmail = await sentEmailResponse.json() as { message_id?: unknown };
+    return { messageId: normalizeSupportEmailMessageId(sentEmail.message_id) };
+  } catch {
+    // Delivery already succeeded. A missing thread ID must not turn it into a
+    // reported delivery failure; the legacy lookup can still find it in Resend.
+    return {};
+  }
 }
 
 async function sendRecoveryWithResend(message: TicketRecoveryEmail): Promise<void> {
@@ -503,6 +529,7 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
       return;
     }
     let deliveryStatus: "sent" | "failed" = "sent";
+    let emailMessageId: string | undefined;
     try {
       let replyTo: string | undefined;
       if (supportReplyDomain) {
@@ -513,12 +540,13 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
           tokenHash: hashSupportTicketReplyToken(replyToken),
         });
       }
-      await sendReplyEmail({
+      const sendResult = await sendReplyEmail({
         reference: ticket.reference,
         replyEmail: ticket.replyEmail,
         body: parsed.data.body.trim(),
         replyTo,
       });
+      emailMessageId = normalizeSupportEmailMessageId(sendResult?.messageId);
     } catch (error) {
       deliveryStatus = "failed";
       req.log.error({ err: error, ticketId: ticket.id }, "Support reply email delivery failed");
@@ -530,6 +558,7 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
         senderClerkUserId: getRequiredClerkUserId(res),
         body: parsed.data.body.trim(),
         deliveryStatus,
+        emailMessageId,
       }).returning();
       await tx.update(supportTicketsTable).set({ status: "active", updatedAt: new Date() })
         .where(eq(supportTicketsTable.id, ticket.id));
