@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { runGearQualifiedShareAction } from './soccer-gear-engagement';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -231,13 +232,18 @@ export function AthleteInviteManager() {
   };
   const copy = async () => {
     if (!existing) return;
-    await navigator.clipboard.writeText(fanCardUrl(existing.inviteToken));
-    setNotice('HYPE Card URL copied.');
+    const credited = await runGearQualifiedShareAction(() => navigator.clipboard.writeText(fanCardUrl(existing.inviteToken)), user?.id, existing.inviteToken);
+    setNotice(credited ? 'HYPE Card URL copied.' : 'HYPE Card URL copied. Gear reward will retry when you reconnect or open Soccer Gear.');
   };
   const share = async () => {
     if (!existing) return;
     const url = fanCardUrl(existing.inviteToken);
-    if (navigator.share) await navigator.share({ title: `${existing.athleteName} HYPE Card`, text: `Follow ${existing.athleteName}'s season.`, url });
+    if (navigator.share) {
+      try {
+        const credited = await runGearQualifiedShareAction(() => navigator.share({ title: `${existing.athleteName} HYPE Card`, text: `Follow ${existing.athleteName}'s season.`, url }), user?.id, existing.inviteToken);
+        setNotice(credited ? 'HYPE Card share completed.' : 'Share completed. Gear reward will retry when you reconnect or open Soccer Gear.');
+      } catch { setNotice('Share menu closed. No gear progress was added.'); }
+    }
     else await copy();
   };
   const toggleAvailability = async () => {
@@ -862,6 +868,7 @@ function OwnerHypePageManage({ invite, profile }: {
   invite: OwnedAthleteInvite;
   profile: Pick<UserProfile, 'athleteName' | 'jerseyNumber' | 'position'>;
 }) {
+  const { user } = useUser();
   const queryClient = useQueryClient();
   const updateInvite = useUpdateAthleteInvite();
   const deleteHypeCard = useDeleteHypeCardShare();
@@ -1021,8 +1028,8 @@ function OwnerHypePageManage({ invite, profile }: {
     }
   };
   const copyFanCard = async () => {
-    await navigator.clipboard.writeText(fanCardUrl(invite.inviteToken));
-    setNotice('HYPE Card URL copied.');
+    const credited = await runGearQualifiedShareAction(() => navigator.clipboard.writeText(fanCardUrl(invite.inviteToken)), user?.id, invite.inviteToken);
+    setNotice(credited ? 'HYPE Card URL copied.' : 'HYPE Card URL copied. Gear reward will retry when you reconnect or open Soccer Gear.');
   };
   const createFamilyTapQrCode = async () => {
     setFamilyTapNotice('');
@@ -1069,7 +1076,12 @@ function OwnerHypePageManage({ invite, profile }: {
   };
   const shareFanCard = async () => {
     const url = fanCardUrl(invite.inviteToken);
-    if (navigator.share) await navigator.share({ title: `${invite.athleteName} HYPE Card`, text: `Follow ${invite.athleteName}'s season.`, url });
+    if (navigator.share) {
+      try {
+        const credited = await runGearQualifiedShareAction(() => navigator.share({ title: `${invite.athleteName} HYPE Card`, text: `Follow ${invite.athleteName}'s season.`, url }), user?.id, invite.inviteToken);
+        setNotice(credited ? 'HYPE Card share completed.' : 'Share completed. Gear reward will retry when you reconnect or open Soccer Gear.');
+      } catch { setNotice('Share menu closed. No gear progress was added.'); }
+    }
     else await copyFanCard();
   };
   const toggleAvailability = async () => {

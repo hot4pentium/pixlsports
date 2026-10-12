@@ -164,3 +164,15 @@
 @media (prefers-reduced-motion: reduce) {
   .soccer-gear *, .soccer-gear *::before, .soccer-gear *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+.gear-option label.gear-option-title { display: flex; align-items: flex-start; gap: .6rem; text-transform: none; letter-spacing: .01em; font-size: .8rem; line-height: 1.35; }
+.gear-option label.gear-option-title input { width: 1.1rem; height: 1.1rem; flex: none; margin-top: .1rem; accent-color: var(--gear-blue); }
+.gear-option .gear-locked-note { flex-wrap: wrap; margin: .4rem 0 0; }
+.gear-option .gear-locked-note a { color: var(--gear-blue-deep); font-weight: 900; text-decoration: underline; }
+.gear-unlock-item small { font-weight: 600; opacity: .8; }
+
+.soccer-gear-public { width: 100%; max-width: 100%; min-width: 0; overflow: hidden; border: 1px solid #d9e2d8; border-radius: 1.1rem; padding: 1rem; color: var(--gear-ink, #122b48); background: #f4f7ef; font-family: 'DM Sans', sans-serif; }
+.soccer-gear-public h2, .soccer-gear-public h3 { margin: 0 0 .5rem; font-family: 'Barlow Condensed', sans-serif; font-weight: 800; text-transform: uppercase; overflow-wrap: anywhere; }
+.soccer-gear-public p { margin: .3rem 0; overflow-wrap: anywhere; }
+.soccer-gear-public .gear-player { position: relative; left: auto; bottom: auto; display: block; width: min(100%, 320px); height: auto; aspect-ratio: 360 / 500; margin: 0 auto; transform: none; }
+@media (max-width: 560px) { .soccer-gear-public { padding: .8rem; } }

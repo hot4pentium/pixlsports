@@ -8,11 +8,15 @@
 import type { SoccerGearLoadoutBackground } from './soccerGearLoadoutBackground';
 import type { SoccerGearLoadoutCleatsStyle } from './soccerGearLoadoutCleatsStyle';
 import type { SoccerGearLoadoutJerseyStyle } from './soccerGearLoadoutJerseyStyle';
+import type { SoccerGearLoadoutShinGuards } from './soccerGearLoadoutShinGuards';
 import type { SoccerGearLoadoutShortsStyle } from './soccerGearLoadoutShortsStyle';
 import type { SoccerGearLoadoutSocksStyle } from './soccerGearLoadoutSocksStyle';
 import type { SoccerGearLoadoutSweatband } from './soccerGearLoadoutSweatband';
 
 export interface SoccerGearLoadout {
+  shinGuards: SoccerGearLoadoutShinGuards;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  shinGuardColor: string;
   jerseyStyle: SoccerGearLoadoutJerseyStyle;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   jerseyColor: string;

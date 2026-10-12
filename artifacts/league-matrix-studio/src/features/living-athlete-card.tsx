@@ -32,6 +32,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { PlayerKit } from './soccer-gear-builder';
 import { LivingCardControls, type CardSide } from './living-card-controls';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 
@@ -833,6 +834,15 @@ export function LivingAthleteCardPage({
                </Dialog>
               </div>}
             <p className="living-card-instruction">Choose a side to turn the card.</p>
+            {invite.soccerGear && <details className="soccer-gear-public" data-testid="public-soccer-gear">
+              <summary data-testid="button-open-public-soccer-gear">See {displayAthleteName}'s soccer kit</summary>
+              <div className="soccer-gear">
+                <div className="gear-stage" style={{ minHeight: 430 }} aria-label="Shared soccer kit">
+                  <div className={`gear-pitch ${invite.soccerGear.background === 'goal' ? 'is-goal' : ''}`} />
+                  <PlayerKit athleteName={displayAthleteName} loadout={invite.soccerGear} />
+                </div>
+              </div>
+            </details>}
           </section>
 
         </div>

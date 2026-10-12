@@ -80,6 +80,7 @@ import { sports, getSportRule, normalizeTrackerData, type GameSession } from './
 import { getUserProfile, seedHypeCardFromSupporterProfile } from './supporter-dashboard-model';
 import { LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from './privacy-copy';
 import { PreviewArtwork } from './hype-card-preview';
+import { runGearQualifiedShareAction } from './soccer-gear-engagement';
 
 const DEFAULT_MEDIA_NAME = 'Game Day highlight';
 const cleanMediaName = (value: string | undefined | null) => {
@@ -2547,8 +2548,8 @@ export function HypeCardEditor() {
   const copyShareDestination = async (share: HypeCardShare, label: string) => {
     const url = shareUrlFor(share);
     try {
-      await navigator.clipboard.writeText(url);
-      setNotice(`${label} copied.`);
+      const credited = await runGearQualifiedShareAction(() => navigator.clipboard.writeText(url), user?.id, share.shareToken);
+      setNotice(`${label} copied.${credited ? '' : ' Gear reward will retry when you reconnect or open Soccer Gear.'}`);
     } catch {
       setNotice(`Select and copy the ${label.toLowerCase()} above.`);
     }
@@ -2558,15 +2559,15 @@ export function HypeCardEditor() {
     const url = shareUrlFor(share);
     try {
       if (navigator.share) {
-        await navigator.share({
+        const credited = await runGearQualifiedShareAction(() => navigator.share({
           title: share.title,
           text: statsOnly ? 'View the finalized Pixl Sports stats.' : 'Watch this Pixl Sports Hype Card.',
           url,
-        });
-        setNotice(statsOnly ? 'Stats link shared.' : 'Player page shared.');
+        }), user?.id, share.shareToken);
+        setNotice((statsOnly ? 'Stats link shared.' : 'Player page shared.') + (credited ? '' : ' Gear reward will retry when you reconnect or open Soccer Gear.'));
       } else {
-        await navigator.clipboard.writeText(url);
-        setNotice(statsOnly ? 'Stats link copied.' : 'Share link copied.');
+        const credited = await runGearQualifiedShareAction(() => navigator.clipboard.writeText(url), user?.id, share.shareToken);
+        setNotice((statsOnly ? 'Stats link copied.' : 'Share link copied.') + (credited ? '' : ' Gear reward will retry when you reconnect or open Soccer Gear.'));
       }
     } catch {
       setNotice(statsOnly ? 'Stats link is ready to copy.' : 'Player page is ready to copy.');

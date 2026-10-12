@@ -882,6 +882,7 @@ export const DeleteScheduleShareResponse = zod.void()
 /**
  * @summary Get the signed-in athlete's soccer gear and progress
  */
+export const getSoccerGearResponseLoadoutShinGuardColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getSoccerGearResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getSoccerGearResponseLoadoutShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getSoccerGearResponseLoadoutSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -894,7 +895,13 @@ export const getSoccerGearResponseProgressEventCardsCreatedMax = 10;
 
 
 export const GetSoccerGearResponse = zod.object({
+  "athleteId": zod.string().uuid().nullable(),
+  "canSave": zod.boolean().describe('True when the account has an athlete HYPE Card to bind this look to.'),
+  "athleteName": zod.string(),
+  "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
+  "shinGuards": zod.enum(['slim', 'shield']),
+  "shinGuardColor": zod.string().regex(getSoccerGearResponseLoadoutShinGuardColorRegExp),
   "jerseyStyle": zod.enum(['classic', 'stripes']),
   "jerseyColor": zod.string().regex(getSoccerGearResponseLoadoutJerseyColorRegExp),
   "shortsStyle": zod.enum(['classic', 'contrast']),
@@ -918,6 +925,7 @@ export const GetSoccerGearResponse = zod.object({
 /**
  * @summary Save the signed-in athlete's soccer gear look
  */
+export const saveSoccerGearBodyLoadoutShinGuardColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const saveSoccerGearBodyLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const saveSoccerGearBodyLoadoutShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const saveSoccerGearBodyLoadoutSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -925,7 +933,11 @@ export const saveSoccerGearBodyLoadoutCleatsColorRegExp = new RegExp('^#[0-9A-Fa
 
 
 export const SaveSoccerGearBody = zod.object({
+  "athleteId": zod.string().uuid(),
+  "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
+  "shinGuards": zod.enum(['slim', 'shield']),
+  "shinGuardColor": zod.string().regex(saveSoccerGearBodyLoadoutShinGuardColorRegExp),
   "jerseyStyle": zod.enum(['classic', 'stripes']),
   "jerseyColor": zod.string().regex(saveSoccerGearBodyLoadoutJerseyColorRegExp),
   "shortsStyle": zod.enum(['classic', 'contrast']),
@@ -939,6 +951,7 @@ export const SaveSoccerGearBody = zod.object({
 })
 })
 
+export const saveSoccerGearResponseLoadoutShinGuardColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const saveSoccerGearResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const saveSoccerGearResponseLoadoutShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const saveSoccerGearResponseLoadoutSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -951,7 +964,13 @@ export const saveSoccerGearResponseProgressEventCardsCreatedMax = 10;
 
 
 export const SaveSoccerGearResponse = zod.object({
+  "athleteId": zod.string().uuid().nullable(),
+  "canSave": zod.boolean().describe('True when the account has an athlete HYPE Card to bind this look to.'),
+  "athleteName": zod.string(),
+  "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
+  "shinGuards": zod.enum(['slim', 'shield']),
+  "shinGuardColor": zod.string().regex(saveSoccerGearResponseLoadoutShinGuardColorRegExp),
   "jerseyStyle": zod.enum(['classic', 'stripes']),
   "jerseyColor": zod.string().regex(saveSoccerGearResponseLoadoutJerseyColorRegExp),
   "shortsStyle": zod.enum(['classic', 'contrast']),
@@ -976,6 +995,7 @@ export const SaveSoccerGearResponse = zod.object({
  * Records at most one qualifying signed-in visit per account per UTC calendar week.
  * @summary Record one signed-in activity week
  */
+export const recordSoccerGearWeeklyLoginResponseLoadoutShinGuardColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const recordSoccerGearWeeklyLoginResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const recordSoccerGearWeeklyLoginResponseLoadoutShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const recordSoccerGearWeeklyLoginResponseLoadoutSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -988,7 +1008,13 @@ export const recordSoccerGearWeeklyLoginResponseProgressEventCardsCreatedMax = 1
 
 
 export const RecordSoccerGearWeeklyLoginResponse = zod.object({
+  "athleteId": zod.string().uuid().nullable(),
+  "canSave": zod.boolean().describe('True when the account has an athlete HYPE Card to bind this look to.'),
+  "athleteName": zod.string(),
+  "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
+  "shinGuards": zod.enum(['slim', 'shield']),
+  "shinGuardColor": zod.string().regex(recordSoccerGearWeeklyLoginResponseLoadoutShinGuardColorRegExp),
   "jerseyStyle": zod.enum(['classic', 'stripes']),
   "jerseyColor": zod.string().regex(recordSoccerGearWeeklyLoginResponseLoadoutJerseyColorRegExp),
   "shortsStyle": zod.enum(['classic', 'contrast']),
@@ -1022,6 +1048,7 @@ export const RecordSoccerGearShareActionBody = zod.object({
   "shareToken": zod.string().min(recordSoccerGearShareActionBodyShareTokenMin).max(recordSoccerGearShareActionBodyShareTokenMax)
 })
 
+export const recordSoccerGearShareActionResponseLoadoutShinGuardColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const recordSoccerGearShareActionResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const recordSoccerGearShareActionResponseLoadoutShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const recordSoccerGearShareActionResponseLoadoutSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -1034,7 +1061,13 @@ export const recordSoccerGearShareActionResponseProgressEventCardsCreatedMax = 1
 
 
 export const RecordSoccerGearShareActionResponse = zod.object({
+  "athleteId": zod.string().uuid().nullable(),
+  "canSave": zod.boolean().describe('True when the account has an athlete HYPE Card to bind this look to.'),
+  "athleteName": zod.string(),
+  "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
+  "shinGuards": zod.enum(['slim', 'shield']),
+  "shinGuardColor": zod.string().regex(recordSoccerGearShareActionResponseLoadoutShinGuardColorRegExp),
   "jerseyStyle": zod.enum(['classic', 'stripes']),
   "jerseyColor": zod.string().regex(recordSoccerGearShareActionResponseLoadoutJerseyColorRegExp),
   "shortsStyle": zod.enum(['classic', 'contrast']),
@@ -2962,6 +2995,11 @@ export const GetAthleteFanCardParams = zod.object({
 
 export const getAthleteFanCardResponseTimezoneMax = 100;
 
+export const getAthleteFanCardResponseSoccerGearOneShinGuardColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteFanCardResponseSoccerGearOneJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteFanCardResponseSoccerGearOneShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteFanCardResponseSoccerGearOneSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getAthleteFanCardResponseSoccerGearOneCleatsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneAthleteXMin = -0.25;
@@ -3076,6 +3114,20 @@ export const GetAthleteFanCardResponse = zod.object({
   "timezone": zod.string().max(getAthleteFanCardResponseTimezoneMax).nullable().describe('Validated IANA timezone, or null for a legacy invite without one.'),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "photoUrl": zod.string().nullable(),
+  "soccerGear": zod.union([zod.object({
+  "shinGuards": zod.enum(['slim', 'shield']),
+  "shinGuardColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneShinGuardColorRegExp),
+  "jerseyStyle": zod.enum(['classic', 'stripes']),
+  "jerseyColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneJerseyColorRegExp),
+  "shortsStyle": zod.enum(['classic', 'contrast']),
+  "shortsColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneShortsColorRegExp),
+  "socksStyle": zod.enum(['plain', 'stripe']),
+  "socksColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneSocksColorRegExp),
+  "cleatsStyle": zod.enum(['classic', 'speed']),
+  "cleatsColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneCleatsColorRegExp),
+  "sweatband": zod.enum(['none', 'head', 'wrist']),
+  "background": zod.enum(['field', 'goal'])
+}),zod.null()]).optional(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),

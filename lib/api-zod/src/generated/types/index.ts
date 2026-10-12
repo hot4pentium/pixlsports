@@ -228,6 +228,7 @@ export * from './soccerGearLoadoutBackground';
 export * from './soccerGearLoadoutCleatsStyle';
 export * from './soccerGearLoadoutInput';
 export * from './soccerGearLoadoutJerseyStyle';
+export * from './soccerGearLoadoutShinGuards';
 export * from './soccerGearLoadoutShortsStyle';
 export * from './soccerGearLoadoutSocksStyle';
 export * from './soccerGearLoadoutSweatband';

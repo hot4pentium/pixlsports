@@ -26,6 +26,7 @@ import {
   projectMediaTable,
   projectMediaUploadClaimsTable,
   scheduleSharesTable,
+  soccerGearActivityTable,
   statTrackerSharesTable,
   supporterActiveGamesTable,
   supporterPhotosTable,
@@ -196,6 +197,7 @@ async function purgeAccount(
       .where(eq(hypeCardShareUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(soccerGearActivityTable).where(eq(soccerGearActivityTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     if (inviteIds.length) {

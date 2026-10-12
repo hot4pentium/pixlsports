@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link } from 'wouter';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   Check,
@@ -16,6 +18,7 @@ import {
   Footprints,
 } from 'lucide-react';
 import {
+  getGetSoccerGearQueryKey,
   useGetSoccerGear,
   useSaveSoccerGear,
 } from '@workspace/api-client-react';
@@ -28,6 +31,14 @@ import './soccer-gear-builder.css';
 
 type GearKey = keyof SoccerGearLoadout;
 type GearValue = SoccerGearLoadout[GearKey];
+
+const lockReasons: Record<SoccerGearStateUnlockedGearItem, string> = {
+  'speed-cleats': 'Unlocks after 1 distinct active week',
+  'striped-socks': 'Unlocks after 2 distinct active weeks',
+  'contrast-shorts': 'Unlocks after 3 distinct active weeks',
+  'stripe-jersey': 'Unlocks after 10 unique saved Event Cards',
+  sweatbands: 'Unlocks after one completed HYPE share action',
+};
 
 const colorPalette = [
   { label: 'Pixl blue', color: '#2878F5' },
@@ -96,6 +107,16 @@ const gearGroups: Array<{
     colorKey: 'cleatsColor',
   },
   {
+    key: 'shinGuards',
+    title: 'Shin guards',
+    icon: ShieldCheck,
+    options: [
+      { value: 'slim', label: 'Slim' },
+      { value: 'shield', label: 'Shield' },
+    ],
+    colorKey: 'shinGuardColor',
+  },
+  {
     key: 'sweatband',
     title: 'Sweatband',
     icon: Sparkles,
@@ -107,7 +128,10 @@ const gearGroups: Array<{
   },
 ];
 
-function PlayerKit({ loadout, athleteName }: { loadout: SoccerGearLoadout; athleteName: string }) {
+export function PlayerKit({ loadout, athleteName }: { loadout: SoccerGearLoadout; athleteName: string }) {
+  const uid = useId().replace(/:/g, '');
+  const jerseyPat = `gear-jersey-stripes-${uid}`;
+  const sockPat = `gear-sock-stripes-${uid}`;
   const displayName = athleteName.trim() || 'Your player';
   const shortsColor = loadout.shortsStyle === 'contrast'
     ? loadout.jerseyColor
@@ -115,10 +139,10 @@ function PlayerKit({ loadout, athleteName }: { loadout: SoccerGearLoadout; athle
   return (
     <svg className="gear-player" viewBox="0 0 360 500" role="img" aria-label={`${displayName}'s soccer kit preview`}>
       <defs>
-        <pattern id="gear-jersey-stripes" width="28" height="28" patternUnits="userSpaceOnUse">
+        <pattern id={jerseyPat} width="28" height="28" patternUnits="userSpaceOnUse">
           <rect width="11" height="28" fill="rgba(255,255,255,.24)" />
         </pattern>
-        <pattern id="gear-sock-stripes" width="14" height="14" patternUnits="userSpaceOnUse">
+        <pattern id={sockPat} width="14" height="14" patternUnits="userSpaceOnUse">
           <rect width="14" height="5" fill="rgba(255,255,255,.55)" />
         </pattern>
       </defs>
@@ -128,7 +152,7 @@ function PlayerKit({ loadout, athleteName }: { loadout: SoccerGearLoadout; athle
         <path d="M165 79h31v22h-31z" fill="#B97956" />
         <path d="M118 102 151 91h58l35 13 38 68-34 19-16-30v115H127V161l-17 33-35-18 38-69Z" fill={loadout.jerseyColor} />
         {loadout.jerseyStyle === 'stripes' && (
-          <path d="M118 102 151 91h58l35 13 38 68-34 19-16-30v115H127V161l-17 33-35-18 38-69Z" fill="url(#gear-jersey-stripes)" />
+          <path d="M118 102 151 91h58l35 13 38 68-34 19-16-30v115H127V161l-17 33-35-18 38-69Z" fill={`url(#${jerseyPat})`} />
         )}
         <path d="M151 92c6 19 14 29 29 29s23-10 29-29" fill="none" stroke="rgba(255,255,255,.58)" strokeWidth="5" />
         <path d="M171 114h18v25h-18z" fill="rgba(255,255,255,.82)" />
@@ -141,10 +165,11 @@ function PlayerKit({ loadout, athleteName }: { loadout: SoccerGearLoadout; athle
         <path d="M132 350c10 4 27 7 48 7v80h-39l-13-65 4-22Zm48 7c21 0 38-3 48-7l4 22-13 65h-39v-80Z" fill={loadout.socksColor} />
         {loadout.socksStyle === 'stripe' && (
           <>
-            <path d="M132 350c10 4 27 7 48 7v80h-39l-13-65 4-22Zm48 7c21 0 38-3 48-7l4 22-13 65h-39v-80Z" fill="url(#gear-sock-stripes)" />
+            <path d="M132 350c10 4 27 7 48 7v80h-39l-13-65 4-22Zm48 7c21 0 38-3 48-7l4 22-13 65h-39v-80Z" fill={`url(#${sockPat})`} />
           </>
         )}
         <path d="M139 433h40v13c-9 7-26 10-50 5l-8-9c3-5 9-8 18-9Zm42 0h40c9 0 15 4 18 9l-8 9c-24 5-41 2-50-5v-13Z" fill={loadout.cleatsColor} />
+        <path d={loadout.shinGuards === 'shield' ? 'M138 372h36l-3 46h-26l-7-46Zm48 0h36l-7 46h-26l-3-46Z' : 'M146 374h18l-2 44h-12l-4-44Zm50 0h18l-4 44h-12l-2-44Z'} fill={loadout.shinGuardColor} stroke="rgba(255,255,255,.55)" strokeWidth="2" data-testid="layer-shin-guards" />
         {loadout.cleatsStyle === 'speed' && (
           <>
             <path d="m141 438 29 0-12 11h-20l-5-4 8-7Zm49 0h29l8 7-5 4h-20l-12-11Z" fill="rgba(255,255,255,.68)" />
@@ -177,20 +202,43 @@ function LoadingGear() {
   );
 }
 
-export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) {
-  const gearQuery = useGetSoccerGear();
+export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: { athleteName: string; accountId: string }) {
+  const queryClient = useQueryClient();
+  const gearKey = [...getGetSoccerGearQueryKey(), accountId] as const;
+  const gearQuery = useGetSoccerGear({ query: { queryKey: gearKey } });
+  const athleteName = gearQuery.data?.athleteName || fallbackName;
+  const [showOnHype, setShowOnHype] = useState(false);
+  const [notice, setNotice] = useState('');
   const saveGear = useSaveSoccerGear();
   const [loadout, setLoadout] = useState<SoccerGearLoadout | null>(null);
   const [savedLoadout, setSavedLoadout] = useState<SoccerGearLoadout | null>(null);
   const [saveError, setSaveError] = useState('');
   const [savedPulse, setSavedPulse] = useState(false);
 
+  const lastShowRef = useRef(false);
+  const draftRef = useRef({ loadout, savedLoadout, showOnHype });
+  draftRef.current = { loadout, savedLoadout, showOnHype };
+  const athleteIdRef = useRef<string | null | undefined>(undefined);
+  const serverData = gearQuery.data;
+
   useEffect(() => {
-    if (gearQuery.data && !loadout) {
-      setLoadout(gearQuery.data.loadout);
-      setSavedLoadout(gearQuery.data.loadout);
+    if (!serverData) return;
+    const d = draftRef.current;
+    const changedAthlete = athleteIdRef.current !== undefined && athleteIdRef.current !== serverData.athleteId;
+    const clean = !d.loadout || !d.savedLoadout
+      || (JSON.stringify(d.loadout) === JSON.stringify(d.savedLoadout) && d.showOnHype === lastShowRef.current);
+    athleteIdRef.current = serverData.athleteId;
+    if (changedAthlete || clean) {
+      setLoadout(serverData.loadout);
+      setShowOnHype(serverData.showOnHypeCard);
+      lastShowRef.current = serverData.showOnHypeCard;
     }
-  }, [gearQuery.data, loadout]);
+    setSavedLoadout(serverData.loadout);
+    if (changedAthlete) {
+      setNotice('The athlete on this account changed, so your draft was reset to their saved look.');
+      setSaveError('');
+    }
+  }, [serverData]);
 
   if (gearQuery.isLoading) return <LoadingGear />;
 
@@ -223,18 +271,27 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
 
   const state: SoccerGearState = gearQuery.data;
   const unlocked = new Set(state.unlockedGear);
-  const dirty = JSON.stringify(loadout) !== JSON.stringify(savedLoadout);
+  const canSave = state.canSave && Boolean(state.athleteId);
+  const busy = saveGear.isPending;
+  const dirty = JSON.stringify(loadout) !== JSON.stringify(savedLoadout) || showOnHype !== state.showOnHypeCard;
   const updateLoadout = (key: GearKey, value: GearValue) => {
+    if (busy) return;
     setLoadout((current) => current ? { ...current, [key]: value } as SoccerGearLoadout : current);
     setSaveError('');
     setSavedPulse(false);
   };
   const save = () => {
+    if (!state.athleteId) return;
     setSaveError('');
-    saveGear.mutate({ data: { loadout } }, {
+    saveGear.mutate({ data: { loadout, showOnHypeCard: showOnHype, athleteId: state.athleteId } }, {
       onSuccess: (nextState) => {
         setLoadout(nextState.loadout);
         setSavedLoadout(nextState.loadout);
+        setShowOnHype(nextState.showOnHypeCard);
+        lastShowRef.current = nextState.showOnHypeCard;
+        setNotice('');
+        queryClient.setQueryData(gearKey, nextState);
+        void queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === 'string' && q.queryKey[0].startsWith('/api/athlete-invites/') && q.queryKey[0].endsWith('/fan') });
         setSavedPulse(true);
       },
       onError: () => setSaveError('That save didn’t stick. Check your connection and try once more.'),
@@ -251,6 +308,7 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
             type="button"
             className="gear-color-choice"
             aria-label={`${item.label} color`}
+            disabled={busy}
             aria-pressed={currentColor.toLowerCase() === item.color.toLowerCase()}
             onClick={() => updateLoadout(colorKey, item.color as GearValue)}
             data-testid={`button-gear-color-${colorKey}-${item.label.toLowerCase().replaceAll(' ', '-')}`}
@@ -262,6 +320,7 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
         <label className="gear-color-field" data-testid={`control-custom-color-${colorKey}`}>
           <input
             type="color"
+            disabled={busy}
             value={/^#[0-9a-f]{6}$/i.test(currentColor) ? currentColor : '#2878F5'}
             aria-label={`Choose custom ${colorKey.replace('Color', '').toLowerCase()} color`}
             onChange={(event) => updateLoadout(colorKey, event.target.value.toUpperCase() as GearValue)}
@@ -284,8 +343,8 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
           className="gear-choice"
           aria-pressed={currentValue === option.value}
           aria-label={locked ? `${option.label}, locked` : option.label}
-          title={locked ? `${gearNames[option.unlock!]} is locked. Build progress through your Pixl Sports activity to unlock it.` : option.label}
-          disabled={locked}
+          title={locked ? lockReasons[option.unlock!] : option.label}
+          disabled={locked || busy}
           onClick={() => updateLoadout(key, option.value as GearValue)}
           data-testid={`button-gear-option-${key}-${option.value}`}
         >
@@ -336,8 +395,8 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
             <div className="gear-stage-footer">
               <div className="gear-stage-hint"><Sparkles size={14} /> Little details. Big player energy.</div>
               <div className="gear-background-toggle" role="group" aria-label="Preview background">
-                <button type="button" aria-pressed={loadout.background === 'field'} onClick={() => updateLoadout('background', 'field')} data-testid="button-background-field">Field</button>
-                <button type="button" aria-pressed={loadout.background === 'goal'} onClick={() => updateLoadout('background', 'goal')} data-testid="button-background-goal">Goal</button>
+                <button type="button" aria-pressed={loadout.background === 'field'} disabled={busy} onClick={() => updateLoadout('background', 'field')} data-testid="button-background-field">Field</button>
+                <button type="button" aria-pressed={loadout.background === 'goal'} disabled={busy} onClick={() => updateLoadout('background', 'goal')} data-testid="button-background-goal">Goal</button>
               </div>
             </div>
           </section>
@@ -365,13 +424,32 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
                     </div>
                     {group.options?.some((option) => option.unlock && !unlocked.has(option.unlock)) && (
                       <div className="gear-locked-note" data-testid={`text-locked-reason-${group.key}`}>
-                        <LockKeyhole size={11} /> Locked styles open as Pixl progress builds.
+                        <LockKeyhole size={11} /> {group.options.filter((o) => o.unlock && !unlocked.has(o.unlock)).map((o) => lockReasons[o.unlock!]).filter((v, i, a) => a.indexOf(v) === i).join('. ')}
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
+            <div className="gear-option" data-testid="group-show-on-hype-card">
+              <label className="gear-option-title" style={{ cursor: canSave ? 'pointer' : 'not-allowed' }}>
+                <input
+                  type="checkbox"
+                  checked={showOnHype}
+                  disabled={!canSave || busy}
+                  onChange={(e) => setShowOnHype(e.target.checked)}
+                  data-testid="checkbox-show-on-hype-card"
+                />
+                Show this saved look on the HYPE Card
+              </label>
+              {!canSave && (
+                <div className="gear-locked-note" data-testid="text-cannot-save">
+                  Saving needs a HYPE Card to attach this look to.{' '}
+                  <Link href="/studio/athlete-page" data-testid="link-athlete-page">Set up the Athlete Page</Link>
+                </div>
+              )}
+            </div>
+            {notice && <div className="gear-locked-note" role="status" data-testid="status-athlete-changed">{notice}</div>}
             <div className="gear-save-row">
               <div className="gear-save-message" role="status" data-testid="status-gear-save-message">
                 {saveError || (dirty ? 'Your edits are on the pitch, not saved yet.' : savedPulse ? 'A fresh look, safely in your locker.' : 'Your latest look is in the locker.')}
@@ -380,7 +458,7 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
                 className="gear-save-button"
                 type="button"
                 onClick={save}
-                disabled={!dirty || saveGear.isPending}
+                disabled={!canSave || !dirty || saveGear.isPending}
                 data-testid="button-save-soccer-gear"
               >
                 {saveGear.isPending ? <Cloud size={16} /> : <Save size={16} />}
@@ -423,14 +501,14 @@ export function SoccerGearBuilderPage({ athleteName }: { athleteName: string }) 
                 return (
                   <div className={`gear-unlock-item ${isUnlocked ? 'is-unlocked' : ''}`} key={item} data-testid={`status-unlock-${item}`}>
                     {isUnlocked ? <Check size={12} /> : <LockKeyhole size={12} />}
-                    {gearNames[item]}
+                    {gearNames[item]}{!isUnlocked && <small> · {lockReasons[item].replace("Unlocks after ", "")}</small>}
                     <span className="sr-only">{isUnlocked ? 'unlocked' : 'locked'}</span>
                   </div>
                 );
               })}
             </div>
             <p className="gear-unlock-footnote" data-testid="text-unlock-context">
-              Locked gear opens through Pixl Sports activity. Your progress above shows what you’ve built so far.
+              A week is Monday to Sunday UTC; no streak needed. Share progress counts a successful link copy or share-sheet completion, not verified receipt.
             </p>
           </div>
         </section>

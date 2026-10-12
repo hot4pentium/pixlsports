@@ -4590,6 +4590,10 @@ components:
           type: string
           enum: [baseball, basketball, football, soccer, volleyball]
         photoUrl: { type: ["string", "null"] }
+        soccerGear:
+          anyOf:
+            - $ref: "#/components/schemas/SoccerGearLoadout"
+            - type: "null"
         cutoutUrl: { type: ["string", "null"] }
         cardAppearance:
           anyOf:
@@ -4738,8 +4742,14 @@ components:
         objectPath: { type: string, minLength: 10 }
     SoccerGearLoadout:
       type: object
-      required: [jerseyStyle, jerseyColor, shortsStyle, shortsColor, socksStyle, socksColor, cleatsStyle, cleatsColor, sweatband, background]
+      required: [jerseyStyle, jerseyColor, shortsStyle, shortsColor, socksStyle, socksColor, shinGuards, shinGuardColor, cleatsStyle, cleatsColor, sweatband, background]
       properties:
+        shinGuards:
+          type: string
+          enum: [slim, shield]
+        shinGuardColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
         jerseyStyle:
           type: string
           enum: [classic, stripes]
@@ -4772,8 +4782,11 @@ components:
           enum: [field, goal]
     SoccerGearLoadoutInput:
       type: object
-      required: [loadout]
+      required: [loadout, showOnHypeCard, athleteId]
       properties:
+        athleteId: { type: string, format: uuid }
+        showOnHypeCard:
+          type: boolean
         loadout:
           $ref: "#/components/schemas/SoccerGearLoadout"
     SoccerGearShareActionInput:
@@ -4786,8 +4799,16 @@ components:
           maxLength: 120
     SoccerGearState:
       type: object
-      required: [loadout, progress, unlockedGear]
+      required: [loadout, progress, unlockedGear, canSave, athleteName, athleteId, showOnHypeCard]
       properties:
+        athleteId: { type: ["string", "null"], format: uuid }
+        canSave:
+          type: boolean
+          description: True when the account has an athlete HYPE Card to bind this look to.
+        athleteName:
+          type: string
+        showOnHypeCard:
+          type: boolean
         loadout:
           $ref: "#/components/schemas/SoccerGearLoadout"
         progress:

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto";
+import { publicSoccerGear } from "../lib/soccerGear";
 import { and, count, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -517,6 +518,7 @@ router.get("/athlete-invites/:inviteToken/fan", async (req, res): Promise<void> 
   void _liveGame;
   res.json(GetAthleteFanCardResponse.parse({
     ...card,
+    soccerGear: await publicSoccerGear(invite),
     timezone: isIanaTimezone(invite.timezone) ? invite.timezone : null,
     hypesEnabled: invite.hypesEnabled,
   }));

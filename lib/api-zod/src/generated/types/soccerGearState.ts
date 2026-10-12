@@ -10,6 +10,12 @@ import type { SoccerGearStateProgress } from './soccerGearStateProgress';
 import type { SoccerGearStateUnlockedGearItem } from './soccerGearStateUnlockedGearItem';
 
 export interface SoccerGearState {
+  /** @nullable */
+  athleteId: string | null;
+  /** True when the account has an athlete HYPE Card to bind this look to. */
+  canSave: boolean;
+  athleteName: string;
+  showOnHypeCard: boolean;
   loadout: SoccerGearLoadout;
   progress: SoccerGearStateProgress;
   unlockedGear: SoccerGearStateUnlockedGearItem[];

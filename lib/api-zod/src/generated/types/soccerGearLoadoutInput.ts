@@ -8,5 +8,7 @@
 import type { SoccerGearLoadout } from './soccerGearLoadout';
 
 export interface SoccerGearLoadoutInput {
+  athleteId: string;
+  showOnHypeCard: boolean;
   loadout: SoccerGearLoadout;
 }

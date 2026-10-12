@@ -31,6 +31,8 @@ import { Trash2 } from 'lucide-react';
 import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
+import { SoccerGearActivity } from '@/features/soccer-gear-activity';
+const SoccerGearBuilderPage = lazy(() => import('@/features/soccer-gear-builder').then((module) => ({ default: module.SoccerGearBuilderPage })));
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { AccountLoadingScreen } from '@/features/account-loading-screen';
 import { Toaster } from '@/components/ui/toaster';
@@ -1203,6 +1205,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
                 <Link href="/studio/athlete-page" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/athlete-page' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-athlete-page">
                   Athlete Page
                 </Link>
+                <Link href="/studio/soccer-gear" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest ${location === '/studio/soccer-gear' ? 'border-primary' : 'border-transparent'}`} data-testid="link-toolbar-soccer-gear">Soccer Gear</Link>
                 <Link href="/studio/profile" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/profile' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-profile">
                   My Athlete
                 </Link>
@@ -1288,6 +1291,20 @@ function Studio({ role }: { role: UserRole }) {
       </main>
     </StudioLayout>
   );
+}
+
+function SoccerGearStudioPage() {
+  const { user } = useUser();
+  const profile = supporterProfileFromUser(user);
+  return <StudioLayout><SoccerGearBuilderPage key={user?.id} accountId={user?.id ?? ''} athleteName={profile.athleteName} /></StudioLayout>;
+}
+
+function SoccerGearSignedInActivity() {
+  const { user } = useUser();
+  const [location] = useLocation();
+  return user && getUserRole(user) === 'fan' && location.startsWith('/studio') && location !== '/studio/setup'
+    ? <SoccerGearActivity key={user.id} accountId={user.id} />
+    : null;
 }
 
 function SupporterStudio() {
@@ -1382,6 +1399,9 @@ function SupporterStudio() {
             Offline mode — showing this device’s saved dashboard. Tracker, Calendar, and checklist work stays on this device until you reconnect. Sharing and uploads need a connection.
           </div>
         )}
+        <div className="mx-auto flex w-full max-w-[1400px] justify-end px-4 pt-3 sm:px-8">
+          <Link href="/studio/soccer-gear" className="rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-bold text-foreground" data-testid="link-hub-soccer-gear">Soccer Gear · Build your kit</Link>
+        </div>
         <SupporterDashboardView
           key={user?.id}
           profile={profile}
@@ -4103,6 +4123,7 @@ function ClerkProviderWithRoutes() {
             <ErrorBoundary resetKey={useLocation()[0]}>
               <Suspense fallback={<RouteLoadingState />}>
                 <SupporterSetupGate>
+                <SoccerGearSignedInActivity />
                 <Switch>
               <Route path="/" component={HomeRedirect} />
               <Route path="/season-pass-preview" component={SeasonPassPreview} />
@@ -4122,6 +4143,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
+              <Route path="/studio/soccer-gear"><ProtectedEditor kind="hype"><SoccerGearStudioPage /></ProtectedEditor></Route>
               <Route path="/studio/admin" component={() => <StudioLayout><AdminConsolePage /></StudioLayout>} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />
                <Route path="/studio/hype-card/:id?"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
