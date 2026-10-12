@@ -223,7 +223,7 @@ router.put(
         }
       }
       res.json(ConfirmAthleteInvitePhotoResponse.parse({
-        photoUrl: `/api/athlete-invites/${updated.publicToken}/photo/image?${isCutout ? "role=cutout&" : ""}v=${updated.updatedAt.getTime()}`,
+        photoUrl: `/api/athlete-invites/${updated.publicToken}/photo/image?${isCutout ? "role=cutout&" : ""}v=${athletePhotoRevision(sanitizedPath)}`,
         photoRevision: athletePhotoRevision(isCutout ? invite.photoObjectPath : sanitizedPath),
       }));
     } catch (error) {
@@ -277,8 +277,17 @@ router.get(
     const isOwner = Boolean(invite && getOptionalClerkUserId(req) === invite.ownerClerkUserId);
     const active = invite && !invite.paused
       && await isAccountActive(invite.ownerClerkUserId);
-    const objectPath = req.query.role === "cutout" ? invite?.cutoutObjectPath : invite?.photoObjectPath;
-    if (!objectPath || (!active && !isOwner)) { res.status(404).end(); return; }
+    const isCutout = req.query.role === "cutout";
+    const objectPath = isCutout ? invite?.cutoutObjectPath : invite?.photoObjectPath;
+    const requestedRevision = req.query.v;
+    const currentRevision = objectPath ? athletePhotoRevision(objectPath) : null;
+    const legacyRevision = invite?.updatedAt.getTime().toString();
+    if (!objectPath || (!active && !isOwner)
+      || typeof requestedRevision !== "string"
+      || (requestedRevision !== currentRevision && requestedRevision !== legacyRevision)) {
+      res.status(404).end();
+      return;
+    }
     try {
       const [contents] = await (await storage.getObjectEntityFile(objectPath)).download();
       res.type("image/webp").send(contents);

@@ -5,7 +5,13 @@ import express from "express";
 import sharp from "sharp";
 import { and, eq } from "drizzle-orm";
 import { GetAthleteFanCardResponse } from "@workspace/api-zod";
-import { accountAccessTable, athleteInviteFansTable, athleteInvitesTable, db } from "@workspace/db";
+import {
+  accountAccessTable,
+  athleteInviteFansTable,
+  athleteInvitePhotoUploadClaimsTable,
+  athleteInvitesTable,
+  db,
+} from "@workspace/db";
 import athleteInvitesRouter from "./routes/athleteInvites";
 import athleteInviteFeaturesRouter from "./routes/athleteInviteFeatures";
 import { ObjectNotFoundError, ObjectStorageService } from "./lib/objectStorage";
@@ -415,6 +421,185 @@ test("removed or paused athlete photos stop loading at their existing public URL
     }
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+  }
+});
+
+test("confirming HYPE Card photo replacements retires only superseded images", async (t) => {
+  const ownerId = `athlete-photo-replacement-owner-${randomUUID()}`;
+  const publicToken = randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "");
+  const originalPath = `/objects/athlete-invite-photos/${randomUUID()}.webp`;
+  const oldCutoutPath = `/objects/athlete-invite-photos/${randomUUID()}.webp`;
+  const createCutout = async (red: number, green: number, blue: number) => {
+    const pixels = Buffer.alloc(4 * 4 * 4);
+    for (let y = 1; y < 3; y += 1) {
+      for (let x = 1; x < 3; x += 1) {
+        const offset = (y * 4 + x) * 4;
+        pixels[offset] = red;
+        pixels[offset + 1] = green;
+        pixels[offset + 2] = blue;
+        pixels[offset + 3] = 255;
+      }
+    }
+    return sharp(pixels, { raw: { width: 4, height: 4, channels: 4 } }).webp().toBuffer();
+  };
+  const originalBytes = await sharp({ create: { width: 2, height: 2, channels: 4, background: "#d22" } })
+    .webp().toBuffer();
+  const oldCutoutBytes = await sharp({ create: { width: 2, height: 2, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .webp().toBuffer();
+  const objects = new Map<string, Buffer>([
+    [originalPath, originalBytes],
+    [oldCutoutPath, oldCutoutBytes],
+  ]);
+  let nextSavedPath: string | null = null;
+
+  await db.insert(accountAccessTable).values({
+    ownerClerkUserId: ownerId,
+    role: "fan",
+    accessMode: "full",
+    lifecycleStatus: "active",
+  });
+  const [invite] = await db.insert(athleteInvitesTable).values({
+    ownerClerkUserId: ownerId,
+    publicToken,
+    athleteName: "Jordan",
+    teamName: "City Hoops",
+    seasonName: "Current",
+    seasonEndsAt: new Date(Date.now() + 86_400_000),
+    sport: "basketball",
+    trackerProjectId: null,
+    scheduleProjectId: null,
+    showHypeCard: true,
+    showStats: true,
+    showSchedule: true,
+    paused: false,
+    photoObjectPath: originalPath,
+    cutoutObjectPath: oldCutoutPath,
+  }).returning();
+
+  t.mock.method(ObjectStorageService.prototype, "getObjectEntityFile", async (objectPath) => {
+    const bytes = objects.get(objectPath);
+    if (!bytes) throw new ObjectNotFoundError();
+    return { download: async () => [bytes] } as never;
+  });
+  t.mock.method(ObjectStorageService.prototype, "getObjectEntityMetadata", async (objectPath) => {
+    const bytes = objects.get(objectPath);
+    if (!bytes) throw new ObjectNotFoundError();
+    return { size: bytes.byteLength, contentType: "image/webp" };
+  });
+  t.mock.method(ObjectStorageService.prototype, "trySetObjectEntityAclPolicy", async (objectPath) => objectPath);
+  t.mock.method(ObjectStorageService.prototype, "savePrivateObjectEntity", async (contents) => {
+    nextSavedPath = `/objects/athlete-invite-photos/${randomUUID()}.webp`;
+    objects.set(nextSavedPath, contents);
+    return nextSavedPath;
+  });
+  t.mock.method(ObjectStorageService.prototype, "deleteObjectEntity", async (objectPath) => {
+    if (!objects.delete(objectPath)) throw new ObjectNotFoundError();
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const auth = () => ({ userId: req.header("x-test-user") || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteInviteFeaturesRouter);
+  app.use("/api", athleteInvitesRouter);
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const origin = `http://127.0.0.1:${address.port}`;
+  const inviteUrl = `${origin}/api/athlete-invites/${publicToken}`;
+  const cardUrl = `${inviteUrl}/fan`;
+  const ownerHeaders = { "x-test-user": ownerId };
+
+  const readCard = async () => GetAthleteFanCardResponse.parse(await (await fetch(cardUrl)).json());
+  const uploadAndConfirm = async (contents: Buffer, mediaRole: "photo" | "cutout", sourcePhotoRevision?: string) => {
+    const uploadPath = `/objects/athlete-invite-photos/upload-${randomUUID()}.webp`;
+    objects.set(uploadPath, contents);
+    await db.insert(athleteInvitePhotoUploadClaimsTable).values({
+      inviteId: invite.id,
+      ownerClerkUserId: ownerId,
+      objectPath: uploadPath,
+      contentType: "image/webp",
+      size: contents.byteLength,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const response = await fetch(`${inviteUrl}/photo`, {
+      method: "PUT",
+      headers: { ...ownerHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        objectPath: uploadPath,
+        mediaRole,
+        ...(sourcePhotoRevision ? { sourcePhotoRevision } : {}),
+      }),
+    });
+    const body = await response.json() as { photoUrl?: string; photoRevision?: string; error?: string };
+    assert.equal(response.status, 200, `a valid upload claim can be confirmed: ${body.error ?? "no API error detail"}`);
+    assert.equal(objects.has(uploadPath), false, "the temporary uploaded object is retired after confirmation");
+    return body as { photoUrl: string; photoRevision: string };
+  };
+
+  try {
+    const initialCard = await readCard();
+    assert.ok(initialCard.photoUrl);
+    assert.ok(initialCard.cutoutUrl);
+    const previousPhotoUrl = new URL(initialCard.photoUrl, origin).toString();
+    const previousCutoutUrl = new URL(initialCard.cutoutUrl, origin).toString();
+
+    const newOriginalSource = await sharp({
+      create: { width: 2, height: 2, channels: 4, background: "#2d2" },
+    }).webp().toBuffer();
+    const newOriginal = await uploadAndConfirm(newOriginalSource, "photo");
+    assert.equal((await fetch(previousPhotoUrl)).status, 404, "the old original URL is invalid after photo replacement");
+    assert.equal((await fetch(previousCutoutUrl)).status, 404, "the old cutout URL is invalid after photo replacement");
+    assert.equal(objects.has(originalPath), false, "the replaced original object is deleted");
+    assert.equal(objects.has(oldCutoutPath), false, "the cutout derived from the replaced original is deleted");
+    const replacementCard = await readCard();
+    assert.ok(replacementCard.photoUrl);
+    assert.equal(replacementCard.cutoutUrl, null, "replacing an original never leaves a stale cutout attached");
+    assert.equal((await fetch(new URL(replacementCard.photoUrl, origin))).status, 200);
+    assert.equal(
+      Buffer.from(await (await fetch(new URL(replacementCard.photoUrl, origin))).arrayBuffer()).toString("base64"),
+      objects.get(nextSavedPath!)!.toString("base64"),
+      "the replacement original is served at its current versioned URL",
+    );
+    const currentOriginalUrl = new URL(replacementCard.photoUrl, origin).toString();
+    const currentOriginalPath = nextSavedPath!;
+
+    const firstCutoutSource = await createCutout(30, 100, 220);
+    await uploadAndConfirm(firstCutoutSource, "cutout", newOriginal.photoRevision);
+    const cardWithCutout = await readCard();
+    assert.ok(cardWithCutout.photoUrl);
+    assert.ok(cardWithCutout.cutoutUrl);
+    const oldCutoutUrl = new URL(cardWithCutout.cutoutUrl, origin).toString();
+    const oldCutoutCurrentPath = nextSavedPath!;
+
+    const secondCutoutSource = await createCutout(220, 80, 30);
+    await uploadAndConfirm(secondCutoutSource, "cutout", newOriginal.photoRevision);
+    const cardWithReplacementCutout = await readCard();
+    assert.ok(cardWithReplacementCutout.cutoutUrl);
+    assert.equal((await fetch(oldCutoutUrl)).status, 404, "the replaced cutout URL is invalid");
+    assert.equal(objects.has(oldCutoutCurrentPath), false, "only the superseded cutout object is deleted");
+    assert.equal(objects.has(currentOriginalPath), true, "replacing a cutout preserves the current original object");
+    assert.equal(cardWithReplacementCutout.photoUrl, cardWithCutout.photoUrl,
+      "the unchanged original retains its versioned URL when only the cutout changes");
+    const preservedOriginalResponse = await fetch(currentOriginalUrl);
+    assert.equal(preservedOriginalResponse.status, 200, "the current original remains available at its existing URL");
+    assert.deepEqual(
+      Buffer.from(await preservedOriginalResponse.arrayBuffer()),
+      objects.get(currentOriginalPath),
+    );
+    assert.equal((await fetch(new URL(cardWithReplacementCutout.cutoutUrl, origin))).status, 200,
+      "the replacement cutout is served at its current versioned URL");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(athleteInvitePhotoUploadClaimsTable)
+      .where(eq(athleteInvitePhotoUploadClaimsTable.inviteId, invite.id));
     await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }

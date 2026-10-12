@@ -359,10 +359,10 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
     sport: invite.sport,
     showEvents: invite.showEvents,
     photoUrl: invite.photoObjectPath && (!invite.paused || isOwner)
-      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${athletePhotoRevision(invite.photoObjectPath)}`
       : null,
     cutoutUrl: invite.cutoutObjectPath && (!invite.paused || isOwner)
-      ? `/api/athlete-invites/${invite.publicToken}/photo/image?role=cutout&v=${invite.updatedAt.getTime()}`
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?role=cutout&v=${athletePhotoRevision(invite.cutoutObjectPath)}`
       : null,
     cardAppearance: invite.cardAppearance ?? null,
     hypeCard: latestImage ? {
@@ -414,10 +414,10 @@ async function ownedInviteResponse(invite: InviteRow) {
     paused: invite.paused,
     liveTrackerShareToken: invite.liveTrackerShareToken,
     photoUrl: invite.photoObjectPath
-      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${athletePhotoRevision(invite.photoObjectPath)}`
       : null,
     cutoutUrl: invite.cutoutObjectPath
-      ? `/api/athlete-invites/${invite.publicToken}/photo/image?role=cutout&v=${invite.updatedAt.getTime()}`
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?role=cutout&v=${athletePhotoRevision(invite.cutoutObjectPath)}`
       : null,
     photoRevision: athletePhotoRevision(invite.photoObjectPath),
     cardAppearance: invite.cardAppearance ?? null,

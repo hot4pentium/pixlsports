@@ -107,6 +107,7 @@
 - [Premium avatar spillover](premium-avatar-spillover.md) — let cutouts escape both the SVG viewport and every hidden-overflow live wrapper; enlarge PNG viewBoxes separately.
 - [Hub card identity](hub-card-identity.md) — the Hub must not use a sole saved card as proof it belongs to the currently selected athlete.
 - [Premium nameplate font independence](premium-nameplate-font-independence.md) — name fitting must remain bounded when standalone SVG/PNG exports substitute fonts.
+- [Athlete photo URL revisions](athlete-photo-url-revisions.md) — version original and cutout URLs by their own object identity so replacing one does not invalidate or reveal the other.
 - [Themed premium photo frames](themed-premium-photo-frames.md) — Spotlight and Breakout share Gallery’s strong framed-photo structure while theming the shell around it.
 - [App-only identity blocks](admin-identity-blocks.md) — block only unprovisioned identities within Pixl Sports; preserve Clerk identity, app data, and public shares.
 - [Standalone Clerk browser fixtures](standalone-clerk-browser-fixtures.md) — test-owned Vite servers need a harmless Clerk publishable-key fallback or React may stay unmounted.
