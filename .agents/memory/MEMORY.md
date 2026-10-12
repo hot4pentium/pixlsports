@@ -23,6 +23,7 @@
 - [Browser route coverage](browser-route-coverage.md) — cross-route browser checks should use stable test IDs and tolerate presentation-copy casing.
 - [Shared live browser checks](shared-live-browser-checks.md) — keep a spectator page open across owner updates to verify shared refresh, not just a fresh fetch.
 - [Chromium browser diagnostics](chromium-browser-diagnostics.md) — CDP release checks should preserve bounded process output and page lifecycle failures through shared monitors.
+- [Background-tab polling tests](background-tab-polling-tests.md) — activate CDP browser targets before expecting normal query polling; inactive tabs can throttle timers.
 - [Vite artifact entrypoints](vite-artifact-entrypoints.md) — use a relative HTML module entry so root and subpath production builds resolve the same current app.
 - [OpenAPI path nesting](openapi-path-nesting.md) — successful codegen does not guarantee operations stayed under the intended route.
 - [Landing responsive browser checks](landing-responsive-browser-checks.md) — distinguish page containment from intentional internal ticker scrolling across phone and desktop widths.

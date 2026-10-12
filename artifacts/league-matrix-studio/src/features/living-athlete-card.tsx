@@ -274,10 +274,10 @@ export function LivingAthleteCardPage({
   if (isError || !invite || !inviteToken) {
     return (
       <Shell>
-        <main className="living-card-state" role="alert">
+        <main className="living-card-state" role="alert" data-testid="state-living-card-unavailable">
           <span className="living-card-eyebrow">The card is off the field</span>
-          <h1>This card isn't available right now.</h1>
-          <p>The link may have changed or the athlete's page may be paused. Check with the person who shared it, or try again.</p>
+          <h1>This HYPE Card is paused or unavailable.</h1>
+          <p>The link may have changed, or the owner may have paused the athlete's page. Check with the person who shared it, or try again.</p>
           {inviteToken && <button type="button" onClick={() => void refetch()} data-testid="button-retry-living-card">Try again</button>}
         </main>
       </Shell>

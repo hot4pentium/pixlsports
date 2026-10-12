@@ -15,6 +15,8 @@ const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const chromiumPath = process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium';
 const token = 'owner-boundary-test-token';
 const publicShoutoutId = '123e4567-e89b-42d3-a456-426614174000';
+const pausedPagePhoto = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=#photo';
+const pausedPageCutout = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=#cutout';
 
 async function listen(server: Server) {
   return new Promise<number>((resolvePort, reject) => {
@@ -152,6 +154,7 @@ test('player-page owner tools remain private across account changes and pause', 
     timezone: 'America/New_York',
     sport: 'basketball',
     photoUrl: null,
+    cutoutUrl: null,
     hypeCard: null,
     videos: [],
     stats: null,
@@ -950,9 +953,33 @@ test('player-page owner tools remain private across account changes and pause', 
       }
     }
 
+    fanCard.photoUrl = pausedPagePhoto;
+    fanCard.cutoutUrl = pausedPageCutout;
+    fanCard.cardAppearance = defaultCardAppearance('classic');
+    const openPhotoCard = await open('visitor', 'fan');
+    await waitFor(connection, openPhotoCard, `document.querySelector('[data-testid="img-living-card-athlete"]')?.getAttribute('src') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
+
+    fanCard.cardAppearance = defaultCardAppearance('breakout');
+    const openCutoutCard = await open('visitor', 'fan');
+    await waitFor(connection, openCutoutCard, `document.querySelector('[data-testid="img-living-card-athlete"] [data-photo-placement="cutout"] image')?.getAttribute('href') === ${JSON.stringify(pausedPageCutout)}`, Boolean, 12_000);
+
     await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Pause Hype Page')).click()", ownerManage);
     await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('resume hype page'))", Boolean, 12_000);
     assert.equal(paused, true);
+    for (const session of [openPhotoCard, openCutoutCard]) {
+      const targetId = pages.find((page) => page.sessionId === session)?.targetId;
+      assert.ok(targetId, 'the paused-card observer page remains open');
+      await connection.send('Target.activateTarget', { targetId });
+      await waitFor(
+        connection,
+        session,
+        "Boolean(document.querySelector('[data-testid=\"state-living-card-unavailable\"]') && document.querySelector('main[data-testid=\"state-living-card-unavailable\"] h1')?.textContent.toLowerCase().includes('paused or unavailable'))",
+        Boolean,
+        15_000,
+      );
+      assert.equal(await connection.evaluate(element('[data-testid="img-living-card-athlete"]'), session), false, 'the previously open HYPE Card artwork is removed after the paused-card refresh');
+      assert.equal(await connection.evaluate(`document.body?.innerHTML.includes(${JSON.stringify(pausedPagePhoto)}) || document.body?.innerHTML.includes(${JSON.stringify(pausedPageCutout)})`, session), false, 'the unavailable page no longer contains stale photo or cutout data');
+    }
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
     assert.equal(await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Finalized stats\"]')?.getAttribute('aria-checked') || ''", ownerManage), changedSetting);
     const pausedOwner = await open('owner', 'public');
