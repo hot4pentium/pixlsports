@@ -11,6 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { removeAthleteBackground } from './athlete-background-removal';
 import { saveAthleteCutout } from './athlete-cutout-upload';
+import { HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE } from './privacy-copy';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -141,6 +142,10 @@ export function FanCardPhotoManager({ inviteToken, photoUrl, cutoutUrl, photoRev
     <section className="mt-6 border-t border-white/15 pt-6" aria-label="HYPE Card photo" data-testid="section-fan-card-photo">
       <h3 className="font-display text-2xl uppercase">Athlete photo</h3>
       <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose a photo of the athlete for the front of their HYPE Card. Only this photo is used; your account picture is never shown. Photos are resized and stripped of device metadata before posting.</p>
+      <div role="note" aria-label="Public photo visibility" className="mt-4 max-w-2xl border border-amber-200/40 bg-amber-100/10 p-4 text-sm leading-relaxed text-white" data-testid="notice-fan-card-photo-visibility">
+        <p className="font-bold uppercase tracking-wide text-amber-100">Before you upload</p>
+        <p className="mt-1">{HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE}</p>
+      </div>
       <div className="mt-4 flex flex-wrap items-end gap-4">
         {photoUrl ? (
           <img src={photoUrl} alt="Current HYPE Card athlete photo" className="h-24 w-24 border border-white/20 object-cover" data-testid="img-owner-fan-card-photo" />
