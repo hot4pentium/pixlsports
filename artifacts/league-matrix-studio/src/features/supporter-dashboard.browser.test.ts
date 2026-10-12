@@ -5148,6 +5148,46 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       document.querySelector('[data-testid="button-${variant}-copy-hype-card-link"]').click()`);
       await wait(`document.querySelector('[data-testid="text-${variant}-hype-card-copy-status"]')?.textContent === 'Link copied.'`);
       assert.equal(await evaluate<string>('window.__copiedHypeCardUrl'), expectedUrl);
+      await evaluate(`(() => {
+        window.__hypeClipboardFallback = { calls: 0, selected: false, command: '', succeeds: true };
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: { writeText: async () => { throw new Error('Clipboard permission denied'); } },
+        });
+        Object.defineProperty(document, 'execCommand', {
+          configurable: true,
+          value: (command) => {
+            const input = document.querySelector('[data-testid="input-${variant}-hype-card-share-link"]');
+            window.__hypeClipboardFallback.calls += 1;
+            window.__hypeClipboardFallback.command = command;
+            window.__hypeClipboardFallback.selected = input instanceof HTMLInputElement
+              && input.selectionStart === 0
+              && input.selectionEnd === input.value.length;
+            return command === 'copy' && window.__hypeClipboardFallback.selected
+              && window.__hypeClipboardFallback.succeeds;
+          },
+        });
+        document.querySelector('[data-testid="button-${variant}-copy-hype-card-link"]').click();
+      })()`);
+      await wait(`document.querySelector('[data-testid="text-${variant}-hype-card-copy-status"]')?.textContent === 'Link copied.'`);
+      assert.deepEqual(await evaluate('window.__hypeClipboardFallback'), {
+        calls: 1,
+        selected: true,
+        command: 'copy',
+        succeeds: true,
+      }, 'a denied Clipboard API write should fall back to copying the selected link');
+      await evaluate(`(() => {
+        window.__hypeClipboardFallback.calls = 0;
+        window.__hypeClipboardFallback.succeeds = false;
+        document.querySelector('[data-testid="button-${variant}-copy-hype-card-link"]').click();
+      })()`);
+      await wait(`document.querySelector('[data-testid="text-${variant}-hype-card-copy-status"]')?.textContent === 'Could not copy automatically. The link is selected so you can copy it.'`);
+      assert.deepEqual(await evaluate('window.__hypeClipboardFallback'), {
+        calls: 1,
+        selected: true,
+        command: 'copy',
+        succeeds: false,
+      }, 'if the legacy copy command also fails, the link should remain selected for manual copying');
       await connection.send('Input.dispatchKeyEvent', {
         type: 'keyDown',
         key: 'Escape',

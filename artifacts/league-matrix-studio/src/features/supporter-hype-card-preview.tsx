@@ -90,9 +90,24 @@ export function SupporterHypeCardPreview({
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(shareUrl);
       setCopyMessage('Link copied.');
+      return;
     } catch {
-      shareLinkInputRef.current?.focus();
-      shareLinkInputRef.current?.select();
+      const input = shareLinkInputRef.current;
+      if (!input) {
+        setCopyMessage('Could not copy automatically.');
+        return;
+      }
+
+      input.focus();
+      input.select();
+      try {
+        if (document.execCommand('copy')) {
+          setCopyMessage('Link copied.');
+          return;
+        }
+      } catch {
+        // Keep the link selected so the user can copy it manually.
+      }
       setCopyMessage('Could not copy automatically. The link is selected so you can copy it.');
     }
   };
