@@ -28,6 +28,8 @@ tags:
     description: Live stat tracker spectator sharing operations
   - name: hype-card-shares
     description: Interactive Hype Card sharing operations
+  - name: athlete-gear
+    description: Private athlete soccer gear and engagement progress
   - name: athlete-invites
     description: Durable Athlete Hype Page sharing operations
   - name: athlete-invite-fans
@@ -478,6 +480,81 @@ paths:
       responses:
         "204":
           description: Public schedule share revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-gear/soccer:
+    get:
+      operationId: getSoccerGear
+      tags: [athlete-gear]
+      summary: Get the signed-in athlete's soccer gear and progress
+      responses:
+        "200":
+          description: Saved soccer gear and unlock progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: saveSoccerGear
+      tags: [athlete-gear]
+      summary: Save the signed-in athlete's soccer gear look
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoccerGearLoadoutInput"
+      responses:
+        "200":
+          description: Updated soccer gear and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /athlete-gear/soccer/activity:
+    post:
+      operationId: recordSoccerGearWeeklyLogin
+      tags: [athlete-gear]
+      summary: Record one signed-in activity week
+      description: Records at most one qualifying signed-in visit per account per UTC calendar week.
+      responses:
+        "200":
+          description: Current soccer gear and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /athlete-gear/soccer/share-action:
+    post:
+      operationId: recordSoccerGearShareAction
+      tags: [athlete-gear]
+      summary: Record a completed HYPE Card share action
+      description: Counts one successful share action for an active HYPE Card owned by the signed-in account. It does not identify or verify a recipient.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoccerGearShareActionInput"
+      responses:
+        "200":
+          description: Current soccer gear and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -4659,3 +4736,75 @@ components:
       required: [objectPath]
       properties:
         objectPath: { type: string, minLength: 10 }
+    SoccerGearLoadout:
+      type: object
+      required: [jerseyStyle, jerseyColor, shortsStyle, shortsColor, socksStyle, socksColor, cleatsStyle, cleatsColor, sweatband, background]
+      properties:
+        jerseyStyle:
+          type: string
+          enum: [classic, stripes]
+        jerseyColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        shortsStyle:
+          type: string
+          enum: [classic, contrast]
+        shortsColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        socksStyle:
+          type: string
+          enum: [plain, stripe]
+        socksColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        cleatsStyle:
+          type: string
+          enum: [classic, speed]
+        cleatsColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        sweatband:
+          type: string
+          enum: [none, head, wrist]
+        background:
+          type: string
+          enum: [field, goal]
+    SoccerGearLoadoutInput:
+      type: object
+      required: [loadout]
+      properties:
+        loadout:
+          $ref: "#/components/schemas/SoccerGearLoadout"
+    SoccerGearShareActionInput:
+      type: object
+      required: [shareToken]
+      properties:
+        shareToken:
+          type: string
+          minLength: 20
+          maxLength: 120
+    SoccerGearState:
+      type: object
+      required: [loadout, progress, unlockedGear]
+      properties:
+        loadout:
+          $ref: "#/components/schemas/SoccerGearLoadout"
+        progress:
+          type: object
+          required: [activeWeeks, eventCardsCreated, hypeCardShared]
+          properties:
+            activeWeeks:
+              type: integer
+              minimum: 0
+            eventCardsCreated:
+              type: integer
+              minimum: 0
+              maximum: 10
+            hypeCardShared:
+              type: boolean
+        unlockedGear:
+          type: array
+          items:
+            type: string
+            enum: [speed-cleats, striped-socks, contrast-shorts, stripe-jersey, sweatbands]

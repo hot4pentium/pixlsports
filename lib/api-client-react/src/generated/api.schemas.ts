@@ -307,6 +307,26 @@ export interface AdminSupportTicketList {
 }
 
 export type SupportEmailReplyRejectionReason = typeof SupportEmailReplyRejectionReason[keyof typeof SupportEmailReplyRejectionReason];
+
+
+export const SupportEmailReplyRejectionReason = {
+  unknown_reply_address: 'unknown_reply_address',
+  unmatched_legacy_thread: 'unmatched_legacy_thread',
+  ambiguous_reply_address: 'ambiguous_reply_address',
+  sender_mismatch: 'sender_mismatch',
+} as const;
+
+export interface SupportEmailReplyRejection {
+  /** Opaque provider message identifier for staff investigation. */
+  emailProviderId: string;
+  reason: SupportEmailReplyRejectionReason;
+  rejectedAt: string;
+}
+
+export interface AdminSupportEmailReplyRejectionList {
+  items: SupportEmailReplyRejection[];
+}
+
 export interface SupporterPhoto {
   url: string;
   contentType: string;
@@ -2776,6 +2796,112 @@ export interface MediaUploadCompleteInput {
   objectPath: string;
 }
 
+export type SoccerGearLoadoutJerseyStyle = typeof SoccerGearLoadoutJerseyStyle[keyof typeof SoccerGearLoadoutJerseyStyle];
+
+
+export const SoccerGearLoadoutJerseyStyle = {
+  classic: 'classic',
+  stripes: 'stripes',
+} as const;
+
+export type SoccerGearLoadoutShortsStyle = typeof SoccerGearLoadoutShortsStyle[keyof typeof SoccerGearLoadoutShortsStyle];
+
+
+export const SoccerGearLoadoutShortsStyle = {
+  classic: 'classic',
+  contrast: 'contrast',
+} as const;
+
+export type SoccerGearLoadoutSocksStyle = typeof SoccerGearLoadoutSocksStyle[keyof typeof SoccerGearLoadoutSocksStyle];
+
+
+export const SoccerGearLoadoutSocksStyle = {
+  plain: 'plain',
+  stripe: 'stripe',
+} as const;
+
+export type SoccerGearLoadoutCleatsStyle = typeof SoccerGearLoadoutCleatsStyle[keyof typeof SoccerGearLoadoutCleatsStyle];
+
+
+export const SoccerGearLoadoutCleatsStyle = {
+  classic: 'classic',
+  speed: 'speed',
+} as const;
+
+export type SoccerGearLoadoutSweatband = typeof SoccerGearLoadoutSweatband[keyof typeof SoccerGearLoadoutSweatband];
+
+
+export const SoccerGearLoadoutSweatband = {
+  none: 'none',
+  head: 'head',
+  wrist: 'wrist',
+} as const;
+
+export type SoccerGearLoadoutBackground = typeof SoccerGearLoadoutBackground[keyof typeof SoccerGearLoadoutBackground];
+
+
+export const SoccerGearLoadoutBackground = {
+  field: 'field',
+  goal: 'goal',
+} as const;
+
+export interface SoccerGearLoadout {
+  jerseyStyle: SoccerGearLoadoutJerseyStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  jerseyColor: string;
+  shortsStyle: SoccerGearLoadoutShortsStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  shortsColor: string;
+  socksStyle: SoccerGearLoadoutSocksStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  socksColor: string;
+  cleatsStyle: SoccerGearLoadoutCleatsStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  cleatsColor: string;
+  sweatband: SoccerGearLoadoutSweatband;
+  background: SoccerGearLoadoutBackground;
+}
+
+export interface SoccerGearLoadoutInput {
+  loadout: SoccerGearLoadout;
+}
+
+export interface SoccerGearShareActionInput {
+  /**
+     * @minLength 20
+     * @maxLength 120
+     */
+  shareToken: string;
+}
+
+export type SoccerGearStateProgress = {
+  /** @minimum 0 */
+  activeWeeks: number;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  eventCardsCreated: number;
+  hypeCardShared: boolean;
+};
+
+export type SoccerGearStateUnlockedGearItem = typeof SoccerGearStateUnlockedGearItem[keyof typeof SoccerGearStateUnlockedGearItem];
+
+
+export const SoccerGearStateUnlockedGearItem = {
+  'speed-cleats': 'speed-cleats',
+  'striped-socks': 'striped-socks',
+  'contrast-shorts': 'contrast-shorts',
+  'stripe-jersey': 'stripe-jersey',
+  sweatbands: 'sweatbands',
+} as const;
+
+export interface SoccerGearState {
+  loadout: SoccerGearLoadout;
+  progress: SoccerGearStateProgress;
+  unlockedGear: SoccerGearStateUnlockedGearItem[];
+}
+
 /**
  * Invalid request
  */
@@ -2925,21 +3051,3 @@ export type GetNotificationSubscriptionStatusParams = {
 endpoint: string;
 };
 
-
-export const SupportEmailReplyRejectionReason = {
-  unknown_reply_address: 'unknown_reply_address',
-  unmatched_legacy_thread: 'unmatched_legacy_thread',
-  ambiguous_reply_address: 'ambiguous_reply_address',
-  sender_mismatch: 'sender_mismatch',
-} as const;
-
-export interface SupportEmailReplyRejection {
-  /** Opaque provider message identifier for staff investigation. */
-  emailProviderId: string;
-  reason: SupportEmailReplyRejectionReason;
-  rejectedAt: string;
-}
-
-export interface AdminSupportEmailReplyRejectionList {
-  items: SupportEmailReplyRejection[];
-}
