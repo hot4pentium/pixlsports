@@ -4,7 +4,9 @@ import test from "node:test";
 import express from "express";
 import sharp from "sharp";
 import { and, eq } from "drizzle-orm";
+import { GetAthleteFanCardResponse } from "@workspace/api-zod";
 import { accountAccessTable, athleteInviteFansTable, athleteInvitesTable, db } from "@workspace/db";
+import athleteInvitesRouter from "./routes/athleteInvites";
 import athleteInviteFeaturesRouter from "./routes/athleteInviteFeatures";
 import { ObjectNotFoundError, ObjectStorageService } from "./lib/objectStorage";
 
@@ -336,18 +338,31 @@ test("removed or paused athlete photos stop loading at their existing public URL
     next();
   });
   app.use("/api", athleteInviteFeaturesRouter);
+  app.use("/api", athleteInvitesRouter);
   const server = app.listen(0);
   const address = server.address();
   assert.ok(address && typeof address !== "string");
-  const baseUrl = `http://127.0.0.1:${address.port}/api/athlete-invites/${publicToken}/photo/image`;
+  const origin = `http://127.0.0.1:${address.port}`;
+  const cardUrl = `${origin}/api/athlete-invites/${publicToken}/fan`;
+  const baseUrl = `${origin}/api/athlete-invites/${publicToken}/photo/image`;
   const removeUrl = baseUrl.replace(/\/photo\/image$/, "/photo");
-  const photoUrl = `${baseUrl}?v=known-photo-url`;
-  const cutoutUrl = `${baseUrl}?role=cutout&v=known-cutout-url`;
   const ownerHeaders = { "x-test-user": ownerId };
   const otherHeaders = { "x-test-user": otherId };
 
   try {
-    for (const [url, expectedBytes] of [[photoUrl, photoBytes], [cutoutUrl, cutoutBytes]] as const) {
+    const activeCardResponse = await fetch(cardUrl);
+    assert.equal(activeCardResponse.status, 200);
+    const activeCard = GetAthleteFanCardResponse.parse(await activeCardResponse.json());
+    assert.ok(activeCard.photoUrl, "active public card data includes the athlete photo URL");
+    assert.ok(activeCard.cutoutUrl, "active public card data includes the transparent cutout URL");
+    const previouslyIssuedUrls = [
+      new URL(activeCard.photoUrl, origin).toString(),
+      new URL(activeCard.cutoutUrl, origin).toString(),
+    ];
+    for (const [url, expectedBytes] of [
+      [previouslyIssuedUrls[0]!, photoBytes],
+      [previouslyIssuedUrls[1]!, cutoutBytes],
+    ] as const) {
       const response = await fetch(url);
       assert.equal(response.status, 200);
       assert.match(response.headers.get("content-type") ?? "", /image\/webp/);
@@ -355,16 +370,23 @@ test("removed or paused athlete photos stop loading at their existing public URL
     }
 
     await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.id, invite.id));
-    for (const url of [photoUrl, cutoutUrl]) {
+    assert.equal((await fetch(cardUrl)).status, 404, "paused cards are not available through the public card endpoint");
+    for (const url of previouslyIssuedUrls) {
       assert.equal((await fetch(url)).status, 404, "paused photos are unavailable to public visitors");
       assert.equal((await fetch(url, { headers: otherHeaders })).status, 404, "paused photos are unavailable to other accounts");
       assert.equal((await fetch(url, { headers: ownerHeaders })).status, 200, "the owner can still load paused photos");
     }
 
+    await db.update(athleteInvitesTable).set({ paused: false }).where(eq(athleteInvitesTable.id, invite.id));
     const removed = await fetch(removeUrl, { method: "DELETE", headers: ownerHeaders });
     assert.equal(removed.status, 204);
     assert.equal(objects.size, 0, "removal deletes both the original and cutout objects");
-    for (const url of [photoUrl, cutoutUrl]) {
+    const removedCardResponse = await fetch(cardUrl);
+    assert.equal(removedCardResponse.status, 200);
+    const removedCard = GetAthleteFanCardResponse.parse(await removedCardResponse.json());
+    assert.equal(removedCard.photoUrl, null, "removed original photo is absent from public card data");
+    assert.equal(removedCard.cutoutUrl, null, "removed cutout is absent from public card data");
+    for (const url of previouslyIssuedUrls) {
       assert.equal((await fetch(url)).status, 404, "an old public photo URL no longer returns image content");
       assert.equal((await fetch(url, { headers: ownerHeaders })).status, 404, "the owner cannot load a removed photo");
     }
