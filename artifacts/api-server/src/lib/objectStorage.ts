@@ -63,6 +63,27 @@ export class ObjectStorageService {
     return `/objects/${entityId}`;
   }
 
+  async saveSupportTicketAttachment(
+    contents: Buffer,
+    contentType: string,
+  ): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir().replace(/\/+$/, '');
+    const entityId = `support-ticket-attachments/${randomUUID()}`;
+    const { bucketName, objectName } = parseObjectPath(`${privateObjectDir}/${entityId}`);
+    const file = objectStorageClient.bucket(bucketName).file(objectName);
+    try {
+      await file.save(contents, {
+        resumable: false,
+        metadata: { contentType, cacheControl: "no-store" },
+      });
+      await setObjectAclPolicy(file, { owner: "pixl-support-ticket-service", visibility: "private" });
+    } catch (error) {
+      await file.delete({ ignoreNotFound: true }).catch(() => undefined);
+      throw error;
+    }
+    return `/objects/${entityId}`;
+  }
+
   getPublicObjectSearchPaths(): Array<string> {
     const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
     const paths = Array.from(

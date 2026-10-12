@@ -170,12 +170,35 @@ export const SupportTicketMessageDeliveryStatus = {
   failed: 'failed',
 } as const;
 
+export type SupportTicketMessageAttachmentStatus = typeof SupportTicketMessageAttachmentStatus[keyof typeof SupportTicketMessageAttachmentStatus];
+
+
+export const SupportTicketMessageAttachmentStatus = {
+  processing: 'processing',
+  available: 'available',
+  unsupported: 'unsupported',
+  too_large: 'too_large',
+  unavailable: 'unavailable',
+  too_many: 'too_many',
+} as const;
+
+export interface SupportTicketMessageAttachment {
+  id: string;
+  /** @maxLength 180 */
+  filename: string;
+  contentType: string;
+  size: number | null;
+  status: SupportTicketMessageAttachmentStatus;
+  downloadUrl: string | null;
+}
+
 export interface SupportTicketMessage {
   id: string;
   senderRole: SupportTicketMessageSenderRole;
   body: string;
   deliveryStatus: SupportTicketMessageDeliveryStatus;
   createdAt: string;
+  attachments?: SupportTicketMessageAttachment[];
 }
 
 export interface SupportTicket {

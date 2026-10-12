@@ -234,6 +234,30 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /support/tickets/{ticketId}/messages/{messageId}/attachments/{attachmentId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - $ref: "#/components/parameters/SupportTicketAccessToken"
+      - name: messageId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: attachmentId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getSupportTicketMessageAttachment
+      tags: [support-tickets]
+      summary: Download an attachment from an authorized member ticket
+      responses:
+        "200":
+          description: Private ticket attachment
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/NotFound"
   /admin/support/tickets:
     get:
       operationId: listAdminSupportTickets
@@ -304,6 +328,37 @@ paths:
                 $ref: "#/components/schemas/SupportTicket"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support/tickets/{ticketId}/messages/{messageId}/attachments/{attachmentId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - name: messageId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: attachmentId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getAdminSupportTicketMessageAttachment
+      tags: [support-tickets]
+      summary: Download an attachment from the administrator help desk
+      responses:
+        "200":
+          description: Private ticket attachment
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           $ref: "#/components/responses/NotFound"
   /admin/support/tickets/{ticketId}/replies:
@@ -2865,6 +2920,28 @@ components:
         body: { type: string }
         deliveryStatus: { type: string, enum: [not_applicable, sent, failed] }
         createdAt: { type: string, format: date-time }
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportTicketMessageAttachment"
+    SupportTicketMessageAttachment:
+      type: object
+      additionalProperties: false
+      required: [id, filename, contentType, size, status, downloadUrl]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string, maxLength: 180 }
+        contentType: { type: string }
+        size:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+        status: { type: string, enum: [processing, available, unsupported, too_large, unavailable, too_many] }
+        downloadUrl:
+          oneOf:
+            - type: string
+            - type: "null"
     SupportTicket:
       type: object
       additionalProperties: false

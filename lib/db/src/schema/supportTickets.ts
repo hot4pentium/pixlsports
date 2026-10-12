@@ -54,5 +54,32 @@ export const supportTicketMessagesTable = pgTable("support_ticket_messages", {
   emailMessageUnique: uniqueIndex("support_ticket_messages_email_message_id_unique").on(table.emailMessageId),
 }));
 
+export const supportTicketAttachmentStatuses = [
+  "processing",
+  "available",
+  "unsupported",
+  "too_large",
+  "unavailable",
+  "too_many",
+] as const;
+
+export type SupportTicketAttachmentStatus = typeof supportTicketAttachmentStatuses[number];
+
+export const supportTicketMessageAttachmentsTable = pgTable("support_ticket_message_attachments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  messageId: uuid("message_id").notNull().references(() => supportTicketMessagesTable.id, { onDelete: "cascade" }),
+  providerAttachmentId: text("provider_attachment_id"),
+  filename: text("filename").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size"),
+  status: text("status").$type<SupportTicketAttachmentStatus>().notNull(),
+  objectPath: text("object_path"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  messageCreatedIndex: index("support_ticket_message_attachments_message_created_index").on(table.messageId, table.createdAt),
+  providerAttachmentIndex: index("support_ticket_message_attachments_provider_id_index").on(table.providerAttachmentId),
+}));
+
 export type SupportTicket = typeof supportTicketsTable.$inferSelect;
 export type SupportTicketMessage = typeof supportTicketMessagesTable.$inferSelect;
+export type SupportTicketMessageAttachment = typeof supportTicketMessageAttachmentsTable.$inferSelect;

@@ -839,6 +839,93 @@ export const useCreateSupportTicketMessage = <TError = ErrorType<BadRequestRespo
       return useMutation(getCreateSupportTicketMessageMutationOptions(options));
     }
 
+export const getGetSupportTicketMessageAttachmentUrl = (ticketId: string,
+    messageId: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/api/support/tickets/${ticketId}/messages/${messageId}/attachments/${attachmentId}`
+}
+
+/**
+ * @summary Download an attachment from an authorized member ticket
+ */
+export const getSupportTicketMessageAttachment = async (ticketId: string,
+    messageId: string,
+    attachmentId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSupportTicketMessageAttachmentUrl(ticketId,messageId,attachmentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupportTicketMessageAttachmentQueryKey = (ticketId: string,
+    messageId: string,
+    attachmentId: string,) => {
+    return [
+    `/api/support/tickets/${ticketId}/messages/${messageId}/attachments/${attachmentId}`
+    ] as const;
+    }
+
+
+export const getGetSupportTicketMessageAttachmentQueryOptions = <TData = Awaited<ReturnType<typeof getSupportTicketMessageAttachment>>, TError = ErrorType<NotFoundResponse>>(ticketId: string,
+    messageId: string,
+    attachmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupportTicketMessageAttachment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupportTicketMessageAttachmentQueryKey(ticketId,messageId,attachmentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupportTicketMessageAttachment>>> = ({ signal }) => getSupportTicketMessageAttachment(ticketId,messageId,attachmentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: ticketId !== null && ticketId !== undefined && messageId !== null && messageId !== undefined && attachmentId !== null && attachmentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupportTicketMessageAttachment>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupportTicketMessageAttachmentQueryResult = NonNullable<Awaited<ReturnType<typeof getSupportTicketMessageAttachment>>>
+export type GetSupportTicketMessageAttachmentQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Download an attachment from an authorized member ticket
+ */
+
+export function useGetSupportTicketMessageAttachment<TData = Awaited<ReturnType<typeof getSupportTicketMessageAttachment>>, TError = ErrorType<NotFoundResponse>>(
+ ticketId: string,
+    messageId: string,
+    attachmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupportTicketMessageAttachment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupportTicketMessageAttachmentQueryOptions(ticketId,messageId,attachmentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListAdminSupportTicketsUrl = (params?: ListAdminSupportTicketsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1096,6 +1183,93 @@ export const useUpdateAdminSupportTicket = <TError = ErrorType<BadRequestRespons
       > => {
       return useMutation(getUpdateAdminSupportTicketMutationOptions(options));
     }
+
+export const getGetAdminSupportTicketMessageAttachmentUrl = (ticketId: string,
+    messageId: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/api/admin/support/tickets/${ticketId}/messages/${messageId}/attachments/${attachmentId}`
+}
+
+/**
+ * @summary Download an attachment from the administrator help desk
+ */
+export const getAdminSupportTicketMessageAttachment = async (ticketId: string,
+    messageId: string,
+    attachmentId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetAdminSupportTicketMessageAttachmentUrl(ticketId,messageId,attachmentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminSupportTicketMessageAttachmentQueryKey = (ticketId: string,
+    messageId: string,
+    attachmentId: string,) => {
+    return [
+    `/api/admin/support/tickets/${ticketId}/messages/${messageId}/attachments/${attachmentId}`
+    ] as const;
+    }
+
+
+export const getGetAdminSupportTicketMessageAttachmentQueryOptions = <TData = Awaited<ReturnType<typeof getAdminSupportTicketMessageAttachment>>, TError = ErrorType<UnauthorizedResponse | Error | NotFoundResponse>>(ticketId: string,
+    messageId: string,
+    attachmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSupportTicketMessageAttachment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminSupportTicketMessageAttachmentQueryKey(ticketId,messageId,attachmentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSupportTicketMessageAttachment>>> = ({ signal }) => getAdminSupportTicketMessageAttachment(ticketId,messageId,attachmentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: ticketId !== null && ticketId !== undefined && messageId !== null && messageId !== undefined && attachmentId !== null && attachmentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminSupportTicketMessageAttachment>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminSupportTicketMessageAttachmentQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminSupportTicketMessageAttachment>>>
+export type GetAdminSupportTicketMessageAttachmentQueryError = ErrorType<UnauthorizedResponse | Error | NotFoundResponse>
+
+
+/**
+ * @summary Download an attachment from the administrator help desk
+ */
+
+export function useGetAdminSupportTicketMessageAttachment<TData = Awaited<ReturnType<typeof getAdminSupportTicketMessageAttachment>>, TError = ErrorType<UnauthorizedResponse | Error | NotFoundResponse>>(
+ ticketId: string,
+    messageId: string,
+    attachmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSupportTicketMessageAttachment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminSupportTicketMessageAttachmentQueryOptions(ticketId,messageId,attachmentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCreateAdminSupportTicketReplyUrl = (ticketId: string,) => {
 

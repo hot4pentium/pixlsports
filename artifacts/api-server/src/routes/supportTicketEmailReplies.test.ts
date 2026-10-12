@@ -7,8 +7,10 @@ import {
   db,
   supportTicketEmailReplyTokensTable,
   supportTicketMessagesTable,
+  supportTicketMessageAttachmentsTable,
   supportTicketsTable,
 } from "@workspace/db";
+import { ObjectStorageService } from "../lib/objectStorage";
 import {
   buildSupportTicketReplyAddress,
   getSupportTicketReplyToken,
@@ -25,11 +27,18 @@ const replyEmail = "family@example.com";
 const legacySupportAddress = "support@pixlsports.com";
 const adminUserId = "support-reply-test-admin";
 
+type TestAttachmentDependencies = {
+  listAttachments?: (emailId: string) => Promise<{ items: unknown[]; hasMore: boolean }>;
+  downloadAttachment?: (emailId: string, attachmentId: string, downloadUrl: string) => Promise<Buffer>;
+  saveAttachment?: (contents: Buffer, contentType: string) => Promise<string>;
+};
+
 function createTestServer(
   webhookSecret: string,
   fetchReceivedEmail: (emailId: string) => Promise<unknown>,
   onAdminReply?: (message: { reference: string; replyEmail: string; body: string; replyTo?: string }) => Promise<{ messageId?: string } | void>,
   findSentEmailsByMessageIds?: (messageIds: string[]) => Promise<unknown[]>,
+  attachmentDependencies: TestAttachmentDependencies = {},
 ) {
   const app = express();
   app.use(express.json({
@@ -49,6 +58,9 @@ function createTestServer(
     replyDomain,
     fetchReceivedEmail,
     findSentEmailsByMessageIds,
+    listReceivedAttachments: attachmentDependencies.listAttachments ?? (async () => ({ items: [], hasMore: false })),
+    downloadReceivedAttachment: attachmentDependencies.downloadAttachment,
+    saveAttachment: attachmentDependencies.saveAttachment,
   }));
   app.use("/api", createSupportTicketsRouter({
     supportReplyDomain: onAdminReply ? replyDomain : null,
@@ -478,6 +490,203 @@ test("admin email replies use a unique reply address that is stored only as a ha
       .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
     assert.equal(sentMessages.length, 1);
     assert.equal(sentMessages[0].emailMessageId, `sent-${ticket.id}@pixlsports.com`);
+  } finally {
+    await closeServer(server);
+    await deleteTicket(ticket.id);
+  }
+});
+
+test("supported reply attachments are stored privately and exposed only through authorized ticket routes", async (t) => {
+  const secret = `whsec_${randomBytes(32).toString("base64")}`;
+  const { ticket, accessToken } = await createTicket();
+  const replyToken = randomBytes(28).toString("hex");
+  const emailId = randomUUID();
+  const attachmentId = randomUUID();
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01]);
+  await db.insert(supportTicketEmailReplyTokensTable).values({
+    ticketId: ticket.id,
+    tokenHash: hashSupportTicketReplyToken(replyToken),
+  });
+  const metadata = {
+    id: attachmentId,
+    filename: "../family-photo.png",
+    content_type: "image/png",
+    size: png.length,
+    download_url: "https://inbound-cdn.resend.com/signed-file",
+  };
+  const server = createTestServer(secret, async (requestedId) => ({
+    id: requestedId,
+    from: replyEmail,
+    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
+    text: "Here is the screenshot.",
+    authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
+  }), undefined, undefined, {
+    listAttachments: async () => ({ items: [metadata], hasMore: false }),
+    downloadAttachment: async (_requestedEmailId, requestedAttachmentId, url) => {
+      assert.equal(requestedAttachmentId, attachmentId);
+      assert.equal(url, metadata.download_url);
+      return png;
+    },
+    saveAttachment: async (contents, contentType) => {
+      assert.deepEqual(contents, png);
+      assert.equal(contentType, "image/png");
+      return `/objects/support-ticket-attachments/${randomUUID()}`;
+    },
+  });
+
+  const getMetadata = t.mock.method(ObjectStorageService.prototype, "getObjectEntityMetadata", async () => ({
+    size: png.length,
+    contentType: "image/png",
+  }));
+  const getFile = t.mock.method(ObjectStorageService.prototype, "getObjectEntityFile", async () =>
+    ({} as Awaited<ReturnType<ObjectStorageService["getObjectEntityFile"]>>)
+  );
+  const download = t.mock.method(ObjectStorageService.prototype, "downloadObject", async () =>
+    new Response(png, { headers: { "Content-Type": "image/png" } })
+  );
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const body = createWebhookPayload(emailId);
+    const webhookResponse = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
+      method: "POST",
+      headers: signWebhook(secret, body),
+      body,
+    });
+    assert.equal(webhookResponse.status, 200);
+    assert.deepEqual(await webhookResponse.json(), { ok: true, imported: true });
+
+    const rows = await db.select().from(supportTicketMessageAttachmentsTable)
+      .where(eq(supportTicketMessageAttachmentsTable.providerAttachmentId, attachmentId));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].status, "available");
+    assert.equal(rows[0].filename, "_family-photo.png");
+    assert.equal(rows[0].objectPath?.startsWith("/objects/support-ticket-attachments/"), true);
+
+    const detailResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/support/tickets/${ticket.id}`,
+      { headers: { "x-support-ticket-token": accessToken } },
+    );
+    const detail = await detailResponse.json() as {
+      messages: Array<{ id: string; attachments: Array<Record<string, unknown>> }>;
+    };
+    assert.equal(detailResponse.status, 200);
+    const message = detail.messages[0];
+    const attachment = message.attachments[0];
+    assert.equal(attachment.filename, "_family-photo.png");
+    assert.equal(attachment.status, "available");
+    assert.equal("objectPath" in attachment, false);
+    assert.equal("providerAttachmentId" in attachment, false);
+    const downloadUrl = attachment.downloadUrl as string;
+    assert.ok(downloadUrl.startsWith(`/api/support/tickets/${ticket.id}/messages/${message.id}/attachments/`));
+
+    const denied = await fetch(`http://127.0.0.1:${address.port}${downloadUrl}`, {
+      headers: { "x-support-ticket-token": randomBytes(32).toString("base64url") },
+    });
+    assert.equal(denied.status, 404);
+    const memberDownload = await fetch(`http://127.0.0.1:${address.port}${downloadUrl}`, {
+      headers: { "x-support-ticket-token": accessToken },
+    });
+    assert.equal(memberDownload.status, 200);
+    assert.equal(memberDownload.headers.get("content-type"), "image/png");
+    assert.deepEqual(Buffer.from(await memberDownload.arrayBuffer()), png);
+
+    const adminDownload = await fetch(
+      `http://127.0.0.1:${address.port}/api/admin/support/tickets/${ticket.id}/messages/${message.id}/attachments/${attachment.id}`,
+    );
+    assert.equal(adminDownload.status, 200);
+    assert.equal(getMetadata.mock.callCount(), 2);
+    assert.equal(getFile.mock.callCount(), 2);
+    assert.equal(download.mock.callCount(), 2);
+  } finally {
+    await closeServer(server);
+    await deleteTicket(ticket.id);
+  }
+});
+
+test("unsupported, oversized, unavailable, and excess attachments do not block an attachment-only reply", async () => {
+  const secret = `whsec_${randomBytes(32).toString("base64")}`;
+  const { ticket } = await createTicket();
+  const replyToken = randomBytes(28).toString("hex");
+  const emailId = randomUUID();
+  const attachmentMetadata = [
+    {
+      id: randomUUID(),
+      filename: "script.svg",
+      content_type: "image/svg+xml",
+      size: 100,
+      download_url: "https://inbound-cdn.resend.com/script",
+    },
+    {
+      id: randomUUID(),
+      filename: "large.png",
+      content_type: "image/png",
+      size: 5 * 1024 * 1024 + 1,
+      download_url: "https://inbound-cdn.resend.com/large",
+    },
+    {
+      id: randomUUID(),
+      filename: "failed.jpg",
+      content_type: "image/jpeg",
+      size: 120,
+      download_url: "https://inbound-cdn.resend.com/failed",
+    },
+    ...Array.from({ length: 3 }, (_, index) => ({
+      id: randomUUID(),
+      filename: `other-${index}.exe`,
+      content_type: "application/x-test",
+      size: 1,
+      download_url: `https://inbound-cdn.resend.com/other-${index}`,
+    })),
+  ];
+  await db.insert(supportTicketEmailReplyTokensTable).values({
+    ticketId: ticket.id,
+    tokenHash: hashSupportTicketReplyToken(replyToken),
+  });
+  const server = createTestServer(secret, async (requestedId) => ({
+    id: requestedId,
+    from: replyEmail,
+    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
+    text: "",
+    authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
+  }), undefined, undefined, {
+    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
+    downloadAttachment: async (_requestedEmailId, attachmentId) => {
+      assert.equal(attachmentId, attachmentMetadata[2].id);
+      throw new Error("temporary download failure");
+    },
+    saveAttachment: async () => {
+      throw new Error("Rejected files must not be stored");
+    },
+  });
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const body = createWebhookPayload(emailId);
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
+      method: "POST",
+      headers: signWebhook(secret, body),
+      body,
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, imported: true });
+    const [message] = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
+    assert.equal(message.body, "Customer sent attachments without a message.");
+
+    const attachments = await db.select().from(supportTicketMessageAttachmentsTable)
+      .where(eq(supportTicketMessageAttachmentsTable.messageId, message.id));
+    assert.deepEqual(attachments.map((attachment) => attachment.status), [
+      "unsupported",
+      "too_large",
+      "unavailable",
+      "unsupported",
+      "unsupported",
+      "too_many",
+    ]);
+    assert.ok(attachments.every((attachment) => attachment.objectPath === null));
   } finally {
     await closeServer(server);
     await deleteTicket(ticket.id);

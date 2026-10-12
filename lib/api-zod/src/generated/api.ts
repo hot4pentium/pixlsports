@@ -74,6 +74,10 @@ export const createSupportTicketResponseTicketReferenceMax = 40;
 
 export const createSupportTicketResponseTicketReplyEmailMax = 320;
 
+export const createSupportTicketResponseTicketMessagesItemAttachmentsItemFilenameMax = 180;
+
+export const createSupportTicketResponseTicketMessagesItemAttachmentsItemSizeOneMin = 0;
+
 export const createSupportTicketResponseAccessTokenMin = 32;
 export const createSupportTicketResponseAccessTokenMax = 200;
 
@@ -101,7 +105,15 @@ export const CreateSupportTicketResponse = zod.object({
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(createSupportTicketResponseTicketMessagesItemAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(createSupportTicketResponseTicketMessagesItemAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 }))
 }),
   "accessToken": zod.string().min(createSupportTicketResponseAccessTokenMin).max(createSupportTicketResponseAccessTokenMax)
@@ -115,6 +127,10 @@ export const listSupportTicketsResponseReferenceMin = 6;
 export const listSupportTicketsResponseReferenceMax = 40;
 
 export const listSupportTicketsResponseReplyEmailMax = 320;
+
+export const listSupportTicketsResponseMessagesItemAttachmentsItemFilenameMax = 180;
+
+export const listSupportTicketsResponseMessagesItemAttachmentsItemSizeOneMin = 0;
 
 
 
@@ -139,7 +155,15 @@ export const ListSupportTicketsResponseItem = zod.object({
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(listSupportTicketsResponseMessagesItemAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(listSupportTicketsResponseMessagesItemAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 }))
 })
 export const ListSupportTicketsResponse = zod.array(ListSupportTicketsResponseItem)
@@ -189,6 +213,10 @@ export const verifySupportTicketRecoveryResponseTicketReferenceMax = 40;
 
 export const verifySupportTicketRecoveryResponseTicketReplyEmailMax = 320;
 
+export const verifySupportTicketRecoveryResponseTicketMessagesItemAttachmentsItemFilenameMax = 180;
+
+export const verifySupportTicketRecoveryResponseTicketMessagesItemAttachmentsItemSizeOneMin = 0;
+
 export const verifySupportTicketRecoveryResponseAccessTokenMin = 32;
 export const verifySupportTicketRecoveryResponseAccessTokenMax = 200;
 
@@ -216,7 +244,15 @@ export const VerifySupportTicketRecoveryResponse = zod.object({
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(verifySupportTicketRecoveryResponseTicketMessagesItemAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(verifySupportTicketRecoveryResponseTicketMessagesItemAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 }))
 }),
   "accessToken": zod.string().min(verifySupportTicketRecoveryResponseAccessTokenMin).max(verifySupportTicketRecoveryResponseAccessTokenMax)
@@ -244,6 +280,10 @@ export const getSupportTicketResponseReferenceMax = 40;
 
 export const getSupportTicketResponseReplyEmailMax = 320;
 
+export const getSupportTicketResponseMessagesItemAttachmentsItemFilenameMax = 180;
+
+export const getSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin = 0;
+
 
 
 export const GetSupportTicketResponse = zod.object({
@@ -267,7 +307,15 @@ export const GetSupportTicketResponse = zod.object({
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(getSupportTicketResponseMessagesItemAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(getSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 }))
 })
 
@@ -296,13 +344,48 @@ export const CreateSupportTicketMessageBody = zod.object({
   "body": zod.string().min(1).max(createSupportTicketMessageBodyBodyMax)
 })
 
+export const createSupportTicketMessageResponseAttachmentsItemFilenameMax = 180;
+
+export const createSupportTicketMessageResponseAttachmentsItemSizeOneMin = 0;
+
+
+
 export const CreateSupportTicketMessageResponse = zod.object({
   "id": zod.string().uuid(),
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(createSupportTicketMessageResponseAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(createSupportTicketMessageResponseAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 })
+
+
+/**
+ * @summary Download an attachment from an authorized member ticket
+ */
+export const GetSupportTicketMessageAttachmentParams = zod.object({
+  "ticketId": zod.coerce.string().uuid(),
+  "messageId": zod.coerce.string().uuid(),
+  "attachmentId": zod.coerce.string().uuid()
+})
+
+export const getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMin = 32;
+export const getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMax = 200;
+
+
+
+export const GetSupportTicketMessageAttachmentHeader = zod.object({
+  "X-Support-Ticket-Token": zod.string().min(getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMin).max(getSupportTicketMessageAttachmentHeaderXSupportTicketTokenMax).optional()
+})
+
+export const GetSupportTicketMessageAttachmentResponse = zod.unknown()
 
 
 /**
@@ -326,6 +409,10 @@ export const listAdminSupportTicketsResponseItemsItemReferenceMin = 6;
 export const listAdminSupportTicketsResponseItemsItemReferenceMax = 40;
 
 export const listAdminSupportTicketsResponseItemsItemReplyEmailMax = 320;
+
+export const listAdminSupportTicketsResponseItemsItemMessagesItemAttachmentsItemFilenameMax = 180;
+
+export const listAdminSupportTicketsResponseItemsItemMessagesItemAttachmentsItemSizeOneMin = 0;
 
 export const listAdminSupportTicketsResponseCountsUnreadMin = 0;
 
@@ -363,7 +450,15 @@ export const ListAdminSupportTicketsResponse = zod.object({
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(listAdminSupportTicketsResponseItemsItemMessagesItemAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(listAdminSupportTicketsResponseItemsItemMessagesItemAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 }))
 })),
   "counts": zod.object({
@@ -389,6 +484,10 @@ export const getAdminSupportTicketResponseReferenceMax = 40;
 
 export const getAdminSupportTicketResponseReplyEmailMax = 320;
 
+export const getAdminSupportTicketResponseMessagesItemAttachmentsItemFilenameMax = 180;
+
+export const getAdminSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin = 0;
+
 
 
 export const GetAdminSupportTicketResponse = zod.object({
@@ -412,7 +511,15 @@ export const GetAdminSupportTicketResponse = zod.object({
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(getAdminSupportTicketResponseMessagesItemAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(getAdminSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 }))
 })
 
@@ -432,6 +539,10 @@ export const updateAdminSupportTicketResponseReferenceMin = 6;
 export const updateAdminSupportTicketResponseReferenceMax = 40;
 
 export const updateAdminSupportTicketResponseReplyEmailMax = 320;
+
+export const updateAdminSupportTicketResponseMessagesItemAttachmentsItemFilenameMax = 180;
+
+export const updateAdminSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin = 0;
 
 
 
@@ -456,9 +567,29 @@ export const UpdateAdminSupportTicketResponse = zod.object({
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(updateAdminSupportTicketResponseMessagesItemAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(updateAdminSupportTicketResponseMessagesItemAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 }))
 })
+
+
+/**
+ * @summary Download an attachment from the administrator help desk
+ */
+export const GetAdminSupportTicketMessageAttachmentParams = zod.object({
+  "ticketId": zod.coerce.string().uuid(),
+  "messageId": zod.coerce.string().uuid(),
+  "attachmentId": zod.coerce.string().uuid()
+})
+
+export const GetAdminSupportTicketMessageAttachmentResponse = zod.unknown()
 
 
 /**
@@ -476,12 +607,26 @@ export const CreateAdminSupportTicketReplyBody = zod.object({
   "body": zod.string().min(1).max(createAdminSupportTicketReplyBodyBodyMax)
 })
 
+export const createAdminSupportTicketReplyResponseAttachmentsItemFilenameMax = 180;
+
+export const createAdminSupportTicketReplyResponseAttachmentsItemSizeOneMin = 0;
+
+
+
 export const CreateAdminSupportTicketReplyResponse = zod.object({
   "id": zod.string().uuid(),
   "senderRole": zod.enum(['member', 'admin']),
   "body": zod.string(),
   "deliveryStatus": zod.enum(['not_applicable', 'sent', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "filename": zod.string().max(createAdminSupportTicketReplyResponseAttachmentsItemFilenameMax),
+  "contentType": zod.string(),
+  "size": zod.union([zod.number().int().min(createAdminSupportTicketReplyResponseAttachmentsItemSizeOneMin),zod.null()]),
+  "status": zod.enum(['processing', 'available', 'unsupported', 'too_large', 'unavailable', 'too_many']),
+  "downloadUrl": zod.union([zod.string(),zod.null()])
+})).optional()
 })
 
 

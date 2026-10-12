@@ -95,7 +95,14 @@ import { shouldRequireSupporterSetup } from '@/features/supporter-setup-routing'
 import { canShowInitialAccountSetup } from '@/features/initial-account-setup';
 import { getSportRule, sports, type Sport } from '@/features/stat-tracker';
 import { trackEvent } from '@/lib/analytics';
-import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
+import {
+  HYPE_CARD_ATHLETE_PHOTO_PRIVACY,
+  LANDING_MEDIA_BADGE,
+  LANDING_MEDIA_DETAIL,
+  LOCAL_MEDIA_DEFAULT,
+  PUBLIC_SHARE_MEDIA,
+  SUPPORT_TICKET_ATTACHMENT_PRIVACY,
+} from '@/features/privacy-copy';
 import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
@@ -3272,24 +3279,86 @@ function Help() {
 function Privacy() {
   return (
     <StudioLayout>
-      <main className="mx-auto max-w-[800px] px-5 py-12 sm:px-8 lg:py-24">
-        <BackNavigationLink href="/studio" label="Back to Studio" testId="link-back-studio" className="mb-8" />
-        <div className="mb-10 inline-flex items-center gap-2 border-l-2 border-accent bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
-          <ShieldCheck className="h-4 w-4" /> Data Security
+      <main className="mx-auto w-full max-w-4xl px-5 py-10 sm:px-8 sm:py-16">
+        <BackNavigationLink href="/studio" label="Back to Studio" testId="link-back-studio" className="mb-7" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 border-l-2 border-accent bg-accent/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Data Security
+          </div>
+          <p className="text-sm leading-6 text-[#B8CADC]">Last updated: October 12, 2026</p>
         </div>
-        <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Privacy Policy</h1>
-        <div className="prose prose-lg mt-12 max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-a:text-primary hover:prose-a:text-foreground">
-           <p className="lead font-medium text-xl">The short version: We don't track your team, and Pixl Sports keeps source media on your device by default. Account saves contain reusable design settings only unless you use private media storage on a paid Hype Card account. {PUBLIC_SHARE_MEDIA}</p>
-          <h3>1. Local Execution</h3>
-            <p>Pixl Sports is built as a local-first application. When you attach a photo or logo to create a graphic, that source media is processed on your device using browser APIs. Guest and unpaid design saves send the layout, text, colors, crop settings, and output configuration, but not the attached media. Paid Hype Card accounts can keep private project media in cloud storage under the account quota. {PUBLIC_SHARE_MEDIA} Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
-          <h3>2. Analytics</h3>
-          <p>We do not use tracking pixels, session recording tools, or advertising analytics in this release.</p>
-          <h3>3. Cookies</h3>
-          <p>Project settings and attached media may be kept in local browser storage so they can survive a reload. If you create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
-          <h3>4. Your Media</h3>
-            <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. Source media remains local by default, while a published Hype Card uses a prepared hosted copy so the public player page can display it. {PUBLIC_SHARE_MEDIA}</p>
-           <h3>5. Support Tickets and Optional Checks</h3>
-          <p>When you create a help ticket, Pixl Sports stores it persistently: your issue category, description, device and connection choices, the reply email you chose, any optional check results you attach, and the conversation. Signed-in tickets are owned by your account. Tickets created while signed out are tied to a private access key that this browser keeps (an id and key only, never your description or email) so you can reopen them; anyone holding that key can read the ticket. Only Pixl Sports administrators can open tickets, and their access is limited to the ticket itself. The Help page's browser and storage checks run on your device and are optional; the service check sends a basic health request without account or dashboard data, and only the three displayed results are attached if you choose. Your reply email is used only to send you copies of administrator replies; replies sent from an email app do not reach the ticket. No AI processes tickets, checks, or replies.</p>
+        <h1 className="mt-7 font-display text-4xl leading-tight tracking-wide text-white uppercase sm:text-6xl">Privacy Policy</h1>
+        <p className="mt-5 max-w-3xl text-base leading-7 text-[#D9E6F3] sm:text-lg sm:leading-8">
+          This page explains what Pixl Sports keeps on your device, what we store for your account, and what becomes visible when you share a HYPE Card.
+        </p>
+
+        <section aria-labelledby="privacy-summary" className="mt-8 rounded-xl border border-white/15 bg-[#102B4D]/90 p-5 shadow-lg sm:p-7">
+          <h2 id="privacy-summary" className="font-display text-2xl tracking-wide text-white uppercase">At a glance</h2>
+          <ul className="mt-4 grid gap-x-8 gap-y-4 text-base leading-7 text-[#D9E6F3] sm:grid-cols-2">
+            <li><strong className="text-white">HYPE Card athlete photos:</strong> uploaded and stored so the active public card can display them.</li>
+            <li><strong className="text-white">Design media:</strong> stays on your device by default; paid cloud projects can store private source media.</li>
+            <li><strong className="text-white">Shared card artwork:</strong> a prepared copy is hosted for the public link until it expires or you revoke it.</li>
+            <li><strong className="text-white">Support attachments:</strong> supported email attachments are stored privately with the ticket.</li>
+          </ul>
+        </section>
+
+        <div className="mt-6 space-y-5">
+          <section id="hype-card-photos" aria-labelledby="privacy-hype-card-photos" className="rounded-xl border border-white/10 bg-[#0C2440]/80 p-5 sm:p-7">
+            <h2 id="privacy-hype-card-photos" className="font-display text-2xl tracking-wide text-white uppercase sm:text-3xl">1. Athlete photos on shareable HYPE Cards</h2>
+            <p className="mt-4 text-base leading-7 text-[#D9E6F3]">
+              {HYPE_CARD_ATHLETE_PHOTO_PRIVACY}
+            </p>
+            <p className="mt-3 text-base leading-7 text-[#D9E6F3]">
+              This upload is separate from your account picture and from photos you use while designing a graphic. We keep the prepared athlete photo on the HYPE Card so its public page can show it; it is not used as your supporter account avatar.
+            </p>
+          </section>
+
+          <section id="design-media" aria-labelledby="privacy-design-media" className="rounded-xl border border-white/10 bg-[#0C2440]/80 p-5 sm:p-7">
+            <h2 id="privacy-design-media" className="font-display text-2xl tracking-wide text-white uppercase sm:text-3xl">2. Photos and videos in designs</h2>
+            <p className="mt-4 text-base leading-7 text-[#D9E6F3]">
+              When you attach a photo, logo, or video to create a graphic, the source media is processed on your device. Guest and unpaid design saves keep reusable settings—such as layout, text, colors, and crop—not the attached source media. Paid HYPE Card accounts can choose private cloud storage for project media within the account quota.
+            </p>
+            <p className="mt-3 text-base leading-7 text-[#D9E6F3]">
+              {PUBLIC_SHARE_MEDIA} The hosted share is a separate, prepared copy; it is not the original file you selected.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-[#B8CADC]">
+              Some older cloud projects may still contain media uploaded under an earlier storage setup. That media may remain until it is removed in a future migration.
+            </p>
+          </section>
+
+          <section id="browser-data" aria-labelledby="privacy-browser-data" className="rounded-xl border border-white/10 bg-[#0C2440]/80 p-5 sm:p-7">
+            <h2 id="privacy-browser-data" className="font-display text-2xl tracking-wide text-white uppercase sm:text-3xl">3. Browser storage and cookies</h2>
+            <p className="mt-4 text-base leading-7 text-[#D9E6F3]">
+              Project settings and locally attached media may be saved in your browser so your work can survive a reload. If you create an account, Clerk uses necessary session cookies to keep you signed in. We do not use advertising cookies.
+            </p>
+          </section>
+
+          <section id="analytics" aria-labelledby="privacy-analytics" className="rounded-xl border border-white/10 bg-[#0C2440]/80 p-5 sm:p-7">
+            <h2 id="privacy-analytics" className="font-display text-2xl tracking-wide text-white uppercase sm:text-3xl">4. Analytics</h2>
+            <p className="mt-4 text-base leading-7 text-[#D9E6F3]">
+              We do not use tracking pixels, session-recording tools, or advertising analytics in this release.
+            </p>
+          </section>
+
+          <section id="support-tickets" aria-labelledby="privacy-support-tickets" className="rounded-xl border border-white/10 bg-[#0C2440]/80 p-5 sm:p-7">
+            <h2 id="privacy-support-tickets" className="font-display text-2xl tracking-wide text-white uppercase sm:text-3xl">5. Support tickets and checks</h2>
+            <p className="mt-4 text-base leading-7 text-[#D9E6F3]">
+              A support ticket stores its issue category, description, device and connection choices, reply email, any optional check results you submit, and its conversation. Signed-in tickets belong to your account. Guest tickets use a private access key kept by your browser; anyone holding that key can read that ticket. Pixl Sports administrators can access tickets to provide support.
+            </p>
+            <p className="mt-3 text-base leading-7 text-[#D9E6F3]">
+              {SUPPORT_TICKET_ATTACHMENT_PRIVACY}
+            </p>
+            <p className="mt-3 text-base leading-7 text-[#D9E6F3]">
+              The Help page's browser and storage checks run on your device and are optional. The service check sends a basic health request without account or dashboard data; only the three displayed results are attached if you choose. Your reply email is used for ticket updates and guest-ticket recovery. No AI processes support tickets, checks, or replies.
+            </p>
+          </section>
+
+          <section id="your-responsibility" aria-labelledby="privacy-responsibility" className="rounded-xl border border-white/10 bg-[#0C2440]/80 p-5 sm:p-7">
+            <h2 id="privacy-responsibility" className="font-display text-2xl tracking-wide text-white uppercase sm:text-3xl">6. Your media and permissions</h2>
+            <p className="mt-4 text-base leading-7 text-[#D9E6F3]">
+              You are responsible for having the rights and any required consent to use the media you upload, including permission to share photos involving minors.
+            </p>
+          </section>
         </div>
       </main>
     </StudioLayout>

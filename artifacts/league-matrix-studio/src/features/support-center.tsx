@@ -35,6 +35,7 @@ import {
   type StoredTicketAccess,
   type SupportDiagnostics,
 } from './support-center-model';
+import { SupportTicketAttachments } from './support-ticket-attachments';
 
 const DEVICES = [['mobile', 'Mobile'], ['desktop', 'Desktop'], ['other', 'Other'], ['unsure', 'Not sure']] as const;
 const CONNECTIONS = [['wifi', 'Wi-Fi'], ['mobile-data', 'Mobile data'], ['other', 'Other'], ['unsure', 'Not sure']] as const;
@@ -143,11 +144,12 @@ function TicketCard({ id, token, preloaded, defaultOpen, onForget }: { id: strin
                 <li key={m.id} className={`p-3 text-sm ${m.senderRole === 'admin' ? 'border-l-2 border-primary-ink bg-primary/15' : 'ml-4 border-l-2 border-border bg-background/40'}`}>
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">{m.senderRole === 'admin' ? 'Pixl Sports' : 'You'} · {when(m.createdAt)}</p>
                   <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
+                  <SupportTicketAttachments attachments={m.attachments} token={token} />
                 </li>
               ))}
             </ol>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Replies from Pixl Sports appear here and are also emailed to <span className="font-semibold text-foreground">{ticket.replyEmail}</span>. Replying from your email app does not reach this ticket; add follow-ups here.
+              Replies from Pixl Sports appear here and are also emailed to <span className="font-semibold text-foreground">{ticket.replyEmail}</span>. You can reply to those emails from <span className="font-semibold text-foreground">{ticket.replyEmail}</span>, or add a follow-up here.
             </p>
             {ticket.status === 'resolved' && <p className="mt-2 text-xs font-bold text-emerald-300">Marked resolved. Sending a follow-up lets us know you still need help.</p>}
             <form onSubmit={submit} className="mt-3">

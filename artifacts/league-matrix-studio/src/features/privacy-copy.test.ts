@@ -6,6 +6,8 @@ import {
   LANDING_MEDIA_DETAIL,
   LOCAL_MEDIA_DEFAULT,
   PUBLIC_SHARE_MEDIA,
+  HYPE_CARD_ATHLETE_PHOTO_PRIVACY,
+  SUPPORT_TICKET_ATTACHMENT_PRIVACY,
 } from './privacy-copy';
 
 test('privacy copy distinguishes local source media from published share media', () => {
@@ -15,4 +17,8 @@ test('privacy copy distinguishes local source media from published share media',
   assert.match(LOCAL_MEDIA_DEFAULT, /source media stays on your device by default/i);
   assert.match(PUBLIC_SHARE_MEDIA, /prepared image or video\/poster/i);
   assert.match(PUBLIC_SHARE_MEDIA, /expires or you revoke it/i);
+  assert.match(HYPE_CARD_ATHLETE_PHOTO_PRIVACY, /account-restricted cloud storage/i);
+  assert.match(HYPE_CARD_ATHLETE_PHOTO_PRIVACY, /anyone who has its link/i);
+  assert.match(SUPPORT_TICKET_ATTACHMENT_PRIVACY, /private cloud storage with the ticket/i);
+  assert.match(SUPPORT_TICKET_ATTACHMENT_PRIVACY, /text reply is still saved/i);
 });

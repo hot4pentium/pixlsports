@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
-import { Router, type IRouter, type RequestHandler } from "express";
+import { Router, type IRouter, type RequestHandler, type Response } from "express";
 import {
   CreateAdminSupportTicketReplyBody,
   CreateAdminSupportTicketReplyParams,
@@ -29,11 +29,14 @@ import {
   db,
   supportTicketEmailReplyTokensTable,
   supportTicketMessagesTable,
+  supportTicketMessageAttachmentsTable,
   supportTicketsTable,
   type SupportTicket,
+  type SupportTicketMessageAttachment,
   type SupportTicketMessage,
 } from "@workspace/db";
 import { requireAdmin } from "../lib/adminAccess";
+import { ObjectStorageService } from "../lib/objectStorage";
 import {
   buildSupportTicketReplyAddress,
   hashSupportTicketReplyToken,
@@ -62,22 +65,59 @@ type SupportTicketDependencies = {
 };
 
 type RateLimitEntry = { count: number; resetAt: number };
+const supportTicketAttachmentStorage = new ObjectStorageService();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function routeParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-function publicMessage(message: SupportTicketMessage) {
+function publicAttachment(
+  attachment: SupportTicketMessageAttachment,
+  ticketId: string,
+  messageId: string,
+  admin: boolean,
+) {
+  const prefix = admin ? "/api/admin/support/tickets" : "/api/support/tickets";
+  return {
+    id: attachment.id,
+    filename: attachment.filename,
+    contentType: attachment.contentType,
+    size: attachment.size,
+    status: attachment.status,
+    downloadUrl: attachment.status === "available"
+      ? `${prefix}/${ticketId}/messages/${messageId}/attachments/${attachment.id}`
+      : null,
+  };
+}
+
+function publicMessage(
+  message: SupportTicketMessage,
+  attachments: SupportTicketMessageAttachment[] = [],
+  admin = false,
+) {
   return {
     id: message.id,
     senderRole: message.senderRole,
     body: message.body,
     deliveryStatus: message.deliveryStatus,
     createdAt: message.createdAt,
+    attachments: attachments
+      .filter((attachment) => attachment.messageId === message.id)
+      .map((attachment) => publicAttachment(attachment, message.ticketId, message.id, admin)),
   };
 }
 
-function publicTicket(ticket: SupportTicket, messages: SupportTicketMessage[] = []) {
+function publicTicket(
+  ticket: SupportTicket,
+  messages: SupportTicketMessage[] = [],
+  attachments: SupportTicketMessageAttachment[] = [],
+  admin = false,
+) {
   return {
     id: ticket.id,
     reference: ticket.reference,
@@ -90,15 +130,90 @@ function publicTicket(ticket: SupportTicket, messages: SupportTicketMessage[] = 
     status: ticket.status,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
-    messages: messages.filter((message) => message.ticketId === ticket.id).map(publicMessage),
+    messages: messages
+      .filter((message) => message.ticketId === ticket.id)
+      .map((message) => publicMessage(message, attachments, admin)),
   };
 }
 
-async function ticketWithMessages(ticket: SupportTicket) {
+async function attachmentsForMessages(messageIds: string[]) {
+  if (!messageIds.length) return [];
+  return db.select().from(supportTicketMessageAttachmentsTable)
+    .where(inArray(supportTicketMessageAttachmentsTable.messageId, messageIds))
+    .orderBy(supportTicketMessageAttachmentsTable.createdAt);
+}
+
+async function ticketWithMessages(ticket: SupportTicket, admin = false) {
   const messages = await db.select().from(supportTicketMessagesTable)
     .where(eq(supportTicketMessagesTable.ticketId, ticket.id))
     .orderBy(supportTicketMessagesTable.createdAt);
-  return publicTicket(ticket, messages);
+  const attachments = await attachmentsForMessages(messages.map((message) => message.id));
+  return publicTicket(ticket, messages, attachments, admin);
+}
+
+async function findMessageAttachment(ticketId: string, messageId: string, attachmentId: string) {
+  const [attachment] = await db.select({
+    id: supportTicketMessageAttachmentsTable.id,
+    filename: supportTicketMessageAttachmentsTable.filename,
+    contentType: supportTicketMessageAttachmentsTable.contentType,
+    size: supportTicketMessageAttachmentsTable.size,
+    status: supportTicketMessageAttachmentsTable.status,
+    objectPath: supportTicketMessageAttachmentsTable.objectPath,
+  }).from(supportTicketMessageAttachmentsTable)
+    .innerJoin(
+      supportTicketMessagesTable,
+      eq(supportTicketMessageAttachmentsTable.messageId, supportTicketMessagesTable.id),
+    )
+    .where(and(
+      eq(supportTicketMessageAttachmentsTable.id, attachmentId),
+      eq(supportTicketMessageAttachmentsTable.messageId, messageId),
+      eq(supportTicketMessagesTable.ticketId, ticketId),
+    ))
+    .limit(1);
+  return attachment;
+}
+
+async function sendSupportTicketAttachment(
+  res: Response,
+  attachment: Awaited<ReturnType<typeof findMessageAttachment>>,
+) {
+  if (
+    !attachment ||
+    attachment.status !== "available" ||
+    !attachment.objectPath ||
+    !/^\/objects\/support-ticket-attachments\/[0-9a-f-]{36}$/i.test(attachment.objectPath)
+  ) {
+    res.status(404).json({ error: "Support ticket attachment not found." });
+    return;
+  }
+  const metadata = await supportTicketAttachmentStorage.getObjectEntityMetadata(attachment.objectPath);
+  if (
+    metadata.size < 1 ||
+    metadata.size > 5 * 1024 * 1024 ||
+    metadata.contentType !== attachment.contentType
+  ) {
+    res.status(404).json({ error: "Support ticket attachment not found." });
+    return;
+  }
+  const objectResponse = await supportTicketAttachmentStorage.downloadObject(
+    await supportTicketAttachmentStorage.getObjectEntityFile(attachment.objectPath),
+    0,
+  );
+  const contents = Buffer.from(await objectResponse.arrayBuffer());
+  const fallbackFilename = attachment.filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  const encodedFilename = encodeURIComponent(attachment.filename).replace(/['()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+  res
+    .status(200)
+    .set({
+      "Content-Type": attachment.contentType,
+      "Content-Length": String(contents.length),
+      "Content-Disposition": `inline; filename="${fallbackFilename}"; filename*=UTF-8''${encodedFilename}`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    })
+    .send(contents);
 }
 
 async function findTicket(ticketId: string) {
@@ -405,7 +520,10 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
     const messages = await db.select().from(supportTicketMessagesTable)
       .where(inArray(supportTicketMessagesTable.ticketId, tickets.map((ticket) => ticket.id)))
       .orderBy(supportTicketMessagesTable.createdAt);
-    res.json(ListSupportTicketsResponse.parse(tickets.map((ticket) => publicTicket(ticket, messages))));
+    const attachments = await attachmentsForMessages(messages.map((message) => message.id));
+    res.json(ListSupportTicketsResponse.parse(tickets.map((ticket) =>
+      publicTicket(ticket, messages, attachments)
+    )));
   });
 
   router.get("/support/tickets/:ticketId", async (req, res): Promise<void> => {
@@ -423,6 +541,33 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
       return;
     }
     res.json(GetSupportTicketResponse.parse(await ticketWithMessages(ticket)));
+  });
+
+  router.get("/support/tickets/:ticketId/messages/:messageId/attachments/:attachmentId", async (req, res): Promise<void> => {
+    const { ticketId, messageId, attachmentId } = req.params;
+    const token = typeof req.headers["x-support-ticket-token"] === "string"
+      ? req.headers["x-support-ticket-token"]
+      : undefined;
+    if (
+      !UUID_PATTERN.test(ticketId) ||
+      !UUID_PATTERN.test(messageId) ||
+      !UUID_PATTERN.test(attachmentId) ||
+      (token !== undefined && (token.length < 32 || token.length > 200))
+    ) {
+      res.status(404).json({ error: "Support ticket attachment not found." });
+      return;
+    }
+    const ticket = await findTicket(ticketId);
+    if (!ticket || !canAccessTicket(ticket, getOptionalClerkUserId(req), token)) {
+      res.status(404).json({ error: "Support ticket attachment not found." });
+      return;
+    }
+    try {
+      await sendSupportTicketAttachment(res, await findMessageAttachment(ticketId, messageId, attachmentId));
+    } catch (error) {
+      req.log.warn({ err: error, ticketId, attachmentId }, "Unable to serve support ticket attachment");
+      res.status(404).json({ error: "Support ticket attachment not found." });
+    }
   });
 
   router.post("/support/tickets/:ticketId/messages", async (req, res): Promise<void> => {
@@ -471,12 +616,13 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
         .where(inArray(supportTicketMessagesTable.ticketId, tickets.map((ticket) => ticket.id)))
         .orderBy(supportTicketMessagesTable.createdAt)
       : [];
+    const attachments = await attachmentsForMessages(messages.map((message) => message.id));
     const counts = { unread: 0, active: 0, resolved: 0 };
     for (const row of groupedCounts) {
       if (row.status in counts) counts[row.status as keyof typeof counts] = Number(row.value);
     }
     res.json(ListAdminSupportTicketsResponse.parse({
-      items: tickets.map((ticket) => publicTicket(ticket, messages)),
+      items: tickets.map((ticket) => publicTicket(ticket, messages, attachments, true)),
       counts,
       totalCount: Number(totalCount),
       limit: parsed.data.limit ?? 50,
@@ -495,7 +641,23 @@ export function createSupportTicketsRouter(dependencies: SupportTicketDependenci
       res.status(404).json({ error: "Support ticket not found." });
       return;
     }
-    res.json(GetAdminSupportTicketResponse.parse(await ticketWithMessages(ticket)));
+    res.json(GetAdminSupportTicketResponse.parse(await ticketWithMessages(ticket, true)));
+  });
+
+  router.get("/admin/support/tickets/:ticketId/messages/:messageId/attachments/:attachmentId", adminGuard, async (req, res): Promise<void> => {
+    const ticketId = routeParam(req.params.ticketId);
+    const messageId = routeParam(req.params.messageId);
+    const attachmentId = routeParam(req.params.attachmentId);
+    if (!UUID_PATTERN.test(ticketId) || !UUID_PATTERN.test(messageId) || !UUID_PATTERN.test(attachmentId)) {
+      res.status(404).json({ error: "Support ticket attachment not found." });
+      return;
+    }
+    try {
+      await sendSupportTicketAttachment(res, await findMessageAttachment(ticketId, messageId, attachmentId));
+    } catch (error) {
+      req.log.warn({ err: error, ticketId, attachmentId }, "Unable to serve support ticket attachment");
+      res.status(404).json({ error: "Support ticket attachment not found." });
+    }
   });
 
   router.patch("/admin/support/tickets/:ticketId", adminGuard, async (req, res): Promise<void> => {

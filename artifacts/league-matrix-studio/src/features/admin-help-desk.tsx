@@ -12,6 +12,7 @@ import { AlertTriangle, Check, ChevronLeft, ChevronRight, Inbox, RefreshCw, Send
 import { useMemo, useState, type FormEvent } from 'react';
 
 import { getSupportIssue } from './support-center-model';
+import { SupportTicketAttachments } from './support-ticket-attachments';
 
 type Status = 'unread' | 'active' | 'resolved';
 const STATUSES: Status[] = ['unread', 'active', 'resolved'];
@@ -84,6 +85,7 @@ function Detail({ ticketId, onChanged }: { ticketId: string; onChanged: () => vo
           <li key={m.id} className={`border p-3 ${m.senderRole === 'admin' ? 'border-[#bcd3e6] bg-[#eef5fb]' : 'border-[#e5ebe7] bg-white/70'}`}>
             <p className="admin-label">{m.senderRole === 'admin' ? 'Administrator' : 'Member'} · {when(m.createdAt)}</p>
             <p className="whitespace-pre-wrap break-words text-sm">{m.body}</p>
+            <SupportTicketAttachments attachments={m.attachments} />
             {m.senderRole === 'admin' && m.deliveryStatus === 'sent' && <p className="mt-2 flex items-center gap-1 text-xs font-bold text-[#286044]"><Check className="h-3.5 w-3.5" />Email sent</p>}
             {m.senderRole === 'admin' && m.deliveryStatus === 'failed' && <p className="mt-2 flex items-start gap-1 text-xs font-bold text-[#a33e25]"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />Email failed. The reply remains saved in the ticket and the member can read it there.</p>}
           </li>

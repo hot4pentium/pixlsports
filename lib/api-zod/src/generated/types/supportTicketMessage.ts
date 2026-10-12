@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SupportTicketMessageAttachment } from './supportTicketMessageAttachment';
 import type { SupportTicketMessageDeliveryStatus } from './supportTicketMessageDeliveryStatus';
 import type { SupportTicketMessageSenderRole } from './supportTicketMessageSenderRole';
 
@@ -14,4 +15,5 @@ export interface SupportTicketMessage {
   body: string;
   deliveryStatus: SupportTicketMessageDeliveryStatus;
   createdAt: Date;
+  attachments?: SupportTicketMessageAttachment[];
 }

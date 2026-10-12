@@ -258,6 +258,8 @@ export * from './supportTicketInputDeviceType';
 export * from './supportTicketInputIssueId';
 export * from './supportTicketIssueId';
 export * from './supportTicketMessage';
+export * from './supportTicketMessageAttachment';
+export * from './supportTicketMessageAttachmentStatus';
 export * from './supportTicketMessageDeliveryStatus';
 export * from './supportTicketMessageInput';
 export * from './supportTicketMessageSenderRole';
