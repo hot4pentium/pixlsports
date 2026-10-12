@@ -4,8 +4,9 @@ import test from "node:test";
 import express from "express";
 import sharp from "sharp";
 import { and, eq } from "drizzle-orm";
-import { athleteInviteFansTable, athleteInvitesTable, db } from "@workspace/db";
+import { accountAccessTable, athleteInviteFansTable, athleteInvitesTable, db } from "@workspace/db";
 import athleteInviteFeaturesRouter from "./routes/athleteInviteFeatures";
+import { ObjectNotFoundError, ObjectStorageService } from "./lib/objectStorage";
 
 test("anonymous fan follow token scopes preference updates and deletion", async () => {
   const ownerId = `athlete-fan-owner-${randomUUID()}`;
@@ -35,6 +36,12 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
     showSchedule: true,
     paused: false,
   }).returning();
+  await db.insert(accountAccessTable).values({
+    ownerClerkUserId: ownerId,
+    role: "fan",
+    accessMode: "full",
+    lifecycleStatus: "active",
+  });
   const app = express();
   app.set("trust proxy", true);
   app.use(express.json());
@@ -185,6 +192,7 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
       eq(athleteInvitesTable.id, invite.id),
       eq(athleteInvitesTable.ownerClerkUserId, ownerId),
     ));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
     if (originalVapid.publicKey === undefined) delete process.env.VAPID_PUBLIC_KEY;
     else process.env.VAPID_PUBLIC_KEY = originalVapid.publicKey;
     if (originalVapid.privateKey === undefined) delete process.env.VAPID_PRIVATE_KEY;
@@ -215,6 +223,12 @@ test("one browser endpoint can follow separate athlete invites independently", a
     showSchedule: true,
     paused: false,
   }))).returning();
+  await db.insert(accountAccessTable).values(ownerIds.map((ownerClerkUserId) => ({
+    ownerClerkUserId,
+    role: "fan" as const,
+    accessMode: "full" as const,
+    lifecycleStatus: "active" as const,
+  })));
   const app = express();
   app.set("trust proxy", true);
   app.use(express.json());
@@ -262,5 +276,101 @@ test("one browser endpoint can follow separate athlete invites independently", a
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(athleteInviteFansTable).where(eq(athleteInviteFansTable.endpoint, endpoint));
     for (const invite of invites) await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerIds[0]!));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerIds[1]!));
+  }
+});
+
+test("removed or paused athlete photos stop loading at their existing public URLs", async (t) => {
+  const ownerId = `athlete-photo-owner-${randomUUID()}`;
+  const otherId = `athlete-photo-other-${randomUUID()}`;
+  const publicToken = randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "");
+  const photoPath = `/objects/athlete-invite-photos/${randomUUID()}.webp`;
+  const cutoutPath = `/objects/athlete-invite-photos/${randomUUID()}.webp`;
+  const photoBytes = await sharp({ create: { width: 2, height: 2, channels: 4, background: "#d22" } })
+    .webp().toBuffer();
+  const cutoutBytes = await sharp({ create: { width: 2, height: 2, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .webp().toBuffer();
+  const objects = new Map([[photoPath, photoBytes], [cutoutPath, cutoutBytes]]);
+
+  await db.insert(accountAccessTable).values({
+    ownerClerkUserId: ownerId,
+    role: "fan",
+    accessMode: "full",
+    lifecycleStatus: "active",
+  });
+  const [invite] = await db.insert(athleteInvitesTable).values({
+    ownerClerkUserId: ownerId,
+    publicToken,
+    athleteName: "Jordan",
+    teamName: "City Hoops",
+    seasonName: "Current",
+    seasonEndsAt: new Date(Date.now() + 86_400_000),
+    sport: "basketball",
+    trackerProjectId: null,
+    scheduleProjectId: null,
+    showHypeCard: true,
+    showStats: true,
+    showSchedule: true,
+    paused: false,
+    photoObjectPath: photoPath,
+    cutoutObjectPath: cutoutPath,
+  }).returning();
+
+  t.mock.method(ObjectStorageService.prototype, "getObjectEntityFile", async (objectPath) => {
+    const bytes = objects.get(objectPath);
+    if (!bytes) throw new ObjectNotFoundError();
+    return { download: async () => [bytes] } as never;
+  });
+  t.mock.method(ObjectStorageService.prototype, "deleteObjectEntity", async (objectPath) => {
+    if (!objects.delete(objectPath)) throw new ObjectNotFoundError();
+  });
+
+  const app = express();
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteInviteFeaturesRouter);
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const baseUrl = `http://127.0.0.1:${address.port}/api/athlete-invites/${publicToken}/photo/image`;
+  const removeUrl = baseUrl.replace(/\/photo\/image$/, "/photo");
+  const photoUrl = `${baseUrl}?v=known-photo-url`;
+  const cutoutUrl = `${baseUrl}?role=cutout&v=known-cutout-url`;
+  const ownerHeaders = { "x-test-user": ownerId };
+  const otherHeaders = { "x-test-user": otherId };
+
+  try {
+    for (const [url, expectedBytes] of [[photoUrl, photoBytes], [cutoutUrl, cutoutBytes]] as const) {
+      const response = await fetch(url);
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("content-type") ?? "", /image\/webp/);
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), expectedBytes);
+    }
+
+    await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.id, invite.id));
+    for (const url of [photoUrl, cutoutUrl]) {
+      assert.equal((await fetch(url)).status, 404, "paused photos are unavailable to public visitors");
+      assert.equal((await fetch(url, { headers: otherHeaders })).status, 404, "paused photos are unavailable to other accounts");
+      assert.equal((await fetch(url, { headers: ownerHeaders })).status, 200, "the owner can still load paused photos");
+    }
+
+    const removed = await fetch(removeUrl, { method: "DELETE", headers: ownerHeaders });
+    assert.equal(removed.status, 204);
+    assert.equal(objects.size, 0, "removal deletes both the original and cutout objects");
+    for (const url of [photoUrl, cutoutUrl]) {
+      assert.equal((await fetch(url)).status, 404, "an old public photo URL no longer returns image content");
+      assert.equal((await fetch(url, { headers: ownerHeaders })).status, 404, "the owner cannot load a removed photo");
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }
 });
