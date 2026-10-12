@@ -345,6 +345,7 @@ test("removed or paused athlete photos stop loading at their existing public URL
   const origin = `http://127.0.0.1:${address.port}`;
   const cardUrl = `${origin}/api/athlete-invites/${publicToken}/fan`;
   const baseUrl = `${origin}/api/athlete-invites/${publicToken}/photo/image`;
+  const iconUrls = [192, 512].map((size) => `${origin}/api/athlete-invites/${publicToken}/icon/${size}.png`);
   const removeUrl = baseUrl.replace(/\/photo\/image$/, "/photo");
   const ownerHeaders = { "x-test-user": ownerId };
   const otherHeaders = { "x-test-user": otherId };
@@ -368,6 +369,17 @@ test("removed or paused athlete photos stop loading at their existing public URL
       assert.match(response.headers.get("content-type") ?? "", /image\/webp/);
       assert.deepEqual(Buffer.from(await response.arrayBuffer()), expectedBytes);
     }
+    const activeIcons = await Promise.all(iconUrls.map(async (url, index) => {
+      const response = await fetch(url);
+      assert.equal(response.status, 200, "active HYPE Cards serve their install icons to public visitors");
+      assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
+      const bytes = Buffer.from(await response.arrayBuffer());
+      const metadata = await sharp(bytes).metadata();
+      const size = index === 0 ? 192 : 512;
+      assert.equal(metadata.width, size);
+      assert.equal(metadata.height, size);
+      return bytes;
+    }));
 
     await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.id, invite.id));
     assert.equal((await fetch(cardUrl)).status, 404, "paused cards are not available through the public card endpoint");
@@ -376,8 +388,19 @@ test("removed or paused athlete photos stop loading at their existing public URL
       assert.equal((await fetch(url, { headers: otherHeaders })).status, 404, "paused photos are unavailable to other accounts");
       assert.equal((await fetch(url, { headers: ownerHeaders })).status, 200, "the owner can still load paused photos");
     }
+    for (const url of iconUrls) {
+      const response = await fetch(url);
+      assert.equal(response.status, 404, "known install icon URLs are unavailable to public visitors while paused");
+      assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
+    }
 
     await db.update(athleteInvitesTable).set({ paused: false }).where(eq(athleteInvitesTable.id, invite.id));
+    for (const [index, url] of iconUrls.entries()) {
+      const response = await fetch(url);
+      assert.equal(response.status, 200, "resuming a HYPE Card restores its public install icons");
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), activeIcons[index],
+        "resuming restores the same icon response at the previously known URL");
+    }
     const removed = await fetch(removeUrl, { method: "DELETE", headers: ownerHeaders });
     assert.equal(removed.status, 204);
     assert.equal(objects.size, 0, "removal deletes both the original and cutout objects");
