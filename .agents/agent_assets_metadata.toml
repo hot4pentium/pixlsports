@@ -528,3 +528,17 @@ mtime_ms = 1790705736442
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/e76ea2ae-7e01-4cf1-94ec-1f6ba665ee58/6bbbcf56-5371-4aab-80ed-71b5c0c8e241"
 storage_version_token = "1790705746576793"
 content_type = "image/png"
+
+[[outputs]]
+id = "tSGhaQxM05B6VYXlLjIvA"
+uri = "file://exports/pixl-sports-stat-tracker-source.zip"
+type = "unspecified"
+title = "Pixl Sports Stat Tracker source bundle"
+description = "Focused tracker and season-review source snapshot, live-share API/schema/types, tests, and integration notes for an extension project."
+logical_id = "9d3a09e3-1e31-4c26-be33-d41016b6162f"
+content_hash = "sha256:a789a87d4a2d133c7effd4f445c355756dbdc5b1aa6b1ebb14bc5496f8d666ee"
+size = 175403
+mtime_ms = 1791858435966
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/9d3a09e3-1e31-4c26-be33-d41016b6162f/36646c52-d126-4af7-b99b-17aceb4e4d67"
+storage_version_token = "1791858441682090"
+content_type = "application/octet-stream"

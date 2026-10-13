@@ -1,0 +1,4831 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: support-tickets
+    description: Private member support tickets and administrator help-desk operations
+  - name: projects
+    description: Cloud project operations
+  - name: storage
+    description: Project media storage operations
+  - name: schedule-shares
+    description: Public schedule sharing operations
+  - name: game-on-cards
+    description: Event-specific Game On Card destinations
+  - name: checklist-shares
+    description: Collaborative Gameday Checklist sharing operations
+  - name: meeting-workspaces
+    description: Authenticated meeting workspace persistence and public recap sharing
+  - name: stat-tracker-shares
+    description: Live stat tracker spectator sharing operations
+  - name: hype-card-shares
+    description: Interactive Hype Card sharing operations
+  - name: athlete-gear
+    description: Private athlete soccer gear and engagement progress
+  - name: athlete-invites
+    description: Durable Athlete Hype Page sharing operations
+  - name: athlete-invite-fans
+    description: Anonymous fan follows and alerts for Athlete Hype Pages
+  - name: account-access
+    description: Authenticated account role and Guest usage
+  - name: supporter-photos
+    description: Private supporter athlete photos
+  - name: notifications
+    description: Authenticated browser push notifications
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /support/tickets/email-replies/resend:
+    post:
+      operationId: receiveResendSupportTicketEmailReply
+      tags: [support-tickets]
+      summary: Import a verified customer email reply into its support ticket
+      description: Resend calls this endpoint for received emails. The server verifies the Svix signature, ticket-specific reply address, and sender before storing a message.
+      parameters:
+        - name: svix-id
+          in: header
+          required: true
+          schema: { type: string }
+        - name: svix-timestamp
+          in: header
+          required: true
+          schema: { type: string }
+        - name: svix-signature
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendEmailReceivedEvent"
+      responses:
+        "200":
+          description: Event imported or safely ignored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportEmailWebhookResult"
+        "401":
+          description: Invalid webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: The webhook is not configured or the received email could not be fetched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /support/tickets:
+    post:
+      operationId: createSupportTicket
+      tags: [support-tickets]
+      summary: Create a private support ticket
+      description: Creates a persistent ticket without notifying an administrator by email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketInput"
+      responses:
+        "201":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Too many support submissions from this address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: A unique ticket reference could not be assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: listSupportTickets
+      tags: [support-tickets]
+      summary: List support tickets owned by the authenticated member
+      responses:
+        "200":
+          description: Member ticket list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /support/tickets/recovery/request:
+    post:
+      operationId: requestSupportTicketRecovery
+      tags: [support-tickets]
+      summary: Send a guest ticket recovery code
+      description: Sends a short-lived verification code to the ticket's original reply email. The response does not reveal whether a matching ticket exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketRecoveryRequestInput"
+      responses:
+        "202":
+          description: Recovery request accepted without disclosing ticket existence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketRecoveryRequestResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Too many recovery requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /support/tickets/recovery/verify:
+    post:
+      operationId: verifySupportTicketRecovery
+      tags: [support-tickets]
+      summary: Verify a guest ticket recovery code
+      description: Verifies the short-lived email code and returns a fresh private access key in the response body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketRecoveryCodeInput"
+      responses:
+        "200":
+          description: Recovery verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketRecovered"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /support/tickets/{ticketId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - $ref: "#/components/parameters/SupportTicketAccessToken"
+    get:
+      operationId: getSupportTicket
+      tags: [support-tickets]
+      summary: Get one owned or access-token-authorized support ticket
+      responses:
+        "200":
+          description: Ticket details and conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicket"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /support/tickets/{ticketId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - $ref: "#/components/parameters/SupportTicketAccessToken"
+    post:
+      operationId: createSupportTicketMessage
+      tags: [support-tickets]
+      summary: Add a member follow-up to an owned support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketMessageInput"
+      responses:
+        "201":
+          description: Follow-up stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketMessage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /support/tickets/{ticketId}/messages/{messageId}/attachments/{attachmentId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - $ref: "#/components/parameters/SupportTicketAccessToken"
+      - name: messageId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: attachmentId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getSupportTicketMessageAttachment
+      tags: [support-tickets]
+      summary: Download an attachment from an authorized member ticket
+      responses:
+        "200":
+          description: Private ticket attachment
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support/tickets:
+    get:
+      operationId: listAdminSupportTickets
+      tags: [support-tickets]
+      summary: List and filter the administrator help-desk queue
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [unread, active, resolved] }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Filtered help-desk queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSupportTicketList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/support/email-rejections:
+    get:
+      operationId: listAdminSupportEmailReplyRejections
+      tags: [support-tickets]
+      summary: List recent support email replies that could not be matched
+      description: Returns privacy-minimized rejection metadata for the previous 30 days. Does not include sender addresses, message content, ticket details, or reply tokens.
+      responses:
+        "200":
+          description: Recent email reply rejection records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSupportEmailReplyRejectionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/support/tickets/{ticketId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+    get:
+      operationId: getAdminSupportTicket
+      tags: [support-tickets]
+      summary: Get one ticket from the administrator help desk
+      responses:
+        "200":
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicket"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAdminSupportTicket
+      tags: [support-tickets]
+      summary: Change a ticket status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketStatusUpdate"
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicket"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support/tickets/{ticketId}/messages/{messageId}/attachments/{attachmentId}:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+      - name: messageId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: attachmentId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getAdminSupportTicketMessageAttachment
+      tags: [support-tickets]
+      summary: Download an attachment from the administrator help desk
+      responses:
+        "200":
+          description: Private ticket attachment
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support/tickets/{ticketId}/replies:
+    parameters:
+      - $ref: "#/components/parameters/SupportTicketId"
+    post:
+      operationId: createAdminSupportTicketReply
+      tags: [support-tickets]
+      summary: Store an administrator reply and email it to the ticket reply address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketMessageInput"
+      responses:
+        "201":
+          description: Reply stored with its delivery result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketMessage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schedule-shares:
+    post:
+      operationId: createScheduleShare
+      tags: [schedule-shares]
+      summary: Create a public schedule share
+      description: Creates a public snapshot containing schedule details only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleShareInput"
+      responses:
+        "201":
+          description: Public schedule share created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /schedule-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleShareToken"
+    get:
+      operationId: getScheduleShare
+      tags: [schedule-shares]
+      summary: Get a public schedule share
+      description: Returns schedule details without requiring a LeagueMatrix account.
+      responses:
+        "200":
+          description: Public schedule details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateScheduleShare
+      tags: [schedule-shares]
+      summary: Update a public schedule share
+      description: Updates a schedule share owned by the authenticated account while keeping its public link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleShareInput"
+      responses:
+        "200":
+          description: Public schedule share updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteScheduleShare
+      tags: [schedule-shares]
+      summary: Revoke a public schedule share
+      description: Revokes a schedule share owned by the authenticated account.
+      responses:
+        "204":
+          description: Public schedule share revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-gear/soccer:
+    get:
+      operationId: getSoccerGear
+      tags: [athlete-gear]
+      summary: Get the signed-in athlete's soccer gear and progress
+      responses:
+        "200":
+          description: Saved soccer gear and unlock progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: saveSoccerGear
+      tags: [athlete-gear]
+      summary: Save the signed-in athlete's soccer gear look
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoccerGearLoadoutInput"
+      responses:
+        "200":
+          description: Updated soccer gear and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /athlete-gear/soccer/activity:
+    post:
+      operationId: recordSoccerGearWeeklyLogin
+      tags: [athlete-gear]
+      summary: Record one signed-in activity week
+      description: Records at most one qualifying signed-in visit per account per UTC calendar week.
+      responses:
+        "200":
+          description: Current soccer gear and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /athlete-gear/soccer/share-action:
+    post:
+      operationId: recordSoccerGearShareAction
+      tags: [athlete-gear]
+      summary: Record a completed HYPE Card share action
+      description: Counts one successful share action for an active HYPE Card owned by the signed-in account. It does not identify or verify a recipient.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoccerGearShareActionInput"
+      responses:
+        "200":
+          description: Current soccer gear and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoccerGearState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /game-on-cards/owned:
+    get:
+      operationId: listOwnedGameOnCards
+      tags: [game-on-cards]
+      summary: List owned Game On Cards
+      description: Lists the caller's explicitly marked Game On Card shares containing exactly one game or practice event. Older device-saved cards remain available on their original device.
+      responses:
+        "200":
+          description: Owned Game On Cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleShare"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /game-on-cards/owned/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleShareToken"
+    delete:
+      operationId: deleteOwnedGameOnCard
+      tags: [game-on-cards]
+      summary: Delete an owned Game On Card and its verified Calendar event
+      description: Deletes the card. Its linked Calendar event is also deleted only when the saved association uniquely identifies an event in a Calendar project owned by the caller.
+      responses:
+        "200":
+          description: Card deletion result, including whether its Calendar event was removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteGameOnCardResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /game-on-cards/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleShareToken"
+    get:
+      operationId: getGameOnCard
+      tags: [game-on-cards]
+      summary: Get a public event-specific Game On Card
+      description: Returns one sanitized event and only destinations the owner has deliberately shared.
+      responses:
+        "200":
+          description: Public Game On Card and current related destinations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameOnCard"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /checklist-shares:
+    post:
+      operationId: createChecklistShare
+      tags: [checklist-shares]
+      summary: Create a collaborative Gameday Checklist share
+      description: Creates an edit link owned by the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistShareInput"
+      responses:
+        "201":
+          description: Collaborative checklist created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /checklist-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ChecklistShareToken"
+    get:
+      operationId: getChecklistShare
+      tags: [checklist-shares]
+      summary: Open a collaborative checklist edit link
+      responses:
+        "200":
+          description: Current checklist contents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateChecklistShare
+      tags: [checklist-shares]
+      summary: Save a collaborative checklist edit
+      description: Saves only when the expected revision is current.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistShareUpdate"
+      responses:
+        "200":
+          description: Checklist updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistConflict"
+    delete:
+      operationId: deleteChecklistShare
+      tags: [checklist-shares]
+      summary: Revoke a collaborative checklist edit link
+      description: Only the checklist owner can revoke the link.
+      responses:
+        "204":
+          description: Checklist link revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /meeting-workspaces/{meetingId}:
+    parameters:
+      - $ref: "#/components/parameters/MeetingId"
+    get:
+      operationId: getMeetingWorkspace
+      tags: [meeting-workspaces]
+      summary: Get the authenticated owner's meeting workspace
+      responses:
+        "200":
+          description: Meeting workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingWorkspace"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: upsertMeetingWorkspace
+      tags: [meeting-workspaces]
+      summary: Save the authenticated owner's meeting workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingWorkspaceUpdate"
+      responses:
+        "200":
+          description: Meeting workspace saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingWorkspace"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingWorkspaceConflict"
+    delete:
+      operationId: deleteMeetingWorkspace
+      tags: [meeting-workspaces]
+      summary: Revoke the authenticated owner's meeting recap link
+      responses:
+        "204":
+          description: Meeting workspace revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /meeting-recaps/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/MeetingShareToken"
+    get:
+      operationId: getMeetingRecap
+      tags: [meeting-workspaces]
+      summary: Get a public read-only meeting recap
+      responses:
+        "200":
+          description: Public meeting recap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingRecap"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stat-tracker-shares:
+    get:
+      operationId: listStatTrackerShares
+      tags: [stat-tracker-shares]
+      summary: List active stat tracker shares owned by the authenticated user
+      responses:
+        "200":
+          description: Active owned shares, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatTrackerShare"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Create a live stat tracker spectator share
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatTrackerShareInput"
+      responses:
+        "201":
+          description: Live spectator share created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /stat-tracker-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/StatTrackerShareToken"
+    get:
+      operationId: getStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Get a live stat tracker spectator share
+      responses:
+        "200":
+          description: Sanitized live game snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Update a live stat tracker spectator share
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatTrackerShareUpdate"
+      responses:
+        "200":
+          description: Updated live spectator share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerConflict"
+    delete:
+      operationId: deleteStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Revoke a live stat tracker spectator share
+      responses:
+        "204":
+          description: Spectator link revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stat-tracker-shares/{shareToken}/events:
+    parameters:
+      - $ref: "#/components/parameters/StatTrackerShareToken"
+    get:
+      operationId: getStatTrackerShareEvents
+      tags: [stat-tracker-shares]
+      summary: Subscribe to live stat tracker updates
+      responses:
+        "200":
+          description: Server-sent spectator updates
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites:
+    get:
+      operationId: listAthleteInvites
+      tags: [athlete-invites]
+      summary: List athlete invites owned by the authenticated user
+      responses:
+        "200":
+          description: Owned athlete invites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInviteList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createAthleteInvite
+      tags: [athlete-invites]
+      summary: Create an Athlete Hype Page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteInput"
+      responses:
+        "201":
+          description: Athlete invite created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInvite"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: This account already has an athlete invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}:
+    parameters:
+      - in: path
+        name: inviteToken
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{24,80}$"
+    get:
+      operationId: getAthleteInvite
+      tags: [athlete-invites]
+      summary: Get a public Athlete Hype Page
+      responses:
+        "200":
+          description: Current public athlete page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAthleteInvite"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAthleteInvite
+      tags: [athlete-invites]
+      summary: Update an owned Athlete Hype Page without changing its URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteInput"
+      responses:
+        "200":
+          description: Athlete invite updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInvite"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAthleteInvite
+      tags: [athlete-invites]
+      summary: Pause an owned Athlete Hype Page
+      description: Pauses the page without changing its stable URL. The page can be resumed with the update operation.
+      responses:
+        "204":
+          description: Athlete invite revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/fan:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: getAthleteFanCard
+      tags: [athlete-invites]
+      summary: Get an HYPE Card with a sanitized live scoreboard
+      description: Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
+      responses:
+        "200":
+          description: Public HYPE Card and optional sanitized live scoreboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAthleteFanCard"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/events/{shareToken}/notify:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - $ref: "#/components/parameters/ScheduleShareToken"
+    post:
+      operationId: notifyAthleteInviteEventFollowers
+      tags: [athlete-invites]
+      summary: Manually notify opted-in followers about an upcoming Game On Card while events are enabled
+      description: Starts at most eight durable device attempts per request. Repeat while remaining is positive; claimed attempts are never resent even if the process is interrupted.
+      responses:
+        "200":
+          description: Current cumulative progress; pending does not imply delivery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteEventNotifyResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The event is no longer upcoming or eligible, or HYPE Card events are disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: getAthleteInviteEventNotificationProgress
+      tags: [athlete-invites]
+      summary: Report durable progress of a manual event announcement
+      responses:
+        "200":
+          description: Current eligible-device progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteEventNotifyResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The event is no longer upcoming or eligible, or HYPE Card events are disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}/live-taps:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: sendAthleteLiveTap
+      tags: [athlete-invites]
+      summary: Add a family cheer to the current live game
+      description: Requires the card owner's account or an unrevoked family access token; the public card URL alone never authorizes a tap.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteLiveTapInput"
+      responses:
+        "201":
+          description: Updated per-game cheer tally
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteLiveTaps"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: A valid family tap link or card-owner session is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Game Day Live is not active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: This family link has reached its tap rate limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}/live-taps/access-links:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: listAthleteInviteLiveTapAccessLinks
+      tags: [athlete-invites]
+      summary: List active family Live Taps links as the card owner
+      responses:
+        "200":
+          description: Active links; access tokens are never returned by this operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AthleteInviteLiveTapAccessLink"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createAthleteInviteLiveTapAccessLink
+      tags: [athlete-invites]
+      summary: Create a revocable family Live Taps link as the card owner
+      responses:
+        "201":
+          description: New private access token, shown only once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteLiveTapAccessLinkCreated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/live-taps/access-links/{accessId}:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: path
+        name: accessId
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      operationId: revokeAthleteInviteLiveTapAccessLink
+      tags: [athlete-invites]
+      summary: Revoke one family Live Taps link as the card owner
+      responses:
+        "204":
+          description: Link revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/hypes:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: sendAthleteInviteHype
+      tags: [athlete-invites]
+      summary: Send encouragement to an active HYPE Card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteHypeInput"
+      responses:
+        "201":
+          description: Hype received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteHypeAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: Too many Hypes from this visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: listAthleteInviteHypes
+      tags: [athlete-invites]
+      summary: Review Hypes as the card owner
+      responses:
+        "200":
+          description: Most recent Hypes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AthleteInviteHype"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/public-shoutouts:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: listPublicAthleteInviteHypes
+      tags: [athlete-invites]
+      summary: List public Hype Card shoutouts
+      responses:
+        "200":
+          description: Most recent shoutouts explicitly approved for public display
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicAthleteInviteHype"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/hypes/{hypeId}:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: path
+        name: hypeId
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      operationId: deleteAthleteInviteHype
+      tags: [athlete-invites]
+      summary: Remove an unwanted Hype as the card owner
+      responses:
+        "204":
+          description: Hype removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/live:
+    parameters:
+      - in: path
+        name: inviteToken
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{24,80}$"
+    post:
+      operationId: startAthleteInviteLive
+      tags: [athlete-invites]
+      summary: Start a short-lived Game Day Live session for an Athlete Hype Page
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteLiveStartInput"
+      responses:
+        "201":
+          description: Short-lived live session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteLiveSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: No live game is available in the selected tracker project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: stopAthleteInviteLive
+      tags: [athlete-invites]
+      summary: Stop Game Day Live for an Athlete Hype Page
+      responses:
+        "204":
+          description: Live session stopped
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/appearance:
+    patch:
+      operationId: updateAthleteInviteAppearance
+      tags: [athlete-invites]
+      summary: Save the owner's HYPE Card appearance without changing page settings
+      parameters:
+        - $ref: "#/components/parameters/AthleteInviteToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardAppearance"
+      responses:
+        "200":
+          description: Updated athlete card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInvite"
+        "400":
+          description: Invalid appearance
+        "404":
+          description: Card not found
+  /athlete-invites/{inviteToken}/photo/upload-url:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: requestAthleteInvitePhotoUploadUrl
+      tags: [athlete-invites]
+      summary: Request an owner-only athlete page photo upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInvitePhotoUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload URL and object path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInvitePhotoUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/photo:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    put:
+      operationId: confirmAthleteInvitePhoto
+      tags: [athlete-invites]
+      summary: Confirm a completed owner-only athlete page photo upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInvitePhotoConfirmInput"
+      responses:
+        "200":
+          description: Confirmed public photo URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInvitePhoto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removeAthleteInvitePhoto
+      tags: [athlete-invites]
+      summary: Remove the owner-only athlete page photo
+      responses:
+        "204":
+          description: Photo removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/photo/image:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: serveAthleteInvitePhoto
+      tags: [athlete-invites]
+      summary: Serve the current photo for an active athlete invite
+      responses:
+        "200":
+          description: Athlete page photo
+          content:
+            image/webp: {}
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/icon/{size}.png:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: path
+        name: size
+        required: true
+        schema:
+          type: integer
+          enum: [192, 512]
+    get:
+      operationId: serveAthleteInviteIcon
+      tags: [athlete-invites]
+      summary: Serve an active athlete invite install icon
+      responses:
+        "200":
+          description: PNG icon with the exact requested dimensions
+          content:
+            image/png: {}
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/manifest.webmanifest:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: getAthleteInviteManifest
+      tags: [athlete-invites]
+      summary: Get an install manifest scoped to an active athlete fan page
+      description: Accepts an optional basePath query containing only safe slash-separated path segments for deployments mounted below the domain root.
+      responses:
+        "200":
+          description: Dynamic install manifest for this athlete
+          content:
+            application/manifest+json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteManifest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/follows:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: createAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Follow an active athlete invite anonymously on this device
+      description: New follows are accepted only while this invite is active. The same browser subscription may follow different invites independently.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteFanFollowInput"
+      responses:
+        "201":
+          description: Device follow created; keep the returned token private
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanFollowCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: This browser subscription is already following this invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Follow creation rate limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Web Push VAPID keys are not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}/follows/me:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: header
+        name: X-Fan-Follow-Token
+        required: true
+        schema:
+          type: string
+          minLength: 40
+          maxLength: 100
+    get:
+      operationId: getAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Get device follow preferences and active status
+      description: A valid follow token remains usable to manage its own preferences or remove the follow while the invite is paused; active is false until the invite can send alerts again.
+      responses:
+        "200":
+          description: Current fan follow preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanFollow"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Update alert preferences using the device follow token
+      description: Existing follows may be updated while paused; the response reports active false until the invite can send alerts again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteFanFollowPreferences"
+      responses:
+        "200":
+          description: Updated fan follow preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanFollow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Remove this device follow
+      responses:
+        "204":
+          description: Follow removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /hype-card-shares:
+    get:
+      operationId: listHypeCardShares
+      tags: [hype-card-shares]
+      summary: List owned Hype Card shares
+      parameters:
+        - in: query
+          name: shareMode
+          schema:
+            type: string
+            enum: [card, stats]
+        - in: query
+          name: mediaType
+          schema:
+            type: string
+            enum: [image, video]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        "200":
+          description: Owned shares, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createHypeCardShare
+      tags: [hype-card-shares]
+      summary: Publish a Hype Card player page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardShareInput"
+      responses:
+        "201":
+          description: Published player page created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Prepared uploads are unavailable or the share being refreshed is no longer active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Prepared share media is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /hype-card-shares/upload-url:
+    post:
+      operationId: requestHypeCardShareUploadUrl
+      tags: [hype-card-shares]
+      summary: Request a private upload URL for prepared share media
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardShareUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /hype-card-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+    get:
+      operationId: getHypeCardShare
+      tags: [hype-card-shares]
+      summary: Get a public Hype Card player page
+      responses:
+        "200":
+          description: Public Hype Card details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteHypeCardShare
+      tags: [hype-card-shares]
+      summary: Revoke an owned Hype Card share
+      responses:
+        "204":
+          description: Share revoked and media removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /hype-card-shares/{shareToken}/download:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+    get:
+      operationId: downloadHypeCardShare
+      tags: [hype-card-shares]
+      summary: Download the hosted media for an owned Hype Card share
+      responses:
+        "200":
+          description: Hosted Hype Card image or prepared video attachment
+          content:
+            image/*: {}
+            video/*: {}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /hype-card-shares/reply-inbox:
+    get:
+      operationId: getHypeCardReplyInbox
+      tags: [hype-card-shares]
+      summary: Get replies grouped by owned Hype Card share
+      responses:
+        "200":
+          description: Replies grouped by recent sent Hype Cards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardReplyInbox"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: markHypeCardReplyInboxRead
+      tags: [hype-card-shares]
+      summary: Mark all replies for recent owned Hype Card shares as read
+      responses:
+        "204":
+          description: Reply inbox marked read
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /hype-card-shares/{shareToken}/replies:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+    post:
+      operationId: createHypeCardShareReply
+      tags: [hype-card-shares]
+      summary: Reply to an active public Hype Card share
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardShareReplyInput"
+      responses:
+        "201":
+          description: Reply accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareReplyReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: Too many replies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: listHypeCardShareReplies
+      tags: [hype-card-shares]
+      summary: List replies for an owned Hype Card share
+      responses:
+        "200":
+          description: Replies, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareReplyList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: markHypeCardShareRepliesRead
+      tags: [hype-card-shares]
+      summary: Mark all replies for an owned Hype Card share as read
+      responses:
+        "204":
+          description: Replies marked read
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /hype-card-shares/{shareToken}/replies/{replyId}:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+      - $ref: "#/components/parameters/HypeCardShareReplyId"
+    delete:
+      operationId: deleteHypeCardShareReply
+      tags: [hype-card-shares]
+      summary: Delete one reply from an owned Hype Card share
+      description: Deletes the reply only when its share belongs to the authenticated user.
+      responses:
+        "204":
+          description: Reply deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /hype-card-shares/{shareToken}/media/{mediaKind}:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+      - $ref: "#/components/parameters/HypeCardShareMediaKind"
+    get:
+      operationId: serveHypeCardShareMedia
+      tags: [hype-card-shares]
+      summary: Serve media for an active public Hype Card share
+      responses:
+        "200":
+          description: Prepared clip or poster bytes
+          content:
+            image/*: {}
+            video/*: {}
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      tags: [member-admin]
+      summary: Check whether the authenticated user has administrator access
+      responses:
+        "200":
+          description: Administrator access status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/members:
+    get:
+      operationId: listAdminMembers
+      tags: [member-admin]
+      summary: Search and page through member accounts
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 200 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: One page of member accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/members/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    get:
+      operationId: getAdminMember
+      tags: [member-admin]
+      summary: Get one member account summary
+      responses:
+        "200":
+          description: Member account summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/members/{userId}/profile:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    patch:
+      operationId: updateAdminMemberProfile
+      tags: [member-admin]
+      summary: Edit supported app-profile fields for a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberProfileUpdate"
+      responses:
+        "200":
+          description: Updated member account summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/members/{userId}/suspension:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    patch:
+      operationId: updateAdminMemberSuspension
+      tags: [member-admin]
+      summary: Suspend or restore a member account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberSuspensionInput"
+      responses:
+        "200":
+          description: Updated member account and action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The account cannot be suspended or restored in its current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/members/{userId}/administrator:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    patch:
+      operationId: updateAdminMemberAdministrator
+      tags: [member-admin]
+      summary: Grant or revoke administrator access for a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberAdministratorUpdate"
+      responses:
+        "200":
+          description: Updated administrator access and action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The requested administrator change is not allowed in the current environment or account state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/members/{userId}/identity-block:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    patch:
+      operationId: updateAdminMemberIdentityBlock
+      tags: [member-admin]
+      summary: Block or unblock Pixl Sports access for an identity without an app account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberIdentityBlockUpdate"
+      responses:
+        "200":
+          description: Updated app-only identity block
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The identity has an app account, is already in the requested state, or is an administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/members/{userId}/cancellation/restore:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    post:
+      operationId: restoreAdminMemberCancellation
+      tags: [member-admin]
+      summary: Reverse cancellation during the account recovery window
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberCancellationRestoreInput"
+      responses:
+        "200":
+          description: Restored cancelled account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The account is not cancelled or its recovery window has expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/members/{userId}/delete:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    post:
+      operationId: deleteAdminMember
+      tags: [member-admin]
+      summary: Permanently delete a member account and its associated data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberDeleteInput"
+      responses:
+        "200":
+          description: Deletion completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "202":
+          description: Deletion is pending or failed and will be retried
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The target account cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/audit:
+    get:
+      operationId: listAdminAudit
+      tags: [member-admin]
+      summary: View and filter the member-administration audit trail
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: memberClerkUserId
+          in: query
+          required: false
+          description: Filter by the affected member's Clerk user ID.
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: action
+          in: query
+          required: false
+          description: Filter by the recorded administrative action.
+          schema:
+            type: string
+            enum: [initial_admin_bootstrapped, profile_updated, account_suspended, account_reactivated, account_cancellation_reversed, identity_blocked, identity_unblocked, account_deleted, administrator_granted, administrator_revoked]
+        - name: status
+          in: query
+          required: false
+          description: Filter by the recorded action outcome.
+          schema: { type: string, enum: [pending, failed, completed] }
+        - name: fromDate
+          in: query
+          required: false
+          description: Include entries created on or after this UTC calendar date (YYYY-MM-DD).
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: toDate
+          in: query
+          required: false
+          description: Include entries created on or before this UTC calendar date (YYYY-MM-DD).
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      responses:
+        "200":
+          description: One page of administrator actions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAuditList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: The filters or date range are invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /account/access:
+    get:
+      operationId: getAccountAccess
+      tags: [account-access]
+      summary: Get the authenticated user's account access and Guest usage
+      responses:
+        "200":
+          description: Account access and usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountAccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateAccountAccess
+      tags: [account-access]
+      summary: Save the authenticated user's role and access mode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountAccessInput"
+      responses:
+        "200":
+          description: Account access and usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountAccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account mode is already set or the verified email belongs to another app account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "423":
+          description: Account is locked, this identity is not eligible, or its email is not verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /account/lifecycle:
+    get:
+      operationId: getAccountLifecycle
+      tags: [account-access]
+      summary: Get the authenticated user's account lifecycle state
+      responses:
+        "200":
+          description: Current account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /account/cancel:
+    post:
+      operationId: cancelAccount
+      tags: [account-access]
+      summary: Cancel and immediately lock the authenticated account
+      responses:
+        "200":
+          description: Cancelled account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account setup is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /account/pause:
+    post:
+      operationId: pauseAccount
+      tags: [account-access]
+      summary: Pause the authenticated account for 90 days without deletion
+      responses:
+        "200":
+          description: Paused account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account setup is incomplete or account is not active
+  /account/resume:
+    post:
+      operationId: resumeAccount
+      tags: [account-access]
+      summary: Resume a paused account early
+      responses:
+        "200":
+          description: Active account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account is not paused
+  /account/reactivate:
+    post:
+      operationId: reactivateAccount
+      tags: [account-access]
+      summary: Reactivate an account during its recovery window
+      responses:
+        "200":
+          description: Reactivated account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Recovery window has expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /billing/webhook:
+    post:
+      operationId: receiveBillingWebhook
+      tags: [account-access]
+      summary: Apply a verified paid entitlement to an account
+      description: Receives a signed paid entitlement event and restores an eligible cancelled account. Duplicate provider event IDs are acknowledged without repeating the transition.
+      parameters:
+        - in: header
+          name: x-billing-signature
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature of the raw request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaidEntitlementEvent"
+      responses:
+        "200":
+          description: Entitlement accepted or safely replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingWebhookResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /account/usage:
+    post:
+      operationId: consumeAccountUsage
+      tags: [account-access]
+      summary: Consume one Guest allowance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountUsageConsumeInput"
+      responses:
+        "200":
+          description: Updated account access and usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountAccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Guest allowance exhausted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List the authenticated user's projects
+      responses:
+        "200":
+          description: Projects owned by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a cloud project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Project limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /projects/{projectId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get one owned cloud project
+      responses:
+        "200":
+          description: Owned project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update an owned cloud project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectConflict"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete an owned cloud project and its media metadata
+      responses:
+        "204":
+          description: Project deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestProjectMediaUploadUrl
+      tags: [storage]
+      summary: Request a private project media upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaUploadInput"
+      responses:
+        "200":
+          description: Presigned direct upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: Upload is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: An active paid entitlement is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/uploads/complete:
+    post:
+      operationId: completeProjectMediaUpload
+      tags: [storage]
+      summary: Validate and save a prepared project media upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaUploadCompleteInput"
+      responses:
+        "201":
+          description: Saved project media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Media"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Upload claim expired or quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Uploaded media is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/uploads/{claimId}:
+    parameters:
+      - $ref: "#/components/parameters/MediaUploadClaimId"
+    delete:
+      operationId: abandonProjectMediaUpload
+      tags: [storage]
+      summary: Abandon an unfinished project media upload
+      responses:
+        "204":
+          description: Upload claim and object removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Upload is already attached to project media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Upload object could not be removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/media/{mediaId}:
+    parameters:
+      - $ref: "#/components/parameters/MediaId"
+    get:
+      operationId: serveProjectMedia
+      tags: [storage]
+      summary: Serve owned project media
+      responses:
+        "200":
+          description: Media bytes
+          content:
+            image/*: {}
+            video/*: {}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteProjectMedia
+      tags: [storage]
+      summary: Delete owned project media
+      responses:
+        "204":
+          description: Media deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /supporter-photo:
+    get:
+      operationId: getSupporterPhoto
+      tags: [supporter-photos]
+      summary: Get the signed-in supporter's athlete photo
+      responses:
+        "200":
+          description: Current private athlete photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterPhoto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: saveSupporterPhoto
+      tags: [supporter-photos]
+      summary: Validate and save an uploaded athlete photo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupporterPhotoSave"
+      responses:
+        "200":
+          description: Saved private athlete photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterPhoto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          description: Photo is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteSupporterPhoto
+      tags: [supporter-photos]
+      summary: Remove the signed-in supporter's athlete photo
+      responses:
+        "204":
+          description: Photo removed
+  /supporter-photo/upload-url:
+    post:
+      operationId: requestSupporterPhotoUploadUrl
+      tags: [supporter-photos]
+      summary: Request a private athlete photo upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupporterPhotoUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterPhotoUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /notifications/config:
+    get:
+      operationId: getNotificationConfig
+      tags: [notifications]
+      summary: Get browser push and scheduled delivery availability
+      responses:
+        "200":
+          description: Push configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationConfig"
+  /notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [notifications]
+      summary: Get schedule reminder preferences
+      responses:
+        "200":
+          description: Schedule reminder preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateNotificationPreferences
+      tags: [notifications]
+      summary: Update schedule reminder preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferencesUpdate"
+      responses:
+        "200":
+          description: Updated schedule reminder preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /supporter/active-game:
+    get:
+      operationId: getSupporterActiveGame
+      tags: [supporter]
+      summary: Get the signed-in supporter's active game selection
+      responses:
+        "200":
+          description: Active game selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterActiveGame"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateSupporterActiveGame
+      tags: [supporter]
+      summary: Save the signed-in supporter's active game selection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupporterActiveGameUpdate"
+      responses:
+        "200":
+          description: Saved active game selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterActiveGame"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /notifications/subscriptions:
+    post:
+      operationId: saveNotificationSubscription
+      tags: [notifications]
+      summary: Register a browser push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSubscriptionInput"
+      responses:
+        "204":
+          description: Subscription saved
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Subscription belongs to another account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteNotificationSubscription
+      tags: [notifications]
+      summary: Remove a browser push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSubscriptionDeleteInput"
+      responses:
+        "204":
+          description: Subscription removed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /notifications/subscriptions/status:
+    get:
+      operationId: getNotificationSubscriptionStatus
+      tags: [notifications]
+      summary: Check ownership of a browser push subscription
+      parameters:
+        - name: endpoint
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+            maxLength: 2048
+      responses:
+        "200":
+          description: Subscription ownership status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationSubscriptionStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /notifications/test:
+    post:
+      operationId: sendTestNotification
+      tags: [notifications]
+      summary: Send a test notification
+      responses:
+        "202":
+          description: Test notification queued
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Push notifications are not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No live subscription received the notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /notifications/deliveries/{deliveryId}/displayed:
+    post:
+      operationId: acknowledgeNotificationDisplayed
+      tags: [notifications]
+      summary: Acknowledge that a push notification was displayed by the device
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationDisplayReceiptInput"
+      responses:
+        "204":
+          description: Display receipt recorded
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  parameters:
+    AthleteInviteToken:
+      in: path
+      name: inviteToken
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{24,80}$"
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MediaId:
+      name: mediaId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MediaUploadClaimId:
+      name: claimId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ScheduleShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ChecklistShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MeetingId:
+      name: meetingId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 160
+    MeetingShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{32,80}$"
+    StatTrackerShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    HypeCardShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{24,80}$"
+    HypeCardShareReplyId:
+      name: replyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    HypeCardShareMediaKind:
+      name: mediaKind
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [video, poster]
+    SupportTicketId:
+      name: ticketId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SupportTicketAccessToken:
+      name: X-Support-Ticket-Token
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 200
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    SupportDiagnostics:
+      type: object
+      additionalProperties: false
+      required: [connection, browserStorage, service]
+      properties:
+        connection: { type: string, enum: [online, offline, not-run] }
+        browserStorage: { type: string, enum: [available, unavailable, not-run] }
+        service: { type: string, enum: [available, unavailable, not-run] }
+    SupportTicketInput:
+      type: object
+      additionalProperties: false
+      required: [issueId, description, deviceType, connectionType, replyEmail]
+      properties:
+        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, other] }
+        description: { type: string, minLength: 10, maxLength: 5000 }
+        deviceType: { type: string, enum: [mobile, desktop, other, unsure] }
+        connectionType: { type: string, enum: [wifi, mobile-data, other, unsure] }
+        replyEmail: { type: string, format: email, maxLength: 320 }
+        website: { type: string, maxLength: 200 }
+        diagnostics:
+          $ref: "#/components/schemas/SupportDiagnostics"
+    SupportTicketRecoveryRequestInput:
+      type: object
+      additionalProperties: false
+      required: [reference, email]
+      properties:
+        reference: { type: string, minLength: 6, maxLength: 40 }
+        email: { type: string, format: email, maxLength: 320 }
+    SupportTicketRecoveryCodeInput:
+      type: object
+      additionalProperties: false
+      required: [reference, email, code]
+      properties:
+        reference: { type: string, minLength: 6, maxLength: 40 }
+        email: { type: string, format: email, maxLength: 320 }
+        code: { type: string, pattern: "^[0-9]{8}$" }
+    SupportTicketRecoveryRequestResponse:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message: { type: string }
+    SupportTicketRecovered:
+      type: object
+      additionalProperties: false
+      required: [ticket, accessToken]
+      properties:
+        ticket:
+          $ref: "#/components/schemas/SupportTicket"
+        accessToken: { type: string, minLength: 32, maxLength: 200 }
+    SupportTicketCreated:
+      type: object
+      additionalProperties: false
+      required: [ticket, accessToken]
+      properties:
+        ticket:
+          $ref: "#/components/schemas/SupportTicket"
+        accessToken: { type: string, minLength: 32, maxLength: 200 }
+    SupportTicketMessageInput:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+    ResendEmailReceivedEvent:
+      type: object
+      required: [type, data]
+      properties:
+        type: { type: string, enum: [email.received] }
+        created_at: { type: string, format: date-time }
+        data:
+          type: object
+          required: [email_id]
+          properties:
+            email_id: { type: string, format: uuid }
+    SupportEmailWebhookResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        imported: { type: boolean }
+        ignored: { type: boolean }
+    SupportTicketStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [unread, active, resolved] }
+    SupportTicketMessage:
+      type: object
+      additionalProperties: false
+      required: [id, senderRole, body, deliveryStatus, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        senderRole: { type: string, enum: [member, admin] }
+        body: { type: string }
+        deliveryStatus: { type: string, enum: [not_applicable, sent, failed] }
+        createdAt: { type: string, format: date-time }
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportTicketMessageAttachment"
+    SupportTicketMessageAttachment:
+      type: object
+      additionalProperties: false
+      required: [id, filename, contentType, size, status, downloadUrl]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string, maxLength: 180 }
+        contentType: { type: string }
+        size:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+        status: { type: string, enum: [processing, available, unsupported, too_large, unavailable, too_many] }
+        downloadUrl:
+          oneOf:
+            - type: string
+            - type: "null"
+    SupportTicket:
+      type: object
+      additionalProperties: false
+      required: [id, reference, replyEmail, issueId, description, deviceType, connectionType, diagnostics, status, createdAt, updatedAt, messages]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string, minLength: 6, maxLength: 40 }
+        replyEmail: { type: string, format: email, maxLength: 320 }
+        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, other] }
+        description: { type: string }
+        deviceType: { type: string, enum: [mobile, desktop, other, unsure] }
+        connectionType: { type: string, enum: [wifi, mobile-data, other, unsure] }
+        diagnostics:
+          oneOf:
+            - $ref: "#/components/schemas/SupportDiagnostics"
+            - type: "null"
+        status: { type: string, enum: [unread, active, resolved] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportTicketMessage"
+    SupportTicketStatusCounts:
+      type: object
+      additionalProperties: false
+      required: [unread, active, resolved]
+      properties:
+        unread: { type: integer, minimum: 0 }
+        active: { type: integer, minimum: 0 }
+        resolved: { type: integer, minimum: 0 }
+    AdminSupportTicketList:
+      type: object
+      additionalProperties: false
+      required: [items, counts, totalCount, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportTicket"
+        counts:
+          $ref: "#/components/schemas/SupportTicketStatusCounts"
+        totalCount: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+    SupportEmailReplyRejection:
+      type: object
+      additionalProperties: false
+      required: [emailProviderId, reason, rejectedAt]
+      properties:
+        emailProviderId: { type: string, format: uuid, description: Opaque provider message identifier for staff investigation. }
+        reason: { type: string, enum: [unknown_reply_address, unmatched_legacy_thread, ambiguous_reply_address, sender_mismatch] }
+        rejectedAt: { type: string, format: date-time }
+    AdminSupportEmailReplyRejectionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportEmailReplyRejection"
+    SupporterPhoto:
+      type: object
+      required: [url, contentType, size, cropX, cropY, cropZoom, updatedAt]
+      properties:
+        url: { type: string }
+        contentType: { type: string }
+        size: { type: integer, minimum: 1 }
+        cropX: { type: integer, minimum: 0, maximum: 100 }
+        cropY: { type: integer, minimum: 0, maximum: 100 }
+        cropZoom: { type: integer, minimum: 100, maximum: 250 }
+        updatedAt: { type: string, format: date-time }
+    SupporterPhotoUploadInput:
+      type: object
+      required: [contentType, size]
+      properties:
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+    SupporterPhotoUpload:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        objectPath: { type: string }
+    SupporterPhotoSave:
+      type: object
+      required: [objectPath, cropX, cropY, cropZoom]
+      properties:
+        objectPath: { type: string, minLength: 10 }
+        cropX: { type: integer, minimum: 0, maximum: 100 }
+        cropY: { type: integer, minimum: 0, maximum: 100 }
+        cropZoom: { type: integer, minimum: 100, maximum: 250 }
+    NotificationConfig:
+      type: object
+      required: [available, publicKey, scheduledDeliveryEnabled]
+      properties:
+        available: { type: boolean }
+        publicKey: { type: ["string", "null"], maxLength: 300 }
+        scheduledDeliveryEnabled: { type: boolean }
+    NotificationPreferences:
+      type: object
+      required: [oneHourBefore, dayOf, timezone]
+      properties:
+        oneHourBefore: { type: boolean }
+        dayOf: { type: boolean }
+        timezone: { type: ["string", "null"], maxLength: 100 }
+    NotificationPreferencesUpdate:
+      type: object
+      required: [oneHourBefore, dayOf, timezone]
+      properties:
+        oneHourBefore: { type: boolean }
+        dayOf: { type: boolean }
+        timezone: { type: string, minLength: 1, maxLength: 100 }
+    SupporterActiveGame:
+      type: object
+      additionalProperties: false
+      required: [gameId]
+      properties:
+        gameId: { type: ["string", "null"], minLength: 1, maxLength: 255 }
+    SupporterActiveGameUpdate:
+      type: object
+      additionalProperties: false
+      required: [gameId]
+      properties:
+        gameId: { type: ["string", "null"], minLength: 1, maxLength: 255 }
+    NotificationSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+        timezone: { type: string, minLength: 1, maxLength: 100 }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, minLength: 1, maxLength: 300 }
+            auth: { type: string, minLength: 1, maxLength: 300 }
+    NotificationSubscriptionDeleteInput:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+    NotificationSubscriptionStatus:
+      type: object
+      required: [owned, ownedByAnotherAccount]
+      properties:
+        owned: { type: boolean }
+        ownedByAnotherAccount: { type: boolean }
+    NotificationDisplayReceiptInput:
+      type: object
+      required: [subscriptionEndpoint]
+      properties:
+        subscriptionEndpoint: { type: string, format: uri, maxLength: 2048 }
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required: [error]
+    ScheduleEvent:
+      type: object
+      required: [id, type, date, time, location, opponent, snacks, drinks, notes]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        type: { type: string, enum: [game, practice, meeting] }
+        status: { type: string, enum: [upcoming, live, final] }
+        date: { type: string, maxLength: 30 }
+        time: { type: string, maxLength: 30 }
+        timezone:
+          type: string
+          description: Optional IANA time-zone identifier used to interpret the event's local date and start time.
+        location: { type: string, maxLength: 300 }
+        opponent: { type: string, maxLength: 200 }
+        snacks: { type: string, maxLength: 300 }
+        drinks: { type: string, maxLength: 300 }
+        notes: { type: string, maxLength: 1000 }
+    ScheduleShareInput:
+      type: object
+      required: [title, teamSeason, events]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        teamSeason: { type: string, maxLength: 200 }
+        purpose:
+          type: string
+          enum: [game-on-card]
+          description: Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response.
+        calendarProjectId:
+          type: string
+          format: uuid
+          description: Optional source Calendar project. The server verifies the caller owns it and that the event ID occurs exactly once before linking.
+        events:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ScheduleEvent"
+    ScheduleShare:
+      type: object
+      required: [shareToken, title, teamSeason, events, createdAt]
+      properties:
+        shareToken:
+          type: string
+          format: uuid
+        title: { type: string }
+        teamSeason: { type: string }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleEvent"
+        createdAt:
+          type: string
+          format: date-time
+    DeleteGameOnCardResponse:
+      type: object
+      required: [calendarEventDeleted, calendarEventStatus]
+      properties:
+        calendarEventDeleted: { type: boolean }
+        calendarEventStatus:
+          type: string
+          enum: [deleted, not-linked, unverified, not-found, ambiguous]
+    GameOnCardEvent:
+      type: object
+      required: [id, type, date, time, location, opponent]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [game, practice] }
+        status: { type: string, enum: [upcoming, live, final] }
+        date: { type: string }
+        time: { type: string }
+        timezone:
+          type: string
+          description: Optional IANA time-zone identifier used to interpret the event's local date and start time.
+        location: { type: string }
+        opponent: { type: string }
+    GameOnCard:
+      type: object
+      required: [shareToken, title, teamSeason, event, stage, prepState, statsState, athletePageState]
+      properties:
+        shareToken: { type: string, format: uuid }
+        title: { type: string }
+        teamSeason: { type: string }
+        event:
+          $ref: "#/components/schemas/GameOnCardEvent"
+        stage: { type: string, enum: [upcoming, live, final] }
+        prepState: { type: string, enum: [private, shared] }
+        prepShareToken: { type: string, format: uuid }
+        statsState: { type: string, enum: [not-shared, live, final, expired] }
+        statsShareToken: { type: string, format: uuid }
+        statsUpdatedAt:
+          type: string
+          format: date-time
+          description: Last tracker share update, present only for an active event-specific live or final stats share.
+        athletePageState: { type: string, enum: [unpublished, paused, published] }
+        athletePageToken: { type: string, maxLength: 100 }
+        athleteName: { type: string, maxLength: 200 }
+    ChecklistItem:
+      type: object
+      required: [id, label, completed]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        completed: { type: boolean }
+        section:
+          type: ["string", "null"]
+          maxLength: 100
+    ChecklistGame:
+      type: object
+      required: [id, date, time, location, opponent]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        type: { type: string, enum: [game, practice, meeting] }
+        date: { type: string, maxLength: 20 }
+        time: { type: string, maxLength: 20 }
+        location: { type: string, maxLength: 240 }
+        opponent: { type: string, maxLength: 240 }
+    ChecklistShareInput:
+      type: object
+      required: [title, mode, items]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: string, maxLength: 2000 }
+        mode: { type: string, enum: [gameday, tournament] }
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+        selectedGame:
+          type: ["object", "null"]
+          allOf:
+            - $ref: "#/components/schemas/ChecklistGame"
+    ChecklistShareUpdate:
+      allOf:
+        - $ref: "#/components/schemas/ChecklistShareInput"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision: { type: integer, minimum: 1 }
+    ChecklistShare:
+      allOf:
+        - $ref: "#/components/schemas/ChecklistShareInput"
+        - type: object
+          required: [shareToken, revision, createdAt, updatedAt, canManage]
+          properties:
+            shareToken: { type: string, format: uuid }
+            revision: { type: integer, minimum: 1 }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            canManage: { type: boolean }
+    ChecklistConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error: { type: string }
+        current:
+          $ref: "#/components/schemas/ChecklistShare"
+    MeetingContext:
+      type: object
+      required: [id, date, time, location, title]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        date: { type: string, maxLength: 20 }
+        time: { type: string, maxLength: 20 }
+        location: { type: string, maxLength: 240 }
+        title: { type: string, minLength: 1, maxLength: 240 }
+    MeetingParticipant:
+      type: object
+      required: [id, name, role, present]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        role: { type: string, maxLength: 160 }
+        present: { type: boolean }
+    MeetingAgendaItem:
+      type: object
+      required: [id, label, completed]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        completed: { type: boolean }
+    MeetingDecision:
+      type: object
+      required: [id, text]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        text: { type: string, maxLength: 2000 }
+    MeetingFollowUp:
+      type: object
+      required: [id, task, owner, dueDate]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        task: { type: string, maxLength: 500 }
+        owner: { type: string, maxLength: 160 }
+        dueDate: { type: string, maxLength: 20 }
+    MeetingWorkspacePayload:
+      type: object
+      required: [notes, participants, agenda, decisions, followUps, startedAt, endedAt, context]
+      properties:
+        notes: { type: string, maxLength: 10000 }
+        participants:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingParticipant"
+        agenda:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingAgendaItem"
+        decisions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingDecision"
+        followUps:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingFollowUp"
+        startedAt: { type: ["string", "null"], format: date-time }
+        endedAt: { type: ["string", "null"], format: date-time }
+        context:
+          $ref: "#/components/schemas/MeetingContext"
+    MeetingWorkspaceUpdate:
+      type: object
+      required: [workspace]
+      properties:
+        workspace:
+          $ref: "#/components/schemas/MeetingWorkspacePayload"
+        expectedRevision:
+          type: ["integer", "null"]
+          minimum: 1
+    MeetingWorkspace:
+      type: object
+      required: [id, ownerClerkUserId, ownerMeetingId, publicToken, workspace, revision, revokedAt, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        ownerClerkUserId: { type: string, minLength: 1, maxLength: 255 }
+        ownerMeetingId: { type: string, minLength: 1, maxLength: 160 }
+        publicToken: { type: string, pattern: "^[A-Za-z0-9_-]{32,80}$" }
+        workspace:
+          $ref: "#/components/schemas/MeetingWorkspacePayload"
+        revision: { type: integer, minimum: 1 }
+        revokedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    MeetingRecap:
+      type: object
+      required: [workspace, revision, updatedAt]
+      properties:
+        workspace:
+          $ref: "#/components/schemas/MeetingWorkspacePayload"
+        revision: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+    MeetingWorkspaceConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error: { type: string }
+        current:
+          $ref: "#/components/schemas/MeetingWorkspace"
+    StatTrackerEvent:
+      type: object
+      required: [id, statId, createdAt, period, yards]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        statId: { type: string, minLength: 1, maxLength: 80 }
+        createdAt: { type: string, format: date-time }
+        period: { type: integer, minimum: 1 }
+        attribution:
+          type: string
+          enum: [team, athlete]
+        playId: { type: string, minLength: 1, maxLength: 160 }
+        yards: { type: ["integer", "null"], minimum: 0 }
+    StatTrackerGameSnapshot:
+      type: object
+      required: [id, sport, status, date, opponent, period, score, opponentScore, stats, trackYards, yardStats, events]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, softball, volleyball]
+        status:
+          type: string
+          enum: [setup, live, paused, final]
+        date: { type: string, maxLength: 30 }
+        opponent: { type: string, maxLength: 240 }
+        period: { type: integer, minimum: 1 }
+        soccerPeriodFormat:
+          type: string
+          enum: [halves, quarters]
+        score: { type: integer, minimum: 0 }
+        opponentScore: { type: integer, minimum: 0 }
+        stats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        trackYards: { type: boolean }
+        yardStats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        events:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/StatTrackerEvent"
+    StatTrackerShareInput:
+      type: object
+      required: [athleteName, teamName, game]
+      properties:
+        athleteName: { type: string, maxLength: 160 }
+        teamName: { type: string, maxLength: 160 }
+        game:
+          $ref: "#/components/schemas/StatTrackerGameSnapshot"
+    StatTrackerShareUpdate:
+      allOf:
+        - $ref: "#/components/schemas/StatTrackerShareInput"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision: { type: integer, minimum: 1 }
+    StatTrackerShare:
+      allOf:
+        - $ref: "#/components/schemas/StatTrackerShareInput"
+        - type: object
+          required: [shareToken, revision, createdAt, updatedAt, expiresAt, canManage]
+          properties:
+            shareToken: { type: string, format: uuid }
+            revision: { type: integer, minimum: 1 }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            expiresAt: { type: string, format: date-time }
+            canManage: { type: boolean }
+    StatTrackerConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error: { type: string }
+        current:
+          $ref: "#/components/schemas/StatTrackerShare"
+    HypeCardShareUploadInput:
+      type: object
+      required: [mediaKind, contentType]
+      properties:
+        mediaKind:
+          type: string
+          enum: [video, image, poster]
+        contentType:
+          type: string
+          enum: [video/mp4, video/webm, image/jpeg, image/png]
+    HypeCardShareUpload:
+      type: object
+      required: [uploadUrl, objectPath, claimId, expiresAt]
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        claimId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+    HypeCardShareInput:
+      type: object
+      required: [title, slug, manifest, mediaType]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        manifest:
+          type: object
+          additionalProperties: true
+        mediaName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        shareKey:
+          type: string
+          minLength: 1
+          maxLength: 200
+        shareMode:
+          type: string
+          enum: [card, stats]
+          default: card
+        mediaType:
+          type: string
+          enum: [image, video]
+        mediaUploadClaimId:
+          type: ["string", "null"]
+          format: uuid
+        posterUploadClaimId:
+          type: ["string", "null"]
+          format: uuid
+        trackerProjectId:
+          type: ["string", "null"]
+          format: uuid
+        athleteName:
+          type: ["string", "null"]
+          maxLength: 100
+        sport:
+          type: ["string", "null"]
+          enum: [baseball, basketball, football, soccer, volleyball, null]
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 30
+        replaceShareToken:
+          type: ["string", "null"]
+          pattern: "^[A-Za-z0-9_-]{24,80}$"
+    HypeCardShareStats:
+      type: object
+      required: [athleteName, sport, gamesPlayed, score, record, games, stats, updatedAt]
+      properties:
+        athleteName:
+          type: string
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, volleyball]
+        gamesPlayed:
+          type: integer
+          minimum: 0
+        score:
+          type: integer
+          minimum: 0
+        record:
+          type: object
+          required: [wins, losses, ties, gamesPlayed]
+          properties:
+            wins: { type: integer, minimum: 0 }
+            losses: { type: integer, minimum: 0 }
+            ties: { type: integer, minimum: 0 }
+            gamesPlayed: { type: integer, minimum: 0 }
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardShareGameSummary"
+        stats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        updatedAt:
+          type: string
+          format: date-time
+    HypeCardShareGameSummary:
+      type: object
+      required: [date, opponent, score, opponentScore, scoreRecorded, stats, athleteStats]
+      properties:
+        date:
+          type: string
+          maxLength: 30
+        opponent:
+          type: string
+          maxLength: 240
+        score:
+          type: integer
+          minimum: 0
+        opponentScore:
+          type: integer
+          minimum: 0
+        scoreRecorded:
+          type: boolean
+        stats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        athleteStats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+    HypeCardShareReplyInput:
+      type: object
+      required: [reaction]
+      properties:
+        reaction:
+          type: string
+          enum: ["🔥", "👏", "💪", "⭐", "❤️"]
+        message:
+          type: ["string", "null"]
+          maxLength: 240
+    HypeCardShareReplyReceipt:
+      type: object
+      required: [accepted]
+      properties:
+        accepted:
+          type: boolean
+          const: true
+    HypeCardShareReply:
+      type: object
+      required: [id, reaction, message, isRead, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reaction:
+          type: string
+          enum: ["🔥", "👏", "💪", "⭐", "❤️"]
+        message:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    HypeCardShareReplyList:
+      type: object
+      required: [unreadCount, replies]
+      properties:
+        unreadCount:
+          type: integer
+          minimum: 0
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardShareReply"
+    HypeCardReplyInboxGroup:
+      type: object
+      required: [shareToken, title, sentAt, unreadCount, replies]
+      properties:
+        shareToken:
+          type: string
+        title:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        unreadCount:
+          type: integer
+          minimum: 0
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardShareReply"
+    HypeCardReplyInbox:
+      type: object
+      required: [totalCount, unreadCount, groups]
+      properties:
+        totalCount:
+          type: integer
+          minimum: 0
+        unreadCount:
+          type: integer
+          minimum: 0
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardReplyInboxGroup"
+    HypeCardShare:
+      type: object
+      required: [shareToken, slug, title, mediaName, manifest, shareMode, mediaType, mediaUrl, videoUrl, posterUrl, stats, expiresAt, createdAt]
+      properties:
+        shareToken:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        mediaName:
+          type: string
+          maxLength: 80
+        manifest:
+          type: object
+          additionalProperties: true
+        shareMode:
+          type: string
+          enum: [card, stats]
+        mediaType:
+          type: string
+          enum: [image, video]
+        mediaUrl:
+          type: ["string", "null"]
+        videoUrl:
+          type: ["string", "null"]
+        posterUrl:
+          type: ["string", "null"]
+        stats:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardShareStats"
+            - type: "null"
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    HypeCardAvatarPlacement:
+      type: object
+      required: [athleteX, athleteY, athleteScale]
+      properties:
+        athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
+        athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
+        athleteScale: { type: number, minimum: 0.65, maximum: 1.2 }
+    HypeCardAvatarPlacements:
+      type: object
+      required: [gallery, spotlight, breakout]
+      properties:
+        gallery: { $ref: "#/components/schemas/HypeCardAvatarPlacement" }
+        spotlight: { $ref: "#/components/schemas/HypeCardAvatarPlacement" }
+        breakout: { $ref: "#/components/schemas/HypeCardAvatarPlacement" }
+    HypeCardAppearance:
+      type: object
+      required: [design, borderColor, accentColor, accentLinked, athleteX, athleteY, athleteScale, jerseyNumber, position]
+      properties:
+        design: { type: string, enum: [classic, gallery, spotlight, breakout] }
+        borderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+        accentColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+        accentLinked: { type: boolean }
+        removeBackground: { type: boolean }
+        background:
+          type: string
+          enum: [sport, stadium, tunnel, studio]
+          description: Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.
+        athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
+        athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
+        athleteScale: { type: number, minimum: 0.65, maximum: 1.45 }
+        avatarPlacements:
+          $ref: "#/components/schemas/HypeCardAvatarPlacements"
+        namePlateX: { type: number, minimum: -0.2, maximum: 0.2 }
+        namePlateY: { type: number, minimum: -0.12, maximum: 0.12 }
+        jerseyNumber: { type: string, maxLength: 12 }
+        position: { type: string, maxLength: 80 }
+    AthleteInviteInput:
+      type: object
+      required: [athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule]
+      properties:
+        athleteName: { type: string, minLength: 1, maxLength: 100 }
+        teamName: { type: string, maxLength: 160 }
+        seasonName: { type: string, minLength: 1, maxLength: 100 }
+        seasonEndsAt: { type: string, format: date-time }
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, volleyball]
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: IANA timezone identifier used for schedule event alerts.
+        trackerProjectId:
+          type: ["string", "null"]
+          format: uuid
+        scheduleProjectId:
+          type: ["string", "null"]
+          format: uuid
+        showHypeCard: { type: boolean }
+        showStats: { type: boolean }
+        showSchedule: { type: boolean }
+        showEvents: { type: boolean }
+        hypesEnabled: { type: boolean }
+        paused: { type: boolean, default: false }
+    OwnedAthleteInvite:
+      type: object
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, showEvents, hypesEnabled, paused, liveTrackerShareToken, photoUrl, events, createdAt, updatedAt]
+      properties:
+        inviteToken: { type: string }
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        seasonEndsAt: { type: string, format: date-time }
+        sport: { type: string, enum: [baseball, basketball, football, soccer, volleyball] }
+        timezone: { type: ["string", "null"], maxLength: 100 }
+        trackerProjectId: { type: ["string", "null"], format: uuid }
+        scheduleProjectId: { type: ["string", "null"], format: uuid }
+        showHypeCard: { type: boolean }
+        showStats: { type: boolean }
+        showSchedule: { type: boolean }
+        showEvents: { type: boolean }
+        hypesEnabled: { type: boolean }
+        paused: { type: boolean }
+        liveTrackerShareToken: { type: ["string", "null"] }
+        photoUrl: { type: ["string", "null"] }
+        cutoutUrl: { type: ["string", "null"] }
+        photoRevision: { type: ["string", "null"] }
+        cardAppearance:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardAppearance"
+            - type: "null"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteEventSummary"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AthleteInviteEventSummary:
+      type: object
+      required: [shareToken, eventId, title, date, time, type, status, opponent, location]
+      properties:
+        shareToken: { type: string, format: uuid }
+        eventId: { type: string }
+        title: { type: string }
+        date: { type: string, description: YYYY-MM-DD event date in the athlete invite timezone }
+        time: { type: string }
+        type: { type: string, enum: [game, practice] }
+        status: { type: string, enum: [upcoming, live, final] }
+        opponent: { type: string }
+        location: { type: string }
+    AthleteInviteEventNotifyResult:
+      type: object
+      required: [eligible, sent, failed, pending, remaining]
+      properties:
+        eligible: { type: integer, minimum: 0 }
+        sent: { type: integer, minimum: 0 }
+        failed: { type: integer, minimum: 0 }
+        pending: { type: integer, minimum: 0 }
+        remaining: { type: integer, minimum: 0 }
+    AthleteInviteHypeInput:
+      type: object
+      required: [reaction]
+      properties:
+        reaction: { type: string, enum: ["Let's go!", "Great job!", "Proud of you!", "🔥", "👏", "💪", "⭐", "❤️"] }
+        senderName: { type: string, maxLength: 60 }
+        message: { type: string, maxLength: 240 }
+        publiclyVisible: { type: boolean, default: false }
+    AthleteInviteHypeAccepted:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: { type: boolean }
+    AthleteInviteLiveTapInput:
+      type: object
+      required: [cheerKey]
+      properties:
+        accessToken: { type: string, minLength: 40, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+        cheerKey: { type: string, minLength: 1, maxLength: 40, pattern: "^[a-z0-9-]+$" }
+    AthleteInviteLiveTapCheer:
+      type: object
+      required: [key, label, emoji, count]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        emoji: { type: string }
+        count: { type: integer, minimum: 0 }
+    AthleteInviteLiveTaps:
+      type: object
+      required: [active, gameId, cheers]
+      properties:
+        active: { type: boolean }
+        gameId: { type: ["string", "null"] }
+        cheers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteLiveTapCheer"
+    AthleteInviteLiveTapAccessLink:
+      type: object
+      required: [id, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    AthleteInviteLiveTapAccessLinkCreated:
+      allOf:
+        - $ref: "#/components/schemas/AthleteInviteLiveTapAccessLink"
+        - type: object
+          required: [accessToken]
+          properties:
+            accessToken: { type: string, minLength: 40, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+    AthleteInviteHype:
+      type: object
+      required: [id, reaction, senderName, message, createdAt, publiclyVisible]
+      properties:
+        id: { type: string, format: uuid }
+        reaction: { type: string }
+        senderName: { type: ["string", "null"] }
+        message: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        publiclyVisible: { type: boolean }
+    PublicAthleteInviteHype:
+      type: object
+      required: [id, reaction, message, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        reaction: { type: string }
+        message: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    OwnedAthleteInviteList:
+      type: array
+      items:
+        $ref: "#/components/schemas/OwnedAthleteInvite"
+    AthleteInviteHypeCard:
+      type: object
+      required: [shareToken, title, mediaName, mediaType, posterUrl, createdAt]
+      properties:
+        shareToken: { type: string }
+        title: { type: string }
+        mediaName: { type: string, maxLength: 80 }
+        mediaType: { type: string, enum: [image, video] }
+        posterUrl: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    AthleteInviteVideo:
+      type: object
+      required: [shareToken, title, mediaName, jerseyNumber, position, videoUrl, posterUrl, createdAt]
+      properties:
+        shareToken: { type: string }
+        title: { type: string, maxLength: 160 }
+        mediaName: { type: string, maxLength: 80 }
+        jerseyNumber: { type: string, maxLength: 40 }
+        position: { type: string, maxLength: 100 }
+        videoUrl: { type: string }
+        posterUrl: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    AthleteInviteScheduleEvent:
+      type: object
+      required: [id, type, status, date, time, location, opponent, notes]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [game, practice, meeting] }
+        status: { type: string, enum: [upcoming, live, final] }
+        date: { type: string }
+        time: { type: string }
+        location: { type: string }
+        opponent: { type: string }
+        notes: { type: string }
+    AthleteInviteReply:
+      type: object
+      required: [reaction, message, createdAt]
+      properties:
+        reaction: { type: string, maxLength: 40 }
+        message: { type: ["string", "null"], maxLength: 240 }
+        createdAt: { type: string, format: date-time }
+    AthleteInviteLiveSession:
+      type: object
+      required: [shareToken, gameId, expiresAt]
+      properties:
+        shareToken: { type: string }
+        gameId: { type: string }
+        expiresAt: { type: string, format: date-time }
+    AthleteInviteLiveStartInput:
+      type: object
+      required: [shareToken]
+      properties:
+        shareToken: { type: string, format: uuid }
+    AthleteInviteLiveSessionPublic:
+      allOf:
+        - $ref: "#/components/schemas/AthleteInviteLiveSession"
+    PublicAthleteInvite:
+      type: object
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveGame, liveTaps, updatedAt]
+      properties:
+        inviteToken: { type: string }
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        seasonEndsAt: { type: string, format: date-time }
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, volleyball]
+        photoUrl: { type: ["string", "null"] }
+        cutoutUrl: { type: ["string", "null"] }
+        cardAppearance:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardAppearance"
+            - type: "null"
+        hypeCard:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteHypeCard"
+            - type: "null"
+        videos:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AthleteInviteVideo"
+        stats:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardShareStats"
+            - type: "null"
+        scheduleEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteScheduleEvent"
+        showEvents: { type: boolean }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteEventSummary"
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteReply"
+        liveGame:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteLiveSessionPublic"
+            - type: "null"
+        liveTaps:
+          $ref: "#/components/schemas/AthleteInviteLiveTaps"
+        updatedAt:
+          type: string
+          format: date-time
+    AthleteInvitePhotoUploadInput:
+      type: object
+      required: [contentType, size]
+      properties:
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+    AthleteInvitePhotoUpload:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        objectPath: { type: string }
+    AthleteInvitePhotoConfirmInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, minLength: 1, maxLength: 500 }
+        mediaRole: { type: string, enum: [photo, cutout] }
+        sourcePhotoRevision: { type: string, maxLength: 64 }
+    AthleteInvitePhoto:
+      type: object
+      required: [photoUrl]
+      properties:
+        photoUrl: { type: ["string", "null"] }
+        photoRevision: { type: ["string", "null"] }
+    AthleteInviteManifest:
+      type: object
+      required: [id, name, short_name, start_url, scope, display, icons]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        short_name: { type: string }
+        start_url: { type: string }
+        scope: { type: string }
+        display: { type: string, enum: [standalone] }
+        icons:
+          type: array
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/AthleteInviteManifestIcon"
+    AthleteInviteManifestIcon:
+      type: object
+      required: [src, sizes, type]
+      properties:
+        src: { type: string }
+        sizes: { type: string, enum: ["192x192", "512x512"] }
+        type: { type: string, const: image/png }
+        purpose: { type: string, enum: [any, maskable, "any maskable"] }
+    AthleteInviteFanFollowInput:
+      type: object
+      required: [endpoint, keys, liveAlerts, eventAlerts]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, minLength: 40, maxLength: 256, pattern: "^[A-Za-z0-9_-]+$" }
+            auth: { type: string, minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
+        liveAlerts: { type: boolean }
+        eventAlerts: { type: boolean }
+        preEventAlerts: { type: boolean, default: false }
+    AthleteInviteFanFollowPreferences:
+      type: object
+      properties:
+        liveAlerts: { type: boolean }
+        eventAlerts: { type: boolean }
+        preEventAlerts: { type: boolean, default: false }
+    AthleteInviteFanFollow:
+      type: object
+      required: [liveAlerts, eventAlerts, preEventAlerts, active]
+      properties:
+        liveAlerts: { type: boolean }
+        eventAlerts: { type: boolean }
+        preEventAlerts: { type: boolean }
+        active: { type: boolean }
+    AthleteInviteFanFollowCreated:
+      allOf:
+        - $ref: "#/components/schemas/AthleteInviteFanFollow"
+        - type: object
+          required: [followToken]
+          properties:
+            followToken: { type: string, minLength: 40, maxLength: 100 }
+    OwnedHypeCardShare:
+      allOf:
+        - $ref: "#/components/schemas/HypeCardShare"
+        - type: object
+          required: [trackerProjectId, athleteName, sport, expiresInDays]
+          properties:
+            trackerProjectId:
+              type: ["string", "null"]
+              format: uuid
+            athleteName:
+              type: ["string", "null"]
+            sport:
+              type: ["string", "null"]
+              enum: [baseball, basketball, football, soccer, volleyball, null]
+            expiresInDays:
+              type: integer
+              minimum: 1
+              maximum: 365
+    HypeCardShareList:
+      type: array
+      items:
+        $ref: "#/components/schemas/OwnedHypeCardShare"
+    AccountAccessInput:
+      type: object
+      required: [role, accessMode]
+      properties:
+        role: { type: string, enum: [fan] }
+        accessMode: { type: string, enum: [full, guest] }
+    AccountUsageConsumeInput:
+      type: object
+      required: [category, usageKey]
+      properties:
+        category: { type: string, enum: [hype_card, schedule_event, lineup] }
+        usageKey: { type: string, minLength: 1, maxLength: 120 }
+    AccountUsage:
+      type: object
+      required: [hypeCards, scheduleEvents, lineups]
+      properties:
+        hypeCards: { type: integer, minimum: 0 }
+        scheduleEvents: { type: integer, minimum: 0 }
+        lineups: { type: integer, minimum: 0 }
+    PaidEntitlementEvent:
+      type: object
+      required: [type, id, ownerClerkUserId, paid, expiresAt]
+      properties:
+        type: { type: string, enum: [paid_entitlement] }
+        id: { type: string, minLength: 1, maxLength: 200 }
+        ownerClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        paid: { type: boolean, const: true }
+        expiresAt: { type: string, format: date-time }
+        planTier: { type: string, enum: [plus, pro], description: "Defaults to Plus for legacy entitlement events." }
+    BillingWebhookResponse:
+      type: object
+      required: [ok, replayed, restored, status]
+      properties:
+        ok: { type: boolean }
+        replayed: { type: boolean }
+        restored: { type: boolean }
+        status:
+          type: ["string", "null"]
+          enum: [active, cancelled, deletion_pending, null]
+    AccountUsageRemaining:
+      type: object
+      required: [hypeCards, scheduleEvents, lineups]
+      properties:
+        hypeCards: { type: integer, minimum: 0 }
+        scheduleEvents: { type: integer, minimum: 0 }
+        lineups: { type: integer, minimum: 0 }
+    AccountAccess:
+      type: object
+      required: [accessMode, role, usage, remaining, limits, paid, storage]
+      properties:
+        accessMode: { type: string, enum: [full, guest] }
+        role:
+          type: ["string", "null"]
+          enum: [fan, null]
+        usage:
+          $ref: "#/components/schemas/AccountUsage"
+        remaining:
+          $ref: "#/components/schemas/AccountUsageRemaining"
+        limits:
+          $ref: "#/components/schemas/AccountUsage"
+        paid: { type: boolean }
+        storage:
+          $ref: "#/components/schemas/StorageQuota"
+    StorageQuota:
+      type: object
+      required: [usedBytes, limitBytes]
+      properties:
+        usedBytes: { type: integer, minimum: 0 }
+        limitBytes: { type: integer, minimum: 1 }
+    AccountLifecycle:
+      type: object
+      required: [status, pauseEndsAt, planTier, cancelledAt, lastActivityAt, deletionEligibleAt, retentionDays, expired, adminSuspended, identityBlocked]
+      properties:
+        status:
+          type: string
+          enum: [active, paused, cancelled, deletion_pending, not_provisioned]
+        pauseEndsAt:
+          type: ["string", "null"]
+          format: date-time
+        planTier:
+          type: string
+          enum: [free, plus, pro]
+        cancelledAt:
+          type: ["string", "null"]
+          format: date-time
+        lastActivityAt:
+          type: ["string", "null"]
+          format: date-time
+        deletionEligibleAt:
+          type: ["string", "null"]
+          format: date-time
+        retentionDays:
+          type: integer
+          minimum: 1
+        expired:
+          type: boolean
+        adminSuspended:
+          type: boolean
+          description: Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.
+        identityBlocked:
+          type: boolean
+          description: Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity.
+    AdminSession:
+      type: object
+      required: [isAdmin]
+      properties:
+        isAdmin: { type: boolean }
+    AdminMemberProfile:
+      type: object
+      required: [displayName, teamName, seasonName, athleteName, jerseyNumber, position, relationship, sport]
+      properties:
+        displayName: { type: ["string", "null"], maxLength: 100 }
+        teamName: { type: ["string", "null"], maxLength: 100 }
+        seasonName: { type: ["string", "null"], maxLength: 100 }
+        athleteName: { type: ["string", "null"], maxLength: 100 }
+        jerseyNumber: { type: ["string", "null"], maxLength: 20 }
+        position: { type: ["string", "null"], maxLength: 60 }
+        relationship: { type: ["string", "null"], maxLength: 60 }
+        sport:
+          type: ["string", "null"]
+          enum: [baseball, basketball, football, soccer, volleyball, null]
+    AdminMemberProfileUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        displayName: { type: ["string", "null"], maxLength: 100 }
+        teamName: { type: ["string", "null"], maxLength: 100 }
+        seasonName: { type: ["string", "null"], maxLength: 100 }
+        athleteName: { type: ["string", "null"], maxLength: 100 }
+        jerseyNumber: { type: ["string", "null"], maxLength: 20 }
+        position: { type: ["string", "null"], maxLength: 60 }
+        relationship: { type: ["string", "null"], maxLength: 60 }
+        sport:
+          type: ["string", "null"]
+          enum: [baseball, basketball, football, soccer, volleyball, null]
+    AdminMember:
+      type: object
+      required: [clerkUserId, primaryEmailAddress, firstName, lastName, createdAt, role, accessMode, lifecycleStatus, deletionEligibleAt, adminSuspended, identityBlocked, isAdministrator, profile]
+      properties:
+        clerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        primaryEmailAddress: { type: ["string", "null"], maxLength: 320 }
+        firstName: { type: ["string", "null"], maxLength: 100 }
+        lastName: { type: ["string", "null"], maxLength: 100 }
+        createdAt: { type: ["string", "null"], format: date-time }
+        role:
+          type: ["string", "null"]
+          enum: [fan, null]
+        accessMode:
+          type: ["string", "null"]
+          enum: [full, guest, null]
+        lifecycleStatus:
+          type: string
+          enum: [active, paused, cancelled, deletion_pending, not_provisioned]
+        deletionEligibleAt: { type: ["string", "null"], format: date-time }
+        adminSuspended: { type: boolean }
+        identityBlocked: { type: boolean }
+        isAdministrator: { type: boolean }
+        profile:
+          $ref: "#/components/schemas/AdminMemberProfile"
+    AdminMemberList:
+      type: object
+      required: [items, totalCount, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminMember"
+        totalCount: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+    AdminMemberSuspensionInput:
+      type: object
+      required: [suspended]
+      properties:
+        suspended: { type: boolean }
+        reason: { type: ["string", "null"], maxLength: 500 }
+    AdminMemberIdentityBlockUpdate:
+      type: object
+      required: [blocked, reason]
+      properties:
+        blocked: { type: boolean }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    AdminMemberCancellationRestoreInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    AdminMemberAdministratorUpdate:
+      type: object
+      required: [administrator]
+      properties:
+        administrator: { type: boolean }
+        reason: { type: ["string", "null"], maxLength: 500 }
+    AdminMemberDeleteInput:
+      type: object
+      required: [confirmationText, reason]
+      properties:
+        confirmationText: { type: string, minLength: 1, maxLength: 320 }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    AdminMemberActionResult:
+      type: object
+      required: [actionId, action, status, targetClerkUserId, message]
+      properties:
+        actionId: { type: string, format: uuid }
+        action: { type: string, enum: [account_suspended, account_reactivated, account_cancellation_reversed, identity_blocked, identity_unblocked, account_deleted, administrator_granted, administrator_revoked] }
+        status: { type: string, enum: [pending, failed, completed] }
+        targetClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        message: { type: string, maxLength: 500 }
+    AdminAuditEntry:
+      type: object
+      required: [id, actorClerkUserId, targetClerkUserId, action, status, changedFields, reason, failureCode, createdAt, completedAt]
+      properties:
+        id: { type: string, format: uuid }
+        actorClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        targetClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        action: { type: string, enum: [initial_admin_bootstrapped, profile_updated, account_suspended, account_reactivated, account_cancellation_reversed, identity_blocked, identity_unblocked, account_deleted, administrator_granted, administrator_revoked] }
+        status: { type: string, enum: [pending, failed, completed] }
+        changedFields:
+          type: array
+          items: { type: string, maxLength: 100 }
+        reason: { type: ["string", "null"], maxLength: 500 }
+        failureCode: { type: ["string", "null"], maxLength: 100 }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+    AdminAuditList:
+      type: object
+      required: [items, totalCount, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminAuditEntry"
+        totalCount: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+    HypeCardProject:
+      type: object
+      description: HypeCardProject document. Versions 2 and 3 are supported. New cloud writes keep source media private and store only reusable design settings plus private media references.
+      required: [version, headline, mediaType, mediaId, videoMeta, trimStart, trimEnd, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, stat, achievement, message, visibility, photo, logo, photoTransform, adjustments]
+      properties:
+        version:
+          type: integer
+          enum: [2, 3]
+        headline: { type: string }
+        mediaType: { type: ["string", "null"], enum: [image, video, null] }
+        mediaId: { type: ["string", "null"] }
+        videoMeta:
+          oneOf:
+            - $ref: "#/components/schemas/VideoMeta"
+            - type: "null"
+        trimStart: { type: number, minimum: 0 }
+        trimEnd: { type: number, minimum: 0 }
+        template: { type: string, enum: [spotlight, impact, clean] }
+        layout: { type: string, enum: [slugger, all-star, rookie, dugout] }
+        format: { type: string, enum: [square, story, landscape, card] }
+        palette: { type: string, enum: [coral, teal, gold, midnight] }
+        finish: { type: string, enum: [classic, cosmic-clash, gold-spotlight, neon-prism, paint-impact] }
+        cardAppearance:
+          $ref: "#/components/schemas/HypeCardAppearance"
+        cardSport: { type: string, maxLength: 40 }
+        breakoutEnabled: { type: boolean }
+        breakoutBorderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+        breakoutCutoutMediaId: { type: ["string", "null"] }
+        breakoutTransform:
+          type: object
+          properties:
+            zoom: { type: number, minimum: 0.7, maximum: 1.65 }
+            x: { type: number, minimum: -240, maximum: 240 }
+            y: { type: number, minimum: -240, maximum: 240 }
+        background: { type: string, enum: [solid, gradient, paper] }
+        overlay: { type: boolean }
+        branding: { type: boolean }
+        playerName: { type: string }
+        jerseyNumber: { type: string }
+        teamName: { type: string }
+        position: { type: string }
+        grade: { type: string }
+        stat: { type: string }
+        achievement: { type: string }
+        message: { type: string }
+        visibility:
+          $ref: "#/components/schemas/ProjectVisibility"
+        photo: { type: ["string", "null"] }
+        logo: { type: ["string", "null"] }
+        photoTransform:
+          $ref: "#/components/schemas/PhotoTransform"
+        adjustments:
+          $ref: "#/components/schemas/ProjectAdjustments"
+    VideoMeta:
+      type: object
+      required: [name, type, size, duration]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        size: { type: number }
+        duration: { type: number }
+    ProjectVisibility:
+      type: object
+      required: [grade, stat, achievement, message]
+      properties:
+        grade: { type: boolean }
+        stat: { type: boolean }
+        achievement: { type: boolean }
+        message: { type: boolean }
+    PhotoTransform:
+      type: object
+      required: [zoom, x, y, rotation, flip]
+      properties:
+        zoom: { type: number }
+        x: { type: number }
+        y: { type: number }
+        rotation: { type: number }
+        flip: { type: boolean }
+    ProjectAdjustments:
+      type: object
+      required: [brightness, contrast, saturation]
+      properties:
+        brightness: { type: number }
+        contrast: { type: number }
+        saturation: { type: number }
+    Project:
+      type: object
+      required: [id, name, project, revision, createdAt, updatedAt, media]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        project:
+          type: object
+          additionalProperties: true
+          description: Tool-specific project data. The tool field identifies the editor that owns the payload.
+        revision:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/Media"
+    AthleteInviteLiveScoreboard:
+      type: object
+      required: [score, opponentScore, opponent, status, athleteName, teamName]
+      properties:
+        score: { type: number, minimum: 0 }
+        opponentScore: { type: number, minimum: 0 }
+        opponent: { type: string, maxLength: 200 }
+        status: { type: string, enum: [live, final] }
+        period: { type: ["number", "null"] }
+        athleteName: { type: string, maxLength: 100 }
+        teamName: { type: string, maxLength: 160 }
+    PublicAthleteFanCard:
+      type: object
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveScoreboard, liveTaps, hypesEnabled, updatedAt]
+      properties:
+        inviteToken: { type: string }
+        hypesEnabled: { type: boolean }
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        seasonEndsAt: { type: string, format: date-time }
+        timezone:
+          type: ["string", "null"]
+          maxLength: 100
+          description: Validated IANA timezone, or null for a legacy invite without one.
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, volleyball]
+        photoUrl: { type: ["string", "null"] }
+        soccerGear:
+          anyOf:
+            - $ref: "#/components/schemas/SoccerGearLoadout"
+            - type: "null"
+        cutoutUrl: { type: ["string", "null"] }
+        cardAppearance:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardAppearance"
+            - type: "null"
+        hypeCard:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteHypeCard"
+            - type: "null"
+        videos:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AthleteInviteVideo"
+        stats:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardShareStats"
+            - type: "null"
+        scheduleEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteScheduleEvent"
+        showEvents: { type: boolean }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteEventSummary"
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteReply"
+        liveScoreboard:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteLiveScoreboard"
+            - type: "null"
+        liveTaps:
+          $ref: "#/components/schemas/AthleteInviteLiveTaps"
+        updatedAt: { type: string, format: date-time }
+    ProjectList:
+      type: array
+      items:
+        $ref: "#/components/schemas/Project"
+    ProjectInput:
+      type: object
+      required: [name, project]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        project:
+          type: object
+          additionalProperties: true
+        guestUsageKey:
+          type: string
+          minLength: 1
+          maxLength: 120
+    ProjectUpdate:
+      type: object
+      required: [expectedRevision]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        project:
+          type: object
+          additionalProperties: true
+        expectedRevision:
+          type: integer
+          minimum: 1
+    ProjectConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error:
+          type: string
+        current:
+          $ref: "#/components/schemas/Project"
+    Media:
+      type: object
+      required: [id, name, contentType, size, mediaType, mediaRole, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+          minimum: 1
+        mediaType:
+          type: string
+          enum: [image, video]
+        mediaRole:
+          type: string
+          enum: [photo, logo, poster, cutout, video_preview, video_download, legacy]
+        createdAt:
+          type: string
+          format: date-time
+    MediaUploadInput:
+      type: object
+      required: [name, size, contentType, mediaType, mediaRole]
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+        mediaType:
+          type: string
+          enum: [image, video]
+        mediaRole:
+          type: string
+          enum: [photo, logo, poster, cutout, video_preview, video_download]
+    MediaUpload:
+      type: object
+      required: [uploadURL, objectPath, claimId, expiresAt]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        claimId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+        media:
+          $ref: "#/components/schemas/Media"
+    MediaUploadCompleteInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, minLength: 10 }
+    SoccerGearLoadout:
+      type: object
+      required: [jerseyStyle, jerseyColor, shortsStyle, shortsColor, socksStyle, socksColor, shinGuards, shinGuardColor, cleatsStyle, cleatsColor, sweatband, background]
+      properties:
+        shinGuards:
+          type: string
+          enum: [slim, shield]
+        shinGuardColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        jerseyStyle:
+          type: string
+          enum: [classic, stripes]
+        jerseyColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        shortsStyle:
+          type: string
+          enum: [classic, contrast]
+        shortsColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        socksStyle:
+          type: string
+          enum: [plain, stripe]
+        socksColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        cleatsStyle:
+          type: string
+          enum: [classic, speed]
+        cleatsColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        sweatband:
+          type: string
+          enum: [none, head, wrist]
+        background:
+          type: string
+          enum: [field, goal]
+    SoccerGearLoadoutInput:
+      type: object
+      required: [loadout, showOnHypeCard, athleteId]
+      properties:
+        athleteId: { type: string, format: uuid }
+        showOnHypeCard:
+          type: boolean
+        loadout:
+          $ref: "#/components/schemas/SoccerGearLoadout"
+    SoccerGearShareActionInput:
+      type: object
+      required: [shareToken]
+      properties:
+        shareToken:
+          type: string
+          minLength: 20
+          maxLength: 120
+    SoccerGearState:
+      type: object
+      required: [loadout, progress, unlockedGear, canSave, athleteName, athleteId, showOnHypeCard]
+      properties:
+        athleteId: { type: ["string", "null"], format: uuid }
+        canSave:
+          type: boolean
+          description: True when the account has an athlete HYPE Card to bind this look to.
+        athleteName:
+          type: string
+        showOnHypeCard:
+          type: boolean
+        loadout:
+          $ref: "#/components/schemas/SoccerGearLoadout"
+        progress:
+          type: object
+          required: [activeWeeks, eventCardsCreated, hypeCardShared]
+          properties:
+            activeWeeks:
+              type: integer
+              minimum: 0
+            eventCardsCreated:
+              type: integer
+              minimum: 0
+              maximum: 10
+            hypeCardShared:
+              type: boolean
+        unlockedGear:
+          type: array
+          items:
+            type: string
+            enum: [speed-cleats, striped-socks, contrast-shorts, stripe-jersey, sweatbands]
