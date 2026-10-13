@@ -128,7 +128,7 @@ const gearGroups: Array<{
   },
 ];
 
-export function PlayerKit({ loadout, athleteName }: { loadout: SoccerGearLoadout; athleteName: string }) {
+export function PlayerKit({ loadout, athleteName, jerseyNumber = 10 }: { loadout: SoccerGearLoadout; athleteName: string; jerseyNumber?: string | number }) {
   const uid = useId().replace(/:/g, '');
   const jerseyPat = `gear-jersey-stripes-${uid}`;
   const sockPat = `gear-sock-stripes-${uid}`;
@@ -156,7 +156,7 @@ export function PlayerKit({ loadout, athleteName }: { loadout: SoccerGearLoadout
         )}
         <path d="M151 92c6 19 14 29 29 29s23-10 29-29" fill="none" stroke="rgba(255,255,255,.58)" strokeWidth="5" />
         <path d="M171 114h18v25h-18z" fill="rgba(255,255,255,.82)" />
-        <text x="180" y="132" textAnchor="middle" fill="#24405b" fontSize="15" fontWeight="900" fontFamily="sans-serif">10</text>
+         <text x="180" y="132" textAnchor="middle" fill="#24405b" fontSize="15" fontWeight="900" fontFamily="sans-serif">{jerseyNumber}</text>
         <path d="M127 244h106l12 93c-13 14-36 19-66 19s-53-5-66-19l14-93Z" fill={loadout.shortsColor} />
         {loadout.shortsStyle === 'contrast' && (
           <path d="M128 251h51v105c-28 0-50-5-64-19l13-86Z" fill={shortsColor} opacity=".94" />
