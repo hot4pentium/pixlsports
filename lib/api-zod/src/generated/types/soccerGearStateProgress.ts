@@ -14,5 +14,10 @@ export type SoccerGearStateProgress = {
      * @maximum 10
      */
   eventCardsCreated: number;
+  /**
+     * @minimum 0
+     * @maximum 5
+     */
+  trackerGamesCompleted: number;
   hypeCardShared: boolean;
 };

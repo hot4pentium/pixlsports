@@ -4813,7 +4813,7 @@ components:
           $ref: "#/components/schemas/SoccerGearLoadout"
         progress:
           type: object
-          required: [activeWeeks, eventCardsCreated, hypeCardShared]
+          required: [activeWeeks, eventCardsCreated, trackerGamesCompleted, hypeCardShared]
           properties:
             activeWeeks:
               type: integer
@@ -4822,6 +4822,10 @@ components:
               type: integer
               minimum: 0
               maximum: 10
+            trackerGamesCompleted:
+              type: integer
+              minimum: 0
+              maximum: 5
             hypeCardShared:
               type: boolean
         unlockedGear:

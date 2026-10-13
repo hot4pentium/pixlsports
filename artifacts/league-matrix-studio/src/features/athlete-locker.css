@@ -322,3 +322,80 @@
 @media (prefers-reduced-motion: reduce) {
   .athlete-locker__skeleton::after { animation: none; }
 }
+
+/* ---- Locker cabinet ---- */
+.athlete-locker { --locker-steel: #07162b; border-color: rgba(85,164,255,.4); }
+.athlete-locker__heading h2 { font-size: clamp(34px, 5vw, 52px); }
+.athlete-locker__cabinet {
+  display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(210px, .75fr);
+  gap: 14px; padding: 14px;
+  background: linear-gradient(90deg, #0a1d36 0 10px, transparent 10px calc(100% - 10px), #0a1d36 calc(100% - 10px));
+}
+.athlete-locker__interior {
+  position: relative; display: grid; gap: 14px; min-width: 0; padding: 18px 16px 0;
+  border: 2px solid #1b3a63; border-radius: 12px; overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(85,164,255,.05) 0 2px, transparent 2px 14px),
+    linear-gradient(180deg, #050f1f, var(--locker-steel) 60%, #0b2547);
+  box-shadow: inset 0 24px 40px rgba(0,0,0,.5), inset 6px 0 0 #2878f5, inset -6px 0 0 #2878f5;
+}
+.athlete-locker__rod { position: absolute; top: 46px; left: 14px; right: 14px; height: 4px; border-radius: 4px; background: linear-gradient(#8aa3c2, #34506f); }
+.athlete-locker__interior .athlete-locker__gear-area { padding: 18px 8px 0; }
+.athlete-locker__side { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.athlete-locker__side .athlete-locker__card-area { padding: 12px; border: 1px solid rgba(85,164,255,.25); border-radius: 12px; background: rgba(4,18,38,.45); }
+.athlete-locker__gear { grid-template-columns: minmax(96px, 128px) minmax(0, 1fr); }
+.athlete-locker__kit-stage { min-height: 170px; border-color: transparent; background: radial-gradient(circle at 50% 30%, rgba(85,164,255,.18), transparent 70%); }
+.athlete-locker__kit-stage .gear-player { width: 96px; height: 146px; }
+
+.athlete-locker__primary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; position: relative; z-index: 1; }
+.athlete-locker__tool {
+  display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 10px 12px;
+  border: 1px solid rgba(255,100,51,.55); border-radius: 10px; background: rgba(255,100,51,.1);
+  color: #fff; text-decoration: none; transition: transform .18s ease, background-color .18s ease, border-color .18s ease;
+}
+.athlete-locker__tool > svg:first-child { flex: none; color: #ff8a62; }
+.athlete-locker__tool span { display: grid; min-width: 0; line-height: 1.15; }
+.athlete-locker__tool strong { font: 800 17px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .03em; }
+.athlete-locker__tool em { color: rgba(243,246,250,.62); font-size: 10px; font-style: normal; }
+.athlete-locker__go { margin-left: auto; flex: none; opacity: .6; }
+.athlete-locker__tool:hover { transform: translateY(-2px); border-color: #ff6433; background: rgba(255,100,51,.2); }
+.athlete-locker__tool:hover .athlete-locker__go { opacity: 1; }
+
+.athlete-locker__shelf {
+  display: flex; align-items: flex-end; justify-content: space-around; gap: 6px; margin: 0 -16px; padding: 14px 16px 12px;
+  list-style: none; border-top: 3px solid #2878f5;
+  background: linear-gradient(180deg, #123c72, #0b2a52);
+}
+.athlete-locker__item { display: grid; justify-items: center; gap: 4px; min-width: 0; flex: 1; }
+.athlete-locker__art { display: block; width: clamp(34px, 7vw, 56px); height: 42px; filter: grayscale(1) brightness(.45) opacity(.5); transform: translateY(6px); }
+.athlete-locker__art svg { width: 100%; height: 100%; }
+.athlete-locker__item.is-earned .athlete-locker__art { filter: none; transform: none; }
+.athlete-locker__item-label { color: rgba(243,246,250,.5); font-size: 8px; font-weight: 700; letter-spacing: .06em; text-align: center; text-transform: uppercase; }
+.athlete-locker__item.is-earned .athlete-locker__item-label { color: #dbe9fb; }
+
+.athlete-locker__secondary { display: grid; gap: 6px; }
+.athlete-locker__tag {
+  display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: 99px;
+  border: 1px solid rgba(85,164,255,.28); background: rgba(16,43,77,.7); color: #cfe2fa;
+  font-size: 11px; font-weight: 700; text-decoration: none; transition: border-color .18s, background-color .18s, transform .18s;
+}
+.athlete-locker__tag svg { color: #55a4ff; }
+.athlete-locker__tag:hover { border-color: #55a4ff; background: rgba(40,120,245,.22); transform: translateX(3px); }
+.athlete-locker__tool:focus-visible, .athlete-locker__tag:focus-visible { outline: 3px solid #b9d8ff; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .athlete-locker__art { transition: transform .5s cubic-bezier(.2,.9,.3,1.2), filter .5s; }
+  .athlete-locker__item.is-earned .athlete-locker__art { animation: locker-drop .6s cubic-bezier(.2,.9,.3,1.2) both; }
+}
+@keyframes locker-drop { from { opacity: 0; transform: translateY(-14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .athlete-locker__tool, .athlete-locker__tag { transition: none; }
+  .athlete-locker__tool:hover, .athlete-locker__tag:hover { transform: none; }
+}
+@media (max-width: 860px) { .athlete-locker__cabinet { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+  .athlete-locker__cabinet { padding: 10px; }
+  .athlete-locker__primary { grid-template-columns: minmax(0, 1fr); }
+  .athlete-locker__gear { grid-template-columns: minmax(88px, 110px) minmax(0, 1fr); }
+  .athlete-locker__kit-stage .gear-player { width: 80px; height: 124px; }
+}

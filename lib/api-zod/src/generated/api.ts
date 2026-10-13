@@ -892,6 +892,9 @@ export const getSoccerGearResponseProgressActiveWeeksMin = 0;
 export const getSoccerGearResponseProgressEventCardsCreatedMin = 0;
 export const getSoccerGearResponseProgressEventCardsCreatedMax = 10;
 
+export const getSoccerGearResponseProgressTrackerGamesCompletedMin = 0;
+export const getSoccerGearResponseProgressTrackerGamesCompletedMax = 5;
+
 
 
 export const GetSoccerGearResponse = zod.object({
@@ -916,6 +919,7 @@ export const GetSoccerGearResponse = zod.object({
   "progress": zod.object({
   "activeWeeks": zod.number().int().min(getSoccerGearResponseProgressActiveWeeksMin),
   "eventCardsCreated": zod.number().int().min(getSoccerGearResponseProgressEventCardsCreatedMin).max(getSoccerGearResponseProgressEventCardsCreatedMax),
+  "trackerGamesCompleted": zod.number().int().min(getSoccerGearResponseProgressTrackerGamesCompletedMin).max(getSoccerGearResponseProgressTrackerGamesCompletedMax),
   "hypeCardShared": zod.boolean()
 }),
   "unlockedGear": zod.array(zod.enum(['speed-cleats', 'striped-socks', 'contrast-shorts', 'stripe-jersey', 'sweatbands']))
@@ -961,6 +965,9 @@ export const saveSoccerGearResponseProgressActiveWeeksMin = 0;
 export const saveSoccerGearResponseProgressEventCardsCreatedMin = 0;
 export const saveSoccerGearResponseProgressEventCardsCreatedMax = 10;
 
+export const saveSoccerGearResponseProgressTrackerGamesCompletedMin = 0;
+export const saveSoccerGearResponseProgressTrackerGamesCompletedMax = 5;
+
 
 
 export const SaveSoccerGearResponse = zod.object({
@@ -985,6 +992,7 @@ export const SaveSoccerGearResponse = zod.object({
   "progress": zod.object({
   "activeWeeks": zod.number().int().min(saveSoccerGearResponseProgressActiveWeeksMin),
   "eventCardsCreated": zod.number().int().min(saveSoccerGearResponseProgressEventCardsCreatedMin).max(saveSoccerGearResponseProgressEventCardsCreatedMax),
+  "trackerGamesCompleted": zod.number().int().min(saveSoccerGearResponseProgressTrackerGamesCompletedMin).max(saveSoccerGearResponseProgressTrackerGamesCompletedMax),
   "hypeCardShared": zod.boolean()
 }),
   "unlockedGear": zod.array(zod.enum(['speed-cleats', 'striped-socks', 'contrast-shorts', 'stripe-jersey', 'sweatbands']))
@@ -1004,6 +1012,9 @@ export const recordSoccerGearWeeklyLoginResponseProgressActiveWeeksMin = 0;
 
 export const recordSoccerGearWeeklyLoginResponseProgressEventCardsCreatedMin = 0;
 export const recordSoccerGearWeeklyLoginResponseProgressEventCardsCreatedMax = 10;
+
+export const recordSoccerGearWeeklyLoginResponseProgressTrackerGamesCompletedMin = 0;
+export const recordSoccerGearWeeklyLoginResponseProgressTrackerGamesCompletedMax = 5;
 
 
 
@@ -1029,6 +1040,7 @@ export const RecordSoccerGearWeeklyLoginResponse = zod.object({
   "progress": zod.object({
   "activeWeeks": zod.number().int().min(recordSoccerGearWeeklyLoginResponseProgressActiveWeeksMin),
   "eventCardsCreated": zod.number().int().min(recordSoccerGearWeeklyLoginResponseProgressEventCardsCreatedMin).max(recordSoccerGearWeeklyLoginResponseProgressEventCardsCreatedMax),
+  "trackerGamesCompleted": zod.number().int().min(recordSoccerGearWeeklyLoginResponseProgressTrackerGamesCompletedMin).max(recordSoccerGearWeeklyLoginResponseProgressTrackerGamesCompletedMax),
   "hypeCardShared": zod.boolean()
 }),
   "unlockedGear": zod.array(zod.enum(['speed-cleats', 'striped-socks', 'contrast-shorts', 'stripe-jersey', 'sweatbands']))
@@ -1058,6 +1070,9 @@ export const recordSoccerGearShareActionResponseProgressActiveWeeksMin = 0;
 export const recordSoccerGearShareActionResponseProgressEventCardsCreatedMin = 0;
 export const recordSoccerGearShareActionResponseProgressEventCardsCreatedMax = 10;
 
+export const recordSoccerGearShareActionResponseProgressTrackerGamesCompletedMin = 0;
+export const recordSoccerGearShareActionResponseProgressTrackerGamesCompletedMax = 5;
+
 
 
 export const RecordSoccerGearShareActionResponse = zod.object({
@@ -1082,6 +1097,7 @@ export const RecordSoccerGearShareActionResponse = zod.object({
   "progress": zod.object({
   "activeWeeks": zod.number().int().min(recordSoccerGearShareActionResponseProgressActiveWeeksMin),
   "eventCardsCreated": zod.number().int().min(recordSoccerGearShareActionResponseProgressEventCardsCreatedMin).max(recordSoccerGearShareActionResponseProgressEventCardsCreatedMax),
+  "trackerGamesCompleted": zod.number().int().min(recordSoccerGearShareActionResponseProgressTrackerGamesCompletedMin).max(recordSoccerGearShareActionResponseProgressTrackerGamesCompletedMax),
   "hypeCardShared": zod.boolean()
 }),
   "unlockedGear": zod.array(zod.enum(['speed-cleats', 'striped-socks', 'contrast-shorts', 'stripe-jersey', 'sweatbands']))

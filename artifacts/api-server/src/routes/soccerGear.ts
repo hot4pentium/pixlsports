@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 import { GetSoccerGearResponse, RecordSoccerGearShareActionBody, SaveSoccerGearBody } from "@workspace/api-zod";
 import { athleteInvitesTable, db, hypeCardSharesTable, soccerGearActivityTable, soccerGearLooksTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
-import { creditExistingSoccerEventCards, readSoccerGear } from "../lib/soccerGear";
+import { creditExistingSoccerEventCards, creditExistingSoccerTrackerGames, readSoccerGear } from "../lib/soccerGear";
 import { lockedSoccerSelection, soccerWeekKey } from "../lib/soccerGearPolicy";
 
 const router: IRouter = Router();
@@ -15,7 +15,10 @@ router.use("/athlete-gear", requireAuth, (_req, res, next) => {
 router.get("/athlete-gear/soccer", async (_req, res, next) => {
   try {
     const owner = getRequiredClerkUserId(res);
-    await creditExistingSoccerEventCards(owner);
+    await Promise.all([
+      creditExistingSoccerEventCards(owner),
+      creditExistingSoccerTrackerGames(owner),
+    ]);
     res.json(GetSoccerGearResponse.parse(await readSoccerGear(owner)));
   }
   catch (error) { next(error); }

@@ -57,6 +57,7 @@ test("real gear routes persist and isolate looks, deduplicate successful actions
     assert.equal(initial.athleteId, invites[0].id);
     assert.equal(initial.showOnHypeCard, false);
     assert.equal(initial.progress.activeWeeks, 0);
+    assert.equal(initial.progress.trackerGamesCompleted, 0);
     const baseSave = { athleteId: invites[0].id, loadout: defaultSoccerLoadout(), showOnHypeCard: false };
     assert.equal((await call("/athlete-gear/soccer", "PUT", {
       ...baseSave, loadout: { ...baseSave.loadout, jerseyStyle: "stripes" },

@@ -12,6 +12,7 @@ import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth"
 import { ObjectStorageService } from "../lib/objectStorage";
 import { consumeGuestUsageBatch, getAccountAccessSnapshot } from "./accountAccess";
 import { hasActivePaidEntitlement } from "../lib/accountLifecycle";
+import { creditSoccerTrackerGames } from "../lib/soccerGear";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -147,14 +148,18 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
   }
 
   try {
-    const [created] = await db
-      .insert(cloudProjectsTable)
-      .values({
-        ownerClerkUserId,
-        name: parsed.data.name,
-         project: withoutMedia(parsed.data.project, paid),
-      })
-      .returning();
+    const created = await db.transaction(async (tx) => {
+      const [project] = await tx
+        .insert(cloudProjectsTable)
+        .values({
+          ownerClerkUserId,
+          name: parsed.data.name,
+          project: withoutMedia(parsed.data.project, paid),
+        })
+        .returning();
+      await creditSoccerTrackerGames(tx, ownerClerkUserId, project.project);
+      return project;
+    });
     res.status(201).json(await projectResponse(created, ownerClerkUserId));
   } catch (error) {
     req.log.error({ err: error }, "Unable to create cloud project");
@@ -247,17 +252,21 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
   }
 
   try {
-    const [updated] = await db
-      .update(cloudProjectsTable)
-      .set(updates)
-      .where(
-        and(
-          eq(cloudProjectsTable.id, params.data.projectId),
-          eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
-          eq(cloudProjectsTable.revision, parsed.data.expectedRevision),
-        ),
-      )
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      const [project] = await tx
+        .update(cloudProjectsTable)
+        .set(updates)
+        .where(
+          and(
+            eq(cloudProjectsTable.id, params.data.projectId),
+            eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+            eq(cloudProjectsTable.revision, parsed.data.expectedRevision),
+          ),
+        )
+        .returning();
+      if (project) await creditSoccerTrackerGames(tx, ownerClerkUserId, project.project);
+      return project;
+    });
 
     if (!updated) {
       const [latest] = await db

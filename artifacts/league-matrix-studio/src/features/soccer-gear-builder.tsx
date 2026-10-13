@@ -485,6 +485,9 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
               <div className="gear-metric" data-testid="metric-event-cards">
                 <strong>{Math.min(state.progress.eventCardsCreated, 10)}<small> / 10</small></strong><span>Event cards</span>
               </div>
+              <div className="gear-metric" data-testid="metric-tracker-games">
+                <strong>{Math.min(state.progress.trackerGamesCompleted, 5)}<small> / 5</small></strong><span>Tracker games</span>
+              </div>
               <div className="gear-metric" data-testid="metric-hype-card-shared">
                 <strong>{state.progress.hypeCardShared ? <Check size={20} /> : '—'}</strong><span>HYPE Card shared</span>
               </div>

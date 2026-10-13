@@ -101,7 +101,7 @@
 .gear-progress-heading h2 { margin: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
 .gear-progress-heading p { margin: .32rem 0 0; color: rgb(255 255 255 / .68); font-size: .74rem; }
 .gear-progress-mark { display: grid; width: 2.25rem; height: 2.25rem; flex: none; place-items: center; border-radius: 50%; color: var(--gear-ink); background: var(--gear-lime); }
-.gear-metric-list { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: 1.2rem; }
+.gear-metric-list { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin-top: 1.2rem; }
 .gear-metric { border-top: 1px solid rgb(255 255 255 / .24); padding-top: .55rem; }
 .gear-metric strong { display: block; font-family: 'Barlow Condensed', sans-serif; font-size: 1.55rem; font-weight: 800; line-height: 1; }
 .gear-metric span { display: block; margin-top: .28rem; color: rgb(255 255 255 / .68); font-size: .61rem; font-weight: 800; letter-spacing: .09em; line-height: 1.2; text-transform: uppercase; }
@@ -138,6 +138,7 @@
   .gear-progress { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
+  .gear-metric-list { grid-template-columns: repeat(2, 1fr); }
   .soccer-gear { padding: .95rem; }
   .gear-topline { margin-bottom: 1.25rem; }
   .gear-intro { display: block; }

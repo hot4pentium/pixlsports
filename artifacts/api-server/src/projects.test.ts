@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import express from "express";
 import { eq } from "drizzle-orm";
-import { accountAccessTable, cloudProjectsTable, db } from "@workspace/db";
+import { accountAccessTable, cloudProjectsTable, db, soccerGearActivityTable } from "@workspace/db";
 import projectsRouter from "./routes/projects";
 
 test("guest project creation rejects unsupported tools without persisting", async () => {
@@ -124,5 +124,76 @@ test("standalone Calendar projects cannot be created or updated while other proj
   } finally {
     server.close();
     for (const id of seededIds) await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, id));
+  }
+});
+
+test("finalized tracker games earn durable Locker progress once", async () => {
+  const ownerId = `projects-locker-${crypto.randomUUID()}`;
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", projectsRouter);
+  const server = app.listen(0);
+
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const headers = { "content-type": "application/json", "x-test-user": ownerId };
+    const create = await fetch(`http://127.0.0.1:${address.port}/api/projects`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: "Tracker",
+        project: {
+          tool: "stat-tracker",
+          games: [
+            { id: "game-final-1", status: "final" },
+            { id: "game-active", status: "active" },
+          ],
+        },
+      }),
+    });
+    assert.equal(create.status, 201, await create.clone().text());
+    const created = await create.json() as { id: string; revision: number };
+
+    const update = await fetch(`http://127.0.0.1:${address.port}/api/projects/${created.id}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({
+        expectedRevision: created.revision,
+        project: {
+          tool: "stat-tracker",
+          games: [
+            { id: "game-final-1", status: "final" },
+            { id: "game-final-2", status: "final" },
+          ],
+        },
+      }),
+    });
+    assert.equal(update.status, 200, await update.clone().text());
+
+    const credits = await db.select().from(soccerGearActivityTable)
+      .where(eq(soccerGearActivityTable.ownerClerkUserId, ownerId));
+    assert.deepEqual(
+      credits.filter((credit) => credit.kind === "tracker-game").map((credit) => credit.eventKey).sort(),
+      ["game-final-1", "game-final-2"],
+    );
+  } finally {
+    server.close();
+    await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
+    await db.delete(soccerGearActivityTable).where(eq(soccerGearActivityTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }
 });
