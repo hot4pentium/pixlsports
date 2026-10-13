@@ -115,3 +115,4 @@
 - [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — generic arguments on JSX components can be corrupted by source instrumentation; infer generics or pass casts through callback parameters.
 - [Support reply receiving domain](support-reply-receiving-domain.md) — use a Resend-managed or dedicated subdomain; never replace the root-domain MX serving normal support mail.
 - [Soccer gear product scope](soccer-gear-product-scope.md) — make gear building playful for the athlete; validate soccer first before expanding to another sport.
+- [Immersive Athlete Locker](immersive-athlete-locker.md) — use the supplied full Locker reference while keeping the dashboard and existing account roles unchanged.
