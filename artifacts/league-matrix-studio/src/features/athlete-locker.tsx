@@ -11,6 +11,7 @@ import './athlete-locker.css';
 export type { AthleteLockerCardStatus, AthleteLockerGearStatus } from './athlete-locker-types';
 
 export interface AthleteLockerProps {
+  placement: 'mobile' | 'desktop';
   athleteName: string;
   teamName: string;
   jerseyNumber: string | number;
@@ -70,6 +71,7 @@ function GearStatus({ status }: { status: AthleteLockerGearStatus }) {
 }
 
 export function AthleteLocker({
+  placement,
   athleteName,
   teamName,
   jerseyNumber,
@@ -79,6 +81,7 @@ export function AthleteLocker({
   gear,
   gearStatus,
 }: AthleteLockerProps) {
+  const titleId = `athlete-locker-title-${placement}`;
   const canOpenCard = canOpenAthleteLockerCard(cardStatus, card, cardHref);
   const canShowCard = cardStatus === 'ready' && Boolean(card) && !card?.paused && card?.showHypeCard === true;
   const canShowGear = gearStatus === 'ready' && Boolean(gear);
@@ -87,11 +90,11 @@ export function AthleteLocker({
   const playerName = athleteName.trim() || card?.athleteName || 'your season';
 
   return (
-    <section className="athlete-locker" aria-labelledby="athlete-locker-title" data-testid="athlete-locker">
+    <section className="athlete-locker" aria-labelledby={titleId} data-testid={`athlete-locker-${placement}`}>
       <header className="athlete-locker__heading">
         <div>
           <p className="athlete-locker__eyebrow">Your season, your story</p>
-          <h2 id="athlete-locker-title">The locker</h2>
+          <h2 id={titleId}>The locker</h2>
           <p className="athlete-locker__welcome" data-testid="text-locker-welcome">
             {`A look at your season, ${titleForAthlete(playerName)}.`}
           </p>
@@ -110,11 +113,11 @@ export function AthleteLocker({
           {canShowCard && card ? (
             <div className="athlete-locker__card" data-testid="content-locker-hype-card">
               {canOpenCard && cardHref ? (
-                <a
+                <Link
                   className="athlete-locker__card-link"
                   href={cardHref}
                   aria-label={`Open ${card.athleteName}’s public HYPE Card`}
-                  data-testid="link-locker-public-card"
+                  data-testid={`link-locker-public-card-${placement}`}
                 >
                   <LivingAthleteCardFront
                     athleteName={card.athleteName || athleteName}
@@ -126,7 +129,7 @@ export function AthleteLocker({
                     photoAlt={`${card.athleteName || athleteName} on their HYPE Card`}
                   />
                   <span className="athlete-locker__open-hint">View card <ArrowUpRight size={14} aria-hidden="true" /></span>
-                </a>
+                </Link>
               ) : (
                 <div className="athlete-locker__card-static" data-testid="content-locker-card-static">
                   <LivingAthleteCardFront

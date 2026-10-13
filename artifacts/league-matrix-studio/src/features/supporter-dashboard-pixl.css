@@ -1424,6 +1424,10 @@
 /* Desktop hero composition: greeting, athlete identity, and next event share one surface. */
 @media (min-width: 1024px) {
   .pixl-dashboard > .dashboard-hero-banner { order: -1; }
+  .pixl-dashboard > [data-testid="athlete-locker-desktop"] {
+    order: 0;
+    grid-column: 1 / -1;
+  }
   .pixl-dashboard > [data-testid="game-on-dashboard-collection"] {
     order: 0;
     grid-column: 1 / 3;
