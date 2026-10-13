@@ -3,8 +3,10 @@ name: Immersive Athlete Locker
 description: User-approved direction for the dedicated Pixl Sports Athlete Locker.
 ---
 
-Build a dedicated, responsive Locker experience inspired by the user's supplied cinematic locker image. Keep the existing dashboard as the home, populate the Locker with live selected-athlete data, and preserve the existing account and permission model. Do not add an Owner/Supporter role switch.
+Build a responsive Locker inspired by the user's supplied cinematic locker image and make it the signed-in dashboard's main focal point. Populate it with live selected-athlete data and use it to access Event Cards, Stat Tracker, and Prep. Preserve the existing account and permission model; do not add an Owner/Supporter role switch.
 
-**Why:** The user chose a full Locker experience based on the reference image while explicitly retaining existing roles.
+Equipment should appear as automatic rewards for meaningful return and usage milestones—such as distinct returns, first/tenth Event Cards, and first/fifth completed Stat Tracker games—instead of collecting badges.
 
-**How to apply:** Treat the image as a visual reference for the dedicated Locker, not as approval to replace the dashboard or add role switching. Keep card and parent-management permissions as they are.
+**Why:** The user chose a full Locker experience based on the reference image, then clarified that it may be the primary surface and that equipment should replace badges as product-use milestones.
+
+**How to apply:** Treat the image as the Locker's visual reference and preserve Pixl Sports' existing identity around it. Count only successful, durable actions; do not reward refreshes, drafts, edits, retries, failed saves, or abandoned tracker sessions. Keep card and parent-management permissions as they are.
