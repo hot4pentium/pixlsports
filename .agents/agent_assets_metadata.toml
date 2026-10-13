@@ -542,3 +542,17 @@ mtime_ms = 1791858435966
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/9d3a09e3-1e31-4c26-be33-d41016b6162f/36646c52-d126-4af7-b99b-17aceb4e4d67"
 storage_version_token = "1791858441682090"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "IQUSgFEHi9uneIuqL_R8C"
+uri = "file://exports/event-cards-api-handoff.pdf"
+type = "pdf"
+title = "Event Cards API Reuse Handoff"
+description = "Five-page project handoff covering the Event Cards product rules, existing API routes, Clerk email-only sign-in, privacy and Calendar safety, reminders, and integration checklist."
+logical_id = "cfb23a27-945b-47bf-9a11-5cdcd6faf43c"
+content_hash = "sha256:8535e8020066375d29ead85f5c39f94d3631435d5968e88d39f960e0aa3cd360"
+size = 135936
+mtime_ms = 1791927816125
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/cfb23a27-945b-47bf-9a11-5cdcd6faf43c/410df5d7-2848-434d-9b67-246b33a2de4b"
+storage_version_token = "1791927827602814"
+content_type = "application/pdf"

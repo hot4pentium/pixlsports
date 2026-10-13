@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Cards — API Reuse Handoff</title>
+  <style>
+    :root {
+      --navy: #10233f;
+      --blue: #2878f5;
+      --sky: #eaf2ff;
+      --orange: #ff6433;
+      --ink: #1c2b3e;
+      --muted: #5f6f83;
+      --line: #dce4ee;
+      --paper: #fff;
+      --soft: #f5f8fc;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; color: var(--ink); background: #e9eef5; }
+    body {
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.48;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page {
+      position: relative;
+      width: 8.5in;
+      min-height: 11in;
+      margin: 18px auto;
+      padding: .58in .64in .54in;
+      background: var(--paper);
+      overflow: hidden;
+      box-shadow: 0 8px 30px #10233f18;
+      break-after: page;
+      page-break-after: always;
+    }
+    .page:last-child { break-after: auto; page-break-after: auto; }
+    .topline {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 11px; border-bottom: 1px solid var(--line);
+      color: var(--muted); font-size: 8pt; font-weight: 800;
+      letter-spacing: .13em; text-transform: uppercase;
+    }
+    .brand { color: var(--navy); }
+    .brand-mark { color: var(--orange); margin-right: 7px; }
+    .page-no { color: var(--blue); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { color: var(--navy); font-size: 37pt; line-height: 1.02; letter-spacing: -.045em; margin: 18px 0 8px; }
+    h2 { color: var(--navy); font-size: 18pt; line-height: 1.12; letter-spacing: -.025em; margin: 0 0 12px; }
+    h3 { color: var(--navy); font-size: 10pt; line-height: 1.2; margin: 0 0 5px; }
+    p { margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 13pt; margin-bottom: 17px; }
+    .kicker {
+      color: var(--blue); font-size: 8pt; font-weight: 800;
+      letter-spacing: .16em; text-transform: uppercase; margin: 25px 0 7px;
+    }
+    .chips { display: flex; gap: 7px; flex-wrap: wrap; margin: 12px 0 19px; }
+    .chip {
+      border: 1px solid #c8d9f4; border-radius: 30px; padding: 4px 9px;
+      color: var(--navy); background: var(--sky); font-size: 8pt; font-weight: 750;
+    }
+    .callout {
+      border-left: 4px solid var(--orange); background: #fff5f0;
+      padding: 11px 14px; margin: 13px 0 16px; border-radius: 0 8px 8px 0;
+    }
+    .callout.blue { border-color: var(--blue); background: var(--sky); }
+    .callout p:last-child { margin-bottom: 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card {
+      background: var(--soft); border: 1px solid var(--line); border-radius: 9px;
+      padding: 11px 12px;
+    }
+    .card p:last-child { margin-bottom: 0; }
+    .section { margin: 17px 0 0; }
+    ul, ol { margin: 6px 0 0; padding-left: 17px; }
+    li { margin: 0 0 5px; padding-left: 1px; }
+    .compact li { margin-bottom: 3px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 8.5pt; }
+    .mono {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 8.3pt; overflow-wrap: anywhere; color: #173c73;
+    }
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      color: #173c73; background: #eef3fa; padding: 1px 4px; border-radius: 3px;
+      font-size: .92em;
+    }
+    table { border-collapse: collapse; width: 100%; margin: 9px 0 11px; }
+    th {
+      background: var(--navy); color: white; text-align: left;
+      padding: 7px 8px; font-size: 8pt; letter-spacing: .04em;
+    }
+    td { border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; font-size: 8.5pt; }
+    tr:nth-child(even) td { background: #f8fafd; }
+    .method { white-space: nowrap; font-weight: 800; color: var(--blue); }
+    .endpoint { min-width: 225px; }
+    .path-list { list-style: none; padding: 0; margin: 7px 0 0; }
+    .path-list li { margin: 0; padding: 5px 0; border-bottom: 1px solid var(--line); }
+    .path-list code { display: block; background: transparent; padding: 0; }
+    .checklist { list-style: none; padding: 0; margin: 7px 0 0; }
+    .checklist li { position: relative; padding: 0 0 6px 21px; }
+    .checklist li::before {
+      content: ""; position: absolute; left: 0; top: 3px; width: 11px; height: 11px;
+      border: 1.5px solid var(--blue); border-radius: 3px;
+    }
+    .footer {
+      position: absolute; left: .64in; right: .64in; bottom: .27in;
+      padding-top: 7px; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; color: var(--muted); font-size: 7.5pt;
+    }
+    .rule { height: 1px; background: var(--line); margin: 13px 0; }
+    .highlight { color: var(--blue); font-weight: 800; }
+    @page { size: letter; margin: 0; }
+    @media print {
+      html, body { background: white; }
+      .page { margin: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="page">
+      <div class="topline"><div class="brand"><span class="brand-mark">■</span>PIXL SPORTS</div><div>Project handoff <span class="page-no">/ 01</span></div></div>
+      <p class="kicker">Product + integration brief</p>
+      <h1>Event Cards</h1>
+      <p class="subtitle">Reuse the existing Pixl API. Keep email sign-in. Don’t duplicate the system.</p>
+      <div class="chips">
+        <span class="chip">Existing API is source of truth</span>
+        <span class="chip">Email sign-up / sign-in only</span>
+        <span class="chip">No Google sign-in for now</span>
+      </div>
+      <div class="callout">
+        <h3>Decision to carry forward</h3>
+        <p>Build the new experience as a client of the current Pixl Sports API. The API already owns Event Card persistence, owner access, public links, Calendar-link verification, and deletion behavior.</p>
+      </div>
+
+      <div class="section">
+        <h2>What an Event Card is</h2>
+        <p>An Event Card is a shareable page for <strong>one soccer game or one practice</strong>. It is an event-specific family view that can connect preparation, live stats, and the athlete’s HYPE Card. It is not a general calendar, multi-event schedule, or replacement for the Calendar.</p>
+      </div>
+
+      <div class="grid section">
+        <div class="card">
+          <h3>One event, one card</h3>
+          <p>A card contains exactly one <code>game</code> or <code>practice</code>. Games need a date and opponent; practices need a date. Preserve the event’s local time and IANA time zone.</p>
+        </div>
+        <div class="card">
+          <h3>Two ways to create</h3>
+          <p>Create a card independently, or link it to an event in the owner’s Calendar. The relationship must be verified by the server.</p>
+        </div>
+        <div class="card">
+          <h3>Public, but limited</h3>
+          <p>The public view contains basic event details and only related destinations the owner has deliberately shared.</p>
+        </div>
+        <div class="card">
+          <h3>Terminology boundary</h3>
+          <p>Use <strong>Event Card(s)</strong> in UI copy. Keep established “Game On” route names, storage keys, and API values intact for compatibility.</p>
+        </div>
+      </div>
+
+      <div class="callout blue section">
+        <h3>Implementation principle</h3>
+        <p>Reuse behavior and contracts rather than copying backend logic. Keep the new project’s UI focused on consuming the API safely.</p>
+      </div>
+
+      <div class="footer"><span>Event Cards · API reuse handoff</span><span>Pixl Sports</span></div>
+    </section>
+
+    <section class="page">
+      <div class="topline"><div class="brand"><span class="brand-mark">■</span>API INTEGRATION</div><div>Contract <span class="page-no">/ 02</span></div></div>
+      <p class="kicker">Use the existing routes</p>
+      <h2>API contract</h2>
+      <p class="muted">The route prefix shown below is <code>/api</code>. The current OpenAPI specification and generated React client are the canonical contract.</p>
+      <table>
+        <thead><tr><th>Purpose</th><th>Method + path</th><th>Access</th></tr></thead>
+        <tbody>
+          <tr><td>Create Event Card</td><td class="endpoint"><span class="method">POST</span> <code>/api/schedule-shares</code></td><td>Signed in; send <code>purpose: "game-on-card"</code></td></tr>
+          <tr><td>Update Event Card</td><td class="endpoint"><span class="method">PATCH</span> <code>/api/schedule-shares/:shareToken</code></td><td>Owner only; keep the card purpose</td></tr>
+          <tr><td>List owner’s cards</td><td class="endpoint"><span class="method">GET</span> <code>/api/game-on-cards/owned</code></td><td>Signed in</td></tr>
+          <tr><td>Delete owner’s card</td><td class="endpoint"><span class="method">DELETE</span> <code>/api/game-on-cards/owned/:shareToken</code></td><td>Owner only; response says if Calendar event was also deleted</td></tr>
+          <tr><td>Read public card</td><td class="endpoint"><span class="method">GET</span> <code>/api/game-on-cards/:shareToken</code></td><td>Public; no sign-in</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <h3>Do not use the old public schedule-share route</h3>
+        <p><code>/api/schedule-shares/:shareToken</code> is not the public Event Card endpoint. Public cards must use <code>/api/game-on-cards/:shareToken</code>, which returns the filtered card response.</p>
+      </div>
+
+      <div class="section">
+        <h2>Authentication: email only</h2>
+        <ul class="compact">
+          <li>Offer email sign-up/sign-in only for the initial release; do not add Google sign-in yet.</li>
+          <li>The owner routes require a Clerk-authenticated session that the existing API accepts.</li>
+          <li>Use the same Clerk app/tenant trusted by this API. Owner identity is the verified Clerk user ID—not the email string.</li>
+          <li>A separate Clerk tenant can issue a different user ID for the same email, so that account will not automatically own the existing user’s cards.</li>
+          <li>Confirm email sign-in is enabled for the Clerk instance used by the new app. Keep the public card route public.</li>
+        </ul>
+      </div>
+
+      <div class="callout blue section">
+        <h3>Client and environment</h3>
+        <p>Reuse <code>lib/api-spec/openapi.yaml</code> and, where the new project can consume it, <code>lib/api-client-react</code>. Configure the correct API origin per environment. Don’t hardcode a development URL, expose Clerk secrets, or maintain duplicate request/response types.</p>
+      </div>
+      <div class="footer"><span>Owner identity comes from verified Clerk auth</span><span>Pixl Sports · 02</span></div>
+    </section>
+
+    <section class="page">
+      <div class="topline"><div class="brand"><span class="brand-mark">■</span>DATA + PRIVACY</div><div>Rules <span class="page-no">/ 03</span></div></div>
+      <p class="kicker">Preserve these boundaries</p>
+      <h2>Calendar linking, privacy, and identity</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Linked event edits</h3>
+          <p>When a card is linked to a Calendar event, save the Calendar edit first and then update the card. Keep the card’s public token stable. Report partial failure so the owner can retry without creating another share.</p>
+        </div>
+        <div class="card">
+          <h3>Safe deletion</h3>
+          <p>Delete the linked Calendar event only when the API verifies the owner, event ID, Calendar project, and unique relationship. If the match is missing, ambiguous, or unverified, leave Calendar unchanged and report that outcome.</p>
+        </div>
+        <div class="card">
+          <h3>Private preparation</h3>
+          <p>Prep notes and checklist contents stay private unless the owner separately shares Prep. Creating or updating an Event Card must not publish Prep automatically.</p>
+        </div>
+        <div class="card">
+          <h3>Separate HYPE visibility</h3>
+          <p>Showing event listings on the HYPE Card is controlled separately by “Allow events.” A public Event Card link can exist without making the owner’s full event list visible there.</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Only share what the owner chose</h2>
+        <ul>
+          <li>The public response includes one sanitized event and the current states of related shared destinations.</li>
+          <li>Stats require a separately shared tracker destination. Do not expose raw tracker data or infer that private stats are public.</li>
+          <li>Prep is marked private unless there is a separately shared checklist. HYPE Page visibility is also reported separately.</li>
+          <li>Do not include Calendar snacks, drinks, notes, or other private planning fields in the public Event Card payload.</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <h3>Legacy identity rule — important</h3>
+        <p>Never decide that a share is an Event Card solely because it contains one game or practice. Calendar sharing used the same underlying storage shape. The owner collection uses an explicit internal marker; that marker must never appear in public responses. Preserve older public card links, but don’t automatically promote ambiguous old shares into the owner’s card collection.</p>
+      </div>
+
+      <div class="section">
+        <h2>Durable data, not local-only ownership</h2>
+        <p>The API owns the durable card and its owner relationship. Browser storage supports local details and compatibility with older device-saved cards; it is not the cross-device source of truth. Don’t use local storage to decide what the server says the user owns.</p>
+      </div>
+
+      <div class="callout blue section">
+        <h3>Locker connection</h3>
+        <p>Successful Event Card creation credits the Locker milestone ledger using the event ID. Retries and edits should not award duplicate progress; deletion does not erase earned activity.</p>
+      </div>
+      <div class="footer"><span>Public access is intentionally narrower than owner access</span><span>Pixl Sports · 03</span></div>
+    </section>
+
+    <section class="page">
+      <div class="topline"><div class="brand"><span class="brand-mark">■</span>STATUS + DELIVERY</div><div>Build checklist <span class="page-no">/ 04</span></div></div>
+      <p class="kicker">Time-aware behavior</p>
+      <h2>Event timing and reminders</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Card stage</h3>
+          <p>Show “Starting Soon” during the one-hour pregame window; switch to “Live” at the scheduled start in the event’s saved time zone. Tracker capture may be available before the card becomes Live.</p>
+        </div>
+        <div class="card">
+          <h3>Daylight-saving transitions</h3>
+          <p>For a nonexistent spring-forward local time, shift forward through the gap. For a repeated fall-back time, use the earlier instant. Use this same resolved start for the badge and pregame window.</p>
+        </div>
+        <div class="card">
+          <h3>One-hour reminder</h3>
+          <p>Uses the event’s saved time zone. It is a separate, account-level opt-in.</p>
+        </div>
+        <div class="card">
+          <h3>Day-of reminder</h3>
+          <p>Scheduled for 7:00 a.m. in the account’s saved alert time zone. Missing saved choices default off; app installation does not opt someone in.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <h3>Delivery is not automatic just because the UI exists</h3>
+        <p>Scheduled alerts need an active, configured server-side caller. Show deployment readiness honestly. A manual follower announcement is a separate owner-confirmed action; never turn it into an automatic send.</p>
+      </div>
+
+      <div class="footer"><span>Time-zone rules and alert consent are part of the contract</span><span>Pixl Sports · 04</span></div>
+    </section>
+
+    <section class="page">
+      <div class="topline"><div class="brand"><span class="brand-mark">■</span>IMPLEMENTATION NOTES</div><div>Checklist <span class="page-no">/ 05</span></div></div>
+      <p class="kicker">Where to start</p>
+      <h2>Code landmarks</h2>
+      <p class="muted">These files show the current UI, API rules, and shared contract. The new project should consume the API rather than copy its backend implementation.</p>
+      <div class="section">
+        <ul class="path-list">
+          <li><code>artifacts/league-matrix-studio/src/features/game-on-card.tsx</code><span class="small muted">Create/edit form and public card page</span></li>
+          <li><code>artifacts/league-matrix-studio/src/features/game-on-dashboard-collection.tsx</code><span class="small muted">Owner card collection and delete feedback</span></li>
+          <li><code>artifacts/league-matrix-studio/src/features/game-on-card-storage.ts</code><span class="small muted">Device-local and legacy compatibility</span></li>
+          <li><code>artifacts/api-server/src/routes/scheduleShares.ts</code><span class="small muted">Validation, ownership, public read, and safe Calendar deletion</span></li>
+          <li><code>artifacts/api-server/src/jobs/gameOnReminderQueue.ts</code> · <code>artifacts/api-server/src/jobs/plannerNotifications.ts</code><span class="small muted">Reminder scheduling and delivery</span></li>
+          <li><code>lib/api-spec/openapi.yaml</code> · <code>lib/api-client-react</code><span class="small muted">Shared contract and generated client</span></li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Acceptance checklist</h2>
+        <ul class="checklist">
+          <li>Email-only sign-up/sign-in; no Google option for now.</li>
+          <li>Owner requests work only with the same Clerk identity trusted by the API.</li>
+          <li>Create, update, list, delete, and public read use the existing routes.</li>
+          <li>A card has one game or practice; time zone is preserved and validated.</li>
+          <li>Public links reveal only event details and destinations the owner chose to share.</li>
+          <li>Calendar deletion is verified and unique; ambiguous links leave Calendar intact.</li>
+          <li>One-event legacy shares are not automatically treated as Event Cards.</li>
+          <li>Reminder consent, account zone, event zone, and scheduler readiness are respected.</li>
+        </ul>
+      </div>
+      <div class="callout blue section">
+        <h3>Non-negotiable boundary</h3>
+        <p>Keep the API authoritative for owner identity and persisted cards. Preserve its privacy filtering, legacy-card behavior, and safe Calendar deletion rather than approximating them in the client.</p>
+      </div>
+      <div class="footer"><span>Reuse the API; preserve its privacy and compatibility rules</span><span>Pixl Sports · 05</span></div>
+    </section>
+  </main>
+</body>
+</html>
