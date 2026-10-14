@@ -239,7 +239,7 @@
       <p>The request can send real phone alerts. Test the scheduler logic with fake subscriptions and a non-delivering sender in development. Before enabling production, review the public URL, production secrets, schema, time zone behavior, single-caller rule, and any displayed hosting or service costs.</p>
     </div>
     <div class="callout blue">
-      <p>If the new project chooses a Replit scheduled deployment instead of an external caller, confirm current platform support, cadence, and price in the publishing controls first. Do not assume an Autoscale app can run a second deployment or stay awake for free.</p>
+      <p>Replit Scheduled deployments run cron-like programs; they are not the web/API host. If choosing that model for the worker, verify how it accesses this project’s own persistent data and how it coexists with the web/API deployment. For an external caller, ensure the published endpoint is reachable; if app privacy blocks it, use Replit’s supported external-access method and keep its token in an authorization header, never a URL.</p>
     </div>
     <div class="footer"><span>One active scheduler; private push credentials stay on the backend</span><span>05</span></div>
   </section>
