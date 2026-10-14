@@ -170,6 +170,10 @@
     <div class="step"><div class="num">4</div><div><h3>Request permission from a button</h3><p>After the person taps “Enable Phone Alerts,” request browser permission, wait for <code>serviceWorker.ready</code>, then call <code>pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })</code> with this app’s public VAPID key.</p></div></div>
     <div class="step"><div class="num">5</div><div><h3>Save the subscription to this app’s API</h3><p>Send the browser endpoint and <code>keys.p256dh</code>/<code>keys.auth</code> over the authenticated session. Store them against this project’s user ID; do not log endpoints or keys. Keep a subscription per device/browser.</p></div></div>
     <div class="step"><div class="num">6</div><div><h3>Let the user manage it</h3><p>Show whether this device is connected, offer a one-device test alert, and let the user turn the device off. Turning off removes the server record and calls the browser subscription’s <code>unsubscribe()</code>.</p></div></div>
+    <div class="callout red">
+      <h3>State mobile support limits plainly</h3>
+      <p>On iPhone and iPad, web push requires a Home Screen web app on iOS/iPadOS 16.4 or later; users must add the site to the Home Screen before opting in. Support also varies across browsers, embedded webviews, and restricted modes, while OS notification settings can suppress or delay display. Test and list the exact browser/OS combinations supported; do not promise universal delivery.</p>
+    </div>
     <div class="callout">
       <h3>Keep permission and reminder consent distinct</h3>
       <p>Browser permission means the operating system may show alerts. A saved device subscription means the server can address that browser. Separate account checkboxes decide whether one-hour and/or day-of event reminders should be scheduled. Missing preferences default to off.</p>
@@ -208,7 +212,7 @@
     </div>
     <div class="callout red section">
       <h3>Keep audiences separate</h3>
-      <p>These scheduled reminders go to the signed-in event owner’s opted-in devices. Do not send to friends, followers, or the public automatically. Any future follower announcement needs its own explicit action, recipient eligibility, and consent.</p>
+      <p>These scheduled reminders go only to the signed-in event owner’s opted-in devices. They are not an in-app dashboard prompt and do not send to friends, followers, or the public automatically. Any future follower announcement needs its own explicit action, recipient eligibility, and consent.</p>
     </div>
     <div class="callout blue">
       <p>A push provider accepting a message is not proof that the phone displayed it or the person read it. Track “sent,” “failed,” and “uncertain” outcomes accurately; do not promise delivery during device or provider outages.</p>
