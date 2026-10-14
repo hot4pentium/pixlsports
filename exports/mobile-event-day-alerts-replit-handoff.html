@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Standalone Mobile Event-Day Alerts — Replit Guide</title>
+  <style>
+    :root {
+      --navy: #10233f; --blue: #2878f5; --sky: #eaf2ff; --orange: #ff6433;
+      --ink: #1c2b3e; --muted: #5f6f83; --line: #dce4ee; --paper: #fff;
+      --soft: #f5f8fc; --green: #167a61; --green-bg: #eaf7f2;
+      --red: #9f432d; --red-bg: #fff2ec;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; color: var(--ink); background: #e9eef5; }
+    body {
+      font-family: Inter, "Segoe UI", Arial, sans-serif; font-size: 9.2pt;
+      line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .page {
+      position: relative; width: 8.5in; min-height: 11in; margin: 18px auto;
+      padding: .50in .61in .56in; background: var(--paper);
+      box-shadow: 0 8px 30px #10233f18; break-after: page; page-break-after: always;
+    }
+    .page:last-child { break-after: auto; page-break-after: auto; }
+    .topline {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--muted);
+      font-size: 7.2pt; font-weight: 800; letter-spacing: .13em; text-transform: uppercase;
+    }
+    .brand { color: var(--navy); } .brand-mark { color: var(--orange); margin-right: 7px; }
+    .page-no { color: var(--blue); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { color: var(--navy); font-size: 34pt; line-height: 1.01; letter-spacing: -.045em; margin: 13px 0 9px; }
+    h2 { color: var(--navy); font-size: 18pt; line-height: 1.1; letter-spacing: -.025em; margin: 0 0 10px; }
+    h3 { color: var(--navy); font-size: 9.1pt; line-height: 1.2; margin: 0 0 4px; }
+    p { margin-bottom: 6px; }
+    .subtitle { color: var(--muted); font-size: 11.5pt; margin-bottom: 14px; }
+    .kicker { color: var(--blue); font-size: 7.3pt; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin: 19px 0 6px; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 15px; }
+    .chip { border: 1px solid #c8d9f4; border-radius: 30px; padding: 4px 8px; color: var(--navy); background: var(--sky); font-size: 7.2pt; font-weight: 750; }
+    .callout { border-left: 4px solid var(--orange); background: #fff5f0; padding: 9px 12px; margin: 10px 0 12px; border-radius: 0 8px 8px 0; }
+    .callout.blue { border-color: var(--blue); background: var(--sky); }
+    .callout.green { border-color: var(--green); background: var(--green-bg); }
+    .callout.red { border-color: var(--red); background: var(--red-bg); }
+    .callout p:last-child, .card p:last-child { margin-bottom: 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid.three { grid-template-columns: repeat(3, 1fr); }
+    .card { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+    .section { margin: 13px 0 0; }
+    ul, ol { margin: 4px 0 0; padding-left: 16px; }
+    li { margin: 0 0 3px; padding-left: 1px; }
+    .compact li { margin-bottom: 2px; }
+    .muted { color: var(--muted); } .small { font-size: 7.5pt; }
+    code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; color: #173c73; overflow-wrap: anywhere; }
+    code { background: #eef3fa; padding: 1px 4px; border-radius: 3px; font-size: .9em; }
+    .mono { font-size: 7.4pt; }
+    table { border-collapse: collapse; width: 100%; margin: 6px 0 8px; }
+    th { background: var(--navy); color: white; text-align: left; padding: 5px 6px; font-size: 7.1pt; letter-spacing: .03em; }
+    td { border-bottom: 1px solid var(--line); padding: 4px 6px; vertical-align: top; font-size: 7.4pt; }
+    tr:nth-child(even) td { background: #f8fafd; }
+    .method { white-space: nowrap; font-weight: 800; color: var(--blue); }
+    .step { display: grid; grid-template-columns: 23px 1fr; gap: 7px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+    .step:last-child { border-bottom: 0; }
+    .num { width: 21px; height: 21px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--blue); font-size: 7.6pt; font-weight: 800; }
+    .step p { margin: 2px 0 0; }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 13px 0; }
+    .flow-item { position: relative; min-height: 82px; padding: 8px 7px; background: var(--soft); border: 1px solid var(--line); border-radius: 8px; }
+    .flow-item:not(:last-child)::after { content: "›"; position: absolute; right: -8px; top: 27px; z-index: 1; color: var(--blue); background: white; width: 14px; height: 20px; text-align: center; font-size: 17pt; font-weight: 800; line-height: 16px; }
+    .flow-item strong { display: block; color: var(--navy); font-size: 7.7pt; margin-bottom: 3px; }
+    .flow-item span { color: var(--muted); font-size: 6.9pt; line-height: 1.28; display: block; }
+    .checklist { list-style: none; padding: 0; margin: 4px 0 0; }
+    .checklist li { position: relative; padding: 0 0 4px 18px; }
+    .checklist li::before { content: ""; position: absolute; left: 0; top: 3px; width: 10px; height: 10px; border: 1.5px solid var(--blue); border-radius: 3px; }
+    .footer { position: absolute; left: .61in; right: .61in; bottom: .22in; padding-top: 6px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--muted); font-size: 6.8pt; }
+    @page { size: letter; margin: 0; }
+    @media print { html, body { background: white; } .page { margin: 0; box-shadow: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <section class="page">
+    <div class="topline"><div class="brand"><span class="brand-mark">■</span>NEW REPLIT PROJECT</div><div>Build guide <span class="page-no">/ 01</span></div></div>
+    <p class="kicker">Standalone product directions</p>
+    <h1>Mobile<br>Event-Day Alerts</h1>
+    <p class="subtitle">Build the accounts, event data, push service, and scheduler inside this project</p>
+    <div class="chips">
+      <span class="chip">Standalone app</span>
+      <span class="chip">Email sign-in only</span>
+      <span class="chip">Mobile web push</span>
+      <span class="chip">No PIXL Sports connection</span>
+    </div>
+    <div class="callout">
+      <h3>Instruction for Replit</h3>
+      <p>Build a self-contained event app with its own authentication, persistent database, API, mobile web-push subscriptions, reminder preferences, and scheduled delivery. Do not connect to, import from, or depend on the PIXL Sports app, API, database, Clerk tenant, or user accounts.</p>
+    </div>
+    <div class="section">
+      <h2>What the completed system does</h2>
+      <div class="flow">
+        <div class="flow-item"><strong>Account</strong><span>Person creates an account using email sign-up/sign-in only.</span></div>
+        <div class="flow-item"><strong>Event</strong><span>Owner saves an event with its local date, time, and time zone.</span></div>
+        <div class="flow-item"><strong>Phone</strong><span>Owner grants permission and opts this device into push.</span></div>
+        <div class="flow-item"><strong>Scheduler</strong><span>Timed job wakes the app’s backend and claims due reminders.</span></div>
+        <div class="flow-item"><strong>Alert</strong><span>Backend sends; service worker displays and opens the app.</span></div>
+      </div>
+    </div>
+    <div class="grid section">
+      <div class="card"><h3>Mobile web push</h3><p>Use a responsive website / installable web app with HTTPS, a service worker, and browser Web Push. This is not a native iOS or Android app.</p></div>
+      <div class="card"><h3>Explicit choice</h3><p>Installing a shortcut or granting browser permission does not, by itself, opt a user into event reminders. Ask for each choice clearly in the app.</p></div>
+    </div>
+    <div class="callout blue section">
+      <h3>Keep the scope independent</h3>
+      <p>Use this project’s own user IDs and persistent data. If Clerk is selected for sign-in, configure a separate Clerk app/tenant for this project and enable email only. Do not expect existing PIXL accounts to work here.</p>
+    </div>
+    <div class="footer"><span>Standalone Mobile Event-Day Alerts · Replit build directions</span><span>01</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><div class="brand"><span class="brand-mark">■</span>APP FOUNDATIONS</div><div>Build the backend <span class="page-no">/ 02</span></div></div>
+    <p class="kicker">Create each layer in this Replit project</p>
+    <h2>Own the event and alert records</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Authentication</h3>
+        <p>Set up this project’s sign-up/sign-in and stable internal user ID. Offer email only for the first release; do not add Google. Every private event, preference, subscription, and delivery record must be scoped to that ID.</p>
+      </div>
+      <div class="card">
+        <h3>Persistent database</h3>
+        <p>Use a database owned by this project. Do not keep the event schedule, alert opt-in, or delivery history only in browser storage; those must survive refreshes and work when the phone is offline.</p>
+      </div>
+      <div class="card">
+        <h3>Event records</h3>
+        <p>Store an event ID, owner ID, type (game/practice), local date, optional local start time, IANA time zone, and status. Changes, cancellation, and finalization must update or cancel pending reminders.</p>
+      </div>
+      <div class="card">
+        <h3>Alert records</h3>
+        <p>Store account reminder choices and alert time zone separately from device subscriptions. Keep durable delivery rows or an equivalent ledger so scheduler retries cannot create duplicates.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h3>Suggested API shape for this new app</h3>
+      <table>
+        <thead><tr><th>Method + path</th><th>Purpose</th><th>Access</th></tr></thead>
+        <tbody>
+          <tr><td><span class="method">GET</span> <code>/api/notifications/config</code></td><td>Return browser support / push availability and the VAPID public key</td><td>Public</td></tr>
+          <tr><td><span class="method">POST</span> <code>/api/notifications/subscriptions</code></td><td>Save the signed-in user’s device endpoint, browser keys, and zone</td><td>Signed in</td></tr>
+          <tr><td><span class="method">DELETE</span> <code>/api/notifications/subscriptions</code></td><td>Remove this user’s device subscription</td><td>Signed in</td></tr>
+          <tr><td><span class="method">GET / PATCH</span> <code>/api/notifications/preferences</code></td><td>Read / save one-hour, day-of, and alert-zone choices</td><td>Signed in</td></tr>
+          <tr><td><span class="method">POST</span> <code>/api/internal/jobs/event-alerts/cron</code></td><td>Protected scheduled worker entry point</td><td>Scheduler only</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout green">
+      <h3>Data model guardrail</h3>
+      <p>Every private read/write checks the authenticated user ID on the server. A public event page, if added later, must use a separate share token and a deliberately filtered response—not expose owner records or push subscription data.</p>
+    </div>
+    <div class="callout blue">
+      <p>These paths are proposed for the new project. Build and document its own API contract; they are not routes on another app.</p>
+    </div>
+    <div class="footer"><span>New project owns identity, events, database, and endpoints</span><span>02</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><div class="brand"><span class="brand-mark">■</span>PHONE OPT-IN</div><div>Client setup <span class="page-no">/ 03</span></div></div>
+    <p class="kicker">Ask only after the user taps Enable</p>
+    <h2>Connect a browser subscription safely</h2>
+    <div class="step"><div class="num">1</div><div><h3>Serve the app securely</h3><p>Deploy the app on HTTPS. Register a service worker from this app’s origin and scope it to the app. Mobile browsers require a supported browser/OS; validate the specific devices you intend to support.</p></div></div>
+    <div class="step"><div class="num">2</div><div><h3>Configure Web Push credentials</h3><p>Create a VAPID key pair for this app. The API returns only <code>VAPID_PUBLIC_KEY</code> to the signed-in client; keep <code>VAPID_PRIVATE_KEY</code> and <code>VAPID_SUBJECT</code> in this project’s server-side Replit Secrets.</p></div></div>
+    <div class="step"><div class="num">3</div><div><h3>Check browser capabilities</h3><p>Before showing the enable action, confirm the browser has <code>serviceWorker</code>, <code>PushManager</code>, and <code>Notification</code>. Give a plain explanation if the device or browser cannot receive web push.</p></div></div>
+    <div class="step"><div class="num">4</div><div><h3>Request permission from a button</h3><p>After the person taps “Enable Phone Alerts,” request browser permission, wait for <code>serviceWorker.ready</code>, then call <code>pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })</code> with this app’s public VAPID key.</p></div></div>
+    <div class="step"><div class="num">5</div><div><h3>Save the subscription to this app’s API</h3><p>Send the browser endpoint and <code>keys.p256dh</code>/<code>keys.auth</code> over the authenticated session. Store them against this project’s user ID; do not log endpoints or keys. Keep a subscription per device/browser.</p></div></div>
+    <div class="step"><div class="num">6</div><div><h3>Let the user manage it</h3><p>Show whether this device is connected, offer a one-device test alert, and let the user turn the device off. Turning off removes the server record and calls the browser subscription’s <code>unsubscribe()</code>.</p></div></div>
+    <div class="callout">
+      <h3>Keep permission and reminder consent distinct</h3>
+      <p>Browser permission means the operating system may show alerts. A saved device subscription means the server can address that browser. Separate account checkboxes decide whether one-hour and/or day-of event reminders should be scheduled. Missing preferences default to off.</p>
+    </div>
+    <div class="callout blue">
+      <p>The service worker should show a notification on <code>push</code> and open a safe app URL on <code>notificationclick</code>. Do not cache private API responses in the worker.</p>
+    </div>
+    <div class="footer"><span>Push subscriptions belong to a browser and app origin</span><span>03</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><div class="brand"><span class="brand-mark">■</span>EVENT RULES</div><div>Timing + consent <span class="page-no">/ 04</span></div></div>
+    <p class="kicker">Recommended first-release behavior</p>
+    <h2>Use explicit preferences and local time</h2>
+    <div class="grid">
+      <div class="card"><h3>One hour before</h3><p>For a timed event, calculate one hour before its saved local start using its IANA event time zone. Do not schedule this for date-only events.</p></div>
+      <div class="card"><h3>Day of the event</h3><p>Schedule one reminder at <strong>7:00 a.m.</strong> in the account’s selected alert time zone, if that is before the event starts.</p></div>
+      <div class="card"><h3>Default off</h3><p>New accounts have both reminder types off until the owner explicitly chooses them. Installing the app or enabling browser permission must not change this.</p></div>
+      <div class="card"><h3>Multiple devices</h3><p>Send to the owner’s currently active subscriptions, while recording a separate attempt/result per device. Turning off one device should not erase other devices.</p></div>
+    </div>
+    <div class="section">
+      <h3>Time-zone and schedule handling</h3>
+      <ul>
+        <li>Save event-local date/time and a validated IANA time-zone name. Resolve the due instant to UTC for storage and comparison.</li>
+        <li>Save the account alert time zone separately. Do not infer account consent or timing from the most recently used device.</li>
+        <li>Define daylight-saving behavior: skip a nonexistent local time at the spring transition; use the first occurrence of a repeated fall-back time.</li>
+        <li>Use a unique delivery key for each owner, event, event date, reminder type, and target device (or an equivalent design that prevents duplicates across retries).</li>
+        <li>Re-check the latest event status, owner preference, and subscription before sending. Event edits reschedule; cancellation/finalization stops stale pending reminders.</li>
+        <li>Set a relevance window so an outage does not cause very late alerts. A reasonable design can recover a missed one-hour reminder with a clearly labeled “event is coming up” fallback for a limited post-start window.</li>
+      </ul>
+    </div>
+    <div class="grid section three">
+      <div class="card"><h3>Example title</h3><p><code>GAME DAY · IN 1 HOUR</code></p></div>
+      <div class="card"><h3>Example title</h3><p><code>PRACTICE · TODAY</code></p></div>
+      <div class="card"><h3>Example title</h3><p><code>GAME DAY · COMING UP</code></p></div>
+    </div>
+    <div class="callout red section">
+      <h3>Keep audiences separate</h3>
+      <p>These scheduled reminders go to the signed-in event owner’s opted-in devices. Do not send to friends, followers, or the public automatically. Any future follower announcement needs its own explicit action, recipient eligibility, and consent.</p>
+    </div>
+    <div class="callout blue">
+      <p>A push provider accepting a message is not proof that the phone displayed it or the person read it. Track “sent,” “failed,” and “uncertain” outcomes accurately; do not promise delivery during device or provider outages.</p>
+    </div>
+    <div class="footer"><span>Account alert zone and event zone serve different reminders</span><span>04</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><div class="brand"><span class="brand-mark">■</span>SCHEDULED WORKER</div><div>Replit operations <span class="page-no">/ 05</span></div></div>
+    <p class="kicker">Do not rely on an in-process timer</p>
+    <h2>Wake the backend on a schedule</h2>
+    <p>Autoscale processes can stop when idle, so an in-memory <code>setInterval</code> is not a reliable event reminder scheduler. Keep the app/API on its intended hosting and use a recurring external caller (for example, cron-job.org) to invoke a protected HTTPS endpoint every five minutes.</p>
+    <div class="step"><div class="num">1</div><div><h3>Keep the sender in the app backend</h3><p>The backend owns the persistent database, subscription records, delivery ledger, and Web Push library. The scheduled caller only wakes the backend; it never receives the database URL or VAPID private key.</p></div></div>
+    <div class="step"><div class="num">2</div><div><h3>Set server-side secrets in this Repl</h3><p>Configure <code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code>, <code>VAPID_SUBJECT</code>, and a random scheduler token named <code>EVENT_ALERTS_CRON_TOKEN</code>. Use Replit Secrets for production; do not put values in source, browser code, URLs, or this guide.</p></div></div>
+    <div class="step"><div class="num">3</div><div><h3>Create a narrowly scoped job endpoint</h3><p>Implement <code>POST /api/internal/jobs/event-alerts/cron</code>. It should authenticate a fresh timestamp, random nonce, and token; reject stale/replayed requests; claim a bounded batch; re-check current eligibility; record results; and return only aggregate counts.</p></div></div>
+    <div class="step"><div class="num">4</div><div><h3>Configure one recurring caller</h3><p>Use the current published HTTPS origin for this new Replit app, method <code>POST</code>, every five minutes (<code>*/5 * * * *</code>), and no body or URL parameters. Keep the schedule disabled until setup is reviewed and approved.</p></div></div>
+    <div class="step"><div class="num">5</div><div><h3>Put credentials in headers</h3><p>For cron-job.org, configure fresh values on every run. Header names are a proposed contract for this new project:</p></div></div>
+    <table>
+      <thead><tr><th>Header</th><th>Example value / purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>x-event-alerts-timestamp</code></td><td>Fresh Unix timestamp supplied by the scheduler</td></tr>
+        <tr><td><code>x-event-alerts-nonce</code></td><td>Fresh unique UUID per execution</td></tr>
+        <tr><td><code>x-event-alerts-token</code></td><td>The value stored in this Repl’s <code>EVENT_ALERTS_CRON_TOKEN</code> secret</td></tr>
+      </tbody>
+    </table>
+    <div class="callout red">
+      <h3>Never test the production job with a POST</h3>
+      <p>The request can send real phone alerts. Test the scheduler logic with fake subscriptions and a non-delivering sender in development. Before enabling production, review the public URL, production secrets, schema, time zone behavior, single-caller rule, and any displayed hosting or service costs.</p>
+    </div>
+    <div class="callout blue">
+      <p>If the new project chooses a Replit scheduled deployment instead of an external caller, confirm current platform support, cadence, and price in the publishing controls first. Do not assume an Autoscale app can run a second deployment or stay awake for free.</p>
+    </div>
+    <div class="footer"><span>One active scheduler; private push credentials stay on the backend</span><span>05</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><div class="brand"><span class="brand-mark">■</span>TEST + RELEASE</div><div>Checklist <span class="page-no">/ 06</span></div></div>
+    <p class="kicker">Build confidence without alerting real users</p>
+    <h2>Verify the complete path</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Safe device test</h3>
+        <p>On a dedicated test account and phone, enable browser permission and this device, choose a reminder, and use a one-off “Send Test Alert” control. Confirm display and click-through; then turn the test device off and remove its subscription.</p>
+      </div>
+      <div class="card">
+        <h3>Safe scheduler test</h3>
+        <p>Use fixtures and a fake sender to test due-time selection, duplicates, edits, cancellation, retries, overlapping jobs, and time zones. Do not send to real production subscriptions during automated tests.</p>
+      </div>
+      <div class="card">
+        <h3>Read-only health check</h3>
+        <p>Add an authenticated status check that reports last successful run and aggregate pending/sent/failed/uncertain counts. A status request must never send notifications.</p>
+      </div>
+      <div class="card">
+        <h3>Useful alerts for operators</h3>
+        <p>Surface failed job calls, authentication/replay errors, growing due backlog, repeated deferrals, and prolonged lack of successful checks. Never log tokens, subscription URLs, or private event data.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h3>Release acceptance checklist</h3>
+      <ul class="checklist">
+        <li>This Replit project has its own authentication, email-only sign-in, persistent database, event records, and API; no PIXL Sports integration or data dependency exists.</li>
+        <li>The mobile web app is served over HTTPS; a supported browser can opt in, receive a push, and open the correct event/app screen.</li>
+        <li>Device subscription and account reminder consent are separate; both reminder types default off and can be turned off.</li>
+        <li>One-hour alerts use the event time zone; day-of alerts use 7:00 a.m. in the account alert time zone.</li>
+        <li>Event changes, cancellations, and final results update pending work; retries, concurrent runs, and multiple devices do not create duplicate alerts.</li>
+        <li>VAPID private key and scheduler token are server-side secrets; the scheduled job is authenticated, replay-safe, bounded, and monitored.</li>
+        <li>Production scheduling is enabled only after the test plan, live endpoint, and any displayed costs are reviewed.</li>
+      </ul>
+    </div>
+    <div class="callout green section">
+      <h3>Recommended implementation order</h3>
+      <p>Build authentication and event CRUD → persistent preferences and subscriptions → service-worker test push → time-zone calculation and delivery ledger → protected scheduled endpoint → non-delivering tests and operational status → approved production activation.</p>
+    </div>
+    <div class="callout blue">
+      <p>This document is implementation direction only. It does not create accounts, secrets, an external cron job, a database, a deployment, or any production notifications.</p>
+    </div>
+    <div class="footer"><span>Build and verify as a standalone Replit project</span><span>06</span></div>
+  </section>
+</main>
+</body>
+</html>
