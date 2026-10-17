@@ -1,11 +1,9 @@
 import { ArrowRight, Footprints, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'wouter';
-import { useClerk } from '@clerk/react';
+import { useClerk, useUser } from '@clerk/react';
 import type { ReactNode } from 'react';
 import {
-  getGetSoccerGearQueryKey,
   getListAthleteInvitesQueryKey,
-  useGetSoccerGear,
   useListAthleteInvites,
   useGetAthleteEditorAccess,
   getGetAthleteEditorAccessQueryKey,
@@ -15,7 +13,8 @@ import type { SupporterProfile } from './supporter-dashboard';
 import { isSoccerGearForAthlete } from './athlete-locker-model';
 import type { AthleteLockerGearStatus } from './athlete-locker-types';
 import { AthleteEditorInvitationPanel } from './athlete-invite';
-import jerseyPhoto from '@/assets/player-showcase-jersey-base.webp';
+import { JerseyLayerStage } from './jersey-layers';
+import { useKitGear } from './use-kit-gear';
 import './player-showcase.css';
 
 export interface PlayerShowcaseContentProps {
@@ -23,28 +22,15 @@ export interface PlayerShowcaseContentProps {
   gear: SoccerGearState | null;
   gearStatus: AthleteLockerGearStatus;
   onRetry?: () => void;
+  /** Athlete mode: own-gear link, no parent-only links. */
+  athleteRestricted?: boolean;
+  hypeHref?: string;
 }
 
 const DEFAULT_KIT = '#2878f5';
 
 function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
-}
-
-function jerseyHue(color: string) {
-  const match = /^#([\da-f]{6})$/i.exec(color);
-  if (!match) return 0;
-  const value = Number.parseInt(match[1], 16);
-  const r = ((value >> 16) & 255) / 255;
-  const g = ((value >> 8) & 255) / 255;
-  const b = (value & 255) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  if (max === min) return 0;
-  const delta = max - min;
-  let hue = max === r ? (g - b) / delta : max === g ? 2 + (b - r) / delta : 4 + (r - g) / delta;
-  hue = (hue * 60 + 360) % 360;
-  return Math.round(hue - 218);
 }
 
 function Jersey({ color, name, number, label }: { color: string; name: string; number: string; label: string }) {
@@ -67,11 +53,12 @@ function Jersey({ color, name, number, label }: { color: string; name: string; n
   );
 }
 
-export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card' }: PlayerShowcaseContentProps) {
   const isSoccer = profile.sport === 'soccer';
   const first = profile.athleteName.trim().split(/\s+/)[0] || 'Player';
   const number = profile.jerseyNumber.trim().replace(/^#/, '') || '—';
-  const color = isSoccer && gearStatus === 'ready' && gear ? gear.loadout.jerseyColor : DEFAULT_KIT;
+  const color = DEFAULT_KIT;
+  const loadout = isSoccer && gearStatus === 'ready' && gear ? gear.loadout : null;
   const label = `${profile.athleteName || 'Player'} number ${number} ${sportLabel(profile.sport)} jersey`;
   const showError = isSoccer && gearStatus === 'error';
 
@@ -82,17 +69,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry }: Pl
         <div className="ps__stage" data-testid="showcase-jersey-stage">
           <p className="ps__team">{profile.teamName || 'Your team'}<br />{sportLabel(profile.sport)}</p>
           {isSoccer ? (
-            <div className="ps__photo-wrap">
-              <img
-                className="ps__jersey-photo"
-                src={jerseyPhoto}
-                alt={label}
-                data-testid="image-showcase-jersey"
-                style={{ filter: `hue-rotate(${jerseyHue(color)}deg) saturate(1.08)` }}
-              />
-              <span className="ps__photo-name" aria-hidden="true">{first.toUpperCase().slice(0, 14)}</span>
-              <span className="ps__photo-number" aria-hidden="true">{number}</span>
-            </div>
+            <JerseyLayerStage loadout={loadout} unlockedGear={gear?.unlockedGear} name={first} number={number} label={label} />
           ) : (
             <Jersey color={color} name={first} number={number} label={label} />
           )}
@@ -100,19 +77,21 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry }: Pl
             <p className="ps__loading" role="status" data-testid="status-showcase-gear-loading">Loading your saved kit…</p>
           )}
           <div className="ps__links">
-            <Link href="/studio/hype-card" className="ps__link" data-testid="link-showcase-hype-card">
+            <Link href={hypeHref} className="ps__link" data-testid="link-showcase-hype-card">
               <Zap size={18} aria-hidden="true" /> HYPE Card
             </Link>
             {isSoccer && (
-              <Link href="/studio/soccer-gear" className="ps__link" data-testid="link-showcase-gear">
+              <Link href={athleteRestricted ? '/studio/player-showcase/gear' : '/studio/soccer-gear'} className="ps__link" data-testid="link-showcase-gear">
                 <Footprints size={18} aria-hidden="true" /> Gear
               </Link>
             )}
-            <Link href="/studio/athlete-page#owner-fan-hypes" className="ps__link" data-testid="link-showcase-shoutouts">
-              <MessageCircle size={18} aria-hidden="true" /> Shoutouts
-            </Link>
+            {!athleteRestricted && (
+              <Link href="/studio/athlete-page#owner-fan-hypes" className="ps__link" data-testid="link-showcase-shoutouts">
+                <MessageCircle size={18} aria-hidden="true" /> Shoutouts
+              </Link>
+            )}
           </div>
-          {isSoccer && gearStatus === 'unavailable' && <p className="ps__note" data-testid="status-showcase-gear-empty">No saved kit for {first} yet, so the default blue shows. Start in Gear.</p>}
+          {isSoccer && gearStatus === 'unavailable' && <p className="ps__note" data-testid="status-showcase-gear-empty">No saved kit for {first} yet, so the default blue shows. {athleteRestricted ? 'Open Gear to build it.' : 'Start in Gear.'}</p>}
           {!isSoccer && <p className="ps__note">Showing a {sportLabel(profile.sport)} jersey with {first}&rsquo;s name and number.</p>}
         </div>
         {showError && (
@@ -133,16 +112,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
       queryKey: getListAthleteInvitesQueryKey(),
     },
   });
-  const gearQuery = useGetSoccerGear({
-    query: {
-      enabled: Boolean(userId && profile.sport === 'soccer'),
-      queryKey: [...getGetSoccerGearQueryKey(), userId],
-      staleTime: 0,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      retry: false,
-    },
-  });
+  const gearQuery = useKitGear(userId, profile.sport === 'soccer');
   const gear = isSoccerGearForAthlete(gearQuery.data, profile.athleteName, profile.sport) ? gearQuery.data : null;
   const gearStatus: AthleteLockerGearStatus = profile.sport !== 'soccer' || !userId ? 'unavailable'
     : gearQuery.isLoading ? 'loading'
@@ -162,6 +132,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
 }
 
 export function AthleteShowcaseHome() {
+  const { user } = useUser();
   const accessQuery = useGetAthleteEditorAccess({
     query: {
       queryKey: getGetAthleteEditorAccessQueryKey(),
@@ -186,21 +157,15 @@ export function AthleteShowcaseHome() {
       </main></AthleteStudioShell>
     );
   }
+  const profile: SupporterProfile = {
+    athleteName: access.athleteName, teamName: access.teamName, seasonName: access.seasonName,
+    jerseyNumber: access.jerseyNumber, sport: access.sport, displayName: access.athleteName,
+    position: access.position, relationship: 'parent', accessMode: 'full',
+  } as SupporterProfile;
   return (
-    <AthleteStudioShell><main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-8" data-testid="athlete-showcase-home">
-      <section className="relative overflow-hidden border-l-4 border-primary bg-[#0B1F3A] px-6 py-9 text-white sm:px-10 sm:py-12">
-        <div className="pointer-events-none absolute inset-0 bg-tech-grid opacity-20" />
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 border border-primary/40 bg-primary/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[.2em] text-primary"><Zap className="h-4 w-4" /> Athlete design studio</div>
-          <p className="mt-7 text-xs font-bold uppercase tracking-[.18em] text-white/55">{access.teamName} · {access.seasonName}</p>
-          <h1 className="mt-3 font-display text-5xl uppercase leading-[.9] sm:text-7xl">{access.athleteName}<span className="block text-primary">Your HYPE Card.</span></h1>
-          <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/70">Make the design yours. Your parent or guardian manages the athlete page, visibility, publishing, privacy, and sharing.</p>
-          <Link href={`/studio/player-showcase/hype-card/${encodeURIComponent(access.projectId)}`} className="mt-7 inline-flex min-h-12 items-center gap-3 bg-primary px-6 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5" data-testid="link-athlete-edit-hype-card">
-            Edit my HYPE Card <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </section>
-      <section className="mt-6 grid gap-4 sm:grid-cols-[1.1fr_.9fr]">
+    <AthleteStudioShell><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8" data-testid="athlete-showcase-home">
+      <AthleteShowcaseBody profile={profile} accountId={user?.id ?? null} projectId={access.projectId} />
+      <section className="mt-2 grid gap-4 sm:grid-cols-[1.1fr_.9fr]">
         <div className="border border-border bg-card p-5 sm:p-7">
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Your profile</p>
           <h2 className="mt-3 font-display text-3xl uppercase">{access.teamName}</h2>
@@ -211,14 +176,28 @@ export function AthleteShowcaseHome() {
         <div className="border border-border bg-primary/5 p-5 sm:p-7">
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h2 className="mt-3 font-display text-2xl uppercase">A parent stays in control</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Your access is limited to one linked HYPE Card design. Page settings and sharing stay with your parent or guardian.</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">You can design your kit and your linked HYPE Card. Page settings, visibility, and sharing stay with your parent or guardian.</p>
         </div>
       </section>
     </main></AthleteStudioShell>
   );
 }
 
-function AthleteStudioShell({ children }: { children: ReactNode }) {
+function AthleteShowcaseBody({ profile, accountId, projectId }: { profile: SupporterProfile; accountId: string | null; projectId: string }) {
+  const gearQuery = useKitGear(accountId, profile.sport === 'soccer');
+  const gear = isSoccerGearForAthlete(gearQuery.data, profile.athleteName, profile.sport) ? gearQuery.data : null;
+  const gearStatus: AthleteLockerGearStatus = profile.sport !== 'soccer' || !accountId ? 'unavailable'
+    : gearQuery.isLoading ? 'loading' : gearQuery.isError ? 'error' : gear ? 'ready' : 'unavailable';
+  return (
+    <PlayerShowcaseContent
+      profile={profile} gear={gear} gearStatus={gearStatus} athleteRestricted
+      hypeHref={`/studio/player-showcase/hype-card/${encodeURIComponent(projectId)}`}
+      onRetry={() => void gearQuery.refetch()}
+    />
+  );
+}
+
+export function AthleteStudioShell({ children }: { children: ReactNode }) {
   const { signOut } = useClerk();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   return (

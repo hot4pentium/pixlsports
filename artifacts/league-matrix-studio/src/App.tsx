@@ -25,6 +25,8 @@ import {
   useReactivateAccount,
   getGetAccountLifecycleQueryKey,
   useCreateChecklistShare,
+  useGetAthleteEditorAccess,
+  getGetAthleteEditorAccessQueryKey,
   useDeleteChecklistShare,
 } from '@workspace/api-client-react';
 import { Trash2 } from 'lucide-react';
@@ -238,6 +240,9 @@ const SupporterDashboardView = lazy(() =>
 );
 const PlayerShowcasePage = lazy(() =>
   import('@/features/player-showcase').then(({ PlayerShowcasePage }) => ({ default: PlayerShowcasePage })),
+);
+const AthleteStudioShell = lazy(() =>
+  import('@/features/player-showcase').then(({ AthleteStudioShell }) => ({ default: AthleteStudioShell })),
 );
 const AthleteShowcaseHome = lazy(() =>
   import('@/features/player-showcase').then(({ AthleteShowcaseHome }) => ({ default: AthleteShowcaseHome })),
@@ -1313,7 +1318,18 @@ function Studio({ role }: { role: UserRole }) {
 function SoccerGearStudioPage() {
   const { user } = useUser();
   const profile = supporterProfileFromUser(user);
-  return <StudioLayout><SoccerGearBuilderPage key={user?.id} accountId={user?.id ?? ''} athleteName={profile.athleteName} /></StudioLayout>;
+  return <StudioLayout><SoccerGearBuilderPage key={user?.id} accountId={user?.id ?? ''} athleteName={profile.athleteName} jerseyNumber={profile.jerseyNumber} /></StudioLayout>;
+}
+
+function AthleteGearStudioPage() {
+  const { user } = useUser();
+  const accessQuery = useGetAthleteEditorAccess({ query: { queryKey: getGetAthleteEditorAccessQueryKey(), staleTime: 0, retry: false } });
+  if (accessQuery.isLoading) return <RouteLoadingState />;
+  if (!accessQuery.data) {
+    return <AthleteStudioShell><main className="mx-auto max-w-xl px-5 py-16" role="alert" data-testid="status-athlete-gear-unavailable"><p className="text-sm">This kit is unavailable right now.</p><button type="button" onClick={() => void accessQuery.refetch()} className="mt-4 min-h-11 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Try again</button></main></AthleteStudioShell>;
+  }
+  if (accessQuery.data.sport !== 'soccer') return <Redirect to="/studio/player-showcase" />;
+  return <AthleteStudioShell><SoccerGearBuilderPage key={user?.id} accountId={user?.id ?? ''} athleteName={accessQuery.data.athleteName} jerseyNumber={accessQuery.data.jerseyNumber} athleteRestricted /></AthleteStudioShell>;
 }
 
 function PlayerShowcaseStudioPage() {
@@ -1329,7 +1345,7 @@ function PlayerShowcaseStudioPage() {
 function SoccerGearSignedInActivity() {
   const { user } = useUser();
   const [location] = useLocation();
-  return user && getUserRole(user) === 'fan' && location.startsWith('/studio') && location !== '/studio/setup'
+  return user && !isAthleteEditorAccount(user) && getUserRole(user) === 'fan' && location.startsWith('/studio') && location !== '/studio/setup'
     ? <SoccerGearActivity key={user.id} accountId={user.id} />
     : null;
 }
@@ -4066,6 +4082,7 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser();
 
   const athleteOnlyPath = location === '/studio/player-showcase'
+    || location === '/studio/player-showcase/gear'
     || /^\/studio\/player-showcase\/hype-card\/[^/]+$/.test(location);
   if (location.startsWith('/studio') && !isLoaded) return <AccountLoadingScreen />;
   if (isSignedIn && user && isAthleteEditorAccount(user)) {
@@ -4074,6 +4091,7 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
   if (athleteOnlyPath) {
     if (getUserRole(user) === 'fan') {
       const editorPath = location.match(/^\/studio\/player-showcase\/hype-card\/([^/]+)$/);
+      if (location === '/studio/player-showcase/gear') return <Redirect to="/studio/soccer-gear" />;
       return editorPath
         ? <Redirect to={`/studio/hype-card/${editorPath[1]}`} />
         : <>{children}</>;
@@ -4193,6 +4211,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
               <Route path="/studio/player-showcase/hype-card/:id"><AthleteHypeCardEditorRoute /></Route>
+              <Route path="/studio/player-showcase/gear"><AthleteGearStudioPage /></Route>
               <Route path="/studio/player-showcase"><PlayerShowcaseStudioPage /></Route>
               <Route path="/studio/soccer-gear"><ProtectedEditor kind="hype"><SoccerGearStudioPage /></ProtectedEditor></Route>
               <Route path="/studio/admin" component={() => <StudioLayout><AdminConsolePage /></StudioLayout>} />

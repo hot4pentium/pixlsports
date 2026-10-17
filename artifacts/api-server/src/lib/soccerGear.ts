@@ -67,9 +67,12 @@ export async function creditSoccerTrackerGames(database: GearDatabase, owner: st
   }))).onConflictDoNothing();
 }
 
-export async function readSoccerGear(owner: string, database: GearDatabase = db) {
+export async function readSoccerGear(owner: string, database: GearDatabase = db, inviteId?: string) {
   const [invite] = await database.select().from(athleteInvitesTable)
-    .where(eq(athleteInvitesTable.ownerClerkUserId, owner)).limit(1);
+    .where(and(
+      eq(athleteInvitesTable.ownerClerkUserId, owner),
+      ...(inviteId ? [eq(athleteInvitesTable.id, inviteId)] : []),
+    )).limit(1);
   const [counts] = await database.select({
     activeWeeks: sql<number>`count(*) filter (where ${soccerGearActivityTable.kind} = 'week')::int`,
     eventCardsCreated: sql<number>`least(10, count(*) filter (where ${soccerGearActivityTable.kind} = 'event-card'))::int`,

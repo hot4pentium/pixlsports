@@ -87,7 +87,7 @@ import {PlayerShowcaseContent} from './src/features/player-showcase';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:'shared',showEvents:true,fail:false,denyCopy:false,sport:'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true};
+const state = {mode:'shared',showEvents:true,fail:false,denyCopy:false,sport:'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = '';
@@ -103,7 +103,7 @@ window.fetch = async (input,init) => {
 Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{if(state.denyCopy)throw new Error('Denied');window.__copied=value;}}});
 function render() {
   const ownerCard = {...card,paused:state.paused,showHypeCard:state.showHypeCard};
-  const gear = state.gearStatus==='ready' ? {athleteName:card.athleteName,loadout,unlockedGear:[],progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}} : null;
+  const gear = state.gearStatus==='ready' ? {athleteName:card.athleteName,loadout:{...loadout,...state.patch},unlockedGear:state.unlocked,progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}} : null;
   const profile = {athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,jerseyNumber:'17',sport:state.sport,displayName:'Parent',position:'',relationship:'parent',accessMode:'full'};
   const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
@@ -185,7 +185,24 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="section-locker-share-mobile"]')`), null);
     await browser.evaluate(`window.__update({gearStatus:'unavailable',showHypeCard:true})`);
     await browser.wait(`document.querySelector('[data-testid="link-locker-cocreate-empty-mobile"]')`);
-    await browser.evaluate(`window.__update({sport:'basketball'})`);
+    await browser.evaluate(`window.__update({mode:'showcase',gearStatus:'ready',patch:{jerseyColor:'#F36E4C',jerseyStyle:'stripes'},unlocked:['stripe-jersey']})`);
+    await browser.wait(`document.querySelector('[data-testid="layer-jersey-dye"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="jersey-layer-stage"]').dataset.jerseyColor`), '#F36E4C');
+    assert.ok(await browser.evaluate(`getComputedStyle(document.querySelector('[data-testid="layer-jersey-dye"]')).backgroundColor === 'rgb(243, 110, 76)'`));
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="layer-jersey-stripes"]'))`));
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="layer-gear-row"]')`), null, 'no gear art yet: clear fallback');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="jersey-layer-stage"]').dataset.gearFallback`), 'clear');
+    const coloredCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
+    await writeFile(resolve(tmpdir(), 'pixl-colored-showcase-check.jpg'), Buffer.from(coloredCapture.data, 'base64'));
+    await browser.evaluate(`window.__update({unlocked:[]})`);
+    await browser.wait(`!document.querySelector('[data-testid="layer-jersey-stripes"]')`);
+    await browser.evaluate(`window.__update({patch:{},unlocked:[]})`);
+    await browser.wait(`!document.querySelector('[data-testid="layer-jersey-dye"]')`);
+    for (const width of [320, 390]) {
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: true });
+      assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Showcase overflows at ${width}px`);
+    }
+    await browser.evaluate(`window.__update({mode:'owner',sport:'basketball',gearStatus:'unavailable'})`);
     await browser.wait(`!document.querySelector('[data-testid^="link-locker-cocreate-"]')`);
     for (const width of [320, 390, 1440]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });

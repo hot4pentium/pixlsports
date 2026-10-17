@@ -43,7 +43,7 @@ function activeAccountGuard(allowAthleteEditor: boolean): RequestHandler {
     if (athleteEditorAccess) {
       if (!allowAthleteEditor || athleteEditorAccess.status !== "active") {
         res.status(403).json({
-          error: "This sign-in is limited to its linked HYPE Card.",
+          error: "This sign-in is limited to its linked HYPE Card and athlete kit.",
           code: "ATHLETE_EDITOR_SCOPE",
         });
         return;

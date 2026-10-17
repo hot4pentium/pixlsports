@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import {
   getGetSoccerGearQueryKey,
-  useGetSoccerGear,
   useSaveSoccerGear,
 } from '@workspace/api-client-react';
 import type {
@@ -27,6 +26,8 @@ import type {
   SoccerGearState,
   SoccerGearStateUnlockedGearItem,
 } from '@workspace/api-client-react';
+import { JerseyLayerStage } from './jersey-layers';
+import { kitGearKey, useKitGear } from './use-kit-gear';
 import './soccer-gear-builder.css';
 
 type GearKey = keyof SoccerGearLoadout;
@@ -202,10 +203,10 @@ function LoadingGear() {
   );
 }
 
-export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: { athleteName: string; accountId: string }) {
+export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId, athleteRestricted = false, jerseyNumber = '' }: { athleteName: string; accountId: string; athleteRestricted?: boolean; jerseyNumber?: string }) {
   const queryClient = useQueryClient();
-  const gearKey = [...getGetSoccerGearQueryKey(), accountId] as const;
-  const gearQuery = useGetSoccerGear({ query: { queryKey: gearKey } });
+  const gearKey = kitGearKey(accountId);
+  const gearQuery = useKitGear(accountId);
   const athleteName = gearQuery.data?.athleteName || fallbackName;
   const [showOnHype, setShowOnHype] = useState(false);
   const [notice, setNotice] = useState('');
@@ -273,7 +274,7 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
   const unlocked = new Set(state.unlockedGear);
   const canSave = state.canSave && Boolean(state.athleteId);
   const busy = saveGear.isPending;
-  const dirty = JSON.stringify(loadout) !== JSON.stringify(savedLoadout) || showOnHype !== state.showOnHypeCard;
+  const dirty = JSON.stringify(loadout) !== JSON.stringify(savedLoadout) || (!athleteRestricted && showOnHype !== state.showOnHypeCard);
   const updateLoadout = (key: GearKey, value: GearValue) => {
     if (busy) return;
     setLoadout((current) => current ? { ...current, [key]: value } as SoccerGearLoadout : current);
@@ -283,7 +284,7 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
   const save = () => {
     if (!state.athleteId) return;
     setSaveError('');
-    saveGear.mutate({ data: { loadout, showOnHypeCard: showOnHype, athleteId: state.athleteId } }, {
+    saveGear.mutate({ data: { loadout, showOnHypeCard: athleteRestricted ? state.showOnHypeCard : showOnHype, athleteId: state.athleteId } }, {
       onSuccess: (nextState) => {
         setLoadout(nextState.loadout);
         setSavedLoadout(nextState.loadout);
@@ -291,7 +292,7 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
         lastShowRef.current = nextState.showOnHypeCard;
         setNotice('');
         queryClient.setQueryData(gearKey, nextState);
-        void queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === 'string' && q.queryKey[0].startsWith('/api/athlete-invites/') && q.queryKey[0].endsWith('/fan') });
+        void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === getGetSoccerGearQueryKey()[0] || typeof q.queryKey[0] === 'string' && q.queryKey[0].startsWith('/api/athlete-invites/') && q.queryKey[0].endsWith('/fan') });
         setSavedPulse(true);
       },
       onError: () => setSaveError('That save didn’t stick. Check your connection and try once more.'),
@@ -364,6 +365,7 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
             Pixl Sports Studio
           </div>
           <div className="gear-private" data-testid="status-private-locker"><LockKeyhole size={13} /> Private locker</div>
+          {athleteRestricted && <Link href="/studio/player-showcase" className="gear-private" data-testid="link-athlete-back-showcase">Back to showcase</Link>}
         </div>
 
         <header className="gear-intro">
@@ -392,6 +394,9 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
               <div className="gear-number" aria-label="Jersey number 10">10</div>
             </div>
             <PlayerKit loadout={loadout} athleteName={athleteName} />
+            <div className="pjk-builder" data-testid="preview-showcase-jersey">
+              <JerseyLayerStage loadout={loadout} unlockedGear={state.unlockedGear} name={athleteName.trim().split(/\s+/)[0] || 'Player'} number={jerseyNumber.replace(/^#/, '')} label={`${athleteName.trim() || 'Player'} showcase jersey preview`} />
+            </div>
             <div className="gear-stage-footer">
               <div className="gear-stage-hint"><Sparkles size={14} /> Little details. Big player energy.</div>
               <div className="gear-background-toggle" role="group" aria-label="Preview background">
@@ -431,6 +436,9 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
                 );
               })}
             </div>
+            {athleteRestricted ? (
+              !canSave && <div className="gear-locked-note" data-testid="text-athlete-cannot-save">Your parent or guardian needs to finish the athlete setup before this kit can be saved.</div>
+            ) : (
             <div className="gear-option" data-testid="group-show-on-hype-card">
               <label className="gear-option-title" style={{ cursor: canSave ? 'pointer' : 'not-allowed' }}>
                 <input
@@ -449,6 +457,7 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId }: 
                 </div>
               )}
             </div>
+            )}
             {notice && <div className="gear-locked-note" role="status" data-testid="status-athlete-changed">{notice}</div>}
             <div className="gear-save-row">
               <div className="gear-save-message" role="status" data-testid="status-gear-save-message">
