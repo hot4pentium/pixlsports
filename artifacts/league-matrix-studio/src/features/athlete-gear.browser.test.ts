@@ -165,9 +165,19 @@ test('Athlete kit builder hides parent settings, saves the shared loadout, and s
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html` });
     await browser.wait(`document.querySelector('[data-testid="preview-showcase-jersey"] [data-testid="layer-jersey-dye"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="preview-showcase-jersey"] [data-testid="jersey-layer-stage"]').dataset.jerseyColor`), '#F36E4C');
-    for (const width of [390, 1440]) {
+    for (const width of [320, 390, 1440]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 600 });
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Builder overflows at ${width}px`);
+      const aligned = await browser.evaluate(`(() => {
+        const stage = document.querySelector('[data-testid="jersey-layer-stage"]');
+        const bounds = stage.getBoundingClientRect();
+        const collarCenter = bounds.left + bounds.width * .476;
+        return ['.ps__photo-name', '.ps__photo-number'].every(selector => {
+          const text = stage.querySelector(selector).getBoundingClientRect();
+          return Math.abs(text.left + text.width / 2 - collarCenter) < 1;
+        });
+      })()`);
+      assert.ok(aligned, `Name and number must align with the collar at ${width}px`);
     }
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 1000, deviceScaleFactor: 1, mobile: true });
     await browser.evaluate(`document.querySelector('[data-testid="panel-soccer-kit-preview"]').scrollIntoView()`);

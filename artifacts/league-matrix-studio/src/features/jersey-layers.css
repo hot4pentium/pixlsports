@@ -1,8 +1,8 @@
-.pjk{position:relative;width:100%;aspect-ratio:1;overflow:hidden;background:#0e3269}
+.pjk{--pjk-collar-center:47.6%;position:relative;width:100%;aspect-ratio:1;overflow:hidden;background:#0e3269}
 .pjk>.ps__jersey-photo{display:block;width:100%;height:100%;object-fit:cover;user-select:none}
-.pjk>.ps__photo-name,.pjk>.ps__photo-number{position:absolute;left:50%;width:78%;transform:translateX(-50%);overflow:hidden;text-align:center;color:#fff;white-space:nowrap;text-overflow:clip;text-shadow:0 2px 3px rgba(0,0,0,.22)}
-.pjk>.ps__photo-name{top:27%;font-size:clamp(15px,3.9vw,38px);line-height:1.1;font-weight:800;letter-spacing:.08em}
-.pjk>.ps__photo-number{top:39%;font:900 clamp(52px,14vw,128px)/.85 "Barlow Condensed",Impact,sans-serif;letter-spacing:-.05em}
+.pjk>.ps__photo-name,.pjk>.ps__photo-number{position:absolute;left:var(--pjk-collar-center);width:78%;transform:translateX(-50%);overflow:hidden;text-align:center;color:#fff;white-space:nowrap;text-overflow:clip;text-shadow:0 2px 3px rgba(0,0,0,.22)}
+.pjk>.ps__photo-name{top:27%;font-size:clamp(15px,3.9vw,38px);line-height:1.1;font-weight:800;letter-spacing:.08em;text-indent:.08em}
+.pjk>.ps__photo-number{top:39%;font:900 clamp(52px,14vw,128px)/.85 "Barlow Condensed",Impact,sans-serif;letter-spacing:-.05em;text-indent:-.05em}
 .pjk__shirt{position:absolute;inset:0;isolation:isolate;pointer-events:none;mask-size:100% 100%;mask-repeat:no-repeat}
 .pjk__gray{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) brightness(4.5) contrast(.7)}
 .pjk__dye{position:absolute;inset:0;mix-blend-mode:multiply}
