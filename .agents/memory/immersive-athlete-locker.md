@@ -11,6 +11,12 @@ Equipment should appear as automatic rewards for meaningful return and usage mil
 
 **How to apply:** Overlay current athlete details on the supplied photoreal jersey and keep Gear and Shoutouts actions on the showcase. Leave public Locker views, permissions, and milestone rules unchanged.
 
+Build Your Kit should also use the photoreal jersey preview, without the earlier illustrated player over it.
+
+**Why:** The user reported that the previous image was still showing in the kit editor and supplied a screenshot of the illustrated player covering the jersey.
+
+**How to apply:** Keep the editor's preview jersey-first like Player Showcase. This does not request changes to the existing public/shared Locker artwork.
+
 Parents are expected to build the athlete's site, while the athlete should be involved in making it their own.
 
 **Why:** The user said the parent will basically build the site but wants to involve the student.

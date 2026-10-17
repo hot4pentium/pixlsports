@@ -148,6 +148,10 @@ test('Athlete kit builder hides parent settings, saves the shared loadout, and s
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="group-show-on-hype-card"]')`), null);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="checkbox-show-on-hype-card"]')`), null);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-athlete-page"]')`), null);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="panel-soccer-kit-preview"] .gear-player')`), null, 'legacy illustrated player must not overlay the jersey');
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="panel-soccer-kit-preview"] [data-testid="jersey-layer-stage"]').length`), 1);
+    assert.equal(await browser.evaluate(`getComputedStyle(document.querySelector('[data-testid="jersey-layer-stage"]')).position`), 'relative', 'jersey layers must work without visiting Showcase first');
+    assert.equal(await browser.evaluate(`document.querySelector('.gear-number').textContent`), '17');
     assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), 'Builder overflows at 320px');
     await browser.evaluate(`document.querySelector('[data-testid="button-gear-option-jerseyStyle-stripes"]').click()`);
     await browser.evaluate(`document.querySelector('[data-testid="button-gear-color-jerseyColor-coral"]').click()`);
@@ -161,6 +165,14 @@ test('Athlete kit builder hides parent settings, saves the shared loadout, and s
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html` });
     await browser.wait(`document.querySelector('[data-testid="preview-showcase-jersey"] [data-testid="layer-jersey-dye"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="preview-showcase-jersey"] [data-testid="jersey-layer-stage"]').dataset.jerseyColor`), '#F36E4C');
+    for (const width of [390, 1440]) {
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 600 });
+      assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Builder overflows at ${width}px`);
+    }
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 1000, deviceScaleFactor: 1, mobile: true });
+    await browser.evaluate(`document.querySelector('[data-testid="panel-soccer-kit-preview"]').scrollIntoView()`);
+    const capture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
+    await writeFile(resolve(tmpdir(), 'pixl-kit-editor-check.jpg'), Buffer.from(capture.data, 'base64'));
   } finally {
     browser?.close();
     await stop(chromium);

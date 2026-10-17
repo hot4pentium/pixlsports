@@ -385,15 +385,13 @@ export function SoccerGearBuilderPage({ athleteName: fallbackName, accountId, at
             <div className={`gear-pitch ${loadout.background === 'goal' ? 'is-goal' : ''}`}>
               {loadout.background === 'field' && <div className="gear-center-circle" />}
             </div>
-            <div className="gear-avatar-shadow" />
             <div className="gear-stage-head">
               <div>
                 <div className="gear-stage-label">Match day, your way</div>
                 <div className="gear-stage-name" data-testid="text-preview-athlete-name">{athleteName.trim() || 'Your player'}</div>
               </div>
-              <div className="gear-number" aria-label="Jersey number 10">10</div>
+              <div className="gear-number" aria-label={`Jersey number ${jerseyNumber.replace(/^#/, '') || 'not set'}`}>{jerseyNumber.replace(/^#/, '') || '—'}</div>
             </div>
-            <PlayerKit loadout={loadout} athleteName={athleteName} />
             <div className="pjk-builder" data-testid="preview-showcase-jersey">
               <JerseyLayerStage loadout={loadout} unlockedGear={state.unlockedGear} name={athleteName.trim().split(/\s+/)[0] || 'Player'} number={jerseyNumber.replace(/^#/, '')} label={`${athleteName.trim() || 'Player'} showcase jersey preview`} />
             </div>
