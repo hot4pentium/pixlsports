@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarDays, Footprints, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, Footprints, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'wouter';
 import { useClerk } from '@clerk/react';
 import type { ReactNode } from 'react';
@@ -77,14 +77,6 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry }: Pl
 
   return (
     <div className="ps" data-testid="page-player-showcase">
-      <section className="ps__season" aria-labelledby="ps-season">
-        <p className="ps__eyebrow">Your season</p>
-        <h2 id="ps-season">Plan the week for {first}.</h2>
-        <Link href="/studio" className="ps__btn" data-testid="link-showcase-parent-week">
-          <CalendarDays size={18} aria-hidden="true" /> Plan your week
-        </Link>
-      </section>
-
       <section className="ps__stage-wrap" aria-labelledby="ps-dyn" data-testid="section-dynamic-showcase" style={{ minWidth: 0 }}>
         <h1 id="ps-dyn" className="ps__section-title">Dynamic <span>Showcase</span></h1>
         <div className="ps__stage" data-testid="showcase-jersey-stage">

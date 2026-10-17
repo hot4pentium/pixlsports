@@ -194,7 +194,8 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`window.__update({mode:'showcase',sport:'soccer',gearStatus:'ready'})`);
     await browser.wait(`document.querySelector('[data-testid="page-player-showcase"]')`);
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="section-dynamic-showcase"]').length`), 1);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-parent-week"]').getAttribute('href')`), `${base}/studio`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-parent-week"]')`), null);
+    assert.equal(await browser.evaluate(`document.body.innerText.includes('Plan your week')`), false);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-gear"]').getAttribute('href')`), `${base}/studio/soccer-gear`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-shoutouts"]').getAttribute('href')`), `${base}/studio/athlete-page#owner-fan-hypes`);
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-jersey"]')?.getAttribute('alt').includes('Jordan Lee number 17')`));
