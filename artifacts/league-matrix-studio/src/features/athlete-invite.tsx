@@ -37,6 +37,7 @@ import {
   getGetAthleteFanCardQueryKey,
   getListAthleteInviteHypesQueryKey,
   getListProjectsQueryKey,
+  getGetAthleteInviteEditorAccessQueryKey,
   getListHypeCardSharesQueryKey,
   downloadHypeCardShare,
   requestHypeCardShareUploadUrl,
@@ -45,6 +46,9 @@ import {
   useGetAthleteInvite,
   useListAthleteInvites,
   useListProjects,
+  useGetAthleteInviteEditorAccess,
+  useCreateAthleteInviteEditorAccess,
+  useRevokeAthleteInviteEditorAccess,
   useListHypeCardShares,
   useDeleteHypeCardShare,
   useStartAthleteInviteLive,
@@ -71,7 +75,7 @@ import { HypeManagerTaskCard } from './hype-manager-wallet';
 import { OwnerEventNotifications } from './owner-event-notifications';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
-import { getUserProfile, type UserProfile } from './supporter-dashboard-model';
+import { getUserProfile, getUserRole, type UserProfile } from './supporter-dashboard-model';
 import { MAX_HOSTED_VIDEO_BYTES, monotonicProgress, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
 import {
   deleteAthleteVideoDraft,
@@ -129,12 +133,13 @@ function hostedVideoLabels(manifest: unknown, fallbackTitle: string) {
 
 export function AthleteInviteManager() {
   const { user, isLoaded, isSignedIn } = useUser();
+  const isParentAccount = getUserRole(user) === 'fan';
   const queryClient = useQueryClient();
   const profile = getUserProfile(user);
   const { data: invites, isLoading } = useListAthleteInvites({
-    query: { enabled: Boolean(isSignedIn), queryKey: getListAthleteInvitesQueryKey() },
+    query: { enabled: Boolean(isSignedIn && isParentAccount), queryKey: getListAthleteInvitesQueryKey() },
   });
-  const { data: projects } = useListProjects({ query: { enabled: Boolean(isSignedIn), queryKey: getListProjectsQueryKey() } });
+  const { data: projects } = useListProjects({ query: { enabled: Boolean(isSignedIn && isParentAccount), queryKey: getListProjectsQueryKey() } });
   const existing = invites?.[0] ?? null;
   const trackerProjects = projects?.filter((project) => project.project.tool === 'stat-tracker') ?? [];
   const defaultSport = profile.sport && profile.sport !== 'softball' ? profile.sport : 'basketball';
@@ -193,6 +198,7 @@ export function AthleteInviteManager() {
 
   if (!isLoaded || isLoading) return <InviteShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading athlete page…</p></InviteShell>;
   if (!isSignedIn) return <InviteShell><div className="max-w-lg text-center"><h1 className="font-display text-5xl uppercase">Sign in to manage the athlete page</h1><Link href="/sign-in" className="mt-6 inline-flex bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link></div></InviteShell>;
+  if (!isParentAccount) return <InviteShell><div className="mx-auto max-w-xl px-5 py-20 text-center"><h1 className="font-display text-4xl uppercase">Parent controls only</h1><p className="mt-4 text-sm leading-relaxed text-muted-foreground">Your athlete access is limited to the HYPE Card design linked by your parent or guardian.</p><Link href="/studio/player-showcase" className="mt-6 inline-flex bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Open athlete showcase</Link></div></InviteShell>;
 
   const payload = (): AthleteInviteInput => ({
     athleteName: athleteName.trim(),
@@ -384,6 +390,8 @@ export function AthleteInviteManager() {
           )}
         </section>
 
+        <AthleteEditorInvitationPanel inviteToken={existing?.inviteToken ?? null} />
+
         {!existing && (
           <form onSubmit={save} className="mt-8 max-w-xl">
             <aside className="space-y-5">
@@ -394,6 +402,151 @@ export function AthleteInviteManager() {
         )}
       </main>
     </InviteShell>
+  );
+}
+
+export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: string | null }) {
+  const queryClient = useQueryClient();
+  const [emailAddress, setEmailAddress] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [message, setMessage] = useState('');
+  const invitationQuery = useGetAthleteInviteEditorAccess(inviteToken ?? '', {
+    query: {
+      enabled: Boolean(inviteToken),
+      queryKey: getGetAthleteInviteEditorAccessQueryKey(inviteToken ?? ''),
+      refetchOnMount: 'always',
+      staleTime: 0,
+    },
+  });
+  const projectsQuery = useListProjects({
+    query: { enabled: Boolean(inviteToken), queryKey: getListProjectsQueryKey() },
+  });
+  const createInvitation = useCreateAthleteInviteEditorAccess();
+  const revokeInvitation = useRevokeAthleteInviteEditorAccess();
+  const hypeProjects = projectsQuery.data?.filter((item) => item.project.tool === 'hype-card') ?? [];
+  const invitation = invitationQuery.data;
+  const invitationLocked = invitation?.status === 'pending' || invitation?.status === 'active';
+  useEffect(() => {
+    if (!invitation) return;
+    setEmailAddress((current) => current || invitation.emailAddress || '');
+    setProjectId((current) => current || invitation.projectId || '');
+  }, [invitation]);
+  const refreshInvitation = async () => {
+    if (!inviteToken) return;
+    await queryClient.invalidateQueries({
+      queryKey: getGetAthleteInviteEditorAccessQueryKey(inviteToken),
+    });
+    await invitationQuery.refetch();
+  };
+  const sendInvite = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage('');
+    if (!inviteToken || !emailAddress.trim() || !projectId) return;
+    try {
+      const response = await createInvitation.mutateAsync({
+        inviteToken,
+        data: { emailAddress: emailAddress.trim(), projectId },
+      });
+      await refreshInvitation();
+      setMessage(response.status === 'active'
+        ? 'Access restored. The athlete can sign in and edit this card.'
+        : 'Invitation sent. The athlete can edit this card design after signing in.');
+    } catch {
+      setMessage('The invitation could not be sent. Check the email and try again.');
+    }
+  };
+  const revoke = async () => {
+    if (!inviteToken || !window.confirm('Revoke this athlete’s HYPE Card design access?')) return;
+    setMessage('');
+    try {
+      await revokeInvitation.mutateAsync({ inviteToken });
+      await refreshInvitation();
+      setMessage('Athlete design access revoked.');
+    } catch {
+      setMessage('Access could not be revoked. Try again.');
+    }
+  };
+  const statusLabel = invitation?.status === 'active'
+    ? 'Active'
+    : invitation?.status === 'pending'
+      ? 'Invitation pending'
+      : invitation?.status === 'revoked'
+        ? 'Revoked'
+        : 'Not invited';
+
+  return (
+    <section className="mt-8 border border-border bg-card p-5 sm:p-7" aria-labelledby="athlete-editor-invitation-title" data-testid="athlete-editor-invitation">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Design access only</p>
+          <h2 id="athlete-editor-invitation-title" className="mt-2 font-display text-3xl uppercase">Invite athlete to edit</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Parents remain in control of the athlete page, visibility, publishing, privacy, and sharing. The athlete can edit only the linked HYPE Card design.</p>
+        </div>
+        {inviteToken && (
+          <span className={`inline-flex w-fit items-center gap-2 border px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${invitation?.status === 'active' ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}`}>
+            <span className="h-2 w-2 rounded-full bg-current" />{invitationQuery.isLoading ? 'Checking access' : statusLabel}
+          </span>
+        )}
+      </div>
+      {!inviteToken ? (
+        <div className="mt-5 border-l-2 border-primary bg-primary/5 px-4 py-3 text-sm leading-relaxed">
+          Create the athlete page first to connect a parent-owned HYPE Card.
+          <Link href="/studio/athlete-page" className="ml-2 font-bold text-primary underline underline-offset-4">Open athlete page settings</Link>
+        </div>
+      ) : projectsQuery.isLoading ? (
+        <div className="mt-5 h-16 animate-pulse bg-muted" aria-label="Loading HYPE Card projects" />
+      ) : projectsQuery.isError ? (
+        <div className="mt-5 border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p>HYPE Card projects could not be loaded.</p>
+          <button type="button" onClick={() => void projectsQuery.refetch()} className="mt-2 font-bold text-primary underline underline-offset-4">Try again</button>
+        </div>
+      ) : hypeProjects.length === 0 ? (
+        <div className="mt-5 border border-dashed border-primary/40 bg-primary/5 p-5">
+          <p className="font-bold">Create a HYPE Card before inviting an athlete.</p>
+          <p className="mt-1 text-sm text-muted-foreground">The athlete needs one existing card to edit. They cannot create or choose projects.</p>
+          <Link href="/studio/hype-card" className="mt-4 inline-flex min-h-10 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground"><Palette className="h-4 w-4" /> Create HYPE Card</Link>
+        </div>
+      ) : (
+        <div className="mt-5">
+          {invitationQuery.isError && (
+            <p className="mb-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2 text-sm" role="alert">
+              Invitation status could not be loaded. <button type="button" onClick={() => void invitationQuery.refetch()} className="font-bold underline">Retry</button>
+            </p>
+          )}
+          <form onSubmit={sendInvite} className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Athlete email
+              <input type="email" required maxLength={320} value={invitationLocked ? invitation?.emailAddress ?? emailAddress : emailAddress} onChange={(event) => setEmailAddress(event.target.value)} placeholder="athlete@example.com" disabled={invitationLocked} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60" />
+            </label>
+            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              HYPE Card project
+              <select required value={invitationLocked ? invitation?.projectId ?? '' : projectId} onChange={(event) => setProjectId(event.target.value)} disabled={invitationLocked} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60">
+                <option value="">Choose a card</option>
+                {hypeProjects.map((item) => <option key={item.id} value={item.id}>{item.name || 'Untitled HYPE Card'}</option>)}
+              </select>
+            </label>
+            {invitation?.status === 'pending' || invitation?.status === 'active' ? (
+              <button type="button" onClick={() => void revoke()} disabled={revokeInvitation.isPending} className="inline-flex h-12 items-center justify-center gap-2 border border-destructive/40 px-4 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive/5 disabled:opacity-50">
+                <Trash2 className="h-4 w-4" />{revokeInvitation.isPending ? 'Revoking' : 'Revoke access'}
+              </button>
+            ) : (
+              <Button type="submit" disabled={createInvitation.isPending || !emailAddress.trim() || !projectId} className="h-12 rounded-none px-5 text-xs font-bold uppercase tracking-widest">
+                {createInvitation.isPending ? 'Sending' : invitation?.status === 'revoked' ? 'Invite again' : 'Send invitation'}
+              </Button>
+            )}
+          </form>
+          {invitation?.emailAddress && (
+            <p className="mt-3 text-xs text-muted-foreground">Current invite: <strong className="text-foreground">{invitation.emailAddress}</strong>{invitation.projectId ? ` · ${hypeProjects.find((item) => item.id === invitation.projectId)?.name || 'Linked HYPE Card'}` : ''}</p>
+          )}
+          {invitation?.projectId && hypeProjects.some((item) => item.id === invitation.projectId) && (
+            <Link href={`/studio/hype-card/${encodeURIComponent(invitation.projectId)}`} className="mt-3 inline-flex min-h-10 items-center gap-2 border border-border px-4 text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary" data-testid="link-edit-linked-athlete-card">
+              <Palette className="h-4 w-4" /> Open linked HYPE Card
+            </Link>
+          )}
+          {message && <p className="mt-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm" role="status">{message}</p>}
+        </div>
+      )}
+    </section>
   );
 }
 

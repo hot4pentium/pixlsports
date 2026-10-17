@@ -16,7 +16,8 @@ import {
   pool,
   projectMediaTable,
 } from "@workspace/db";
-import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
+import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity, requireProjectEditorAuth } from "../middlewares/requireAuth";
+import { isAthleteEditorInvitationIdentity } from "../lib/athleteEditorAccess";
 import { getAccountLifecycleSnapshot, hasActivePaidEntitlement, PROJECT_MEDIA_QUOTA_BYTES } from "../lib/accountLifecycle";
 import {
   getClerkUserIdsByVerifiedEmails,
@@ -214,8 +215,9 @@ export function createAccountAccessRouter(
 ) {
   const router: IRouter = Router();
 
-  router.get("/account/access", requireAuth, async (_req, res): Promise<void> => {
-    const ownerClerkUserId = getRequiredClerkUserId(res);
+  router.get("/account/access", requireProjectEditorAuth, async (_req, res): Promise<void> => {
+    const athleteEditorAccess = res.locals.athleteEditorAccess as { ownerClerkUserId: string } | undefined;
+    const ownerClerkUserId = athleteEditorAccess?.ownerClerkUserId ?? getRequiredClerkUserId(res);
     res.json(GetAccountAccessResponse.parse(await getAccountAccessSnapshot(ownerClerkUserId)));
   });
 
@@ -227,6 +229,19 @@ export function createAccountAccessRouter(
     }
 
     const ownerClerkUserId = getRequiredClerkUserId(res);
+    try {
+      if (await isAthleteEditorInvitationIdentity(ownerClerkUserId)) {
+        res.status(403).json({
+          error: "Athlete sign-ins cannot change account access or set up a supporter account.",
+          code: "ATHLETE_EDITOR_SCOPE",
+        });
+        return;
+      }
+    } catch (error) {
+      req.log.error({ err: error }, "Could not verify athlete editor account status");
+      res.status(503).json({ error: "Account access could not be verified. Please try again." });
+      return;
+    }
     const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId, { touchCancelledActivity: true });
     if (lifecycle.identityBlocked) {
       res.status(423).json({

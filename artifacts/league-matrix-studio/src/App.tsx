@@ -187,6 +187,9 @@ const HypeCardReplyInboxTrigger = lazy(() =>
 const HypeCardEditor = lazy(() =>
   import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
 );
+const AthleteHypeCardEditorRoute = lazy(() =>
+  import('@/features/hype-card').then(({ AthleteHypeCardEditorRoute }) => ({ default: AthleteHypeCardEditorRoute })),
+);
 const AthleteInviteManager = lazy(() =>
   import('@/features/athlete-invite').then(({ AthleteInviteManager }) => ({ default: AthleteInviteManager })),
 );
@@ -235,6 +238,9 @@ const SupporterDashboardView = lazy(() =>
 );
 const PlayerShowcasePage = lazy(() =>
   import('@/features/player-showcase').then(({ PlayerShowcasePage }) => ({ default: PlayerShowcasePage })),
+);
+const AthleteShowcaseHome = lazy(() =>
+  import('@/features/player-showcase').then(({ AthleteShowcaseHome }) => ({ default: AthleteShowcaseHome })),
 );
 const SupporterProfileView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterProfileView }) => ({ default: SupporterProfileView })),
@@ -1311,8 +1317,12 @@ function SoccerGearStudioPage() {
 }
 
 function PlayerShowcaseStudioPage() {
-  const { user } = useUser();
+  const { user, isLoaded, isSignedIn } = useUser();
   const profile = supporterProfileFromUser(user);
+  if (!isLoaded) return <RouteLoadingState />;
+  if (!isSignedIn) return <Redirect to={`/sign-in?redirect_url=${encodeURIComponent('/studio/player-showcase')}`} />;
+  if (isAthleteEditorAccount(user)) return <AthleteShowcaseHome />;
+  if (getUserRole(user) !== 'fan') return <Redirect to="/studio/setup" />;
   return <StudioLayout><PlayerShowcasePage key={user?.id} userId={user?.id ?? null} profile={profile} /></StudioLayout>;
 }
 
@@ -4055,13 +4065,37 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
 
+  const athleteOnlyPath = location === '/studio/player-showcase'
+    || /^\/studio\/player-showcase\/hype-card\/[^/]+$/.test(location);
+  if (location.startsWith('/studio') && !isLoaded) return <AccountLoadingScreen />;
+  if (isSignedIn && user && isAthleteEditorAccount(user)) {
+    return athleteOnlyPath ? <>{children}</> : <Redirect to="/studio/player-showcase" />;
+  }
+  if (athleteOnlyPath) {
+    if (getUserRole(user) === 'fan') {
+      const editorPath = location.match(/^\/studio\/player-showcase\/hype-card\/([^/]+)$/);
+      return editorPath
+        ? <Redirect to={`/studio/hype-card/${editorPath[1]}`} />
+        : <>{children}</>;
+    }
+    return isSignedIn ? <Redirect to="/studio/setup" /> : <>{children}</>;
+  }
   if (!shouldRequireSupporterSetup(location)) return <>{children}</>;
-  if (!isLoaded) return <AccountLoadingScreen />;
   if (!isSignedIn || !user) return <>{children}</>;
   if (!isSupporterSetupComplete(getUserProfile(user))) {
     return <Redirect to="/studio/setup" />;
   }
   return <>{children}</>;
+}
+
+function isAthleteEditorAccount(user: unknown): boolean {
+  if (!user || typeof user !== 'object') return false;
+  const publicMetadata = (user as { publicMetadata?: unknown }).publicMetadata;
+  return Boolean(
+    publicMetadata
+    && typeof publicMetadata === 'object'
+    && typeof (publicMetadata as Record<string, unknown>).pixlSportsAthleteEditorAccessId === 'string',
+  );
 }
 
 function HomeRedirect() {
@@ -4158,10 +4192,11 @@ function ClerkProviderWithRoutes() {
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
-              <Route path="/studio/player-showcase"><ProtectedEditor kind="hype"><PlayerShowcaseStudioPage /></ProtectedEditor></Route>
+              <Route path="/studio/player-showcase/hype-card/:id"><AthleteHypeCardEditorRoute /></Route>
+              <Route path="/studio/player-showcase"><PlayerShowcaseStudioPage /></Route>
               <Route path="/studio/soccer-gear"><ProtectedEditor kind="hype"><SoccerGearStudioPage /></ProtectedEditor></Route>
               <Route path="/studio/admin" component={() => <StudioLayout><AdminConsolePage /></StudioLayout>} />
-               <Route path="/studio/athlete-page" component={AthleteInviteManager} />
+                <Route path="/studio/athlete-page"><ProtectedEditor kind="hype"><AthleteInviteManager /></ProtectedEditor></Route>
                <Route path="/studio/hype-card/:id?"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio" component={StudioPortal} />
                 <Route path="/studio/schedule/:id?" component={() => <RetiredSchedulePage />} />

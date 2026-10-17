@@ -971,6 +971,89 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/editor-access:
+    parameters:
+      - in: path
+        name: inviteToken
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{24,80}$"
+    get:
+      operationId: getAthleteInviteEditorAccess
+      tags: [athlete-invites]
+      summary: Get the limited athlete editor invitation status
+      responses:
+        "200":
+          description: Current athlete editor invitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteEditorInvitation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createAthleteInviteEditorAccess
+      tags: [athlete-invites]
+      summary: Invite an athlete to edit one HYPE Card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteEditorInvitationInput"
+      responses:
+        "201":
+          description: Athlete editor invitation sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteEditorInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The email, project, or invitation is already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: revokeAthleteInviteEditorAccess
+      tags: [athlete-invites]
+      summary: Revoke the athlete's editor access
+      responses:
+        "204":
+          description: Athlete editor access revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-editor/access:
+    get:
+      operationId: getAthleteEditorAccess
+      tags: [athlete-editor]
+      summary: Claim and load the signed-in athlete's limited editor access
+      responses:
+        "200":
+          description: The athlete's linked profile and HYPE Card project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteEditorAccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: This sign-in is not linked to an active athlete editor invitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /athlete-invites/{inviteToken}/fan:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -3873,6 +3956,31 @@ components:
         showEvents: { type: boolean }
         hypesEnabled: { type: boolean }
         paused: { type: boolean, default: false }
+    AthleteEditorInvitationInput:
+      type: object
+      required: [emailAddress, projectId]
+      properties:
+        emailAddress: { type: string, format: email, minLength: 3, maxLength: 320 }
+        projectId: { type: string, format: uuid }
+    AthleteEditorInvitation:
+      type: object
+      required: [emailAddress, projectId, status, updatedAt]
+      properties:
+        emailAddress: { type: ["string", "null"], format: email }
+        projectId: { type: ["string", "null"], format: uuid }
+        status: { type: string, enum: [not_invited, pending, active, revoked] }
+        updatedAt: { type: ["string", "null"], format: date-time }
+    AthleteEditorAccess:
+      type: object
+      required: [athleteName, teamName, seasonName, sport, jerseyNumber, position, projectId]
+      properties:
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        sport: { type: string, enum: [baseball, basketball, football, soccer, volleyball] }
+        jerseyNumber: { type: string }
+        position: { type: string }
+        projectId: { type: string, format: uuid }
     OwnedAthleteInvite:
       type: object
       required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, showEvents, hypesEnabled, paused, liveTrackerShareToken, photoUrl, events, createdAt, updatedAt]

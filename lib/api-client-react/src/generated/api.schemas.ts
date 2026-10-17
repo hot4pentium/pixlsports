@@ -1419,6 +1419,56 @@ export interface AthleteInviteInput {
   paused?: boolean;
 }
 
+export interface AthleteEditorInvitationInput {
+  /**
+     * @minLength 3
+     * @maxLength 320
+     */
+  emailAddress: string;
+  projectId: string;
+}
+
+export type AthleteEditorInvitationStatus = typeof AthleteEditorInvitationStatus[keyof typeof AthleteEditorInvitationStatus];
+
+
+export const AthleteEditorInvitationStatus = {
+  not_invited: 'not_invited',
+  pending: 'pending',
+  active: 'active',
+  revoked: 'revoked',
+} as const;
+
+export interface AthleteEditorInvitation {
+  /** @nullable */
+  emailAddress: string | null;
+  /** @nullable */
+  projectId: string | null;
+  status: AthleteEditorInvitationStatus;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export type AthleteEditorAccessSport = typeof AthleteEditorAccessSport[keyof typeof AthleteEditorAccessSport];
+
+
+export const AthleteEditorAccessSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export interface AthleteEditorAccess {
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  sport: AthleteEditorAccessSport;
+  jerseyNumber: string;
+  position: string;
+  projectId: string;
+}
+
 export type OwnedAthleteInviteSport = typeof OwnedAthleteInviteSport[keyof typeof OwnedAthleteInviteSport];
 
 

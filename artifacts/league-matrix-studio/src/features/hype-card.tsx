@@ -36,6 +36,8 @@ import {
   useMarkHypeCardShareRepliesRead,
   useDeleteHypeCardShareReply,
   useListAthleteInvites,
+  useGetAthleteEditorAccess,
+  getGetAthleteEditorAccessQueryKey,
   useUpdateAthleteInvite,
   getListAthleteInvitesQueryKey,
   getListHypeCardShareRepliesQueryKey,
@@ -1061,12 +1063,54 @@ export function MobilePreviewDialog({
 }
 
 
-export function HypeCardEditor() {
+export function AthleteHypeCardEditorRoute() {
+  const params = useParams<{ id?: string }>();
+  const { user, isLoaded, isSignedIn } = useUser();
+  const accessQuery = useGetAthleteEditorAccess({
+    query: {
+      enabled: Boolean(isLoaded && isSignedIn),
+      queryKey: getGetAthleteEditorAccessQueryKey(),
+      refetchOnMount: 'always',
+      staleTime: 0,
+      retry: false,
+    },
+  });
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (accessQuery.data && params.id !== accessQuery.data.projectId) {
+      setLocation(`/studio/player-showcase/hype-card/${encodeURIComponent(accessQuery.data.projectId)}`);
+    }
+  }, [accessQuery.data, params.id, setLocation]);
+  if (!isLoaded) return <div className="grid min-h-dvh place-items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking athlete access…</div>;
+  if (!isSignedIn) return <div className="grid min-h-dvh place-items-center px-5 text-center"><Link href={`/sign-in?redirect_url=${encodeURIComponent(window.location.pathname)}`} className="bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in to continue</Link></div>;
+  if (accessQuery.isLoading) return <div className="grid min-h-dvh place-items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading your HYPE Card…</div>;
+  if (accessQuery.isError || !accessQuery.data) return <div className="grid min-h-dvh place-items-center px-5 text-center"><div><h1 className="font-display text-4xl uppercase">Access unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Ask your parent or guardian to check your invitation.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to showcase</Link></div></div>;
+  if (params.id !== accessQuery.data.projectId) return <div className="grid min-h-dvh place-items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">Opening your linked card…</div>;
+  const athleteProfile = {
+    ...getUserProfile(user),
+    athleteName: accessQuery.data.athleteName,
+    teamName: accessQuery.data.teamName,
+    seasonName: accessQuery.data.seasonName,
+    sport: accessQuery.data.sport,
+    jerseyNumber: accessQuery.data.jerseyNumber,
+    position: accessQuery.data.position,
+  };
+  return <HypeCardEditor athleteRestricted profileOverride={athleteProfile} />;
+}
+
+export function HypeCardEditor({
+  athleteRestricted = false,
+  profileOverride,
+}: {
+  athleteRestricted?: boolean;
+  profileOverride?: ReturnType<typeof getUserProfile>;
+} = {}) {
+  const walkthroughSteps = athleteRestricted ? hypeWalkthroughSteps.slice(0, 3) : hypeWalkthroughSteps;
   const params = useParams();
   const [, setLocation] = useLocation();
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
-  const profile = getUserProfile(user);
+  const profile = profileOverride ?? getUserProfile(user);
   const gameDayPrefill = useMemo(readGameDayHypePrefill, []);
   const queryClient = useQueryClient();
   const initialCloudDraft = useMemo(
@@ -1130,7 +1174,7 @@ export function HypeCardEditor() {
   const [shareMediaName, setShareMediaName] = useState(DEFAULT_MEDIA_NAME);
   const { data: athleteInvites } = useListAthleteInvites({
     query: {
-      enabled: Boolean(isSignedIn),
+      enabled: Boolean(isSignedIn && !athleteRestricted),
       queryKey: getListAthleteInvitesQueryKey(),
     },
   });
@@ -1194,7 +1238,7 @@ export function HypeCardEditor() {
   });
   const { data: accountAccess } = useGetAccountAccess({
     query: {
-      enabled: Boolean(isSignedIn && isOnline),
+      enabled: Boolean(isSignedIn && isOnline && !athleteRestricted),
       staleTime: 15000,
       queryKey: getGetAccountAccessQueryKey(),
     },
@@ -1225,7 +1269,7 @@ export function HypeCardEditor() {
   const deleteHypeShare = useDeleteHypeCardShare();
   const { data: projects, refetch: refetchProjects } = useListProjects({
     query: {
-      enabled: Boolean(isSignedIn && isOnline),
+      enabled: Boolean(isSignedIn && isOnline && !athleteRestricted),
       queryKey: getListProjectsQueryKey(),
       staleTime: 10_000,
     },
@@ -1291,7 +1335,7 @@ export function HypeCardEditor() {
 
   const { data: hypeShares } = useListHypeCardShares(undefined, {
     query: {
-      enabled: Boolean(isSignedIn && isOnline),
+      enabled: Boolean(isSignedIn && isOnline && !athleteRestricted),
       queryKey: getListHypeCardSharesQueryKey(),
       staleTime: 10_000,
     },
@@ -2575,6 +2619,7 @@ export function HypeCardEditor() {
   };
 
   const handleExportWithStatsLink = () => {
+    if (athleteRestricted) return;
     setValidation('');
     setNotice('');
     if (!isOnline) {
@@ -2599,6 +2644,7 @@ export function HypeCardEditor() {
   };
 
   const handleShareClick = () => {
+    if (athleteRestricted) return;
     setValidation('');
     setNotice('');
     setShareVideoQuality('standard');
@@ -2927,10 +2973,10 @@ export function HypeCardEditor() {
         : 'Media is attached on this phone. Your downloadable Hype Card stays fully local.';
 
   return (
-    <div className="moment-studio flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden">
+    <div className={`moment-studio ${athleteRestricted ? 'athlete-limited-editor' : ''} flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden`} data-testid={athleteRestricted ? 'athlete-limited-hype-editor' : 'hype-card-editor'}>
       <header className="sticky top-0 z-40 flex min-h-14 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-background px-3 py-2 sm:static sm:px-4">
         <div className="flex min-w-0 basis-full items-center gap-2 sm:gap-3 xl:basis-auto xl:flex-1">
-          <BackNavigationLink href="/studio" label="Back to studio" testId="link-hype-card-studio" className="shrink-0" />
+          <BackNavigationLink href={athleteRestricted ? '/studio/player-showcase' : '/studio'} label={athleteRestricted ? 'Back to showcase' : 'Back to studio'} testId="link-hype-card-studio" className="shrink-0" />
            <h1 className="min-w-0 truncate font-display text-lg tracking-wide text-foreground sm:text-xl">Hype Cards</h1>
            <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-4">
              <div className={`hidden items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs font-bold uppercase tracking-widest clip-angled-sm border sm:flex ${saveStatus === 'Saving' ? 'bg-primary/10 text-primary border-primary/20' : saveStatus === 'Save failed' ? 'bg-destructive/10 text-destructive border-destructive/20' : saveStatus === 'Conflict' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : saveStatus === 'Offline' || saveStatus === 'Waiting to sync' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'bg-muted text-muted-foreground border-border'}`}>
@@ -3032,7 +3078,7 @@ export function HypeCardEditor() {
         }`} role={noticeTone === 'error' ? 'alert' : 'status'} aria-live={noticeTone === 'error' ? 'assertive' : 'polite'} data-testid="hype-card-notice" data-tone={noticeTone}>
           {notice}
           <div className="flex shrink-0 items-center gap-2">
-            {isShareSuccessNotice && successShare && shareMode === 'stats' && (
+            {!athleteRestricted && isShareSuccessNotice && successShare && shareMode === 'stats' && (
               <>
                 <button
                   type="button"
@@ -3061,7 +3107,7 @@ export function HypeCardEditor() {
                 </a>
               </>
             )}
-            {isShareSuccessNotice && successShare && shareMode === 'card' && (
+            {!athleteRestricted && isShareSuccessNotice && successShare && shareMode === 'card' && (
               <Link
                 href="/studio/athlete-page"
                 className="inline-flex min-h-8 items-center gap-2 border border-white/40 bg-white/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-white/20"
@@ -3075,7 +3121,7 @@ export function HypeCardEditor() {
         </div>
       )}
 
-      {existingShare && (
+      {!athleteRestricted && existingShare && (
         <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
           <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Athlete Hype Page</span>
           <span className="min-w-0 flex-1 text-xs font-medium leading-relaxed text-muted-foreground">The latest playable Hype Card is available on the Athlete Hype Page with its stats, Game Day Live, and event cards.</span>
@@ -3089,7 +3135,7 @@ export function HypeCardEditor() {
           <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
         </div>
       )}
-      {existingStatsShare && (
+      {!athleteRestricted && existingStatsShare && (
         <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Stats link</span>
@@ -3136,14 +3182,14 @@ export function HypeCardEditor() {
                   <p className="mt-1 text-xs font-medium text-muted-foreground">One design choice at a time.</p>
                 </div>
                 <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  {walkthroughStep + 1} / {hypeWalkthroughSteps.length}
+                  {walkthroughStep + 1} / {walkthroughSteps.length}
                 </span>
               </div>
               <div className="mb-3 h-1 overflow-hidden bg-muted" aria-hidden="true">
-                <div className="h-full bg-primary transition-all" style={{ width: `${((walkthroughStep + 1) / hypeWalkthroughSteps.length) * 100}%` }} />
+                <div className="h-full bg-primary transition-all" style={{ width: `${((walkthroughStep + 1) / walkthroughSteps.length) * 100}%` }} />
               </div>
               <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Hype Card walkthrough steps">
-                {hypeWalkthroughSteps.map((step, index) => (
+                {walkthroughSteps.map((step, index) => (
                   <button
                     key={step.label}
                     type="button"
@@ -3157,7 +3203,7 @@ export function HypeCardEditor() {
                 ))}
               </div>
               <p className="mt-3 text-xs font-medium text-muted-foreground">
-                {hypeWalkthroughSteps[walkthroughStep].hint}
+                {walkthroughSteps[walkthroughStep].hint}
               </p>
             </div>
 
@@ -3414,7 +3460,7 @@ export function HypeCardEditor() {
               </div>
             </Section>}
 
-            {walkthroughStep === 3 && (
+            {walkthroughStep === 3 && !athleteRestricted && (
               <section className="border-t border-border pt-6">
                 <div className="mb-5 flex items-center gap-2">
                   <Check className="h-5 w-5 text-primary" />
@@ -3455,13 +3501,13 @@ export function HypeCardEditor() {
                   Back
                 </Button>
               )}
-              {walkthroughStep < hypeWalkthroughSteps.length - 1 ? (
+              {walkthroughStep < walkthroughSteps.length - 1 ? (
                 <Button
                   type="button"
-                  onClick={() => setWalkthroughStep((step) => Math.min(hypeWalkthroughSteps.length - 1, step + 1))}
+                  onClick={() => setWalkthroughStep((step) => Math.min(walkthroughSteps.length - 1, step + 1))}
                   className="rounded-none bg-foreground text-background hover:bg-primary hover:text-primary-foreground clip-angled-sm"
                 >
-                  Next: {hypeWalkthroughSteps[walkthroughStep + 1].label}
+                  Next: {walkthroughSteps[walkthroughStep + 1].label}
                 </Button>
               ) : (
                 <Button type="button" variant="outline" onClick={() => setWalkthroughStep(0)} className="rounded-none clip-angled-sm">
@@ -3481,7 +3527,7 @@ export function HypeCardEditor() {
 
       <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} />
 
-      <Dialog open={shareDialogOpen} onOpenChange={(open) => {
+      {!athleteRestricted && <Dialog open={shareDialogOpen} onOpenChange={(open) => {
         setShareDialogOpen(open);
         if (!open) setLinkedExportPending(false);
       }}>
@@ -3667,9 +3713,9 @@ export function HypeCardEditor() {
             </DialogFooter>
           </form>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
-      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+      {!athleteRestricted && <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
         <DialogContent className="clip-angled-sm sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-xl">Hype Card Replies</DialogTitle>
@@ -3707,7 +3753,7 @@ export function HypeCardEditor() {
             ))}
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {sharing && (
         <div

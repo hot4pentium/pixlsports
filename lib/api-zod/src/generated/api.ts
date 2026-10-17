@@ -2999,6 +2999,79 @@ export const DeleteAthleteInviteResponse = zod.void()
 
 
 /**
+ * @summary Get the limited athlete editor invitation status
+ */
+export const getAthleteInviteEditorAccessPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteInviteEditorAccessParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteInviteEditorAccessPathInviteTokenRegExp)
+})
+
+export const GetAthleteInviteEditorAccessResponse = zod.object({
+  "emailAddress": zod.string().email().nullable(),
+  "projectId": zod.string().uuid().nullable(),
+  "status": zod.enum(['not_invited', 'pending', 'active', 'revoked']),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Invite an athlete to edit one HYPE Card
+ */
+export const createAthleteInviteEditorAccessPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const CreateAthleteInviteEditorAccessParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(createAthleteInviteEditorAccessPathInviteTokenRegExp)
+})
+
+export const createAthleteInviteEditorAccessBodyEmailAddressMin = 3;
+export const createAthleteInviteEditorAccessBodyEmailAddressMax = 320;
+
+
+
+export const CreateAthleteInviteEditorAccessBody = zod.object({
+  "emailAddress": zod.string().email().min(createAthleteInviteEditorAccessBodyEmailAddressMin).max(createAthleteInviteEditorAccessBodyEmailAddressMax),
+  "projectId": zod.string().uuid()
+})
+
+export const CreateAthleteInviteEditorAccessResponse = zod.object({
+  "emailAddress": zod.string().email().nullable(),
+  "projectId": zod.string().uuid().nullable(),
+  "status": zod.enum(['not_invited', 'pending', 'active', 'revoked']),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Revoke the athlete's editor access
+ */
+export const revokeAthleteInviteEditorAccessPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const RevokeAthleteInviteEditorAccessParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(revokeAthleteInviteEditorAccessPathInviteTokenRegExp)
+})
+
+export const RevokeAthleteInviteEditorAccessResponse = zod.void()
+
+
+/**
+ * @summary Claim and load the signed-in athlete's limited editor access
+ */
+export const GetAthleteEditorAccessResponse = zod.object({
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "jerseyNumber": zod.string(),
+  "position": zod.string(),
+  "projectId": zod.string().uuid()
+})
+
+
+/**
  * Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
  * @summary Get an HYPE Card with a sanitized live scoreboard
  */

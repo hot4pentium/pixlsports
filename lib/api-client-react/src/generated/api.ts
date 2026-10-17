@@ -37,6 +37,9 @@ import type {
   AdminSession,
   AdminSupportEmailReplyRejectionList,
   AdminSupportTicketList,
+  AthleteEditorAccess,
+  AthleteEditorInvitation,
+  AthleteEditorInvitationInput,
   AthleteInviteEventNotifyResult,
   AthleteInviteFanFollow,
   AthleteInviteFanFollowCreated,
@@ -3869,6 +3872,323 @@ export const useDeleteAthleteInvite = <TError = ErrorType<UnauthorizedResponse |
       > => {
       return useMutation(getDeleteAthleteInviteMutationOptions(options));
     }
+
+export const getGetAthleteInviteEditorAccessUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/editor-access`
+}
+
+/**
+ * @summary Get the limited athlete editor invitation status
+ */
+export const getAthleteInviteEditorAccess = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteEditorInvitation> => {
+
+  return customFetch<AthleteEditorInvitation>(getGetAthleteInviteEditorAccessUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteInviteEditorAccessQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/editor-access`
+    ] as const;
+    }
+
+
+export const getGetAthleteInviteEditorAccessQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteInviteEditorAccess>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEditorAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteInviteEditorAccessQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteInviteEditorAccess>>> = ({ signal }) => getAthleteInviteEditorAccess(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEditorAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteInviteEditorAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteInviteEditorAccess>>>
+export type GetAthleteInviteEditorAccessQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the limited athlete editor invitation status
+ */
+
+export function useGetAthleteInviteEditorAccess<TData = Awaited<ReturnType<typeof getAthleteInviteEditorAccess>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEditorAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteInviteEditorAccessQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAthleteInviteEditorAccessUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/editor-access`
+}
+
+/**
+ * @summary Invite an athlete to edit one HYPE Card
+ */
+export const createAthleteInviteEditorAccess = async (inviteToken: string,
+    athleteEditorInvitationInput: AthleteEditorInvitationInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteEditorInvitation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteEditorInvitation>(getCreateAthleteInviteEditorAccessUrl(inviteToken),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteEditorInvitationInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAthleteInviteEditorAccessMutationKey = () => ['createAthleteInviteEditorAccess'] as const;
+
+export const getCreateAthleteInviteEditorAccessMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteEditorAccess>>, TError,CreateAthleteInviteEditorAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteEditorAccess>>, TError,CreateAthleteInviteEditorAccessMutationVariables, TContext> => {
+
+const mutationKey = getCreateAthleteInviteEditorAccessMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAthleteInviteEditorAccess>>, CreateAthleteInviteEditorAccessMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  createAthleteInviteEditorAccess(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAthleteInviteEditorAccessMutationResult = NonNullable<Awaited<ReturnType<typeof createAthleteInviteEditorAccess>>>
+    export type CreateAthleteInviteEditorAccessMutationBody = BodyType<AthleteEditorInvitationInput>
+    export type CreateAthleteInviteEditorAccessMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | Error>
+    export type CreateAthleteInviteEditorAccessMutationVariables = {inviteToken: string;data: BodyType<AthleteEditorInvitationInput>}
+
+    /**
+ * @summary Invite an athlete to edit one HYPE Card
+ */
+export const useCreateAthleteInviteEditorAccess = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteEditorAccess>>, TError,CreateAthleteInviteEditorAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAthleteInviteEditorAccess>>,
+        TError,
+        CreateAthleteInviteEditorAccessMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAthleteInviteEditorAccessMutationOptions(options));
+    }
+
+export const getRevokeAthleteInviteEditorAccessUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/editor-access`
+}
+
+/**
+ * @summary Revoke the athlete's editor access
+ */
+export const revokeAthleteInviteEditorAccess = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRevokeAthleteInviteEditorAccessUrl(inviteToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeAthleteInviteEditorAccessMutationKey = () => ['revokeAthleteInviteEditorAccess'] as const;
+
+export const getRevokeAthleteInviteEditorAccessMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAthleteInviteEditorAccess>>, TError,RevokeAthleteInviteEditorAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeAthleteInviteEditorAccess>>, TError,RevokeAthleteInviteEditorAccessMutationVariables, TContext> => {
+
+const mutationKey = getRevokeAthleteInviteEditorAccessMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeAthleteInviteEditorAccess>>, RevokeAthleteInviteEditorAccessMutationVariables> = (props) => {
+          const {inviteToken} = props ?? {};
+
+          return  revokeAthleteInviteEditorAccess(inviteToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeAthleteInviteEditorAccessMutationResult = NonNullable<Awaited<ReturnType<typeof revokeAthleteInviteEditorAccess>>>
+
+    export type RevokeAthleteInviteEditorAccessMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type RevokeAthleteInviteEditorAccessMutationVariables = {inviteToken: string}
+
+    /**
+ * @summary Revoke the athlete's editor access
+ */
+export const useRevokeAthleteInviteEditorAccess = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAthleteInviteEditorAccess>>, TError,RevokeAthleteInviteEditorAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeAthleteInviteEditorAccess>>,
+        TError,
+        RevokeAthleteInviteEditorAccessMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokeAthleteInviteEditorAccessMutationOptions(options));
+    }
+
+export const getGetAthleteEditorAccessUrl = () => {
+
+
+
+
+  return `/api/athlete-editor/access`
+}
+
+/**
+ * @summary Claim and load the signed-in athlete's limited editor access
+ */
+export const getAthleteEditorAccess = async ( options?: Parameters<typeof customFetch>[1]): Promise<AthleteEditorAccess> => {
+
+  return customFetch<AthleteEditorAccess>(getGetAthleteEditorAccessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteEditorAccessQueryKey = () => {
+    return [
+    `/api/athlete-editor/access`
+    ] as const;
+    }
+
+
+export const getGetAthleteEditorAccessQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteEditorAccess>>, TError = ErrorType<UnauthorizedResponse | Error>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteEditorAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteEditorAccessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteEditorAccess>>> = ({ signal }) => getAthleteEditorAccess({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteEditorAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteEditorAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteEditorAccess>>>
+export type GetAthleteEditorAccessQueryError = ErrorType<UnauthorizedResponse | Error>
+
+
+/**
+ * @summary Claim and load the signed-in athlete's limited editor access
+ */
+
+export function useGetAthleteEditorAccess<TData = Awaited<ReturnType<typeof getAthleteEditorAccess>>, TError = ErrorType<UnauthorizedResponse | Error>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteEditorAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteEditorAccessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAthleteFanCardUrl = (inviteToken: string,) => {
 

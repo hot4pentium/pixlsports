@@ -1,6 +1,7 @@
 import { getAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
 import { getAccountLifecycleSnapshot } from "../lib/accountLifecycle";
+import { getAthleteEditorAccessForUser } from "../lib/athleteEditorAccess";
 
 export type AuthenticatedRequest = Parameters<RequestHandler>[0] & {
   clerkUserId: string;
@@ -28,7 +29,8 @@ export const requireAuthenticatedIdentity: RequestHandler = (req, res, next): vo
   next();
 };
 
-export const requireAuth: RequestHandler = async (req, res, next): Promise<void> => {
+function activeAccountGuard(allowAthleteEditor: boolean): RequestHandler {
+  return async (req, res, next): Promise<void> => {
   const userId = authenticatedUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -37,6 +39,17 @@ export const requireAuth: RequestHandler = async (req, res, next): Promise<void>
 
   res.locals.clerkUserId = userId;
   try {
+    const athleteEditorAccess = await getAthleteEditorAccessForUser(userId);
+    if (athleteEditorAccess) {
+      if (!allowAthleteEditor || athleteEditorAccess.status !== "active") {
+        res.status(403).json({
+          error: "This sign-in is limited to its linked HYPE Card.",
+          code: "ATHLETE_EDITOR_SCOPE",
+        });
+        return;
+      }
+      res.locals.athleteEditorAccess = athleteEditorAccess;
+    }
     const lifecycle = await getAccountLifecycleSnapshot(userId, { touchCancelledActivity: true });
     if (lifecycle.identityBlocked) {
       res.status(423).json({
@@ -72,7 +85,11 @@ export const requireAuth: RequestHandler = async (req, res, next): Promise<void>
   } catch (error) {
     next(error);
   }
-};
+  };
+}
+
+export const requireAuth: RequestHandler = activeAccountGuard(false);
+export const requireProjectEditorAuth: RequestHandler = activeAccountGuard(true);
 
 export function getRequiredClerkUserId(res: { locals: Record<string, unknown> }): string {
   const userId = res.locals.clerkUserId;

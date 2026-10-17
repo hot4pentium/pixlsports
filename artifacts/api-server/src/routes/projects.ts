@@ -8,7 +8,7 @@ import {
   UpdateProjectParams,
 } from "@workspace/api-zod";
 import { cloudProjectsTable, db, projectMediaTable, projectMediaUploadClaimsTable } from "@workspace/db";
-import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { getRequiredClerkUserId, requireAuth, requireProjectEditorAuth } from "../middlewares/requireAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { consumeGuestUsageBatch, getAccountAccessSnapshot } from "./accountAccess";
 import { hasActivePaidEntitlement } from "../lib/accountLifecycle";
@@ -72,15 +72,24 @@ async function projectResponse(project: ProjectRow, ownerClerkUserId: string) {
   };
 }
 
-router.get("/projects", requireAuth, async (req, res): Promise<void> => {
-  const ownerClerkUserId = getRequiredClerkUserId(res);
+router.get("/projects", requireProjectEditorAuth, async (req, res): Promise<void> => {
+  const athleteEditorAccess = res.locals.athleteEditorAccess as { ownerClerkUserId: string; projectId: string } | undefined;
+  const ownerClerkUserId = athleteEditorAccess?.ownerClerkUserId ?? getRequiredClerkUserId(res);
+  const conditions = [eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId)];
+  if (athleteEditorAccess) conditions.push(eq(cloudProjectsTable.id, athleteEditorAccess.projectId));
   const projects = await db
     .select()
     .from(cloudProjectsTable)
-    .where(eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId))
+    .where(and(...conditions))
     .orderBy(asc(cloudProjectsTable.updatedAt));
+  const scopedProjects = athleteEditorAccess
+    ? projects.filter((project) => {
+        const value = project.project as { tool?: unknown } | null;
+        return value?.tool === "hype-card";
+      })
+    : projects;
   const response = await Promise.all(
-    projects.map((project) => projectResponse(project, ownerClerkUserId)),
+    scopedProjects.map((project) => projectResponse(project, ownerClerkUserId)),
   );
   res.json(ListProjectsResponse.parse(response));
 });
@@ -167,8 +176,9 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
-router.get("/projects/:projectId", requireAuth, async (req, res): Promise<void> => {
-  const ownerClerkUserId = getRequiredClerkUserId(res);
+router.get("/projects/:projectId", requireProjectEditorAuth, async (req, res): Promise<void> => {
+  const athleteEditorAccess = res.locals.athleteEditorAccess as { ownerClerkUserId: string; projectId: string } | undefined;
+  const ownerClerkUserId = athleteEditorAccess?.ownerClerkUserId ?? getRequiredClerkUserId(res);
   const params = GetProjectParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -182,17 +192,24 @@ router.get("/projects/:projectId", requireAuth, async (req, res): Promise<void> 
       and(
         eq(cloudProjectsTable.id, params.data.projectId),
         eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+        ...(athleteEditorAccess ? [eq(cloudProjectsTable.id, athleteEditorAccess.projectId)] : []),
       ),
     );
   if (!project) {
     res.status(404).json({ error: "Project not found" });
     return;
   }
+  const projectData = project.project as { tool?: unknown } | null;
+  if (athleteEditorAccess && projectData?.tool !== "hype-card") {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
   res.json(await projectResponse(project, ownerClerkUserId));
 });
 
-router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void> => {
-  const ownerClerkUserId = getRequiredClerkUserId(res);
+router.patch("/projects/:projectId", requireProjectEditorAuth, async (req, res): Promise<void> => {
+  const athleteEditorAccess = res.locals.athleteEditorAccess as { ownerClerkUserId: string; projectId: string } | undefined;
+  const ownerClerkUserId = athleteEditorAccess?.ownerClerkUserId ?? getRequiredClerkUserId(res);
   const params = UpdateProjectParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -216,6 +233,7 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
       and(
         eq(cloudProjectsTable.id, params.data.projectId),
         eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+        ...(athleteEditorAccess ? [eq(cloudProjectsTable.id, athleteEditorAccess.projectId)] : []),
       ),
     );
   if (!current) {
@@ -224,6 +242,12 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
   }
   const currentPayload = current.project as { tool?: unknown } | null;
   const incomingPayload = parsed.data.project as { tool?: unknown } | null | undefined;
+  if (athleteEditorAccess
+    && (currentPayload?.tool !== "hype-card"
+      || (incomingPayload !== undefined && incomingPayload?.tool !== "hype-card"))) {
+    res.status(403).json({ error: "Athlete access is limited to the linked HYPE Card." });
+    return;
+  }
   if ((currentPayload && typeof currentPayload === "object" && currentPayload.tool === "schedule")
     || (incomingPayload && typeof incomingPayload === "object" && incomingPayload.tool === "schedule")) {
     res.status(410).json({ error: "Standalone Calendar projects are no longer supported." });

@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { athleteInvitesTable } from "./athleteInvites";
+export * from "./athleteEditorAccess";
 export * from "./soccerGear";
 import { scheduleSharesTable } from "./scheduleShares";
 

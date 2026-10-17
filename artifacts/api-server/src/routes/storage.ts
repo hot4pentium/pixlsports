@@ -16,8 +16,8 @@ import {
   projectMediaTable,
   projectMediaUploadClaimsTable,
 } from "@workspace/db";
-import { Router, type IRouter } from "express";
-import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { Router, type IRouter, type Response } from "express";
+import { getRequiredClerkUserId, requireProjectEditorAuth } from "../middlewares/requireAuth";
 import { hasActivePaidEntitlement, PROJECT_MEDIA_QUOTA_BYTES } from "../lib/accountLifecycle";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
@@ -37,6 +37,16 @@ function rolePolicy(role: string) {
   return ROLE_LIMITS[role];
 }
 
+type AthleteEditorScope = { ownerClerkUserId: string; projectId: string };
+
+function athleteEditorScope(res: Response): AthleteEditorScope | null {
+  return (res.locals.athleteEditorAccess as AthleteEditorScope | undefined) ?? null;
+}
+
+function storageOwner(res: Response) {
+  return athleteEditorScope(res)?.ownerClerkUserId ?? getRequiredClerkUserId(res);
+}
+
 async function deleteObjectQuietly(path: string, log: { warn: (obj: unknown, msg: string) => void }) {
   try {
     await objectStorageService.deleteObjectEntity(path);
@@ -45,10 +55,14 @@ async function deleteObjectQuietly(path: string, log: { warn: (obj: unknown, msg
   }
 }
 
-router.post("/storage/uploads/request-url", requireAuth, async (req, res): Promise<void> => {
+router.post("/storage/uploads/request-url", requireProjectEditorAuth, async (req, res): Promise<void> => {
   const parsed = RequestProjectMediaUploadUrlBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const athleteScope = athleteEditorScope(res);
+  const ownerClerkUserId = storageOwner(res);
+  if (athleteScope && parsed.data.projectId !== athleteScope.projectId) {
+    res.status(403).json({ error: "Athlete uploads are limited to the linked HYPE Card." }); return;
+  }
   if (!(await hasActivePaidEntitlement(ownerClerkUserId))) {
     res.status(403).json({ error: "An active paid entitlement is required for cloud media." }); return;
   }
@@ -83,10 +97,11 @@ router.post("/storage/uploads/request-url", requireAuth, async (req, res): Promi
   }
 });
 
-router.post("/storage/uploads/complete", requireAuth, async (req, res): Promise<void> => {
+router.post("/storage/uploads/complete", requireProjectEditorAuth, async (req, res): Promise<void> => {
   const parsed = CompleteProjectMediaUploadBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const athleteScope = athleteEditorScope(res);
+  const ownerClerkUserId = storageOwner(res);
   if (!(await hasActivePaidEntitlement(ownerClerkUserId))) { res.status(403).json({ error: "An active paid entitlement is required for cloud media." }); return; }
   let replacementPath: string | null = null;
   let created: typeof projectMediaTable.$inferSelect;
@@ -99,6 +114,7 @@ router.post("/storage/uploads/complete", requireAuth, async (req, res): Promise<
         gt(projectMediaUploadClaimsTable.expiresAt, new Date()),
       ));
       if (!claim) throw new Error("CLAIM_EXPIRED");
+      if (athleteScope && claim.projectId !== athleteScope.projectId) throw new Error("ATHLETE_SCOPE");
       const policy = rolePolicy(claim.mediaRole);
       if (!policy) throw new Error("INVALID_ROLE");
       const metadata = await objectStorageService.getObjectEntityMetadata(claim.objectPath);
@@ -134,6 +150,7 @@ router.post("/storage/uploads/complete", requireAuth, async (req, res): Promise<
     delete (response as { objectPath?: string }).objectPath;
     res.status(201).json(CompleteProjectMediaUploadResponse.parse(response));
   } catch (error) {
+    if (error instanceof Error && error.message === "ATHLETE_SCOPE") { res.status(403).json({ error: "Athlete uploads are limited to the linked HYPE Card." }); return; }
     if (error instanceof Error && error.message === "CLAIM_EXPIRED") { res.status(409).json({ error: "Upload claim expired or was already consumed." }); return; }
     if (error instanceof Error && error.message === "QUOTA_EXCEEDED") { await deleteObjectQuietly(parsed.data.objectPath, req.log); res.status(409).json({ error: "Cloud media storage quota reached." }); return; }
     if (error instanceof Error && (error.message === "INVALID_MEDIA" || error.message === "INVALID_ROLE")) { await deleteObjectQuietly(parsed.data.objectPath, req.log); res.status(413).json({ error: "Uploaded media does not match its declared type or size." }); return; }
@@ -142,10 +159,11 @@ router.post("/storage/uploads/complete", requireAuth, async (req, res): Promise<
   }
 });
 
-router.delete("/storage/uploads/:claimId", requireAuth, async (req, res): Promise<void> => {
+router.delete("/storage/uploads/:claimId", requireProjectEditorAuth, async (req, res): Promise<void> => {
   const params = AbandonProjectMediaUploadParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const athleteScope = athleteEditorScope(res);
+  const ownerClerkUserId = storageOwner(res);
   try {
     await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ownerClerkUserId}))`);
@@ -154,6 +172,7 @@ router.delete("/storage/uploads/:claimId", requireAuth, async (req, res): Promis
         eq(projectMediaUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
       ));
       if (!claim) throw new Error("CLAIM_NOT_FOUND");
+      if (athleteScope && claim.projectId !== athleteScope.projectId) throw new Error("CLAIM_NOT_FOUND");
 
       const [attached] = await tx.select({ id: projectMediaTable.id }).from(projectMediaTable).where(and(
         eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId),
@@ -191,21 +210,31 @@ router.delete("/storage/uploads/:claimId", requireAuth, async (req, res): Promis
   }
 });
 
-router.delete("/storage/media/:mediaId", requireAuth, async (req, res): Promise<void> => {
+router.delete("/storage/media/:mediaId", requireProjectEditorAuth, async (req, res): Promise<void> => {
   const params = DeleteProjectMediaParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const ownerClerkUserId = getRequiredClerkUserId(res);
-  const [media] = await db.delete(projectMediaTable).where(and(eq(projectMediaTable.id, params.data.mediaId), eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId))).returning();
+  const athleteScope = athleteEditorScope(res);
+  const ownerClerkUserId = storageOwner(res);
+  const [media] = await db.delete(projectMediaTable).where(and(
+    eq(projectMediaTable.id, params.data.mediaId),
+    eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId),
+    ...(athleteScope ? [eq(projectMediaTable.projectId, athleteScope.projectId)] : []),
+  )).returning();
   if (!media) { res.status(404).json({ error: "Media not found" }); return; }
   await deleteObjectQuietly(media.objectPath, req.log);
   res.sendStatus(204);
 });
 
-router.get("/storage/media/:mediaId", requireAuth, async (req, res): Promise<void> => {
-  const ownerClerkUserId = getRequiredClerkUserId(res);
+router.get("/storage/media/:mediaId", requireProjectEditorAuth, async (req, res): Promise<void> => {
+  const athleteScope = athleteEditorScope(res);
+  const ownerClerkUserId = storageOwner(res);
   const params = ServeProjectMediaParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const [media] = await db.select().from(projectMediaTable).where(and(eq(projectMediaTable.id, params.data.mediaId), eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId)));
+  const [media] = await db.select().from(projectMediaTable).where(and(
+    eq(projectMediaTable.id, params.data.mediaId),
+    eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId),
+    ...(athleteScope ? [eq(projectMediaTable.projectId, athleteScope.projectId)] : []),
+  ));
   if (!media) { res.status(404).json({ error: "Media not found" }); return; }
   try {
     const file = await objectStorageService.getObjectEntityFile(media.objectPath);
