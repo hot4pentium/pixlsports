@@ -3,13 +3,13 @@ name: Immersive Athlete Locker
 description: User-approved direction for the dedicated Pixl Sports Athlete Locker.
 ---
 
-Keep the Locker off the supporter dashboard. Put both the Dynamic Showcase and Locker sections in a separate Player Showcase tab, inspired by the user's supplied jersey and cinematic locker references. Populate it with live selected-athlete data. Preserve the existing account and permission model; do not add an Owner/Supporter role switch.
+Keep the Locker off the supporter dashboard. Make the separate Player Showcase tab a jersey-first showcase based on the user's supplied photoreal jersey reference; do not duplicate the Locker there. Preserve existing public/shared Locker routes and account/permission behavior; do not add an Owner/Supporter role switch.
 
 Equipment should appear as automatic rewards for meaningful return and usage milestones—such as distinct returns, first/tenth Event Cards, and first/fifth completed Stat Tracker games—instead of collecting badges.
 
-**Why:** The user chose a full Locker experience based on the reference image, then clarified that it may be the primary surface and that equipment should replace badges as product-use milestones.
+**Why:** The user initially chose a full Locker experience, then preferred a photoreal jersey as the Player Showcase centerpiece instead of showing both jersey and Locker.
 
-**How to apply:** Treat the image as the Locker's visual reference and preserve Pixl Sports' existing identity around it. Count only successful, durable actions; do not reward refreshes, drafts, edits, retries, failed saves, or abandoned tracker sessions. Keep card and parent-management permissions as they are.
+**How to apply:** Overlay current athlete details on the supplied photoreal jersey and keep Gear and Shoutouts actions on the showcase. Leave public Locker views, permissions, and milestone rules unchanged.
 
 Parents are expected to build the athlete's site, while the athlete should be involved in making it their own.
 

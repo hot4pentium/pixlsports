@@ -107,7 +107,7 @@ function render() {
   const profile = {athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,jerseyNumber:'17',sport:state.sport,displayName:'Parent',position:'',relationship:'parent',accessMode:'full'};
   const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-    {state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} {...props}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
+     {state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -197,16 +197,15 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-parent-week"]').getAttribute('href')`), `${base}/studio`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-gear"]').getAttribute('href')`), `${base}/studio/soccer-gear`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-shoutouts"]').getAttribute('href')`), `${base}/studio/athlete-page#owner-fan-hypes`);
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-jersey"]')?.getAttribute('alt').includes('Jordan Lee number 17')`));
     for (const width of [320, 390, 1440]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
-      const placement = width < 861 ? 'mobile' : 'desktop';
-      await browser.wait(`document.querySelector('[data-testid="athlete-locker-${placement}"]')`);
-      assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="athlete-locker-"]').length`), 1);
-      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-locker-events-${placement}"]').getAttribute('href')`), `${base}/studio`);
+      assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), `Photoreal jersey is missing at ${width}px`);
+      assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="athlete-locker-"]').length`), 0, 'Player Showcase should focus on the jersey, not repeat the Locker');
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Player Showcase overflows at ${width}px`);
     }
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-    await browser.wait(`document.querySelector('[data-testid="athlete-locker-mobile"]')`);
+    await browser.wait(`document.querySelector('[data-testid="image-showcase-jersey"]')`);
     const showcaseCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-player-showcase-check.jpg'), Buffer.from(showcaseCapture.data, 'base64'));
     await browser.evaluate(`window.__update({gearStatus:'loading'})`);
