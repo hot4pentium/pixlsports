@@ -83,6 +83,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {Router} from 'wouter';
 import {SharedLockerPage} from './src/features/shared-locker';
 import {AthleteLocker} from './src/features/athlete-locker';
+import {PlayerShowcaseContent} from './src/features/player-showcase';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
@@ -101,8 +102,12 @@ window.fetch = async (input,init) => {
 };
 Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{if(state.denyCopy)throw new Error('Denied');window.__copied=value;}}});
 function render() {
+  const ownerCard = {...card,paused:state.paused,showHypeCard:state.showHypeCard};
+  const gear = state.gearStatus==='ready' ? {athleteName:card.athleteName,loadout,unlockedGear:[],progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}} : null;
+  const profile = {athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,jerseyNumber:'17',sport:state.sport,displayName:'Parent',position:'',relationship:'parent',accessMode:'full'};
+  const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-    {state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} card={{...card,paused:state.paused,showHypeCard:state.showHypeCard}} cardHref={'/fan/'+card.inviteToken} cardStatus={state.cardStatus} gearStatus={state.gearStatus} gear={state.gearStatus==='ready' ? {athleteName:card.athleteName,loadout,unlockedGear:[],progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}} : null}/>}
+    {state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} {...props}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -186,6 +191,33 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Owner Locker overflows at ${width}px`);
     }
+    await browser.evaluate(`window.__update({mode:'showcase',sport:'soccer',gearStatus:'ready'})`);
+    await browser.wait(`document.querySelector('[data-testid="page-player-showcase"]')`);
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="section-dynamic-showcase"]').length`), 1);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-parent-week"]').getAttribute('href')`), `${base}/studio`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-gear"]').getAttribute('href')`), `${base}/studio/soccer-gear`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-shoutouts"]').getAttribute('href')`), `${base}/studio/athlete-page#owner-fan-hypes`);
+    for (const width of [320, 390, 1440]) {
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+      const placement = width < 861 ? 'mobile' : 'desktop';
+      await browser.wait(`document.querySelector('[data-testid="athlete-locker-${placement}"]')`);
+      assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="athlete-locker-"]').length`), 1);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-locker-events-${placement}"]').getAttribute('href')`), `${base}/studio`);
+      assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Player Showcase overflows at ${width}px`);
+    }
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await browser.wait(`document.querySelector('[data-testid="athlete-locker-mobile"]')`);
+    const showcaseCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
+    await writeFile(resolve(tmpdir(), 'pixl-player-showcase-check.jpg'), Buffer.from(showcaseCapture.data, 'base64'));
+    await browser.evaluate(`window.__update({gearStatus:'loading'})`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-gear-loading"]')`);
+    await browser.evaluate(`window.__update({gearStatus:'unavailable'})`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-gear-empty"]')`);
+    await browser.evaluate(`window.__update({gearStatus:'error'})`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-error"]')`);
+    await browser.evaluate(`window.__update({sport:'basketball',gearStatus:'unavailable'})`);
+    await browser.wait(`!document.querySelector('[data-testid="link-showcase-gear"]')`);
+    assert.ok(await browser.evaluate(`document.querySelector('.ps__jersey').getAttribute('aria-label').includes('Basketball')`));
   } finally {
     browser?.close();
     await stop(chromium);

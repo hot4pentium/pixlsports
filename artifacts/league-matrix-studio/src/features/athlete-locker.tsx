@@ -22,6 +22,7 @@ export interface AthleteLockerProps {
   gear: SoccerGearState | null;
   gearStatus: AthleteLockerGearStatus;
   sport?: string | null;
+  eventCardsHref?: string;
 }
 
 const unlockLabels: Record<string, string> = {
@@ -91,6 +92,7 @@ export function AthleteLocker({
   gear,
   gearStatus,
   sport = null,
+  eventCardsHref,
 }: AthleteLockerProps) {
   const [shareFeedback, setShareFeedback] = useState<{ path: string; text: string } | null>(null);
   const isSoccer = (sport ?? card?.sport) === 'soccer';
@@ -115,9 +117,9 @@ export function AthleteLocker({
       setShareFeedback({ path: lockerPath, text: 'Could not copy the link. Open the preview and copy it from the address bar.' });
     }
   };
-  const eventsHref = `#event-cards-${placement}`;
+  const eventsHref = eventCardsHref ?? `#event-cards-${placement}`;
   const primary = [
-    { id: 'events', label: 'Event Cards', hint: eventCount ? `${eventCount} made` : 'Plan the day', href: eventsHref, hash: true, Icon: CalendarDays },
+    { id: 'events', label: 'Event Cards', hint: eventCount ? `${eventCount} made` : 'Plan the day', href: eventsHref, hash: eventsHref.startsWith('#'), Icon: CalendarDays },
     { id: 'stat-tracker', label: 'Stat Tracker', hint: 'Tap live plays', href: '/studio/stat-tracker', hash: false, Icon: Activity },
     { id: 'prep', label: 'Prep', hint: 'Pack the bag', href: '/studio/checklist', hash: false, Icon: ClipboardCheck },
   ];

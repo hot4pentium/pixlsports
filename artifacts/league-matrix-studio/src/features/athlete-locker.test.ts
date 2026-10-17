@@ -4,13 +4,15 @@ import { readFileSync } from 'node:fs';
 import type { OwnedAthleteInvite, SoccerGearState } from '@workspace/api-client-react';
 import { canOpenAthleteLockerCard, getAthleteLockerRewards, isSoccerGearForAthlete } from './athlete-locker-model';
 
-test('the parent weekly summary precedes the athlete showcase in both dashboard layouts', () => {
+test('the parent dashboard contains no Locker and offers a separate Player Showcase tab', () => {
   const source = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
-  for (const shell of ['supporter-dashboard-mobile-shell', 'supporter-dashboard-desktop-shell']) {
-    const layout = source.slice(source.indexOf(shell));
-    assert.ok(layout.indexOf('<SupporterGameOnSummary') >= 0);
-    assert.ok(layout.indexOf('<SupporterGameOnSummary') < layout.indexOf('<AthleteLocker'), shell);
-  }
+  assert.doesNotMatch(source, /<AthleteLocker\b|useGetSoccerGear|soccerGearQuery/);
+  assert.match(source, /data-testid="link-mobile-player-showcase"/);
+  assert.match(source, /href="\/studio\/player-showcase"/);
+  assert.equal((source.match(/<SupporterGameOnSummary\b/g) ?? []).length, 2);
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /data-testid="link-toolbar-player-showcase"/);
+  assert.match(app, /path="\/studio\/player-showcase"><ProtectedEditor/);
 });
 
 function invite(overrides: Partial<OwnedAthleteInvite> = {}) {

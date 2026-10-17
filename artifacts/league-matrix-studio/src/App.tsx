@@ -233,6 +233,9 @@ const SeasonPassPreview = lazy(() => import('@/features/season-pass-preview'));
 const SupporterDashboardView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterDashboardView }) => ({ default: SupporterDashboardView })),
 );
+const PlayerShowcasePage = lazy(() =>
+  import('@/features/player-showcase').then(({ PlayerShowcasePage }) => ({ default: PlayerShowcasePage })),
+);
 const SupporterProfileView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterProfileView }) => ({ default: SupporterProfileView })),
 );
@@ -1192,6 +1195,11 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
         <div className={isFanDashboard ? 'hidden lg:block border-b border-border bg-background bg-tech-grid' : 'border-b border-border bg-background bg-tech-grid'} data-testid="studio-tool-toolbar">
           <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
             <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">{homeLabel}</Link>
+            {activeRole === 'fan' && (
+              <Link href="/studio/player-showcase" aria-current={location === '/studio/player-showcase' ? 'page' : undefined} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/player-showcase' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-player-showcase">
+                Player Showcase
+              </Link>
+            )}
             {visibleTools.filter((key) => !(
               isSupporterProfile
               && (key === 'hype' || key === 'stat-tracker' || key === 'checklist')
@@ -1302,6 +1310,12 @@ function SoccerGearStudioPage() {
   return <StudioLayout><SoccerGearBuilderPage key={user?.id} accountId={user?.id ?? ''} athleteName={profile.athleteName} /></StudioLayout>;
 }
 
+function PlayerShowcaseStudioPage() {
+  const { user } = useUser();
+  const profile = supporterProfileFromUser(user);
+  return <StudioLayout><PlayerShowcasePage key={user?.id} userId={user?.id ?? null} profile={profile} /></StudioLayout>;
+}
+
 function SoccerGearSignedInActivity() {
   const { user } = useUser();
   const [location] = useLocation();
@@ -1402,9 +1416,6 @@ function SupporterStudio() {
             Offline mode — showing this device’s saved dashboard. Tracker, Calendar, and checklist work stays on this device until you reconnect. Sharing and uploads need a connection.
           </div>
         )}
-        <div className="mx-auto flex w-full max-w-[1400px] justify-end px-4 pt-3 sm:px-8">
-          <Link href="/studio/soccer-gear" className="rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-bold text-foreground" data-testid="link-hub-soccer-gear">Soccer Gear · Build your kit</Link>
-        </div>
         <SupporterDashboardView
           key={user?.id}
           profile={profile}
@@ -4147,6 +4158,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
+              <Route path="/studio/player-showcase"><ProtectedEditor kind="hype"><PlayerShowcaseStudioPage /></ProtectedEditor></Route>
               <Route path="/studio/soccer-gear"><ProtectedEditor kind="hype"><SoccerGearStudioPage /></ProtectedEditor></Route>
               <Route path="/studio/admin" component={() => <StudioLayout><AdminConsolePage /></StudioLayout>} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />

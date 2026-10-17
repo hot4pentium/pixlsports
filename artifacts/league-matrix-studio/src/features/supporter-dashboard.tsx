@@ -6,12 +6,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
   getGetAthleteFanCardQueryKey,
-  getGetSoccerGearQueryKey,
   getListAthleteInvitesQueryKey,
   getListProjectsQueryKey,
   getListOwnedGameOnCardsQueryKey,
   useGetSupporterActiveGame,
-  useGetSoccerGear,
   useListAthleteInvites,
   useUpdateAthleteInvite,
   useListProjects,
@@ -73,8 +71,6 @@ import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
 import { SupporterHypeCardPreview } from './supporter-hype-card-preview';
-import { AthleteLocker } from './athlete-locker';
-import { isSoccerGearForAthlete } from './athlete-locker-model';
 import { NotificationSettings } from './notification-settings';
 import {
   DashboardInstallInstructionsDialog,
@@ -359,37 +355,8 @@ export function SupporterDashboardView({
       retry: false,
     },
   });
-  const soccerGearQuery = useGetSoccerGear({
-    query: {
-      enabled: Boolean(userId && profile.sport === 'soccer'),
-      queryKey: [...getGetSoccerGearQueryKey(), userId ?? null],
-      staleTime: 0,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      retry: false,
-    },
-  });
   const fanCardHref = getSupporterFanCardHref(athleteInvitesQuery.data ?? [], profile);
   const savedFanCard = getSupporterFanCard(athleteInvitesQuery.data ?? [], profile);
-  const lockerGear = isSoccerGearForAthlete(soccerGearQuery.data, profile.athleteName, profile.sport)
-    ? soccerGearQuery.data
-    : null;
-  const lockerCardStatus = Boolean(userId) && athleteInvitesQuery.isLoading
-    ? 'loading' as const
-    : Boolean(userId) && athleteInvitesQuery.isError
-      ? 'error' as const
-      : savedFanCard
-        ? 'ready' as const
-        : 'missing' as const;
-  const lockerGearStatus = profile.sport !== 'soccer' || !userId
-    ? 'unavailable' as const
-    : soccerGearQuery.isLoading
-      ? 'loading' as const
-      : soccerGearQuery.isError
-        ? 'error' as const
-        : lockerGear
-          ? 'ready' as const
-          : 'unavailable' as const;
   const fanCardReconnectionCandidates = getSupporterFanCardReconnectionCandidates(
     athleteInvitesQuery.data ?? [],
     profile,
@@ -1304,6 +1271,15 @@ export function SupporterDashboardView({
           )}
         </header>
 
+        <nav aria-label="Supporter sections" className="flex gap-1 border-b border-white/10 px-4 pt-3" data-testid="mobile-supporter-tabs">
+          <Link href="/studio" aria-current="page" className="border-b-2 border-[#55A4FF] px-3 py-3 text-sm font-bold text-white" data-testid="link-mobile-parent-week">
+            Your week
+          </Link>
+          <Link href="/studio/player-showcase" className="border-b-2 border-transparent px-3 py-3 text-sm font-bold text-white/70 hover:text-white" data-testid="link-mobile-player-showcase">
+            Player Showcase
+          </Link>
+        </nav>
+
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
           <SupporterGameOnSummary
@@ -1335,18 +1311,6 @@ export function SupporterDashboardView({
           >
             {renderGameOnEventContent('mobile')}
           </SupporterGameOnSummary>
-          <AthleteLocker
-            placement="mobile"
-            athleteName={profile.athleteName}
-            teamName={profile.teamName}
-            jerseyNumber={profile.jerseyNumber || '—'}
-            card={savedFanCard ?? null}
-            cardHref={savedFanCard ? fanCardHref : null}
-            cardStatus={lockerCardStatus}
-            gear={lockerGear}
-            gearStatus={lockerGearStatus}
-            sport={profile.sport ?? null}
-          />
           <div id="event-cards-mobile" className="scroll-mt-20" />
           <GameOnDashboardCollection
             cards={collectionCards}
@@ -1446,18 +1410,6 @@ export function SupporterDashboardView({
       >
         {renderGameOnEventContent('desktop')}
       </SupporterGameOnSummary>
-      <AthleteLocker
-        placement="desktop"
-        athleteName={profile.athleteName}
-        teamName={profile.teamName}
-        jerseyNumber={profile.jerseyNumber || '—'}
-        card={savedFanCard ?? null}
-        cardHref={savedFanCard ? fanCardHref : null}
-        cardStatus={lockerCardStatus}
-        gear={lockerGear}
-        gearStatus={lockerGearStatus}
-        sport={profile.sport ?? null}
-      />
       <div id="event-cards-desktop" className="scroll-mt-6" />
       <GameOnDashboardCollection
         cards={collectionCards}
