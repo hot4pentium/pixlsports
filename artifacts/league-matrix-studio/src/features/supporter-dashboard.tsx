@@ -1306,17 +1306,6 @@ export function SupporterDashboardView({
 
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
-          <AthleteLocker
-            placement="mobile"
-            athleteName={profile.athleteName}
-            teamName={profile.teamName}
-            jerseyNumber={profile.jerseyNumber || '—'}
-            card={savedFanCard ?? null}
-            cardHref={savedFanCard ? fanCardHref : null}
-            cardStatus={lockerCardStatus}
-            gear={lockerGear}
-            gearStatus={lockerGearStatus}
-          />
           <SupporterGameOnSummary
             variant="mobile"
             athleteName={profile.athleteName}
@@ -1346,6 +1335,18 @@ export function SupporterDashboardView({
           >
             {renderGameOnEventContent('mobile')}
           </SupporterGameOnSummary>
+          <AthleteLocker
+            placement="mobile"
+            athleteName={profile.athleteName}
+            teamName={profile.teamName}
+            jerseyNumber={profile.jerseyNumber || '—'}
+            card={savedFanCard ?? null}
+            cardHref={savedFanCard ? fanCardHref : null}
+            cardStatus={lockerCardStatus}
+            gear={lockerGear}
+            gearStatus={lockerGearStatus}
+            sport={profile.sport ?? null}
+          />
           <div id="event-cards-mobile" className="scroll-mt-20" />
           <GameOnDashboardCollection
             cards={collectionCards}
@@ -1431,17 +1432,6 @@ export function SupporterDashboardView({
           </div>
         </div>
       )}
-      <AthleteLocker
-        placement="desktop"
-        athleteName={profile.athleteName}
-        teamName={profile.teamName}
-        jerseyNumber={profile.jerseyNumber || '—'}
-        card={savedFanCard ?? null}
-        cardHref={savedFanCard ? fanCardHref : null}
-        cardStatus={lockerCardStatus}
-        gear={lockerGear}
-        gearStatus={lockerGearStatus}
-      />
       <SupporterGameOnSummary
         variant="desktop"
         athleteName={profile.athleteName}
@@ -1456,6 +1446,18 @@ export function SupporterDashboardView({
       >
         {renderGameOnEventContent('desktop')}
       </SupporterGameOnSummary>
+      <AthleteLocker
+        placement="desktop"
+        athleteName={profile.athleteName}
+        teamName={profile.teamName}
+        jerseyNumber={profile.jerseyNumber || '—'}
+        card={savedFanCard ?? null}
+        cardHref={savedFanCard ? fanCardHref : null}
+        cardStatus={lockerCardStatus}
+        gear={lockerGear}
+        gearStatus={lockerGearStatus}
+        sport={profile.sport ?? null}
+      />
       <div id="event-cards-desktop" className="scroll-mt-6" />
       <GameOnDashboardCollection
         cards={collectionCards}

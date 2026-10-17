@@ -199,6 +199,9 @@ const LivingAthleteCardPage = lazy(() =>
 const FanCardActions = lazy(() =>
   import('@/features/fan-card-follow').then(({ FanCardActions }) => ({ default: FanCardActions })),
 );
+const SharedLockerPage = lazy(() =>
+  import('@/features/shared-locker').then(({ SharedLockerPage }) => ({ default: SharedLockerPage })),
+);
 function LivingAthleteCardRoute({ params }: { params: { inviteToken?: string } }) {
   return <LivingAthleteCardPage params={params} followControls={<FanCardActions inviteToken={params.inviteToken ?? ''} />} />;
 }
@@ -4139,6 +4142,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/live/:shareToken" component={PublicStatTrackerPage} />
               <Route path="/fan/:inviteToken" component={LivingAthleteCardRoute} />
+              <Route path="/locker/:inviteToken" component={SharedLockerPage} />
               <Route path="/supporter-guide" component={SupporterToolsGuidePage} />
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />

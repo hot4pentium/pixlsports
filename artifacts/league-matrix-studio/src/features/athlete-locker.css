@@ -399,3 +399,64 @@
   .athlete-locker__gear { grid-template-columns: minmax(88px, 110px) minmax(0, 1fr); }
   .athlete-locker__kit-stage .gear-player { width: 80px; height: 124px; }
 }
+
+/* ---- Showcase additions ---- */
+.athlete-locker__cocreate { display:flex; align-items:center; gap:10px; margin-top:12px; padding:10px 12px; border-radius:10px; background:#dff56f; color:#0b1f3a; font-weight:800; font-size:13px; text-decoration:none; transition:transform .18s; }
+.athlete-locker__cocreate:hover { transform:translateY(-2px); }
+.athlete-locker__cocreate small { display:block; font-weight:500; font-size:10px; opacity:.75; }
+.athlete-locker__cocreate:focus-visible, .athlete-locker__share button:focus-visible, .athlete-locker__share a:focus-visible { outline:3px solid #b9d8ff; outline-offset:2px; }
+.athlete-locker__kit-stage { box-shadow: inset 0 -14px 24px -14px rgba(85,164,255,.55); }
+.athlete-locker__share { margin:0 14px 14px; padding:12px; border:1px solid rgba(85,164,255,.3); border-radius:12px; background:rgba(4,18,38,.45); }
+.athlete-locker__share p { margin:0 0 8px; font-size:11px; color:rgba(243,246,250,.7); }
+.athlete-locker__share-row { display:flex; flex-wrap:wrap; gap:8px; }
+.athlete-locker__share-row a, .athlete-locker__share-row button { min-height:40px; padding:8px 14px; border-radius:99px; border:1px solid rgba(85,164,255,.5); background:rgba(40,120,245,.18); color:#fff; font:700 12px "DM Sans",sans-serif; text-decoration:none; cursor:pointer; }
+.athlete-locker__share-feedback { margin-top:8px; font-size:11px; color:#b9d8ff; }
+
+.shared-locker { min-height:100dvh; padding:16px; display:grid; gap:14px; align-content:start; justify-items:center; background:#07101e; color:#f3f6fa; font-family:"DM Sans",sans-serif; }
+.shared-locker__shell { width:min(100%,560px); min-width:0; overflow:hidden; border:1px solid rgba(142,203,255,.25); border-radius:16px; background:linear-gradient(145deg,#102b4d,#0b1a30); }
+.shared-locker__head { display:flex; gap:12px; align-items:center; padding:14px 16px; }
+.shared-locker__head h1 { margin:0; font:800 30px/1 "Barlow Condensed",sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
+.shared-locker__badge { display:grid; place-items:center; width:42px; height:42px; border-radius:50%; border:1px solid rgba(85,164,255,.5); color:#8ecbff; flex:none; }
+.shared-locker__meta { margin:2px 0 0; font-size:12px; color:rgba(243,246,250,.7); }
+.shared-locker__stage { --kit:#2878f5; position:relative; display:grid; justify-items:center; align-content:end; min-height:400px; padding:24px 16px 70px; background:linear-gradient(180deg,#050b16,#0a1d36); border-block:1px solid rgba(85,164,255,.2); }
+.shared-locker__spot { position:absolute; inset:0 0 auto; height:180px; background:radial-gradient(ellipse at 50% 0,rgba(255,255,255,.18),transparent 70%); }
+.shared-locker__photo { position:absolute; top:16px; right:16px; width:64px; height:64px; border-radius:12px; object-fit:cover; border:1px solid rgba(255,255,255,.3); }
+.shared-locker__jersey { position:relative; width:200px; height:210px; display:grid; align-content:center; justify-items:center; border-radius:30px 30px 12px 12px; background:linear-gradient(160deg,color-mix(in srgb,var(--kit) 80%,#fff),color-mix(in srgb,var(--kit) 70%,#000)); box-shadow:0 20px 40px rgba(0,0,0,.5); animation:locker-drop .6s cubic-bezier(.2,.9,.3,1.2) both; }
+.shared-locker__jersey-name { font:700 13px "DM Sans"; letter-spacing:.2em; text-transform:uppercase; color:#fff; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+.shared-locker__jersey strong { font:900 84px/1 "Barlow Condensed",sans-serif; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,.5); }
+.shared-locker__bench { width:80%; height:18px; margin-top:18px; border-radius:6px; background:#1b3a6a; }
+.shared-locker__cta { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); display:inline-flex; gap:6px; align-items:center; min-height:44px; padding:10px 20px; border-radius:99px; background:#16313f; border:1px solid rgba(255,255,255,.35); color:#fff; font-weight:700; text-decoration:none; white-space:nowrap; }
+.shared-locker__cta:focus-visible, .shared-locker__btn:focus-visible { outline:3px solid #b9d8ff; outline-offset:2px; }
+.shared-locker__foot { display:flex; justify-content:space-between; padding:10px 16px; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:rgba(243,246,250,.6); }
+.shared-locker__events { padding:16px; }
+.shared-locker__events h2 { margin:0 0 10px; font:800 20px "Barlow Condensed",sans-serif; text-transform:uppercase; }
+.shared-locker__events ul { margin:0; padding:0; list-style:none; display:grid; gap:8px; }
+.shared-locker__events li { display:grid; gap:2px; padding:10px 12px; border-radius:10px; background:rgba(85,164,255,.1); overflow-wrap:anywhere; }
+.shared-locker__events li span, .shared-locker__none { font-size:12px; color:rgba(243,246,250,.7); }
+.shared-locker__none { margin:0; padding:18px; border:1px dashed rgba(142,203,255,.3); border-radius:10px; text-align:center; }
+.shared-locker__empty { padding:28px 20px; display:grid; gap:10px; }
+.shared-locker__empty h1 { margin:0; font:800 28px/1 "Barlow Condensed",sans-serif; text-transform:uppercase; }
+.shared-locker__btn { justify-self:start; min-height:44px; padding:8px 18px; border-radius:99px; border:0; background:#dff56f; color:#0b1f3a; font-weight:800; cursor:pointer; }
+@media (prefers-reduced-motion: reduce) { .shared-locker__jersey, .athlete-locker__cocreate { animation:none; transition:none; } }
+
+/* ---- Showcase kit stage ---- */
+.athlete-locker__kit-stage { isolation:isolate; min-height:190px; background:radial-gradient(ellipse at 50% 0,rgba(120,180,255,.35),transparent 65%),linear-gradient(180deg,#0a2a5c,#06142c); border:1px solid rgba(85,164,255,.3); }
+.athlete-locker__beam { position:absolute; inset:0 20% 40% 20%; z-index:-1; background:linear-gradient(180deg,rgba(255,255,255,.2),transparent); clip-path:polygon(35% 0,65% 0,100% 100%,0 100%); }
+.athlete-locker__ring { position:absolute; width:150%; height:60%; right:-40%; top:20%; z-index:-1; border:6px solid rgba(85,164,255,.14); border-radius:50%; transform:rotate(-24deg); box-shadow:0 0 0 14px rgba(85,164,255,.07); }
+.athlete-locker__big-number { position:absolute; z-index:-1; top:14px; font:900 76px/1 "Barlow Condensed",sans-serif; color:rgba(255,255,255,.1); }
+.athlete-locker__podium { position:absolute; bottom:18px; width:80%; height:8px; border-radius:50%; background:#55a4ff; box-shadow:0 0 14px rgba(85,164,255,.8); }
+.athlete-locker__kit-stage .gear-player { margin-bottom:14px; filter:drop-shadow(0 8px 10px rgba(0,0,0,.5)); }
+.athlete-locker__kit-number { left:8px; right:8px; text-align:center; text-transform:uppercase; letter-spacing:.1em; }
+@media (prefers-reduced-motion: no-preference) { .athlete-locker__kit-stage .gear-player { animation:locker-drop .6s cubic-bezier(.2,.9,.3,1.2) both; } }
+
+.shared-locker__kit { position:relative; display:grid; place-items:center; }
+.shared-locker__kit .gear-player { width:150px; height:230px; }
+.shared-locker__jersey { background:none; box-shadow:none; border-radius:0; filter:drop-shadow(0 20px 24px rgba(0,0,0,.55)); }
+.shared-locker__jersey svg { position:absolute; inset:0; width:100%; height:100%; }
+.shared-locker__jersey > span, .shared-locker__jersey > strong { position:relative; }
+.shared-locker__kitnote { position:relative; margin:8px 0 0; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:rgba(243,246,250,.6); }
+.shared-locker__event { display:grid; gap:2px; color:inherit; text-decoration:none; }
+.shared-locker__events li:has(.shared-locker__event) { padding:0; }
+.shared-locker__event { padding:10px 12px; min-height:44px; }
+.shared-locker__event:hover { background:rgba(85,164,255,.18); }
+.shared-locker__event:focus-visible { outline:3px solid #b9d8ff; }

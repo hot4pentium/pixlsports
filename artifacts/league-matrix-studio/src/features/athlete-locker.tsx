@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react';
-import { ArrowUpRight, BookOpen, CalendarDays, ClipboardCheck, Activity, LockKeyhole, Shirt, Trophy, UserRound } from 'lucide-react';
+import { useState, type ReactElement } from 'react';
+import { ArrowUpRight, BookOpen, CalendarDays, ClipboardCheck, Activity, LockKeyhole, Palette, Link2, Eye, Shirt, Trophy, UserRound } from 'lucide-react';
 import type { OwnedAthleteInvite, SoccerGearState } from '@workspace/api-client-react';
 import { Link } from 'wouter';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
@@ -21,6 +21,7 @@ export interface AthleteLockerProps {
   cardStatus: AthleteLockerCardStatus;
   gear: SoccerGearState | null;
   gearStatus: AthleteLockerGearStatus;
+  sport?: string | null;
 }
 
 const unlockLabels: Record<string, string> = {
@@ -89,7 +90,10 @@ export function AthleteLocker({
   cardStatus,
   gear,
   gearStatus,
+  sport = null,
 }: AthleteLockerProps) {
+  const [shareFeedback, setShareFeedback] = useState<{ path: string; text: string } | null>(null);
+  const isSoccer = (sport ?? card?.sport) === 'soccer';
   const titleId = `athlete-locker-title-${placement}`;
   const canOpenCard = canOpenAthleteLockerCard(cardStatus, card, cardHref);
   const canShowCard = cardStatus === 'ready' && Boolean(card) && !card?.paused && card?.showHypeCard === true;
@@ -100,6 +104,17 @@ export function AthleteLocker({
 
   const eventCount = canShowGear && gear ? gear.progress.eventCardsCreated : 0;
   const shelf = getAthleteLockerRewards(canShowGear ? gear?.progress : null);
+  const lockerPath = canOpenCard && card ? `/locker/${encodeURIComponent(card.inviteToken)}` : null;
+  const copyLockerLink = async () => {
+    if (!lockerPath) return;
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${base}${lockerPath}`);
+      setShareFeedback({ path: lockerPath, text: 'Locker link copied.' });
+    } catch {
+      setShareFeedback({ path: lockerPath, text: 'Could not copy the link. Open the preview and copy it from the address bar.' });
+    }
+  };
   const eventsHref = `#event-cards-${placement}`;
   const primary = [
     { id: 'events', label: 'Event Cards', hint: eventCount ? `${eventCount} made` : 'Plan the day', href: eventsHref, hash: true, Icon: CalendarDays },
@@ -138,8 +153,12 @@ export function AthleteLocker({
             {canShowGear && gear ? (
               <div className="athlete-locker__gear" data-testid="content-locker-soccer-gear">
                 <div className="athlete-locker__kit-stage">
+                  <span className="athlete-locker__beam" aria-hidden="true" />
+                  <span className="athlete-locker__ring" aria-hidden="true" />
+                  <span className="athlete-locker__big-number" aria-hidden="true">{jerseyNumber}</span>
                   <PlayerKit loadout={gear.loadout} athleteName={athleteName || gear.athleteName} jerseyNumber={jerseyNumber} />
-                  <span className="athlete-locker__kit-number" data-testid="text-locker-kit-number">#{jerseyNumber}</span>
+                  <span className="athlete-locker__podium" aria-hidden="true" />
+                  <span className="athlete-locker__kit-number" data-testid="text-locker-kit-number">#{jerseyNumber} · {teamName || 'Soccer'}</span>
                 </div>
                 <div className="athlete-locker__gear-copy">
                   <p className="athlete-locker__gear-name" data-testid="text-locker-kit-athlete">{athleteName || gear.athleteName}</p>
@@ -161,10 +180,22 @@ export function AthleteLocker({
                       <p data-testid="text-locker-no-unlocks">Nothing unlocked yet.</p>
                     )}
                   </div>
+                  <Link className="athlete-locker__cocreate" href="/studio/soccer-gear" data-testid={`link-locker-cocreate-${placement}`}>
+                    <Palette size={16} aria-hidden="true" />
+                    <span>Design this kit together<small>Parent-guided, with {titleForAthlete(playerName)} choosing the look</small></span>
+                  </Link>
                 </div>
               </div>
             ) : (
-              <GearStatus status={gearStatus} />
+              <>
+                <GearStatus status={gearStatus} />
+                {isSoccer && (
+                  <Link className="athlete-locker__cocreate" href="/studio/soccer-gear" data-testid={`link-locker-cocreate-empty-${placement}`}>
+                    <Palette size={16} aria-hidden="true" />
+                    <span>Start designing the kit<small>Parent-guided, with {titleForAthlete(playerName)} choosing the look</small></span>
+                  </Link>
+                )}
+              </>
             )}
           </section>
 
@@ -248,6 +279,16 @@ export function AthleteLocker({
           </nav>
         </aside>
       </div>
+      {lockerPath && (
+        <div className="athlete-locker__share" data-testid={`section-locker-share-${placement}`}>
+          <p><strong>Parent management.</strong> The shared Locker is a read-only public view of the same card link.</p>
+          <div className="athlete-locker__share-row">
+            <Link href={lockerPath} data-testid={`link-locker-preview-${placement}`}><Eye size={13} aria-hidden="true" /> Preview shared Locker</Link>
+            <button type="button" onClick={() => void copyLockerLink()} data-testid={`button-locker-copy-${placement}`}><Link2 size={13} aria-hidden="true" /> Copy Locker link</button>
+          </div>
+          {shareFeedback?.path === lockerPath && <p className="athlete-locker__share-feedback" role="status" data-testid={`status-locker-copy-${placement}`}>{shareFeedback.text}</p>}
+        </div>
+      )}
     </section>
   );
 }

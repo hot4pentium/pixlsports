@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import type { OwnedAthleteInvite, SoccerGearState } from '@workspace/api-client-react';
 import { canOpenAthleteLockerCard, getAthleteLockerRewards, isSoccerGearForAthlete } from './athlete-locker-model';
+
+test('the parent weekly summary precedes the athlete showcase in both dashboard layouts', () => {
+  const source = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+  for (const shell of ['supporter-dashboard-mobile-shell', 'supporter-dashboard-desktop-shell']) {
+    const layout = source.slice(source.indexOf(shell));
+    assert.ok(layout.indexOf('<SupporterGameOnSummary') >= 0);
+    assert.ok(layout.indexOf('<SupporterGameOnSummary') < layout.indexOf('<AthleteLocker'), shell);
+  }
+});
 
 function invite(overrides: Partial<OwnedAthleteInvite> = {}) {
   return {
