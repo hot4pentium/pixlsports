@@ -13,6 +13,7 @@ import { JerseyLayerStage } from './jersey-layers';
 import { FootballJerseyPreview } from './football-jersey-preview';
 import { SportGearCollection } from './sport-gear-collection';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { useShowcaseSwipe } from './use-showcase-swipe';
 import './public-player-showcase.css';
 
 export interface PublicPlayerShowcasePageProps {
@@ -25,6 +26,7 @@ function sportName(value: string) {
 
 export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePageProps) {
   const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
+  const swipeHandlers = useShowcaseSwipe(setSelectedSlide);
   const inviteToken = params.inviteToken ?? '';
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
     query: {
@@ -119,7 +121,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           <span className="public-showcase__read-only"><ShieldCheck size={14} aria-hidden="true" /> Public view · read only</span>
         </div>
 
-        <div className="public-showcase__visual" style={{ ['--showcase-accent' as string]: appearance.accentColor }}>
+        <div className="public-showcase__visual" role="group" aria-roledescription="carousel" aria-label={`${firstName}’s jersey and HYPE Card`} {...swipeHandlers} style={{ ['--showcase-accent' as string]: appearance.accentColor }}>
           {activeSlide === 'jersey' ? <>
             <div className="public-showcase__visual-orbit" aria-hidden="true" />
             <div className="public-showcase__visual-index" aria-hidden="true"><span>01</span> / SEASON ID</div>

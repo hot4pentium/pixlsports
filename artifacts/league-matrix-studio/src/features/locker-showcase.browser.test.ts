@@ -178,6 +178,21 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json() as Array<{ type: string; webSocketDebuggerUrl: string }>;
     browser = await Browser.connect(tabs.find((tab) => tab.type === 'page')!.webSocketDebuggerUrl);
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const swipe = async (selector: string, direction: 'left' | 'right') => {
+      const point = await browser!.evaluate<{ x: number; y: number }>(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        if (!(element instanceof HTMLElement)) throw new Error('Missing swipe target: ' + ${JSON.stringify(selector)});
+        const rect = element.getBoundingClientRect();
+        return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+      })()`);
+      const fromX = point.x + (direction === 'left' ? 72 : -72);
+      const toX = point.x + (direction === 'left' ? -72 : 72);
+      await browser!.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: fromX, y: point.y }] });
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      await browser!.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: toX, y: point.y }] });
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      await browser!.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
     await browser.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html` });
     await browser.wait(`document.querySelector('[data-testid="page-shared-locker"]')`);
@@ -195,14 +210,16 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), 'Jordan Lee.');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-hype-card"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');
-    await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').click()`);
+    await swipe('[data-testid="figure-public-showcase-jersey"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')`), 'true');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-card-interactive"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
-    await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').focus()`);
+    await swipe('[data-testid="figure-public-showcase-hype-card"] .public-showcase__card-art', 'right');
+    await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')==='true'`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').focus()`);
     await browser.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space' });
     await browser.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space' });
-    await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')==='true'`);
+    await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')==='true'`);
     await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-jersey"]')`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
@@ -291,7 +308,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="page-player-showcase"]')`);
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="section-dynamic-showcase"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');
-    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
+    await swipe('[data-testid="showcase-jersey-stage"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/studio/hype-card`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
@@ -304,7 +321,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       }
     }
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
+    await swipe('[data-testid="showcase-hype-card-preview"] .ps__card-art', 'right');
     await browser.wait(`document.querySelector('[data-testid="showcase-jersey-stage"]')`);
     await browser.evaluate(`window.__update({paused:true})`);
     await browser.wait(`document.querySelector('[data-testid="button-showcase-slide-card"]')`);

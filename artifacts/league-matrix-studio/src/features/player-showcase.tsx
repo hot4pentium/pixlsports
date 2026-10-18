@@ -24,6 +24,7 @@ import { useKitGear } from './use-kit-gear';
 import { isGearSport, matchingSportGear, useSportGear } from './use-sport-gear';
 import { SportGearCollection } from './sport-gear-collection';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { useShowcaseSwipe } from './use-showcase-swipe';
 import './player-showcase.css';
 
 export interface PlayerShowcaseContentProps {
@@ -60,6 +61,7 @@ function matchesShowcaseInvite(invite: OwnedAthleteInvite, profile: SupporterPro
 
 export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref }: PlayerShowcaseContentProps) {
   const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
+  const swipeHandlers = useShowcaseSwipe(setSelectedSlide);
   const isSoccer = profile.sport === 'soccer';
   const isFootball = profile.sport === 'football';
   const first = profile.athleteName.trim().split(/\s+/)[0] || 'Player';
@@ -90,7 +92,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
               <span>02</span> HYPE Card
             </button>}
           </div>
-          <div className="ps__slide" data-testid={`showcase-slide-${activeSlide}`}>
+          <div className="ps__slide" role="group" aria-roledescription="slide" aria-label={`${profile.athleteName || 'Player'} ${activeSlide === 'card' ? 'HYPE Card' : 'jersey'} preview`} data-testid={`showcase-slide-${activeSlide}`} {...swipeHandlers}>
             {activeSlide === 'jersey' ? <div className="ps__stage" data-testid="showcase-jersey-stage">
               <p className="ps__team">{profile.teamName || 'Your team'}<br />{sportLabel(profile.sport)}</p>
               {isFootball ? (
