@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildSimpleHypeCardArtwork } from './simple-hype-card-artwork';
 
-test('all three lower thirds retain a full photo, left logo and athlete identity', () => {
+test('all lower-third choices retain the photo, left logo and athlete identity', () => {
   const artwork = new Set<string>();
-  for (const lowerThirdStyle of ['classic', 'split', 'angled']) {
+  for (const lowerThirdStyle of ['classic', 'split', 'angled', 'none']) {
     const svg = buildSimpleHypeCardArtwork({
-      athleteName: 'Jordan Matthews', teamName: 'Eastside Falcons', jerseyNumber: '23',
+      athleteName: 'Jordan Matthews', teamName: 'Eastside Falcons', jerseyNumber: '23', position: 'Forward',
       photoUrl: 'data:image/png;base64,photo', logoUrl: 'data:image/png;base64,logo', lowerThirdStyle,
     });
     assert.match(svg, /preserveAspectRatio="xMidYMid meet" data-testid="svg-card-photo"/);
@@ -14,9 +14,15 @@ test('all three lower thirds retain a full photo, left logo and athlete identity
     assert.match(svg, /JORDAN MATTHEWS/);
     assert.match(svg, /EASTSIDE FALCONS/);
     assert.match(svg, />23<\/text>/);
+    if (lowerThirdStyle === 'none') {
+      assert.match(svg, /data-lower-third="none"/);
+      assert.match(svg, /<image href="data:image\/png;base64,photo" x="0" y="0" width="600" height="800"/);
+      assert.match(svg, /data-testid="svg-card-position"[^>]*>FORWARD<\/text>/);
+      assert.doesNotMatch(svg, /<rect y="620" width="600" height="180"/);
+    }
     artwork.add(svg);
   }
-  assert.equal(artwork.size, 3);
+  assert.equal(artwork.size, 4);
 });
 
 test('photo movement stays bounded, and unsafe text and URLs are escaped', () => {

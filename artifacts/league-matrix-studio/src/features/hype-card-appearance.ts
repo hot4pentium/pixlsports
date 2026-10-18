@@ -1,5 +1,5 @@
 export type HypeCardDesign = 'classic' | 'gallery' | 'spotlight' | 'breakout';
-export type HypeCardLowerThirdStyle = 'classic' | 'split' | 'angled';
+export type HypeCardLowerThirdStyle = 'classic' | 'split' | 'angled' | 'none';
 export type PremiumHypeCardDesign = Exclude<HypeCardDesign, 'classic'>;
 export type HypeCardBackground = 'sport' | 'stadium' | 'tunnel' | 'studio';
 export type HypeCardAvatarPlacement = { athleteX: number; athleteY: number; athleteScale: number };
@@ -83,7 +83,7 @@ export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
     : legacyPlacement;
   return {
     design,
-    lowerThirdStyle: source.lowerThirdStyle === 'split' || source.lowerThirdStyle === 'angled' ? source.lowerThirdStyle : 'classic',
+    lowerThirdStyle: source.lowerThirdStyle === 'split' || source.lowerThirdStyle === 'angled' || source.lowerThirdStyle === 'none' ? source.lowerThirdStyle : 'classic',
     background: source.background === 'stadium' || source.background === 'tunnel' || source.background === 'studio' ? source.background : 'sport',
     borderColor,
     accentColor: borderColor,

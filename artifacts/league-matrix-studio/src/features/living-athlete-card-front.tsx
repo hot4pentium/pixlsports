@@ -29,7 +29,7 @@ export function LivingAthleteCardFront({ athleteName, teamName, photoUrl, photoA
     return () => { live = false; };
   }, [photoUrl, onPhotoError]);
   const svg = useMemo(() => buildBrandedSimpleArtwork({
-    athleteName, teamName, jerseyNumber: a.jerseyNumber, photoUrl: usablePhoto, lowerThirdStyle: style,
+    athleteName, teamName, jerseyNumber: a.jerseyNumber, position: a.position, photoUrl: usablePhoto, lowerThirdStyle: style,
     athleteX: a.athleteX, athleteY: a.athleteY,
   }, `lc${uid}`), [athleteName, teamName, a.jerseyNumber, a.athleteX, a.athleteY, usablePhoto, style, uid]);
   return (

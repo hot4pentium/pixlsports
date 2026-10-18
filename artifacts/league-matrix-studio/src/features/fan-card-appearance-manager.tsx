@@ -179,7 +179,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
       const fonts = await loadEmbeddedFonts();
       const art = buildSimpleHypeCardArtwork({
         athleteName: displayAthleteName, teamName: invite.teamName, jerseyNumber: draft.jerseyNumber,
-        photoUrl: photo, logoUrl: logo, lowerThirdStyle: styleOf(draft), athleteX: draft.athleteX, athleteY: draft.athleteY,
+        position: draft.position, photoUrl: photo, logoUrl: logo, lowerThirdStyle: styleOf(draft), athleteX: draft.athleteX, athleteY: draft.athleteY,
       }, `ex${uid}`);
       const w = SIMPLE_CARD_W * 2, h = SIMPLE_CARD_H * 2;
       const markup = art.replace(/(<svg[^>]*>)/, `$1<style>${fonts}</style>`).replace('width="600" height="800"', `width="${w}" height="${h}"`);
@@ -224,7 +224,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
       <div className="space-y-5">
         <fieldset data-testid="lower-third-picker">
           <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/70">Lower third</legend>
-          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Lower third design">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Lower third design">
             {lowerThirdStyles.map((s) => (
               <button key={s.id} type="button" role="radio" aria-checked={styleOf(draft) === s.id} disabled={busy}
                 onClick={() => edit({}, s.id)}

@@ -3,10 +3,10 @@ import test from 'node:test';
 import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, switchCardAppearanceDesign } from './hype-card-appearance';
 import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
 
-test('three simplified lower thirds persist with photo position while legacy cards use classic', () => {
+test('four simplified lower-third choices persist with photo position while legacy cards use classic', () => {
   assert.equal(normalizeCardAppearance(null).lowerThirdStyle, 'classic');
   assert.equal(normalizeCardAppearance({ lowerThirdStyle: 'unknown' }).lowerThirdStyle, 'classic');
-  for (const lowerThirdStyle of ['classic', 'split', 'angled'] as const) {
+  for (const lowerThirdStyle of ['classic', 'split', 'angled', 'none'] as const) {
     const appearance = normalizeCardAppearance({ lowerThirdStyle, athleteX: .12, athleteY: -.08, jerseyNumber: '23' });
     const restored = normalizeHypeCardProject(JSON.parse(JSON.stringify({ ...defaultProject(), cardAppearance: appearance })));
     assert.equal(restored.cardAppearance.lowerThirdStyle, lowerThirdStyle);
