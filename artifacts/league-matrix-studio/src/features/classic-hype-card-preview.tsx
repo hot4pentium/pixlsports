@@ -14,7 +14,7 @@ export function ClassicHypeCardPreview({ athleteName, teamName, photoUrl, appear
   const items = [[ThumbsUp, 'Replies', 'responses'], [ChartNoAxesCombined, 'Stats', 'stats'], [Zap, 'Taps', 'live-taps'], [CalendarDays, 'Events', 'events']] as const;
   return (
     <div data-testid="classic-card-preview-stack">
-      <div className="classic-card-preview-surface" data-testid="classic-card-preview-surface" role="img" aria-label={`HYPE Card preview for ${athleteName}`} style={{ aspectRatio: '3 / 4', position: 'relative' }}>
+      <div className="classic-card-preview-surface" data-testid="classic-card-preview-surface" role="img" aria-label={`HYPE Card preview for ${athleteName}`} style={{ aspectRatio: '2 / 3', position: 'relative' }}>
         <LivingAthleteCardFront athleteName={athleteName} teamName={teamName} photoUrl={photoUrl} appearance={appearance ?? { design: 'classic' }} />
       </div>
       <div className="classic-card-preview-navigation" data-testid="appearance-navigation-preview">

@@ -115,7 +115,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-position]")?.textContent', session), 'QUARTERBACK', 'athlete details survive reload');
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, session);
     assert.equal(await connection.evaluate('document.documentElement.scrollWidth <= innerWidth', session), true, 'phone has no page overflow');
-    assert.equal(await connection.evaluate(`(()=>{const r=document.querySelector('[data-testid="classic-card-preview-surface"]').getBoundingClientRect();return Math.abs(r.width/r.height-2/3)<.01})()`, session), true);
+    const previewRatio = await connection.evaluate<number>(`(()=>{const r=document.querySelector('[data-testid="classic-card-preview-surface"]').getBoundingClientRect();return r.width/r.height})()`, session);
+    assert.ok(Math.abs(previewRatio - 2 / 3) < .01, `phone preview uses the 2:3 portrait ratio, received ${previewRatio}`);
   } finally {
     connection?.close();
     browser.kill('SIGKILL');
