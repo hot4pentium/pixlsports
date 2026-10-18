@@ -205,6 +205,13 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.deepEqual((await (await fetch(`${publicUrl}/fan`)).json()).cardAppearance, cardAppearance);
     const reloadedCards = await (await fetch(listUrl, { headers: { "x-test-user": ownerId } })).json();
     assert.deepEqual(reloadedCards[0].cardAppearance, cardAppearance);
+    const textOnlyAppearance = { ...cardAppearance, lowerThirdStyle: "none" };
+    const textOnlySaved = await fetch(appearanceUrl, {
+      method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" },
+      body: JSON.stringify(textOnlyAppearance),
+    });
+    assert.equal(textOnlySaved.status, 200);
+    assert.deepEqual((await textOnlySaved.json()).cardAppearance, textOnlyAppearance);
     assert.equal((await fetch(appearanceUrl, {
       method: "PATCH", headers: { "x-test-user": ownerId, "content-type": "application/json" },
       body: JSON.stringify({ ...cardAppearance, lowerThirdStyle: "unknown" }),

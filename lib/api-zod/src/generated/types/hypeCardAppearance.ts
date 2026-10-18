@@ -12,7 +12,7 @@ import type { HypeCardAvatarPlacements } from './hypeCardAvatarPlacements';
 
 export interface HypeCardAppearance {
   design: HypeCardAppearanceDesign;
-  /** Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic. */
+  /** Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic. */
   lowerThirdStyle?: HypeCardAppearanceLowerThirdStyle;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   borderColor: string;

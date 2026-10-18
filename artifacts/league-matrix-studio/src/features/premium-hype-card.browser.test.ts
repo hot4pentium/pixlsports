@@ -73,7 +73,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=classic-card-preview-surface] svg").getAttribute("data-lower-third")', session), 'none');
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-photo]").getAttribute("height")', session), '800', 'the photo fills the card when the lower-third panel is removed');
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-position]")?.textContent', session), 'QUARTERBACK', 'the athlete position stays over the photo');
-    assert.equal(await connection.evaluate('document.querySelector("[data-testid=classic-card-preview-surface] svg rect[y=\\"620\\"][height=\\"180\\"]')', session), null, 'no lower-third panel is drawn');
+    assert.equal(await connection.evaluate('document.querySelector("[data-testid=text-living-card-position]")?.textContent', session), 'Position Quarterback', 'the position stays available to screen readers');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="classic-card-preview-surface"] svg rect[y="620"][height="180"]')`, session), null, 'no lower-third panel is drawn');
     // Native keyboard input exercises React's actual range control events.
     for (const axis of ['x', 'y']) {
       await connection.evaluate(`document.querySelector('[data-testid="slider-photo-${axis}"]').focus()`, session);
@@ -88,7 +89,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, `!!document.querySelector('[data-testid="button-retry-appearance"]')`, Boolean, 10_000);
     await connection.evaluate(`window.failSave=false;document.querySelector('[data-testid="button-retry-appearance"]').click()`, session);
     await waitFor(connection, session, 'window.lastSaved?.lowerThirdStyle', value => value === 'angled', 10_000);
-    assert.deepEqual(await connection.evaluate('({x:window.lastSaved.athleteX,y:window.lastSaved.athleteY,number:window.lastSaved.jerseyNumber})', session), { x: .01, y: .01, number: '23' });
+    assert.deepEqual(await connection.evaluate('({x:window.lastSaved.athleteX,y:window.lastSaved.athleteY,number:window.lastSaved.jerseyNumber,position:window.lastSaved.position})', session), { x: .01, y: .01, number: '23', position: 'Quarterback' });
     await connection.send('Page.navigate', { url: 'http://localhost:80/simple-appearance-fixture.html' }, session);
     await waitFor(connection, session, `document.querySelector('[data-testid="button-lower-third-angled"]')?.getAttribute('aria-checked')`, value => value === 'true', 20_000);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-jersey-number"]').value`, session), '23');
@@ -102,8 +103,16 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`document.querySelector('[data-testid="return-front"]').click();document.querySelector('[data-testid="button-export-appearance-jpeg"]').click()`, session);
     await waitFor(connection, session, 'window.exportDownload', Boolean, 25_000);
     assert.equal(await connection.evaluate(`window.exportMarkup.includes('data-lower-third="angled"')&&window.exportMarkup.includes('data:image/')&&window.exportMarkup.includes('width="1200" height="1600"')`, session), true);
-    await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-none"]').click();document.querySelector('[data-testid="button-export-appearance-jpeg"]').click()`, session);
+    await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-none"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-lower-third')`, value => value === 'none', 5_000);
+    await connection.evaluate(`document.querySelector('[data-testid="button-export-appearance-jpeg"]').click()`, session);
     await waitFor(connection, session, 'window.exportMarkup.includes(`data-lower-third="none"`) && window.exportMarkup.includes(`data-testid="svg-card-position"`) && window.exportMarkup.includes(`height="800"`) ', Boolean, 25_000);
+    await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
+    await waitFor(connection, session, 'window.lastSaved?.lowerThirdStyle', value => value === 'none', 10_000);
+    await connection.send('Page.navigate', { url: 'http://localhost:80/simple-appearance-fixture.html' }, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="button-lower-third-none"]')?.getAttribute('aria-checked')`, value => value === 'true', 20_000);
+    assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-photo]").getAttribute("height")', session), '800', 'the text-only card survives reload');
+    assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-position]")?.textContent', session), 'QUARTERBACK', 'athlete details survive reload');
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, session);
     assert.equal(await connection.evaluate('document.documentElement.scrollWidth <= innerWidth', session), true, 'phone has no page overflow');
     assert.equal(await connection.evaluate(`(()=>{const r=document.querySelector('[data-testid="classic-card-preview-surface"]').getBoundingClientRect();return Math.abs(r.width/r.height-.75)<.01})()`, session), true);

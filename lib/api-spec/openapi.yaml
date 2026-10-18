@@ -4000,8 +4000,8 @@ components:
         design: { type: string, enum: [classic, gallery, spotlight, breakout] }
         lowerThirdStyle:
           type: string
-          enum: [classic, split, angled]
-          description: Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.
+          enum: [classic, split, angled, none]
+          description: Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.
         borderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         accentColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         accentLinked: { type: boolean }

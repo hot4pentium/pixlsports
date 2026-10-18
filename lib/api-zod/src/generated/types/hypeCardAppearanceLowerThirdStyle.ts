@@ -7,7 +7,7 @@
  */
 
 /**
- * Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.
+ * Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.
  */
 export type HypeCardAppearanceLowerThirdStyle = typeof HypeCardAppearanceLowerThirdStyle[keyof typeof HypeCardAppearanceLowerThirdStyle];
 
@@ -16,4 +16,5 @@ export const HypeCardAppearanceLowerThirdStyle = {
   classic: 'classic',
   split: 'split',
   angled: 'angled',
+  none: 'none',
 } as const;
