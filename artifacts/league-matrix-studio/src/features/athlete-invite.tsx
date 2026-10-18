@@ -1034,8 +1034,10 @@ function OwnerHypePageManage({ invite, profile }: {
   const visibilitySavingRef = useRef(false);
   const [visibilityStatus, setVisibilityStatus] = useState<'idle' | 'saving' | 'saved' | 'refresh-error' | 'error'>('idle');
   const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'design' | 'sections' | 'events' | 'hypes' | 'media' | 'live-taps' | null>(
-    () => window.location.hash === '#owner-fan-hypes'
-      ? 'hypes'
+    () => window.location.hash === '#design'
+      ? 'design'
+      : window.location.hash === '#owner-fan-hypes'
+        ? 'hypes'
       : window.location.hash === '#owner-notify-followers' ? 'events' : null,
   );
   const toggleTask = (task: Exclude<typeof activeTask, null>) => {
@@ -1099,6 +1101,7 @@ function OwnerHypePageManage({ invite, profile }: {
   }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showEvents, invite.hypesEnabled, settingsDirty]);
   useEffect(() => {
     const openOwnerTask = () => {
+      if (window.location.hash === '#design') setActiveTask('design');
       if (window.location.hash === '#owner-fan-hypes') setActiveTask('hypes');
       if (window.location.hash === '#owner-notify-followers') setActiveTask('events');
     };
@@ -1111,6 +1114,15 @@ function OwnerHypePageManage({ invite, profile }: {
     const frame = window.requestAnimationFrame(() => {
       const target = document.getElementById('owner-fan-hypes');
       target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTask, invite.inviteToken]);
+  useEffect(() => {
+    if (activeTask !== 'design' || window.location.hash !== '#design') return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById('hype-manager-trigger-design');
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       target?.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);

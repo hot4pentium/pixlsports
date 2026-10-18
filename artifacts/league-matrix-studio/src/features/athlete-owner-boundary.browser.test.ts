@@ -645,6 +645,9 @@ test('player-page owner tools remain private across account changes and pause', 
       ownerManage,
     );
     assert.deepEqual(taskOrder.slice(0, 4), ['Share Hype Card', 'Card Design', 'Family Live Taps', 'Upload Photo']);
+    const directDesignManage = await open('owner', 'manage', false, '#design');
+    await waitFor(connection, directDesignManage, element('[data-testid="owner-hype-page-management"]'), Boolean, 30_000);
+    await waitFor(connection, directDesignManage, "document.querySelector('#hype-manager-panel-design')?.hidden === false && document.activeElement?.id === 'hype-manager-trigger-design'", Boolean, 12_000);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,

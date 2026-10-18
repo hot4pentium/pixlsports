@@ -128,7 +128,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
                   <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
                 </div>
                 <div className="ps__card-caption"><span>Saved front · {card.teamName || sportLabel(card.sport)}</span><div className="ps__card-links">
-                  <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card</Link>
+                  <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card design</Link>
                   {cardPublicHref && <Link href={cardPublicHref} className="ps__link" data-testid="link-showcase-card-public"><ExternalLink size={16} aria-hidden="true" /> Open public card</Link>}
                 </div></div>
               </> : <div className="ps__card-unavailable" role="status" data-testid="status-showcase-card-unavailable">
@@ -147,7 +147,10 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
                       : 'The jersey stays here. Card details stay private until sharing is active.'}
                 </span>
                 {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" data-testid="button-showcase-card-retry">Try again</button>}
-                <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">Review HYPE Card settings <ArrowRight size={15} aria-hidden="true" /></Link>
+                <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
+                  {cardStatus === 'not-linked' ? 'Create HYPE Card' : 'Open HYPE Card design'}
+                  <ArrowRight size={15} aria-hidden="true" />
+                </Link>
               </div>}
             </div>}
           </div>
@@ -218,6 +221,9 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const publicShowcaseUrl = inviteToken
     ? `${window.location.origin}${basePath}/showcase/${encodeURIComponent(inviteToken)}`
     : null;
+  const cardSettingsHref = matchedInvite
+    ? `/player/${encodeURIComponent(matchedInvite.inviteToken)}/manage#design`
+    : '/studio/athlete-page';
   const copyShowcaseUrl = async () => {
     if (!publicShowcaseUrl) return;
     try {
@@ -234,11 +240,12 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
         onRetrySportGear={() => void sportGearQuery.refetch()}
         linkedCard={linkedCard} cardStatus={cardStatus}
+        hypeHref={cardSettingsHref}
         onRetryCard={() => {
           if (fanCardQuery.isError) void fanCardQuery.refetch();
           else void invitesQuery.refetch();
         }}
-        cardEditHref="/studio/hype-card"
+        cardEditHref={cardSettingsHref}
         cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}` : undefined} />
       <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         {publicShowcaseUrl && (
