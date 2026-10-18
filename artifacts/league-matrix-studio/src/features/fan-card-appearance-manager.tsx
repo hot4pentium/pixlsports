@@ -182,7 +182,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
         position: draft.position, photoUrl: photo, logoUrl: logo, lowerThirdStyle: styleOf(draft), athleteX: draft.athleteX, athleteY: draft.athleteY,
       }, `ex${uid}`);
       const w = SIMPLE_CARD_W * 2, h = SIMPLE_CARD_H * 2;
-      const markup = art.replace(/(<svg[^>]*>)/, `$1<style>${fonts}</style>`).replace('width="600" height="800"', `width="${w}" height="${h}"`);
+      const markup = art.replace(/(<svg[^>]*>)/, `$1<style>${fonts}</style>`).replace(`width="${SIMPLE_CARD_W}" height="${SIMPLE_CARD_H}"`, `width="${w}" height="${h}"`);
       const img = new Image();
       const loaded = new Promise<void>((ok, bad) => { img.onload = () => ok(); img.onerror = () => bad(new Error('render')); });
       img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
