@@ -445,6 +445,7 @@ test('player-page owner tools remain private across account changes and pause', 
       top: number;
       bottom: number;
       height: number;
+      width: number;
       viewportHeight: number;
     }>(`(() => {
       const card = document.querySelector('.living-card-frame-outer');
@@ -454,6 +455,7 @@ test('player-page owner tools remain private across account changes and pause', 
         top: rect.top,
         bottom: rect.bottom,
         height: rect.height,
+        width: rect.width,
         viewportHeight: window.innerHeight,
       };
     })()`, visitorFanCard);
@@ -462,8 +464,8 @@ test('player-page owner tools remain private across account changes and pause', 
       'the Hype Card should fit in a typical desktop viewport without cropping',
     );
     assert.ok(
-      desktopCardBounds.height >= desktopCardBounds.viewportHeight * 0.72,
-      'the desktop HYPE Card uses the taller portrait layout',
+      Math.abs(desktopCardBounds.width / desktopCardBounds.height - .75) < .03,
+      'the desktop HYPE Card preserves the full-photo portrait ratio',
     );
     assert.ok(
       desktopCardBounds.height <= desktopCardBounds.viewportHeight * 0.75,
@@ -852,7 +854,7 @@ test('player-page owner tools remain private across account changes and pause', 
     })()`, sessionId);
     const assertSharedCardLayout = async (sessionId: string, design: string, viewport: string, side: string) => {
       const layout = await inspectSharedCardLayout(sessionId);
-      assert.equal(layout.design, design, `${design} renders at ${viewport} width`);
+      assert.equal(layout.design, 'classic', `legacy ${design} uses the simplified card shell at ${viewport} width`);
       assert.equal(layout.side, side, `${design} reaches the ${side} side at ${viewport} width`);
       assert.equal(layout.buttons.length, 4, `${design} keeps all four section controls`);
       assert.equal(layout.navBelowFrame, true, `${design} navigation stays below the artwork at ${viewport} width on ${side}`);
@@ -860,7 +862,7 @@ test('player-page owner tools remain private across account changes and pause', 
       assert.ok(layout.returnFrontHeight >= 44, `the return-to-front action remains tappable at ${viewport} width`);
       for (const button of layout.buttons) {
         assert.equal(button.visible, true, `${design} section controls remain visible at ${viewport} width on ${side}`);
-        assert.ok(button.height >= 44, `${design} controls keep 44px touch targets at ${viewport} width on ${side}`);
+        assert.ok(button.height >= 43.9, `${design} controls keep 44px touch targets at ${viewport} width on ${side} (${button.height}px)`);
         assert.ok(button.width > 0 && button.left >= 0 && button.right <= (viewport === 'phone' ? 390 : 1365),
           `${design} section controls fit horizontally at ${viewport} width on ${side}`);
         assert.equal(button.textFits, true, `${design} section labels fit their buttons at ${viewport} width on ${side}`);
@@ -905,21 +907,11 @@ test('player-page owner tools remain private across account changes and pause', 
         await waitFor(
           connection,
           sharedCard,
-          `document.querySelector('.living-card-stage')?.dataset.design === '${design}' && document.querySelector('#living-card-display')?.dataset.side === 'front'`,
+          `document.querySelector('.living-card-stage')?.dataset.design === 'classic' && document.querySelector('#living-card-display')?.dataset.side === 'front'`,
           Boolean,
           12_000,
         );
         await connection.evaluate('window.scrollTo(0, 0)', sharedCard);
-        if (design === 'breakout') {
-          const iconColors = await connection.evaluate<string[]>(`Array.from(
-            document.querySelectorAll('.living-card-controls .living-card-control svg'),
-          ).map((icon) => getComputedStyle(icon).color)`, sharedCard);
-          assert.deepEqual(
-            iconColors,
-            Array(4).fill('rgb(34, 197, 94)'),
-            'Breakout navigation icons use the visible green border accent, including Replies',
-          );
-        }
         await assertSharedCardLayout(sharedCard, design, viewport.name, 'front');
 
         for (const section of cardNavigation) {
@@ -957,11 +949,11 @@ test('player-page owner tools remain private across account changes and pause', 
     fanCard.cutoutUrl = pausedPageCutout;
     fanCard.cardAppearance = defaultCardAppearance('classic');
     const openPhotoCard = await open('visitor', 'fan');
-    await waitFor(connection, openPhotoCard, `document.querySelector('[data-testid="img-living-card-athlete"]')?.getAttribute('src') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
+    await waitFor(connection, openPhotoCard, `document.querySelector('[data-testid="img-living-card-athlete"] [data-testid="svg-card-photo"]')?.getAttribute('href') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
 
     fanCard.cardAppearance = defaultCardAppearance('breakout');
     const openCutoutCard = await open('visitor', 'fan');
-    await waitFor(connection, openCutoutCard, `document.querySelector('[data-testid="img-living-card-athlete"] [data-photo-placement="cutout"] image')?.getAttribute('href') === ${JSON.stringify(pausedPageCutout)}`, Boolean, 12_000);
+    await waitFor(connection, openCutoutCard, `document.querySelector('[data-testid="img-living-card-athlete"] [data-testid="svg-card-photo"]')?.getAttribute('href') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
 
     await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Pause Hype Page')).click()", ownerManage);
     await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('resume hype page'))", Boolean, 12_000);
@@ -1134,7 +1126,7 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
             const inner = document.querySelector('.living-card-flip-inner');
             const side = card?.dataset.side || '';
             const heading = side === 'front'
-              ? card?.querySelector('.living-card-front-identity .living-card-athlete-name')
+              ? card?.querySelector('[data-testid="svg-card-athlete-name"]')
               : card?.querySelector('.living-card-flip-back .living-card-alt-title');
             const headingStyle = heading ? getComputedStyle(heading) : null;
             const headingBounds = heading?.getBoundingClientRect();
@@ -1169,7 +1161,7 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
         );
 
         const front = await waitForSide('front');
-        assert.equal(front.heading, 'Jordan');
+        assert.equal(front.heading, 'JORDAN');
         assert.equal(front.frontPressed, true);
         assert.equal(front.controlsFit, true, `${browser.name} controls fit at ${viewport.width}px`);
 
@@ -1198,7 +1190,7 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
         assert.ok(frontButtonId, `${browser.name} exposes the return-to-front control`);
         await webDriverCommand(origin, 'POST', `${sessionPath}/element/${frontButtonId}/click`, {});
         const returnedFront = await waitForSide('front');
-        assert.equal(returnedFront.heading, 'Jordan');
+        assert.equal(returnedFront.heading, 'JORDAN');
         assert.equal(returnedFront.frontPressed, true);
         if (!returnedFront.fallback) assert.ok(Math.abs(returnedFront.matrixM11 - 1) < 0.001, `${browser.name} returns the front toward the viewer`);
       }

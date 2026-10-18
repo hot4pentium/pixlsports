@@ -49,7 +49,6 @@ export function SupporterHypeCardPreview({
   const shareLinkInputRef = useRef<HTMLInputElement>(null);
   const unavailable = card?.paused || card?.showHypeCard === false;
   const appearance = card?.cardAppearance ? normalizeCardAppearance(card.cardAppearance) : null;
-  const design = appearance?.design ?? 'classic';
   const isMobile = placement === 'mobile';
   const testIdPrefix = isMobile ? 'mobile' : 'desktop';
   const shareOrigin = typeof window === 'undefined'
@@ -170,7 +169,7 @@ export function SupporterHypeCardPreview({
               aria-label={`View ${card.athleteName}'s HYPE Card`}
               data-testid={isMobile ? 'link-mobile-hype-preview' : 'link-desktop-hype-preview'}
             >
-              <div className="supporter-hype-preview__surface" data-design={design}>
+              <div className="supporter-hype-preview__surface" data-design="classic">
                 <LivingAthleteCardFront
                   athleteName={card.athleteName}
                   teamName={card.teamName}

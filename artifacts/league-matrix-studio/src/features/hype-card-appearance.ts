@@ -1,10 +1,12 @@
 export type HypeCardDesign = 'classic' | 'gallery' | 'spotlight' | 'breakout';
+export type HypeCardLowerThirdStyle = 'classic' | 'split' | 'angled';
 export type PremiumHypeCardDesign = Exclude<HypeCardDesign, 'classic'>;
 export type HypeCardBackground = 'sport' | 'stadium' | 'tunnel' | 'studio';
 export type HypeCardAvatarPlacement = { athleteX: number; athleteY: number; athleteScale: number };
 export type HypeCardAvatarPlacements = Record<PremiumHypeCardDesign, HypeCardAvatarPlacement>;
 export type HypeCardAppearance = {
   design: HypeCardDesign;
+  lowerThirdStyle: HypeCardLowerThirdStyle;
   background: HypeCardBackground;
   borderColor: string;
   accentColor: string;
@@ -28,6 +30,7 @@ const premiumDesigns: PremiumHypeCardDesign[] = ['gallery', 'spotlight', 'breako
 const defaultAvatarPlacement = (): HypeCardAvatarPlacement => ({ athleteX: 0, athleteY: 0, athleteScale: 1 });
 export const defaultCardAppearance = (design: HypeCardDesign = 'classic'): HypeCardAppearance => ({
   design,
+  lowerThirdStyle: 'classic',
   background: 'sport',
   borderColor: design === 'breakout' ? '#B7C4D4' : '#EF3996',
   accentColor: design === 'breakout' ? '#B7C4D4' : '#EF3996',
@@ -80,6 +83,7 @@ export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
     : legacyPlacement;
   return {
     design,
+    lowerThirdStyle: source.lowerThirdStyle === 'split' || source.lowerThirdStyle === 'angled' ? source.lowerThirdStyle : 'classic',
     background: source.background === 'stadium' || source.background === 'tunnel' || source.background === 'studio' ? source.background : 'sport',
     borderColor,
     accentColor: borderColor,

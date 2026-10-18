@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetAthleteFanCardQueryKey,
@@ -6,17 +6,22 @@ import {
   getListAthleteInvitesQueryKey,
   useUpdateAthleteInviteAppearance,
 } from '@workspace/api-client-react';
-import type React from 'react';
 import { Download, Share2 } from 'lucide-react';
-import { removeAthleteBackground } from './athlete-background-removal';
-import { saveAthleteCutout } from './athlete-cutout-upload';
-import { HypeCardAppearanceControls, HypeCardDesignPicker } from './hype-card-appearance-controls';
 import { normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
-import { buildBrandedPremiumHypeCardArtwork } from './premium-hype-card-brand';
-import { buildPremiumNavStripPreview, preparePremiumCardPngExport } from './premium-hype-card-artwork';
+import { simpleCardLogoSrc } from './simple-hype-card-brand';
+import { buildSimpleHypeCardArtwork, lowerThirdStyles, normalizeLowerThird, SIMPLE_CARD_H, SIMPLE_CARD_W, type LowerThirdStyle } from './simple-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
 import antonFontUrl from '../assets/anton-regular.ttf?url';
+
+type Draft = HypeCardAppearance;
+const styleOf = (d: Draft) => normalizeLowerThird(d.lowerThirdStyle);
+const withStyle = (d: Draft, style: LowerThirdStyle, patch: Partial<HypeCardAppearance> = {}): Draft =>
+  ({ ...normalizeCardAppearance({ ...d, ...patch }), lowerThirdStyle: style });
+const norm = (v: unknown): Draft => {
+  const style = normalizeLowerThird((v as { lowerThirdStyle?: unknown } | null)?.lowerThirdStyle);
+  return { ...normalizeCardAppearance(v), lowerThirdStyle: style };
+};
 
 export type FanCardAppearanceInvite = {
   inviteToken: string; athleteName: string; teamName: string; sport: string;
@@ -35,18 +40,6 @@ async function toDataUrl(url: string | null | undefined): Promise<string | null>
     r.onerror = () => reject(new Error('image'));
     r.readAsDataURL(blob);
   });
-}
-
-async function readImageDimensions(dataUrl: string | null): Promise<{ width: number; height: number } | undefined> {
-  if (!dataUrl) return undefined;
-  const image = new Image();
-  const loaded = new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = () => reject(new Error('image'));
-  });
-  image.src = dataUrl;
-  await loaded;
-  return { width: image.naturalWidth, height: image.naturalHeight };
 }
 
 function supportsImageSharing(file?: File): boolean {
@@ -84,46 +77,27 @@ export function FanCardAppearanceManager({ invite, profile }: {
 }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
-  const [moving, setMoving] = useState(false);
-  const [avatarPreviewTopGap, setAvatarPreviewTopGap] = useState(0);
-  const previewStackRef = useRef<HTMLDivElement>(null);
-  const [selectedLayer, setSelectedLayer] = useState<'frame' | 'avatar'>('avatar');
-  const [backgroundRemovalBusy, setBackgroundRemovalBusy] = useState(false);
-  const [backgroundNotice, setBackgroundNotice] = useState('');
-  const [failedCutout, setFailedCutout] = useState<string | null>(null);
-  useEffect(() => {
-    if (!invite.cutoutUrl) return;
-    let cancelled = false;
-    const image = new Image();
-    image.onload = () => { if (!cancelled) setFailedCutout(null); };
-    image.onerror = () => { if (!cancelled) setFailedCutout(invite.cutoutUrl || null); };
-    image.src = invite.cutoutUrl;
-    return () => { cancelled = true; };
-  }, [invite.cutoutUrl]);
-  const usableCutout = failedCutout === invite.cutoutUrl ? null : invite.cutoutUrl;
-  const [saved, setSaved] = useState(() => normalizeCardAppearance(invite.cardAppearance));
-  const [draft, setDraft] = useState(() => seedCardAppearanceFromProfile(invite.cardAppearance, profile));
+  const seed = (v: unknown) => norm(seedCardAppearanceFromProfile(v, profile));
+  const [saved, setSaved] = useState<Draft>(() => norm(invite.cardAppearance));
+  const [draft, setDraft] = useState<Draft>(() => seed(invite.cardAppearance));
   const draftRef = useRef(draft);
   const savedRef = useRef(saved);
   savedRef.current = saved;
   draftRef.current = draft;
   const loadedRef = useRef({ token: invite.inviteToken, key: JSON.stringify(saved) });
-  const serverKey = JSON.stringify(normalizeCardAppearance(invite.cardAppearance));
+  const serverKey = JSON.stringify(norm(invite.cardAppearance));
   useEffect(() => {
-    const server = normalizeCardAppearance(invite.cardAppearance);
+    const server = norm(invite.cardAppearance);
     if (loadedRef.current.token !== invite.inviteToken) {
       loadedRef.current = { token: invite.inviteToken, key: serverKey };
-      setSaved(server); setDraft(seedCardAppearanceFromProfile(server, profile)); setStatus('idle'); setMoving(false);
-      setSelectedLayer('avatar');
+      setSaved(server); setDraft(seed(server)); setStatus('idle');
       return;
     }
     if (loadedRef.current.key === serverKey) return;
     loadedRef.current.key = serverKey;
     const wasClean = JSON.stringify(draftRef.current) === JSON.stringify(savedRef.current);
     setSaved(server);
-    if (wasClean) setDraft(seedCardAppearanceFromProfile(server, profile));
-    setMoving(false);
-    setSelectedLayer('avatar');
+    if (wasClean) setDraft(seed(server));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite.inviteToken, serverKey]);
   const [exportState, setExportState] = useState<'idle' | 'working' | 'ready' | 'error'>('idle');
@@ -133,102 +107,22 @@ export function FanCardAppearanceManager({ invite, profile }: {
   const currentDraftKey = JSON.stringify(draft);
   const readyExport = preparedExport?.draftKey === currentDraftKey ? preparedExport : null;
   const nativeImageSharing = supportsImageSharing();
-  const dragRef = useRef<{ x: number; y: number } | null>(null);
-  const clampPlacement = (a: HypeCardAppearance, x: number, y: number) => normalizeCardAppearance({ ...a, athleteX: x, athleteY: y });
-  const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!moving || selectedLayer === 'frame') return;
-    dragRef.current = { x: e.clientX, y: e.clientY };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const last = dragRef.current;
-    if (!moving || selectedLayer === 'frame' || !last) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const dx = (e.clientX - last.x) / rect.width, dy = (e.clientY - last.y) / rect.height;
-    dragRef.current = { x: e.clientX, y: e.clientY };
-    setDraft((d) => clampPlacement(d, d.athleteX + dx, d.athleteY + dy));
-    setStatus('idle');
-    setExportMessage('');
-  };
-  const onUp = () => { dragRef.current = null; };
-  const onPositionKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!moving || selectedLayer === 'frame') return;
-    const directions: Record<string, [number, number]> = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] };
-    const direction = directions[event.key];
-    if (!direction) return;
-    event.preventDefault();
-    setDraft(current => clampPlacement(current, current.athleteX + direction[0], current.athleteY + direction[1]));
-    setStatus('idle');
-    setExportMessage('');
-  };
-  const removeBackground = async () => {
-    if (!invite.photoUrl || !invite.photoRevision || backgroundRemovalBusy) return;
-    setBackgroundRemovalBusy(true);
-    setBackgroundNotice('Preparing a transparent athlete cutout on this device…');
-    try {
-      const imageUrl = new URL(invite.photoUrl, window.location.href);
-      const response = await fetch(invite.photoUrl, { credentials: imageUrl.origin === window.location.origin ? 'include' : 'omit' });
-      if (!response.ok) throw new Error('The original photo could not be loaded.');
-      const cutout = await removeAthleteBackground(await response.blob(), setBackgroundNotice);
-      await saveAthleteCutout(invite.inviteToken, cutout, invite.photoRevision);
-      setDraft((current) => normalizeCardAppearance({ ...current, removeBackground: true }));
-      setBackgroundNotice('Background removed. The original photo is unchanged.');
-      setStatus('idle');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
-        queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(invite.inviteToken) }),
-      ]);
-    } catch (error) {
-      setBackgroundNotice(`Original photo kept. ${error instanceof Error ? error.message : 'Background removal failed.'}`);
-    } finally {
-      setBackgroundRemovalBusy(false);
-    }
-  };
   const mutation = useUpdateAthleteInviteAppearance();
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const handleAppearanceChange = (next: HypeCardAppearance) => {
-    setDraft(next);
-    setStatus('idle');
-    setExportMessage('');
-    if (next.design !== draft.design) {
-      setMoving(false);
-      setSelectedLayer('avatar');
-    }
-  };
+  const dirty = currentDraftKey !== JSON.stringify(saved);
   const displayAthleteName = resolveHypeCardAthleteName(profile.athleteName, invite.athleteName);
-  const svg = useMemo(() => draft.design === 'classic' ? '' : buildBrandedPremiumHypeCardArtwork({
-    athleteName: displayAthleteName, teamName: invite.teamName, sport: invite.sport,
-    jerseyNumber: draft.jerseyNumber, position: draft.position,
-    photoUrl: invite.photoUrl, cutoutUrl: usableCutout, appearance: draft,
-  }, 'all', `pv${uid}`), [uid, draft, displayAthleteName, invite.teamName, invite.sport, invite.photoUrl, usableCutout]);
-  const navStrip = useMemo(() => draft.design === 'classic' ? '' : buildPremiumNavStripPreview(draft, `pv${uid}`), [uid, draft]);
-  useLayoutEffect(() => {
-    if (moving) return;
-    const stack = previewStackRef.current;
-    const measure = () => {
-      const svgRoot = stack?.querySelector('svg');
-      const avatarLayer = svgRoot?.querySelector('[data-photo-placement]');
-      const svgTop = svgRoot?.getBoundingClientRect().top ?? 0;
-      const avatarTop = avatarLayer?.getBoundingClientRect().top ?? svgTop;
-      const nextGap = svgRoot ? Math.ceil(Math.max(0, svgTop - avatarTop) + 24) : 0;
-      setAvatarPreviewTopGap((current) => current === nextGap ? current : nextGap);
-    };
-    measure();
-    if (!stack) return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(stack);
-    return () => observer.disconnect();
-  }, [svg, draft.design, moving]);
+  const edit = (patch: Partial<HypeCardAppearance>, style: LowerThirdStyle = styleOf(draft)) => {
+    setDraft((d) => withStyle(d, style, patch)); setStatus('idle'); setExportMessage('');
+  };
+  const cardHref = `/fan/${encodeURIComponent(invite.inviteToken)}`;
+  const busy = mutation.isPending;
 
   const save = () => {
     setStatus('idle');
     setExportMessage('');
     mutation.mutate({ inviteToken: invite.inviteToken, data: draft }, {
       onSuccess: (res) => {
-        const next = normalizeCardAppearance((res as { cardAppearance?: unknown } | undefined)?.cardAppearance ?? draft);
-        loadedRef.current = { token: invite.inviteToken, key: JSON.stringify(next) };
+        const next = norm(res.cardAppearance);
+        loadedRef.current = { token: invite.inviteToken, key: JSON.stringify(norm(next)) };
         setSaved(next); setDraft(next); setStatus('saved');
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
@@ -239,7 +133,6 @@ export function FanCardAppearanceManager({ invite, profile }: {
       onError: () => setStatus('error'),
     });
   };
-
   const downloadJpeg = (file: File) => {
     const url = URL.createObjectURL(file);
     const link = document.createElement('a');
@@ -278,45 +171,37 @@ export function FanCardAppearanceManager({ invite, profile }: {
   };
 
   const exportJpeg = async () => {
-    if (readyExport) {
-      await openImageShare(readyExport);
-      return;
-    }
+    if (readyExport) { await openImageShare(readyExport); return; }
     setExportState('working');
     setExportMessage('');
     try {
-      const [photo, cutout] = await Promise.all([toDataUrl(invite.photoUrl), toDataUrl(usableCutout)]);
+      const [photo, logo] = await Promise.all([toDataUrl(invite.photoUrl), toDataUrl(simpleCardLogoSrc)]);
       const fonts = await loadEmbeddedFonts();
-      const cutoutSize = await readImageDimensions(cutout);
-      const art = buildBrandedPremiumHypeCardArtwork({
-        athleteName: displayAthleteName, teamName: invite.teamName, sport: invite.sport,
-        jerseyNumber: draft.jerseyNumber, position: draft.position, photoUrl: photo, cutoutUrl: cutout, appearance: draft,
-      }, 'all', 'export');
-      const png = preparePremiumCardPngExport(art, draft, cutoutSize);
-      const markup = png.markup.replace(/(<svg[^>]*>)/, `$1${fonts ? `<style>${fonts}</style>` : ''}`);
+      const art = buildSimpleHypeCardArtwork({
+        athleteName: displayAthleteName, teamName: invite.teamName, jerseyNumber: draft.jerseyNumber,
+        photoUrl: photo, logoUrl: logo, lowerThirdStyle: styleOf(draft), athleteX: draft.athleteX, athleteY: draft.athleteY,
+      }, `ex${uid}`);
+      const w = SIMPLE_CARD_W * 2, h = SIMPLE_CARD_H * 2;
+      const markup = art.replace(/(<svg[^>]*>)/, `$1<style>${fonts}</style>`).replace('width="600" height="800"', `width="${w}" height="${h}"`);
       const img = new Image();
       const loaded = new Promise<void>((ok, bad) => { img.onload = () => ok(); img.onerror = () => bad(new Error('render')); });
       img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
       await loaded;
       const canvas = document.createElement('canvas');
-      canvas.width = png.width; canvas.height = png.height;
+      canvas.width = w; canvas.height = h;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('canvas');
-      context.fillStyle = '#000000';
-      context.fillRect(0, 0, png.width, png.height);
-      context.drawImage(img, 0, 0, png.width, png.height);
+      context.fillStyle = '#081a30';
+      context.fillRect(0, 0, w, h);
+      context.drawImage(img, 0, 0, w, h);
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.95));
       if (!blob) throw new Error('jpeg');
       if (JSON.stringify(draftRef.current) !== currentDraftKey) {
         setExportState('idle');
-        setExportMessage('The design changed while the JPG was being prepared. Save the current draft again.');
+        setExportMessage('The design changed while the JPG was being prepared. Try again.');
         return;
       }
-      const file = new File(
-        [blob],
-        `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${dirty ? 'draft' : draft.design}.jpg`,
-        { type: 'image/jpeg' },
-      );
+      const file = new File([blob], `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${styleOf(draft)}.jpg`, { type: 'image/jpeg' });
       const image = { file, draftKey: currentDraftKey };
       setPreparedExport(image);
       if (supportsImageSharing(file)) await openImageShare(image);
@@ -327,88 +212,56 @@ export function FanCardAppearanceManager({ invite, profile }: {
     }
   };
 
+  const sliderCls = 'w-full accent-[#ff7849]';
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]" data-testid="fan-card-appearance-manager">
-      <div className="grid grid-cols-1 items-start gap-3 md:block" data-testid="appearance-preview-and-mobile-design">
-        <div className="min-w-0">
-          <div className="mx-auto w-full max-w-[360px] overflow-visible rounded-2xl" data-testid="appearance-preview">
-            {draft.design === 'classic'
-              ? <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} />
-                : <div ref={previewStackRef} style={{ paddingTop: avatarPreviewTopGap ? `${avatarPreviewTopGap}px` : undefined }} data-testid="premium-card-preview-stack">
-                  <div role="img" aria-label={`${draft.design} preview for ${displayAthleteName}${moving ? '. Use arrow keys to position the avatar.' : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={onPositionKeyDown} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />
-                  <div className="mt-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" data-testid="appearance-navigation-preview" dangerouslySetInnerHTML={{ __html: navStrip }} />
-                </div>}
-          </div>
-          <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
+      <div className="min-w-0">
+        <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl" data-testid="appearance-preview">
+          <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={draft} cardHref={cardHref} />
         </div>
-        <div className="min-w-0 md:hidden" data-testid="mobile-card-design-controls">
-          <HypeCardDesignPicker appearance={draft} onChange={handleAppearanceChange} disabled={mutation.isPending || backgroundRemovalBusy} variant="compact" className="w-full" />
-        </div>
+        <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
       </div>
       <div className="space-y-5">
-        {draft.design === 'breakout' && <div className="rounded-xl border border-white/15 bg-white/5 p-3" role="group" aria-label="Breakout layers" data-testid="breakout-layer-list">
-          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-white/70">Layers · back to front</p>
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              ['frame', 'Frame'],
-              ['avatar', 'Avatar'],
-            ] as const).map(([layer, label]) => (
-              <button key={layer} type="button" aria-pressed={selectedLayer === layer}
-                disabled={mutation.isPending || backgroundRemovalBusy}
-                onClick={() => { setMoving(layer !== 'frame'); dragRef.current = null; setSelectedLayer(layer); }}
-                className="min-h-11 rounded border border-white/20 px-2 text-xs font-bold aria-pressed:border-white aria-pressed:bg-white/15"
-                data-testid={`button-layer-${layer}`}>{label}{layer === 'frame' && <span className="block text-[10px] font-normal text-white/60">Locked</span>}</button>
+        <fieldset data-testid="lower-third-picker">
+          <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/70">Lower third</legend>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Lower third design">
+            {lowerThirdStyles.map((s) => (
+              <button key={s.id} type="button" role="radio" aria-checked={styleOf(draft) === s.id} disabled={busy}
+                onClick={() => edit({}, s.id)}
+                className="min-h-11 rounded border border-white/20 px-2 text-xs font-bold uppercase tracking-widest aria-checked:border-white aria-checked:bg-white/15"
+                data-testid={`button-lower-third-${s.id}`}>{s.label}</button>
             ))}
           </div>
-        </div>}
-        <HypeCardAppearanceControls appearance={draft} onChange={handleAppearanceChange} disabled={mutation.isPending || backgroundRemovalBusy} designPickerClassName="hidden md:block"
-          placementLabel={selectedLayer === 'frame' ? 'Frame layer' : 'Avatar placement'}
-          showAthleteSize={selectedLayer === 'avatar'}
-          showResetButton={selectedLayer !== 'frame'}
-          canEnableBackgroundRemoval={!!invite.photoUrl && !!invite.photoRevision}
-          onEnableBackgroundRemoval={() => { if (!usableCutout) void removeBackground(); }}
-          onResetPlacement={() => {
-            setDraft((current) => selectedLayer === 'avatar'
-              ? normalizeCardAppearance({ ...current, athleteScale: 1, athleteX: 0, athleteY: 0 })
-              : current);
-            setMoving(false);
-            setStatus('idle');
-          }}
-          placementActions={
-            <div>
-              <button type="button" disabled={mutation.isPending || backgroundRemovalBusy || selectedLayer === 'frame'} aria-pressed={moving} onClick={() => { dragRef.current = null; setMoving((m) => !m); }} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white aria-pressed:bg-white aria-pressed:text-[#10243D]" data-testid="button-reposition-mode">{selectedLayer === 'frame' ? 'Frame stays fixed' : moving ? 'Done positioning' : 'Position avatar'}</button>
-              {selectedLayer !== 'frame' && <p className="mt-2 text-xs text-white/70">{moving ? 'Drag the preview to position the avatar. Choose Done positioning when finished.' : 'Choose Position avatar, then drag the preview or use the arrow keys.'}</p>}
-              {draft.design === 'breakout' && !usableCutout && <button type="button" disabled={!invite.photoUrl || !invite.photoRevision || backgroundRemovalBusy} onClick={() => void removeBackground()} className="mt-3 min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-remove-card-background">{backgroundRemovalBusy ? 'Removing background…' : 'Remove background'}</button>}
-              {backgroundNotice && <p role="status" className="mt-2 text-xs text-white/75" data-testid="background-removal-status">{backgroundNotice}</p>}
-            </div>
-          } />
+        </fieldset>
+        <div className="space-y-3" data-testid="photo-position-controls">
+          <p className="text-xs font-bold uppercase tracking-widest text-white/70">Photo position</p>
+          <label className="block text-xs text-white/80">Horizontal
+            <input type="range" min={-0.25} max={0.25} step={0.01} value={draft.athleteX} disabled={busy} onChange={(e) => edit({ athleteX: Number(e.target.value) })} className={sliderCls} data-testid="slider-photo-x" />
+          </label>
+          <label className="block text-xs text-white/80">Vertical
+            <input type="range" min={-0.18} max={0.18} step={0.01} value={draft.athleteY} disabled={busy} onChange={(e) => edit({ athleteY: Number(e.target.value) })} className={sliderCls} data-testid="slider-photo-y" />
+          </label>
+          <button type="button" disabled={busy} onClick={() => edit({ athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-photo-position">Reset position</button>
+        </div>
+        <label className="block text-xs font-bold uppercase tracking-widest text-white/70">Jersey number
+          <input type="text" inputMode="numeric" maxLength={3} value={draft.jerseyNumber} disabled={busy}
+            onChange={(e) => edit({ jerseyNumber: e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 3) })}
+            className="mt-1 block min-h-11 w-28 rounded border border-white/30 bg-white/5 px-3 text-base text-white" data-testid="input-jersey-number" />
+        </label>
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
-          <button type="button" onClick={save} disabled={!dirty || mutation.isPending} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{mutation.isPending ? 'Saving…' : 'Save design'}</button>
-          {draft.design !== 'classic' && (
-            <button
-              type="button"
-              onClick={() => void exportJpeg()}
-              disabled={exportState === 'working'}
-              className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50"
-              data-testid="button-export-appearance-jpeg"
-            >
-              {nativeImageSharing
-                ? <Share2 className="h-4 w-4" aria-hidden="true" />
-                : <Download className="h-4 w-4" aria-hidden="true" />}
-              {exportState === 'working'
-                ? 'Preparing…'
-                : nativeImageSharing
-                  ? dirty ? 'Save draft to Photos' : 'Save JPG to Photos'
-                  : dirty ? 'Download draft JPG' : 'Download JPG'}
-            </button>
-          )}
+          <button type="button" onClick={save} disabled={!dirty || busy} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{busy ? 'Saving…' : 'Save design'}</button>
+          <button type="button" onClick={() => void exportJpeg()} disabled={exportState === 'working'}
+            className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-export-appearance-jpeg">
+            {nativeImageSharing ? <Share2 className="h-4 w-4" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
+            {exportState === 'working' ? 'Preparing…' : nativeImageSharing ? (dirty ? 'Save draft to Photos' : 'Save JPG to Photos') : (dirty ? 'Download draft JPG' : 'Download JPG')}
+          </button>
         </div>
         <p role="status" aria-live="polite" className="text-sm text-white/80">
           {status === 'saved' && 'Design saved. Supporters now see it.'}
-          {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline">Retry</button></span>}
+           {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline" data-testid="button-retry-appearance">Retry</button></span>}
           {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-jpeg">{exportMessage}</span>}
         </p>
-        <p className="text-[11px] text-white/50">On supported phones, choose Save Image in the share menu to add the JPG to Photos. Other browsers download it. The JPG has a black background outside the rounded card. Replies, Stats, Taps and Events live on the interactive card.</p>
+         <p className="text-[11px] text-white/50">The full photo is shown uncropped. Flip controls open the saved interactive card in a new tab, keeping this draft here.</p>
       </div>
     </div>
   );

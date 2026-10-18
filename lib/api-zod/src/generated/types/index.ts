@@ -120,6 +120,7 @@ export * from './healthStatus';
 export * from './hypeCardAppearance';
 export * from './hypeCardAppearanceBackground';
 export * from './hypeCardAppearanceDesign';
+export * from './hypeCardAppearanceLowerThirdStyle';
 export * from './hypeCardAvatarPlacement';
 export * from './hypeCardAvatarPlacements';
 export * from './hypeCardProject';

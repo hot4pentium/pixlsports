@@ -118,3 +118,4 @@
 - [Sport Gear and soccer scope](soccer-gear-product-scope.md) — earned gear is HYPE Card-independent and belongs on the Jersey Showcase; keep the legacy Soccer Kit distinct.
 - [Immersive Athlete Locker](immersive-athlete-locker.md) — use the supplied full Locker reference while keeping the dashboard and existing account roles unchanged.
 - [Sharp sprite cropping](sharp-crop-trim-order.md) — materialize each crop before trimming; Sharp can otherwise apply trim ahead of extraction.
+- [Simplified interactive HYPE Card](simple-interactive-hype-card.md) — full original photo, left branding, three lower thirds, identity/number, X/Y placement, and public flips.

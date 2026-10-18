@@ -3,6 +3,8 @@ name: Themed premium photo frames
 description: Shared structural direction for Gallery, Spotlight, and Breakout HYPE Card artwork.
 ---
 
+These directions now apply only to legacy premium artwork, not the simplified interactive athlete card. See [Simplified interactive HYPE Card](simple-interactive-hype-card.md).
+
 Use Gallery’s clear framed-photo structure as the common foundation for Spotlight and Breakout: a dominant rounded photo window, a distinct identity area below, and theme-specific graphics around the photo frame.
 
 **Why:** The user approved Gallery’s photo-frame composition and clarified that everything around the frame can change graphically to match each design’s theme.

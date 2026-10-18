@@ -2522,6 +2522,7 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled']).optional().describe('Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -2673,6 +2674,7 @@ export const CreateAthleteInviteResponse = zod.object({
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled']).optional().describe('Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -2834,6 +2836,7 @@ export const GetAthleteInviteResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled']).optional().describe('Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -3062,6 +3065,7 @@ export const UpdateAthleteInviteResponse = zod.object({
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled']).optional().describe('Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -3344,6 +3348,7 @@ export const GetAthleteFanCardResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled']).optional().describe('Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -3835,6 +3840,7 @@ export const updateAthleteInviteAppearanceBodyPositionMax = 80;
 
 export const UpdateAthleteInviteAppearanceBody = zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled']).optional().describe('Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(updateAthleteInviteAppearanceBodyBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteAppearanceBodyAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -3940,6 +3946,7 @@ export const UpdateAthleteInviteAppearanceResponse = zod.object({
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled']).optional().describe('Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),

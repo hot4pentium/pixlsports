@@ -7,10 +7,13 @@
  */
 import type { HypeCardAppearanceBackground } from './hypeCardAppearanceBackground';
 import type { HypeCardAppearanceDesign } from './hypeCardAppearanceDesign';
+import type { HypeCardAppearanceLowerThirdStyle } from './hypeCardAppearanceLowerThirdStyle';
 import type { HypeCardAvatarPlacements } from './hypeCardAvatarPlacements';
 
 export interface HypeCardAppearance {
   design: HypeCardAppearanceDesign;
+  /** Lower-third identity treatment on the simplified full-photo interactive HYPE Card. Legacy cards default to classic. */
+  lowerThirdStyle?: HypeCardAppearanceLowerThirdStyle;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   borderColor: string;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */

@@ -3,6 +3,20 @@ import test from 'node:test';
 import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, switchCardAppearanceDesign } from './hype-card-appearance';
 import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
 
+test('three simplified lower thirds persist with photo position while legacy cards use classic', () => {
+  assert.equal(normalizeCardAppearance(null).lowerThirdStyle, 'classic');
+  assert.equal(normalizeCardAppearance({ lowerThirdStyle: 'unknown' }).lowerThirdStyle, 'classic');
+  for (const lowerThirdStyle of ['classic', 'split', 'angled'] as const) {
+    const appearance = normalizeCardAppearance({ lowerThirdStyle, athleteX: .12, athleteY: -.08, jerseyNumber: '23' });
+    const restored = normalizeHypeCardProject(JSON.parse(JSON.stringify({ ...defaultProject(), cardAppearance: appearance })));
+    assert.equal(restored.cardAppearance.lowerThirdStyle, lowerThirdStyle);
+    assert.equal(restored.cardAppearance.athleteX, .12);
+    assert.equal(restored.cardAppearance.athleteY, -.08);
+    assert.equal(restored.cardAppearance.jerseyNumber, '23');
+    assert.equal(designOnlyProject(restored).cardAppearance.lowerThirdStyle, lowerThirdStyle);
+  }
+});
+
 test('background choices survive normalization and saved projects while legacy cards match sport', () => {
   assert.equal(normalizeCardAppearance({ design: 'breakout' }).background, 'sport');
   assert.equal(normalizeCardAppearance({ background: 'https://untrusted.example/image.png' }).background, 'sport');
