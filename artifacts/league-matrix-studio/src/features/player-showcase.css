@@ -11,8 +11,8 @@
 .ps__carousel-controls{display:flex;gap:8px;align-items:center;padding:0 0 10px}
 .ps__carousel-tab{display:inline-flex;align-items:center;gap:9px;min-height:42px;padding:8px 15px;border:1px solid rgba(85,164,255,.3);background:#0b1f3a;color:#aabbd0;font:800 11px "DM Sans",sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:transform .18s ease,opacity .18s ease}
 .ps__carousel-tab span{color:#68aaff;font:800 12px "Barlow Condensed",sans-serif}
-.ps__carousel-tab[aria-selected="true"]{border-color:#dff56f;background:#dff56f;color:#0b1f3a}
-.ps__carousel-tab[aria-selected="true"] span{color:#0b1f3a}
+.ps__carousel-tab[aria-pressed="true"]{border-color:#dff56f;background:#dff56f;color:#0b1f3a}
+.ps__carousel-tab[aria-pressed="true"] span{color:#0b1f3a}
 .ps__slide{animation:ps-slide-in .24s ease both}
 .ps__card-slide{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.56fr);gap:clamp(18px,4vw,38px);align-items:center;min-height:420px;padding:clamp(18px,4vw,42px);overflow:hidden;border:1px solid rgba(85,164,255,.3);background:radial-gradient(ellipse at 28% 40%,rgba(40,120,245,.2),transparent 44%),linear-gradient(135deg,#0b1f3a,#06142c)}
 .ps__card-art{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin:auto;overflow:hidden;border:1px solid rgba(192,220,248,.3);background:#102b4d;box-shadow:15px 20px 0 rgba(2,10,24,.38),0 20px 45px rgba(0,0,0,.28)}

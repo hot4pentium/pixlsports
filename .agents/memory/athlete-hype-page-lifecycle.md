@@ -11,6 +11,12 @@ Owner management belongs on its own owner-only route reached from the stable Hyp
 
 **How to apply:** Share the card URL first, preserve the original page and legacy one-off share URLs, and keep the athlete token stable across pause/resume. Let only the owner load a paused page. A public card may show a view-only live scoreboard but must not expose the reusable live-session token or raw tracker events; treat the live session as an independently revocable attachment rather than replacing either durable experience.
 
+The shared Player Showcase presents the athlete’s sport-specific jersey and HYPE Card together through a selector on one `/showcase/:inviteToken` link. Keep `/fan/:inviteToken` as the direct route to the full interactive card.
+
+**Why:** The user wants the whole Showcase to be shareable in one place while preserving the standalone HYPE Card experience.
+
+**How to apply:** Match the owner’s current athlete before constructing a Showcase URL or loading its card; keep public visibility rules intact and do not replace the card’s existing interactive route.
+
 The fan card and Athlete Hype Page are photo-first and do not expose video upload, playback, or video-side controls. Preserve older media records and direct share URLs.
 
 **Why:** The user removed video from Hype Cards and athlete profiles while explicitly preserving existing saved media and share records.

@@ -65,8 +65,8 @@
 .public-showcase__carousel-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 .public-showcase__carousel-tabs button { display: inline-flex; align-items: center; gap: 9px; min-height: 42px; padding: 8px 14px; border: 1px solid rgba(85, 164, 255, .36); background: rgba(11, 31, 58, .72); color: #a9bdd3; font: 800 10px "DM Sans", sans-serif; letter-spacing: .13em; text-transform: uppercase; cursor: pointer; transition: transform .18s ease, opacity .18s ease; }
 .public-showcase__carousel-tabs button span { color: var(--ps-blue); font: 800 13px "Barlow Condensed", sans-serif; }
-.public-showcase__carousel-tabs button[aria-selected="true"] { border-color: var(--ps-lime); background: var(--ps-lime); color: var(--ps-night); }
-.public-showcase__carousel-tabs button[aria-selected="true"] span { color: var(--ps-night); }
+.public-showcase__carousel-tabs button[aria-pressed="true"] { border-color: var(--ps-lime); background: var(--ps-lime); color: var(--ps-night); }
+.public-showcase__carousel-tabs button[aria-pressed="true"] span { color: var(--ps-night); }
 .public-showcase__carousel-tabs button:hover { transform: translateY(-2px); }
 .public-showcase__hype-link {
   display: flex; align-items: center; gap: 14px; width: min(100%, 420px); min-height: 78px;
@@ -200,7 +200,6 @@
 }
 @media (max-width: 380px) {
   .public-showcase__hero h1 { font-size: 58px; }
-  .public-showcase__visual { min-height: 320px; }
   .public-showcase__card-slide { grid-template-columns: 1fr; grid-template-rows: 1fr auto; padding: 42px 24px 24px; }
   .public-showcase__card-art { width: min(65%, 170px); }
   .public-showcase__card-open { justify-self: stretch; }

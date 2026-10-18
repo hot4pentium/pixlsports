@@ -107,9 +107,9 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             <span aria-hidden="true">/</span>
             <span>{invite.seasonName || 'Current season'}</span>
           </div>
-          <div className="public-showcase__carousel-tabs" role="tablist" aria-label={`${firstName}’s Showcase`} data-testid="public-showcase-carousel-tabs">
-            <button type="button" role="tab" aria-selected={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} data-testid="button-public-showcase-slide-jersey"><span>01</span> Jersey</button>
-            <button type="button" role="tab" aria-selected={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} data-testid="button-public-showcase-slide-card"><span>02</span> HYPE Card</button>
+          <div className="public-showcase__carousel-tabs" role="group" aria-label={`${firstName}’s Showcase`} data-testid="public-showcase-carousel-tabs">
+            <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} data-testid="button-public-showcase-slide-jersey"><span>01</span> Jersey</button>
+            <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} data-testid="button-public-showcase-slide-card"><span>02</span> HYPE Card</button>
           </div>
           <Link href={fanHref} className="public-showcase__hype-link" data-testid="link-public-showcase-hype-card">
             <span className="public-showcase__hype-icon"><Sparkles size={19} aria-hidden="true" /></span>

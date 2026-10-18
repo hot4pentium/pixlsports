@@ -83,14 +83,14 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {Router} from 'wouter';
 import {SharedLockerPage} from './src/features/shared-locker';
 import {AthleteLocker} from './src/features/athlete-locker';
-import {PlayerShowcaseContent} from './src/features/player-showcase';
+import {PlayerShowcaseContent,PlayerShowcasePage} from './src/features/player-showcase';
 import {PublicPlayerShowcasePage} from './src/features/public-player-showcase';
 import {SportGearBuilderPage} from './src/features/sport-gear-builder';
 import {sportGearItems} from './src/features/sport-gear-collection';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[]};
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[],ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = '';
@@ -105,6 +105,8 @@ window.fetch = async (input,init) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url.includes('/api/')) {
     window.__requests.push(url);
+    if(url.endsWith('/api/athlete-invites'))return new Response(JSON.stringify(state.ownerInvites),{status:200,headers:{'Content-Type':'application/json'}});
+    if(url.endsWith('/api/projects'))return new Response(JSON.stringify([]),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/athlete-gear/sports')){
       if(init?.method==='PUT'){
         const body=JSON.parse(init.body);window.__gearSaves.push(body);
@@ -130,7 +132,7 @@ function render() {
    const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
    const linkedCard = {...card,inviteToken:card.inviteToken,hypesEnabled:true,timezone:null,seasonEndsAt:'',photoUrl:null,cutoutUrl:null,hypeCard:null,videos:[],stats:null,scheduleEvents:[],replies:[],liveScoreboard:null,liveTaps:{active:false,taps:[]},updatedAt:''};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-      {state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus} sportGear={sportState()} sportGearStatus="ready" athleteRestricted={state.athleteRestricted} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'disabled'} cardEditHref={'/player/'+card.inviteToken+'/manage'} cardPublicHref={'/fan/'+card.inviteToken}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
+      {state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus} sportGear={sportState()} sportGearStatus="ready" athleteRestricted={state.athleteRestricted} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} cardEditHref={'/studio/hype-card'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -192,11 +194,15 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="page-public-player-showcase"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), 'Jordan Lee.');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-hype-card"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-selected')`), 'true');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');
     await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"] [data-testid="img-living-card-athlete"]')`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-selected')`), 'true');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')`), 'true');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-card-interactive"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').focus()`);
+    await browser.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space' });
+    await browser.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space' });
+    await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')==='true'`);
     await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-jersey"]')`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
@@ -218,6 +224,15 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public Showcase overflows at ${width}px`);
       assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-public-showcase-hype-card"]'))`), `HYPE Card link is missing at ${width}px`);
+      await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').click()`);
+      await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"]')`);
+      assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public HYPE Card slide overflows at ${width}px`);
+      assert.ok(await browser.evaluate(`(()=>{const visual=document.querySelector('.public-showcase__visual').getBoundingClientRect();const card=document.querySelector('[data-testid="link-public-showcase-card-interactive"]').getBoundingClientRect();return card.left>=visual.left&&card.right<=visual.right&&card.bottom<=visual.bottom+1})()`), `HYPE Card action escapes its display at ${width}px`);
+      if (width === 390) {
+        const cardCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 85 });
+        await writeFile(resolve(tmpdir(), 'pixl-public-showcase-card-slide-check.jpg'), Buffer.from(cardCapture.data, 'base64'));
+      }
+      await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').click()`);
     }
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const showcaseShareCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
@@ -275,18 +290,37 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`window.__update({mode:'showcase',sport:'soccer',gearStatus:'ready'})`);
     await browser.wait(`document.querySelector('[data-testid="page-player-showcase"]')`);
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="section-dynamic-showcase"]').length`), 1);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').getAttribute('aria-selected')`), 'true');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/studio/hype-card`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    for (const width of [320, 390, 1440]) {
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+      assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Owner HYPE Card slide overflows at ${width}px`);
+      if (width === 390) {
+        const cardCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 85 });
+        await writeFile(resolve(tmpdir(), 'pixl-owner-showcase-card-slide-check.jpg'), Buffer.from(cardCapture.data, 'base64'));
+      }
+    }
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="showcase-jersey-stage"]')`);
     await browser.evaluate(`window.__update({paused:true})`);
-    await browser.wait(`!document.querySelector('[data-testid="button-showcase-slide-card"]')`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-hype-card-preview"]')`), null, 'paused HYPE Card content is not rendered into the owner Showcase');
+    await browser.wait(`document.querySelector('[data-testid="button-showcase-slide-card"]')`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`), null, 'paused HYPE Card art is not rendered into the owner Showcase');
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="status-showcase-card-unavailable"]').textContent.includes('not shared')`), 'the owner gets a clear status when card sharing is paused');
     await browser.evaluate(`window.__update({paused:false})`);
     await browser.wait(`document.querySelector('[data-testid="button-showcase-slide-card"]')`);
+    await browser.evaluate(`window.__update({cardStatus:'not-linked'})`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"]').textContent.includes('No HYPE Card linked')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`), null, 'a missing linked card does not produce a fabricated preview');
+    await browser.evaluate(`window.__update({cardStatus:'ready'})`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-jersey-stage"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-parent-week"]')`), null);
     assert.equal(await browser.evaluate(`document.body.innerText.includes('Plan your week')`), false);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-gear"]').getAttribute('href')`), `${base}/studio/gear`);
@@ -372,7 +406,10 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-cleats"]').dataset.earned`), 'false');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-helmet"]').dataset.earned`), 'true');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'public Showcase gear is not controlled by HYPE Card visibility');
-    await browser.evaluate(`window.__update({mode:'sport-editor',athleteRestricted:true,noMatchingCard:false})`);
+    await browser.evaluate(`window.__update({mode:'owner-showcase',sport:'soccer',gearStatus:'ready'})`);
+    await browser.wait(`document.querySelector('[data-testid="link-public-showcase-url"]')`);
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]').getAttribute('href').endsWith('/showcase/fixture-athlete')`), 'the share link resolves the invite matching the selected athlete rather than the first saved invite');
+    await browser.evaluate(`window.__update({mode:'sport-editor',sport:'football',athleteRestricted:true,noMatchingCard:false})`);
     await browser.wait(`document.querySelector('[data-testid="page-sport-gear-football"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]')`), null);
     await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-coral"]').click()`);

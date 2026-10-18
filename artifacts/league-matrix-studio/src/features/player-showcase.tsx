@@ -38,7 +38,7 @@ export interface PlayerShowcaseContentProps {
   sportGearStatus?: AthleteLockerGearStatus;
   onRetrySportGear?: () => void;
   linkedCard?: PublicAthleteFanCard | null;
-  cardStatus?: 'loading' | 'ready' | 'unavailable' | 'disabled';
+  cardStatus?: 'loading' | 'ready' | 'unavailable' | 'not-linked' | 'not-shared';
   cardEditHref?: string;
   cardPublicHref?: string;
 }
@@ -54,10 +54,11 @@ function sameIdentity(left: string | null | undefined, right: string | null | un
 function matchesShowcaseInvite(invite: OwnedAthleteInvite, profile: SupporterProfile) {
   return sameIdentity(invite.athleteName, profile.athleteName)
     && sameIdentity(invite.teamName, profile.teamName)
+    && sameIdentity(invite.seasonName, profile.seasonName)
     && invite.sport === profile.sport;
 }
 
-export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'disabled', cardEditHref = hypeHref, cardPublicHref }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref }: PlayerShowcaseContentProps) {
   const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
   const isSoccer = profile.sport === 'soccer';
   const isFootball = profile.sport === 'football';
@@ -72,7 +73,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
   const label = `${profile.athleteName || 'Player'} number ${number} ${sportLabel(profile.sport)} jersey`;
   const showError = isSoccer && gearStatus === 'error';
   const canPreviewCard = cardStatus === 'ready' && Boolean(linkedCard);
-  const showCardSlide = cardStatus !== 'disabled';
+  const showCardSlide = !athleteRestricted || Boolean(linkedCard);
   const card = canPreviewCard ? linkedCard : null;
   const activeSlide = selectedSlide === 'card' && showCardSlide ? 'card' : 'jersey';
 
@@ -81,11 +82,11 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
       <section className="ps__stage-wrap" aria-labelledby="ps-dyn" data-testid="section-dynamic-showcase" style={{ minWidth: 0 }}>
         <h1 id="ps-dyn" className="ps__section-title">Dynamic <span>Showcase</span></h1>
         <div className="ps__carousel" data-testid="showcase-carousel">
-          <div className="ps__carousel-controls" role="tablist" aria-label="Showcase slides" data-testid="showcase-carousel-tabs">
-            <button type="button" role="tab" aria-selected={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} className="ps__carousel-tab" data-testid="button-showcase-slide-jersey">
+          <div className="ps__carousel-controls" role="group" aria-label="Showcase slides" data-testid="showcase-carousel-tabs">
+            <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} className="ps__carousel-tab" data-testid="button-showcase-slide-jersey">
               <span>01</span> Jersey
             </button>
-            {showCardSlide && <button type="button" role="tab" aria-selected={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} className="ps__carousel-tab" data-testid="button-showcase-slide-card">
+            {showCardSlide && <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} className="ps__carousel-tab" data-testid="button-showcase-slide-card">
               <span>02</span> HYPE Card
             </button>}
           </div>
@@ -140,8 +141,18 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
                 </div></div>
               </> : <div className="ps__card-unavailable" role="status" data-testid="status-showcase-card-unavailable">
                 <Zap size={24} aria-hidden="true" />
-                <strong>{cardStatus === 'loading' ? 'Loading the saved card…' : cardStatus === 'unavailable' ? 'HYPE Card unavailable' : 'HYPE Card paused'}</strong>
-                <span>{cardStatus === 'loading' ? 'The saved front is on its way.' : 'The jersey stays here. Card details stay private until sharing is active.'}</span>
+                <strong>
+                  {cardStatus === 'loading' ? 'Loading the saved card…'
+                    : cardStatus === 'unavailable' ? 'HYPE Card unavailable'
+                      : cardStatus === 'not-linked' ? 'No HYPE Card linked'
+                        : cardStatus === 'not-shared' ? 'HYPE Card not shared'
+                          : 'HYPE Card unavailable'}
+                </strong>
+                <span>
+                  {cardStatus === 'loading' ? 'The saved front is on its way.'
+                    : cardStatus === 'not-linked' ? 'There is no HYPE Card linked to this athlete yet.'
+                      : 'The jersey stays here. Card details stay private until sharing is active.'}
+                </span>
                 <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">Review HYPE Card settings <ArrowRight size={15} aria-hidden="true" /></Link>
               </div>}
             </div>}
@@ -198,8 +209,10 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     && fanCardQuery.data.sport === profile.sport
     ? fanCardQuery.data
     : null;
-  const cardStatus: PlayerShowcaseContentProps['cardStatus'] = !matchedInvite || !matchedInvite.showHypeCard || matchedInvite.paused
-    ? 'disabled'
+  const cardStatus: PlayerShowcaseContentProps['cardStatus'] = !matchedInvite
+    ? 'not-linked'
+    : !matchedInvite.showHypeCard || matchedInvite.paused
+      ? 'not-shared'
     : fanCardQuery.isLoading ? 'loading' : linkedCard ? 'ready' : 'unavailable';
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   const publicShowcaseUrl = inviteToken
