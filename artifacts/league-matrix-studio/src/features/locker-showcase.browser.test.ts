@@ -90,7 +90,7 @@ import {sportGearItems} from './src/features/sport-gear-collection';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[],ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[],ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = '';
@@ -128,7 +128,7 @@ Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:
 function render() {
   const ownerCard = {...card,paused:state.paused,showHypeCard:state.showHypeCard};
   const gear = state.gearStatus==='ready' ? {athleteName:card.athleteName,loadout:{...loadout,...state.patch},unlockedGear:state.unlocked,progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}} : null;
-  const profile = {athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,jerseyNumber:'17',sport:state.sport,displayName:'Parent',position:'',relationship:'parent',accessMode:'full'};
+  const profile = {athleteName:card.athleteName,teamName:card.teamName,seasonName:state.profileSeason??card.seasonName,jerseyNumber:'17',sport:state.sport,displayName:'Parent',position:'',relationship:'parent',accessMode:'full'};
    const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
    const linkedCard = {...card,inviteToken:card.inviteToken,hypesEnabled:true,timezone:null,seasonEndsAt:'',photoUrl:null,cutoutUrl:null,hypeCard:null,videos:[],stats:null,scheduleEvents:[],replies:[],liveScoreboard:null,liveTaps:{active:false,taps:[]},updatedAt:''};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
@@ -426,6 +426,10 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`window.__update({mode:'owner-showcase',sport:'soccer',gearStatus:'ready'})`);
     await browser.wait(`document.querySelector('[data-testid="link-public-showcase-url"]')`);
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]').getAttribute('href').endsWith('/showcase/fixture-athlete')`), 'the share link resolves the invite matching the selected athlete rather than the first saved invite');
+    await browser.evaluate(`window.__update({profileSeason:'Spring 2027'})`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`, 'a single athlete card remains linked when the profile season label changes');
     await browser.evaluate(`window.__update({mode:'sport-editor',sport:'football',athleteRestricted:true,noMatchingCard:false})`);
     await browser.wait(`document.querySelector('[data-testid="page-sport-gear-football"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]')`), null);

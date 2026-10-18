@@ -10,7 +10,6 @@ import {
   getGetAthleteFanCardQueryKey,
   useGetAthleteFanCard,
   type PublicAthleteFanCard,
-  type OwnedAthleteInvite,
   type SoccerGearState,
   type SportGearState,
 } from '@workspace/api-client-react';
@@ -25,6 +24,7 @@ import { isGearSport, matchingSportGear, useSportGear } from './use-sport-gear';
 import { SportGearCollection } from './sport-gear-collection';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { useShowcaseSwipe } from './use-showcase-swipe';
+import { getShowcaseInvite } from './player-showcase-model';
 import './player-showcase.css';
 
 export interface PlayerShowcaseContentProps {
@@ -42,24 +42,14 @@ export interface PlayerShowcaseContentProps {
   cardStatus?: 'loading' | 'ready' | 'unavailable' | 'not-linked' | 'not-shared';
   cardEditHref?: string;
   cardPublicHref?: string;
+  onRetryCard?: () => void;
 }
 
 function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-function sameIdentity(left: string | null | undefined, right: string | null | undefined) {
-  return (left ?? '').trim().toLocaleLowerCase() === (right ?? '').trim().toLocaleLowerCase();
-}
-
-function matchesShowcaseInvite(invite: OwnedAthleteInvite, profile: SupporterProfile) {
-  return sameIdentity(invite.athleteName, profile.athleteName)
-    && sameIdentity(invite.teamName, profile.teamName)
-    && sameIdentity(invite.seasonName, profile.seasonName)
-    && invite.sport === profile.sport;
-}
-
-export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref, onRetryCard }: PlayerShowcaseContentProps) {
   const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
   const swipeHandlers = useShowcaseSwipe(setSelectedSlide);
   const isSoccer = profile.sport === 'soccer';
@@ -153,8 +143,10 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
                 <span>
                   {cardStatus === 'loading' ? 'The saved front is on its way.'
                     : cardStatus === 'not-linked' ? 'There is no HYPE Card linked to this athlete yet.'
+                      : cardStatus === 'unavailable' ? 'The linked HYPE Card could not be loaded.'
                       : 'The jersey stays here. Card details stay private until sharing is active.'}
                 </span>
+                {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" data-testid="button-showcase-card-retry">Try again</button>}
                 <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">Review HYPE Card settings <ArrowRight size={15} aria-hidden="true" /></Link>
               </div>}
             </div>}
@@ -176,13 +168,17 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
 
 export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProfile; userId: string | null }) {
   const [shareStatus, setShareStatus] = useState('');
-  const { data: invites } = useListAthleteInvites({
+  const invitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(userId),
-      queryKey: getListAthleteInvitesQueryKey(),
+      queryKey: [...getListAthleteInvitesQueryKey(), userId ?? null],
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+      retry: false,
     },
   });
-  const matchedInvite = invites?.find((item) => matchesShowcaseInvite(item, profile)) ?? null;
+  const matchedInvite = getShowcaseInvite(invitesQuery.data ?? [], profile);
   const cardEnabled = Boolean(matchedInvite && matchedInvite.showHypeCard && !matchedInvite.paused);
   const fanCardQuery = useGetAthleteFanCard(matchedInvite?.inviteToken ?? '', {
     query: {
@@ -206,13 +202,15 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const inviteToken = matchedInvite?.inviteToken;
   const linkedCard = fanCardQuery.data
     && fanCardQuery.data.inviteToken === inviteToken
-    && sameIdentity(fanCardQuery.data.athleteName, profile.athleteName)
-    && sameIdentity(fanCardQuery.data.teamName, profile.teamName)
-    && fanCardQuery.data.sport === profile.sport
+    && fanCardQuery.data.athleteName.trim().toLocaleLowerCase() === profile.athleteName.trim().toLocaleLowerCase()
+    && fanCardQuery.data.teamName.trim().toLocaleLowerCase() === profile.teamName.trim().toLocaleLowerCase()
+    && fanCardQuery.data.sport === matchedInvite?.sport
     ? fanCardQuery.data
     : null;
-  const cardStatus: PlayerShowcaseContentProps['cardStatus'] = !matchedInvite
-    ? 'not-linked'
+  const cardStatus: PlayerShowcaseContentProps['cardStatus'] = invitesQuery.isLoading
+    ? 'loading'
+    : invitesQuery.isError ? 'unavailable'
+    : !matchedInvite ? 'not-linked'
     : !matchedInvite.showHypeCard || matchedInvite.paused
       ? 'not-shared'
     : fanCardQuery.isLoading ? 'loading' : linkedCard ? 'ready' : 'unavailable';
@@ -236,6 +234,10 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
         onRetrySportGear={() => void sportGearQuery.refetch()}
         linkedCard={linkedCard} cardStatus={cardStatus}
+        onRetryCard={() => {
+          if (fanCardQuery.isError) void fanCardQuery.refetch();
+          else void invitesQuery.refetch();
+        }}
         cardEditHref="/studio/hype-card"
         cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}` : undefined} />
       <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
