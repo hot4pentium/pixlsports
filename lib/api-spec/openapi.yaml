@@ -513,6 +513,11 @@ paths:
       operationId: getSportGear
       tags: [athlete-gear]
       summary: Get sport-specific earned equipment and saved Showcase look
+      parameters:
+        - in: query
+          name: athleteName
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 120 }
       responses:
         "200":
           description: Saved look and server-verified equipment rewards

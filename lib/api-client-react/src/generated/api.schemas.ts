@@ -3080,6 +3080,14 @@ export const ListAdminSupportTicketsStatusItem = {
   resolved: 'resolved',
 } as const;
 
+export type GetSportGearParams = {
+/**
+ * @minLength 1
+ * @maxLength 120
+ */
+athleteName?: string;
+};
+
 export type ListHypeCardSharesParams = {
 shareMode?: ListHypeCardSharesShareMode;
 mediaType?: ListHypeCardSharesMediaType;

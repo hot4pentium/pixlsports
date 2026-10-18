@@ -900,6 +900,14 @@ export const GetSportGearParams = zod.object({
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball'])
 })
 
+export const getSportGearQueryAthleteNameMax = 120;
+
+
+
+export const GetSportGearQueryParams = zod.object({
+  "athleteName": zod.coerce.string().min(1).max(getSportGearQueryAthleteNameMax).optional()
+})
+
 export const getSportGearResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getSportGearResponseLoadoutEquippedGearItemMax = 60;
 

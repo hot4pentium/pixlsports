@@ -71,6 +71,7 @@ import type {
   GameOnCard,
   GearSport,
   GetNotificationSubscriptionStatusParams,
+  GetSportGearParams,
   HealthStatus,
   HypeCardAppearance,
   HypeCardReplyInbox,
@@ -1857,20 +1858,29 @@ export function useGetSportGearArt<TData = Awaited<ReturnType<typeof getSportGea
 
 
 
-export const getGetSportGearUrl = (sport: GearSport,) => {
+export const getGetSportGearUrl = (sport: GearSport,
+    params?: GetSportGearParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/athlete-gear/sports/${sport}`
+  return stringifiedParams.length > 0 ? `/api/athlete-gear/sports/${sport}?${stringifiedParams}` : `/api/athlete-gear/sports/${sport}`
 }
 
 /**
  * @summary Get sport-specific earned equipment and saved Showcase look
  */
-export const getSportGear = async (sport: GearSport, options?: Parameters<typeof customFetch>[1]): Promise<SportGearState> => {
+export const getSportGear = async (sport: GearSport,
+    params?: GetSportGearParams, options?: Parameters<typeof customFetch>[1]): Promise<SportGearState> => {
 
-  return customFetch<SportGearState>(getGetSportGearUrl(sport),
+  return customFetch<SportGearState>(getGetSportGearUrl(sport,params),
   {
     ...options,
     method: 'GET'
@@ -1883,23 +1893,25 @@ export const getSportGear = async (sport: GearSport, options?: Parameters<typeof
 
 
 
-export const getGetSportGearQueryKey = (sport: GearSport,) => {
+export const getGetSportGearQueryKey = (sport: GearSport,
+    params?: GetSportGearParams,) => {
     return [
-    `/api/athlete-gear/sports/${sport}`
+    `/api/athlete-gear/sports/${sport}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetSportGearQueryOptions = <TData = Awaited<ReturnType<typeof getSportGear>>, TError = ErrorType<UnauthorizedResponse>>(sport: GearSport, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSportGearQueryOptions = <TData = Awaited<ReturnType<typeof getSportGear>>, TError = ErrorType<UnauthorizedResponse>>(sport: GearSport,
+    params?: GetSportGearParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetSportGearQueryKey(sport);
+  const queryKey =  queryOptions?.queryKey ?? getGetSportGearQueryKey(sport,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSportGear>>> = ({ signal }) => getSportGear(sport, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSportGear>>> = ({ signal }) => getSportGear(sport,params, { signal, ...requestOptions });
 
 
 
@@ -1917,11 +1929,12 @@ export type GetSportGearQueryError = ErrorType<UnauthorizedResponse>
  */
 
 export function useGetSportGear<TData = Awaited<ReturnType<typeof getSportGear>>, TError = ErrorType<UnauthorizedResponse>>(
- sport: GearSport, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ sport: GearSport,
+    params?: GetSportGearParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetSportGearQueryOptions(sport,options)
+  const queryOptions = getGetSportGearQueryOptions(sport,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
