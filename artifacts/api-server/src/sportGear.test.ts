@@ -61,19 +61,22 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
       athleteEmail: "sport-gear@example.com", athleteClerkUserId: athlete, status: "active",
     }).returning();
     const path = "/athlete-gear/sports/football";
-    const read = async (user = owner) => {
-      const response = await call(path, "GET", undefined, user);
+    const read = async (user = owner, sport = "football", name = "Gear Player") => {
+      const response = await call(`/athlete-gear/sports?sport=${sport}&athleteName=${encodeURIComponent(name)}`, "GET", undefined, user);
       assert.equal(response.status, 200);
       return response.json();
     };
-    assert.equal((await call(path, "GET", undefined, "")).status, 401);
+    assert.equal((await call("/athlete-gear/sports?sport=football&athleteName=Gear%20Player", "GET", undefined, "")).status, 401);
     assert.equal((await call("/athlete-gear/art/v1/private-photo.webp", "GET", undefined, "")).status, 404, "artwork route cannot serve arbitrary public or private objects");
     const artwork = await call("/athlete-gear/art/v1/football-helmet-outline.webp", "GET", undefined, "");
     assert.equal(artwork.status, 200);
     assert.equal(artwork.headers.get("content-type"), "image/webp");
     assert.ok((await artwork.arrayBuffer()).byteLength > 0);
-    assert.equal((await call("/athlete-gear/sports/cricket")).status, 400);
+    assert.equal((await call("/athlete-gear/sports?sport=cricket")).status, 400);
     assert.equal((await read()).athleteId, invite.id);
+    assert.equal((await read(owner, "soccer")).athleteId, null, "the selected athlete name is not matched to a different athlete's soccer HYPE Card");
+    assert.equal((await read(owner, "football", "Other Player")).athleteId, null, "a different selected name cannot edit this athlete's HYPE Card");
+    assert.equal((await call("/athlete-gear/sports?sport=soccer&athleteName=Gear%20Player", "GET", undefined, athlete)).status, 403);
     assert.ok((await read()).items.every((item: { earned: boolean }) => !item.earned));
     const save = { athleteId: invite.id, loadout: defaultSportGearLoadout(), showOnHypeCard: true };
     assert.equal((await call(path, "PUT", { ...save, loadout: { ...save.loadout, equippedGear: ["football-helmet"] } })).status, 400);
@@ -102,7 +105,6 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
     assert.deepEqual(fan.events, []);
     assert.equal((await call(path, "PUT", { ...edited, showOnHypeCard: false }, athlete)).status, 200);
     assert.equal((await read()).showOnHypeCard, true, "athlete cannot disable parent's sharing setting");
-    assert.equal((await call("/athlete-gear/sports/soccer", "GET", undefined, athlete)).status, 403);
     assert.equal((await call(path, "PUT", { ...edited, showOnHypeCard: false })).status, 200);
     assert.equal((await publicCard()).sportGear, null);
     assert.equal((await call(path, "PUT", edited, athlete)).status, 200);
@@ -110,10 +112,11 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
     await db.update(athleteInvitesTable).set({ sport: "soccer" }).where(eq(athleteInvitesTable.id, invite.id));
     assert.equal((await call("/athlete-gear/sports/soccer", "PUT", { ...save, loadout: { jerseyColor: "#D7EF80", equippedGear: ["soccer-ball"] } })).status, 200);
     assert.equal((await call("/athlete-gear/soccer", "PUT", { ...save, loadout: defaultSoccerLoadout() })).status, 200, "legacy soccer editor remains available");
+    assert.equal((await read(owner, "soccer")).athleteId, invite.id);
     await db.update(athleteInvitesTable).set({ sport: "football" }).where(eq(athleteInvitesTable.id, invite.id));
     assert.deepEqual((await read()).loadout, edited.loadout, "sport changes and legacy soccer saves retain football's look");
     await db.update(athleteEditorAccessTable).set({ status: "revoked" }).where(eq(athleteEditorAccessTable.id, access.id));
-    assert.equal((await call(path, "GET", undefined, athlete)).status, 403);
+    assert.equal((await call("/athlete-gear/sports?sport=football&athleteName=Gear%20Player", "GET", undefined, athlete)).status, 403);
     assert.equal((await call(path, "PUT", edited, athlete)).status, 403);
     await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.id, invite.id));
     assert.equal((await call(`/athlete-invites/${token}/fan`, "GET", undefined, "")).status, 404);

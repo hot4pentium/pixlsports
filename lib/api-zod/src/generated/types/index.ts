@@ -115,7 +115,7 @@ export * from './gameOnCardStage';
 export * from './gameOnCardStatsState';
 export * from './gearSport';
 export * from './getNotificationSubscriptionStatusParams';
-export * from './getSportGearParams';
+export * from './getSportGearForAthleteParams';
 export * from './healthStatus';
 export * from './hypeCardAppearance';
 export * from './hypeCardAppearanceBackground';

@@ -12,10 +12,12 @@
 button.sgb-item{cursor:pointer}.sgb-item:disabled{cursor:not-allowed;opacity:.85}
 .sgb-item[aria-pressed=true]{border-color:#d7ef80;box-shadow:0 0 0 2px #d7ef8055}
 .sgb-item small{display:block;font-size:11px;opacity:.75}
-.sgb-btn{background:#d7ef80;color:#0b1a33;border:0;border-radius:999px;padding:10px 18px;font-weight:800;cursor:pointer}
+.sgb-btn{background:#d7ef80;color:#0b1a33;border:0;border-radius:999px;padding:10px 18px;min-height:44px;font-weight:800;cursor:pointer;touch-action:manipulation}
 .sgb-btn.alt{background:transparent;color:#eaf1ff;border:1px solid #2b4673}
 .sgb-btn:disabled{opacity:.45;cursor:not-allowed}
 .sgb-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+label.sgb-row{min-height:44px;line-height:1.5;cursor:pointer;touch-action:manipulation}
+.sgb-row input[type=checkbox]{flex:0 0 24px;width:24px;height:24px;accent-color:#d7ef80;touch-action:manipulation}
 .sgb-err{color:#ffb4a2}
 .sgb-skel{height:260px;border-radius:18px;background:#10264a;animation:sgbp 1.2s infinite alternate}
 @keyframes sgbp{to{opacity:.5}}

@@ -90,21 +90,21 @@ import {sportGearItems} from './src/features/sport-gear-collection';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,sharedGear:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[]};
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,sharedGear:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = '';
 window.__gearSaves = [];
 function sportState() {
  const stored=JSON.parse(sessionStorage.getItem('gear-fixture:'+state.accountId+':'+state.sport)||'null');
- return {athleteId:'11111111-1111-4111-8111-111111111111',athleteName:card.athleteName,sport:state.sport,canSave:true,showOnHypeCard:stored?.showOnHypeCard??false,loadout:stored?.loadout??{jerseyColor:'#2878F5',equippedGear:[]},items:sportGearItems(state.sport).map((item,index)=>({...item,earned:index===0||index===2,requirement:'Complete five tracked games'})),progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}};
+ return {athleteId:state.noMatchingCard?null:'11111111-1111-4111-8111-111111111111',athleteName:state.noMatchingCard?'':card.athleteName,sport:state.sport,canSave:!state.noMatchingCard,showOnHypeCard:stored?.showOnHypeCard??false,loadout:stored?.loadout??{jerseyColor:'#2878F5',equippedGear:[]},items:sportGearItems(state.sport).map((item,index)=>({...item,earned:index===0||index===2,requirement:'Complete five tracked games'})),progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}};
 }
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (input,init) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url.includes('/api/')) {
     window.__requests.push(url);
-    if(url.includes('/athlete-gear/sports/')){
+    if(url.includes('/athlete-gear/sports')){
       if(init?.method==='PUT'){
         const body=JSON.parse(init.body);window.__gearSaves.push(body);
         if(state.failSave)return new Response(JSON.stringify({error:'Offline'}),{status:500,headers:{'Content-Type':'application/json'}});
@@ -170,6 +170,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json() as Array<{ type: string; webSocketDebuggerUrl: string }>;
     browser = await Browser.connect(tabs.find((tab) => tab.type === 'page')!.webSocketDebuggerUrl);
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await browser.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html` });
     await browser.wait(`document.querySelector('[data-testid="page-shared-locker"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-shared-locker-name"]').textContent`), 'Jordan Lee');
@@ -307,6 +308,25 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="status-sport-gear-save"]').textContent==='Saved'`);
     assert.deepEqual(await browser.evaluate(`window.__gearSaves.at(-1).loadout`), {jerseyColor:'#F36E4C',equippedGear:['football-helmet']});
     assert.equal(await browser.evaluate(`window.__gearSaves.at(-1).showOnHypeCard`), true);
+    await browser.evaluate(`window.__update({noMatchingCard:true})`);
+    await browser.wait(`document.querySelector('[data-testid="text-sport-gear-cannot-save"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]').disabled`), false, 'the visibility checkbox remains touchable while a matching card is missing');
+    await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]').scrollIntoView({block:'center'})`);
+    const checkboxPoint = await browser.evaluate(`(()=>{const r=document.querySelector('[data-testid="toggle-sport-gear-public"]').getBoundingClientRect();return {x:Math.floor(r.x+r.width/2),y:Math.floor(r.y+r.height/2),id:1,force:1}})()`);
+    await browser.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [checkboxPoint] });
+    await browser.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await browser.wait(`document.querySelector('[data-testid="status-sport-gear-save"]').textContent==='Unsaved changes'`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-save-sport-gear"]').disabled`), false, 'Save gear remains actionable for a changed draft');
+    await browser.evaluate(`document.querySelector('[data-testid="button-save-sport-gear"]').scrollIntoView({block:'center'})`);
+    const savePoint = await browser.evaluate(`(()=>{const r=document.querySelector('[data-testid="button-save-sport-gear"]').getBoundingClientRect();return {x:Math.floor(r.x+r.width/2),y:Math.floor(r.y+r.height/2),id:2,force:1}})()`);
+    await browser.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [savePoint] });
+    await browser.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await browser.wait(`document.querySelector('[data-testid="status-sport-gear-card-required"]')`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-sport-gear-save-card"]'))`), 'a missing HYPE Card has an explicit next step');
+    assert.equal(await browser.evaluate(`window.__gearSaves.length`), 2, 'the UI does not report an unsaved draft as successfully persisted');
+    await browser.evaluate(`window.__update({noMatchingCard:false})`);
+    await browser.wait(`!document.querySelector('[data-testid="text-sport-gear-cannot-save"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="status-sport-gear-card-required"]')`), null, 'matching the athlete card clears the setup prompt');
     await browser.evaluate(`window.scrollTo(0,document.documentElement.scrollHeight)`);
     await browser.wait(`Array.from(document.querySelectorAll('[data-testid^="button-equip-"] img')).every(img=>img.complete&&img.naturalWidth>0)`);
     await browser.evaluate(`window.scrollTo(0,0)`);

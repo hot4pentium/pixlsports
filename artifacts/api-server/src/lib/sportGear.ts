@@ -1,20 +1,22 @@
-import { and, eq } from "drizzle-orm";
-import { GetSportGearResponse } from "@workspace/api-zod";
+import { and, eq, sql } from "drizzle-orm";
+import { GetSportGearForAthleteResponse } from "@workspace/api-zod";
 import { athleteInvitesTable, db, soccerGearLooksTable } from "@workspace/db";
 import { readGearProgress, type GearDatabase } from "./soccerGear";
 import { defaultSportGearLoadout, gearSports, sportGearItems, type GearSport } from "./sportGearPolicy";
 
 export function savedSportLook(payload: Record<string, unknown> | undefined, sport: GearSport) {
   const looks = payload?.sportLooks as Partial<Record<GearSport, unknown>> | undefined;
-  return GetSportGearResponse.shape.loadout.parse(looks?.[sport] ?? defaultSportGearLoadout());
+  return GetSportGearForAthleteResponse.shape.loadout.parse(looks?.[sport] ?? defaultSportGearLoadout());
 }
 
-export async function readSportGear(owner: string, sport: GearSport, database: GearDatabase = db, inviteId?: string) {
+export async function readSportGear(owner: string, sport: GearSport, database: GearDatabase = db, inviteId?: string, athleteName?: string) {
   const [invite] = await database.select().from(athleteInvitesTable).where(and(
     eq(athleteInvitesTable.ownerClerkUserId, owner),
+    eq(athleteInvitesTable.sport, sport),
     ...(inviteId ? [eq(athleteInvitesTable.id, inviteId)] : []),
+    ...(athleteName?.trim() ? [sql`lower(trim(${athleteInvitesTable.athleteName})) = ${athleteName.trim().toLowerCase()}`] : []),
   )).limit(1);
-  const matches = invite?.sport === sport;
+  const matches = Boolean(invite);
   const [look] = matches ? await database.select().from(soccerGearLooksTable).where(eq(soccerGearLooksTable.inviteId, invite.id)) : [];
   const progress = await readGearProgress(owner, database);
   const items = sportGearItems(sport, progress);

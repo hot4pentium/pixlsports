@@ -896,40 +896,37 @@ export const GetSportGearArtResponse = zod.unknown()
 /**
  * @summary Get sport-specific earned equipment and saved Showcase look
  */
-export const GetSportGearParams = zod.object({
-  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball'])
+export const getSportGearForAthleteQueryAthleteNameMax = 120;
+
+
+
+export const GetSportGearForAthleteQueryParams = zod.object({
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
+  "athleteName": zod.coerce.string().min(1).max(getSportGearForAthleteQueryAthleteNameMax).optional()
 })
 
-export const getSportGearQueryAthleteNameMax = 120;
+export const getSportGearForAthleteResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getSportGearForAthleteResponseLoadoutEquippedGearItemMax = 60;
+
+export const getSportGearForAthleteResponseLoadoutEquippedGearMax = 4;
+
+export const getSportGearForAthleteResponseProgressActiveWeeksMin = 0;
+
+export const getSportGearForAthleteResponseProgressEventCardsCreatedMin = 0;
+
+export const getSportGearForAthleteResponseProgressTrackerGamesCompletedMin = 0;
 
 
 
-export const GetSportGearQueryParams = zod.object({
-  "athleteName": zod.coerce.string().min(1).max(getSportGearQueryAthleteNameMax).optional()
-})
-
-export const getSportGearResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const getSportGearResponseLoadoutEquippedGearItemMax = 60;
-
-export const getSportGearResponseLoadoutEquippedGearMax = 4;
-
-export const getSportGearResponseProgressActiveWeeksMin = 0;
-
-export const getSportGearResponseProgressEventCardsCreatedMin = 0;
-
-export const getSportGearResponseProgressTrackerGamesCompletedMin = 0;
-
-
-
-export const GetSportGearResponse = zod.object({
+export const GetSportGearForAthleteResponse = zod.object({
   "athleteId": zod.string().uuid().nullable(),
   "athleteName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "canSave": zod.boolean(),
   "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
-  "jerseyColor": zod.string().regex(getSportGearResponseLoadoutJerseyColorRegExp),
-  "equippedGear": zod.array(zod.string().max(getSportGearResponseLoadoutEquippedGearItemMax)).max(getSportGearResponseLoadoutEquippedGearMax)
+  "jerseyColor": zod.string().regex(getSportGearForAthleteResponseLoadoutJerseyColorRegExp),
+  "equippedGear": zod.array(zod.string().max(getSportGearForAthleteResponseLoadoutEquippedGearItemMax)).max(getSportGearForAthleteResponseLoadoutEquippedGearMax)
 }),
   "items": zod.array(zod.object({
   "id": zod.string(),
@@ -938,9 +935,9 @@ export const GetSportGearResponse = zod.object({
   "earned": zod.boolean()
 })),
   "progress": zod.object({
-  "activeWeeks": zod.number().int().min(getSportGearResponseProgressActiveWeeksMin),
-  "eventCardsCreated": zod.number().int().min(getSportGearResponseProgressEventCardsCreatedMin),
-  "trackerGamesCompleted": zod.number().int().min(getSportGearResponseProgressTrackerGamesCompletedMin),
+  "activeWeeks": zod.number().int().min(getSportGearForAthleteResponseProgressActiveWeeksMin),
+  "eventCardsCreated": zod.number().int().min(getSportGearForAthleteResponseProgressEventCardsCreatedMin),
+  "trackerGamesCompleted": zod.number().int().min(getSportGearForAthleteResponseProgressTrackerGamesCompletedMin),
   "hypeCardShared": zod.boolean()
 })
 })

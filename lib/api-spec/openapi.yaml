@@ -502,18 +502,17 @@ paths:
               schema: { type: string, format: binary }
         "404":
           $ref: "#/components/responses/NotFound"
-  /athlete-gear/sports/{sport}:
-    parameters:
-      - in: path
-        name: sport
-        required: true
-        schema:
-          $ref: "#/components/schemas/GearSport"
+  /athlete-gear/sports:
     get:
-      operationId: getSportGear
+      operationId: getSportGearForAthlete
       tags: [athlete-gear]
       summary: Get sport-specific earned equipment and saved Showcase look
       parameters:
+        - in: query
+          name: sport
+          required: true
+          schema:
+            $ref: "#/components/schemas/GearSport"
         - in: query
           name: athleteName
           required: false
@@ -527,6 +526,13 @@ paths:
                 $ref: "#/components/schemas/SportGearState"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /athlete-gear/sports/{sport}:
+    parameters:
+      - in: path
+        name: sport
+        required: true
+        schema:
+          $ref: "#/components/schemas/GearSport"
     put:
       operationId: saveSportGear
       tags: [athlete-gear]

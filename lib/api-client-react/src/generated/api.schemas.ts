@@ -3080,7 +3080,8 @@ export const ListAdminSupportTicketsStatusItem = {
   resolved: 'resolved',
 } as const;
 
-export type GetSportGearParams = {
+export type GetSportGearForAthleteParams = {
+sport: GearSport;
 /**
  * @minLength 1
  * @maxLength 120

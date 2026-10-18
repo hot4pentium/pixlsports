@@ -112,7 +112,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     },
   });
   const gearQuery = useKitGear(userId, profile.sport === 'soccer');
-  const sportGearQuery = useSportGear(userId, profile.sport);
+  const sportGearQuery = useSportGear(userId, profile.sport, profile.athleteName);
   const sportGear = matchingSportGear(sportGearQuery.data, profile.athleteName, profile.sport);
   const gear = isSoccerGearForAthlete(gearQuery.data, profile.athleteName, profile.sport) ? gearQuery.data : null;
   const gearStatus: AthleteLockerGearStatus = profile.sport !== 'soccer' || !userId ? 'unavailable'
@@ -220,7 +220,7 @@ export function AthleteShowcaseHome() {
 
 function AthleteShowcaseBody({ profile, accountId, projectId }: { profile: SupporterProfile; accountId: string | null; projectId: string }) {
   const gearQuery = useKitGear(accountId, profile.sport === 'soccer');
-  const sportGearQuery = useSportGear(accountId, profile.sport);
+  const sportGearQuery = useSportGear(accountId, profile.sport, profile.athleteName);
   const sportGear = matchingSportGear(sportGearQuery.data, profile.athleteName, profile.sport);
   const gear = isSoccerGearForAthlete(gearQuery.data, profile.athleteName, profile.sport) ? gearQuery.data : null;
   const gearStatus: AthleteLockerGearStatus = profile.sport !== 'soccer' || !accountId ? 'unavailable'

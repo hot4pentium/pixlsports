@@ -46,3 +46,9 @@ Gear artwork for the supported sports should be photorealistic when earned and a
 **Why:** The user asked, “Are you able to supply photo realistic gear for our sports?” and requested “a white outline of gear until it is earned,” while choosing football Gear controls.
 
 **How to apply:** Use actual white contours for locked equipment, not faded color photos. Keep earning enforced on the server and keep public visibility under parent control.
+
+Owner Gear controls must resolve the HYPE Card for the selected athlete and sport. If no matching card exists, the visibility toggle and Save action should remain responsive and explain how to complete card setup; never imply an unsaved draft was saved.
+
+**Why:** The user reported that the Gear checkbox and Save button did not respond to touch. The editor had disabled both because its lookup found no matching HYPE Card.
+
+**How to apply:** Include the current athlete identity in the owner lookup, preserve server validation of the selected invite, and provide a direct HYPE Card setup link when the profile has no match.

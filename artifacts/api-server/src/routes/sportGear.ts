@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import { GetSportGearParams, GetSportGearResponse, SaveSportGearBody } from "@workspace/api-zod";
+import { GetSportGearForAthleteQueryParams, GetSportGearForAthleteResponse, SaveSportGearBody, SaveSportGearParams } from "@workspace/api-zod";
 import { athleteEditorAccessTable, athleteInvitesTable, cloudProjectsTable, db, soccerGearLooksTable, type AthleteEditorAccess } from "@workspace/db";
 import { getRequiredClerkUserId, requireProjectEditorAuth } from "../middlewares/requireAuth";
 import { creditExistingSoccerEventCards, creditExistingSoccerTrackerGames } from "../lib/soccerGear";
@@ -10,7 +10,7 @@ import { defaultSoccerLoadout } from "../lib/soccerGearPolicy";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
-const sportSchema = GetSportGearParams.shape.sport;
+const sportSchema = SaveSportGearParams.shape.sport;
 
 // This public route serves only our curated artwork, never user-uploaded media.
 router.get("/athlete-gear/art/v1/:filename", async (req, res, next) => {
@@ -34,16 +34,16 @@ async function validLinkedKit(access: AthleteEditorAccess, sport: GearSport) {
   return Boolean(linked?.project && typeof linked.project === "object" && (linked.project as Record<string, unknown>).tool === "hype-card");
 }
 
-router.get("/athlete-gear/sports/:sport", requireProjectEditorAuth, async (req, res, next) => {
+router.get("/athlete-gear/sports", requireProjectEditorAuth, async (req, res, next) => {
   res.set("Cache-Control", "no-store");
-  const sport = sportSchema.safeParse(req.params.sport);
-  if (!sport.success) { res.status(400).json({ error: "Choose a supported gear sport." }); return; }
+  const query = GetSportGearForAthleteQueryParams.safeParse(req.query);
+  if (!query.success) { res.status(400).json({ error: "Choose a supported gear sport." }); return; }
   try {
     const access = res.locals.athleteEditorAccess as AthleteEditorAccess | undefined;
-    if (access && !await validLinkedKit(access, sport.data)) { res.status(403).json({ error: "The linked athlete gear is unavailable." }); return; }
+    if (access && !await validLinkedKit(access, query.data.sport)) { res.status(403).json({ error: "The linked athlete gear is unavailable." }); return; }
     const owner = access?.ownerClerkUserId ?? getRequiredClerkUserId(res);
     if (!access) await Promise.all([creditExistingSoccerEventCards(owner), creditExistingSoccerTrackerGames(owner)]);
-    res.json(GetSportGearResponse.parse(await readSportGear(owner, sport.data, db, access?.athleteInviteId)));
+    res.json(GetSportGearForAthleteResponse.parse(await readSportGear(owner, query.data.sport, db, access?.athleteInviteId, access ? undefined : query.data.athleteName)));
   } catch (error) { next(error); }
 });
 
@@ -89,7 +89,7 @@ router.put("/athlete-gear/sports/:sport", requireProjectEditorAuth, async (req, 
       return { state: await readSportGear(owner, sport.data, tx, invite.id) };
     });
     if (result.error) { res.status(result.status ?? 400).json({ error: result.error }); return; }
-    res.json(GetSportGearResponse.parse(result.state));
+    res.json(GetSportGearForAthleteResponse.parse(result.state));
   } catch (error) { next(error); }
 });
 

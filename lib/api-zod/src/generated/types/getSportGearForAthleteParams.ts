@@ -5,8 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { GearSport } from './gearSport';
 
-export type GetSportGearParams = {
+export type GetSportGearForAthleteParams = {
+sport: GearSport;
 /**
  * @minLength 1
  * @maxLength 120
