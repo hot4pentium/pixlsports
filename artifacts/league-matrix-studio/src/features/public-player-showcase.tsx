@@ -4,6 +4,7 @@ import { Link } from 'wouter';
 import { normalizeCardAppearance } from './hype-card-appearance';
 import { gameOnHref } from './athlete-event-links';
 import { JerseyLayerStage } from './jersey-layers';
+import { FootballJerseyPreview } from './football-jersey-preview';
 import './public-player-showcase.css';
 
 export interface PublicPlayerShowcasePageProps {
@@ -12,27 +13,6 @@ export interface PublicPlayerShowcasePageProps {
 
 function sportName(value: string) {
   return value.replace(/[-_]/g, ' ').replace(/^./, (letter) => letter.toUpperCase());
-}
-
-function GenericJersey({ name, number, accent, sport }: { name: string; number: string; accent: string; sport: string }) {
-  return (
-    <div className="public-showcase__generic-kit">
-      <svg viewBox="0 0 300 380" role="img" aria-label="Team jersey illustration">
-        <defs>
-          <linearGradient id="public-kit-shade" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#fff" stopOpacity=".22" />
-            <stop offset="1" stopColor="#071630" stopOpacity=".46" />
-          </linearGradient>
-        </defs>
-        <path d="M70 40 105 24c10 22 30 30 45 30s35-8 45-30l35 16 52 78-48 34-24-36v196H90V116l-24 36-48-34z" fill={accent} />
-        <path d="M70 40 105 24c10 22 30 30 45 30s35-8 45-30l35 16 52 78-48 34-24-36v196H90V116l-24 36-48-34z" fill="url(#public-kit-shade)" />
-        <path d="M105 24c10 22 30 30 45 30s35-8 45-30" fill="none" stroke="#f3f6fa" strokeWidth="11" />
-        <path d="m22 119 42 29m214-29-42 29" stroke="#f3f6fa" strokeWidth="11" />
-        <text x="150" y="120" textAnchor="middle" fill="#fff" fontSize="22" fontWeight="800" letterSpacing="2" fontFamily="DM Sans,sans-serif">{name.toUpperCase().slice(0, 14)}</text>
-        <text x="150" y="255" textAnchor="middle" fill="#fff" fontSize={number.length > 2 ? 82 : 112} fontWeight="900" fontFamily="Barlow Condensed,Impact,sans-serif">{number || '—'}</text>
-      </svg>
-    </div>
-  );
 }
 
 export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePageProps) {
@@ -82,6 +62,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
   const events = invite.showEvents ? invite.events ?? [] : [];
   const fanHref = `/fan/${encodeURIComponent(inviteToken)}`;
   const isSoccer = invite.sport === 'soccer';
+  const isFootball = invite.sport === 'football';
 
   return (
     <main className="public-showcase" data-testid="page-public-player-showcase">
@@ -115,15 +96,19 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           <div className="public-showcase__visual-orbit" aria-hidden="true" />
           <div className="public-showcase__visual-index" aria-hidden="true"><span>01</span> / SEASON ID</div>
           <div className="public-showcase__kit-display" data-testid="figure-public-showcase-jersey">
-            {isSoccer ? (
-              <JerseyLayerStage
-                loadout={invite.soccerGear ?? null}
+            {isFootball ? (
+              <FootballJerseyPreview
                 name={firstName}
                 number={jerseyNumber}
-                label={`${invite.athleteName} ${jerseyNumber ? `number ${jerseyNumber}` : ''} soccer jersey`}
+                label={`${invite.athleteName} ${jerseyNumber ? `number ${jerseyNumber}` : ''} football jersey`}
               />
             ) : (
-              <GenericJersey name={firstName} number={jerseyNumber} accent="#2878f5" sport={sport} />
+              <JerseyLayerStage
+                loadout={isSoccer ? invite.soccerGear ?? null : null}
+                name={firstName}
+                number={jerseyNumber}
+                label={`${invite.athleteName} ${jerseyNumber ? `number ${jerseyNumber}` : ''} ${sport} jersey`}
+              />
             )}
           </div>
           {invite.photoUrl && (

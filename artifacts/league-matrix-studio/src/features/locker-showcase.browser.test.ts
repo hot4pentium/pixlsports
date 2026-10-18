@@ -97,7 +97,7 @@ window.fetch = async (input,init) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url.includes('/api/')) {
     window.__requests.push(url);
-    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,showEvents:state.showEvents}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
+    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,showEvents:state.showEvents,sport:state.sport}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
   }
   return originalFetch(input,init);
 };
@@ -171,6 +171,12 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="link-public-showcase-event-"]')?.getAttribute('href')`), `${base}/game-on/fixture-event`);
     assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan'))`), 'Recipient Showcase uses only the sanitized public fan-card endpoint');
+    await browser.evaluate(`window.__update({sport:'football'})`);
+    await browser.wait(`document.querySelector('[data-testid="image-showcase-football-jersey"]')`);
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]')?.getAttribute('aria-label').includes('football jersey')`), 'Public football Showcase uses the football jersey design');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="football-jersey-neck-laces"]'))`), 'Football jersey includes the lace-up neckline');
+    const publicFootballCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
+    await writeFile(resolve(tmpdir(), 'pixl-public-football-showcase-check.jpg'), Buffer.from(publicFootballCapture.data, 'base64'));
     for (const width of [320, 390, 768, 1440]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public Showcase overflows at ${width}px`);
@@ -188,7 +194,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`window.__update({fail:true})`);
     await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-shared-locker-name"]')`), null);
-    await browser.evaluate(`window.__update({mode:'owner',fail:false})`);
+    await browser.evaluate(`window.__update({mode:'owner',fail:false,sport:'soccer'})`);
     await browser.wait(`document.querySelector('[data-testid="button-locker-copy-mobile"]')`);
     const ownerCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-owner-locker-check.jpg'), Buffer.from(ownerCapture.data, 'base64'));
@@ -246,6 +252,14 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="image-showcase-jersey"]')`);
     const showcaseCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-player-showcase-check.jpg'), Buffer.from(showcaseCapture.data, 'base64'));
+    await browser.evaluate(`window.__update({sport:'football',gearStatus:'unavailable'})`);
+    await browser.wait(`document.querySelector('[data-testid="image-showcase-football-jersey"]')`);
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]')?.getAttribute('aria-label').includes('Football jersey')`), 'Private football Showcase uses the football jersey design');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="football-jersey-neck-laces"]'))`), 'Private football jersey includes the lace-up neckline');
+    assert.equal(await browser.evaluate(`document.querySelector('.ps__jersey')`), null, 'The generic flat jersey fallback is removed');
+    const privateFootballCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
+    await writeFile(resolve(tmpdir(), 'pixl-private-football-showcase-check.jpg'), Buffer.from(privateFootballCapture.data, 'base64'));
+    await browser.evaluate(`window.__update({sport:'soccer',gearStatus:'ready'})`);
     await browser.evaluate(`window.__update({gearStatus:'loading'})`);
     await browser.wait(`document.querySelector('[data-testid="status-showcase-gear-loading"]')`);
     await browser.evaluate(`window.__update({gearStatus:'unavailable'})`);
@@ -254,7 +268,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="status-showcase-error"]')`);
     await browser.evaluate(`window.__update({sport:'basketball',gearStatus:'unavailable'})`);
     await browser.wait(`!document.querySelector('[data-testid="link-showcase-gear"]')`);
-    assert.ok(await browser.evaluate(`document.querySelector('.ps__jersey').getAttribute('aria-label').includes('Basketball')`));
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-jersey"]')?.getAttribute('alt').includes('Basketball jersey')`));
   } finally {
     browser?.close();
     await stop(chromium);

@@ -34,3 +34,9 @@ Parents can share a public Showcase link with recipients. The recipient view inc
 **Why:** The user chose a public Showcase for recipients and asked that it include a link or picture of the HYPE Card.
 
 **How to apply:** Build public Showcase views from the sanitized fan-card endpoint, and keep owner/editor routes and private settings out of the recipient view.
+
+Player Showcases must use a sport-appropriate jersey preview; American football includes a lace-up neckline. The owner Showcase should also make the Gear action visible for football athletes without sending them to soccer-only controls.
+
+**Why:** The user reported that the football Showcase showed a generic jersey and omitted the Gear action.
+
+**How to apply:** Keep sport-specific uniform details in both owner and recipient views. Confirm the destination before routing football athletes to the existing soccer Gear editor.

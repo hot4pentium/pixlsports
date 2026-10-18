@@ -14,6 +14,7 @@ import { isSoccerGearForAthlete } from './athlete-locker-model';
 import type { AthleteLockerGearStatus } from './athlete-locker-types';
 import { AthleteEditorInvitationPanel } from './athlete-invite';
 import { JerseyLayerStage } from './jersey-layers';
+import { FootballJerseyPreview } from './football-jersey-preview';
 import { useKitGear } from './use-kit-gear';
 import './player-showcase.css';
 
@@ -27,37 +28,15 @@ export interface PlayerShowcaseContentProps {
   hypeHref?: string;
 }
 
-const DEFAULT_KIT = '#2878f5';
-
 function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-function Jersey({ color, name, number, label }: { color: string; name: string; number: string; label: string }) {
-  const body = 'M70 40 105 24c10 22 30 30 45 30s35-8 45-30l35 16 52 78-48 34-24-36v196H90V116l-24 36-48-34z';
-  return (
-    <svg className="ps__jersey" viewBox="0 0 300 380" role="img" aria-label={label}>
-      <path d={body} fill={color} />
-      <path d={body} fill="url(#ps-shade)" />
-      <defs>
-        <linearGradient id="ps-shade" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#fff" stopOpacity=".18" />
-          <stop offset="1" stopColor="#000" stopOpacity=".3" />
-        </linearGradient>
-      </defs>
-      <path d="M105 24c10 22 30 30 45 30s35-8 45-30" fill="none" stroke="#fff" strokeWidth="12" strokeLinecap="round" />
-      <path d="M22 119l42 29m214-29-42 29" stroke="#fff" strokeWidth="12" />
-      <text x="150" y="122" textAnchor="middle" fill="#fff" fontSize="26" fontWeight="800" letterSpacing="3" fontFamily="DM Sans,sans-serif">{name.toUpperCase().slice(0, 14)}</text>
-      <text x="150" y="250" textAnchor="middle" fill="#fff" textLength={number.length > 2 ? 110 : undefined} lengthAdjust="spacingAndGlyphs" fontSize={number.length > 2 ? 90 : 118} fontWeight="900" fontFamily="Barlow Condensed,sans-serif">{number}</text>
-    </svg>
-  );
-}
-
 export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card' }: PlayerShowcaseContentProps) {
   const isSoccer = profile.sport === 'soccer';
+  const isFootball = profile.sport === 'football';
   const first = profile.athleteName.trim().split(/\s+/)[0] || 'Player';
   const number = profile.jerseyNumber.trim().replace(/^#/, '') || '—';
-  const color = DEFAULT_KIT;
   const loadout = isSoccer && gearStatus === 'ready' && gear ? gear.loadout : null;
   const label = `${profile.athleteName || 'Player'} number ${number} ${sportLabel(profile.sport)} jersey`;
   const showError = isSoccer && gearStatus === 'error';
@@ -68,10 +47,20 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
         <h1 id="ps-dyn" className="ps__section-title">Dynamic <span>Showcase</span></h1>
         <div className="ps__stage" data-testid="showcase-jersey-stage">
           <p className="ps__team">{profile.teamName || 'Your team'}<br />{sportLabel(profile.sport)}</p>
-          {isSoccer ? (
-            <JerseyLayerStage loadout={loadout} unlockedGear={gear?.unlockedGear} name={first} number={number} label={label} />
+          {isFootball ? (
+            <FootballJerseyPreview
+              name={first}
+              number={number}
+              label={label}
+            />
           ) : (
-            <Jersey color={color} name={first} number={number} label={label} />
+            <JerseyLayerStage
+              loadout={loadout}
+              unlockedGear={isSoccer ? gear?.unlockedGear : undefined}
+              name={first}
+              number={number}
+              label={label}
+            />
           )}
           {isSoccer && gearStatus === 'loading' && (
             <p className="ps__loading" role="status" data-testid="status-showcase-gear-loading">Loading your saved kit…</p>
@@ -92,7 +81,6 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
             )}
           </div>
           {isSoccer && gearStatus === 'unavailable' && <p className="ps__note" data-testid="status-showcase-gear-empty">No saved kit for {first} yet, so the default blue shows. {athleteRestricted ? 'Open Gear to build it.' : 'Start in Gear.'}</p>}
-          {!isSoccer && <p className="ps__note">Showing a {sportLabel(profile.sport)} jersey with {first}&rsquo;s name and number.</p>}
         </div>
         {showError && (
           <p className="ps__state" role="alert" data-testid="status-showcase-error" style={{ marginTop: 12 }}>

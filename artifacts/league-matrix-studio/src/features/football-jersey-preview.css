@@ -1,0 +1,17 @@
+.football-jersey-preview {
+  display: grid;
+  width: min(78vw, 360px);
+  aspect-ratio: 11 / 12;
+  place-items: center;
+}
+
+.football-jersey-preview svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.public-showcase__kit-display .football-jersey-preview {
+  width: 100%;
+}
