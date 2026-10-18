@@ -47,6 +47,12 @@ Gear artwork for the supported sports should be photorealistic when earned and a
 
 **How to apply:** Use actual white contours for locked equipment, not faded color photos. Keep earning enforced on the server and keep public visibility under parent control.
 
+Show currently equipped, earned gear along the bottom of the jersey display, arranged on the table in the scene.
+
+**Why:** The user asked that gear appear “along the bottom of the jersey. On the table.”
+
+**How to apply:** Put full-color equipped items on the jersey's bottom display surface in owner and public views. Keep the full collection below, and respect parent-controlled public gear visibility.
+
 Owner Gear controls must resolve the HYPE Card for the selected athlete and sport. If no matching card exists, the visibility toggle and Save action should remain responsive and explain how to complete card setup; never imply an unsaved draft was saved.
 
 **Why:** The user reported that the Gear checkbox and Save button did not respond to touch. The editor had disabled both because its lookup found no matching HYPE Card.

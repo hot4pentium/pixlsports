@@ -61,7 +61,11 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
   const jerseyNumber = appearance.jerseyNumber.replace(/^#/, '');
   const sport = sportName(invite.sport);
   const events = invite.showEvents ? invite.events ?? [] : [];
-  const showcaseGear = invite.sportGear?.sport === invite.sport ? invite.sportGear : null;
+  const showcaseGear = invite.sportGear?.sport === invite.sport ? {
+    sport: invite.sportGear.sport,
+    earnedGear: invite.sportGear.earnedGear,
+    equippedGear: invite.sportGear.loadout.equippedGear,
+  } : null;
   const fanHref = `/fan/${encodeURIComponent(inviteToken)}`;
   const isSoccer = invite.sport === 'soccer';
   const isFootball = invite.sport === 'football';

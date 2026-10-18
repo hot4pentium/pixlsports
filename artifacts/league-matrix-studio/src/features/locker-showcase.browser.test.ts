@@ -97,7 +97,8 @@ window.__requests = []; window.__copied = '';
 window.__gearSaves = [];
 function sportState() {
  const stored=JSON.parse(sessionStorage.getItem('gear-fixture:'+state.accountId+':'+state.sport)||'null');
- return {athleteId:state.noMatchingCard?null:'11111111-1111-4111-8111-111111111111',athleteName:state.noMatchingCard?'':card.athleteName,sport:state.sport,canSave:!state.noMatchingCard,showOnHypeCard:stored?.showOnHypeCard??false,loadout:stored?.loadout??{jerseyColor:'#2878F5',equippedGear:[]},items:sportGearItems(state.sport).map((item,index)=>({...item,earned:index===0||index===2,requirement:'Complete five tracked games'})),progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}};
+ const stageGear=(state.mode==='showcase'||state.mode==='public-showcase')?[sportGearItems(state.sport)[0].id]:[];
+ return {athleteId:state.noMatchingCard?null:'11111111-1111-4111-8111-111111111111',athleteName:state.noMatchingCard?'':card.athleteName,sport:state.sport,canSave:!state.noMatchingCard,showOnHypeCard:stored?.showOnHypeCard??false,loadout:stored?.loadout??{jerseyColor:'#2878F5',equippedGear:stageGear},items:sportGearItems(state.sport).map((item,index)=>({...item,earned:index===0||index===2,requirement:'Complete five tracked games'})),progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}};
 }
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (input,init) => {
@@ -187,9 +188,16 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), 'Jordan Lee.');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-hype-card"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')`), null, 'public Showcase hides table gear when the parent has not shared it');
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="link-public-showcase-event-"]')?.getAttribute('href')`), `${base}/game-on/fixture-event`);
     assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan'))`), 'Recipient Showcase uses only the sanitized public fan-card endpoint');
+    await browser.evaluate(`window.__update({sharedGear:true})`);
+    await browser.wait(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')?.naturalWidth>0`);
+    const publicSoccerGearCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
+    await writeFile(resolve(tmpdir(), 'pixl-public-soccer-gear-table-check.jpg'), Buffer.from(publicSoccerGearCapture.data, 'base64'));
+    await browser.evaluate(`window.__update({sharedGear:false})`);
+    await browser.wait(`!document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')`);
     await browser.evaluate(`window.__update({sport:'football'})`);
     await browser.wait(`document.querySelector('[data-testid="image-showcase-football-jersey"]')`);
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]')?.getAttribute('aria-label').includes('football jersey')`), 'Public football Showcase uses the football jersey design');
@@ -237,6 +245,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="layer-jersey-stripes"]'))`));
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="layer-gear-row"]')`), null, 'no gear art yet: clear fallback');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="jersey-layer-stage"]').dataset.gearFallback`), 'clear');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]'))`), 'equipped soccer gear is displayed on the jersey table');
     const coloredCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-colored-showcase-check.jpg'), Buffer.from(coloredCapture.data, 'base64'));
     await browser.evaluate(`window.__update({unlocked:[]})`);
@@ -342,8 +351,10 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-coral"]').getAttribute('aria-pressed')`), 'true', 'saved jersey color survives reload');
     await browser.evaluate(`window.__update({mode:'showcase'})`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]').style.getPropertyValue('--football-jersey-accent')`), '#F36E4C');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-football-helmet"]'))`), 'the owner showcase displays equipped football gear on its table');
     await browser.evaluate(`window.__update({mode:'public-showcase',sharedGear:true})`);
     await browser.wait(`document.querySelector('[data-testid="section-public-showcase-gear"]')`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-football-helmet"]'))`), 'publicly shared equipped gear sits on the football jersey table');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-cleats"]').dataset.earned`), 'false');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-helmet"]').dataset.earned`), 'true');
     await browser.evaluate(`window.__update({sharedGear:false})`);
