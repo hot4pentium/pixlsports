@@ -6,11 +6,13 @@ import {
 } from '@workspace/api-client-react';
 import { ArrowDownRight, ArrowUpRight, CalendarDays, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
+import { useState } from 'react';
 import { normalizeCardAppearance } from './hype-card-appearance';
 import { gameOnHref } from './athlete-event-links';
 import { JerseyLayerStage } from './jersey-layers';
 import { FootballJerseyPreview } from './football-jersey-preview';
 import { SportGearCollection } from './sport-gear-collection';
+import { LivingAthleteCardFront } from './living-athlete-card-front';
 import './public-player-showcase.css';
 
 export interface PublicPlayerShowcasePageProps {
@@ -22,6 +24,7 @@ function sportName(value: string) {
 }
 
 export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePageProps) {
+  const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
   const inviteToken = params.inviteToken ?? '';
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
     query: {
@@ -82,6 +85,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
   const fanHref = `/fan/${encodeURIComponent(inviteToken)}`;
   const isSoccer = invite.sport === 'soccer';
   const isFootball = invite.sport === 'football';
+  const activeSlide = selectedSlide;
 
   return (
     <main className="public-showcase" data-testid="page-public-player-showcase">
@@ -103,6 +107,10 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             <span aria-hidden="true">/</span>
             <span>{invite.seasonName || 'Current season'}</span>
           </div>
+          <div className="public-showcase__carousel-tabs" role="tablist" aria-label={`${firstName}’s Showcase`} data-testid="public-showcase-carousel-tabs">
+            <button type="button" role="tab" aria-selected={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} data-testid="button-public-showcase-slide-jersey"><span>01</span> Jersey</button>
+            <button type="button" role="tab" aria-selected={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} data-testid="button-public-showcase-slide-card"><span>02</span> HYPE Card</button>
+          </div>
           <Link href={fanHref} className="public-showcase__hype-link" data-testid="link-public-showcase-hype-card">
             <span className="public-showcase__hype-icon"><Sparkles size={19} aria-hidden="true" /></span>
             <span><small>Take a closer look</small><strong>Open {firstName}’s HYPE Card</strong></span>
@@ -112,9 +120,10 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
         </div>
 
         <div className="public-showcase__visual" style={{ ['--showcase-accent' as string]: appearance.accentColor }}>
-          <div className="public-showcase__visual-orbit" aria-hidden="true" />
-          <div className="public-showcase__visual-index" aria-hidden="true"><span>01</span> / SEASON ID</div>
-          <div className="public-showcase__kit-display" data-testid="figure-public-showcase-jersey">
+          {activeSlide === 'jersey' ? <>
+            <div className="public-showcase__visual-orbit" aria-hidden="true" />
+            <div className="public-showcase__visual-index" aria-hidden="true"><span>01</span> / SEASON ID</div>
+            <div className="public-showcase__kit-display" data-testid="figure-public-showcase-jersey">
             {isFootball ? (
               <FootballJerseyPreview
                 name={firstName}
@@ -132,18 +141,29 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
                 showcaseGear={showcaseGear}
               />
             )}
-          </div>
-          {invite.photoUrl && (
-            <div className="public-showcase__portrait">
-              <img src={invite.photoUrl} alt={`${invite.athleteName}, ${sport} athlete`} data-testid="img-public-showcase-athlete" />
             </div>
-          )}
-          <div className="public-showcase__visual-name" aria-hidden="true">
-            <span>{invite.teamName || sport}</span>
-            <strong>{jerseyNumber ? `#${jerseyNumber}` : sport.toUpperCase()}</strong>
-          </div>
-          <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
-          <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
+            {invite.photoUrl && (
+              <div className="public-showcase__portrait">
+                <img src={invite.photoUrl} alt={`${invite.athleteName}, ${sport} athlete`} data-testid="img-public-showcase-athlete" />
+              </div>
+            )}
+            <div className="public-showcase__visual-name" aria-hidden="true">
+              <span>{invite.teamName || sport}</span>
+              <strong>{jerseyNumber ? `#${jerseyNumber}` : sport.toUpperCase()}</strong>
+            </div>
+            <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
+            <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
+          </> : <div className="public-showcase__card-slide" data-testid="figure-public-showcase-hype-card">
+            <div className="public-showcase__visual-index" aria-hidden="true"><span>02</span> SAVED HYPE CARD</div>
+            <div className="public-showcase__card-art">
+              <LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={invite.cardAppearance} sport={invite.sport} cutoutUrl={invite.cutoutUrl} />
+            </div>
+            <Link href={fanHref} className="public-showcase__card-open" data-testid="link-public-showcase-card-interactive">
+              <span><small>Front preview</small><strong>Open the interactive HYPE Card</strong></span><ArrowUpRight size={20} aria-hidden="true" />
+            </Link>
+            <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
+            <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
+          </div>}
         </div>
       </section>
 

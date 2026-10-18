@@ -7,6 +7,10 @@ import {
   useListAthleteInvites,
   useGetAthleteEditorAccess,
   getGetAthleteEditorAccessQueryKey,
+  getGetAthleteFanCardQueryKey,
+  useGetAthleteFanCard,
+  type PublicAthleteFanCard,
+  type OwnedAthleteInvite,
   type SoccerGearState,
   type SportGearState,
 } from '@workspace/api-client-react';
@@ -19,6 +23,7 @@ import { FootballJerseyPreview } from './football-jersey-preview';
 import { useKitGear } from './use-kit-gear';
 import { isGearSport, matchingSportGear, useSportGear } from './use-sport-gear';
 import { SportGearCollection } from './sport-gear-collection';
+import { LivingAthleteCardFront } from './living-athlete-card-front';
 import './player-showcase.css';
 
 export interface PlayerShowcaseContentProps {
@@ -32,13 +37,28 @@ export interface PlayerShowcaseContentProps {
   sportGear?: SportGearState | null;
   sportGearStatus?: AthleteLockerGearStatus;
   onRetrySportGear?: () => void;
+  linkedCard?: PublicAthleteFanCard | null;
+  cardStatus?: 'loading' | 'ready' | 'unavailable' | 'disabled';
+  cardEditHref?: string;
+  cardPublicHref?: string;
 }
 
 function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear }: PlayerShowcaseContentProps) {
+function sameIdentity(left: string | null | undefined, right: string | null | undefined) {
+  return (left ?? '').trim().toLocaleLowerCase() === (right ?? '').trim().toLocaleLowerCase();
+}
+
+function matchesShowcaseInvite(invite: OwnedAthleteInvite, profile: SupporterProfile) {
+  return sameIdentity(invite.athleteName, profile.athleteName)
+    && sameIdentity(invite.teamName, profile.teamName)
+    && invite.sport === profile.sport;
+}
+
+export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'disabled', cardEditHref = hypeHref, cardPublicHref }: PlayerShowcaseContentProps) {
+  const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
   const isSoccer = profile.sport === 'soccer';
   const isFootball = profile.sport === 'football';
   const first = profile.athleteName.trim().split(/\s+/)[0] || 'Player';
@@ -51,31 +71,45 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
   } : null;
   const label = `${profile.athleteName || 'Player'} number ${number} ${sportLabel(profile.sport)} jersey`;
   const showError = isSoccer && gearStatus === 'error';
+  const canPreviewCard = cardStatus === 'ready' && Boolean(linkedCard);
+  const showCardSlide = cardStatus !== 'disabled';
+  const card = canPreviewCard ? linkedCard : null;
+  const activeSlide = selectedSlide === 'card' && showCardSlide ? 'card' : 'jersey';
 
   return (
     <div className="ps" data-testid="page-player-showcase">
       <section className="ps__stage-wrap" aria-labelledby="ps-dyn" data-testid="section-dynamic-showcase" style={{ minWidth: 0 }}>
         <h1 id="ps-dyn" className="ps__section-title">Dynamic <span>Showcase</span></h1>
-        <div className="ps__stage" data-testid="showcase-jersey-stage">
-          <p className="ps__team">{profile.teamName || 'Your team'}<br />{sportLabel(profile.sport)}</p>
-          {isFootball ? (
-            <FootballJerseyPreview
-              name={first}
-              number={number}
-              label={label}
-              accent={sportGear?.loadout.jerseyColor}
-              showcaseGear={showcaseGear}
-            />
-          ) : (
-            <JerseyLayerStage
-              loadout={loadout}
-              unlockedGear={isSoccer ? gear?.unlockedGear : undefined}
-              name={first}
-              number={number}
-              label={label}
-              showcaseGear={showcaseGear}
-            />
-          )}
+        <div className="ps__carousel" data-testid="showcase-carousel">
+          <div className="ps__carousel-controls" role="tablist" aria-label="Showcase slides" data-testid="showcase-carousel-tabs">
+            <button type="button" role="tab" aria-selected={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} className="ps__carousel-tab" data-testid="button-showcase-slide-jersey">
+              <span>01</span> Jersey
+            </button>
+            {showCardSlide && <button type="button" role="tab" aria-selected={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} className="ps__carousel-tab" data-testid="button-showcase-slide-card">
+              <span>02</span> HYPE Card
+            </button>}
+          </div>
+          <div className="ps__slide" data-testid={`showcase-slide-${activeSlide}`}>
+            {activeSlide === 'jersey' ? <div className="ps__stage" data-testid="showcase-jersey-stage">
+              <p className="ps__team">{profile.teamName || 'Your team'}<br />{sportLabel(profile.sport)}</p>
+              {isFootball ? (
+                <FootballJerseyPreview
+                  name={first}
+                  number={number}
+                  label={label}
+                  accent={sportGear?.loadout.jerseyColor}
+                  showcaseGear={showcaseGear}
+                />
+              ) : (
+                <JerseyLayerStage
+                  loadout={loadout}
+                  unlockedGear={isSoccer ? gear?.unlockedGear : undefined}
+                  name={first}
+                  number={number}
+                  label={label}
+                  showcaseGear={showcaseGear}
+                />
+              )}
           {isSoccer && gearStatus === 'loading' && (
             <p className="ps__loading" role="status" data-testid="status-showcase-gear-loading">Loading your saved kit…</p>
           )}
@@ -95,6 +129,23 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
             )}
           </div>
           {isSoccer && gearStatus === 'unavailable' && <p className="ps__note" data-testid="status-showcase-gear-empty">No saved kit for {first} yet, so the default blue shows. {athleteRestricted ? 'Open Gear to build it.' : 'Start in Gear.'}</p>}
+            </div> : <div className="ps__card-slide" data-testid="showcase-hype-card-preview">
+              {card ? <>
+                <div className="ps__card-art" aria-label={`${card.athleteName} HYPE Card preview`}>
+                  <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
+                </div>
+                <div className="ps__card-caption"><span>Saved front · {card.teamName || sportLabel(card.sport)}</span><div className="ps__card-links">
+                  <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card</Link>
+                  {cardPublicHref && <Link href={cardPublicHref} className="ps__link" data-testid="link-showcase-card-public"><ExternalLink size={16} aria-hidden="true" /> Open public card</Link>}
+                </div></div>
+              </> : <div className="ps__card-unavailable" role="status" data-testid="status-showcase-card-unavailable">
+                <Zap size={24} aria-hidden="true" />
+                <strong>{cardStatus === 'loading' ? 'Loading the saved card…' : cardStatus === 'unavailable' ? 'HYPE Card unavailable' : 'HYPE Card paused'}</strong>
+                <span>{cardStatus === 'loading' ? 'The saved front is on its way.' : 'The jersey stays here. Card details stay private until sharing is active.'}</span>
+                <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">Review HYPE Card settings <ArrowRight size={15} aria-hidden="true" /></Link>
+              </div>}
+            </div>}
+          </div>
         </div>
         {showError && (
           <p className="ps__state" role="alert" data-testid="status-showcase-error" style={{ marginTop: 12 }}>
@@ -118,6 +169,16 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
       queryKey: getListAthleteInvitesQueryKey(),
     },
   });
+  const matchedInvite = invites?.find((item) => matchesShowcaseInvite(item, profile)) ?? null;
+  const cardEnabled = Boolean(matchedInvite && matchedInvite.showHypeCard && !matchedInvite.paused);
+  const fanCardQuery = useGetAthleteFanCard(matchedInvite?.inviteToken ?? '', {
+    query: {
+      enabled: cardEnabled,
+      queryKey: getGetAthleteFanCardQueryKey(matchedInvite?.inviteToken ?? ''),
+      retry: false,
+      refetchOnWindowFocus: true,
+    },
+  });
   const gearQuery = useKitGear(userId, profile.sport === 'soccer');
   const sportGearQuery = useSportGear(userId, profile.sport, profile.athleteName);
   const sportGear = matchingSportGear(sportGearQuery.data, profile.athleteName, profile.sport);
@@ -129,7 +190,17 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const retry = () => {
     if (gearQuery.isError) void gearQuery.refetch();
   };
-  const inviteToken = invites?.[0]?.inviteToken;
+  const inviteToken = matchedInvite?.inviteToken;
+  const linkedCard = fanCardQuery.data
+    && fanCardQuery.data.inviteToken === inviteToken
+    && sameIdentity(fanCardQuery.data.athleteName, profile.athleteName)
+    && sameIdentity(fanCardQuery.data.teamName, profile.teamName)
+    && fanCardQuery.data.sport === profile.sport
+    ? fanCardQuery.data
+    : null;
+  const cardStatus: PlayerShowcaseContentProps['cardStatus'] = !matchedInvite || !matchedInvite.showHypeCard || matchedInvite.paused
+    ? 'disabled'
+    : fanCardQuery.isLoading ? 'loading' : linkedCard ? 'ready' : 'unavailable';
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   const publicShowcaseUrl = inviteToken
     ? `${window.location.origin}${basePath}/showcase/${encodeURIComponent(inviteToken)}`
@@ -148,7 +219,10 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     <>
       <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={gearStatus} onRetry={retry}
         sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
-        onRetrySportGear={() => void sportGearQuery.refetch()} />
+        onRetrySportGear={() => void sportGearQuery.refetch()}
+        linkedCard={linkedCard} cardStatus={cardStatus}
+        cardEditHref="/studio/hype-card"
+        cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}` : undefined} />
       <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         {publicShowcaseUrl && (
           <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">
