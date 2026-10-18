@@ -484,6 +484,65 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-gear/art/v1/{filename}:
+    get:
+      operationId: getSportGearArt
+      tags: [athlete-gear]
+      summary: Get a curated public equipment image or locked outline
+      parameters:
+        - in: path
+          name: filename
+          required: true
+          schema: { type: string, maxLength: 80 }
+      responses:
+        "200":
+          description: Curated gear artwork
+          content:
+            image/webp:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-gear/sports/{sport}:
+    parameters:
+      - in: path
+        name: sport
+        required: true
+        schema:
+          $ref: "#/components/schemas/GearSport"
+    get:
+      operationId: getSportGear
+      tags: [athlete-gear]
+      summary: Get sport-specific earned equipment and saved Showcase look
+      responses:
+        "200":
+          description: Saved look and server-verified equipment rewards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SportGearState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: saveSportGear
+      tags: [athlete-gear]
+      summary: Save earned sport gear and jersey color
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SportGearLookInput"
+      responses:
+        "200":
+          description: Saved sport gear
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SportGearState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /athlete-gear/soccer:
     get:
       operationId: getSoccerGear
@@ -4702,6 +4761,10 @@ components:
           anyOf:
             - $ref: "#/components/schemas/SoccerGearLoadout"
             - type: "null"
+        sportGear:
+          anyOf:
+            - $ref: "#/components/schemas/PublicSportGearLook"
+            - type: "null"
         cutoutUrl: { type: ["string", "null"] }
         cardAppearance:
           anyOf:
@@ -4848,6 +4911,72 @@ components:
       required: [objectPath]
       properties:
         objectPath: { type: string, minLength: 10 }
+    GearSport:
+      type: string
+      enum: [baseball, basketball, football, soccer, softball, volleyball]
+    SportGearLoadout:
+      type: object
+      required: [jerseyColor, equippedGear]
+      properties:
+        jerseyColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+        equippedGear:
+          type: array
+          maxItems: 4
+          uniqueItems: true
+          items: { type: string, maxLength: 60 }
+    SportGearLookInput:
+      type: object
+      required: [athleteId, loadout, showOnHypeCard]
+      properties:
+        athleteId: { type: string, format: uuid }
+        loadout:
+          $ref: "#/components/schemas/SportGearLoadout"
+        showOnHypeCard: { type: boolean }
+    SportGearItem:
+      type: object
+      required: [id, label, requirement, earned]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        requirement: { type: string }
+        earned: { type: boolean }
+    SportGearProgress:
+      type: object
+      required: [activeWeeks, eventCardsCreated, trackerGamesCompleted, hypeCardShared]
+      properties:
+        activeWeeks: { type: integer, minimum: 0 }
+        eventCardsCreated: { type: integer, minimum: 0 }
+        trackerGamesCompleted: { type: integer, minimum: 0 }
+        hypeCardShared: { type: boolean }
+    SportGearState:
+      type: object
+      required: [athleteId, athleteName, sport, canSave, showOnHypeCard, loadout, items, progress]
+      properties:
+        athleteId: { type: ["string", "null"], format: uuid }
+        athleteName: { type: string }
+        sport:
+          $ref: "#/components/schemas/GearSport"
+        canSave: { type: boolean }
+        showOnHypeCard: { type: boolean }
+        loadout:
+          $ref: "#/components/schemas/SportGearLoadout"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SportGearItem"
+        progress:
+          $ref: "#/components/schemas/SportGearProgress"
+    PublicSportGearLook:
+      type: object
+      required: [sport, loadout, earnedGear]
+      properties:
+        sport:
+          $ref: "#/components/schemas/GearSport"
+        loadout:
+          $ref: "#/components/schemas/SportGearLoadout"
+        earnedGear:
+          type: array
+          items: { type: string }
     SoccerGearLoadout:
       type: object
       required: [jerseyStyle, jerseyColor, shortsStyle, shortsColor, socksStyle, socksColor, shinGuards, shinGuardColor, cleatsStyle, cleatsColor, sweatband, background]

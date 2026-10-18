@@ -5,6 +5,7 @@ import { normalizeCardAppearance } from './hype-card-appearance';
 import { gameOnHref } from './athlete-event-links';
 import { JerseyLayerStage } from './jersey-layers';
 import { FootballJerseyPreview } from './football-jersey-preview';
+import { SportGearCollection } from './sport-gear-collection';
 import './public-player-showcase.css';
 
 export interface PublicPlayerShowcasePageProps {
@@ -101,6 +102,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
                 name={firstName}
                 number={jerseyNumber}
                 label={`${invite.athleteName} ${jerseyNumber ? `number ${jerseyNumber}` : ''} football jersey`}
+                accent={invite.sportGear?.sport === invite.sport ? invite.sportGear.loadout.jerseyColor : undefined}
               />
             ) : (
               <JerseyLayerStage
@@ -124,6 +126,11 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
         </div>
       </section>
+
+      {invite.sportGear?.sport === invite.sport && <section aria-label="Earned equipment" data-testid="section-public-showcase-gear">
+        <p className="public-showcase__eyebrow">Earned equipment</p>
+        <SportGearCollection sport={invite.sportGear.sport} earnedGear={invite.sportGear.earnedGear} equippedGear={invite.sportGear.loadout.equippedGear} />
+      </section>}
 
       <section className="public-showcase__details" aria-label="Athlete details">
         <div className="public-showcase__detail">

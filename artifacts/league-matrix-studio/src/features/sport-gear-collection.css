@@ -1,0 +1,6 @@
+.sgc{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.sgc-item{background:#10264a;border:1px solid #2b4673;border-radius:14px;padding:10px;text-align:center;color:#eaf1ff;margin:0}
+.sgc-item[data-equipped=true]{border-color:#d7ef80}
+.sgc-art{width:100%;aspect-ratio:1;object-fit:contain;display:block}
+.sgc-item figcaption{font-size:13px;font-weight:700;margin-top:6px}
+.sgc-item small{display:block;opacity:.7;font-size:11px}

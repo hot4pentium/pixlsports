@@ -67,19 +67,24 @@ export async function creditSoccerTrackerGames(database: GearDatabase, owner: st
   }))).onConflictDoNothing();
 }
 
-export async function readSoccerGear(owner: string, database: GearDatabase = db, inviteId?: string) {
-  const [invite] = await database.select().from(athleteInvitesTable)
-    .where(and(
-      eq(athleteInvitesTable.ownerClerkUserId, owner),
-      ...(inviteId ? [eq(athleteInvitesTable.id, inviteId)] : []),
-    )).limit(1);
+// The historical ledger credits meaningful account activity across all sports.
+export async function readGearProgress(owner: string, database: GearDatabase = db) {
   const [counts] = await database.select({
     activeWeeks: sql<number>`count(*) filter (where ${soccerGearActivityTable.kind} = 'week')::int`,
     eventCardsCreated: sql<number>`least(10, count(*) filter (where ${soccerGearActivityTable.kind} = 'event-card'))::int`,
     trackerGamesCompleted: sql<number>`least(5, count(*) filter (where ${soccerGearActivityTable.kind} = 'tracker-game'))::int`,
     hypeCardShared: sql<boolean>`count(*) filter (where ${soccerGearActivityTable.kind} = 'share') > 0`,
   }).from(soccerGearActivityTable).where(eq(soccerGearActivityTable.ownerClerkUserId, owner));
-  const progress = counts ?? { activeWeeks: 0, eventCardsCreated: 0, trackerGamesCompleted: 0, hypeCardShared: false };
+  return counts ?? { activeWeeks: 0, eventCardsCreated: 0, trackerGamesCompleted: 0, hypeCardShared: false };
+}
+
+export async function readSoccerGear(owner: string, database: GearDatabase = db, inviteId?: string) {
+  const [invite] = await database.select().from(athleteInvitesTable)
+    .where(and(
+      eq(athleteInvitesTable.ownerClerkUserId, owner),
+      ...(inviteId ? [eq(athleteInvitesTable.id, inviteId)] : []),
+    )).limit(1);
+  const progress = await readGearProgress(owner, database);
   const [look] = invite ? await database.select().from(soccerGearLooksTable)
     .where(eq(soccerGearLooksTable.inviteId, invite.id)) : [];
   return {

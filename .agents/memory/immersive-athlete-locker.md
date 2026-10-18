@@ -39,4 +39,10 @@ Player Showcases must use a sport-appropriate jersey preview; American football 
 
 **Why:** The user reported that the football Showcase showed a generic jersey and omitted the Gear action.
 
-**How to apply:** Keep sport-specific uniform details in both owner and recipient views. Confirm the destination before routing football athletes to the existing soccer Gear editor.
+**How to apply:** Keep sport-specific uniform details in both owner and recipient views. Football must have its own Gear controls, not be sent to the soccer-only editor.
+
+Gear artwork for the supported sports should be photorealistic when earned and a white outline until earned.
+
+**Why:** The user asked, “Are you able to supply photo realistic gear for our sports?” and requested “a white outline of gear until it is earned,” while choosing football Gear controls.
+
+**How to apply:** Use actual white contours for locked equipment, not faded color photos. Keep earning enforced on the server and keep public visibility under parent control.

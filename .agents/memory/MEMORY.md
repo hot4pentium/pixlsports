@@ -117,3 +117,4 @@
 - [Support reply receiving domain](support-reply-receiving-domain.md) — use a Resend-managed or dedicated subdomain; never replace the root-domain MX serving normal support mail.
 - [Soccer gear product scope](soccer-gear-product-scope.md) — make gear building playful for the athlete; validate soccer first before expanding to another sport.
 - [Immersive Athlete Locker](immersive-athlete-locker.md) — use the supplied full Locker reference while keeping the dashboard and existing account roles unchanged.
+- [Sharp sprite cropping](sharp-crop-trim-order.md) — materialize each crop before trimming; Sharp can otherwise apply trim ahead of extraction.

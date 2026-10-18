@@ -1,17 +1,21 @@
 .football-jersey-preview {
   display: grid;
   width: min(78vw, 360px);
-  aspect-ratio: 11 / 12;
   place-items: center;
+  container-type: inline-size;
 }
-
-.football-jersey-preview svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+.football-jersey-preview__photo { position: relative; width: 100%; isolation: isolate; filter: drop-shadow(0 16px 16px #02091470); }
+.football-jersey-preview__photo img { display: block; width: 100%; height: auto; }
+.football-jersey-preview__dye {
+  position: absolute; inset: 0; background: var(--football-jersey-accent);
+  mask: var(--football-jersey-mask) center / 100% 100% no-repeat;
+  -webkit-mask: var(--football-jersey-mask) center / 100% 100% no-repeat;
+  mix-blend-mode: multiply; pointer-events: none;
 }
-
-.public-showcase__kit-display .football-jersey-preview {
-  width: 100%;
+.football-jersey-preview__name, .football-jersey-preview__number {
+  position: absolute; left: 20%; width: 60%; text-align: center;
+  color: #fff; text-shadow: 0 1px 3px #07163060; pointer-events: none;
 }
+.football-jersey-preview__name { top: 28%; font-family: 'DM Sans', sans-serif; font-size: 6cqw; font-weight: 800; letter-spacing: .08em; }
+.football-jersey-preview__number { top: 35%; font-family: 'Barlow Condensed', Impact, sans-serif; font-size: 44cqw; line-height: 1.15; font-weight: 900; }
+.public-showcase__kit-display .football-jersey-preview { width: 100%; }

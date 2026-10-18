@@ -74,11 +74,13 @@ router.put("/athlete-gear/soccer", requireProjectEditorAuth, async (req, res, ne
       const locked = lockedSoccerSelection(parsed.data.loadout, state.unlockedGear);
       if (locked) return { error: "This gear is still locked. Refresh your progress before equipping it." };
       const showOnHypeCard = access ? state.showOnHypeCard : parsed.data.showOnHypeCard;
+      const [previousLook] = await tx.select().from(soccerGearLooksTable).where(eq(soccerGearLooksTable.inviteId, invite.id));
+      const loadout = { ...previousLook?.loadout, ...parsed.data.loadout };
       await tx.insert(soccerGearLooksTable).values({
-        inviteId: invite.id, loadout: parsed.data.loadout, showOnHypeCard,
+        inviteId: invite.id, loadout, showOnHypeCard,
       }).onConflictDoUpdate({
         target: soccerGearLooksTable.inviteId,
-        set: { loadout: parsed.data.loadout, showOnHypeCard, updatedAt: new Date() },
+        set: { loadout, showOnHypeCard, updatedAt: new Date() },
       });
       return { state: await readSoccerGear(owner, tx, access?.athleteInviteId) };
     });

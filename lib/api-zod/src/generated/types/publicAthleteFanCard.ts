@@ -15,6 +15,7 @@ import type { AthleteInviteVideo } from './athleteInviteVideo';
 import type { HypeCardAppearance } from './hypeCardAppearance';
 import type { HypeCardShareStats } from './hypeCardShareStats';
 import type { PublicAthleteFanCardSport } from './publicAthleteFanCardSport';
+import type { PublicSportGearLook } from './publicSportGearLook';
 import type { SoccerGearLoadout } from './soccerGearLoadout';
 
 export interface PublicAthleteFanCard {
@@ -34,6 +35,7 @@ export interface PublicAthleteFanCard {
   /** @nullable */
   photoUrl: string | null;
   soccerGear?: SoccerGearLoadout | null;
+  sportGear?: PublicSportGearLook | null;
   /** @nullable */
   cutoutUrl?: string | null;
   cardAppearance?: HypeCardAppearance | null;

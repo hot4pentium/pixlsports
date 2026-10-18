@@ -8,6 +8,7 @@ import {
   useGetAthleteEditorAccess,
   getGetAthleteEditorAccessQueryKey,
   type SoccerGearState,
+  type SportGearState,
 } from '@workspace/api-client-react';
 import type { SupporterProfile } from './supporter-dashboard';
 import { isSoccerGearForAthlete } from './athlete-locker-model';
@@ -16,6 +17,8 @@ import { AthleteEditorInvitationPanel } from './athlete-invite';
 import { JerseyLayerStage } from './jersey-layers';
 import { FootballJerseyPreview } from './football-jersey-preview';
 import { useKitGear } from './use-kit-gear';
+import { isGearSport, matchingSportGear, useSportGear } from './use-sport-gear';
+import { SportGearCollection } from './sport-gear-collection';
 import './player-showcase.css';
 
 export interface PlayerShowcaseContentProps {
@@ -26,13 +29,16 @@ export interface PlayerShowcaseContentProps {
   /** Athlete mode: own-gear link, no parent-only links. */
   athleteRestricted?: boolean;
   hypeHref?: string;
+  sportGear?: SportGearState | null;
+  sportGearStatus?: AthleteLockerGearStatus;
+  onRetrySportGear?: () => void;
 }
 
 function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card' }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear }: PlayerShowcaseContentProps) {
   const isSoccer = profile.sport === 'soccer';
   const isFootball = profile.sport === 'football';
   const first = profile.athleteName.trim().split(/\s+/)[0] || 'Player';
@@ -52,6 +58,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
               name={first}
               number={number}
               label={label}
+              accent={sportGear?.loadout.jerseyColor}
             />
           ) : (
             <JerseyLayerStage
@@ -69,8 +76,8 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
             <Link href={hypeHref} className="ps__link" data-testid="link-showcase-hype-card">
               <Zap size={18} aria-hidden="true" /> HYPE Card
             </Link>
-            {isSoccer && (
-              <Link href={athleteRestricted ? '/studio/player-showcase/gear' : '/studio/soccer-gear'} className="ps__link" data-testid="link-showcase-gear">
+            {isGearSport(profile.sport) && (
+              <Link href={athleteRestricted ? '/studio/player-showcase/gear' : '/studio/gear'} className="ps__link" data-testid="link-showcase-gear">
                 <Footprints size={18} aria-hidden="true" /> Gear
               </Link>
             )}
@@ -88,6 +95,9 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
             {onRetry && <button type="button" onClick={onRetry} data-testid="button-showcase-retry">Try again</button>}
           </p>
         )}
+        {sportGearStatus === 'loading' && <p role="status" className="ps__state">Loading earned equipment…</p>}
+        {sportGearStatus === 'error' && <p role="alert" className="ps__state">Your equipment couldn’t load. <button type="button" onClick={onRetrySportGear}>Try again</button></p>}
+        {sportGear && <SportGearCollection sport={sportGear.sport} items={sportGear.items} earnedGear={sportGear.items.filter((item) => item.earned).map((item) => item.id)} equippedGear={sportGear.loadout.equippedGear} />}
       </section>
     </div>
   );
@@ -102,6 +112,8 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     },
   });
   const gearQuery = useKitGear(userId, profile.sport === 'soccer');
+  const sportGearQuery = useSportGear(userId, profile.sport);
+  const sportGear = matchingSportGear(sportGearQuery.data, profile.athleteName, profile.sport);
   const gear = isSoccerGearForAthlete(gearQuery.data, profile.athleteName, profile.sport) ? gearQuery.data : null;
   const gearStatus: AthleteLockerGearStatus = profile.sport !== 'soccer' || !userId ? 'unavailable'
     : gearQuery.isLoading ? 'loading'
@@ -127,7 +139,9 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   };
   return (
     <>
-      <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={gearStatus} onRetry={retry} />
+      <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={gearStatus} onRetry={retry}
+        sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
+        onRetrySportGear={() => void sportGearQuery.refetch()} />
       <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         {publicShowcaseUrl && (
           <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">
@@ -206,6 +220,8 @@ export function AthleteShowcaseHome() {
 
 function AthleteShowcaseBody({ profile, accountId, projectId }: { profile: SupporterProfile; accountId: string | null; projectId: string }) {
   const gearQuery = useKitGear(accountId, profile.sport === 'soccer');
+  const sportGearQuery = useSportGear(accountId, profile.sport);
+  const sportGear = matchingSportGear(sportGearQuery.data, profile.athleteName, profile.sport);
   const gear = isSoccerGearForAthlete(gearQuery.data, profile.athleteName, profile.sport) ? gearQuery.data : null;
   const gearStatus: AthleteLockerGearStatus = profile.sport !== 'soccer' || !accountId ? 'unavailable'
     : gearQuery.isLoading ? 'loading' : gearQuery.isError ? 'error' : gear ? 'ready' : 'unavailable';
@@ -214,6 +230,8 @@ function AthleteShowcaseBody({ profile, accountId, projectId }: { profile: Suppo
       profile={profile} gear={gear} gearStatus={gearStatus} athleteRestricted
       hypeHref={`/studio/player-showcase/hype-card/${encodeURIComponent(projectId)}`}
       onRetry={() => void gearQuery.refetch()}
+      sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
+      onRetrySportGear={() => void sportGearQuery.refetch()}
     />
   );
 }

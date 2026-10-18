@@ -584,3 +584,17 @@ mtime_ms = 1791997446821
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/9935714e-bf2e-4ebb-8901-ae59a913b15c/d7c04a0f-8399-4a85-9af3-59bbdfa285df"
 storage_version_token = "1791997584490069"
 content_type = "text/html"
+
+[[outputs]]
+id = "BGXJPb5PL4eg109-I58vw"
+uri = "file://generated-artifacts/gear/contact-sheet.jpg"
+type = "image"
+title = "Photoreal sports gear — six sports"
+description = "The full-color versions of 24 equipment pieces. In the app, locked equipment displays as a white outline until it is earned."
+logical_id = "97fabaa3-14d4-43bd-adf5-ac70ca8fc13a"
+content_hash = "sha256:7d37286e3b303ae0e66a999cc2899d970b04604ec449b2738ca790b346056734"
+size = 155154
+mtime_ms = 1792295107557
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/97fabaa3-14d4-43bd-adf5-ac70ca8fc13a/d62e017e-d593-4a17-9e67-98f511414d50"
+storage_version_token = "1792295893718117"
+content_type = "image/jpeg"

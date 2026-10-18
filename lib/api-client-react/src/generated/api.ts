@@ -69,6 +69,7 @@ import type {
   DeleteGameOnCardResponse,
   Error,
   GameOnCard,
+  GearSport,
   GetNotificationSubscriptionStatusParams,
   HealthStatus,
   HypeCardAppearance,
@@ -118,6 +119,8 @@ import type {
   SoccerGearLoadoutInput,
   SoccerGearShareActionInput,
   SoccerGearState,
+  SportGearLookInput,
+  SportGearState,
   StatTrackerConflict,
   StatTrackerShare,
   StatTrackerShareInput,
@@ -1775,6 +1778,249 @@ export const useDeleteScheduleShare = <TError = ErrorType<UnauthorizedResponse |
         TContext
       > => {
       return useMutation(getDeleteScheduleShareMutationOptions(options));
+    }
+
+export const getGetSportGearArtUrl = (filename: string,) => {
+
+
+
+
+  return `/api/athlete-gear/art/v1/${filename}`
+}
+
+/**
+ * @summary Get a curated public equipment image or locked outline
+ */
+export const getSportGearArt = async (filename: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSportGearArtUrl(filename),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSportGearArtQueryKey = (filename: string,) => {
+    return [
+    `/api/athlete-gear/art/v1/${filename}`
+    ] as const;
+    }
+
+
+export const getGetSportGearArtQueryOptions = <TData = Awaited<ReturnType<typeof getSportGearArt>>, TError = ErrorType<NotFoundResponse>>(filename: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGearArt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSportGearArtQueryKey(filename);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSportGearArt>>> = ({ signal }) => getSportGearArt(filename, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: filename !== null && filename !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSportGearArt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSportGearArtQueryResult = NonNullable<Awaited<ReturnType<typeof getSportGearArt>>>
+export type GetSportGearArtQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get a curated public equipment image or locked outline
+ */
+
+export function useGetSportGearArt<TData = Awaited<ReturnType<typeof getSportGearArt>>, TError = ErrorType<NotFoundResponse>>(
+ filename: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGearArt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSportGearArtQueryOptions(filename,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSportGearUrl = (sport: GearSport,) => {
+
+
+
+
+  return `/api/athlete-gear/sports/${sport}`
+}
+
+/**
+ * @summary Get sport-specific earned equipment and saved Showcase look
+ */
+export const getSportGear = async (sport: GearSport, options?: Parameters<typeof customFetch>[1]): Promise<SportGearState> => {
+
+  return customFetch<SportGearState>(getGetSportGearUrl(sport),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSportGearQueryKey = (sport: GearSport,) => {
+    return [
+    `/api/athlete-gear/sports/${sport}`
+    ] as const;
+    }
+
+
+export const getGetSportGearQueryOptions = <TData = Awaited<ReturnType<typeof getSportGear>>, TError = ErrorType<UnauthorizedResponse>>(sport: GearSport, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSportGearQueryKey(sport);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSportGear>>> = ({ signal }) => getSportGear(sport, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sport !== null && sport !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSportGear>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSportGearQueryResult = NonNullable<Awaited<ReturnType<typeof getSportGear>>>
+export type GetSportGearQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get sport-specific earned equipment and saved Showcase look
+ */
+
+export function useGetSportGear<TData = Awaited<ReturnType<typeof getSportGear>>, TError = ErrorType<UnauthorizedResponse>>(
+ sport: GearSport, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSportGearQueryOptions(sport,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveSportGearUrl = (sport: GearSport,) => {
+
+
+
+
+  return `/api/athlete-gear/sports/${sport}`
+}
+
+/**
+ * @summary Save earned sport gear and jersey color
+ */
+export const saveSportGear = async (sport: GearSport,
+    sportGearLookInput: SportGearLookInput, options?: Parameters<typeof customFetch>[1]): Promise<SportGearState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SportGearState>(getSaveSportGearUrl(sport),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sportGearLookInput)
+  }
+);}
+
+
+
+
+
+export const getSaveSportGearMutationKey = () => ['saveSportGear'] as const;
+
+export const getSaveSportGearMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSportGear>>, TError,SaveSportGearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveSportGear>>, TError,SaveSportGearMutationVariables, TContext> => {
+
+const mutationKey = getSaveSportGearMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveSportGear>>, SaveSportGearMutationVariables> = (props) => {
+          const {sport,data} = props ?? {};
+
+          return  saveSportGear(sport,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveSportGearMutationResult = NonNullable<Awaited<ReturnType<typeof saveSportGear>>>
+    export type SaveSportGearMutationBody = BodyType<SportGearLookInput>
+    export type SaveSportGearMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type SaveSportGearMutationVariables = {sport: GearSport;data: BodyType<SportGearLookInput>}
+
+    /**
+ * @summary Save earned sport gear and jersey color
+ */
+export const useSaveSportGear = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSportGear>>, TError,SaveSportGearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveSportGear>>,
+        TError,
+        SaveSportGearMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveSportGearMutationOptions(options));
     }
 
 export const getGetSoccerGearUrl = () => {
