@@ -1,7 +1,7 @@
-import { ArrowRight, Footprints, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, Check, Copy, ExternalLink, Footprints, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'wouter';
 import { useClerk, useUser } from '@clerk/react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   getListAthleteInvitesQueryKey,
   useListAthleteInvites,
@@ -106,6 +106,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
 }
 
 export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProfile; userId: string | null }) {
+  const [shareStatus, setShareStatus] = useState('');
   const { data: invites } = useListAthleteInvites({
     query: {
       enabled: Boolean(userId),
@@ -121,11 +122,43 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const retry = () => {
     if (gearQuery.isError) void gearQuery.refetch();
   };
+  const inviteToken = invites?.[0]?.inviteToken;
+  const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const publicShowcaseUrl = inviteToken
+    ? `${window.location.origin}${basePath}/showcase/${encodeURIComponent(inviteToken)}`
+    : null;
+  const copyShowcaseUrl = async () => {
+    if (!publicShowcaseUrl) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(publicShowcaseUrl);
+      setShareStatus('Showcase link copied.');
+    } catch {
+      setShareStatus('Could not copy the link. Open the showcase and copy its address.');
+    }
+  };
   return (
     <>
       <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={gearStatus} onRetry={retry} />
       <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
-        <AthleteEditorInvitationPanel inviteToken={invites?.[0]?.inviteToken ?? null} />
+        {publicShowcaseUrl && (
+          <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Public recipient view</p>
+              <h2 id="share-showcase-title" className="mt-2 font-display text-2xl uppercase">Share the Showcase</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Recipients can see the jersey, shared Event Cards, and open the public HYPE Card.</p>
+              <a href={publicShowcaseUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex max-w-full items-center gap-2 break-all text-xs font-semibold text-primary underline underline-offset-4" data-testid="link-public-showcase-url">
+                {publicShowcaseUrl}<ExternalLink size={13} aria-hidden="true" />
+              </a>
+              {shareStatus && <p className="mt-2 text-xs" role="status" data-testid="status-public-showcase-share">{shareStatus}</p>}
+            </div>
+            <button type="button" onClick={() => void copyShowcaseUrl()} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90" data-testid="button-copy-public-showcase">
+              {shareStatus === 'Showcase link copied.' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+              {shareStatus === 'Showcase link copied.' ? 'Copied' : 'Copy link'}
+            </button>
+          </section>
+        )}
+        <AthleteEditorInvitationPanel inviteToken={inviteToken ?? null} />
       </div>
     </>
   );

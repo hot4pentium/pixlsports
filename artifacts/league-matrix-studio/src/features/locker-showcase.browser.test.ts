@@ -84,6 +84,7 @@ import {Router} from 'wouter';
 import {SharedLockerPage} from './src/features/shared-locker';
 import {AthleteLocker} from './src/features/athlete-locker';
 import {PlayerShowcaseContent} from './src/features/player-showcase';
+import {PublicPlayerShowcasePage} from './src/features/public-player-showcase';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
@@ -107,7 +108,7 @@ function render() {
   const profile = {athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,jerseyNumber:'17',sport:state.sport,displayName:'Parent',position:'',relationship:'parent',accessMode:'full'};
   const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-     {state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
+     {state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -162,11 +163,30 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`));
     const publicCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-shared-locker-check.jpg'), Buffer.from(publicCapture.data, 'base64'));
-    await browser.evaluate(`window.__update({showEvents:false})`);
+    await browser.evaluate(`window.__update({mode:'public-showcase'})`);
+    await browser.wait(`document.querySelector('[data-testid="page-public-player-showcase"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), 'Jordan Lee.');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-hype-card"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 1);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="link-public-showcase-event-"]')?.getAttribute('href')`), `${base}/game-on/fixture-event`);
+    assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan'))`), 'Recipient Showcase uses only the sanitized public fan-card endpoint');
+    for (const width of [320, 390, 768, 1440]) {
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+      assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public Showcase overflows at ${width}px`);
+      assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-public-showcase-hype-card"]'))`), `HYPE Card link is missing at ${width}px`);
+    }
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const showcaseShareCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
+    await writeFile(resolve(tmpdir(), 'pixl-public-showcase-check.jpg'), Buffer.from(showcaseShareCapture.data, 'base64'));
+    await browser.evaluate(`window.__update({mode:'shared',showEvents:false})`);
     await browser.wait(`document.querySelector('[data-testid="text-shared-locker-no-events"]')?.textContent.includes('not shared')`);
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-shared-locker-event-"]').length`), 0);
+    await browser.evaluate(`window.__update({mode:'public-showcase'})`);
+    await browser.wait(`document.querySelector('[data-testid="text-public-showcase-no-events"]')?.textContent.includes('kept event details private')`);
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 0);
     await browser.evaluate(`window.__update({fail:true})`);
-    await browser.wait(`document.querySelector('[data-testid="status-shared-locker-unavailable"]')`);
+    await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-shared-locker-name"]')`), null);
     await browser.evaluate(`window.__update({mode:'owner',fail:false})`);
     await browser.wait(`document.querySelector('[data-testid="button-locker-copy-mobile"]')`);

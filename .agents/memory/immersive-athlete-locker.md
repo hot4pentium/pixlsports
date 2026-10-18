@@ -28,3 +28,9 @@ Leave the supporter dashboard focused completely on leading parents through the 
 **Why:** After seeing the combined dashboard, the user explicitly asked to move the Locker off it and provide a Player Showcase tab incorporating both sections.
 
 **How to apply:** Preserve the dashboard's weekly recommendations and preparation/game-day/celebration actions on phones and desktop. Add navigation to Player Showcase without embedding its Locker or jersey presentation in the parent dashboard.
+
+Parents can share a public Showcase link with recipients. The recipient view includes the photoreal jersey and a direct link to the public HYPE Card; event details follow existing visibility settings.
+
+**Why:** The user chose a public Showcase for recipients and asked that it include a link or picture of the HYPE Card.
+
+**How to apply:** Build public Showcase views from the sanitized fan-card endpoint, and keep owner/editor routes and private settings out of the recipient view.
