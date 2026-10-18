@@ -1,5 +1,6 @@
 import type { SoccerGearLoadout, SoccerGearStateUnlockedGearItem } from '@workspace/api-client-react';
 import jerseyPhoto from '@/assets/player-showcase-jersey-base.webp';
+import { JerseyGearTable, type JerseyTableGear } from './jersey-gear-table';
 import './jersey-layers.css';
 
 export type GearSlot = 'cleats' | 'socks' | 'shorts' | 'shinGuards' | 'sweatband';
@@ -39,9 +40,10 @@ export interface JerseyLayerStageProps {
   number: string;
   label: string;
   assets?: GearAssetSlots;
+  showcaseGear?: JerseyTableGear | null;
 }
 
-export function JerseyLayerStage({ loadout, unlockedGear, name, number, label, assets = GEAR_ASSET_SLOTS }: JerseyLayerStageProps) {
+export function JerseyLayerStage({ loadout, unlockedGear, name, number, label, assets = GEAR_ASSET_SLOTS, showcaseGear }: JerseyLayerStageProps) {
   const gated = loadout ? gateLoadout(loadout, unlockedGear) : null;
   const color = gated?.jerseyColor ?? DEFAULT_JERSEY_COLOR;
   const dyed = Boolean(gated) && color.toLowerCase() !== DEFAULT_JERSEY_COLOR.toLowerCase();
@@ -76,6 +78,7 @@ export function JerseyLayerStage({ loadout, unlockedGear, name, number, label, a
           ))}
         </div>
       )}
+      {showcaseGear?.sport && <JerseyGearTable gear={showcaseGear} />}
     </div>
   );
 }

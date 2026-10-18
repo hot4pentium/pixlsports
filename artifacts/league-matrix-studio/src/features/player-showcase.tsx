@@ -44,6 +44,11 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
   const first = profile.athleteName.trim().split(/\s+/)[0] || 'Player';
   const number = profile.jerseyNumber.trim().replace(/^#/, '') || '—';
   const loadout = isSoccer && gearStatus === 'ready' && gear ? gear.loadout : null;
+  const showcaseGear = sportGear?.sport === profile.sport ? {
+    sport: sportGear.sport,
+    earnedGear: sportGear.items.filter((item) => item.earned).map((item) => item.id),
+    equippedGear: sportGear.loadout.equippedGear,
+  } : null;
   const label = `${profile.athleteName || 'Player'} number ${number} ${sportLabel(profile.sport)} jersey`;
   const showError = isSoccer && gearStatus === 'error';
 
@@ -59,6 +64,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
               number={number}
               label={label}
               accent={sportGear?.loadout.jerseyColor}
+              showcaseGear={showcaseGear}
             />
           ) : (
             <JerseyLayerStage
@@ -67,6 +73,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
               name={first}
               number={number}
               label={label}
+              showcaseGear={showcaseGear}
             />
           )}
           {isSoccer && gearStatus === 'loading' && (

@@ -61,6 +61,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
   const jerseyNumber = appearance.jerseyNumber.replace(/^#/, '');
   const sport = sportName(invite.sport);
   const events = invite.showEvents ? invite.events ?? [] : [];
+  const showcaseGear = invite.sportGear?.sport === invite.sport ? invite.sportGear : null;
   const fanHref = `/fan/${encodeURIComponent(inviteToken)}`;
   const isSoccer = invite.sport === 'soccer';
   const isFootball = invite.sport === 'football';
@@ -103,6 +104,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
                 number={jerseyNumber}
                 label={`${invite.athleteName} ${jerseyNumber ? `number ${jerseyNumber}` : ''} football jersey`}
                 accent={invite.sportGear?.sport === invite.sport ? invite.sportGear.loadout.jerseyColor : undefined}
+                showcaseGear={showcaseGear}
               />
             ) : (
               <JerseyLayerStage
@@ -110,6 +112,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
                 name={firstName}
                 number={jerseyNumber}
                 label={`${invite.athleteName} ${jerseyNumber ? `number ${jerseyNumber}` : ''} ${sport} jersey`}
+                showcaseGear={showcaseGear}
               />
             )}
           </div>

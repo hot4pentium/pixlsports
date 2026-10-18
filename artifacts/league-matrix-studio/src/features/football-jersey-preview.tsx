@@ -1,12 +1,13 @@
 import { useState, type CSSProperties } from 'react';
 import { getGetSportGearArtUrl } from '@workspace/api-client-react';
+import { JerseyGearTable, type JerseyTableGear } from './jersey-gear-table';
 import './football-jersey-preview.css';
 
 const photo = getGetSportGearArtUrl('football-jersey-base.webp');
 const mask = getGetSportGearArtUrl('football-jersey-mask.webp');
 
-export function FootballJerseyPreview({ name, number, label, accent = '#2878f5' }: {
-  name: string; number: string; label: string; accent?: string;
+export function FootballJerseyPreview({ name, number, label, accent = '#2878f5', showcaseGear }: {
+  name: string; number: string; label: string; accent?: string; showcaseGear?: JerseyTableGear | null;
 }) {
   const [failed, setFailed] = useState(false);
   return (
@@ -20,6 +21,7 @@ export function FootballJerseyPreview({ name, number, label, accent = '#2878f5' 
           <span className="football-jersey-preview__number" aria-hidden="true">{number || '—'}</span>
         </div>
       )}
+      {showcaseGear && <JerseyGearTable gear={showcaseGear} />}
     </div>
   );
 }
