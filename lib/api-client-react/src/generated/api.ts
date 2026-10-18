@@ -114,6 +114,7 @@ import type {
   PublicAthleteFanCard,
   PublicAthleteInvite,
   PublicAthleteInviteHype,
+  PublicJerseyShowcaseGear,
   ResendEmailReceivedEvent,
   ScheduleShare,
   ScheduleShareInput,
@@ -4510,6 +4511,84 @@ export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthlet
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAthleteFanCardQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPublicJerseyShowcaseGearUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/jersey-showcase/gear`
+}
+
+/**
+ * Returns only the earned equipment and selected jersey look. HYPE Card responses do not include gear.
+ * @summary Get earned gear for the public jersey showcase
+ */
+export const getPublicJerseyShowcaseGear = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicJerseyShowcaseGear> => {
+
+  return customFetch<PublicJerseyShowcaseGear>(getGetPublicJerseyShowcaseGearUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicJerseyShowcaseGearQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/jersey-showcase/gear`
+    ] as const;
+    }
+
+
+export const getGetPublicJerseyShowcaseGearQueryOptions = <TData = Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicJerseyShowcaseGearQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>> = ({ signal }) => getPublicJerseyShowcaseGear(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicJerseyShowcaseGearQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>>
+export type GetPublicJerseyShowcaseGearQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get earned gear for the public jersey showcase
+ */
+
+export function useGetPublicJerseyShowcaseGear<TData = Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError = ErrorType<NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicJerseyShowcaseGearQueryOptions(inviteToken,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -16,7 +16,6 @@ export interface SportGearState {
   athleteName: string;
   sport: GearSport;
   canSave: boolean;
-  showOnHypeCard: boolean;
   loadout: SportGearLoadout;
   items: SportGearItem[];
   progress: SportGearProgress;

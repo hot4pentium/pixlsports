@@ -24,35 +24,27 @@ export function SportGearBuilderPage({ accountId, sport, athleteName, jerseyNumb
   });
   const save = useSaveSportGear();
   const [draft, setDraft] = useState<SportGearLoadout | null>(null);
-  const [show, setShow] = useState(false);
-  const [saved, setSaved] = useState<{ l: SportGearLoadout; s: boolean } | null>(null);
+  const [saved, setSaved] = useState<SportGearLoadout | null>(null);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState(false);
-  const [cardRequired, setCardRequired] = useState(false);
   const identity = `${accountId}|${sport}|${athleteName.trim().toLowerCase()}`;
   const idRef = useRef(identity);
   const server = q.data as SportGearState | undefined;
-  const athleteRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (idRef.current !== identity) {
       idRef.current = identity;
-      setDraft(null); setSaved(null); setErr(''); setOk(false); setShow(false); setCardRequired(false);
-      athleteRef.current = undefined;
+      setDraft(null); setSaved(null); setErr(''); setOk(false);
     }
   }, [identity]);
 
   useEffect(() => {
     if (!server || server.sport !== sport) return;
-    const s = { l: server.loadout, s: server.showOnHypeCard };
-    const changedAthlete = athleteRef.current !== server.athleteId;
-    athleteRef.current = server.athleteId;
-    if (server.athleteId) setCardRequired(false);
-    const dirty = !changedAthlete && draft && saved && (JSON.stringify(draft) !== JSON.stringify(saved.l) || (!athleteRestricted && show !== saved.s));
-    setSaved(s);
-    if (!draft || !dirty) { setDraft(server.loadout); setShow(server.showOnHypeCard); }
+    const dirty = draft && saved && JSON.stringify(draft) !== JSON.stringify(saved);
+    setSaved(server.loadout);
+    if (!draft || !dirty) setDraft(server.loadout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [server]);
+  }, [server, identity, sport]);
 
   const items = useMemo(() => {
     const base = sportGearItems(sport);
@@ -65,7 +57,7 @@ export function SportGearBuilderPage({ accountId, sport, athleteName, jerseyNumb
       <div><Link href="/studio/player-showcase" data-testid="link-sport-gear-back">Back to showcase</Link>
         {sport === 'soccer' && <> · <Link href={athleteRestricted ? '/studio/player-showcase/soccer-kit' : '/studio/soccer-gear'} data-testid="link-soccer-gear">Soccer kit builder</Link></>}</div>
       <h1 data-testid="text-sport-gear-title">{cap(sport)} gear</h1>
-      <p>Locked equipment stays a white outline. Earn it through your family’s activity, then equip the full-color gear.</p>
+      <p>Locked equipment stays a white outline. Earn it through your family’s activity, then equip the full-color gear. Gear saves to the Jersey Showcase, separately from your HYPE Card.</p>
     </>
   );
 
@@ -79,8 +71,7 @@ export function SportGearBuilderPage({ accountId, sport, athleteName, jerseyNumb
   if (!server || !draft || !saved) return <main className="sgb">{head}<div className="sgb-skel" /></main>;
 
   const earned = new Set(items.filter((i) => i.earned).map((i) => i.id));
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved.l) || (!athleteRestricted && show !== saved.s);
-  const canSave = server.canSave && !!server.athleteId;
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const busy = save.isPending;
   const set = (l: SportGearLoadout) => { if (busy) return; setDraft(l); setErr(''); setOk(false); };
   const toggle = (id: string) => {
@@ -89,14 +80,13 @@ export function SportGearBuilderPage({ accountId, sport, athleteName, jerseyNumb
     set({ ...draft, equippedGear: has ? draft.equippedGear.filter((x) => x !== id) : [...draft.equippedGear, id].slice(-4) });
   };
   const doSave = () => {
-    if (!server.athleteId) { setCardRequired(true); return; }
     setErr('');
     const equippedGear = draft.equippedGear.filter((id) => earned.has(id));
-    save.mutate({ sport, data: { athleteId: server.athleteId, loadout: { ...draft, equippedGear }, showOnHypeCard: athleteRestricted ? server.showOnHypeCard : show } }, {
+    save.mutate({ sport, data: { ...(name.trim() ? { athleteName: name.trim() } : {}), loadout: { ...draft, equippedGear } } }, {
       onSuccess: (next) => {
         qc.setQueryData(scoped, next);
-        setDraft(next.loadout); setShow(next.showOnHypeCard); setSaved({ l: next.loadout, s: next.showOnHypeCard }); setOk(true); setCardRequired(false);
-        void qc.invalidateQueries({ predicate: (k) => { const f = k.queryKey[0]; return typeof f === 'string' && (f === getGetSportGearForAthleteQueryKey(params)[0] || f.startsWith('/api/sport-gear') || (f.startsWith('/api/athlete-invites/') && f.endsWith('/fan'))); } });
+        setDraft(next.loadout); setSaved(next.loadout); setOk(true);
+        void qc.invalidateQueries({ predicate: (k) => { const f = k.queryKey[0]; return typeof f === 'string' && (f === getGetSportGearForAthleteQueryKey(params)[0] || f.startsWith('/api/sport-gear') || (f.startsWith('/api/athlete-invites/') && f.includes('/jersey-showcase/gear'))); } });
       },
       onError: () => setErr('That save didn’t stick. Check your connection and try again.'),
     });
@@ -139,26 +129,14 @@ export function SportGearBuilderPage({ accountId, sport, athleteName, jerseyNumb
               );
             })}
           </div>
-          {!athleteRestricted && (
-            <label className="sgb-row">
-              <input type="checkbox" checked={show} disabled={busy} onChange={(e) => { setShow(e.target.checked); setOk(false); setCardRequired(false); }} data-testid="toggle-sport-gear-public" />
-              Show gear on the public HYPE Card and Showcase
-            </label>
-          )}
-          {!canSave && <p data-testid="text-sport-gear-cannot-save">{athleteRestricted
-            ? 'Your parent or guardian needs to finish athlete setup before saving.'
-            : <>No HYPE Card matches {name.trim() ? `${name}’s` : 'this athlete’s'} {sport} gear. <Link href="/studio/hype-card" data-testid="link-sport-gear-create-card">Open HYPE Cards</Link> to create or finish the matching card before saving.</>}</p>}
-          {cardRequired && <p role="status" data-testid="status-sport-gear-card-required">
-            {athleteRestricted ? 'Ask your parent or guardian to finish your HYPE Card setup before saving.' : <>This gear is not saved yet. Create or finish the matching HYPE Card, then return to save it. <Link href="/studio/hype-card" data-testid="link-sport-gear-save-card">Open HYPE Cards</Link>.</>}
-          </p>}
           <div className="sgb-row">
             <span role="status" className={err ? 'sgb-err' : ''} data-testid="status-sport-gear-save">{statusText}</span>
             {err && <button type="button" className="sgb-btn alt" onClick={doSave} data-testid="button-retry-sport-gear-save">Retry</button>}
-            <button type="button" className="sgb-btn alt" disabled={!dirty || busy} onClick={() => { setDraft(saved.l); setShow(saved.s); setErr(''); }} data-testid="button-reset-sport-gear">Reset</button>
+            <button type="button" className="sgb-btn alt" disabled={!dirty || busy} onClick={() => { setDraft(saved); setErr(''); }} data-testid="button-reset-sport-gear">Reset</button>
             <button type="button" className="sgb-btn" disabled={!dirty || busy} onClick={doSave} data-testid="button-save-sport-gear">{busy ? 'Saving…' : 'Save gear'}</button>
           </div>
           <div data-testid="text-sport-gear-progress" style={{ fontSize: 12, opacity: .75, marginTop: 10 }}>
-            {server.progress.activeWeeks} active weeks · {server.progress.eventCardsCreated} event cards · {server.progress.trackerGamesCompleted} tracker games · HYPE card {server.progress.hypeCardShared ? 'shared' : 'not shared'}
+            {server.progress.activeWeeks} active weeks · {server.progress.eventCardsCreated} event cards · {server.progress.trackerGamesCompleted} tracker games
           </div>
         </section>
       </div>

@@ -1141,6 +1141,23 @@ paths:
                 $ref: "#/components/schemas/PublicAthleteFanCard"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/jersey-showcase/gear:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: getPublicJerseyShowcaseGear
+      tags: [athlete-invites]
+      summary: Get earned gear for the public jersey showcase
+      description: Returns only the earned equipment and selected jersey look. HYPE Card responses do not include gear.
+      responses:
+        "200":
+          description: Earned equipment and jersey look for the showcase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicJerseyShowcaseGear"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/events/{shareToken}/notify:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -4772,10 +4789,6 @@ components:
           anyOf:
             - $ref: "#/components/schemas/SoccerGearLoadout"
             - type: "null"
-        sportGear:
-          anyOf:
-            - $ref: "#/components/schemas/PublicSportGearLook"
-            - type: "null"
         cutoutUrl: { type: ["string", "null"] }
         cardAppearance:
           anyOf:
@@ -4937,12 +4950,11 @@ components:
           items: { type: string, maxLength: 60 }
     SportGearLookInput:
       type: object
-      required: [athleteId, loadout, showOnHypeCard]
+      required: [loadout]
       properties:
-        athleteId: { type: string, format: uuid }
+        athleteName: { type: string, minLength: 1, maxLength: 120 }
         loadout:
           $ref: "#/components/schemas/SportGearLoadout"
-        showOnHypeCard: { type: boolean }
     SportGearItem:
       type: object
       required: [id, label, requirement, earned]
@@ -4961,14 +4973,13 @@ components:
         hypeCardShared: { type: boolean }
     SportGearState:
       type: object
-      required: [athleteId, athleteName, sport, canSave, showOnHypeCard, loadout, items, progress]
+      required: [athleteId, athleteName, sport, canSave, loadout, items, progress]
       properties:
         athleteId: { type: ["string", "null"], format: uuid }
         athleteName: { type: string }
         sport:
           $ref: "#/components/schemas/GearSport"
         canSave: { type: boolean }
-        showOnHypeCard: { type: boolean }
         loadout:
           $ref: "#/components/schemas/SportGearLoadout"
         items:
@@ -4977,7 +4988,7 @@ components:
             $ref: "#/components/schemas/SportGearItem"
         progress:
           $ref: "#/components/schemas/SportGearProgress"
-    PublicSportGearLook:
+    PublicJerseyShowcaseGear:
       type: object
       required: [sport, loadout, earnedGear]
       properties:

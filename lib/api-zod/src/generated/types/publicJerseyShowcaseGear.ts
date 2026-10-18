@@ -8,7 +8,7 @@
 import type { GearSport } from './gearSport';
 import type { SportGearLoadout } from './sportGearLoadout';
 
-export interface PublicSportGearLook {
+export interface PublicJerseyShowcaseGear {
   sport: GearSport;
   loadout: SportGearLoadout;
   earnedGear: string[];

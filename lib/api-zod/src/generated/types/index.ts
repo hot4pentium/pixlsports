@@ -221,7 +221,7 @@ export * from './publicAthleteFanCardSport';
 export * from './publicAthleteInvite';
 export * from './publicAthleteInviteHype';
 export * from './publicAthleteInviteSport';
-export * from './publicSportGearLook';
+export * from './publicJerseyShowcaseGear';
 export * from './resendEmailReceivedEvent';
 export * from './resendEmailReceivedEventData';
 export * from './resendEmailReceivedEventType';

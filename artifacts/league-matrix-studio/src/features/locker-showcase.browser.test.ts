@@ -90,7 +90,7 @@ import {sportGearItems} from './src/features/sport-gear-collection';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,sharedGear:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[]};
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = '';
@@ -98,7 +98,7 @@ window.__gearSaves = [];
 function sportState() {
  const stored=JSON.parse(sessionStorage.getItem('gear-fixture:'+state.accountId+':'+state.sport)||'null');
  const stageGear=(state.mode==='showcase'||state.mode==='public-showcase')?[sportGearItems(state.sport)[0].id]:[];
- return {athleteId:state.noMatchingCard?null:'11111111-1111-4111-8111-111111111111',athleteName:state.noMatchingCard?'':card.athleteName,sport:state.sport,canSave:!state.noMatchingCard,showOnHypeCard:stored?.showOnHypeCard??false,loadout:stored?.loadout??{jerseyColor:'#2878F5',equippedGear:stageGear},items:sportGearItems(state.sport).map((item,index)=>({...item,earned:index===0||index===2,requirement:'Complete five tracked games'})),progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}};
+  return {athleteId:state.noMatchingCard?null:'11111111-1111-4111-8111-111111111111',athleteName:card.athleteName,sport:state.sport,canSave:true,loadout:stored?.loadout??{jerseyColor:'#2878F5',equippedGear:stageGear},items:sportGearItems(state.sport).map((item,index)=>({...item,earned:index===0||index===2,requirement:'Complete five tracked games'})),progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}};
 }
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (input,init) => {
@@ -113,8 +113,12 @@ window.fetch = async (input,init) => {
       }
       return new Response(JSON.stringify(state.fail?{error:'Unavailable'}:sportState()),{status:state.fail?500:200,headers:{'Content-Type':'application/json'}});
     }
+    if(url.includes('/jersey-showcase/gear')){
+      const sg=sportState();
+      return new Response(JSON.stringify(state.fail?{error:'Unavailable'}:{sport:sg.sport,loadout:sg.loadout,earnedGear:sg.items.filter(x=>x.earned).map(x=>x.id)}),{status:state.fail?404:200,headers:{'Content-Type':'application/json'}});
+    }
     const sg=sportState();
-    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,showEvents:state.showEvents,sport:state.sport,sportGear:state.sharedGear?{sport:sg.sport,loadout:sg.loadout,earnedGear:sg.items.filter(x=>x.earned).map(x=>x.id)}:null}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
+    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,showEvents:state.showEvents,sport:state.sport}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
   }
   return originalFetch(input,init);
 };
@@ -188,16 +192,14 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), 'Jordan Lee.');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-hype-card"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')`), null, 'public Showcase hides table gear when the parent has not shared it');
+    await browser.wait(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')?.naturalWidth>0`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'earned gear appears on the public jersey Showcase without a HYPE Card sharing setting');
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="link-public-showcase-event-"]')?.getAttribute('href')`), `${base}/game-on/fixture-event`);
-    assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan'))`), 'Recipient Showcase uses only the sanitized public fan-card endpoint');
-    await browser.evaluate(`window.__update({sharedGear:true})`);
-    await browser.wait(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')?.naturalWidth>0`);
+    assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan') || url.includes('/athlete-invites/fixture-athlete/jersey-showcase/gear'))`), 'public gear uses its dedicated endpoint, separate from HYPE Card data');
     const publicSoccerGearCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-public-soccer-gear-table-check.jpg'), Buffer.from(publicSoccerGearCapture.data, 'base64'));
-    await browser.evaluate(`window.__update({sharedGear:false})`);
-    await browser.wait(`!document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]'))`), 'gear remains on the Showcase without a visibility toggle');
     await browser.evaluate(`window.__update({sport:'football'})`);
     await browser.wait(`document.querySelector('[data-testid="image-showcase-football-jersey"]')`);
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]')?.getAttribute('aria-label').includes('football jersey')`), 'Public football Showcase uses the football jersey design');
@@ -298,7 +300,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`window.__update({sport:'basketball',gearStatus:'unavailable'})`);
     await browser.wait(`document.querySelector('[data-testid="link-showcase-gear"]')`);
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-jersey"]')?.getAttribute('alt').includes('Basketball jersey')`));
-    await browser.evaluate(`window.__update({mode:'sport-editor',sport:'football',athleteRestricted:false})`);
+    await browser.evaluate(`window.__update({mode:'sport-editor',sport:'football',athleteRestricted:false,noMatchingCard:true})`);
     await browser.wait(`document.querySelector('[data-testid="page-sport-gear-football"]')`);
     await browser.wait(`document.querySelector('[data-testid="button-equip-football-helmet"] img')?.naturalWidth>0`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-equip-football-cleats"]').disabled`), true);
@@ -306,7 +308,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-equip-football-helmet"] img').dataset.earned`), 'true');
     await browser.evaluate(`document.querySelector('[data-testid="button-equip-football-helmet"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="button-equip-football-helmet"]').getAttribute('aria-pressed')==='true'`);
-    await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-coral"]').click();document.querySelector('[data-testid="toggle-sport-gear-public"]').click()`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-coral"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="status-sport-gear-save"]').textContent==='Unsaved changes'`);
     await browser.evaluate(`window.__update({failSave:true})`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-coral"]').getAttribute('aria-pressed')`), 'true', 'polling preserves the unsaved color draft');
@@ -316,26 +318,18 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`document.querySelector('[data-testid="button-retry-sport-gear-save"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="status-sport-gear-save"]').textContent==='Saved'`);
     assert.deepEqual(await browser.evaluate(`window.__gearSaves.at(-1).loadout`), {jerseyColor:'#F36E4C',equippedGear:['football-helmet']});
-    assert.equal(await browser.evaluate(`window.__gearSaves.at(-1).showOnHypeCard`), true);
-    await browser.evaluate(`window.__update({noMatchingCard:true})`);
-    await browser.wait(`document.querySelector('[data-testid="text-sport-gear-cannot-save"]')`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]').disabled`), false, 'the visibility checkbox remains touchable while a matching card is missing');
-    await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]').scrollIntoView({block:'center'})`);
-    const checkboxPoint = await browser.evaluate(`(()=>{const r=document.querySelector('[data-testid="toggle-sport-gear-public"]').getBoundingClientRect();return {x:Math.floor(r.x+r.width/2),y:Math.floor(r.y+r.height/2),id:1,force:1}})()`);
-    await browser.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [checkboxPoint] });
-    await browser.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    assert.equal(await browser.evaluate(`window.__gearSaves.at(-1).athleteName`), 'Jordan Lee');
+    assert.equal(await browser.evaluate(`'athleteId' in window.__gearSaves.at(-1) || 'showOnHypeCard' in window.__gearSaves.at(-1)`), false, 'saving uses the account and sport, not a HYPE Card ID or visibility flag');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-sport-gear-cannot-save"]')`), null, 'a missing HYPE Card does not block saving');
+    await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-lime"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="status-sport-gear-save"]').textContent==='Unsaved changes'`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-save-sport-gear"]').disabled`), false, 'Save gear remains actionable for a changed draft');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-save-sport-gear"]').disabled`), false, 'Save gear remains actionable without a matching HYPE Card');
     await browser.evaluate(`document.querySelector('[data-testid="button-save-sport-gear"]').scrollIntoView({block:'center'})`);
     const savePoint = await browser.evaluate(`(()=>{const r=document.querySelector('[data-testid="button-save-sport-gear"]').getBoundingClientRect();return {x:Math.floor(r.x+r.width/2),y:Math.floor(r.y+r.height/2),id:2,force:1}})()`);
     await browser.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [savePoint] });
     await browser.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await browser.wait(`document.querySelector('[data-testid="status-sport-gear-card-required"]')`);
-    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-sport-gear-save-card"]'))`), 'a missing HYPE Card has an explicit next step');
-    assert.equal(await browser.evaluate(`window.__gearSaves.length`), 2, 'the UI does not report an unsaved draft as successfully persisted');
-    await browser.evaluate(`window.__update({noMatchingCard:false})`);
-    await browser.wait(`!document.querySelector('[data-testid="text-sport-gear-cannot-save"]')`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="status-sport-gear-card-required"]')`), null, 'matching the athlete card clears the setup prompt');
+    await browser.wait(`document.querySelector('[data-testid="status-sport-gear-save"]').textContent==='Saved'`);
+    assert.equal(await browser.evaluate(`window.__gearSaves.length`), 3, 'the save succeeds even though no matching HYPE Card exists');
     await browser.evaluate(`window.scrollTo(0,document.documentElement.scrollHeight)`);
     await browser.wait(`Array.from(document.querySelectorAll('[data-testid^="button-equip-"] img')).every(img=>img.complete&&img.naturalWidth>0)`);
     await browser.evaluate(`window.scrollTo(0,0)`);
@@ -348,25 +342,24 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     }
     await browser.send('Page.navigate',{url:`http://127.0.0.1:${port}${base}/${suffix}.html?mode=sport-editor&sport=football`});
     await browser.wait(`document.querySelector('[data-testid="button-equip-football-helmet"]')?.getAttribute('aria-pressed')==='true'`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-coral"]').getAttribute('aria-pressed')`), 'true', 'saved jersey color survives reload');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-lime"]').getAttribute('aria-pressed')`), 'true', 'saved jersey color survives reload');
     await browser.evaluate(`window.__update({mode:'showcase'})`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]').style.getPropertyValue('--football-jersey-accent')`), '#F36E4C');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]').style.getPropertyValue('--football-jersey-accent')`), '#D7EF80');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-football-helmet"]'))`), 'the owner showcase displays equipped football gear on its table');
-    await browser.evaluate(`window.__update({mode:'public-showcase',sharedGear:true})`);
+     await browser.evaluate(`window.__update({mode:'public-showcase'})`);
     await browser.wait(`document.querySelector('[data-testid="section-public-showcase-gear"]')`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-football-helmet"]'))`), 'publicly shared equipped gear sits on the football jersey table');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-cleats"]').dataset.earned`), 'false');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-helmet"]').dataset.earned`), 'true');
-    await browser.evaluate(`window.__update({sharedGear:false})`);
-    await browser.wait(`!document.querySelector('[data-testid="section-public-showcase-gear"]')`);
-    await browser.evaluate(`window.__update({mode:'sport-editor',athleteRestricted:true})`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'public Showcase gear is not controlled by HYPE Card visibility');
+    await browser.evaluate(`window.__update({mode:'sport-editor',athleteRestricted:true,noMatchingCard:false})`);
     await browser.wait(`document.querySelector('[data-testid="page-sport-gear-football"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]')`), null);
-    await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-lime"]').click()`);
-    await browser.wait(`document.querySelector('[data-testid="button-sport-color-lime"]').getAttribute('aria-pressed')==='true'`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-sport-color-coral"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="button-sport-color-coral"]').getAttribute('aria-pressed')==='true'`);
     await browser.evaluate(`document.querySelector('[data-testid="button-save-sport-gear"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="status-sport-gear-save"]').textContent==='Saved'`);
-    assert.equal(await browser.evaluate(`window.__gearSaves.at(-1).showOnHypeCard`), true, 'athlete save retains server-owned parent visibility');
+    assert.equal(await browser.evaluate(`'showOnHypeCard' in window.__gearSaves.at(-1)`), false, 'athlete saves do not include a HYPE Card visibility setting');
     await browser.evaluate(`window.__update({accountId:'second-account',athleteRestricted:false})`);
     await browser.wait(`document.querySelector('[data-testid="button-sport-color-pixl-blue"]')?.getAttribute('aria-pressed')==='true'`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-equip-football-helmet"]').getAttribute('aria-pressed')`), 'false', 'another account does not inherit equipped gear');

@@ -2808,34 +2808,6 @@ export interface SoccerGearLoadout {
   background: SoccerGearLoadoutBackground;
 }
 
-export type GearSport = typeof GearSport[keyof typeof GearSport];
-
-
-export const GearSport = {
-  baseball: 'baseball',
-  basketball: 'basketball',
-  football: 'football',
-  soccer: 'soccer',
-  softball: 'softball',
-  volleyball: 'volleyball',
-} as const;
-
-export interface SportGearLoadout {
-  /** @pattern ^#[0-9A-Fa-f]{6}$ */
-  jerseyColor: string;
-  /**
-     * @maxItems 4
-     * @items.maxLength 60
-     */
-  equippedGear: string[];
-}
-
-export interface PublicSportGearLook {
-  sport: GearSport;
-  loadout: SportGearLoadout;
-  earnedGear: string[];
-}
-
 export interface PublicAthleteFanCard {
   inviteToken: string;
   hypesEnabled: boolean;
@@ -2853,7 +2825,6 @@ export interface PublicAthleteFanCard {
   /** @nullable */
   photoUrl: string | null;
   soccerGear?: SoccerGearLoadout | null;
-  sportGear?: PublicSportGearLook | null;
   /** @nullable */
   cutoutUrl?: string | null;
   cardAppearance?: HypeCardAppearance | null;
@@ -2953,10 +2924,35 @@ export interface MediaUploadCompleteInput {
   objectPath: string;
 }
 
+export type GearSport = typeof GearSport[keyof typeof GearSport];
+
+
+export const GearSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  softball: 'softball',
+  volleyball: 'volleyball',
+} as const;
+
+export interface SportGearLoadout {
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  jerseyColor: string;
+  /**
+     * @maxItems 4
+     * @items.maxLength 60
+     */
+  equippedGear: string[];
+}
+
 export interface SportGearLookInput {
-  athleteId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  athleteName?: string;
   loadout: SportGearLoadout;
-  showOnHypeCard: boolean;
 }
 
 export interface SportGearItem {
@@ -2982,10 +2978,15 @@ export interface SportGearState {
   athleteName: string;
   sport: GearSport;
   canSave: boolean;
-  showOnHypeCard: boolean;
   loadout: SportGearLoadout;
   items: SportGearItem[];
   progress: SportGearProgress;
+}
+
+export interface PublicJerseyShowcaseGear {
+  sport: GearSport;
+  loadout: SportGearLoadout;
+  earnedGear: string[];
 }
 
 export interface SoccerGearLoadoutInput {

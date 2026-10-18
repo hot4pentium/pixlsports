@@ -10,6 +10,17 @@ export const soccerGearLooksTable = pgTable("soccer_gear_looks", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Sport showcase gear belongs to the owner's profile, not to a HYPE Card.
+export const athleteSportGearLooksTable = pgTable("athlete_sport_gear_looks", {
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  sport: text("sport").notNull(),
+  loadout: jsonb("loadout").notNull().$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [
+  primaryKey({ columns: [table.ownerClerkUserId, table.sport] }),
+]);
+
 // No FK to a card: deleting/replacing a card must not remove earned progress.
 export const soccerGearActivityTable = pgTable("soccer_gear_activity", {
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
@@ -21,6 +32,8 @@ export const soccerGearActivityTable = pgTable("soccer_gear_activity", {
 ]);
 
 export const insertSoccerGearLookSchema = createInsertSchema(soccerGearLooksTable);
+export const insertAthleteSportGearLookSchema = createInsertSchema(athleteSportGearLooksTable).omit({ createdAt: true, updatedAt: true });
 export const insertSoccerGearActivitySchema = createInsertSchema(soccerGearActivityTable);
 export type InsertSoccerGearLook = z.infer<typeof insertSoccerGearLookSchema>;
+export type InsertAthleteSportGearLook = z.infer<typeof insertAthleteSportGearLookSchema>;
 export type InsertSoccerGearActivity = z.infer<typeof insertSoccerGearActivitySchema>;

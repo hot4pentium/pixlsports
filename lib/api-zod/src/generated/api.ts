@@ -923,7 +923,6 @@ export const GetSportGearForAthleteResponse = zod.object({
   "athleteName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "canSave": zod.boolean(),
-  "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
   "jerseyColor": zod.string().regex(getSportGearForAthleteResponseLoadoutJerseyColorRegExp),
   "equippedGear": zod.array(zod.string().max(getSportGearForAthleteResponseLoadoutEquippedGearItemMax)).max(getSportGearForAthleteResponseLoadoutEquippedGearMax)
@@ -950,6 +949,8 @@ export const SaveSportGearParams = zod.object({
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball'])
 })
 
+export const saveSportGearBodyAthleteNameMax = 120;
+
 export const saveSportGearBodyLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const saveSportGearBodyLoadoutEquippedGearItemMax = 60;
 
@@ -958,12 +959,11 @@ export const saveSportGearBodyLoadoutEquippedGearMax = 4;
 
 
 export const SaveSportGearBody = zod.object({
-  "athleteId": zod.string().uuid(),
+  "athleteName": zod.string().min(1).max(saveSportGearBodyAthleteNameMax).optional(),
   "loadout": zod.object({
   "jerseyColor": zod.string().regex(saveSportGearBodyLoadoutJerseyColorRegExp),
   "equippedGear": zod.array(zod.string().max(saveSportGearBodyLoadoutEquippedGearItemMax)).max(saveSportGearBodyLoadoutEquippedGearMax)
-}),
-  "showOnHypeCard": zod.boolean()
+})
 })
 
 export const saveSportGearResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -984,7 +984,6 @@ export const SaveSportGearResponse = zod.object({
   "athleteName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "canSave": zod.boolean(),
-  "showOnHypeCard": zod.boolean(),
   "loadout": zod.object({
   "jerseyColor": zod.string().regex(saveSportGearResponseLoadoutJerseyColorRegExp),
   "equippedGear": zod.array(zod.string().max(saveSportGearResponseLoadoutEquippedGearItemMax)).max(saveSportGearResponseLoadoutEquippedGearMax)
@@ -3214,11 +3213,6 @@ export const getAthleteFanCardResponseSoccerGearOneJerseyColorRegExp = new RegEx
 export const getAthleteFanCardResponseSoccerGearOneShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseSoccerGearOneSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseSoccerGearOneCleatsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const getAthleteFanCardResponseSportGearOneLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const getAthleteFanCardResponseSportGearOneLoadoutEquippedGearItemMax = 60;
-
-export const getAthleteFanCardResponseSportGearOneLoadoutEquippedGearMax = 4;
-
 export const getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneAthleteXMin = -0.25;
@@ -3347,14 +3341,6 @@ export const GetAthleteFanCardResponse = zod.object({
   "sweatband": zod.enum(['none', 'head', 'wrist']),
   "background": zod.enum(['field', 'goal'])
 }),zod.null()]).optional(),
-  "sportGear": zod.union([zod.object({
-  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
-  "loadout": zod.object({
-  "jerseyColor": zod.string().regex(getAthleteFanCardResponseSportGearOneLoadoutJerseyColorRegExp),
-  "equippedGear": zod.array(zod.string().max(getAthleteFanCardResponseSportGearOneLoadoutEquippedGearItemMax)).max(getAthleteFanCardResponseSportGearOneLoadoutEquippedGearMax)
-}),
-  "earnedGear": zod.array(zod.string())
-}),zod.null()]).optional(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
@@ -3476,6 +3462,34 @@ export const GetAthleteFanCardResponse = zod.object({
 }))
 }),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Returns only the earned equipment and selected jersey look. HYPE Card responses do not include gear.
+ * @summary Get earned gear for the public jersey showcase
+ */
+export const getPublicJerseyShowcaseGearPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetPublicJerseyShowcaseGearParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getPublicJerseyShowcaseGearPathInviteTokenRegExp)
+})
+
+export const getPublicJerseyShowcaseGearResponseLoadoutJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getPublicJerseyShowcaseGearResponseLoadoutEquippedGearItemMax = 60;
+
+export const getPublicJerseyShowcaseGearResponseLoadoutEquippedGearMax = 4;
+
+
+
+export const GetPublicJerseyShowcaseGearResponse = zod.object({
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
+  "loadout": zod.object({
+  "jerseyColor": zod.string().regex(getPublicJerseyShowcaseGearResponseLoadoutJerseyColorRegExp),
+  "equippedGear": zod.array(zod.string().max(getPublicJerseyShowcaseGearResponseLoadoutEquippedGearItemMax)).max(getPublicJerseyShowcaseGearResponseLoadoutEquippedGearMax)
+}),
+  "earnedGear": zod.array(zod.string())
 })
 
 

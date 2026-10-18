@@ -1,12 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { GetSportGearForAthleteQueryParams, GetSportGearForAthleteResponse, SaveSportGearBody, SaveSportGearParams } from "@workspace/api-zod";
-import { athleteEditorAccessTable, athleteInvitesTable, cloudProjectsTable, db, soccerGearLooksTable, type AthleteEditorAccess } from "@workspace/db";
+import { athleteEditorAccessTable, athleteInvitesTable, athleteSportGearLooksTable, cloudProjectsTable, db, type AthleteEditorAccess } from "@workspace/db";
 import { getRequiredClerkUserId, requireProjectEditorAuth } from "../middlewares/requireAuth";
 import { creditExistingSoccerEventCards, creditExistingSoccerTrackerGames } from "../lib/soccerGear";
 import { readSportGear } from "../lib/sportGear";
 import { invalidSportGearSelection, publicGearArtFiles, type GearSport } from "../lib/sportGearPolicy";
-import { defaultSoccerLoadout } from "../lib/soccerGearPolicy";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
@@ -54,39 +53,42 @@ router.put("/athlete-gear/sports/:sport", requireProjectEditorAuth, async (req, 
   if (!sport.success || !parsed.success) { res.status(400).json({ error: "Choose valid sport gear and colors." }); return; }
   try {
     const access = res.locals.athleteEditorAccess as AthleteEditorAccess | undefined;
-    if (access && (!await validLinkedKit(access, sport.data) || access.athleteInviteId !== parsed.data.athleteId)) {
+    if (access && !await validLinkedKit(access, sport.data)) {
       res.status(403).json({ error: "This sign-in can edit only its linked athlete gear." }); return;
     }
     const owner = access?.ownerClerkUserId ?? getRequiredClerkUserId(res);
     const result = await db.transaction(async (tx) => {
+      let accessInviteId: string | undefined;
       if (access) {
         const [current] = await tx.select().from(athleteEditorAccessTable).where(and(
           eq(athleteEditorAccessTable.id, access.id), eq(athleteEditorAccessTable.status, "active"),
           eq(athleteEditorAccessTable.athleteClerkUserId, getRequiredClerkUserId(res)),
-          eq(athleteEditorAccessTable.athleteInviteId, parsed.data.athleteId), eq(athleteEditorAccessTable.projectId, access.projectId),
+          eq(athleteEditorAccessTable.athleteInviteId, access.athleteInviteId), eq(athleteEditorAccessTable.projectId, access.projectId),
         )).for("update");
         if (!current) return { error: "Athlete gear access is no longer active.", status: 403 };
+        const [invite] = await tx.select().from(athleteInvitesTable).where(and(
+          eq(athleteInvitesTable.ownerClerkUserId, owner),
+          eq(athleteInvitesTable.id, access.athleteInviteId),
+        )).for("update");
+        if (!invite || invite.sport !== sport.data
+          || parsed.data.athleteName && invite.athleteName.trim().toLowerCase() !== parsed.data.athleteName.trim().toLowerCase()) {
+          return { error: "This sign-in can edit only its linked athlete gear.", status: 403 };
+        }
+        accessInviteId = invite.id;
       }
-      const [invite] = await tx.select().from(athleteInvitesTable).where(and(
-        eq(athleteInvitesTable.ownerClerkUserId, owner), eq(athleteInvitesTable.id, parsed.data.athleteId),
-      )).for("update");
-      if (!invite || invite.sport !== sport.data || access && invite.id !== access.athleteInviteId) {
-        return { error: "The selected athlete or sport changed. Refresh before saving.", status: 400 };
-      }
-      const state = await readSportGear(owner, sport.data, tx, invite.id);
+      const state = await readSportGear(owner, sport.data, tx, accessInviteId, access ? undefined : parsed.data.athleteName);
       if (invalidSportGearSelection(sport.data, parsed.data.loadout.equippedGear, state.progress)) {
         return { error: "This equipment is still locked or belongs to another sport.", status: 400 };
       }
-      const [look] = await tx.select().from(soccerGearLooksTable).where(eq(soccerGearLooksTable.inviteId, invite.id));
-      // Retain the historical table and soccer fields; sport-namespaced JSON
-      // preserves every kit when an athlete changes sports without a migration.
-      const previous = look?.loadout ?? defaultSoccerLoadout();
-      const sportLooks = previous.sportLooks as Record<string, unknown> | undefined;
-      const loadout = { ...previous, sportLooks: { ...sportLooks, [sport.data]: parsed.data.loadout } };
-      const showOnHypeCard = access ? state.showOnHypeCard : parsed.data.showOnHypeCard;
-      await tx.insert(soccerGearLooksTable).values({ inviteId: invite.id, loadout, showOnHypeCard })
-        .onConflictDoUpdate({ target: soccerGearLooksTable.inviteId, set: { loadout, showOnHypeCard, updatedAt: new Date() } });
-      return { state: await readSportGear(owner, sport.data, tx, invite.id) };
+      await tx.insert(athleteSportGearLooksTable).values({
+        ownerClerkUserId: owner,
+        sport: sport.data,
+        loadout: parsed.data.loadout,
+      }).onConflictDoUpdate({
+        target: [athleteSportGearLooksTable.ownerClerkUserId, athleteSportGearLooksTable.sport],
+        set: { loadout: parsed.data.loadout, updatedAt: new Date() },
+      });
+      return { state: await readSportGear(owner, sport.data, tx, accessInviteId, access ? undefined : parsed.data.athleteName) };
     });
     if (result.error) { res.status(result.status ?? 400).json({ error: result.error }); return; }
     res.json(GetSportGearForAthleteResponse.parse(result.state));

@@ -1,4 +1,9 @@
-import { useGetAthleteFanCard, getGetAthleteFanCardQueryKey } from '@workspace/api-client-react';
+import {
+  getGetAthleteFanCardQueryKey,
+  getGetPublicJerseyShowcaseGearQueryKey,
+  useGetAthleteFanCard,
+  useGetPublicJerseyShowcaseGear,
+} from '@workspace/api-client-react';
 import { ArrowDownRight, ArrowUpRight, CalendarDays, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
 import { normalizeCardAppearance } from './hype-card-appearance';
@@ -22,6 +27,14 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
     query: {
       enabled: !!inviteToken,
       queryKey: getGetAthleteFanCardQueryKey(inviteToken),
+      retry: false,
+      refetchOnWindowFocus: true,
+    },
+  });
+  const { data: publicGear } = useGetPublicJerseyShowcaseGear(inviteToken, {
+    query: {
+      enabled: !!inviteToken,
+      queryKey: getGetPublicJerseyShowcaseGearQueryKey(inviteToken),
       retry: false,
       refetchOnWindowFocus: true,
     },
@@ -61,10 +74,10 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
   const jerseyNumber = appearance.jerseyNumber.replace(/^#/, '');
   const sport = sportName(invite.sport);
   const events = invite.showEvents ? invite.events ?? [] : [];
-  const showcaseGear = invite.sportGear?.sport === invite.sport ? {
-    sport: invite.sportGear.sport,
-    earnedGear: invite.sportGear.earnedGear,
-    equippedGear: invite.sportGear.loadout.equippedGear,
+  const showcaseGear = publicGear?.sport === invite.sport ? {
+    sport: publicGear.sport,
+    earnedGear: publicGear.earnedGear,
+    equippedGear: publicGear.loadout.equippedGear,
   } : null;
   const fanHref = `/fan/${encodeURIComponent(inviteToken)}`;
   const isSoccer = invite.sport === 'soccer';
@@ -107,7 +120,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
                 name={firstName}
                 number={jerseyNumber}
                 label={`${invite.athleteName} ${jerseyNumber ? `number ${jerseyNumber}` : ''} football jersey`}
-                accent={invite.sportGear?.sport === invite.sport ? invite.sportGear.loadout.jerseyColor : undefined}
+                accent={publicGear?.sport === invite.sport ? publicGear.loadout.jerseyColor : undefined}
                 showcaseGear={showcaseGear}
               />
             ) : (
@@ -134,9 +147,9 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
         </div>
       </section>
 
-      {invite.sportGear?.sport === invite.sport && <section aria-label="Earned equipment" data-testid="section-public-showcase-gear">
+      {showcaseGear && <section aria-label="Earned equipment" data-testid="section-public-showcase-gear">
         <p className="public-showcase__eyebrow">Earned equipment</p>
-        <SportGearCollection sport={invite.sportGear.sport} earnedGear={invite.sportGear.earnedGear} equippedGear={invite.sportGear.loadout.equippedGear} />
+        <SportGearCollection sport={showcaseGear.sport} earnedGear={showcaseGear.earnedGear} equippedGear={showcaseGear.equippedGear} />
       </section>}
 
       <section className="public-showcase__details" aria-label="Athlete details">

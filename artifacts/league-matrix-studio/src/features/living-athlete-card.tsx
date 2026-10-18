@@ -20,7 +20,6 @@ import {
   type AthleteInviteHypeInput,
 } from '@workspace/api-client-react';
 import { hasEventToday } from './athlete-event-links';
-import { SportGearCollection } from './sport-gear-collection';
 import { resolveHypeCardAthleteName } from './hype-card-appearance';
 import { getUserProfile } from './supporter-dashboard-model';
 
@@ -835,10 +834,6 @@ export function LivingAthleteCardPage({
                </Dialog>
               </div>}
             <p className="living-card-instruction">Choose a side to turn the card.</p>
-            {invite.sportGear?.sport === invite.sport && <details className="soccer-gear-public" data-testid="public-sport-gear">
-              <summary>Earned {sport} equipment</summary>
-              <SportGearCollection sport={invite.sportGear.sport} earnedGear={invite.sportGear.earnedGear} equippedGear={invite.sportGear.loadout.equippedGear} />
-            </details>}
             {invite.soccerGear && <details className="soccer-gear-public" data-testid="public-soccer-gear">
               <summary data-testid="button-open-public-soccer-gear">See {displayAthleteName}'s soccer kit</summary>
               <div className="soccer-gear">

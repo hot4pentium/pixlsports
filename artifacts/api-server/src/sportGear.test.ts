@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import express from "express";
 import { eq, inArray } from "drizzle-orm";
-import { accountAccessTable, athleteEditorAccessTable, athleteInvitesTable, cloudProjectsTable, db, pool, soccerGearActivityTable } from "@workspace/db";
+import { accountAccessTable, athleteEditorAccessTable, athleteInvitesTable, athleteSportGearLooksTable, cloudProjectsTable, db, pool, soccerGearActivityTable } from "@workspace/db";
 import sportGearRouter from "./routes/sportGear";
 import soccerGearRouter from "./routes/soccerGear";
 import athleteInvitesRouter from "./routes/athleteInvites";
@@ -75,10 +75,10 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
     assert.equal((await call("/athlete-gear/sports?sport=cricket")).status, 400);
     assert.equal((await read()).athleteId, invite.id);
     assert.equal((await read(owner, "soccer")).athleteId, null, "the selected athlete name is not matched to a different athlete's soccer HYPE Card");
-    assert.equal((await read(owner, "football", "Other Player")).athleteId, null, "a different selected name cannot edit this athlete's HYPE Card");
+    assert.equal((await read(owner, "football", "Other Player")).canSave, true, "saving is not conditional on a matching HYPE Card");
     assert.equal((await call("/athlete-gear/sports?sport=soccer&athleteName=Gear%20Player", "GET", undefined, athlete)).status, 403);
     assert.ok((await read()).items.every((item: { earned: boolean }) => !item.earned));
-    const save = { athleteId: invite.id, loadout: defaultSportGearLoadout(), showOnHypeCard: true };
+    const save = { athleteName: "Gear Player", loadout: defaultSportGearLoadout() };
     assert.equal((await call(path, "PUT", { ...save, loadout: { ...save.loadout, equippedGear: ["football-helmet"] } })).status, 400);
     await db.insert(soccerGearActivityTable).values([
       { ownerClerkUserId: owner, kind: "week", eventKey: "first-week" },
@@ -90,7 +90,8 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
     const edited = { ...save, loadout: { jerseyColor: "#F36E4C", equippedGear: ["football-helmet", "football-gloves"] } };
     assert.equal((await call(path, "PUT", edited)).status, 200);
     assert.deepEqual((await read()).loadout, edited.loadout, "saved look survives a fresh read");
-    assert.equal((await call(path, "PUT", edited, other)).status, 400, "another account cannot save to this athlete");
+    assert.equal((await call(path, "PUT", { loadout: defaultSportGearLoadout() }, other)).status, 200, "a different account can save its own independent look");
+    assert.deepEqual((await read()).loadout, edited.loadout, "saving another profile's look leaves this account unchanged");
     assert.equal((await call(path, "PUT", { ...edited, loadout: { ...edited.loadout, equippedGear: ["soccer-ball"] } })).status, 400);
     const publicCard = async () => {
       const response = await call(`/athlete-invites/${token}/fan`, "GET", undefined, "");
@@ -98,20 +99,43 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
       return response.json();
     };
     const fan = await publicCard();
-    assert.equal(fan.sportGear.sport, "football");
-    assert.deepEqual(fan.sportGear.loadout, edited.loadout);
-    assert.equal("progress" in fan.sportGear, false);
-    assert.equal("ownerClerkUserId" in fan.sportGear, false);
+    assert.equal("sportGear" in fan, false, "the HYPE Card contract never includes earned sports gear");
+    const showcaseGearResponse = await call(`/athlete-invites/${token}/jersey-showcase/gear`, "GET", undefined, "");
+    assert.equal(showcaseGearResponse.status, 200);
+    const showcaseGear = await showcaseGearResponse.json();
+    assert.equal(showcaseGear.sport, "football");
+    assert.deepEqual(showcaseGear.loadout, edited.loadout);
+    assert.deepEqual(showcaseGear.earnedGear, ["football-helmet", "football-pads", "football-gloves"]);
+    assert.equal("progress" in showcaseGear, false);
+    assert.equal("ownerClerkUserId" in showcaseGear, false);
     assert.deepEqual(fan.events, []);
-    assert.equal((await call(path, "PUT", { ...edited, showOnHypeCard: false }, athlete)).status, 200);
-    assert.equal((await read()).showOnHypeCard, true, "athlete cannot disable parent's sharing setting");
-    assert.equal((await call(path, "PUT", { ...edited, showOnHypeCard: false })).status, 200);
-    assert.equal((await publicCard()).sportGear, null);
+    await db.update(athleteInvitesTable).set({ showHypeCard: false }).where(eq(athleteInvitesTable.id, invite.id));
+    assert.equal((await call(`/athlete-invites/${token}/jersey-showcase/gear`, "GET", undefined, "")).status, 200, "Showcase gear remains public when HYPE Card sharing is turned off");
+    await db.update(athleteInvitesTable).set({ showHypeCard: true }).where(eq(athleteInvitesTable.id, invite.id));
     assert.equal((await call(path, "PUT", edited, athlete)).status, 200);
-    assert.equal((await read()).showOnHypeCard, false, "athlete cannot enable parent's sharing setting");
+    assert.deepEqual((await read()).loadout, edited.loadout, "athlete edits update the owner's profile-level gear look");
+
+    const noCard = await read(other, "football", "Independent Player");
+    assert.equal(noCard.canSave, true);
+    assert.equal(noCard.athleteId, null, "the profile has no HYPE Card");
+    assert.ok(noCard.items.every((item: { earned: boolean }) => !item.earned));
+    await db.insert(soccerGearActivityTable).values([
+      { ownerClerkUserId: other, kind: "week", eventKey: "no-card-week" },
+      { ownerClerkUserId: other, kind: "event-card", eventKey: "no-card-event" },
+      { ownerClerkUserId: other, kind: "tracker-game", eventKey: "no-card-game" },
+    ]);
+    const independentSave = {
+      athleteName: "Independent Player",
+      loadout: { jerseyColor: "#D7EF80", equippedGear: ["football-helmet"] },
+    };
+    assert.equal((await call(path, "PUT", independentSave, other)).status, 200, "a profile without a HYPE Card can save earned gear");
+    assert.deepEqual((await read(other, "football", "Independent Player")).loadout, independentSave.loadout);
+    assert.deepEqual((await read()).loadout, edited.loadout, "another profile's gear does not leak across accounts");
     await db.update(athleteInvitesTable).set({ sport: "soccer" }).where(eq(athleteInvitesTable.id, invite.id));
     assert.equal((await call("/athlete-gear/sports/soccer", "PUT", { ...save, loadout: { jerseyColor: "#D7EF80", equippedGear: ["soccer-ball"] } })).status, 200);
-    assert.equal((await call("/athlete-gear/soccer", "PUT", { ...save, loadout: defaultSoccerLoadout() })).status, 200, "legacy soccer editor remains available");
+    assert.equal((await call("/athlete-gear/soccer", "PUT", {
+      athleteId: invite.id, loadout: defaultSoccerLoadout(), showOnHypeCard: true,
+    })).status, 200, "legacy soccer editor remains available");
     assert.equal((await read(owner, "soccer")).athleteId, invite.id);
     await db.update(athleteInvitesTable).set({ sport: "football" }).where(eq(athleteInvitesTable.id, invite.id));
     assert.deepEqual((await read()).loadout, edited.loadout, "sport changes and legacy soccer saves retain football's look");
@@ -120,9 +144,14 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
     assert.equal((await call(path, "PUT", edited, athlete)).status, 403);
     await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.id, invite.id));
     assert.equal((await call(`/athlete-invites/${token}/fan`, "GET", undefined, "")).status, 404);
+    assert.equal((await call(`/athlete-invites/${token}/jersey-showcase/gear`, "GET", undefined, "")).status, 404);
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id));
+    assert.equal((await read()).athleteId, null);
+    assert.deepEqual((await read()).loadout, edited.loadout, "deleting the HYPE Card does not delete the profile's saved gear");
   } finally {
     await new Promise<void>((done) => server.close(() => done()));
     await db.delete(athleteEditorAccessTable).where(inArray(athleteEditorAccessTable.ownerClerkUserId, users));
+    await db.delete(athleteSportGearLooksTable).where(inArray(athleteSportGearLooksTable.ownerClerkUserId, users));
     await db.delete(athleteInvitesTable).where(inArray(athleteInvitesTable.ownerClerkUserId, users));
     await db.delete(cloudProjectsTable).where(inArray(cloudProjectsTable.ownerClerkUserId, users));
     await db.delete(soccerGearActivityTable).where(inArray(soccerGearActivityTable.ownerClerkUserId, users));

@@ -8,7 +8,10 @@
 import type { SportGearLoadout } from './sportGearLoadout';
 
 export interface SportGearLookInput {
-  athleteId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  athleteName?: string;
   loadout: SportGearLoadout;
-  showOnHypeCard: boolean;
 }
