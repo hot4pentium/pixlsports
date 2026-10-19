@@ -7,7 +7,8 @@
 .ps__btn:hover{filter:brightness(1.05)}
 .ps a:focus-visible,.ps button:focus-visible{outline:3px solid #b9d8ff;outline-offset:3px}
 .ps__stage{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;align-items:center;width:100%;max-width:820px;margin:0 auto;border:1px solid rgba(85,164,255,.3);border-radius:16px;background:#071630}
-.ps__carousel{width:100%;max-width:820px;margin:0 auto}
+.ps__carousel,.ps__gear-collection{width:100%;max-width:820px;margin:0 auto}
+.ps__gear-collection>.sgc{width:88%;margin-inline:auto}
 .ps__carousel-controls{position:absolute;inset:0;z-index:5;pointer-events:none}
 .ps__carousel-arrow{position:absolute;top:50%;display:grid;place-items:center;width:46px;height:46px;padding:0;transform:translateY(-50%);border:1px solid rgba(85,164,255,.7);border-radius:50%;background:rgba(7,22,48,.94);color:#d9eaff;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:auto;cursor:pointer;transition:transform .18s ease,background .18s ease,border-color .18s ease,color .18s ease}
 .ps__carousel-arrow--previous{left:8px}
@@ -19,7 +20,7 @@
 .ps__rotor{position:relative;display:grid;grid-template-columns:1fr;width:88%;max-width:760px;margin:0 auto;transform-style:preserve-3d}
 .ps__rotor-face{position:relative;grid-area:1/1;display:flex;min-width:0;width:100%;transform-origin:center center;transform-style:preserve-3d;backface-visibility:hidden;transition:transform .68s cubic-bezier(.2,.74,.18,1),opacity .48s ease,filter .48s ease;will-change:transform,opacity;z-index:1}
 .ps__rotor-face[data-active="true"]{z-index:2;opacity:1;filter:none;transform:translate3d(0,0,0) rotateY(0) scale(1)}
-.ps__rotor-face[data-active="false"]{pointer-events:none;opacity:.86;filter:brightness(.74)}
+.ps__rotor-face[data-active="false"]{position:absolute;inset:0;width:100%;pointer-events:none;opacity:.86;filter:brightness(.74)}
 .ps__rotor-face--jersey[data-active="false"]{transform:translate3d(-22%,0,-110px) rotateY(14deg) scale(.9)}
 .ps__rotor-face--card[data-active="false"]{transform:translate3d(25%,0,-110px) rotateY(-14deg) scale(.9)}
 .ps__rotor-face--jersey[data-active="false"] .ps__links,.ps__rotor-face--jersey[data-active="false"] .ps__note{visibility:hidden}

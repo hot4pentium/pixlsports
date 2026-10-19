@@ -407,12 +407,24 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-gear"]').getAttribute('href')`), `${base}/studio/gear`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-shoutouts"]').getAttribute('href')`), `${base}/studio/athlete-page#owner-fan-hypes`);
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-jersey"]')?.getAttribute('alt').includes('Jordan Lee number 17')`));
+    await browser.wait(`Array.from(document.querySelector('[data-testid="showcase-slide-jersey"]').getAnimations()).every(animation=>animation.playState==='finished')`);
     for (const width of [320, 390, 1440]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
       assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), `Photoreal jersey is missing at ${width}px`);
       assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="athlete-locker-"]').length`), 0, 'Player Showcase should focus on the jersey, not repeat the Locker');
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Player Showcase overflows at ${width}px`);
+      assert.equal(await browser.evaluate(`(() => {
+        const grid=document.querySelector('[data-testid="collection-sport-gear-soccer"]').getBoundingClientRect();
+        const jersey=document.querySelector('[data-testid="showcase-jersey-stage"]').getBoundingClientRect();
+        return Math.abs(grid.left-jersey.left)<1&&Math.abs(grid.right-jersey.right)<1;
+      })()`), true, `Gear grid matches the jersey container edges at ${width}px`);
       if (width < 600) {
+        const jerseySpace = await browser.evaluate(`(() => {
+          const stage=document.querySelector('[data-testid="showcase-jersey-stage"]');
+          const content=stage.querySelector('[data-testid="status-showcase-gear-empty"]')||stage.querySelector('.ps__links');
+          return stage.getBoundingClientRect().bottom-content.getBoundingClientRect().bottom;
+        })()`);
+        assert.ok(jerseySpace < 20, `The jersey panel ends close to its content at ${width}px; extra space is ${jerseySpace}px`);
         const gearLayout = await browser.evaluate(`(() => {
           const grid=document.querySelector('[data-testid="collection-sport-gear-soccer"]');
           const items=[...grid.querySelectorAll('.sgc-item')];
@@ -422,13 +434,13 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
             columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,
             cardWidth:rects[0]?.width ?? 0,
             cardsInside:rects.every(rect=>rect.left>=gridRect.left&&rect.right<=gridRect.right),
-            centeredLastCard:Math.abs((rects.at(-1).left+rects.at(-1).right)/2-(gridRect.left+gridRect.right)/2)<1,
+            leftAlignedLastCard:Math.abs(rects.at(-1).left-gridRect.left)<1,
           };
         })()`);
         assert.equal(gearLayout.columns, 3, `Soccer gear uses three columns at ${width}px`);
         assert.ok(gearLayout.cardWidth < 130, `Soccer gear cards shrink below 130px at ${width}px`);
         assert.equal(gearLayout.cardsInside, true, `Soccer gear cards fit their grid at ${width}px`);
-        assert.equal(gearLayout.centeredLastCard, true, `The single card on the last row is centered at ${width}px`);
+        assert.equal(gearLayout.leftAlignedLastCard, true, `The second gear row starts on the left at ${width}px`);
         const actionLayout = await browser.evaluate(`(() => {
           const nav=document.querySelector('[data-testid="showcase-slide-jersey"] .ps__links');
           const links=[...nav.querySelectorAll('.ps__link')];

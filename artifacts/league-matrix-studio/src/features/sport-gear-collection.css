@@ -7,7 +7,6 @@
 @media(max-width:600px){
   .sgc{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .sgc-item{padding:6px;border-radius:11px}
-  .sgc-item:last-child:nth-child(3n + 1){grid-column:2}
   .sgc-item figcaption{font-size:11px;line-height:1.2;margin-top:4px}
   .sgc-item small{font-size:9px;line-height:1.2}
 }

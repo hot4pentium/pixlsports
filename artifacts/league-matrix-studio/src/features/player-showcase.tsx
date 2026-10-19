@@ -221,7 +221,7 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
         )}
         {activeSlide === 'jersey' && sportGearStatus === 'loading' && <p role="status" className="ps__state">Loading earned equipment…</p>}
         {activeSlide === 'jersey' && sportGearStatus === 'error' && <p role="alert" className="ps__state">Your equipment couldn’t load. <button type="button" onClick={onRetrySportGear}>Try again</button></p>}
-        {activeSlide === 'jersey' && sportGear && <SportGearCollection sport={sportGear.sport} items={sportGear.items} earnedGear={sportGear.items.filter((item) => item.earned).map((item) => item.id)} equippedGear={sportGear.loadout.equippedGear} />}
+        {activeSlide === 'jersey' && sportGear && <div className="ps__gear-collection"><SportGearCollection sport={sportGear.sport} items={sportGear.items} earnedGear={sportGear.items.filter((item) => item.earned).map((item) => item.id)} equippedGear={sportGear.loadout.equippedGear} /></div>}
       </section>
     </div>
   );
