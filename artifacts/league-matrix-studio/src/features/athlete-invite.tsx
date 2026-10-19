@@ -1311,7 +1311,7 @@ function OwnerHypePageManage({ invite, profile }: {
           <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase sm:text-5xl">HYPE Card Manager</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Build and share your athlete&apos;s story. Choose what you want to do next.</p>
         </div>
-        <BackNavigationLink href="/studio" label="Back to Studio" testId="link-hype-manager-studio" />
+        <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-hype-manager-studio" />
       </div>
       {notice && <p role="status" className="my-3 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed" data-testid="status-hype-manager">{notice}</p>}
 
@@ -1556,20 +1556,20 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
         <div className="max-w-md text-center">
           <h1 className="font-display text-5xl uppercase">Sign in to manage this Hype Page</h1>
           <Link href={`${basePath}/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`} className="mt-6 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link>
-          <BackNavigationLink href={`/fan/${inviteToken}`} label="Back to athlete Hype Card" testId="link-management-sign-in-athlete" variant="public" className="mx-auto mt-3" />
+          <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-management-sign-in-athlete" variant="public" className="mx-auto mt-3" />
         </div>
       </PublicShell>
     );
   }
   if (!ownerInvite) {
-    return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Management unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">Only the account that owns this Hype Page can open these controls.</p><BackNavigationLink href={`/fan/${inviteToken}`} label="Back to athlete Hype Card" testId="link-management-unavailable-athlete" variant="public" className="mx-auto mt-6" /></div></PublicShell>;
+    return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Management unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">Only the account that owns this Hype Page can open these controls.</p><BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-management-unavailable-athlete" variant="public" className="mx-auto mt-6" /></div></PublicShell>;
   }
 
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="owner-athlete-invite-management-page">
       <PublicHeader />
       <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
-        <BackNavigationLink href={`/fan/${inviteToken}`} label="Back to athlete Hype Card" testId="link-back-to-athlete-hype-page" variant="public" />
+        <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-back-to-athlete-hype-page" variant="public" />
          <OwnerHypePageManage invite={ownerInvite} profile={profile} />
       </main>
     </div>

@@ -23,6 +23,26 @@ test('HYPE Card creation directs athlete photo uploads to its manager, not Athle
   assert.doesNotMatch(appSource, /useRequestSupporterPhotoUploadUrl|useSaveSupporterPhoto|useCachedSupporterPhoto/);
 });
 
+test('Player Showcase HYPE Card back actions return to the Dynamic Showcase carousel', () => {
+  for (const testId of [
+    'link-hype-manager-studio',
+    'link-management-sign-in-athlete',
+    'link-management-unavailable-athlete',
+    'link-back-to-athlete-hype-page',
+  ]) {
+    assert.match(
+      source,
+      new RegExp(`<BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="${testId}"`),
+      `${testId} should return to the Dynamic Showcase`,
+    );
+  }
+  assert.match(
+    hypeCardSource,
+    /href=\{athleteRestricted \? '\/studio\/player-showcase' : '\/studio'\} label=\{athleteRestricted \? 'Back to Dynamic Showcase' : 'Back to studio'\}/,
+    'the athlete-restricted card editor returns to the Dynamic Showcase',
+  );
+});
+
 test('HYPE Card sharing copy does not call links or pages stable', () => {
   assert.doesNotMatch(
     [source, hypeCardSource, appSource, supporterDashboardSource].join('\n'),
