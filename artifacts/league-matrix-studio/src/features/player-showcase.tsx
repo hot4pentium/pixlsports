@@ -151,9 +151,6 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
                     <p className="ps__loading" role="status" data-testid="status-showcase-gear-loading">Loading your saved kit…</p>
                   )}
                   <div className="ps__links">
-                    <Link href={hypeHref} className="ps__link" data-testid="link-showcase-hype-card">
-                      <Zap size={18} aria-hidden="true" /> HYPE Card
-                    </Link>
                     {isGearSport(profile.sport) && (
                       <Link href={athleteRestricted ? '/studio/player-showcase/gear' : '/studio/gear'} className="ps__link" data-testid="link-showcase-gear">
                         <Footprints size={18} aria-hidden="true" /> Gear

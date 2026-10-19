@@ -323,7 +323,8 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="page-player-showcase"]')`);
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="section-dynamic-showcase"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-hype-card"]').getAttribute('href')`), `${base}/player/fixture-athlete/manage#design`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-hype-card"]')`), null, 'the jersey slide does not repeat the HYPE Card action');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').getAttribute('aria-label')`), 'Show HYPE Card', 'the carousel remains the HYPE Card entry point');
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const initialRotation = await browser.evaluate(`(() => {
       const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width)}};
@@ -412,20 +413,37 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="athlete-locker-"]').length`), 0, 'Player Showcase should focus on the jersey, not repeat the Locker');
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Player Showcase overflows at ${width}px`);
       if (width < 600) {
+        const gearLayout = await browser.evaluate(`(() => {
+          const grid=document.querySelector('[data-testid="collection-sport-gear-soccer"]');
+          const items=[...grid.querySelectorAll('.sgc-item')];
+          const rects=items.map(item=>item.getBoundingClientRect());
+          const gridRect=grid.getBoundingClientRect();
+          return {
+            columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+            cardWidth:rects[0]?.width ?? 0,
+            cardsInside:rects.every(rect=>rect.left>=gridRect.left&&rect.right<=gridRect.right),
+            centeredLastCard:Math.abs((rects.at(-1).left+rects.at(-1).right)/2-(gridRect.left+gridRect.right)/2)<1,
+          };
+        })()`);
+        assert.equal(gearLayout.columns, 3, `Soccer gear uses three columns at ${width}px`);
+        assert.ok(gearLayout.cardWidth < 130, `Soccer gear cards shrink below 130px at ${width}px`);
+        assert.equal(gearLayout.cardsInside, true, `Soccer gear cards fit their grid at ${width}px`);
+        assert.equal(gearLayout.centeredLastCard, true, `The single card on the last row is centered at ${width}px`);
         const actionLayout = await browser.evaluate(`(() => {
           const nav=document.querySelector('[data-testid="showcase-slide-jersey"] .ps__links');
           const links=[...nav.querySelectorAll('.ps__link')];
           const rects=links.map(link=>link.getBoundingClientRect());
           const navRect=nav.getBoundingClientRect();
+          const tops=rects.map(rect=>rect.top);
           return {
             flexWrap:getComputedStyle(nav).flexWrap,
-            rows:new Set(rects.map(rect=>Math.round(rect.top))).size,
+            sameRow:Math.max(...tops)-Math.min(...tops)<2,
             noOverlap:rects.every((rect,index)=>index===0||rect.left>=rects[index-1].right),
             fit:links.every(link=>link.scrollWidth<=link.clientWidth+1)&&rects.every(rect=>rect.left>=navRect.left&&rect.right<=navRect.right),
           };
         })()`);
         assert.equal(actionLayout.flexWrap, 'nowrap', `Showcase actions stay inline at ${width}px`);
-        assert.equal(actionLayout.rows, 1, `Showcase actions use one row at ${width}px`);
+        assert.equal(actionLayout.sameRow, true, `Showcase actions use one row at ${width}px`);
         assert.equal(actionLayout.noOverlap, true, `Showcase actions do not overlap at ${width}px`);
         assert.equal(actionLayout.fit, true, `Showcase action labels fit their buttons at ${width}px`);
       }
