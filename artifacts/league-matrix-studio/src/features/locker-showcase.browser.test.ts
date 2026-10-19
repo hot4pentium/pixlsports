@@ -348,8 +348,24 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(initialRotation.cardHidden, 'true');
     assert.equal(initialRotation.noOverflow, true);
     assert.ok(initialRotation.artPeeking >= 24, `the HYPE Card artwork should visibly peek out from behind the jersey; measured ${JSON.stringify(initialRotation)}`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-carousel-tabs"]')`), null, 'numbered slide labels are removed');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-carousel-controls"]').innerText.trim()`), '', 'carousel navigation uses arrows without visible labels');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').getAttribute('aria-label')`), 'Show HYPE Card');
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
+    await browser.wait(`Array.from(document.querySelector('[data-testid="showcase-slide-card"]').getAnimations()).every(animation=>animation.playState==='finished')`);
+    const centeredCardOffset = await browser.evaluate(`(() => {
+      const viewport=document.querySelector('[data-testid="showcase-rotor-viewport"]').getBoundingClientRect();
+      const card=document.querySelector('[data-testid="showcase-card-art"]').getBoundingClientRect();
+      return Math.abs((card.left+card.right)/2-(viewport.left+viewport.right)/2);
+    })()`);
+    assert.ok(centeredCardOffset <= 2, `the HYPE Card centers in the carousel after using its arrow; offset ${centeredCardOffset}px`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='jersey'`);
+    await browser.wait(`Array.from(document.querySelector('[data-testid="showcase-slide-jersey"]').getAnimations()).every(animation=>animation.playState==='finished')`);
     await swipe('[data-testid="showcase-jersey-stage"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
+    await browser.wait(`Array.from(document.querySelector('[data-testid="showcase-slide-card"]').getAnimations()).every(animation=>animation.playState==='finished')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-slide-card"]').getAttribute('aria-hidden')`), 'false');
     assert.equal(await browser.evaluate(`getComputedStyle(document.querySelector('[data-testid="showcase-slide-jersey"] .ps__links')).visibility`), 'hidden', 'the HYPE Card slide hides jersey-specific actions');
     assert.equal(await browser.evaluate(`getComputedStyle(document.querySelector('[data-testid="showcase-slide-card"] .ps__card-caption')).visibility`), 'visible', 'the HYPE Card slide keeps card-specific actions visible');

@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Copy, ExternalLink, Footprints, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Footprints, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'wouter';
 import { useClerk, useUser } from '@clerk/react';
 import { useState, type ReactNode } from 'react';
@@ -100,22 +100,22 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
       <section className="ps__stage-wrap" aria-labelledby="ps-dyn" data-testid="section-dynamic-showcase" style={{ minWidth: 0 }}>
         <h1 id="ps-dyn" className="ps__section-title">Dynamic <span>Showcase</span></h1>
         <div className="ps__carousel" data-testid="showcase-carousel">
-          <div className="ps__carousel-controls" role="group" aria-label="Showcase slides" data-testid="showcase-carousel-tabs">
-            <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => selectSlide('jersey')} className="ps__carousel-tab" data-testid="button-showcase-slide-jersey">
-              <span>01</span> Jersey
-            </button>
-            {showCardSlide && <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => selectSlide('card')} className="ps__carousel-tab" data-testid="button-showcase-slide-card">
-              <span>02</span> HYPE Card
-            </button>}
-          </div>
           <div
             className="ps__rotor-viewport"
             role="region"
             aria-roledescription="carousel"
-            aria-label={`${profile.athleteName || 'Player'} showcase. Swipe to rotate between the jersey and HYPE Card.`}
+            aria-label={`${profile.athleteName || 'Player'} showcase. Use the arrow controls or swipe to rotate between the jersey and HYPE Card.`}
             data-testid="showcase-rotor-viewport"
             {...swipeHandlers}
           >
+            {showCardSlide && <div className="ps__carousel-controls" role="group" aria-label="Showcase carousel controls" data-testid="showcase-carousel-controls">
+              <button type="button" aria-label="Show Jersey" aria-pressed={activeSlide === 'jersey'} onClick={() => selectSlide('jersey')} className="ps__carousel-arrow ps__carousel-arrow--previous" data-testid="button-showcase-slide-jersey">
+                <ChevronLeft size={23} aria-hidden="true" />
+              </button>
+              <button type="button" aria-label="Show HYPE Card" aria-pressed={activeSlide === 'card'} onClick={() => selectSlide('card')} className="ps__carousel-arrow ps__carousel-arrow--next" data-testid="button-showcase-slide-card">
+                <ChevronRight size={23} aria-hidden="true" />
+              </button>
+            </div>}
             <div className="ps__rotor" data-testid="showcase-rotor" data-active-slide={activeSlide}>
               <div
                 className="ps__rotor-face ps__rotor-face--jersey"
