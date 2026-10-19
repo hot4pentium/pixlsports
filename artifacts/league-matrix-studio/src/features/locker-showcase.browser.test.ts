@@ -23,9 +23,14 @@ async function availablePort() {
 class Browser {
   private nextId = 0;
   private pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
+  private readonly browserIssues: string[] = [];
   private constructor(private socket: WebSocket) {
     socket.addEventListener('message', ({ data }) => {
       const message = JSON.parse(String(data));
+      if (message.method && ['Runtime.exceptionThrown','Runtime.consoleAPICalled','Log.entryAdded','Network.loadingFailed'].includes(message.method)) {
+        this.browserIssues.push(`${message.method}: ${JSON.stringify(message.params)}`);
+        if (this.browserIssues.length > 12) this.browserIssues.shift();
+      }
       const item = this.pending.get(message.id);
       if (!item) return;
       this.pending.delete(message.id);
@@ -70,7 +75,8 @@ class Browser {
       if (await this.evaluate(`Boolean(${expression})`)) return;
       await new Promise((done) => setTimeout(done, 100));
     }
-    throw new Error(`UI did not settle: ${expression}`);
+    const diagnostic = await this.evaluate(`({href:location.href,readyState:document.readyState,body:document.body?.innerText||'',root:document.querySelector('#root')?.innerHTML.slice(0,500)||'',resources:performance.getEntriesByType('resource').map(entry=>entry.name).slice(-8)})`).catch(() => null);
+    throw new Error(`UI did not settle: ${expression}; browser state: ${JSON.stringify(diagnostic)}; browser issues: ${this.browserIssues.join(' | ') || 'none'}`);
   }
   close() { this.socket.close(); }
 }
@@ -119,8 +125,11 @@ window.fetch = async (input,init) => {
       const sg=sportState();
       return new Response(JSON.stringify(state.fail?{error:'Unavailable'}:{sport:sg.sport,loadout:sg.loadout,earnedGear:sg.items.filter(x=>x.earned).map(x=>x.id)}),{status:state.fail?404:200,headers:{'Content-Type':'application/json'}});
     }
-    const sg=sportState();
-    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,showEvents:state.showEvents,sport:state.cardSport??state.sport}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
+    const requestPathParts=new URL(url,location.origin).pathname.split('/').filter(Boolean);
+    const requestedInviteToken=requestPathParts.at(-1)==='fan'?decodeURIComponent(requestPathParts.at(-2)??''):'';
+    const requestedCard=state.ownerInvites.find(invite=>invite.inviteToken===requestedInviteToken)??card;
+    const responseSport=state.mode==='owner-showcase'?state.cardSport??requestedCard.sport??state.sport:state.cardSport??state.sport;
+    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,...requestedCard,showEvents:state.showEvents,sport:responseSport}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
   }
   return originalFetch(input,init);
 };
@@ -163,7 +172,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
   try {
     await writeFile(sourcePath, harness());
     await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
-    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{server:{proxy:{'/api/athlete-gear/art/':{target:'http://127.0.0.1:80',changeOrigin:true}}}});`);
+    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-gear-art',configureServer(server){server.middlewares.use('/api/athlete-gear/art',(_request,response)=>{response.statusCode=200;response.setHeader('Content-Type','image/png');response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==','base64'));});}}]});`);
     vite = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
       cwd: appDirectory, env: { ...process.env, PORT: String(port), BASE_PATH: `${base}/` }, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -177,6 +186,10 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 15_000, chromeMonitor);
     const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json() as Array<{ type: string; webSocketDebuggerUrl: string }>;
     browser = await Browser.connect(tabs.find((tab) => tab.type === 'page')!.webSocketDebuggerUrl);
+    await browser.send('Page.enable');
+    await browser.send('Runtime.enable');
+    await browser.send('Log.enable');
+    await browser.send('Network.enable');
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const swipe = async (selector: string, direction: 'left' | 'right') => {
       const point = await browser!.evaluate<{ x: number; y: number }>(`(() => {
@@ -195,7 +208,9 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     };
     await browser.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html` });
-    await browser.wait(`document.querySelector('[data-testid="page-shared-locker"]')`);
+    await browser.wait(`document.querySelector('[data-testid="page-shared-locker"]')`).catch((error) => {
+      throw new Error(`${error instanceof Error ? error.message : String(error)}; ${viteMonitor.diagnostics()}`);
+    });
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-shared-locker-name"]').textContent`), 'Jordan Lee');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-shared-locker-hype-card"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('.shared-locker .gear-player'))`));
@@ -465,6 +480,28 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="status-showcase-card-unavailable"]')`), null, 'a unique baseball HYPE Card remains connected when the athlete profile is set to soccer');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    const fallCard={inviteToken:'fall-card',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall 2025',sport:'soccer',showHypeCard:true,showEvents:true,paused:false};
+    const springCard={inviteToken:'spring-card',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Spring 2026',sport:'soccer',showHypeCard:true,showEvents:true,paused:false};
+    const unrelatedCard={inviteToken:'casey-card',athleteName:'Casey Park',teamName:'Other Team',seasonName:'Spring 2026',sport:'basketball',showHypeCard:true,showEvents:true,paused:false};
+    await browser.evaluate(`window.__update({ownerInvites:${JSON.stringify([unrelatedCard,fallCard,springCard])},profileSeason:'Summer 2026',cardSport:null,sport:'soccer'})`);
+    await browser.wait(`document.querySelector('[data-testid="select-showcase-card"]')`);
+    assert.deepEqual(await browser.evaluate(`Array.from(document.querySelectorAll('[data-testid="select-showcase-card"] option')).map(option=>option.textContent.trim())`), ['Select a HYPE Card','Soccer · Fall 2025','Soccer · Spring 2026'], 'only cards for the selected athlete and team are offered with sport and season details');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]')`), null, 'an unresolved card does not publish a misleading showcase URL');
+    await browser.evaluate(`(()=>{const select=document.querySelector('[data-testid="select-showcase-card"]');select.value='spring-card';select.dispatchEvent(new Event('change',{bubbles:true}))})()`);
+    await browser.wait(`document.querySelector('[data-testid="img-living-card-athlete"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="select-showcase-card"]').value`), 'spring-card', 'the selected card remains available for comparison');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/player/spring-card/manage#design`, 'the design link uses the chosen card');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/spring-card`, 'the public card link uses the chosen card');
+    assert.ok(await browser.evaluate(`window.__requests.some(url=>url.includes('/athlete-invites/spring-card/fan'))`), 'the preview loads the selected card rather than the first matching invite');
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="panel-share-public-showcase"]')`);
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]').getAttribute('href').endsWith('/showcase/spring-card')`), 'the Showcase link uses the chosen card token');
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
+    await browser.evaluate(`window.__update({ownerInvites:[${JSON.stringify(unrelatedCard)}]})`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"]').textContent.includes('No HYPE Card linked')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="select-showcase-card"]')`), null, 'a truly missing card is distinct and does not offer another athlete’s card');
+    await browser.evaluate(`window.__update({ownerInvites:[${JSON.stringify(fallCard)}]})`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`), null, 'the owner HYPE Card view omits the jersey gear collection');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="panel-share-public-showcase"]')`), null, 'the owner HYPE Card view omits the general Showcase-sharing panel');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'the owner HYPE Card view omits the athlete-editor invitation panel');

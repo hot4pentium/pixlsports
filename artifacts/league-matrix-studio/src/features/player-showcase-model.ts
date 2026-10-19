@@ -14,14 +14,7 @@ export function getShowcaseInvite(
   invites: readonly OwnedAthleteInvite[],
   profile: Pick<SupporterProfile, 'athleteName' | 'teamName' | 'seasonName' | 'sport'>,
 ) {
-  const athleteName = normalizeIdentity(profile.athleteName);
-  const teamName = normalizeIdentity(profile.teamName);
-  if (!athleteName || !teamName) return null;
-
-  const candidates = invites.filter((invite) =>
-    normalizeIdentity(invite.athleteName) === athleteName
-    && normalizeIdentity(invite.teamName) === teamName,
-  );
+  const candidates = getShowcaseInviteCandidates(invites, profile);
   if (candidates.length === 1) return candidates[0];
   if (candidates.length === 0) return null;
 
@@ -36,4 +29,23 @@ export function getShowcaseInvite(
   if (!seasonName) return null;
   const seasonMatches = narrowedCandidates.filter((invite) => normalizeIdentity(invite.seasonName) === seasonName);
   return seasonMatches.length === 1 ? seasonMatches[0] : null;
+}
+
+/**
+ * Return only the owner's cards for the selected athlete and team. These are
+ * the only options that may be shown when sport and season cannot resolve a
+ * single Showcase card.
+ */
+export function getShowcaseInviteCandidates(
+  invites: readonly OwnedAthleteInvite[],
+  profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
+) {
+  const athleteName = normalizeIdentity(profile.athleteName);
+  const teamName = normalizeIdentity(profile.teamName);
+  if (!athleteName || !teamName) return [];
+
+  return invites.filter((invite) =>
+    normalizeIdentity(invite.athleteName) === athleteName
+    && normalizeIdentity(invite.teamName) === teamName,
+  );
 }

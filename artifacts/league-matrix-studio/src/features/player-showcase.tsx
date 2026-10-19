@@ -9,6 +9,7 @@ import {
   getGetAthleteEditorAccessQueryKey,
   getGetAthleteFanCardQueryKey,
   useGetAthleteFanCard,
+  type OwnedAthleteInvite,
   type PublicAthleteFanCard,
   type SoccerGearState,
   type SportGearState,
@@ -24,7 +25,7 @@ import { isGearSport, matchingSportGear, useSportGear } from './use-sport-gear';
 import { SportGearCollection } from './sport-gear-collection';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { useShowcaseSwipe } from './use-showcase-swipe';
-import { getShowcaseInvite } from './player-showcase-model';
+import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
 import './player-showcase.css';
 
 export interface PlayerShowcaseContentProps {
@@ -41,9 +42,12 @@ export interface PlayerShowcaseContentProps {
   sportGearStatus?: AthleteLockerGearStatus;
   onRetrySportGear?: () => void;
   linkedCard?: PublicAthleteFanCard | null;
-  cardStatus?: 'loading' | 'ready' | 'unavailable' | 'not-linked' | 'not-shared';
+  cardStatus?: 'loading' | 'ready' | 'unavailable' | 'not-linked' | 'not-shared' | 'ambiguous';
   cardEditHref?: string;
   cardPublicHref?: string;
+  cardCandidates?: readonly OwnedAthleteInvite[];
+  selectedCardToken?: string;
+  onSelectCard?: (inviteToken: string) => void;
   onRetryCard?: () => void;
 }
 
@@ -51,7 +55,7 @@ function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide, onSlideChange, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref, onRetryCard }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide, onSlideChange, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref, cardCandidates = [], selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
   const [uncontrolledSlide, setUncontrolledSlide] = useState<'jersey' | 'card'>('jersey');
   const selectedSlide = controlledSlide ?? uncontrolledSlide;
   const selectSlide = onSlideChange ?? setUncontrolledSlide;
@@ -72,6 +76,24 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
   const showCardSlide = !athleteRestricted || Boolean(linkedCard);
   const card = canPreviewCard ? linkedCard : null;
   const activeSlide = selectedSlide === 'card' && showCardSlide ? 'card' : 'jersey';
+  const cardPicker = cardCandidates.length > 1 && onSelectCard ? (
+    <label className="ps__card-picker">
+      <span>Choose the card to show</span>
+      <select
+        aria-label={`Choose a HYPE Card for ${profile.athleteName}`}
+        value={selectedCardToken ?? ''}
+        onChange={(event) => onSelectCard(event.currentTarget.value)}
+        data-testid="select-showcase-card"
+      >
+        <option value="" disabled>Select a HYPE Card</option>
+        {cardCandidates.map((candidate) => (
+          <option key={candidate.inviteToken} value={candidate.inviteToken}>
+            {sportLabel(candidate.sport)} · {candidate.seasonName?.trim() || 'Season not set'}
+          </option>
+        ))}
+      </select>
+    </label>
+  ) : null;
 
   return (
     <div className="ps" data-testid="page-player-showcase">
@@ -158,7 +180,7 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
               >
                 <div className="ps__card-slide" data-testid="showcase-hype-card-preview">
                   {card ? <>
-                    <div className="ps__card-caption"><span>Saved front · {card.teamName || sportLabel(card.sport)}</span><div className="ps__card-links">
+                    <div className="ps__card-caption">{cardPicker}<span>Saved front · {card.teamName || sportLabel(card.sport)}</span><div className="ps__card-links">
                       <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card design</Link>
                       {cardPublicHref && <Link href={cardPublicHref} className="ps__link" data-testid="link-showcase-card-public"><ExternalLink size={16} aria-hidden="true" /> Open public card</Link>}
                     </div></div>
@@ -170,6 +192,7 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
                     <strong>
                       {cardStatus === 'loading' ? 'Loading the saved card…'
                         : cardStatus === 'unavailable' ? 'HYPE Card unavailable'
+                          : cardStatus === 'ambiguous' ? 'Choose a HYPE Card'
                           : cardStatus === 'not-linked' ? 'No HYPE Card linked'
                             : cardStatus === 'not-shared' ? 'HYPE Card not shared'
                               : 'HYPE Card unavailable'}
@@ -177,14 +200,16 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
                     <span>
                       {cardStatus === 'loading' ? 'The saved front is on its way.'
                         : cardStatus === 'not-linked' ? 'There is no HYPE Card linked to this athlete yet.'
+                          : cardStatus === 'ambiguous' ? 'Several cards match this athlete and team. Compare sport and season, then choose the card for this Showcase.'
                           : cardStatus === 'unavailable' ? 'The linked HYPE Card could not be loaded.'
                           : 'The jersey stays here. Card details stay private until sharing is active.'}
                     </span>
+                    {(cardStatus === 'ambiguous' || (cardStatus === 'unavailable' && cardCandidates.length > 1)) && cardPicker}
                     {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" data-testid="button-showcase-card-retry">Try again</button>}
-                    <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
+                    {cardStatus !== 'ambiguous' && <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
                       {cardStatus === 'not-linked' ? 'Create HYPE Card' : 'Open HYPE Card design'}
                       <ArrowRight size={15} aria-hidden="true" />
-                    </Link>
+                    </Link>}
                   </div>}
                 </div>
               </div>}
@@ -208,6 +233,7 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
 export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProfile; userId: string | null }) {
   const [shareStatus, setShareStatus] = useState('');
   const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
+  const [selectedInviteToken, setSelectedInviteToken] = useState<string | null>(null);
   const invitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(userId),
@@ -218,7 +244,13 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
       retry: false,
     },
   });
-  const matchedInvite = getShowcaseInvite(invitesQuery.data ?? [], profile);
+  const inviteCandidates = getShowcaseInviteCandidates(invitesQuery.data ?? [], profile);
+  const automaticallyMatchedInvite = getShowcaseInvite(invitesQuery.data ?? [], profile);
+  const selectedInvite = selectedInviteToken
+    ? inviteCandidates.find((invite) => invite.inviteToken === selectedInviteToken) ?? null
+    : null;
+  const matchedInvite = automaticallyMatchedInvite ?? selectedInvite;
+  const hasAmbiguousInvite = !automaticallyMatchedInvite && inviteCandidates.length > 1;
   const cardEnabled = Boolean(matchedInvite && matchedInvite.showHypeCard && !matchedInvite.paused);
   const fanCardQuery = useGetAthleteFanCard(matchedInvite?.inviteToken ?? '', {
     query: {
@@ -250,7 +282,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const cardStatus: PlayerShowcaseContentProps['cardStatus'] = invitesQuery.isLoading
     ? 'loading'
     : invitesQuery.isError ? 'unavailable'
-    : !matchedInvite ? 'not-linked'
+    : !matchedInvite ? hasAmbiguousInvite ? 'ambiguous' : 'not-linked'
     : !matchedInvite.showHypeCard || matchedInvite.paused
       ? 'not-shared'
     : fanCardQuery.isLoading ? 'loading' : linkedCard ? 'ready' : 'unavailable';
@@ -277,6 +309,9 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
         onRetrySportGear={() => void sportGearQuery.refetch()}
         linkedCard={linkedCard} cardStatus={cardStatus}
+        cardCandidates={hasAmbiguousInvite ? inviteCandidates : undefined}
+        selectedCardToken={selectedInvite?.inviteToken}
+        onSelectCard={setSelectedInviteToken}
         hypeHref={cardSettingsHref}
         onRetryCard={() => {
           if (fanCardQuery.isError) void fanCardQuery.refetch();
