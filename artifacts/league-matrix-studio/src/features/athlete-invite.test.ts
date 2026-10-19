@@ -48,6 +48,15 @@ test('Player Showcase HYPE Card back actions return to the Dynamic Showcase caro
   );
 });
 
+test('the public HYPE Card returns to its public Dynamic Showcase', () => {
+  assert.match(
+    livingCardSource,
+    /href=\{`\/showcase\/\$\{encodeURIComponent\(inviteToken\)\}`\} label="Back to Dynamic Showcase" testId="link-back-public-showcase"/,
+  );
+  assert.equal((livingCardSource.match(/<Shell inviteToken=\{inviteToken\}>/g) ?? []).length, 3);
+  assert.match(appSource, /path="\/showcase\/:inviteToken" component=\{PublicPlayerShowcasePage\}/);
+});
+
 test('HYPE Card sharing copy does not call links or pages stable', () => {
   assert.doesNotMatch(
     [source, hypeCardSource, appSource, supporterDashboardSource].join('\n'),

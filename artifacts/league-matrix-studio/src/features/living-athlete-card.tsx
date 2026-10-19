@@ -60,7 +60,7 @@ function gameOutcome(game: FanGame) {
   return game.score > game.opponentScore ? 'W' : game.score < game.opponentScore ? 'L' : 'T';
 }
 
-function Shell({ children }: { children: ReactNode }) {
+function Shell({ children, inviteToken }: { children: ReactNode; inviteToken: string }) {
   return (
     <div className="living-card-page">
       <header className="living-card-header">
@@ -69,7 +69,7 @@ function Shell({ children }: { children: ReactNode }) {
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports home" />
           </Link>
           <span className="living-card-header-label">A season worth keeping / Pixl Sports</span>
-          <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />
+          <BackNavigationLink href={`/showcase/${encodeURIComponent(inviteToken)}`} label="Back to Dynamic Showcase" testId="link-back-public-showcase" variant="public" />
         </div>
       </header>
       {children}
@@ -265,7 +265,7 @@ export function LivingAthleteCardPage({
 
   if (isLoading) {
     return (
-      <Shell>
+      <Shell inviteToken={inviteToken}>
         <main aria-busy="true" aria-label="Loading athlete card" role="status">
           <div className="living-card-skeleton"><div /><aside><span /><span /><span /></aside></div>
           <span className="sr-only">Loading athlete card</span>
@@ -275,7 +275,7 @@ export function LivingAthleteCardPage({
   }
   if (isError || !invite || !inviteToken) {
     return (
-      <Shell>
+      <Shell inviteToken={inviteToken}>
         <main className="living-card-state" role="alert" data-testid="state-living-card-unavailable">
           <span className="living-card-eyebrow">The card is off the field</span>
           <h1>This HYPE Card is paused or unavailable.</h1>
@@ -430,7 +430,7 @@ export function LivingAthleteCardPage({
   };
 
   return (
-    <Shell>
+    <Shell inviteToken={inviteToken}>
       <main className="living-card-main">
         {ownerInvite && profileNameSyncKey && updateInvite.isPending && (
           <p className="mb-4 border-l-2 border-sky-300 bg-sky-950/60 px-4 py-3 text-sm text-white" role="status" data-testid="status-profile-name-sync">
