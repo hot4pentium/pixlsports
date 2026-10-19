@@ -223,12 +223,13 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`window.__update({mode:'public-showcase'})`);
     await browser.wait(`document.querySelector('[data-testid="page-public-player-showcase"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), 'Jordan Lee.');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-hype-card"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    assert.equal(await browser.evaluate(`document.querySelectorAll('a[href*="/fan/"]').length`), 0, 'the shared Showcase has no separate HYPE Card links');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');
     await swipe('[data-testid="figure-public-showcase-jersey"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')`), 'true');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-card-interactive"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-card-interactive"]')`), null, 'the HYPE Card preview itself is not a second link');
+    assert.equal(await browser.evaluate(`document.querySelectorAll('a[href*="/fan/"]').length`), 0, 'the HYPE Card slide still has no direct card links');
     await swipe('[data-testid="figure-public-showcase-hype-card"] .public-showcase__card-art', 'right');
     await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')==='true'`);
     await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').focus()`);
@@ -255,11 +256,12 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     for (const width of [320, 390, 768, 1440]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public Showcase overflows at ${width}px`);
-      assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-public-showcase-hype-card"]'))`), `HYPE Card link is missing at ${width}px`);
+      assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="button-public-showcase-slide-card"]'))`), `HYPE Card tab is missing at ${width}px`);
       await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').click()`);
       await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"]')`);
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public HYPE Card slide overflows at ${width}px`);
-      assert.ok(await browser.evaluate(`(()=>{const visual=document.querySelector('.public-showcase__visual').getBoundingClientRect();const card=document.querySelector('[data-testid="link-public-showcase-card-interactive"]').getBoundingClientRect();return card.left>=visual.left&&card.right<=visual.right&&card.bottom<=visual.bottom+1})()`), `HYPE Card action escapes its display at ${width}px`);
+      assert.equal(await browser.evaluate(`document.querySelectorAll('a[href*="/fan/"]').length`), 0, `HYPE Card links remain absent at ${width}px`);
+      assert.ok(await browser.evaluate(`(()=>{const visual=document.querySelector('.public-showcase__visual').getBoundingClientRect();const card=document.querySelector('.public-showcase__card-art').getBoundingClientRect();return card.left>=visual.left&&card.right<=visual.right&&card.top>=visual.top&&card.bottom<=visual.bottom+1})()`), `HYPE Card artwork escapes its display at ${width}px`);
       if (width === 390) {
         const cardCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 85 });
         await writeFile(resolve(tmpdir(), 'pixl-public-showcase-card-slide-check.jpg'), Buffer.from(cardCapture.data, 'base64'));

@@ -68,18 +68,6 @@
 .public-showcase__carousel-tabs button[aria-pressed="true"] { border-color: var(--ps-lime); background: var(--ps-lime); color: var(--ps-night); }
 .public-showcase__carousel-tabs button[aria-pressed="true"] span { color: var(--ps-night); }
 .public-showcase__carousel-tabs button:hover { transform: translateY(-2px); }
-.public-showcase__hype-link {
-  display: flex; align-items: center; gap: 14px; width: min(100%, 420px); min-height: 78px;
-  margin-top: 39px; padding: 14px 17px; border: 1px solid rgba(85, 164, 255, .5);
-  background: linear-gradient(100deg, rgba(35, 100, 173, .42), rgba(11, 31, 58, .84));
-  box-shadow: 8px 8px 0 rgba(4, 12, 26, .35); transition: transform .2s ease, border-color .2s ease;
-}
-.public-showcase__hype-link:hover { transform: translateY(-3px); border-color: var(--ps-lime); }
-.public-showcase__hype-icon { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; background: var(--ps-lime); color: var(--ps-night); }
-.public-showcase__hype-link small, .public-showcase__hype-link strong { display: block; }
-.public-showcase__hype-link small { margin-bottom: 4px; color: #aac5e3; font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-.public-showcase__hype-link strong { color: white; font-size: 14px; }
-.public-showcase__hype-arrow { margin-left: auto; flex: 0 0 auto; color: var(--ps-lime); }
 .public-showcase__read-only { display: flex; align-items: center; gap: 7px; margin-top: 18px; color: #7189a4; font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
 .public-showcase__read-only svg { color: var(--ps-lime); }
 .public-showcase__visual {
@@ -111,15 +99,9 @@
 .public-showcase__corner { position: absolute; z-index: 4; width: 18px; height: 18px; border-color: var(--ps-lime); border-style: solid; }
 .public-showcase__corner--one { top: 12px; right: 12px; border-width: 1px 1px 0 0; }
 .public-showcase__corner--two { bottom: 12px; left: 12px; border-width: 0 0 1px 1px; }
-.public-showcase__card-slide { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, .8fr); align-items: center; gap: clamp(16px, 4vw, 32px); padding: 56px clamp(20px, 5vw, 42px) 36px; }
-.public-showcase__card-art { position: relative; width: min(100%, 300px); aspect-ratio: 2 / 3; justify-self: center; overflow: hidden; border: 1px solid rgba(221, 237, 255, .48); background: #102b4d; box-shadow: 14px 18px 0 rgba(1, 9, 20, .45), 0 24px 48px rgba(0, 0, 0, .34); }
+.public-showcase__card-slide { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; gap: clamp(16px, 4vw, 32px); padding: 44px 24px 16px; }
+.public-showcase__card-art { position: relative; width: min(100%, 280px); aspect-ratio: 2 / 3; justify-self: center; overflow: hidden; border: 1px solid rgba(221, 237, 255, .48); background: #102b4d; box-shadow: 14px 18px 0 rgba(1, 9, 20, .45), 0 24px 48px rgba(0, 0, 0, .34); }
 .public-showcase__card-art .living-card-simple-face { position: absolute; inset: 0; }
-.public-showcase__card-open { display: flex; align-items: center; gap: 13px; justify-content: space-between; padding: 15px; border: 1px solid rgba(85, 164, 255, .5); background: rgba(6, 20, 44, .8); color: #f3f6fa; transition: transform .2s ease, opacity .2s ease; }
-.public-showcase__card-open:hover { transform: translateY(-3px); border-color: var(--ps-lime); }
-.public-showcase__card-open small,.public-showcase__card-open strong { display: block; }
-.public-showcase__card-open small { margin-bottom: 5px; color: #aac5e3; font-size: 8px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-.public-showcase__card-open strong { font-size: 12px; line-height: 1.35; }
-.public-showcase__card-open svg { flex: 0 0 auto; color: var(--ps-lime); }
 .public-showcase__details {
   display: grid; grid-template-columns: repeat(4, 1fr); width: min(1180px, calc(100% - 56px));
   margin: 0 auto; border-top: 1px solid rgba(191, 216, 247, .18); border-bottom: 1px solid rgba(191, 216, 247, .18);
@@ -154,7 +136,6 @@
 }
 .public-showcase__footer > span:first-child { color: #b7c9dc; }
 .public-showcase__footer i { color: var(--ps-lime); font-style: normal; }
-.public-showcase__footer-link { display: inline-flex; align-items: center; gap: 5px; color: var(--ps-blue) !important; }
 .public-showcase--state { display: grid; place-items: center; padding: 24px; }
 .public-showcase__state-panel {
   width: min(100%, 690px); padding: clamp(28px, 6vw, 64px); border: 1px solid rgba(85, 164, 255, .28);
@@ -176,13 +157,10 @@
   .public-showcase__hero { grid-template-columns: 1fr; gap: 32px; width: calc(100% - 36px); min-height: auto; padding: 45px 0 38px; }
   .public-showcase__hero h1 { max-width: 100%; font-size: clamp(62px, 17vw, 98px); }
   .public-showcase__intro { margin-top: 18px; }
-  .public-showcase__hype-link { margin-top: 27px; }
   .public-showcase__carousel-tabs { margin-top: 20px; }
   .public-showcase__visual { min-height: 380px; }
-  .public-showcase__card-slide { grid-template-columns: minmax(0, 1fr) minmax(118px, .75fr); gap: 12px; padding: 58px 16px 28px; }
-  .public-showcase__card-art { width: min(100%, 225px); }
-  .public-showcase__card-open { padding: 11px; }
-  .public-showcase__card-open strong { font-size: 11px; }
+  .public-showcase__card-slide { padding: 50px 20px 16px; }
+  .public-showcase__card-art { width: min(100%, 205px); }
   .public-showcase__kit-display { width: min(79%, 320px); }
   .public-showcase__portrait { top: 52px; right: 15px; width: 64px; }
   .public-showcase__details { grid-template-columns: repeat(2, minmax(0, 1fr)); width: calc(100% - 36px); }
@@ -200,9 +178,8 @@
 }
 @media (max-width: 380px) {
   .public-showcase__hero h1 { font-size: 58px; }
-  .public-showcase__card-slide { grid-template-columns: 1fr; grid-template-rows: 1fr auto; padding: 42px 24px 24px; }
+  .public-showcase__card-slide { padding: 42px 24px 18px; }
   .public-showcase__card-art { width: min(65%, 170px); }
-  .public-showcase__card-open { justify-self: stretch; }
   .public-showcase__event { grid-template-columns: 1fr 18px; gap: 5px 12px; padding: 14px 0; }
   .public-showcase__event-date { grid-column: 1; }
   .public-showcase__event-main { grid-column: 1; }

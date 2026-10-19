@@ -4,7 +4,7 @@ import {
   useGetAthleteFanCard,
   useGetPublicJerseyShowcaseGear,
 } from '@workspace/api-client-react';
-import { ArrowDownRight, ArrowUpRight, CalendarDays, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, ShieldCheck } from 'lucide-react';
 import { Link } from 'wouter';
 import { useState } from 'react';
 import { normalizeCardAppearance } from './hype-card-appearance';
@@ -84,7 +84,6 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
     earnedGear: publicGear.earnedGear,
     equippedGear: publicGear.loadout.equippedGear,
   } : null;
-  const fanHref = `/fan/${encodeURIComponent(inviteToken)}`;
   const isSoccer = invite.sport === 'soccer';
   const isFootball = invite.sport === 'football';
   const activeSlide = selectedSlide;
@@ -113,11 +112,6 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} data-testid="button-public-showcase-slide-jersey"><span>01</span> Jersey</button>
             <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} data-testid="button-public-showcase-slide-card"><span>02</span> HYPE Card</button>
           </div>
-          <Link href={fanHref} className="public-showcase__hype-link" data-testid="link-public-showcase-hype-card">
-            <span className="public-showcase__hype-icon"><Sparkles size={19} aria-hidden="true" /></span>
-            <span><small>Take a closer look</small><strong>Open {firstName}’s HYPE Card</strong></span>
-            <ArrowUpRight className="public-showcase__hype-arrow" size={20} aria-hidden="true" />
-          </Link>
           <span className="public-showcase__read-only"><ShieldCheck size={14} aria-hidden="true" /> Public view · read only</span>
         </div>
 
@@ -160,9 +154,6 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             <div className="public-showcase__card-art">
               <LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={invite.cardAppearance} sport={invite.sport} cutoutUrl={invite.cutoutUrl} />
             </div>
-            <Link href={fanHref} className="public-showcase__card-open" data-testid="link-public-showcase-card-interactive">
-              <span><small>Front preview</small><strong>Open the interactive HYPE Card</strong></span><ArrowUpRight size={20} aria-hidden="true" />
-            </Link>
             <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
             <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
           </div>}
@@ -224,7 +215,6 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
       <footer className="public-showcase__footer">
         <span>PIXL SPORTS <i>·</i> ATHLETE FIRST</span>
         <span>Made to celebrate the work.</span>
-        <a href={fanHref} className="public-showcase__footer-link">HYPE Card <ArrowDownRight size={14} aria-hidden="true" /></a>
       </footer>
     </main>
   );
