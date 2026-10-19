@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { appearanceSwatches, defaultCardAppearance, normalizeCardAppearance, switchCardAppearanceDesign, type HypeCardAppearance, type HypeCardDesign } from './hype-card-appearance';
 import { buildHypeCardTemplateArtwork, HYPE_CARD_TEMPLATES, isHypeCardTemplate, type HypeCardTemplateId } from './hype-card-template-artwork';
 
@@ -73,6 +74,66 @@ export function HypeCardLowerThirdPicker({ appearance, onChange, disabled = fals
         ))}
       </div>
     </fieldset>
+  );
+}
+
+function adjacentTemplate(current: HypeCardTemplateId, direction: -1 | 1): HypeCardTemplateId {
+  const currentIndex = HYPE_CARD_TEMPLATES.findIndex((template) => template.id === current);
+  const index = currentIndex < 0 ? 0 : currentIndex;
+  return HYPE_CARD_TEMPLATES[(index + direction + HYPE_CARD_TEMPLATES.length) % HYPE_CARD_TEMPLATES.length].id;
+}
+
+function TemplateCycler({ label, selectedName, testId, previousLabel, nextLabel, onPrevious, onNext, disabled }: {
+  label: string;
+  selectedName: string;
+  testId: string;
+  previousLabel: string;
+  nextLabel: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <fieldset disabled={disabled} className="min-w-0 rounded-xl border border-white/15 bg-white/[0.04] px-2 pb-2 pt-1" data-testid={testId}>
+      <legend className="px-1 text-[10px] font-bold uppercase tracking-widest text-white/65">{label}</legend>
+      <div className="flex items-center justify-center gap-2">
+        <button type="button" aria-label={previousLabel} onClick={onPrevious}
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/25 text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:opacity-45"
+          data-testid={`${testId}-previous`}>
+          <ChevronLeft aria-hidden="true" className="h-5 w-5" />
+        </button>
+        <button type="button" aria-label={nextLabel} onClick={onNext}
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/25 text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:opacity-45"
+          data-testid={`${testId}-next`}>
+          <ChevronRight aria-hidden="true" className="h-5 w-5" />
+        </button>
+      </div>
+      <p aria-live="polite" aria-atomic="true" className="mt-1 min-h-5 break-words text-center text-xs font-bold text-white" data-testid={`${testId}-selected`}>
+        {selectedName}
+      </p>
+    </fieldset>
+  );
+}
+
+export function HypeCardTemplateCyclers({ appearance, onChange, disabled = false }: {
+  appearance: HypeCardAppearance;
+  onChange: (next: HypeCardAppearance) => void;
+  disabled?: boolean;
+}) {
+  const frameId: HypeCardTemplateId = isHypeCardTemplate(appearance.design) ? appearance.design : 'velocity';
+  const frame = HYPE_CARD_TEMPLATES.find((template) => template.id === frameId) ?? HYPE_CARD_TEMPLATES[0];
+  const lowerThird = HYPE_CARD_TEMPLATES.find((template) => template.id === appearance.lowerThirdTemplate) ?? HYPE_CARD_TEMPLATES[0];
+  return (
+    <div className="grid grid-cols-2 gap-2" data-testid="hype-card-template-cyclers">
+      <TemplateCycler label="Frame" selectedName={frame.name} testId="frame-template-cycler"
+        previousLabel="Previous frame" nextLabel="Next frame" disabled={disabled}
+        onPrevious={() => onChange(switchCardAppearanceDesign(appearance, adjacentTemplate(frame.id, -1)))}
+        onNext={() => onChange(switchCardAppearanceDesign(appearance, adjacentTemplate(frame.id, 1)))} />
+      <TemplateCycler label="Lower third" selectedName={lowerThird.name} testId="lower-third-template-cycler"
+        previousLabel="Previous lower third" nextLabel="Next lower third" disabled={disabled}
+        onPrevious={() => onChange(normalizeCardAppearance({ ...appearance, lowerThirdTemplate: adjacentTemplate(lowerThird.id, -1) }))}
+        onNext={() => onChange(normalizeCardAppearance({ ...appearance, lowerThirdTemplate: adjacentTemplate(lowerThird.id, 1) }))} />
+    </div>
   );
 }
 

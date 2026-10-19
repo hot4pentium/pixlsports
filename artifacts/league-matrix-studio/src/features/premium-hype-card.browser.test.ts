@@ -61,11 +61,44 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 30_000);
     assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=card-design-picker-cards] button").length', session), 6);
     assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=lower-third-template-picker] button").length', session), 6);
+    assert.deepEqual(await connection.evaluate(`(() => {
+      const frame=document.querySelector('[data-testid="frame-template-cycler"]');
+      const lower=document.querySelector('[data-testid="lower-third-template-cycler"]');
+      const frameButtons=[...frame.querySelectorAll('button')], lowerButtons=[...lower.querySelectorAll('button')];
+      const aligned=(a,b)=>Math.abs(a.getBoundingClientRect().top-b.getBoundingClientRect().top)<1;
+      return {
+        groupsShareLine:aligned(frame,lower),
+        frameArrowsShareLine:aligned(frameButtons[0],frameButtons[1]),
+        lowerArrowsShareLine:aligned(lowerButtons[0],lowerButtons[1]),
+        targetsAreLarge:[...frameButtons,...lowerButtons].every(button=>{
+          const r=button.getBoundingClientRect();return r.width>=44 && r.height>=44;
+        }),
+        desktopPickersVisible:getComputedStyle(document.querySelector('[data-testid="appearance-desktop-template-pickers"]')).display!=='none',
+      };
+    })()`, session), {
+      groupsShareLine: true,
+      frameArrowsShareLine: true,
+      lowerArrowsShareLine: true,
+      targetsAreLarge: true,
+      desktopPickersVisible: true,
+    });
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="svg-card-photo"]').getAttribute('preserveAspectRatio')`, session), 'xMidYMid slice');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="classic-card-preview-surface"] svg').getAttribute('viewBox')`, session), '0 0 900 1200');
     const text = await connection.evaluate<string>('document.querySelector("[data-testid=classic-card-preview-surface]").textContent', session);
     assert.match(text, /JORDAN ALEXANDER MATTHEWS/);
     assert.equal(await connection.evaluate('Number(document.querySelector("[data-testid=svg-card-photo]").getAttribute("height"))', session), 1200);
+    await connection.evaluate(`document.querySelector('[data-testid="frame-template-cycler-next"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-frame-template')`,
+      value => value === 'varsity', 5_000);
+    await connection.evaluate(`document.querySelector('[data-testid="lower-third-template-cycler-previous"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-lower-third-template')`,
+      value => value === 'wave', 5_000);
+    assert.deepEqual(await connection.evaluate(`({
+      frame:document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-frame-template'),
+      lowerThird:document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-lower-third-template'),
+      frameName:document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent,
+      lowerThirdName:document.querySelector('[data-testid="lower-third-template-cycler-selected"]')?.textContent
+    })`, session), { frame: 'varsity', lowerThird: 'wave', frameName: 'Varsity', lowerThirdName: 'Wave' });
     await connection.evaluate(`document.querySelector('[data-testid="button-design-pixel-edge"]').click()`, session);
     await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-frame-template')`,
       value => value === 'pixel-edge', 5_000);
@@ -114,6 +147,24 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-position]")?.textContent', session), 'QUARTERBACK', 'athlete details survive reload');
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, session);
     assert.equal(await connection.evaluate('document.documentElement.scrollWidth <= innerWidth', session), true, 'phone has no page overflow');
+    assert.deepEqual(await connection.evaluate(`(() => {
+      const frame=document.querySelector('[data-testid="frame-template-cycler"]');
+      const lower=document.querySelector('[data-testid="lower-third-template-cycler"]');
+      const grid=document.querySelector('[data-testid="appearance-desktop-template-pickers"]');
+      return {
+        controlsVisible:frame.getBoundingClientRect().height>0 && lower.getBoundingClientRect().height>0,
+        groupsShareLine:Math.abs(frame.getBoundingClientRect().top-lower.getBoundingClientRect().top)<1,
+        fullPickersHidden:getComputedStyle(grid).display==='none',
+        frameName:document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent,
+        lowerThirdName:document.querySelector('[data-testid="lower-third-template-cycler-selected"]')?.textContent,
+      };
+    })()`, session), {
+      controlsVisible: true,
+      groupsShareLine: true,
+      fullPickersHidden: true,
+      frameName: 'Pixel Edge',
+      lowerThirdName: 'Spotlight',
+    });
     const previewRatio = await connection.evaluate<number>(`(()=>{const r=document.querySelector('[data-testid="classic-card-preview-surface"]').getBoundingClientRect();return r.width/r.height})()`, session);
     assert.ok(Math.abs(previewRatio - 3 / 4) < .01, `phone preview uses the 3:4 portrait ratio, received ${previewRatio}`);
   } finally {

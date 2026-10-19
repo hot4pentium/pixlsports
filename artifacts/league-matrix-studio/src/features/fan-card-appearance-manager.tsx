@@ -12,7 +12,7 @@ import { simpleCardLogoSrc } from './simple-hype-card-brand';
 import { buildSimpleHypeCardArtwork, HYPE_TEMPLATE_CARD_H, HYPE_TEMPLATE_CARD_W } from './simple-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
-import { HypeCardDesignPicker, HypeCardLowerThirdPicker } from './hype-card-appearance-controls';
+import { HypeCardDesignPicker, HypeCardLowerThirdPicker, HypeCardTemplateCyclers } from './hype-card-appearance-controls';
 import antonFontUrl from '../assets/anton-regular.ttf?url';
 
 type Draft = HypeCardAppearance;
@@ -220,10 +220,15 @@ export function FanCardAppearanceManager({ invite, profile }: {
           <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={draft} cardHref={cardHref} />
         </div>
         <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
+        <div className="mx-auto mt-3 w-full max-w-[360px]">
+          <HypeCardTemplateCyclers appearance={draft} onChange={updateAppearance} disabled={busy} />
+        </div>
       </div>
       <div className="space-y-5">
-        <HypeCardDesignPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
-        <HypeCardLowerThirdPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
+        <div className="hidden space-y-5 lg:block" data-testid="appearance-desktop-template-pickers">
+          <HypeCardDesignPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
+          <HypeCardLowerThirdPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
+        </div>
         <div className="space-y-3" data-testid="photo-position-controls">
           <p className="text-xs font-bold uppercase tracking-widest text-white/70">Photo position</p>
           <label className="block text-xs text-white/80">Horizontal
