@@ -1273,11 +1273,11 @@ export function SupporterDashboardView({
           )}
         </header>
 
-        <nav aria-label="Supporter sections" className="flex gap-1 border-b border-white/10 px-4 pt-3" data-testid="mobile-supporter-tabs">
-          <Link href="/studio" aria-current="page" className="border-b-2 border-[#55A4FF] px-3 py-3 text-sm font-bold text-white" data-testid="link-mobile-parent-week">
+        <nav aria-label="Supporter sections" className="flex gap-1 border-b border-black/10 px-4 pt-3" data-testid="mobile-supporter-tabs">
+          <Link href="/studio" aria-current="page" className="border-b-2 border-[#55A4FF] px-3 py-3 text-sm font-bold text-[#12213A]" data-testid="link-mobile-parent-week">
             Supporter Hub
           </Link>
-          <Link href="/studio/player-showcase" className="border-b-2 border-transparent px-3 py-3 text-sm font-bold text-white/70 hover:text-white" data-testid="link-mobile-player-showcase">
+          <Link href="/studio/player-showcase" className="border-b-2 border-transparent px-3 py-3 text-sm font-bold text-[#53657C] hover:text-[#12213A]" data-testid="link-mobile-player-showcase">
             Player Showcase
           </Link>
         </nav>
