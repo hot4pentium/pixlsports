@@ -29,6 +29,8 @@ import './player-showcase.css';
 
 export interface PlayerShowcaseContentProps {
   profile: SupporterProfile;
+  selectedSlide?: 'jersey' | 'card';
+  onSlideChange?: (slide: 'jersey' | 'card') => void;
   gear: SoccerGearState | null;
   gearStatus: AthleteLockerGearStatus;
   onRetry?: () => void;
@@ -49,9 +51,11 @@ function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref, onRetryCard }: PlayerShowcaseContentProps) {
-  const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
-  const swipeHandlers = useShowcaseSwipe(setSelectedSlide);
+export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide, onSlideChange, gear, gearStatus, onRetry, athleteRestricted = false, hypeHref = '/studio/hype-card', sportGear, sportGearStatus, onRetrySportGear, linkedCard, cardStatus = 'not-linked', cardEditHref = hypeHref, cardPublicHref, onRetryCard }: PlayerShowcaseContentProps) {
+  const [uncontrolledSlide, setUncontrolledSlide] = useState<'jersey' | 'card'>('jersey');
+  const selectedSlide = controlledSlide ?? uncontrolledSlide;
+  const selectSlide = onSlideChange ?? setUncontrolledSlide;
+  const swipeHandlers = useShowcaseSwipe(selectSlide);
   const isSoccer = profile.sport === 'soccer';
   const isFootball = profile.sport === 'football';
   const first = profile.athleteName.trim().split(/\s+/)[0] || 'Player';
@@ -75,10 +79,10 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
         <h1 id="ps-dyn" className="ps__section-title">Dynamic <span>Showcase</span></h1>
         <div className="ps__carousel" data-testid="showcase-carousel">
           <div className="ps__carousel-controls" role="group" aria-label="Showcase slides" data-testid="showcase-carousel-tabs">
-            <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} className="ps__carousel-tab" data-testid="button-showcase-slide-jersey">
+            <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => selectSlide('jersey')} className="ps__carousel-tab" data-testid="button-showcase-slide-jersey">
               <span>01</span> Jersey
             </button>
-            {showCardSlide && <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} className="ps__carousel-tab" data-testid="button-showcase-slide-card">
+            {showCardSlide && <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => selectSlide('card')} className="ps__carousel-tab" data-testid="button-showcase-slide-card">
               <span>02</span> HYPE Card
             </button>}
           </div>
@@ -187,15 +191,15 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
             </div>
           </div>
         </div>
-        {showError && (
+        {activeSlide === 'jersey' && showError && (
           <p className="ps__state" role="alert" data-testid="status-showcase-error" style={{ marginTop: 12 }}>
             Your saved kit couldn&rsquo;t load.
             {onRetry && <button type="button" onClick={onRetry} data-testid="button-showcase-retry">Try again</button>}
           </p>
         )}
-        {sportGearStatus === 'loading' && <p role="status" className="ps__state">Loading earned equipment…</p>}
-        {sportGearStatus === 'error' && <p role="alert" className="ps__state">Your equipment couldn’t load. <button type="button" onClick={onRetrySportGear}>Try again</button></p>}
-        {sportGear && <SportGearCollection sport={sportGear.sport} items={sportGear.items} earnedGear={sportGear.items.filter((item) => item.earned).map((item) => item.id)} equippedGear={sportGear.loadout.equippedGear} />}
+        {activeSlide === 'jersey' && sportGearStatus === 'loading' && <p role="status" className="ps__state">Loading earned equipment…</p>}
+        {activeSlide === 'jersey' && sportGearStatus === 'error' && <p role="alert" className="ps__state">Your equipment couldn’t load. <button type="button" onClick={onRetrySportGear}>Try again</button></p>}
+        {activeSlide === 'jersey' && sportGear && <SportGearCollection sport={sportGear.sport} items={sportGear.items} earnedGear={sportGear.items.filter((item) => item.earned).map((item) => item.id)} equippedGear={sportGear.loadout.equippedGear} />}
       </section>
     </div>
   );
@@ -203,6 +207,7 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
 
 export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProfile; userId: string | null }) {
   const [shareStatus, setShareStatus] = useState('');
+  const [selectedSlide, setSelectedSlide] = useState<'jersey' | 'card'>('jersey');
   const invitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(userId),
@@ -268,7 +273,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   };
   return (
     <>
-      <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={gearStatus} onRetry={retry}
+      <PlayerShowcaseContent profile={profile} selectedSlide={selectedSlide} onSlideChange={setSelectedSlide} gear={gear} gearStatus={gearStatus} onRetry={retry}
         sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
         onRetrySportGear={() => void sportGearQuery.refetch()}
         linkedCard={linkedCard} cardStatus={cardStatus}
@@ -279,7 +284,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         }}
         cardEditHref={cardSettingsHref}
         cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}` : undefined} />
-      <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
+      {selectedSlide === 'jersey' && <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         {publicShowcaseUrl && (
           <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">
             <div className="min-w-0">
@@ -298,7 +303,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           </section>
         )}
         <AthleteEditorInvitationPanel inviteToken={inviteToken ?? null} />
-      </div>
+      </div>}
     </>
   );
 }

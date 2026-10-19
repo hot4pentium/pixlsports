@@ -336,6 +336,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await swipe('[data-testid="showcase-jersey-stage"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-slide-card"]').getAttribute('aria-hidden')`), 'false');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`), null, 'the HYPE Card slide hides jersey equipment');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/player/fixture-athlete/manage#design`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
     for (const width of [320, 390, 1440]) {
@@ -349,6 +350,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await swipe('[data-testid="showcase-hype-card-preview"] .ps__card-art', 'right');
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='jersey'`);
+    assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="collection-sport-gear-soccer"]'))`), true, 'returning to the jersey restores jersey equipment');
     await browser.evaluate(`window.__update({paused:true})`);
     await browser.wait(`document.querySelector('[data-testid="button-showcase-slide-card"]')`);
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
@@ -461,6 +463,14 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="status-showcase-card-unavailable"]')`), null, 'a unique baseball HYPE Card remains connected when the athlete profile is set to soccer');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`), null, 'the owner HYPE Card view omits the jersey gear collection');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="panel-share-public-showcase"]')`), null, 'the owner HYPE Card view omits the general Showcase-sharing panel');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'the owner HYPE Card view omits the athlete-editor invitation panel');
+    await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='jersey'`);
+    await browser.wait(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`);
+    assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="panel-share-public-showcase"]'))`), true, 'the Jersey slide restores Showcase-level sharing');
+    assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), true, 'the Jersey slide restores athlete-editor access');
     await browser.evaluate(`window.__update({mode:'sport-editor',sport:'football',athleteRestricted:true,noMatchingCard:false})`);
     await browser.wait(`document.querySelector('[data-testid="page-sport-gear-football"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]')`), null);
