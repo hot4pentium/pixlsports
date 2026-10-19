@@ -28,6 +28,12 @@ test('a unique athlete card is found when the profile season is stale or blank',
   assert.equal(getShowcaseInvite([card], { ...profile, seasonName: '' }), card);
 });
 
+test('a unique athlete card remains linked when the profile sport has changed', () => {
+  const baseballCard = invite({ sport: 'baseball' });
+
+  assert.equal(getShowcaseInvite([baseballCard], profile), baseballCard);
+});
+
 test('season selects the matching card when the athlete has multiple seasons', () => {
   const fall = invite({ inviteToken: 'fall', seasonName: 'Fall 2026' });
   const spring = invite({ inviteToken: 'spring', seasonName: 'Spring 2027' });
@@ -37,7 +43,15 @@ test('season selects the matching card when the athlete has multiple seasons', (
   assert.equal(getShowcaseInvite([fall, spring], { ...profile, seasonName: 'Summer 2027' }), null);
 });
 
-test('a card for another team or sport is never linked to the selected athlete', () => {
+test('sport disambiguates cards for the same athlete and team', () => {
+  const soccerCard = invite({ inviteToken: 'soccer' });
+  const baseballCard = invite({ inviteToken: 'baseball', sport: 'baseball' });
+
+  assert.equal(getShowcaseInvite([soccerCard, baseballCard], profile), soccerCard);
+  assert.equal(getShowcaseInvite([soccerCard, baseballCard], { ...profile, sport: 'basketball', seasonName: '' }), null);
+});
+
+test('a card for another athlete or team is never linked to the selected athlete', () => {
   assert.equal(getShowcaseInvite([invite({ teamName: 'Other FC' })], profile), null);
-  assert.equal(getShowcaseInvite([invite({ sport: 'basketball' })], profile), null);
+  assert.equal(getShowcaseInvite([invite({ athleteName: 'Other Player' })], profile), null);
 });
