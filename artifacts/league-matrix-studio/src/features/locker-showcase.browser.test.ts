@@ -309,8 +309,33 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="section-dynamic-showcase"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-hype-card"]').getAttribute('href')`), `${base}/player/fixture-athlete/manage#design`);
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const initialRotation = await browser.evaluate(`(() => {
+      const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width)}};
+      const jersey=document.querySelector('[data-testid="showcase-slide-jersey"]');
+      const art=document.querySelector('[data-testid="showcase-card-art"]');
+      const jerseyBox=jersey.getBoundingClientRect(), artBox=art.getBoundingClientRect();
+      return {
+        active:document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide,
+        cardHidden:document.querySelector('[data-testid="showcase-slide-card"]').getAttribute('aria-hidden'),
+        artPeeking:Math.round(artBox.right-jerseyBox.right),
+        noOverflow:document.documentElement.scrollWidth<=innerWidth,
+        viewport:rect('[data-testid="showcase-rotor-viewport"]'),
+        jerseyRect:rect('[data-testid="showcase-slide-jersey"]'),
+        cardRect:rect('[data-testid="showcase-slide-card"]'),
+        artRect:rect('[data-testid="showcase-card-art"]'),
+        cardTransform:getComputedStyle(document.querySelector('[data-testid="showcase-slide-card"]')).transform
+      };
+    })()`);
+    const layeredCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 85 });
+    await writeFile(resolve(tmpdir(), 'pixl-showcase-card-behind-jersey-check.jpg'), Buffer.from(layeredCapture.data, 'base64'));
+    assert.equal(initialRotation.active, 'jersey');
+    assert.equal(initialRotation.cardHidden, 'true');
+    assert.equal(initialRotation.noOverflow, true);
+    assert.ok(initialRotation.artPeeking >= 24, `the HYPE Card artwork should visibly peek out from behind the jersey; measured ${JSON.stringify(initialRotation)}`);
     await swipe('[data-testid="showcase-jersey-stage"]', 'left');
-    await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-slide-card"]').getAttribute('aria-hidden')`), 'false');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/player/fixture-athlete/manage#design`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
     for (const width of [320, 390, 1440]) {
@@ -323,10 +348,11 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     }
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await swipe('[data-testid="showcase-hype-card-preview"] .ps__card-art', 'right');
-    await browser.wait(`document.querySelector('[data-testid="showcase-jersey-stage"]')`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='jersey'`);
     await browser.evaluate(`window.__update({paused:true})`);
     await browser.wait(`document.querySelector('[data-testid="button-showcase-slide-card"]')`);
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
     await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`), null, 'paused HYPE Card art is not rendered into the owner Showcase');
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="status-showcase-card-unavailable"]').textContent.includes('not shared')`), 'the owner gets a clear status when card sharing is paused');

@@ -13,8 +13,15 @@
 .ps__carousel-tab span{color:#68aaff;font:800 12px "Barlow Condensed",sans-serif}
 .ps__carousel-tab[aria-pressed="true"]{border-color:#dff56f;background:#dff56f;color:#0b1f3a}
 .ps__carousel-tab[aria-pressed="true"] span{color:#0b1f3a}
-.ps__slide{animation:ps-slide-in .24s ease both;touch-action:pan-y}
-.ps__card-slide{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.56fr);gap:clamp(18px,4vw,38px);align-items:center;min-height:420px;padding:clamp(18px,4vw,42px);overflow:hidden;border:1px solid rgba(85,164,255,.3);background:radial-gradient(ellipse at 28% 40%,rgba(40,120,245,.2),transparent 44%),linear-gradient(135deg,#0b1f3a,#06142c)}
+.ps__rotor-viewport{position:relative;width:100%;overflow:hidden;perspective:1400px;touch-action:pan-y;isolation:isolate}
+.ps__rotor{position:relative;display:grid;grid-template-columns:1fr;width:88%;max-width:760px;margin:0 auto;transform-style:preserve-3d}
+.ps__rotor-face{position:relative;grid-area:1/1;display:flex;min-width:0;width:100%;transform-origin:center center;transform-style:preserve-3d;backface-visibility:hidden;transition:transform .68s cubic-bezier(.2,.74,.18,1),opacity .48s ease,filter .48s ease;will-change:transform,opacity;z-index:1}
+.ps__rotor-face[data-active="true"]{z-index:2;opacity:1;filter:none;transform:translate3d(0,0,0) rotateY(0) scale(1)}
+.ps__rotor-face--jersey[data-active="true"]{transform:translate3d(-4%,0,0) rotateY(0) scale(1)}
+.ps__rotor-face[data-active="false"]{pointer-events:none;opacity:.86;filter:brightness(.74)}
+.ps__rotor-face--jersey[data-active="false"]{transform:translate3d(-22%,0,-110px) rotateY(14deg) scale(.9)}
+.ps__rotor-face--card[data-active="false"]{transform:translate3d(25%,0,-110px) rotateY(-14deg) scale(.9)}
+.ps__card-slide{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.56fr);gap:clamp(18px,4vw,38px);align-items:center;min-height:420px;padding:clamp(18px,4vw,42px);overflow:visible;border:1px solid rgba(85,164,255,.3);background:radial-gradient(ellipse at 28% 40%,rgba(40,120,245,.2),transparent 44%),linear-gradient(135deg,#0b1f3a,#06142c)}
 .ps__card-art{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin:auto;overflow:hidden;border:1px solid rgba(192,220,248,.3);background:#102b4d;box-shadow:15px 20px 0 rgba(2,10,24,.38),0 20px 45px rgba(0,0,0,.28)}
 .ps__card-art .living-card-simple-face{position:absolute;inset:0}
 .ps__card-caption{display:grid;gap:16px;align-content:center;color:#b6c9de;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
@@ -41,5 +48,5 @@
 .ps__skel{animation:ps-pulse 1.4s ease-in-out infinite}
 @keyframes ps-pulse{50%{opacity:.5}}
 @keyframes ps-slide-in{from{opacity:.8;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:600px){.ps__card-slide{grid-template-columns:1fr;min-height:0;padding:18px}.ps__card-art{width:min(78%,310px)}.ps__card-caption{justify-items:center;text-align:center}.ps__card-links{align-items:center}.ps__card-unavailable{width:100%;padding:20px}}
-@media(prefers-reduced-motion:reduce){.ps__skel,.ps__slide{animation:none}}
+@media(max-width:600px){.ps__card-slide{grid-template-columns:1fr;min-height:0;padding:18px}.ps__card-art{grid-row:1;width:min(78%,310px);justify-self:end;margin:0 0 0 auto;transform:translateX(18%)}.ps__rotor-face--card[data-active="true"] .ps__card-art{justify-self:center;margin-inline:auto;transform:none}.ps__card-caption{grid-row:2;justify-items:center;text-align:center}.ps__card-links{align-items:center}.ps__card-unavailable{width:100%;padding:20px}}
+@media(prefers-reduced-motion:reduce){.ps__skel,.ps__slide{animation:none}.ps__rotor-face{transition:none}}
