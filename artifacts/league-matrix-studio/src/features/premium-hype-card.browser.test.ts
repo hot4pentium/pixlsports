@@ -38,7 +38,7 @@ const nativeClick=HTMLAnchorElement.prototype.click;
 HTMLAnchorElement.prototype.click=function(){if(this.download){window.exportDownload=this.download;return;}nativeClick.call(this);};
 function App(){const[side,setSide]=useState('front');return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20}}>
  <h1 style={{fontSize:24,marginBottom:20}}>HYPE Card</h1>
- <div style={{maxWidth:960,margin:'auto'}}><FanCardAppearanceManager invite={{inviteToken:'fixture',athleteName:'Older name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cardAppearance:initial}} profile={{athleteName:'Jordan Alexander Matthews',jerseyNumber:'9',position:'Quarterback'}}/></div>
+ <div style={{maxWidth:960,margin:'auto'}}><FanCardAppearanceManager invite={{inviteToken:'fixture',athleteName:'Older name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cardAppearance:initial}} profile={{athleteName:'Jordan Alexander Matthews',jerseyNumber:'23',position:'Quarterback'}}/></div>
  <div style={{maxWidth:360,margin:'24px auto'}} data-testid="flip-harness"><div style={{position:'relative',aspectRatio:'3/4'}}>{side==='front'?<LivingAthleteCardFront athleteName="Jordan Matthews" teamName="Falcons" photoUrl={photo} appearance={initial}/>:<p data-testid="selected-side">{side}</p>}</div>
  <LivingCardControls side={side} onSelectSide={setSide}/><button data-testid="return-front" onClick={()=>setSide('front')}>Flip to card front</button></div>
  </div>}
@@ -61,6 +61,8 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 30_000);
     assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=card-design-picker-cards] button").length', session), 6);
     assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=lower-third-template-picker] button").length', session), 6);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="fan-card-appearance-manager"] [data-testid="input-jersey-number"]')`, session), null, 'jersey number is not editable in card design');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview"] [data-testid="text-living-card-jersey-number"]')?.textContent`, session), 'Number 23', 'the current athlete profile number replaces an older saved card number');
     assert.deepEqual(await connection.evaluate(`(() => {
       const frame=document.querySelector('[data-testid="frame-template-cycler"]');
       const lower=document.querySelector('[data-testid="lower-third-template-cycler"]');
@@ -149,9 +151,6 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 }, session);
     }
     assert.equal(await connection.evaluate(`document.querySelector('[data-photo-placement]').getAttribute('transform')`, session), 'translate(9 12)');
-    await connection.evaluate(`document.querySelector('[data-testid="input-jersey-number"]').focus()`, session);
-    await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', modifiers: 2, windowsVirtualKeyCode: 65 }, session);
-    await connection.send('Input.insertText', { text: '23' }, session);
     await connection.evaluate(`window.failSave=true;document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
     await waitFor(connection, session, `!!document.querySelector('[data-testid="button-retry-appearance"]')`, Boolean, 10_000);
     await connection.evaluate(`window.failSave=false;document.querySelector('[data-testid="button-retry-appearance"]').click()`, session);
@@ -160,8 +159,9 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.send('Page.navigate', { url: 'http://localhost:80/simple-appearance-fixture.html' }, session);
     await waitFor(connection, session, `document.querySelector('[data-testid="button-design-pixel-edge"]')?.getAttribute('aria-pressed')`, value => value === 'true', 20_000);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-template-varsity"]').getAttribute('aria-pressed')`, session), 'true');
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-jersey-number"]').value`, session), '23');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview"] [data-testid="text-living-card-jersey-number"]')?.textContent`, session), 'Number 23');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="slider-photo-x"]').value`, session), '0.01');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="flip-harness"] [data-testid="text-living-card-jersey-number"]')?.textContent`, session), 'Number 23', 'the saved profile number is present on the shared card too');
     const links = await connection.evaluate<string[]>(`[...document.querySelectorAll('[data-testid="appearance-navigation-preview"] a')].map(a=>a.getAttribute('href'))`, session);
     assert.deepEqual(links, ['/fan/fixture?side=responses', '/fan/fixture?side=stats', '/fan/fixture?side=live-taps', '/fan/fixture?side=events']);
     for (const [button, side] of [['responses', 'responses'], ['stats', 'stats'], ['live-taps', 'live-taps'], ['events', 'events']]) {

@@ -78,7 +78,7 @@ test('custom border and accent colors and normalized placement survive save/reop
   assert.deepEqual(normalizeHypeCardProject(JSON.parse(JSON.stringify(project))).cardAppearance, normalized);
   assert.deepEqual(designOnlyProject(project).cardAppearance, normalized);
 });
-test('card appearance fills blank player details from the profile without replacing saved values', () => {
+test('card appearance always uses the athlete profile number and only fills a blank position', () => {
   const seeded = seedCardAppearanceFromProfile(defaultCardAppearance('gallery'), {
     jerseyNumber: '#23',
     position: ' Forward ',
@@ -91,8 +91,14 @@ test('card appearance fills blank player details from the profile without replac
     jerseyNumber: '12',
     position: 'Guard',
   }, { jerseyNumber: '23', position: 'Forward' });
-  assert.equal(saved.jerseyNumber, '12');
+  assert.equal(saved.jerseyNumber, '23');
   assert.equal(saved.position, 'Guard');
+
+  const blankProfileNumber = seedCardAppearanceFromProfile({
+    ...defaultCardAppearance('gallery'),
+    jerseyNumber: '12',
+  }, { jerseyNumber: '', position: 'Forward' });
+  assert.equal(blankProfileNumber.jerseyNumber, '');
 });
 test('HYPE Card artwork uses the current profile name before the saved invite name', () => {
   assert.equal(resolveHypeCardAthleteName(' Current Profile Name ', 'Older Invite Name'), 'Current Profile Name');

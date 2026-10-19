@@ -73,12 +73,16 @@ export function FanCardAppearanceManager({ invite, profile }: {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const seed = (v: unknown) => norm(seedCardAppearanceFromProfile(v, profile));
+  const profileJerseyNumber = typeof profile.jerseyNumber === 'string'
+    ? profile.jerseyNumber.trim().replace(/^#/, '').slice(0, 12)
+    : '';
   const [saved, setSaved] = useState<Draft>(() => norm(invite.cardAppearance));
   const [draft, setDraft] = useState<Draft>(() => seed(invite.cardAppearance));
-  const draftRef = useRef(draft);
+  const currentAppearance = seed(draft);
+  const draftRef = useRef(currentAppearance);
   const savedRef = useRef(saved);
   savedRef.current = saved;
-  draftRef.current = draft;
+  draftRef.current = currentAppearance;
   const loadedRef = useRef({ token: invite.inviteToken, key: JSON.stringify(saved) });
   const serverKey = JSON.stringify(norm(invite.cardAppearance));
   useEffect(() => {
@@ -95,11 +99,17 @@ export function FanCardAppearanceManager({ invite, profile }: {
     if (wasClean) setDraft(seed(server));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite.inviteToken, serverKey]);
+  useEffect(() => {
+    setStatus('idle');
+    setExportMessage('');
+    setPreparedExport(null);
+    setExportState('idle');
+  }, [profileJerseyNumber]);
   const [exportState, setExportState] = useState<'idle' | 'working' | 'ready' | 'error'>('idle');
   const [preparedExport, setPreparedExport] = useState<{ file: File; draftKey: string } | null>(null);
   const [exportMessage, setExportMessage] = useState('');
   const uid = useId().replace(/[^A-Za-z0-9_-]/g, '');
-  const currentDraftKey = JSON.stringify(draft);
+  const currentDraftKey = JSON.stringify(currentAppearance);
   const readyExport = preparedExport?.draftKey === currentDraftKey ? preparedExport : null;
   const nativeImageSharing = supportsImageSharing();
   const mutation = useUpdateAthleteInviteAppearance();
@@ -117,7 +127,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
   const save = () => {
     setStatus('idle');
     setExportMessage('');
-    mutation.mutate({ inviteToken: invite.inviteToken, data: draft }, {
+    mutation.mutate({ inviteToken: invite.inviteToken, data: currentAppearance }, {
       onSuccess: (res) => {
         const next = norm(res.cardAppearance);
         loadedRef.current = { token: invite.inviteToken, key: JSON.stringify(norm(next)) };
@@ -176,10 +186,10 @@ export function FanCardAppearanceManager({ invite, profile }: {
       const [photo, logo] = await Promise.all([toDataUrl(invite.photoUrl), toDataUrl(simpleCardLogoSrc)]);
       const fonts = await loadEmbeddedFonts();
       const art = buildSimpleHypeCardArtwork({
-        athleteName: displayAthleteName, teamName: invite.teamName, jerseyNumber: draft.jerseyNumber,
-        position: draft.position, photoUrl: photo, logoUrl: logo, design: draft.design,
-        lowerThirdTemplate: draft.lowerThirdTemplate, borderColor: draft.borderColor, accentColor: draft.accentColor,
-        athleteX: draft.athleteX, athleteY: draft.athleteY, athleteScale: draft.athleteScale,
+        athleteName: displayAthleteName, teamName: invite.teamName, jerseyNumber: currentAppearance.jerseyNumber,
+        position: currentAppearance.position, photoUrl: photo, logoUrl: logo, design: currentAppearance.design,
+        lowerThirdTemplate: currentAppearance.lowerThirdTemplate, borderColor: currentAppearance.borderColor, accentColor: currentAppearance.accentColor,
+        athleteX: currentAppearance.athleteX, athleteY: currentAppearance.athleteY, athleteScale: currentAppearance.athleteScale,
       }, `ex${uid}`);
       const w = HYPE_TEMPLATE_CARD_W * 2, h = HYPE_TEMPLATE_CARD_H * 2;
       const markup = art.replace(/(<svg[^>]*>)/, `$1<style>${fonts}</style>`).replace(`width="${HYPE_TEMPLATE_CARD_W}" height="${HYPE_TEMPLATE_CARD_H}"`, `width="${w}" height="${h}"`);
@@ -201,7 +211,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
         setExportMessage('The design changed while the JPG was being prepared. Try again.');
         return;
       }
-      const file = new File([blob], `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${draft.design}.jpg`, { type: 'image/jpeg' });
+      const file = new File([blob], `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${currentAppearance.design}.jpg`, { type: 'image/jpeg' });
       const image = { file, draftKey: currentDraftKey };
       setPreparedExport(image);
       if (supportsImageSharing(file)) await openImageShare(image);
@@ -217,11 +227,11 @@ export function FanCardAppearanceManager({ invite, profile }: {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]" data-testid="fan-card-appearance-manager">
       <div className="min-w-0">
         <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl" data-testid="appearance-preview">
-          <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={draft} cardHref={cardHref} />
+          <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={currentAppearance} cardHref={cardHref} />
         </div>
         <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
         <div className="mx-auto mt-3 w-full max-w-[360px]">
-          <HypeCardTemplateCyclers appearance={draft} onChange={updateAppearance} disabled={busy} />
+          <HypeCardTemplateCyclers appearance={currentAppearance} onChange={updateAppearance} disabled={busy} />
         </div>
       </div>
       <div className="space-y-5">
@@ -242,11 +252,6 @@ export function FanCardAppearanceManager({ invite, profile }: {
           </label>
           <button type="button" disabled={busy} onClick={() => edit({ athleteX: 0, athleteY: 0, athleteScale: 1 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-photo-position">Reset position</button>
         </div>
-        <label className="block text-xs font-bold uppercase tracking-widest text-white/70">Jersey number
-          <input type="text" inputMode="numeric" maxLength={3} value={draft.jerseyNumber} disabled={busy}
-            onChange={(e) => edit({ jerseyNumber: e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 3) })}
-            className="mt-1 block min-h-11 w-28 rounded border border-white/30 bg-white/5 px-3 text-base text-white" data-testid="input-jersey-number" />
-        </label>
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || busy} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{busy ? 'Saving…' : 'Save design'}</button>
           <button type="button" onClick={() => void exportJpeg()} disabled={exportState === 'working'}
@@ -260,7 +265,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
            {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline" data-testid="button-retry-appearance">Retry</button></span>}
           {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-jpeg">{exportMessage}</span>}
         </p>
-          <p className="text-[11px] text-white/50">The photo fills the 3:4 card. Adjust its position and zoom, then save the design supporters will see.</p>
+          <p className="text-[11px] text-white/50">The number comes from Athlete Profile. Adjust the photo, then save the design supporters will see.</p>
       </div>
     </div>
   );

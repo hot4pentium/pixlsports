@@ -151,7 +151,7 @@ export function seedCardAppearanceFromProfile(
 
   return normalizeCardAppearance({
     ...appearance,
-    jerseyNumber: appearance.jerseyNumber || jerseyNumber,
+    jerseyNumber,
     position: appearance.position || position,
   });
 }
