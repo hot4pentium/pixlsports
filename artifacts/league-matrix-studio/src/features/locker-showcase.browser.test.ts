@@ -411,6 +411,24 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), `Photoreal jersey is missing at ${width}px`);
       assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="athlete-locker-"]').length`), 0, 'Player Showcase should focus on the jersey, not repeat the Locker');
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Player Showcase overflows at ${width}px`);
+      if (width < 600) {
+        const actionLayout = await browser.evaluate(`(() => {
+          const nav=document.querySelector('[data-testid="showcase-slide-jersey"] .ps__links');
+          const links=[...nav.querySelectorAll('.ps__link')];
+          const rects=links.map(link=>link.getBoundingClientRect());
+          const navRect=nav.getBoundingClientRect();
+          return {
+            flexWrap:getComputedStyle(nav).flexWrap,
+            rows:new Set(rects.map(rect=>Math.round(rect.top))).size,
+            noOverlap:rects.every((rect,index)=>index===0||rect.left>=rects[index-1].right),
+            fit:links.every(link=>link.scrollWidth<=link.clientWidth+1)&&rects.every(rect=>rect.left>=navRect.left&&rect.right<=navRect.right),
+          };
+        })()`);
+        assert.equal(actionLayout.flexWrap, 'nowrap', `Showcase actions stay inline at ${width}px`);
+        assert.equal(actionLayout.rows, 1, `Showcase actions use one row at ${width}px`);
+        assert.equal(actionLayout.noOverlap, true, `Showcase actions do not overlap at ${width}px`);
+        assert.equal(actionLayout.fit, true, `Showcase action labels fit their buttons at ${width}px`);
+      }
     }
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await browser.wait(`document.querySelector('[data-testid="image-showcase-jersey"]')`);

@@ -55,4 +55,9 @@
 @keyframes ps-pulse{50%{opacity:.5}}
 @keyframes ps-slide-in{from{opacity:.8;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:600px){.ps__card-slide{min-height:0;padding:18px}.ps__card-art{width:min(78%,310px);justify-self:center;margin-inline:auto;transform:none}.ps__rotor-face--card[data-active="false"] .ps__card-art{justify-self:end;margin:0 0 0 auto;transform:translateX(28%)}.ps__rotor-face--card[data-active="true"] .ps__card-art{justify-self:center;margin-inline:auto;transform:none}.ps__card-caption{justify-items:center;text-align:center}.ps__card-links{align-items:center}.ps__carousel-arrow{width:40px;height:40px}.ps__carousel-arrow--previous{left:4px}.ps__carousel-arrow--next{right:4px}.ps__card-unavailable{width:100%;padding:20px}}
+@media(max-width:600px){
+  .ps__links{flex-wrap:nowrap;gap:6px;padding:12px 8px}
+  .ps__links .ps__link{flex:0 1 auto;min-width:0;justify-content:center;gap:3px;padding:8px 4px;font-size:clamp(9px,3.1vw,12px);white-space:nowrap}
+  .ps__links .ps__link svg{width:14px;height:14px;flex:0 0 14px}
+}
 @media(prefers-reduced-motion:reduce){.ps__skel,.ps__slide{animation:none}.ps__rotor-face{transition:none}}
