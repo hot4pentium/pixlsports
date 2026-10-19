@@ -181,7 +181,7 @@ export function SupporterHypeCardPreview({
               aria-label={`View ${card.athleteName}'s HYPE Card`}
               data-testid={isMobile ? 'link-mobile-hype-preview' : 'link-desktop-hype-preview'}
             >
-              <div className="supporter-hype-preview__surface" data-design="classic">
+              <div className="supporter-hype-preview__surface" data-design={appearance?.design ?? 'velocity'}>
                 <LivingAthleteCardFront
                   athleteName={card.athleteName}
                   teamName={card.teamName}

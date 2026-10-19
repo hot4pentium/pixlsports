@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const html = resolve(root, 'simple-appearance-fixture.html');
 const entry = resolve(root, 'simple-appearance-fixture.tsx');
 
-test('simplified HYPE Card edits, saves, reopens and exports on desktop and phone', { timeout: 100_000 }, async () => {
+test('HYPE Card templates and independent lower thirds save, reopen and export on desktop and phone', { timeout: 100_000 }, async () => {
   await writeFile(html, '<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module" src="/simple-appearance-fixture.tsx"></script></body></html>');
   await writeFile(entry, `
 import React,{useState} from 'react';import{createRoot}from'react-dom/client';
@@ -23,7 +23,7 @@ import{defaultCardAppearance}from'./src/features/hype-card-appearance';
 import photo from './src/assets/hypecard-player-photo-640.webp';
 import './src/index.css';import './src/features/living-athlete-card.css';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
-const initial=JSON.parse(localStorage.getItem('simple-card-settings')||'null')||{...defaultCardAppearance('gallery'),jerseyNumber:'9'};
+const initial=JSON.parse(localStorage.getItem('simple-card-settings')||'null')||{...defaultCardAppearance('glass'),jerseyNumber:'9'};
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(url,init)=>{
  if(String(url).includes('/api/athlete-invites/fixture/appearance')){
@@ -59,39 +59,38 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     const page = await openPage(connection, 'http://localhost:80/simple-appearance-fixture.html', { viewport: { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false } });
     const session = page.sessionId;
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 30_000);
-    assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=lower-third-picker] button").length', session), 4);
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="svg-card-photo"]').getAttribute('preserveAspectRatio')`, session), 'xMidYMid meet');
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="svg-card-logo"]').getAttribute('x')`, session), '22');
+    assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=card-design-picker-cards] button").length', session), 6);
+    assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=lower-third-template-picker] button").length', session), 6);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="svg-card-photo"]').getAttribute('preserveAspectRatio')`, session), 'xMidYMid slice');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="classic-card-preview-surface"] svg').getAttribute('viewBox')`, session), '0 0 900 1200');
     const text = await connection.evaluate<string>('document.querySelector("[data-testid=classic-card-preview-surface]").textContent', session);
     assert.match(text, /JORDAN ALEXANDER MATTHEWS/);
-    assert.match(text, /EASTSIDE FALCONS/);
-    for (const style of ['split', 'angled', 'classic']) {
-      await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-${style}"]').click()`, session);
-      assert.equal(await connection.evaluate('document.querySelector("[data-testid=classic-card-preview-surface] svg").getAttribute("data-lower-third")', session), style);
-    }
-    await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-none"]').click()`, session);
-    assert.equal(await connection.evaluate('document.querySelector("[data-testid=classic-card-preview-surface] svg").getAttribute("data-lower-third")', session), 'none');
-    assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-photo]").getAttribute("height")', session), '900', 'the full portrait fills the 2:3 card when the lower-third panel is removed');
-    assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-position]")?.textContent', session), 'QUARTERBACK', 'the athlete position stays over the photo');
-    assert.equal(await connection.evaluate('document.querySelector("[data-testid=text-living-card-position]")?.textContent', session), 'Position Quarterback', 'the position stays available to screen readers');
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="classic-card-preview-surface"] svg rect[y="720"][height="180"]')`, session), null, 'no lower-third panel is drawn');
+    assert.equal(await connection.evaluate('Number(document.querySelector("[data-testid=svg-card-photo]").getAttribute("height"))', session), 1200);
+    await connection.evaluate(`document.querySelector('[data-testid="button-design-pixel-edge"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-frame-template')`,
+      value => value === 'pixel-edge', 5_000);
+    await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-template-varsity"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-lower-third-template')`,
+      value => value === 'varsity', 5_000);
+    assert.deepEqual(await connection.evaluate(`(()=>{const s=document.querySelector('[data-testid="classic-card-preview-surface"] svg');return [s.getAttribute('data-frame-template'),s.getAttribute('data-lower-third-template')]})()`, session), ['pixel-edge', 'varsity']);
     // Native keyboard input exercises React's actual range control events.
     for (const axis of ['x', 'y']) {
       await connection.evaluate(`document.querySelector('[data-testid="slider-photo-${axis}"]').focus()`, session);
       await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 }, session);
       await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 }, session);
     }
-    assert.equal(await connection.evaluate(`document.querySelector('[data-photo-placement]').getAttribute('transform')`, session), 'translate(6.00 9.00)');
-    await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-angled"]').click();document.querySelector('[data-testid="input-jersey-number"]').focus()`, session);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-photo-placement]').getAttribute('transform')`, session), 'translate(9 12)');
+    await connection.evaluate(`document.querySelector('[data-testid="input-jersey-number"]').focus()`, session);
     await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', modifiers: 2, windowsVirtualKeyCode: 65 }, session);
     await connection.send('Input.insertText', { text: '23' }, session);
     await connection.evaluate(`window.failSave=true;document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
     await waitFor(connection, session, `!!document.querySelector('[data-testid="button-retry-appearance"]')`, Boolean, 10_000);
     await connection.evaluate(`window.failSave=false;document.querySelector('[data-testid="button-retry-appearance"]').click()`, session);
-    await waitFor(connection, session, 'window.lastSaved?.lowerThirdStyle', value => value === 'angled', 10_000);
+    await waitFor(connection, session, 'window.lastSaved?.lowerThirdTemplate', value => value === 'varsity', 10_000);
     assert.deepEqual(await connection.evaluate('({x:window.lastSaved.athleteX,y:window.lastSaved.athleteY,number:window.lastSaved.jerseyNumber,position:window.lastSaved.position})', session), { x: .01, y: .01, number: '23', position: 'Quarterback' });
     await connection.send('Page.navigate', { url: 'http://localhost:80/simple-appearance-fixture.html' }, session);
-    await waitFor(connection, session, `document.querySelector('[data-testid="button-lower-third-angled"]')?.getAttribute('aria-checked')`, value => value === 'true', 20_000);
+    await waitFor(connection, session, `document.querySelector('[data-testid="button-design-pixel-edge"]')?.getAttribute('aria-pressed')`, value => value === 'true', 20_000);
+    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-template-varsity"]').getAttribute('aria-pressed')`, session), 'true');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="input-jersey-number"]').value`, session), '23');
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="slider-photo-x"]').value`, session), '0.01');
     const links = await connection.evaluate<string[]>(`[...document.querySelectorAll('[data-testid="appearance-navigation-preview"] a')].map(a=>a.getAttribute('href'))`, session);
@@ -102,21 +101,21 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     }
     await connection.evaluate(`document.querySelector('[data-testid="return-front"]').click();document.querySelector('[data-testid="button-export-appearance-jpeg"]').click()`, session);
     await waitFor(connection, session, 'window.exportDownload', Boolean, 25_000);
-    assert.equal(await connection.evaluate(`window.exportMarkup.includes('data-lower-third="angled"')&&window.exportMarkup.includes('data:image/')&&window.exportMarkup.includes('width="1200" height="1800"')`, session), true);
-    await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-none"]').click()`, session);
-    await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-lower-third')`, value => value === 'none', 5_000);
+    assert.equal(await connection.evaluate(`window.exportMarkup.includes('data-frame-template="pixel-edge"')&&window.exportMarkup.includes('data-lower-third-template="varsity"')&&window.exportMarkup.includes('data:image/')&&window.exportMarkup.includes('width="1800" height="2400"')`, session), true);
+    await connection.evaluate(`document.querySelector('[data-testid="button-lower-third-template-spotlight"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="classic-card-preview-surface"] svg')?.getAttribute('data-lower-third-template')`, value => value === 'spotlight', 5_000);
     await connection.evaluate(`document.querySelector('[data-testid="button-export-appearance-jpeg"]').click()`, session);
-    await waitFor(connection, session, 'window.exportMarkup.includes(`data-lower-third="none"`) && window.exportMarkup.includes(`data-testid="svg-card-position"`) && window.exportMarkup.includes(`height="900"`) ', Boolean, 25_000);
+    await waitFor(connection, session, 'window.exportMarkup.includes(`data-lower-third-template="spotlight"`) && window.exportMarkup.includes(`data-testid="svg-card-position"`) && window.exportMarkup.includes(`height="2400"`) ', Boolean, 25_000);
     await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
-    await waitFor(connection, session, 'window.lastSaved?.lowerThirdStyle', value => value === 'none', 10_000);
+    await waitFor(connection, session, 'window.lastSaved?.lowerThirdTemplate', value => value === 'spotlight', 10_000);
     await connection.send('Page.navigate', { url: 'http://localhost:80/simple-appearance-fixture.html' }, session);
-    await waitFor(connection, session, `document.querySelector('[data-testid="button-lower-third-none"]')?.getAttribute('aria-checked')`, value => value === 'true', 20_000);
-    assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-photo]").getAttribute("height")', session), '900', 'the text-only card survives reload');
+    await waitFor(connection, session, `document.querySelector('[data-testid="button-lower-third-template-spotlight"]')?.getAttribute('aria-pressed')`, value => value === 'true', 20_000);
+    assert.equal(await connection.evaluate('Number(document.querySelector("[data-testid=svg-card-photo]").getAttribute("height"))', session), 1200, 'the photo layer survives reload');
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=svg-card-position]")?.textContent', session), 'QUARTERBACK', 'athlete details survive reload');
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, session);
     assert.equal(await connection.evaluate('document.documentElement.scrollWidth <= innerWidth', session), true, 'phone has no page overflow');
     const previewRatio = await connection.evaluate<number>(`(()=>{const r=document.querySelector('[data-testid="classic-card-preview-surface"]').getBoundingClientRect();return r.width/r.height})()`, session);
-    assert.ok(Math.abs(previewRatio - 2 / 3) < .01, `phone preview uses the 2:3 portrait ratio, received ${previewRatio}`);
+    assert.ok(Math.abs(previewRatio - 3 / 4) < .01, `phone preview uses the 3:4 portrait ratio, received ${previewRatio}`);
   } finally {
     connection?.close();
     browser.kill('SIGKILL');

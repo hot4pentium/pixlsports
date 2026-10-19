@@ -9,19 +9,14 @@ import {
 import { Download, Share2 } from 'lucide-react';
 import { normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, type HypeCardAppearance } from './hype-card-appearance';
 import { simpleCardLogoSrc } from './simple-hype-card-brand';
-import { buildSimpleHypeCardArtwork, lowerThirdStyles, normalizeLowerThird, SIMPLE_CARD_H, SIMPLE_CARD_W, type LowerThirdStyle } from './simple-hype-card-artwork';
+import { buildSimpleHypeCardArtwork, HYPE_TEMPLATE_CARD_H, HYPE_TEMPLATE_CARD_W } from './simple-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
+import { HypeCardDesignPicker, HypeCardLowerThirdPicker } from './hype-card-appearance-controls';
 import antonFontUrl from '../assets/anton-regular.ttf?url';
 
 type Draft = HypeCardAppearance;
-const styleOf = (d: Draft) => normalizeLowerThird(d.lowerThirdStyle);
-const withStyle = (d: Draft, style: LowerThirdStyle, patch: Partial<HypeCardAppearance> = {}): Draft =>
-  ({ ...normalizeCardAppearance({ ...d, ...patch }), lowerThirdStyle: style });
-const norm = (v: unknown): Draft => {
-  const style = normalizeLowerThird((v as { lowerThirdStyle?: unknown } | null)?.lowerThirdStyle);
-  return { ...normalizeCardAppearance(v), lowerThirdStyle: style };
-};
+const norm = (v: unknown): Draft => normalizeCardAppearance(v);
 
 export type FanCardAppearanceInvite = {
   inviteToken: string; athleteName: string; teamName: string; sport: string;
@@ -110,8 +105,11 @@ export function FanCardAppearanceManager({ invite, profile }: {
   const mutation = useUpdateAthleteInviteAppearance();
   const dirty = currentDraftKey !== JSON.stringify(saved);
   const displayAthleteName = resolveHypeCardAthleteName(profile.athleteName, invite.athleteName);
-  const edit = (patch: Partial<HypeCardAppearance>, style: LowerThirdStyle = styleOf(draft)) => {
-    setDraft((d) => withStyle(d, style, patch)); setStatus('idle'); setExportMessage('');
+  const edit = (patch: Partial<HypeCardAppearance>) => {
+    setDraft((d) => normalizeCardAppearance({ ...d, ...patch })); setStatus('idle'); setExportMessage('');
+  };
+  const updateAppearance = (next: HypeCardAppearance) => {
+    setDraft(next); setStatus('idle'); setExportMessage('');
   };
   const cardHref = `/fan/${encodeURIComponent(invite.inviteToken)}`;
   const busy = mutation.isPending;
@@ -179,10 +177,12 @@ export function FanCardAppearanceManager({ invite, profile }: {
       const fonts = await loadEmbeddedFonts();
       const art = buildSimpleHypeCardArtwork({
         athleteName: displayAthleteName, teamName: invite.teamName, jerseyNumber: draft.jerseyNumber,
-        position: draft.position, photoUrl: photo, logoUrl: logo, lowerThirdStyle: styleOf(draft), athleteX: draft.athleteX, athleteY: draft.athleteY,
+        position: draft.position, photoUrl: photo, logoUrl: logo, design: draft.design,
+        lowerThirdTemplate: draft.lowerThirdTemplate, borderColor: draft.borderColor, accentColor: draft.accentColor,
+        athleteX: draft.athleteX, athleteY: draft.athleteY, athleteScale: draft.athleteScale,
       }, `ex${uid}`);
-      const w = SIMPLE_CARD_W * 2, h = SIMPLE_CARD_H * 2;
-      const markup = art.replace(/(<svg[^>]*>)/, `$1<style>${fonts}</style>`).replace(`width="${SIMPLE_CARD_W}" height="${SIMPLE_CARD_H}"`, `width="${w}" height="${h}"`);
+      const w = HYPE_TEMPLATE_CARD_W * 2, h = HYPE_TEMPLATE_CARD_H * 2;
+      const markup = art.replace(/(<svg[^>]*>)/, `$1<style>${fonts}</style>`).replace(`width="${HYPE_TEMPLATE_CARD_W}" height="${HYPE_TEMPLATE_CARD_H}"`, `width="${w}" height="${h}"`);
       const img = new Image();
       const loaded = new Promise<void>((ok, bad) => { img.onload = () => ok(); img.onerror = () => bad(new Error('render')); });
       img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
@@ -201,7 +201,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
         setExportMessage('The design changed while the JPG was being prepared. Try again.');
         return;
       }
-      const file = new File([blob], `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${styleOf(draft)}.jpg`, { type: 'image/jpeg' });
+      const file = new File([blob], `${displayAthleteName.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'hype-card'}-${draft.design}.jpg`, { type: 'image/jpeg' });
       const image = { file, draftKey: currentDraftKey };
       setPreparedExport(image);
       if (supportsImageSharing(file)) await openImageShare(image);
@@ -222,17 +222,8 @@ export function FanCardAppearanceManager({ invite, profile }: {
         <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
       </div>
       <div className="space-y-5">
-        <fieldset data-testid="lower-third-picker">
-          <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/70">Lower third</legend>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Lower third design">
-            {lowerThirdStyles.map((s) => (
-              <button key={s.id} type="button" role="radio" aria-checked={styleOf(draft) === s.id} disabled={busy}
-                onClick={() => edit({}, s.id)}
-                className="min-h-11 rounded border border-white/20 px-2 text-xs font-bold uppercase tracking-widest aria-checked:border-white aria-checked:bg-white/15"
-                data-testid={`button-lower-third-${s.id}`}>{s.label}</button>
-            ))}
-          </div>
-        </fieldset>
+        <HypeCardDesignPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
+        <HypeCardLowerThirdPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
         <div className="space-y-3" data-testid="photo-position-controls">
           <p className="text-xs font-bold uppercase tracking-widest text-white/70">Photo position</p>
           <label className="block text-xs text-white/80">Horizontal
@@ -241,7 +232,10 @@ export function FanCardAppearanceManager({ invite, profile }: {
           <label className="block text-xs text-white/80">Vertical
             <input type="range" min={-0.18} max={0.18} step={0.01} value={draft.athleteY} disabled={busy} onChange={(e) => edit({ athleteY: Number(e.target.value) })} className={sliderCls} data-testid="slider-photo-y" />
           </label>
-          <button type="button" disabled={busy} onClick={() => edit({ athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-photo-position">Reset position</button>
+          <label className="block text-xs text-white/80">Zoom
+            <input type="range" min={1} max={1.6} step={0.01} value={draft.athleteScale} disabled={busy} onChange={(e) => edit({ athleteScale: Number(e.target.value) })} className={sliderCls} data-testid="slider-photo-zoom" />
+          </label>
+          <button type="button" disabled={busy} onClick={() => edit({ athleteX: 0, athleteY: 0, athleteScale: 1 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-photo-position">Reset position</button>
         </div>
         <label className="block text-xs font-bold uppercase tracking-widest text-white/70">Jersey number
           <input type="text" inputMode="numeric" maxLength={3} value={draft.jerseyNumber} disabled={busy}
@@ -261,7 +255,7 @@ export function FanCardAppearanceManager({ invite, profile }: {
            {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline" data-testid="button-retry-appearance">Retry</button></span>}
           {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-jpeg">{exportMessage}</span>}
         </p>
-         <p className="text-[11px] text-white/50">The full photo is shown uncropped. Flip controls open the saved interactive card in a new tab, keeping this draft here.</p>
+          <p className="text-[11px] text-white/50">The photo fills the 3:4 card. Adjust its position and zoom, then save the design supporters will see.</p>
       </div>
     </div>
   );

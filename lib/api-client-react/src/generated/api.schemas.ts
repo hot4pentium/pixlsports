@@ -1310,6 +1310,9 @@ export interface HypeCardAvatarPlacements {
   breakout: HypeCardAvatarPlacement;
 }
 
+/**
+ * HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.
+ */
 export type HypeCardAppearanceDesign = typeof HypeCardAppearanceDesign[keyof typeof HypeCardAppearanceDesign];
 
 
@@ -1318,6 +1321,26 @@ export const HypeCardAppearanceDesign = {
   gallery: 'gallery',
   spotlight: 'spotlight',
   breakout: 'breakout',
+  velocity: 'velocity',
+  wave: 'wave',
+  glass: 'glass',
+  varsity: 'varsity',
+  'pixel-edge': 'pixel-edge',
+} as const;
+
+/**
+ * Independently selected lower-third artwork template.
+ */
+export type HypeCardAppearanceLowerThirdTemplate = typeof HypeCardAppearanceLowerThirdTemplate[keyof typeof HypeCardAppearanceLowerThirdTemplate];
+
+
+export const HypeCardAppearanceLowerThirdTemplate = {
+  velocity: 'velocity',
+  wave: 'wave',
+  glass: 'glass',
+  varsity: 'varsity',
+  spotlight: 'spotlight',
+  'pixel-edge': 'pixel-edge',
 } as const;
 
 /**
@@ -1347,7 +1370,10 @@ export const HypeCardAppearanceBackground = {
 } as const;
 
 export interface HypeCardAppearance {
+  /** HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client. */
   design: HypeCardAppearanceDesign;
+  /** Independently selected lower-third artwork template. */
+  lowerThirdTemplate?: HypeCardAppearanceLowerThirdTemplate;
   /** Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic. */
   lowerThirdStyle?: HypeCardAppearanceLowerThirdStyle;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
@@ -1369,8 +1395,8 @@ export interface HypeCardAppearance {
      */
   athleteY: number;
   /**
-     * @minimum 0.65
-     * @maximum 1.45
+     * @minimum 1
+     * @maximum 1.6
      */
   athleteScale: number;
   avatarPlacements?: HypeCardAvatarPlacements;

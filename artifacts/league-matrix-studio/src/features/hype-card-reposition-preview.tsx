@@ -28,7 +28,7 @@ export function HypeCardRepositionPreview({ appearance, onChange, children, movi
   };
   return (
     <div>
-      <div className="mx-auto aspect-[5/7] w-full max-w-[320px]"
+      <div className="mx-auto aspect-[3/4] w-full max-w-[320px]"
         tabIndex={moving ? 0 : undefined} role={moving ? 'group' : undefined} aria-label={moving ? 'Position photo preview. Use arrow keys to move the photo.' : undefined}
         onKeyDown={(event) => {
           if (!moving) return;

@@ -52,7 +52,7 @@ function Harness() {
       project,
       onFinishChange: (finish) => setProject((current) => ({ ...current, finish })),
     }),
-    createElement('div', { style: { width: '260px', height: '364px' } },
+    createElement('div', { style: { width: '260px', height: '346.67px' } },
       createElement(PreviewArtwork, { project, ns: 'active-design', testId: 'active-design-preview' }),
     ),
   );

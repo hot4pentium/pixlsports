@@ -3997,7 +3997,14 @@ components:
       type: object
       required: [design, borderColor, accentColor, accentLinked, athleteX, athleteY, athleteScale, jerseyNumber, position]
       properties:
-        design: { type: string, enum: [classic, gallery, spotlight, breakout] }
+        design:
+          type: string
+          enum: [classic, gallery, spotlight, breakout, velocity, wave, glass, varsity, pixel-edge]
+          description: HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.
+        lowerThirdTemplate:
+          type: string
+          enum: [velocity, wave, glass, varsity, spotlight, pixel-edge]
+          description: Independently selected lower-third artwork template.
         lowerThirdStyle:
           type: string
           enum: [classic, split, angled, none]
@@ -4012,7 +4019,7 @@ components:
           description: Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.
         athleteX: { type: number, minimum: -0.25, maximum: 0.25 }
         athleteY: { type: number, minimum: -0.18, maximum: 0.18 }
-        athleteScale: { type: number, minimum: 0.65, maximum: 1.45 }
+        athleteScale: { type: number, minimum: 1, maximum: 1.6 }
         avatarPlacements:
           $ref: "#/components/schemas/HypeCardAvatarPlacements"
         namePlateX: { type: number, minimum: -0.2, maximum: 0.2 }

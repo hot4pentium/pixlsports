@@ -189,8 +189,27 @@
 .living-card-control { appearance: none; min-width: 0; min-height: 44px; padding: 5px 3px; border: 1px solid #b2d3ee4d; border-radius: 8px; background: #1534538c; color: #c0d2e3; display: flex; align-items: center; justify-content: center; gap: 4px; font: 800 8px 'DM Sans', sans-serif; letter-spacing: .045em; text-transform: uppercase; white-space: nowrap; transition: background .2s, color .2s, transform .2s; }
 .living-card-control:hover { background: #225480; color: var(--lc-paper); transform: translateY(-1px); }
 .living-card-control[aria-pressed="true"] { background: var(--lc-paper); border-color: var(--lc-paper); color: var(--lc-navy); }
-.living-card-stage[data-design="classic"] > .living-card-controls { position: relative; inset: auto; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; margin: 14px auto 0; background: #07172b; }
-.living-card-stage[data-design="classic"] .living-card-face-alt { inset: 0; }
+.living-card-stage[data-design="classic"] > .living-card-controls,
+.living-card-stage[data-design="velocity"] > .living-card-controls,
+.living-card-stage[data-design="wave"] > .living-card-controls,
+.living-card-stage[data-design="glass"] > .living-card-controls,
+.living-card-stage[data-design="varsity"] > .living-card-controls,
+.living-card-stage[data-design="spotlight"] > .living-card-controls,
+.living-card-stage[data-design="pixel-edge"] > .living-card-controls {
+  position: relative;
+  inset: auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+  margin: 14px auto 0;
+  background: #07172b;
+}
+.living-card-stage[data-design="classic"] .living-card-face-alt,
+.living-card-stage[data-design="velocity"] .living-card-face-alt,
+.living-card-stage[data-design="wave"] .living-card-face-alt,
+.living-card-stage[data-design="glass"] .living-card-face-alt,
+.living-card-stage[data-design="varsity"] .living-card-face-alt,
+.living-card-stage[data-design="spotlight"] .living-card-face-alt,
+.living-card-stage[data-design="pixel-edge"] .living-card-face-alt { inset: 0; }
 .living-card-control svg { width: 14px; height: 14px; flex: none; }
 .living-card-return-front { display: flex; align-items: center; justify-content: center; gap: 10px; width: calc(100% - 20px); min-height: 46px; margin: 14px auto 0; border: 1px solid #9fcaef8c; border-radius: 11px; background: #143450; color: var(--lc-paper); font: 800 11px 'DM Sans', sans-serif; letter-spacing: .12em; text-transform: uppercase; transition: background .2s, border-color .2s; }
 .living-card-return-front svg { width: 16px; height: 16px; }
@@ -380,3 +399,28 @@
 .living-card-frame[data-design="classic"][data-side="front"] { height: auto; min-height: 0; max-height: none; aspect-ratio: 2 / 3; }
 .living-card-simple-art { position: absolute; inset: 0; }
 .living-card-simple-art > svg { display: block; width: 100%; height: 100%; }
+.living-card-frame[data-design="velocity"],
+.living-card-frame[data-design="wave"],
+.living-card-frame[data-design="glass"],
+.living-card-frame[data-design="varsity"],
+.living-card-frame[data-design="spotlight"],
+.living-card-frame[data-design="pixel-edge"] {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: 3 / 4;
+}
+.living-card-frame[data-design="wave"],
+.living-card-frame[data-design="glass"],
+.living-card-frame[data-design="spotlight"] {
+  border-radius: 4.5%;
+  overflow: hidden;
+  clip-path: none;
+}
+.living-card-frame[data-design="velocity"],
+.living-card-frame[data-design="varsity"],
+.living-card-frame[data-design="pixel-edge"] {
+  border-radius: 0;
+  overflow: hidden;
+  clip-path: polygon(4% 0, 96% 0, 100% 3%, 100% 97%, 96% 100%, 4% 100%, 0 97%, 0 3%);
+}

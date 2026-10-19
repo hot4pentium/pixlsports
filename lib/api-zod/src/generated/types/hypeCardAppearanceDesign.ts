@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.
+ */
 export type HypeCardAppearanceDesign = typeof HypeCardAppearanceDesign[keyof typeof HypeCardAppearanceDesign];
 
 
@@ -14,4 +17,9 @@ export const HypeCardAppearanceDesign = {
   gallery: 'gallery',
   spotlight: 'spotlight',
   breakout: 'breakout',
+  velocity: 'velocity',
+  wave: 'wave',
+  glass: 'glass',
+  varsity: 'varsity',
+  'pixel-edge': 'pixel-edge',
 } as const;

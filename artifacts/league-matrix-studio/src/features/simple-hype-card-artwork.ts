@@ -1,3 +1,5 @@
+import { buildHypeCardTemplateArtwork, isHypeCardTemplate, type HypeCardTemplateId } from './hype-card-template-artwork';
+
 export type LowerThirdStyle = 'classic' | 'split' | 'angled' | 'none';
 export const lowerThirdStyles: Array<{ id: LowerThirdStyle; label: string }> = [
   { id: 'classic', label: 'Classic' }, { id: 'split', label: 'Split' }, { id: 'angled', label: 'Angled' },
@@ -7,9 +9,13 @@ export type SimpleCardInput = {
   athleteName: string; teamName?: string | null; jerseyNumber?: string | null;
   position?: string | null; photoUrl?: string | null; logoUrl?: string | null;
   lowerThirdStyle?: string | null; athleteX?: number; athleteY?: number;
+  athleteScale?: number; design?: string; lowerThirdTemplate?: string;
+  borderColor?: string; accentColor?: string;
 };
 export const SIMPLE_CARD_W = 600;
 export const SIMPLE_CARD_H = 900;
+export const HYPE_TEMPLATE_CARD_W = 900;
+export const HYPE_TEMPLATE_CARD_H = 1200;
 const LOWER_THIRD_HEIGHT = 180;
 const LOWER_THIRD_TOP = SIMPLE_CARD_H - LOWER_THIRD_HEIGHT;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
@@ -22,6 +28,25 @@ function fit(text: string, size: number, avail: number, family: string, weight =
 }
 /** Pure SVG renderer shared by the live card and JPEG export. */
 export function buildSimpleHypeCardArtwork(input: SimpleCardInput, ns = 'sc'): string {
+  if (isHypeCardTemplate(input.design)) {
+    const lowerThirdTemplate: HypeCardTemplateId = isHypeCardTemplate(input.lowerThirdTemplate)
+      ? input.lowerThirdTemplate
+      : input.design;
+    return buildHypeCardTemplateArtwork({
+      frameTemplate: input.design,
+      lowerThirdTemplate,
+      athleteName: input.athleteName,
+      teamName: input.teamName,
+      jerseyNumber: input.jerseyNumber,
+      position: input.position,
+      photoUrl: input.photoUrl,
+      athleteX: input.athleteX,
+      athleteY: input.athleteY,
+      athleteScale: input.athleteScale,
+      borderColor: input.borderColor,
+      accentColor: input.accentColor,
+    }, 'all', ns);
+  }
   const style = normalizeLowerThird(input.lowerThirdStyle);
   const x = Math.max(-.25, Math.min(.25, input.athleteX ?? 0)) * SIMPLE_CARD_W;
   const photoHeight = SIMPLE_CARD_H;

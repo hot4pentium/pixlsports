@@ -463,7 +463,7 @@ function LayoutOption({
       aria-pressed={selected}
       data-testid={`button-card-layout-${layout.id}`}
     >
-      <div className="relative aspect-[5/7] w-24 shrink-0 overflow-hidden bg-muted clip-angled-sm">
+      <div className="relative aspect-[3/4] w-24 shrink-0 overflow-hidden bg-muted clip-angled-sm">
         <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
         <div className="hype-svg-preview absolute inset-0 [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: svg }} />
         {selected && <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center bg-primary text-primary-foreground shadow-md clip-angled-sm"><Check className="h-4 w-4" /></span>}
@@ -3409,9 +3409,7 @@ export function HypeCardEditor({
                   {project.cardAppearance.design !== 'classic' && <HypeCardRepositionPreview appearance={project.cardAppearance} moving={positioningPhoto} onChange={(appearance) => updateProject('cardAppearance', appearance)}>
                     <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
                   </HypeCardRepositionPreview>}
-                  <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} disabled={backgroundRemovalBusy} canEnableBackgroundRemoval={!!project.mediaId && !!project.photo} onEnableBackgroundRemoval={() => {
-                    if (!project.breakoutCutout) void preparePremiumCutout(project.mediaId, project.photo);
-                  }} onChange={(cardAppearance) => setProject((current) => ({
+                  <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} disabled={backgroundRemovalBusy} onChange={(cardAppearance) => setProject((current) => ({
                     ...current, cardAppearance, cardSport: current.cardSport || profile.sport || '',
                     jerseyNumber: cardAppearance.jerseyNumber, position: cardAppearance.position,
                   }))} placementActions={<div>
@@ -3439,24 +3437,6 @@ export function HypeCardEditor({
                     ))}
                   </div>
                 </div>}
-              </div>
-              <div className="mt-6">
-                <HypeCardBreakoutControls
-                  enabled={project.breakoutEnabled}
-                  borderColor={project.breakoutBorderColor}
-                  cutoutDataUrl={project.breakoutCutout}
-                  availabilityMessage={project.mediaType === 'video'
-                    ? 'Breakout is for still-photo cards. Your video stays unchanged.'
-                    : breakoutAvailabilityMessage}
-                  disabled={project.mediaType === 'video'}
-                  transform={project.breakoutTransform}
-                  onEnabledChange={(enabled) => updateProject('breakoutEnabled', enabled)}
-                  onBorderColorChange={(color) => updateProject('breakoutBorderColor', color)}
-                  onCutoutSelect={handleBreakoutCutoutSelect}
-                  onCutoutRemove={handleBreakoutCutoutRemove}
-                  onTransformChange={(transform: BreakoutTransform) => updateProject('breakoutTransform', transform)}
-                  onTransformReset={() => updateProject('breakoutTransform', defaultProject().breakoutTransform)}
-                />
               </div>
             </Section>}
 

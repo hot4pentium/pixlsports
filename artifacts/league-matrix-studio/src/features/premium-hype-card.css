@@ -1,5 +1,10 @@
 /* Premium fronts keep their artwork; Breakout uses only its metallic outer outline. */
-.living-card-frame[data-design="gallery"], .living-card-frame[data-design="spotlight"], .living-card-frame[data-design="breakout"] { height: auto; min-height: 0; max-height: none; aspect-ratio: 1000 / 1400; }
+.living-card-frame[data-design="velocity"],
+.living-card-frame[data-design="wave"],
+.living-card-frame[data-design="glass"],
+.living-card-frame[data-design="varsity"],
+.living-card-frame[data-design="spotlight"],
+.living-card-frame[data-design="pixel-edge"] { height: auto; min-height: 0; max-height: none; aspect-ratio: 3 / 4; }
 .living-card-frame-outer:has(.living-card-frame[data-design="gallery"][data-side="front"]),
 .living-card-frame-outer:has(.living-card-frame[data-design="spotlight"][data-side="front"]) { padding: 0; border-color: transparent; background: none; box-shadow: none; border-radius: 0; }
 .living-card-frame-outer:has(.living-card-frame[data-design="breakout"][data-side="front"]) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }

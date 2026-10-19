@@ -1,4 +1,5 @@
 import type { HypeCardAppearance } from './hype-card-appearance';
+import { buildHypeCardTemplateArtwork, isHypeCardTemplate } from './hype-card-template-artwork';
 
 export type PremiumHypeCardInput = {
   athleteName: string;
@@ -380,9 +381,25 @@ export function namespacePremiumSvg(svg: string, ns: string): string {
 
 export function buildPremiumHypeCardArtwork(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer = 'all', ns?: string): string {
   const appearance = input.appearance;
-  const design = appearance?.design === 'spotlight' ? 'spotlight' : appearance?.design === 'breakout' ? 'breakout' : 'gallery';
+  if (isHypeCardTemplate(appearance?.design)) {
+    return buildHypeCardTemplateArtwork({
+      frameTemplate: appearance.design,
+      lowerThirdTemplate: appearance.lowerThirdTemplate,
+      athleteName: input.athleteName,
+      teamName: input.teamName,
+      jerseyNumber: input.jerseyNumber ?? appearance.jerseyNumber,
+      position: input.position ?? appearance.position,
+      photoUrl: input.photoUrl,
+      athleteX: appearance.athleteX,
+      athleteY: appearance.athleteY,
+      athleteScale: appearance.athleteScale,
+      borderColor: appearance.borderColor,
+      accentColor: appearance.accentColor,
+    }, layer, ns);
+  }
+  const design = appearance?.design === 'breakout' ? 'breakout' : 'gallery';
   const safe = { ...input, athleteName: input.athleteName || '' };
-  const body = design === 'spotlight' ? spotlight(safe, layer) : design === 'breakout' ? breakout(safe, layer) : gallery(safe, layer);
+  const body = design === 'breakout' ? breakout(safe, layer) : gallery(safe, layer);
   const out = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 1400" width="1000" height="1400" overflow="visible" role="img" aria-label="${escapeXml(input.athleteName)} Hype Card" data-layer="${layer}" data-design="${design}">${body}</svg>`;
   return ns ? namespacePremiumSvg(out, ns) : out;
 }
@@ -433,6 +450,9 @@ export function preparePremiumCardPngExport(
   width: number;
   height: number;
 } {
+  if (artwork.includes('viewBox="0 0 900 1200"')) {
+    return { markup: artwork, width: 1800, height: 2400 };
+  }
   let topBleed = 0;
   if (artwork.includes('data-photo-placement="cutout"')
     && cutoutSize && cutoutSize.width > 0 && cutoutSize.height > 0) {

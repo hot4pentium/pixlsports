@@ -76,7 +76,7 @@ test('real Hype Card replaces the front slot with responses and moves flip under
   assert.match(livingCardSource, /<div className="living-card-frame-outer">[\s\S]*?<\/div>\s*<LivingCardControls/);
   assert.match(livingCardSource, /data-testid="button-living-card-responses"/);
   assert.match(livingCardSource, /data-testid="button-living-card-front"/);
-  assert.match(livingCardSource, /data-design=\{invite\.cardAppearance\?\.design \?\? 'classic'\}/);
+  assert.match(livingCardSource, /data-design=\{cardAppearance\.design\}/);
   assert.match(livingCardSource, /living-card-responses-side/);
   assert.match(livingCardSource, /button-living-card-live-taps/);
   assert.match(livingCardSource, /living-card-live-taps-side/);

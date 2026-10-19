@@ -400,7 +400,7 @@ export function persistCompletedHypeCardCloudSave(
 export function getDimensions(format: HypeFormat) {
   if (format === 'story') return { width: 1080, height: 1920 };
   if (format === 'landscape') return { width: 1920, height: 1080 };
-  if (format === 'card') return { width: 1000, height: 1400 };
+  if (format === 'card') return { width: 900, height: 1200 };
   return { width: 1080, height: 1080 };
 }
 

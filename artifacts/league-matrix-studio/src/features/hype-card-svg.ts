@@ -855,7 +855,7 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
   const appearance = normalizeCardAppearance(project.cardAppearance);
   if (appearance.design !== 'classic') {
     const { width, height } = getDimensions(project.format);
-    const scale = Math.min(width / 1000, height / 1400);
+    const scale = Math.min(width / 900, height / 1200);
     const artwork = buildBrandedPremiumHypeCardArtwork({
       athleteName: project.playerName,
       teamName: project.teamName,
@@ -865,7 +865,7 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
       photoUrl: project.mediaType === 'video' && layer !== 'all' ? null : project.photo,
       cutoutUrl: project.breakoutCutout,
       appearance,
-    }, layer, `premium-${ns}`).replace(/<svg\b/, `<svg x="${(width - 1000 * scale) / 2}" y="${(height - 1400 * scale) / 2}"`).replace('width="1000" height="1400"', `width="${1000 * scale}" height="${1400 * scale}"`);
+    }, layer, `premium-${ns}`).replace(/<svg\b/, `<svg x="${(width - 900 * scale) / 2}" y="${(height - 1200 * scale) / 2}"`).replace('width="900" height="1200"', `width="${900 * scale}" height="${1200 * scale}"`);
     const stats = layer === 'bg' ? '' : buildStatsUrlMarkup(statsUrl, width, height, palettes[project.palette]);
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${artwork}${stats}</svg>`;
   }
@@ -947,17 +947,16 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
 export function getPhotoClipInfo(project: HypeCardProject, ns: string) {
   const { width, height } = getDimensions(project.format);
   if (normalizeCardAppearance(project.cardAppearance).design !== 'classic') {
-    const scale = Math.min(width / 1000, height / 1400);
-    const frame = project.cardAppearance.design === 'gallery'
-      ? { x: 90, y: 160, width: 820, height: 800, radius: 40 }
-      : project.cardAppearance.design === 'breakout'
-        ? { x: 108, y: 150, width: 784, height: 820, radius: 56 }
-        : { x: 70, y: 170, width: 860, height: 830, radius: 40 };
-    const x = (width - 1000 * scale) / 2 + frame.x * scale;
-    const y = (height - 1400 * scale) / 2 + frame.y * scale;
-    const w = frame.width * scale;
-    const h = frame.height * scale;
-    return { clipId: `premiumPhotoClip-${ns}`, clipContent: `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${frame.radius * scale}"/>`, x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
+    const scale = Math.min(width / 900, height / 1200);
+    const x = (width - 900 * scale) / 2;
+    const y = (height - 1200 * scale) / 2;
+    const w = 900 * scale;
+    const h = 1200 * scale;
+    const design = normalizeCardAppearance(project.cardAppearance).design;
+    const clipContent = design === 'wave' || design === 'glass' || design === 'spotlight'
+      ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${54 * scale}"/>`
+      : `<path d="M${x + 36 * scale} ${y}H${x + 864 * scale}L${x + w} ${y + 36 * scale}V${y + h - 36 * scale}L${x + 864 * scale} ${y + h}H${x + 36 * scale}L${x} ${y + h - 36 * scale}V${y + 36 * scale}Z"/>`;
+    return { clipId: `premiumPhotoClip-${ns}`, clipContent, x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
   }
   if (project.format !== 'card') {
     const frame = getPhotoFrame(project.format);

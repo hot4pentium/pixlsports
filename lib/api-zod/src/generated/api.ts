@@ -2458,8 +2458,7 @@ export const listAthleteInvitesResponseCardAppearanceOneAthleteXMax = 0.25;
 export const listAthleteInvitesResponseCardAppearanceOneAthleteYMin = -0.18;
 export const listAthleteInvitesResponseCardAppearanceOneAthleteYMax = 0.18;
 
-export const listAthleteInvitesResponseCardAppearanceOneAthleteScaleMin = 0.65;
-export const listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax = 1.45;
+export const listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax = 1.6;
 
 export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
 export const listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
@@ -2521,7 +2520,8 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
   "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneAccentColorRegExp),
@@ -2530,7 +2530,7 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
   "athleteX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteXMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteYMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteYMax),
-  "athleteScale": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAthleteScaleMin).max(listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax),
+  "athleteScale": zod.number().min(1).max(listAthleteInvitesResponseCardAppearanceOneAthleteScaleMax),
   "avatarPlacements": zod.object({
   "gallery": zod.object({
   "athleteX": zod.number().min(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(listAthleteInvitesResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
@@ -2610,8 +2610,7 @@ export const createAthleteInviteResponseCardAppearanceOneAthleteXMax = 0.25;
 export const createAthleteInviteResponseCardAppearanceOneAthleteYMin = -0.18;
 export const createAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
 
-export const createAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
-export const createAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
+export const createAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.6;
 
 export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
 export const createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
@@ -2673,7 +2672,8 @@ export const CreateAthleteInviteResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
   "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
@@ -2682,7 +2682,7 @@ export const CreateAthleteInviteResponse = zod.object({
   "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
   "athleteX": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteXMin).max(createAthleteInviteResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteYMin).max(createAthleteInviteResponseCardAppearanceOneAthleteYMax),
-  "athleteScale": zod.number().min(createAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(createAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "athleteScale": zod.number().min(1).max(createAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
   "avatarPlacements": zod.object({
   "gallery": zod.object({
   "athleteX": zod.number().min(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(createAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
@@ -2739,8 +2739,7 @@ export const getAthleteInviteResponseCardAppearanceOneAthleteXMax = 0.25;
 export const getAthleteInviteResponseCardAppearanceOneAthleteYMin = -0.18;
 export const getAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
 
-export const getAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
-export const getAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
+export const getAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.6;
 
 export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
 export const getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
@@ -2835,7 +2834,8 @@ export const GetAthleteInviteResponse = zod.object({
   "photoUrl": zod.string().nullable(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
   "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
@@ -2844,7 +2844,7 @@ export const GetAthleteInviteResponse = zod.object({
   "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
   "athleteX": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteXMin).max(getAthleteInviteResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteYMin).max(getAthleteInviteResponseCardAppearanceOneAthleteYMax),
-  "athleteScale": zod.number().min(getAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(getAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "athleteScale": zod.number().min(1).max(getAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
   "avatarPlacements": zod.object({
   "gallery": zod.object({
   "athleteX": zod.number().min(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(getAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
@@ -3001,8 +3001,7 @@ export const updateAthleteInviteResponseCardAppearanceOneAthleteXMax = 0.25;
 export const updateAthleteInviteResponseCardAppearanceOneAthleteYMin = -0.18;
 export const updateAthleteInviteResponseCardAppearanceOneAthleteYMax = 0.18;
 
-export const updateAthleteInviteResponseCardAppearanceOneAthleteScaleMin = 0.65;
-export const updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.45;
+export const updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax = 1.6;
 
 export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
 export const updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
@@ -3064,7 +3063,8 @@ export const UpdateAthleteInviteResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
   "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
@@ -3073,7 +3073,7 @@ export const UpdateAthleteInviteResponse = zod.object({
   "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
   "athleteX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteXMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteYMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteYMax),
-  "athleteScale": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAthleteScaleMin).max(updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
+  "athleteScale": zod.number().min(1).max(updateAthleteInviteResponseCardAppearanceOneAthleteScaleMax),
   "avatarPlacements": zod.object({
   "gallery": zod.object({
   "athleteX": zod.number().min(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(updateAthleteInviteResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
@@ -3225,8 +3225,7 @@ export const getAthleteFanCardResponseCardAppearanceOneAthleteXMax = 0.25;
 export const getAthleteFanCardResponseCardAppearanceOneAthleteYMin = -0.18;
 export const getAthleteFanCardResponseCardAppearanceOneAthleteYMax = 0.18;
 
-export const getAthleteFanCardResponseCardAppearanceOneAthleteScaleMin = 0.65;
-export const getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax = 1.45;
+export const getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax = 1.6;
 
 export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
 export const getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
@@ -3347,7 +3346,8 @@ export const GetAthleteFanCardResponse = zod.object({
 }),zod.null()]).optional(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
   "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp),
@@ -3356,7 +3356,7 @@ export const GetAthleteFanCardResponse = zod.object({
   "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
   "athleteX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteXMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteYMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteYMax),
-  "athleteScale": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAthleteScaleMin).max(getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax),
+  "athleteScale": zod.number().min(1).max(getAthleteFanCardResponseCardAppearanceOneAthleteScaleMax),
   "avatarPlacements": zod.object({
   "gallery": zod.object({
   "athleteX": zod.number().min(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(getAthleteFanCardResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),
@@ -3796,8 +3796,7 @@ export const updateAthleteInviteAppearanceBodyAthleteXMax = 0.25;
 export const updateAthleteInviteAppearanceBodyAthleteYMin = -0.18;
 export const updateAthleteInviteAppearanceBodyAthleteYMax = 0.18;
 
-export const updateAthleteInviteAppearanceBodyAthleteScaleMin = 0.65;
-export const updateAthleteInviteAppearanceBodyAthleteScaleMax = 1.45;
+export const updateAthleteInviteAppearanceBodyAthleteScaleMax = 1.6;
 
 export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMin = -0.25;
 export const updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMax = 0.25;
@@ -3839,7 +3838,8 @@ export const updateAthleteInviteAppearanceBodyPositionMax = 80;
 
 
 export const UpdateAthleteInviteAppearanceBody = zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
   "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(updateAthleteInviteAppearanceBodyBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteAppearanceBodyAccentColorRegExp),
@@ -3848,7 +3848,7 @@ export const UpdateAthleteInviteAppearanceBody = zod.object({
   "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
   "athleteX": zod.number().min(updateAthleteInviteAppearanceBodyAthleteXMin).max(updateAthleteInviteAppearanceBodyAthleteXMax),
   "athleteY": zod.number().min(updateAthleteInviteAppearanceBodyAthleteYMin).max(updateAthleteInviteAppearanceBodyAthleteYMax),
-  "athleteScale": zod.number().min(updateAthleteInviteAppearanceBodyAthleteScaleMin).max(updateAthleteInviteAppearanceBodyAthleteScaleMax),
+  "athleteScale": zod.number().min(1).max(updateAthleteInviteAppearanceBodyAthleteScaleMax),
   "avatarPlacements": zod.object({
   "gallery": zod.object({
   "athleteX": zod.number().min(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMin).max(updateAthleteInviteAppearanceBodyAvatarPlacementsGalleryAthleteXMax),
@@ -3882,8 +3882,7 @@ export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMax =
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMin = -0.18;
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMax = 0.18;
 
-export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMin = 0.65;
-export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax = 1.45;
+export const updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax = 1.6;
 
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin = -0.25;
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax = 0.25;
@@ -3945,7 +3944,8 @@ export const UpdateAthleteInviteAppearanceResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
   "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
   "borderColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneAccentColorRegExp),
@@ -3954,7 +3954,7 @@ export const UpdateAthleteInviteAppearanceResponse = zod.object({
   "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
   "athleteX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteXMax),
   "athleteY": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteYMax),
-  "athleteScale": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax),
+  "athleteScale": zod.number().min(1).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAthleteScaleMax),
   "avatarPlacements": zod.object({
   "gallery": zod.object({
   "athleteX": zod.number().min(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMin).max(updateAthleteInviteAppearanceResponseCardAppearanceOneAvatarPlacementsGalleryAthleteXMax),

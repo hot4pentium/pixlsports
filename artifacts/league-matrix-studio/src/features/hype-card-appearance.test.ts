@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { defaultCardAppearance, normalizeCardAppearance, resolveHypeCardAthleteName, seedCardAppearanceFromProfile, switchCardAppearanceDesign } from './hype-card-appearance';
-import { defaultProject, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
+import { defaultProject, getDimensions, normalizeHypeCardProject, designOnlyProject } from './hype-card-types';
 
 test('four simplified lower-third choices persist with photo position while legacy cards use classic', () => {
   assert.equal(normalizeCardAppearance(null).lowerThirdStyle, 'classic');
@@ -29,45 +29,51 @@ test('background choices survive normalization and saved projects while legacy c
   }
 });
 
-test('switching card designs restores and saves an independent avatar placement for each style', () => {
-  let appearance = normalizeCardAppearance({ ...defaultCardAppearance('gallery'), athleteX: .18, athleteY: -.1, athleteScale: 1.15 });
-  appearance = switchCardAppearanceDesign(appearance, 'spotlight');
-  assert.deepEqual([appearance.athleteX, appearance.athleteY, appearance.athleteScale], [0, 0, 1]);
-  appearance = normalizeCardAppearance({ ...appearance, athleteX: -.2, athleteY: .12, athleteScale: .8 });
-  appearance = switchCardAppearanceDesign(appearance, 'breakout');
-  appearance = normalizeCardAppearance({ ...appearance, athleteX: .1, athleteY: -.05, athleteScale: 1.2 });
-  for (const [design, expected] of [
-    ['gallery', [.18, -.1, 1.15]],
-    ['spotlight', [-.2, .12, .8]],
-    ['breakout', [.1, -.05, 1.2]],
-  ] as const) {
+test('frame and lower-third choices are independent while photo placement stays editable', () => {
+  let appearance = normalizeCardAppearance({
+    ...defaultCardAppearance('velocity'),
+    athleteX: .18,
+    athleteY: -.1,
+    athleteScale: 1.15,
+    lowerThirdTemplate: 'wave',
+  });
+  for (const design of ['glass', 'varsity', 'spotlight', 'pixel-edge', 'wave', 'velocity'] as const) {
     appearance = switchCardAppearanceDesign(appearance, design);
-    assert.deepEqual([appearance.athleteX, appearance.athleteY, appearance.athleteScale], expected, `${design} restores its own placement`);
+    assert.equal(appearance.design, design);
+    assert.equal(appearance.lowerThirdTemplate, 'wave', 'changing the frame does not reset the selected lower third');
+    assert.deepEqual([appearance.athleteX, appearance.athleteY, appearance.athleteScale], [.18, -.1, 1.15]);
     appearance = normalizeCardAppearance(JSON.parse(JSON.stringify(appearance)));
   }
+  appearance = normalizeCardAppearance({ ...appearance, lowerThirdTemplate: 'glass' });
+  assert.equal(appearance.design, 'velocity');
+  assert.equal(appearance.lowerThirdTemplate, 'glass');
 });
 
-test('legacy shared avatar positions seed all three premium designs', () => {
+test('legacy cards map to the closest replacement template and keep their photo placement', () => {
   const appearance = normalizeCardAppearance({ design: 'gallery', athleteX: .16, athleteY: -.12, athleteScale: 1.1 });
-  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
+  assert.equal(appearance.design, 'glass');
+  for (const design of ['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge'] as const) {
     const selected = switchCardAppearanceDesign(appearance, design);
     assert.deepEqual([selected.athleteX, selected.athleteY, selected.athleteScale], [.16, -.12, 1.1]);
   }
 });
 
-test('legacy cards retain their existing presentation with no new appearance', () => {
+test('missing and legacy appearance values normalize to the replacement templates', () => {
   assert.deepEqual(normalizeCardAppearance(null), defaultCardAppearance());
-  const breakout = defaultCardAppearance('breakout');
-  assert.equal(breakout.accentLinked, true);
-  assert.equal(breakout.accentColor, breakout.borderColor);
-  assert.equal(normalizeHypeCardProject({ ...defaultProject(), cardAppearance: undefined }).cardAppearance.design, 'classic');
+  assert.equal(normalizeCardAppearance({ design: 'classic' }).design, 'velocity');
+  assert.equal(normalizeCardAppearance({ design: 'gallery' }).design, 'glass');
+  assert.equal(normalizeCardAppearance({ design: 'spotlight' }).design, 'spotlight');
+  assert.equal(normalizeCardAppearance({ design: 'breakout' }).design, 'pixel-edge');
+  assert.equal(normalizeHypeCardProject({ ...defaultProject(), cardAppearance: undefined }).cardAppearance.design, 'velocity');
+  assert.deepEqual(getDimensions('card'), { width: 900, height: 1200 });
 });
-test('accent always follows the border and normalized placement survives save/reopen', () => {
+test('custom border and accent colors and normalized placement survive save/reopen', () => {
   const appearance = { ...defaultCardAppearance('gallery'), accentLinked: false, accentColor: '#22C55E', athleteX: .15, athleteY: -.1, athleteScale: 1.2 };
   const project = { ...defaultProject(), cardAppearance: appearance, cardSport: 'soccer' };
   const normalized = normalizeCardAppearance(appearance);
-  assert.equal(normalized.accentLinked, true);
-  assert.equal(normalized.accentColor, normalized.borderColor);
+  assert.equal(normalized.design, 'glass');
+  assert.equal(normalized.accentLinked, false);
+  assert.equal(normalized.accentColor, '#22C55E');
   assert.equal(normalized.athleteX, appearance.athleteX);
   assert.deepEqual(normalizeHypeCardProject(JSON.parse(JSON.stringify(project))).cardAppearance, normalized);
   assert.deepEqual(designOnlyProject(project).cardAppearance, normalized);
@@ -95,11 +101,11 @@ test('HYPE Card artwork uses the current profile name before the saved invite na
 });
 test('unsafe colors and placements are rejected or clamped without altering photo', () => {
   const appearance = normalizeCardAppearance({ design: 'spotlight', borderColor: 'url(x)', accentColor: '#22c55e', accentLinked: false, athleteX: 12, athleteY: -12, athleteScale: Infinity });
-  assert.equal(appearance.borderColor, '#EF3996');
-  assert.equal(appearance.accentColor, appearance.borderColor);
+  assert.equal(appearance.borderColor, '#D8B35A');
+  assert.equal(appearance.accentColor, '#22C55E');
   assert.equal(appearance.athleteX, .25);
   assert.equal(appearance.athleteY, -.18);
   assert.equal(appearance.athleteScale, 1);
-  assert.equal(normalizeCardAppearance({ ...defaultCardAppearance('spotlight'), athleteScale: 1.45 }).athleteScale, 1.2,
-    'legacy designs above the supported limit are clamped to 120%');
+  assert.equal(normalizeCardAppearance({ ...defaultCardAppearance('spotlight'), athleteScale: 1.45 }).athleteScale, 1.45,
+    'template zoom supports the full requested 160% range');
 });

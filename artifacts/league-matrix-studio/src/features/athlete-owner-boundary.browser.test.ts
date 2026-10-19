@@ -857,7 +857,7 @@ test('player-page owner tools remain private across account changes and pause', 
     })()`, sessionId);
     const assertSharedCardLayout = async (sessionId: string, design: string, viewport: string, side: string) => {
       const layout = await inspectSharedCardLayout(sessionId);
-      assert.equal(layout.design, 'classic', `legacy ${design} uses the simplified card shell at ${viewport} width`);
+      assert.equal(layout.design, design, `${design} template is shared at ${viewport} width`);
       assert.equal(layout.side, side, `${design} reaches the ${side} side at ${viewport} width`);
       assert.equal(layout.buttons.length, 4, `${design} keeps all four section controls`);
       assert.equal(layout.navBelowFrame, true, `${design} navigation stays below the artwork at ${viewport} width on ${side}`);
@@ -892,9 +892,9 @@ test('player-page owner tools remain private across account changes and pause', 
       }, sessionId);
     };
 
-    for (const design of ['classic', 'breakout', 'gallery', 'spotlight'] as const) {
+    for (const design of ['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge'] as const) {
       const appearance = defaultCardAppearance(design);
-      if (design === 'breakout') {
+      if (design === 'pixel-edge') {
         appearance.borderColor = '#22C55E';
         appearance.accentColor = '#EF3996';
       }
@@ -910,7 +910,7 @@ test('player-page owner tools remain private across account changes and pause', 
         await waitFor(
           connection,
           sharedCard,
-          `document.querySelector('.living-card-stage')?.dataset.design === 'classic' && document.querySelector('#living-card-display')?.dataset.side === 'front'`,
+          `document.querySelector('.living-card-stage')?.dataset.design === '${design}' && document.querySelector('#living-card-display')?.dataset.side === 'front'`,
           Boolean,
           12_000,
         );

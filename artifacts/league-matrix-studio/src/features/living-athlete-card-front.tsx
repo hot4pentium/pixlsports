@@ -30,10 +30,12 @@ export function LivingAthleteCardFront({ athleteName, teamName, photoUrl, photoA
   }, [photoUrl, onPhotoError]);
   const svg = useMemo(() => buildBrandedSimpleArtwork({
     athleteName, teamName, jerseyNumber: a.jerseyNumber, position: a.position, photoUrl: usablePhoto, lowerThirdStyle: style,
-    athleteX: a.athleteX, athleteY: a.athleteY,
-  }, `lc${uid}`), [athleteName, teamName, a.jerseyNumber, a.position, a.athleteX, a.athleteY, usablePhoto, style, uid]);
+    design: a.design, lowerThirdTemplate: a.lowerThirdTemplate,
+    borderColor: a.borderColor, accentColor: a.accentColor,
+    athleteX: a.athleteX, athleteY: a.athleteY, athleteScale: a.athleteScale,
+  }, `lc${uid}`), [athleteName, teamName, a.jerseyNumber, a.position, a.design, a.lowerThirdTemplate, a.borderColor, a.accentColor, a.athleteX, a.athleteY, a.athleteScale, usablePhoto, style, uid]);
   return (
-    <div className="living-card-face living-card-simple-face" key="front" data-design="classic">
+    <div className="living-card-face living-card-simple-face" key="front" data-design={a.design}>
       <div className="living-card-simple-art" role="img" aria-label={photoAlt ?? `${athleteName} HYPE Card`} data-testid="img-living-card-athlete" dangerouslySetInnerHTML={{ __html: svg }} />
       <span className="sr-only" data-testid="text-living-card-athlete-name">{athleteName}</span>
       {teamName && <span className="sr-only" data-testid="text-living-card-team-name">{teamName}</span>}

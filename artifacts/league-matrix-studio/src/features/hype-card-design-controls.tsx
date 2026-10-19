@@ -38,7 +38,7 @@ function CardFinishOption({
       className={`group flex min-h-36 gap-4 overflow-hidden border p-3 text-left transition-all clip-angled-sm ${selected ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border bg-background hover:border-foreground'}`}
       data-testid={`button-card-design-${finish.id}`}
     >
-      <span className="relative aspect-[5/7] w-20 shrink-0 overflow-hidden bg-muted clip-angled-sm">
+      <span className="relative aspect-[3/4] w-20 shrink-0 overflow-hidden bg-muted clip-angled-sm">
         <span className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
         <span className="hype-svg-preview absolute inset-0 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
         {selected && <span className="absolute right-1 top-1 grid h-6 w-6 place-items-center bg-primary text-primary-foreground shadow-md clip-angled-sm"><Check className="h-3.5 w-3.5" /></span>}

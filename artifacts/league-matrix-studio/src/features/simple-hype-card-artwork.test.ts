@@ -41,3 +41,23 @@ test('photo movement stays bounded, and unsafe text and URLs are escaped', () =>
   assert.doesNotMatch(svg, /<script|href="" onload/);
   assert.match(buildSimpleHypeCardArtwork({ athleteName: 'Jordan Matthews' }), />JM<\/text>/);
 });
+
+test('the simplified public-card renderer uses a selected frame and independent lower third', () => {
+  const svg = buildSimpleHypeCardArtwork({
+    athleteName: 'Jordan Matthews',
+    teamName: 'River City Falcons',
+    jerseyNumber: '27',
+    position: 'Forward',
+    photoUrl: 'data:image/png;base64,athlete-photo',
+    design: 'pixel-edge',
+    lowerThirdTemplate: 'glass',
+    athleteX: .1,
+    athleteY: -.05,
+    athleteScale: 1.2,
+  }, 'template-test');
+  assert.match(svg, /width="900" height="1200" viewBox="0 0 900 1200"/);
+  assert.match(svg, /data-frame-template="pixel-edge" data-lower-third-template="glass"/);
+  assert.match(svg, /href="data:image\/png;base64,athlete-photo"/);
+  assert.match(svg, /transform="translate\(90 -60\)"/);
+  assert.match(svg, /data-testid="svg-card-jersey-number">27<\/text>/);
+});

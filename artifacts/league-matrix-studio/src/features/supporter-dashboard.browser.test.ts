@@ -5225,7 +5225,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     );
     await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
     await verifyHypeCardShare('mobile');
-    for (const design of ['classic', 'gallery', 'spotlight', 'breakout']) {
+    for (const design of ['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']) {
       await evaluate(`window.__setHypePreviewState('${design}')`);
       await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design === '${design}'`);
       for (const width of [320, 360, 390, 430]) {
@@ -5255,7 +5255,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
             graphicKeepsRatio: !graphic || (graphic instanceof HTMLImageElement && graphic.naturalWidth>0
               && graphicRect?.height>0 && Math.abs(graphicRect.width/graphicRect.height-graphic.naturalWidth/graphic.naturalHeight)<.01),
             noEventAction: !event.querySelector('a,button'),
-            ratio: Math.abs(c.width/c.height-5/7)<.01,
+            ratio: Math.abs(c.width/c.height-3/4)<.01,
             noOverflow: document.documentElement.scrollWidth<=innerWidth,
             athleteSwitcherUsesAvailableWidth: athleteLink instanceof HTMLElement
               && Boolean(athleteHeader)
@@ -5266,8 +5266,8 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
             noCardTextLabels: !event.querySelector('.supporter-hype-preview__label')
               && !slot.querySelector('.supporter-hype-preview__label')
               && !slot.querySelector('.supporter-hype-preview__open'),
-            nativeArt: '${design}'==='classic' ? !!card.querySelector('.living-card-face') : !!card.querySelector('svg'),
-            spillover: '${design}'==='classic' || getComputedStyle(card.querySelector('.living-card-premium-face')).overflow==='visible',
+            nativeArt: !!card.querySelector('svg[data-frame-template]'),
+            spillover: getComputedStyle(card).overflow==='hidden',
             noInteractiveControls: !slot.querySelector('[data-testid="saved-card-navigation"] button'),
             preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies'),
             desktopInboxRetained: !!document.querySelector('.supporter-game-on-summary--desktop .supporter-game-on-summary__replies') };
@@ -5291,7 +5291,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    await wait(`document.querySelector('[data-testid="desktop-saved-hype-card"] .supporter-hype-preview__surface')?.dataset.design==='breakout'`);
+    await wait(`document.querySelector('[data-testid="desktop-saved-hype-card"] .supporter-hype-preview__surface')?.dataset.design==='pixel-edge'`);
     assert.deepEqual(await evaluate(`(() => {
       const desktop = document.querySelector('.supporter-dashboard-desktop-shell');
       const mobile = document.querySelector('.supporter-dashboard-mobile-shell');
@@ -5302,7 +5302,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       return {
         previewVisible: preview instanceof HTMLElement && preview.getClientRects().length > 0,
         linkPath: link instanceof HTMLAnchorElement ? new URL(link.href).pathname : '',
-        cardRatio: Boolean(rect && Math.abs(rect.width / rect.height - 5 / 7) < .01),
+        cardRatio: Boolean(rect && Math.abs(rect.width / rect.height - 3 / 4) < .01),
         mobileShellHidden: mobile instanceof HTMLElement && getComputedStyle(mobile).display === 'none',
       };
     })()`), {
@@ -5369,16 +5369,16 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
         `${state} cards do not offer a public share link`,
       );
     }
-    await evaluate(`window.__hypePreviewState='gallery'; document.querySelector('[data-testid="mobile-saved-hype-card"] button').click()`);
-    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='gallery'`);
+    await evaluate(`window.__hypePreviewState='glass'; document.querySelector('[data-testid="mobile-saved-hype-card"] button').click()`);
+    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='glass'`);
     // Real return-to-Hub remount must fetch the saved update, not rely on a local invalidation.
     await evaluate(`window.__navigateSupporterDashboardAwayForFilterTest('Card editor'); window.__hypePreviewState='spotlight'`);
     await wait(`Boolean(document.querySelector('[data-testid="button-return-to-supporter-dashboard"]'))`);
     await evaluate(`document.querySelector('[data-testid="button-return-to-supporter-dashboard"]').click()`);
     await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='spotlight'`);
-    await evaluate(`window.__setHypePreviewState('breakout')`);
+    await evaluate(`window.__setHypePreviewState('pixel-edge')`);
     await connection.send('Page.navigate', { url: fixtureUrl }, page.sessionId);
-    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='breakout'`);
+    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='pixel-edge'`);
     await evaluate(`window.__setSupporterDashboardTrackerUserId('other-owner')`);
     await wait(`!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
     await evaluate(`window.__setSupporterDashboardTrackerUserId('hype-owner')`);
@@ -6215,7 +6215,7 @@ export function mount() {
         if (location.search.includes('webkit-loading')) window.__releaseHypeLoading = resolve;
         else setTimeout(resolve, 600);
       });
-      const state = initial === 'loading' ? 'classic' : initial;
+      const state = initial === 'loading' ? 'velocity' : initial;
       const headers = { 'Content-Type': 'application/json' };
       if (state === 'error') return new Response('{"error":"Unavailable"}', { status: 503, headers });
       const photo = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><circle cx="200" cy="170" r="90" fill="#eaa44a"/><path d="M60 580V350Q200 230 340 350V580" fill="#eaa44a"/></svg>');
@@ -6228,7 +6228,8 @@ export function mount() {
         showHypeCard: state !== 'hidden', showStats: true, showSchedule: true, showEvents: true,
         hypesEnabled: true, paused: state === 'paused', liveTrackerShareToken: null,
         photoUrl: photo, cutoutUrl: photo, photoRevision: 'portrait',
-        cardAppearance: { design: ['gallery','spotlight','breakout'].includes(state) ? state : 'classic',
+        cardAppearance: { design: ['velocity','wave','glass','varsity','spotlight','pixel-edge'].includes(state) ? state : 'velocity',
+          lowerThirdTemplate: 'velocity',
           jerseyNumber: '24', position: 'Guard', borderColor: '#eecc77', accentColor: '#00aadd',
           accentLinked: true, removeBackground: true, athleteX: .02,
           athleteY: location.search.includes('webkit-loading') ? -.18 : -.08,

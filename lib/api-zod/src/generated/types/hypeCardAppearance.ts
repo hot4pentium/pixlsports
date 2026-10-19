@@ -8,10 +8,14 @@
 import type { HypeCardAppearanceBackground } from './hypeCardAppearanceBackground';
 import type { HypeCardAppearanceDesign } from './hypeCardAppearanceDesign';
 import type { HypeCardAppearanceLowerThirdStyle } from './hypeCardAppearanceLowerThirdStyle';
+import type { HypeCardAppearanceLowerThirdTemplate } from './hypeCardAppearanceLowerThirdTemplate';
 import type { HypeCardAvatarPlacements } from './hypeCardAvatarPlacements';
 
 export interface HypeCardAppearance {
+  /** HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client. */
   design: HypeCardAppearanceDesign;
+  /** Independently selected lower-third artwork template. */
+  lowerThirdTemplate?: HypeCardAppearanceLowerThirdTemplate;
   /** Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic. */
   lowerThirdStyle?: HypeCardAppearanceLowerThirdStyle;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
@@ -33,8 +37,8 @@ export interface HypeCardAppearance {
      */
   athleteY: number;
   /**
-     * @minimum 0.65
-     * @maximum 1.45
+     * @minimum 1
+     * @maximum 1.6
      */
   athleteScale: number;
   avatarPlacements?: HypeCardAvatarPlacements;

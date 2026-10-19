@@ -1,6 +1,17 @@
 .classic-card-preview-surface {
+  overflow: hidden;
+  border-radius: 4.5%;
+  background: #10243d;
+}
+.classic-card-preview-surface[data-design="velocity"],
+.classic-card-preview-surface[data-design="varsity"],
+.classic-card-preview-surface[data-design="pixel-edge"] {
+  border-radius: 0;
+  clip-path: polygon(4% 0,96% 0,100% 3%,100% 97%,96% 100%,4% 100%,0 97%,0 3%);
+}
+.classic-card-preview-surface {
   position: relative;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 3 / 4;
   overflow: hidden;
   container-type: inline-size;
   border: 1px solid #9fcaef62;

@@ -101,20 +101,9 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
       const graphicRect = graphic?.getBoundingClientRect();
       const text = event.querySelector('[data-testid="upcoming-calendar-event-title"]');
       const title = text?.getBoundingClientRect();
-      const premium = surface?.querySelector('.living-card-premium-face');
-      const svg = premium?.querySelector('svg');
+      const svg = surface?.querySelector('svg[data-frame-template]');
       const svgBounds = svg?.getBoundingClientRect();
-      let spillover = true;
-      if (premium) {
-        const image = premium.querySelector('[data-photo-placement="cutout"] image');
-        spillover = !!image && image.getBoundingClientRect().height > 0
-          && image.getBoundingClientRect().top < svgBounds.top;
-        for (let node = image?.parentElement; node && node !== row.parentElement; node = node.parentElement) {
-          const style = getComputedStyle(node);
-          spillover = spillover && !['hidden','clip'].includes(style.overflowX)
-            && !['hidden','clip'].includes(style.overflowY);
-        }
-      }
+      const spillover = !surface || getComputedStyle(surface).overflow === 'hidden';
       const name = surface?.querySelector('.living-card-athlete-name');
       return {
         equal: Math.abs(a.width-b.width)<1,
@@ -126,11 +115,9 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
           && Math.abs(graphicRect.width/graphicRect.height-graphic.naturalWidth/graphic.naturalHeight)<.01),
         noEventAction: !event.querySelector('a,button'),
         titleFits: !title || (title.left>=a.left && title.right<=a.right+1 && title.height>0),
-        ratio: !c || Math.abs(c.width/c.height-5/7)<.01,
-        nativeArt: !surface || (surface.dataset.design==='classic'
-          ? !!surface.querySelector('.living-card-face')
-          : !!svg && Math.abs(svgBounds.width/svgBounds.height-5/7)<.01
-            && Math.abs(svg.viewBox.baseVal.width/svg.viewBox.baseVal.height-5/7)<.01),
+        ratio: !c || Math.abs(c.width/c.height-3/4)<.01,
+        nativeArt: !surface || (!!svg && Math.abs(svgBounds.width/svgBounds.height-3/4)<.01
+          && Math.abs(svg.viewBox.baseVal.width/svg.viewBox.baseVal.height-3/4)<.01),
         spillover,
         typeSupported: CSS.supports('font-size','12cqw'),
         typeScales: !name || (parseFloat(getComputedStyle(name).fontSize)/c.width>.10
@@ -141,7 +128,7 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
     })()`);
     if (!Object.values(layout).every(Boolean)) {
       console.log(await evaluate(`JSON.stringify({width:innerWidth,scroll:document.documentElement.scrollWidth,
-        svgParents:(()=>{const out=[];for(let n=document.querySelector('.living-card-premium-face image')?.parentElement;n;n=n.parentElement){
+        svgParents:(()=>{const out=[];for(let n=document.querySelector('.living-card-simple-art image')?.parentElement;n;n=n.parentElement){
           const s=getComputedStyle(n);out.push([n.tagName,n.getAttribute('class'),s.overflowX,s.overflowY]);}return out;})(),
         type:{font:getComputedStyle(document.querySelector('.living-card-athlete-name')||document.body).fontSize,
           surface:document.querySelector('.supporter-hype-preview__surface')?.getBoundingClientRect().width,
@@ -159,17 +146,17 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
   async function inspectNames(selector: string, label: string) {
     const bounds = await evaluate(`(() => {
       const svg = document.querySelector('${selector}');
-      const design = svg.dataset.design;
-      const plate = design === 'gallery' ? {x:60,y:1060,width:880,height:285}
-        : design === 'spotlight' ? svg.querySelector('[data-spotlight-name-block]').getBBox()
-        : {x:116,y:934,width:768,height:226};
-      const lines = [...svg.querySelectorAll('[data-athlete-name-line]')];
-      return { text:lines.map(n=>n.textContent).join(' '), lines:lines.map(n=>{
-        const b=n.getBBox();
-        return {x:b.x,y:b.y,width:b.width,height:b.height,
-          fits:b.width>0 && b.height>0 && b.x>=plate.x && b.x+b.width<=plate.x+plate.width
-            && b.y>=plate.y && b.y+b.height<=plate.y+plate.height};
-      })};
+      const nameLines = [...svg.querySelectorAll('[data-testid="svg-card-athlete-name"]')];
+      if (!nameLines.length) return {text:'',lines:[]};
+      return {
+        text:nameLines.map(line=>line.textContent || '').join(' '),
+        lines:nameLines.map(line=>{
+          const b=line.getBBox();
+          return {x:b.x,y:b.y,width:b.width,height:b.height,
+            fits:b.width>0 && b.height>0 && b.x>=65 && b.x+b.width<=655
+              && b.y>=800 && b.y+b.height<=1100};
+        }),
+      };
     })()`) as { text: string; lines: Array<{ fits: boolean }> };
     assert.equal(bounds.text, 'ALEXANDRIA MONTGOMERY-WILLIAMS', `${label}: full name preserved`);
     assert.ok(bounds.lines.length && bounds.lines.every(line => line.fits), `${label}: ${JSON.stringify(bounds)}`);
@@ -180,11 +167,9 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
         (async () => {
           const svg=document.querySelector('#premium-name-export-check svg');
           const view=svg.viewBox.baseVal;
-          const plate=svg.dataset.design==='gallery' ? {x:60,y:1060,width:880,height:285}
-            : svg.dataset.design==='spotlight' ? svg.querySelector('[data-spotlight-name-block]').getBBox()
-            : {x:116,y:934,width:768,height:226};
+          const plate={x:65,y:800,width:590,height:310};
           const canvas=document.createElement('canvas');
-          canvas.width=2000; canvas.height=Math.round(view.height*2);
+          canvas.width=1800; canvas.height=Math.round(view.height*2);
           const context=canvas.getContext('2d');
           const raster=async markup=>{
             const image=new Image();
@@ -199,7 +184,7 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
           // Isolate its actual name text to measure painted pixels, not font layout boxes.
           const names=svg.cloneNode(false);
           names.removeAttribute('style');
-          for (const line of svg.querySelectorAll('[data-athlete-name-line]')) names.append(line.cloneNode(true));
+          for(const name of svg.querySelectorAll('[data-testid="svg-card-athlete-name"]')) names.append(name.cloneNode(true));
           await raster(new XMLSerializer().serializeToString(names));
           const data=context.getImageData(0,0,canvas.width,canvas.height).data;
           let pixels=0, fits=true;
@@ -266,34 +251,26 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
       location:'Northside Community Recreation Center Championship Court Entrance B'
     }])`);
     await wait(`document.querySelector('[data-testid="upcoming-calendar-event-title"]')?.textContent.includes('Westside')`);
-    for (const design of ['classic', 'gallery', 'spotlight', 'breakout']) {
+    for (const design of ['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']) {
       await evaluate(`(window.__setHypePreviewState('${design}'), true)`);
       await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design==='${design}'`);
-      let previousFont = 0;
       for (const width of [320, 360, 390, 430]) {
         await viewport(width);
         await inspectRow(`${design} at ${width}px with long event details`, design);
-        if (design !== 'classic') {
-          await inspectNames('.living-card-premium-face svg', `${design} live ${width}px`);
-          for (const layer of ['all', 'fg']) {
-            await evaluate(`(() => {
-              const output=window.__premiumNameExport('${design}','${layer}');
-              const host=document.createElement('div'); host.id='premium-name-export-check';
-              host.style.cssText='position:absolute;left:0;top:1700px;width:${width}px';
-              host.innerHTML=output.markup;
-              host.querySelector('svg').style.cssText='width:100%;height:auto';
-              document.body.append(host);
-              return true;
-            })()`);
-            await inspectNames('#premium-name-export-check svg', `${design} ${layer} export ${width}px`);
-            if (width === 390) await inspectRasterExport(`${design} ${layer} rasterized PNG`);
-            await evaluate(`(document.querySelector('#premium-name-export-check').remove(), true)`);
-          }
-        }
-        if (design === 'classic') {
-          const font = await evaluate<number>(`parseFloat(getComputedStyle(document.querySelector('.living-card-athlete-name')).fontSize)`);
-          assert.ok(font > previousFont, `Classic container-unit type grows at ${width}px`);
-          previousFont = font;
+        await inspectNames('.supporter-hype-preview__surface svg', `${design} live ${width}px`);
+        for (const layer of ['all', 'fg']) {
+          await evaluate(`(() => {
+            const output=window.__premiumNameExport('${design}','${layer}');
+            const host=document.createElement('div'); host.id='premium-name-export-check';
+            host.style.cssText='position:absolute;left:0;top:1700px;width:${width}px';
+            host.innerHTML=output.markup;
+            host.querySelector('svg').style.cssText='width:100%;height:auto';
+            document.body.append(host);
+            return true;
+          })()`);
+          await inspectNames('#premium-name-export-check svg', `${design} ${layer} export ${width}px`);
+          if (width === 390) await inspectRasterExport(`${design} ${layer} rasterized PNG`);
+          await evaluate(`(document.querySelector('#premium-name-export-check').remove(), true)`);
         }
         if (width === 320 || width === 390) {
           const screenshot = await command<string>('GET', `${sessionPath}/screenshot`);
@@ -304,14 +281,15 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
     for (const state of ['empty', 'mismatch', 'paused', 'hidden', 'error']) {
       await evaluate(`(window.__setHypePreviewState('${state}'), true)`);
       await wait(`!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
-      const copy = state === 'error' ? 'couldn’t load' : state === 'paused' ? 'paused' : state === 'hidden' ? 'hidden' : 'belongs here';
+      const copy = state === 'error' ? 'couldn’t load' : state === 'paused' ? 'paused'
+        : state === 'hidden' ? 'hidden' : state === 'mismatch' ? 'different athlete details' : 'belongs here';
       await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('${copy}')`);
       for (const width of [320, 360, 390, 430]) {
         await viewport(width);
         await inspectRow(`${state} at ${width}px`);
       }
     }
-    await evaluate(`(window.__hypePreviewState='classic', localStorage.setItem('hype-preview-fixture','"classic"'))`);
+    await evaluate(`(window.__hypePreviewState='velocity', localStorage.setItem('hype-preview-fixture','"velocity"'))`);
     await click('[data-testid="mobile-saved-hype-card"] button');
     await wait(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
     // WebDriver sends native input, not DOM .click() or dispatched JS events.
