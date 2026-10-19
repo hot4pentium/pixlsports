@@ -12,7 +12,16 @@ test('the parent dashboard contains no Locker and offers a separate Player Showc
   assert.equal((source.match(/<SupporterGameOnSummary\b/g) ?? []).length, 2);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(app, /data-testid="link-toolbar-player-showcase"/);
-  assert.match(app, /path="\/studio\/player-showcase"><ProtectedEditor/);
+  assert.match(app, /<Route path="\/studio\/player-showcase"><PlayerShowcaseStudioPage \/><\/Route>/);
+});
+
+test('the studio toolbar contains only Supporter Hub and Player Showcase tabs', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const layout = app.slice(app.indexOf('function StudioLayout'), app.indexOf('\n\nfunction Studio('));
+  assert.match(layout, /data-testid="link-studio-directory"/);
+  assert.match(layout, /data-testid="link-toolbar-player-showcase"/);
+  assert.equal((layout.match(/data-testid="link-[^"]+"/g) ?? []).length, 2);
+  assert.doesNotMatch(layout, /AdminEntryLink/, 'the toolbar should not expose an admin tab');
 });
 
 function invite(overrides: Partial<OwnedAthleteInvite> = {}) {

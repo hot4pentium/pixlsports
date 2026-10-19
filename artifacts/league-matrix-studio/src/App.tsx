@@ -133,7 +133,7 @@ import {
 } from '@/features/workspace-context';
 import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
-import { AdminConsolePage, AdminEntryLink } from '@/features/admin-console';
+import { AdminConsolePage } from '@/features/admin-console';
 import {
   dashboardChecklistStateAfterSetup,
   getDashboardChecklistItemIds,
@@ -488,6 +488,7 @@ function SiteNav({ dark = true }: { dark?: boolean }) {
 
           {isSignedIn ? (
             <div className="flex items-center gap-4">
+              <AdminEntryLink className={`text-xs font-bold uppercase tracking-wider ${navText}`} />
               <span className={`text-sm font-bold tracking-wider ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</span>
               <button onClick={() => signOut({ redirectUrl: basePath || "/" })} className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-destructive hover:text-destructive-foreground ${dark ? 'bg-white/10 text-white' : 'bg-muted text-foreground'}`} data-testid="btn-sign-out">
                 Sign Out
@@ -510,6 +511,10 @@ function SiteNav({ dark = true }: { dark?: boolean }) {
             <Link href={isSignedIn ? '/studio' : '/auth'} className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
             {isSignedIn ? (
               <>
+                <AdminEntryLink
+                  className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`}
+                  onClick={() => setMenuOpen(false)}
+                />
                 <div className={`p-4 text-sm font-bold tracking-wider ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</div>
                 <button onClick={() => { setMenuOpen(false); signOut({ redirectUrl: basePath || "/" }); }} className={`flex w-full items-center justify-between p-4 text-lg font-display tracking-wide text-destructive ${dark ? 'bg-white/5' : 'bg-muted'}`} data-testid="btn-mobile-sign-out">SIGN OUT <ArrowRight className="h-5 w-5" /></button>
               </>
@@ -1193,10 +1198,8 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
   const [location] = useLocation();
   const { user } = useUser();
   const activeRole = role ?? getUserRole(user) ?? 'fan';
-  const visibleTools = roleToolKinds[activeRole];
   const homeLabel = activeRole === 'fan' ? 'Supporter Hub' : 'Command Center';
   const isFanDashboard = activeRole === 'fan' && location === '/studio';
-  const isSupporterProfile = activeRole === 'fan' && location === '/studio/profile';
   const isChecklistPage = location === '/studio/checklist' || location.startsWith('/checklist/');
   const isEditorPage = location === '/studio/checklist'
     || location.startsWith('/checklist/')
@@ -1216,29 +1219,6 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
                 Player Showcase
               </Link>
             )}
-            {visibleTools.filter((key) => !(
-              isSupporterProfile
-              && (key === 'hype' || key === 'stat-tracker' || key === 'checklist')
-            )).map((key) => {
-              const tool = toolData[key];
-              return (
-              <Link key={key} href={`/studio/${tool.slug}`} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors lg:hidden ${location.includes(tool.slug) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid={`link-toolbar-${key}`}>
-                {tool.label.replace(' Creator', '').replace(' Graphic Maker', '')}
-              </Link>
-              );
-            })}
-            {activeRole === 'fan' && (
-              <>
-                <Link href="/studio/athlete-page" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/athlete-page' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-athlete-page">
-                  Athlete Page
-                </Link>
-                <Link href="/studio/gear" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest ${location === '/studio/gear' || location === '/studio/soccer-gear' ? 'border-primary' : 'border-transparent'}`} data-testid="link-toolbar-soccer-gear">Gear</Link>
-                <Link href="/studio/profile" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/profile' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-profile">
-                  My Athlete
-                </Link>
-              </>
-            )}
-            <AdminEntryLink />
           </div>
         </div>
       )}

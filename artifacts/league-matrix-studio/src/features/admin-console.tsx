@@ -683,9 +683,9 @@ export function AdminConsolePage() {
   );
 }
 
-export function AdminEntryLink() {
+export function AdminEntryLink({ className, onClick }: { className?: string; onClick?: () => void }) {
   const { isSignedIn } = useUser();
   const admin = useGetAdminSession({ query: { enabled: Boolean(isSignedIn), queryKey: getGetAdminSessionQueryKey(), staleTime: 30_000, retry: false } });
   if (!isSignedIn || !admin.data?.isAdmin) return null;
-  return <Link href="/studio/admin" className="shrink-0 border-b-4 border-transparent py-4 text-sm font-bold uppercase tracking-widest text-[#f3f6fa]/70 transition-colors hover:border-[#ff6433] hover:text-white" data-testid="link-toolbar-admin">Member admin</Link>;
+  return <Link href="/studio/admin" onClick={onClick} className={className ?? 'shrink-0 border-b-4 border-transparent py-4 text-sm font-bold uppercase tracking-widest text-[#f3f6fa]/70 transition-colors hover:border-[#ff6433] hover:text-white'} data-testid="link-nav-admin">Member admin</Link>;
 }

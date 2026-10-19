@@ -338,27 +338,18 @@ test('signed-in account controls survive phone and desktop transitions against r
       "Boolean(document.querySelector('[data-testid=\"studio-tool-toolbar\"]'))", Boolean, 30_000);
     const profileMobileNavigation = await connection.evaluate<{
       hub: boolean;
-      athletePage: boolean;
-      profile: boolean;
-      hype: boolean;
-      statTracker: boolean;
-      checklist: boolean;
+      playerShowcase: boolean;
+      tabCount: number;
     }>(`({
       hub: Boolean(document.querySelector('[data-testid="link-studio-directory"]')),
-      athletePage: Boolean(document.querySelector('[data-testid="link-toolbar-athlete-page"]')),
-      profile: Boolean(document.querySelector('[data-testid="link-toolbar-profile"]')),
-      hype: Boolean(document.querySelector('[data-testid="link-toolbar-hype"]')),
-      statTracker: Boolean(document.querySelector('[data-testid="link-toolbar-stat-tracker"]')),
-      checklist: Boolean(document.querySelector('[data-testid="link-toolbar-checklist"]')),
+      playerShowcase: Boolean(document.querySelector('[data-testid="link-toolbar-player-showcase"]')),
+      tabCount: document.querySelectorAll('[data-testid="studio-tool-toolbar"] a').length,
     })`, phone);
     assert.deepEqual(profileMobileNavigation, {
       hub: true,
-      athletePage: true,
-      profile: true,
-      hype: false,
-      statTracker: false,
-      checklist: false,
-    }, 'the mobile supporter profile header should keep profile navigation without obsolete tool links');
+      playerShowcase: true,
+      tabCount: 2,
+    }, 'the supporter profile navigation should show only Supporter Hub and Player Showcase');
     await click(phone, 'button-hype-manager-account-information');
     await waitVisible(phone, 'account-information');
     await waitFor(connection, phone, "document.querySelector('[data-testid=\"account-plan\"]')?.textContent.trim() === 'Pro'", Boolean);
