@@ -133,7 +133,7 @@ import {
 } from '@/features/workspace-context';
 import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
-import { AdminConsolePage } from '@/features/admin-console';
+import { AdminConsolePage, AdminEntryLink } from '@/features/admin-console';
 import {
   dashboardChecklistStateAfterSetup,
   getDashboardChecklistItemIds,
