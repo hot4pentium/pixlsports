@@ -82,77 +82,109 @@ export function PlayerShowcaseContent({ profile, gear, gearStatus, onRetry, athl
               <span>02</span> HYPE Card
             </button>}
           </div>
-          <div className="ps__slide" role="group" aria-roledescription="slide" aria-label={`${profile.athleteName || 'Player'} ${activeSlide === 'card' ? 'HYPE Card' : 'jersey'} preview`} data-testid={`showcase-slide-${activeSlide}`} {...swipeHandlers}>
-            {activeSlide === 'jersey' ? <div className="ps__stage" data-testid="showcase-jersey-stage">
-              <p className="ps__team">{profile.teamName || 'Your team'}<br />{sportLabel(profile.sport)}</p>
-              {isFootball ? (
-                <FootballJerseyPreview
-                  name={first}
-                  number={number}
-                  label={label}
-                  accent={sportGear?.loadout.jerseyColor}
-                  showcaseGear={showcaseGear}
-                />
-              ) : (
-                <JerseyLayerStage
-                  loadout={loadout}
-                  unlockedGear={isSoccer ? gear?.unlockedGear : undefined}
-                  name={first}
-                  number={number}
-                  label={label}
-                  showcaseGear={showcaseGear}
-                />
-              )}
-          {isSoccer && gearStatus === 'loading' && (
-            <p className="ps__loading" role="status" data-testid="status-showcase-gear-loading">Loading your saved kit…</p>
-          )}
-          <div className="ps__links">
-            <Link href={hypeHref} className="ps__link" data-testid="link-showcase-hype-card">
-              <Zap size={18} aria-hidden="true" /> HYPE Card
-            </Link>
-            {isGearSport(profile.sport) && (
-              <Link href={athleteRestricted ? '/studio/player-showcase/gear' : '/studio/gear'} className="ps__link" data-testid="link-showcase-gear">
-                <Footprints size={18} aria-hidden="true" /> Gear
-              </Link>
-            )}
-            {!athleteRestricted && (
-              <Link href="/studio/athlete-page#owner-fan-hypes" className="ps__link" data-testid="link-showcase-shoutouts">
-                <MessageCircle size={18} aria-hidden="true" /> Shoutouts
-              </Link>
-            )}
-          </div>
-          {isSoccer && gearStatus === 'unavailable' && <p className="ps__note" data-testid="status-showcase-gear-empty">No saved kit for {first} yet, so the default blue shows. {athleteRestricted ? 'Open Gear to build it.' : 'Start in Gear.'}</p>}
-            </div> : <div className="ps__card-slide" data-testid="showcase-hype-card-preview">
-              {card ? <>
-                <div className="ps__card-art" aria-label={`${card.athleteName} HYPE Card preview`}>
-                  <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
+          <div
+            className="ps__rotor-viewport"
+            role="region"
+            aria-roledescription="carousel"
+            aria-label={`${profile.athleteName || 'Player'} showcase. Swipe to rotate between the jersey and HYPE Card.`}
+            data-testid="showcase-rotor-viewport"
+            {...swipeHandlers}
+          >
+            <div className="ps__rotor" data-testid="showcase-rotor" data-active-slide={activeSlide}>
+              <div
+                className="ps__rotor-face ps__rotor-face--jersey"
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${profile.athleteName || 'Player'} jersey`}
+                aria-hidden={activeSlide !== 'jersey'}
+                inert={activeSlide !== 'jersey'}
+                data-active={activeSlide === 'jersey'}
+                data-testid="showcase-slide-jersey"
+              >
+                <div className="ps__stage" data-testid="showcase-jersey-stage">
+                  <p className="ps__team">{profile.teamName || 'Your team'}<br />{sportLabel(profile.sport)}</p>
+                  {isFootball ? (
+                    <FootballJerseyPreview
+                      name={first}
+                      number={number}
+                      label={label}
+                      accent={sportGear?.loadout.jerseyColor}
+                      showcaseGear={showcaseGear}
+                    />
+                  ) : (
+                    <JerseyLayerStage
+                      loadout={loadout}
+                      unlockedGear={isSoccer ? gear?.unlockedGear : undefined}
+                      name={first}
+                      number={number}
+                      label={label}
+                      showcaseGear={showcaseGear}
+                    />
+                  )}
+                  {isSoccer && gearStatus === 'loading' && (
+                    <p className="ps__loading" role="status" data-testid="status-showcase-gear-loading">Loading your saved kit…</p>
+                  )}
+                  <div className="ps__links">
+                    <Link href={hypeHref} className="ps__link" data-testid="link-showcase-hype-card">
+                      <Zap size={18} aria-hidden="true" /> HYPE Card
+                    </Link>
+                    {isGearSport(profile.sport) && (
+                      <Link href={athleteRestricted ? '/studio/player-showcase/gear' : '/studio/gear'} className="ps__link" data-testid="link-showcase-gear">
+                        <Footprints size={18} aria-hidden="true" /> Gear
+                      </Link>
+                    )}
+                    {!athleteRestricted && (
+                      <Link href="/studio/athlete-page#owner-fan-hypes" className="ps__link" data-testid="link-showcase-shoutouts">
+                        <MessageCircle size={18} aria-hidden="true" /> Shoutouts
+                      </Link>
+                    )}
+                  </div>
+                  {isSoccer && gearStatus === 'unavailable' && <p className="ps__note" data-testid="status-showcase-gear-empty">No saved kit for {first} yet, so the default blue shows. {athleteRestricted ? 'Open Gear to build it.' : 'Start in Gear.'}</p>}
                 </div>
-                <div className="ps__card-caption"><span>Saved front · {card.teamName || sportLabel(card.sport)}</span><div className="ps__card-links">
-                  <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card design</Link>
-                  {cardPublicHref && <Link href={cardPublicHref} className="ps__link" data-testid="link-showcase-card-public"><ExternalLink size={16} aria-hidden="true" /> Open public card</Link>}
-                </div></div>
-              </> : <div className="ps__card-unavailable" role="status" data-testid="status-showcase-card-unavailable">
-                <Zap size={24} aria-hidden="true" />
-                <strong>
-                  {cardStatus === 'loading' ? 'Loading the saved card…'
-                    : cardStatus === 'unavailable' ? 'HYPE Card unavailable'
-                      : cardStatus === 'not-linked' ? 'No HYPE Card linked'
-                        : cardStatus === 'not-shared' ? 'HYPE Card not shared'
-                          : 'HYPE Card unavailable'}
-                </strong>
-                <span>
-                  {cardStatus === 'loading' ? 'The saved front is on its way.'
-                    : cardStatus === 'not-linked' ? 'There is no HYPE Card linked to this athlete yet.'
-                      : cardStatus === 'unavailable' ? 'The linked HYPE Card could not be loaded.'
-                      : 'The jersey stays here. Card details stay private until sharing is active.'}
-                </span>
-                {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" data-testid="button-showcase-card-retry">Try again</button>}
-                <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
-                  {cardStatus === 'not-linked' ? 'Create HYPE Card' : 'Open HYPE Card design'}
-                  <ArrowRight size={15} aria-hidden="true" />
-                </Link>
+              </div>
+              {showCardSlide && <div
+                className="ps__rotor-face ps__rotor-face--card"
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${profile.athleteName || 'Player'} HYPE Card`}
+                aria-hidden={activeSlide !== 'card'}
+                inert={activeSlide !== 'card'}
+                data-active={activeSlide === 'card'}
+                data-testid="showcase-slide-card"
+              >
+                <div className="ps__card-slide" data-testid="showcase-hype-card-preview">
+                  {card ? <>
+                    <div className="ps__card-caption"><span>Saved front · {card.teamName || sportLabel(card.sport)}</span><div className="ps__card-links">
+                      <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card design</Link>
+                      {cardPublicHref && <Link href={cardPublicHref} className="ps__link" data-testid="link-showcase-card-public"><ExternalLink size={16} aria-hidden="true" /> Open public card</Link>}
+                    </div></div>
+                    <div className="ps__card-art" aria-label={`${card.athleteName} HYPE Card preview`} data-testid="showcase-card-art">
+                      <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
+                    </div>
+                  </> : <div className="ps__card-unavailable" role="status" data-testid="status-showcase-card-unavailable">
+                    <Zap size={24} aria-hidden="true" />
+                    <strong>
+                      {cardStatus === 'loading' ? 'Loading the saved card…'
+                        : cardStatus === 'unavailable' ? 'HYPE Card unavailable'
+                          : cardStatus === 'not-linked' ? 'No HYPE Card linked'
+                            : cardStatus === 'not-shared' ? 'HYPE Card not shared'
+                              : 'HYPE Card unavailable'}
+                    </strong>
+                    <span>
+                      {cardStatus === 'loading' ? 'The saved front is on its way.'
+                        : cardStatus === 'not-linked' ? 'There is no HYPE Card linked to this athlete yet.'
+                          : cardStatus === 'unavailable' ? 'The linked HYPE Card could not be loaded.'
+                          : 'The jersey stays here. Card details stay private until sharing is active.'}
+                    </span>
+                    {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" data-testid="button-showcase-card-retry">Try again</button>}
+                    <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
+                      {cardStatus === 'not-linked' ? 'Create HYPE Card' : 'Open HYPE Card design'}
+                      <ArrowRight size={15} aria-hidden="true" />
+                    </Link>
+                  </div>}
+                </div>
               </div>}
-            </div>}
+            </div>
           </div>
         </div>
         {showError && (
