@@ -119,3 +119,4 @@
 - [Immersive Athlete Locker](immersive-athlete-locker.md) — use the supplied full Locker reference while keeping the dashboard and existing account roles unchanged.
 - [Sharp sprite cropping](sharp-crop-trim-order.md) — materialize each crop before trimming; Sharp can otherwise apply trim ahead of extraction.
 - [Simplified interactive HYPE Card](simple-interactive-hype-card.md) — keep full 2:3 portrait framing, lower-third at the bottom, left branding, style choices, identity, positioning, and public flips.
+- [Showcase slide boundaries](showcase-slide-boundaries.md) — the HYPE Card slide shows only card content and card actions; jersey and owner-management content belongs to the Jersey slide.

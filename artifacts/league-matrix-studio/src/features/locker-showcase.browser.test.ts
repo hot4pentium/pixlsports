@@ -336,6 +336,8 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await swipe('[data-testid="showcase-jersey-stage"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-slide-card"]').getAttribute('aria-hidden')`), 'false');
+    assert.equal(await browser.evaluate(`getComputedStyle(document.querySelector('[data-testid="showcase-slide-jersey"] .ps__links')).visibility`), 'hidden', 'the HYPE Card slide hides jersey-specific actions');
+    assert.equal(await browser.evaluate(`getComputedStyle(document.querySelector('[data-testid="showcase-slide-card"] .ps__card-caption')).visibility`), 'visible', 'the HYPE Card slide keeps card-specific actions visible');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`), null, 'the HYPE Card slide hides jersey equipment');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/player/fixture-athlete/manage#design`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);

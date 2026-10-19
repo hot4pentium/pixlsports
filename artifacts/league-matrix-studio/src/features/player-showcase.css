@@ -21,6 +21,8 @@
 .ps__rotor-face[data-active="false"]{pointer-events:none;opacity:.86;filter:brightness(.74)}
 .ps__rotor-face--jersey[data-active="false"]{transform:translate3d(-22%,0,-110px) rotateY(14deg) scale(.9)}
 .ps__rotor-face--card[data-active="false"]{transform:translate3d(25%,0,-110px) rotateY(-14deg) scale(.9)}
+.ps__rotor-face--jersey[data-active="false"] .ps__links,.ps__rotor-face--jersey[data-active="false"] .ps__note{visibility:hidden}
+.ps__rotor-face--card[data-active="false"] .ps__card-caption,.ps__rotor-face--card[data-active="false"] .ps__card-unavailable{visibility:hidden}
 .ps__card-slide{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.56fr);gap:clamp(18px,4vw,38px);align-items:center;min-height:420px;padding:clamp(18px,4vw,42px);overflow:visible;border:1px solid rgba(85,164,255,.3);background:radial-gradient(ellipse at 28% 40%,rgba(40,120,245,.2),transparent 44%),linear-gradient(135deg,#0b1f3a,#06142c)}
 .ps__card-art{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin:auto;overflow:hidden;border:1px solid rgba(192,220,248,.3);background:#102b4d;box-shadow:15px 20px 0 rgba(2,10,24,.38),0 20px 45px rgba(0,0,0,.28)}
 .ps__card-art .living-card-simple-face{position:absolute;inset:0}
