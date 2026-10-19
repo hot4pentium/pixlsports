@@ -51,6 +51,12 @@ Keep narrow card-state checks in a focused browser test, separate from the dashb
 
 **How to apply:** Test collapsed and expanded containment at the target widths in an isolated Chromium fixture; exercise Draft and Complete deliberately, and keep failures from later flows separately diagnosable.
 
+Reconnect confirmation and cancellation should have a short, dedicated browser test rather than relying only on the broader mobile/desktop paired-card flow, whose viewport checks can fail before the reconnect interaction runs.
+
+**Why:** The paired-card flow performs multiple responsive geometry checks before its owner-update assertions, so an unrelated viewport mismatch can hide whether confirmation, cancellation, and link preservation still work.
+
+**How to apply:** Keep the reconnect browser scenario isolated with a minimal owner fixture, and assert that cancel makes no request while confirmation updates only the selected invite token.
+
 When a fixed card dialog opens, compare the background tile's position relative to its grid instead of comparing viewport coordinates.
 
 **Why:** Dialog focus and scroll-lock behavior can move viewport-relative bounds without reflowing the grid, making exact `getBoundingClientRect()` snapshots fail spuriously.

@@ -1,4 +1,5 @@
 import type { SupporterProfile } from './supporter-dashboard';
+import { getShowcaseInviteReconnectionCandidates } from './player-showcase-model';
 import { isSport, type Sport } from './stat-tracker';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { hypeCardProjectStorageKey, type HypeCardProject } from './hype-card-types';
@@ -95,10 +96,7 @@ export function getSupporterFanCardReconnectionCandidates<T extends FanCardDesti
   invites: readonly T[],
   profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
 ) {
-  const athleteName = profile.athleteName.trim();
-  const teamName = profile.teamName.trim();
-  if (!athleteName || !teamName || getSupporterFanCard(invites, profile)) return [];
-  return [...invites];
+  return getShowcaseInviteReconnectionCandidates(invites, profile);
 }
 
 export function getSupporterFanCardToSyncAfterProfileChange<T extends FanCardDestinationCandidate>(

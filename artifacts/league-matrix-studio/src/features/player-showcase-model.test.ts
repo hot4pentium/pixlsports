@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { OwnedAthleteInvite } from '@workspace/api-client-react';
-import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
+import {
+  getShowcaseInvite,
+  getShowcaseInviteCandidates,
+  getShowcaseInviteReconnectionCandidates,
+} from './player-showcase-model';
 
 const profile = {
   athleteName: 'Jordan Lee',
@@ -71,4 +75,32 @@ test('a truly missing card has no owner-choice candidates', () => {
 test('a card for another athlete or team is never linked to the selected athlete', () => {
   assert.equal(getShowcaseInvite([invite({ teamName: 'Other FC' })], profile), null);
   assert.equal(getShowcaseInvite([invite({ athleteName: 'Other Player' })], profile), null);
+});
+
+test('name or team changes expose saved cards only as explicit reconnection choices', () => {
+  const saved = invite({ inviteToken: 'saved-card', athleteName: 'Jordan Lee', teamName: 'River FC' });
+  const anotherAthlete = invite({ inviteToken: 'another-athlete', athleteName: 'Taylor Kim', teamName: 'Harbor FC' });
+
+  for (const changedProfile of [
+    { ...profile, athleteName: 'Jordan L.' },
+    { ...profile, teamName: 'River United' },
+  ]) {
+    assert.equal(getShowcaseInvite([saved, anotherAthlete], changedProfile), null);
+    assert.deepEqual(
+      getShowcaseInviteReconnectionCandidates([saved, anotherAthlete], changedProfile),
+      [saved, anotherAthlete],
+      'cards require an explicit owner choice when either identity field changes',
+    );
+  }
+
+  assert.deepEqual(
+    getShowcaseInviteReconnectionCandidates([saved], profile),
+    [],
+    'a currently matching card does not offer reconnect choices',
+  );
+  assert.deepEqual(
+    getShowcaseInviteReconnectionCandidates([saved], { ...profile, teamName: '' }),
+    [],
+    'incomplete profile identity does not permit reconnection',
+  );
 });

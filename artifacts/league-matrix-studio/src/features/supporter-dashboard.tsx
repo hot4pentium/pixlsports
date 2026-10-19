@@ -364,8 +364,8 @@ export function SupporterDashboardView({
   const updateAthleteInvite = useUpdateAthleteInvite();
   const [reconnectingFanCardToken, setReconnectingFanCardToken] = useState<string | null>(null);
   const [fanCardReconnectError, setFanCardReconnectError] = useState('');
-  const reconnectFanCard = useCallback(async (invite: OwnedAthleteInvite) => {
-    if (!userId || !profile.athleteName.trim() || !profile.teamName.trim()) return;
+  const reconnectFanCard = useCallback(async (invite: OwnedAthleteInvite): Promise<boolean> => {
+    if (!userId || !profile.athleteName.trim() || !profile.teamName.trim()) return false;
     setReconnectingFanCardToken(invite.inviteToken);
     setFanCardReconnectError('');
     try {
@@ -392,8 +392,10 @@ export function SupporterDashboardView({
         queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(invite.inviteToken) }),
       ]);
+      return true;
     } catch {
       setFanCardReconnectError('We couldn’t reconnect that card. Your saved design is unchanged; try again.');
+      return false;
     } finally {
       setReconnectingFanCardToken(null);
     }
@@ -1298,6 +1300,8 @@ export function SupporterDashboardView({
                 key={`${userId ?? 'signed-out'}:${savedFanCard?.inviteToken ?? 'none'}`}
                 placement="mobile"
                 card={savedFanCard}
+                targetAthleteName={profile.athleteName}
+                targetTeamName={profile.teamName}
                 href={fanCardHref}
                 reconnectionCandidates={fanCardReconnectionCandidates}
                 onReconnect={reconnectFanCard}
@@ -1453,6 +1457,8 @@ export function SupporterDashboardView({
               key={`${userId ?? 'signed-out'}:${savedFanCard?.inviteToken ?? 'none'}:desktop`}
               placement="desktop"
               card={savedFanCard}
+              targetAthleteName={profile.athleteName}
+              targetTeamName={profile.teamName}
               href={fanCardHref}
               reconnectionCandidates={fanCardReconnectionCandidates}
               onReconnect={reconnectFanCard}

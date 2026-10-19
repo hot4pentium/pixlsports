@@ -49,3 +49,22 @@ export function getShowcaseInviteCandidates(
     && normalizeIdentity(invite.teamName) === teamName,
   );
 }
+
+/**
+ * Return owned cards for an explicit reconnect choice only when the selected
+ * profile has no exact athlete/team match. The caller must never infer that a
+ * sole remaining card belongs to the selected athlete.
+ */
+export function getShowcaseInviteReconnectionCandidates<T extends Pick<OwnedAthleteInvite, 'inviteToken' | 'athleteName' | 'teamName'>>(
+  invites: readonly T[],
+  profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
+) {
+  const athleteName = normalizeIdentity(profile.athleteName);
+  const teamName = normalizeIdentity(profile.teamName);
+  if (!athleteName || !teamName) return [];
+  if (invites.some((invite) =>
+    normalizeIdentity(invite.athleteName) === athleteName
+    && normalizeIdentity(invite.teamName) === teamName,
+  )) return [];
+  return [...invites];
+}

@@ -5208,7 +5208,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       );
     };
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
-    await wait(`document.body.textContent.includes('Loading your card')`);
+    await wait(`document.body?.textContent.includes('Loading your card')`);
     const initialPreviewStates = await evaluate<Array<{ testId: string | null; text: string }>>(`Array.from(document.querySelectorAll('.supporter-hype-preview')).map((preview) => ({
       testId: preview.getAttribute('data-testid'),
       text: preview.textContent || '',
@@ -5314,19 +5314,42 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="mobile-saved-hype-card"] svg image')`), false,
       'mismatched artwork stays hidden until the owner chooses to reconnect it');
     await evaluate(`document.querySelector('[data-testid="button-reconnect-hype-card-saved-athlete-token"]').click()`);
+    await wait(`Boolean(document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]'))`);
+    assert.deepEqual(await evaluate(`({
+      showsSavedCard: document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]')?.textContent.includes('Another athlete · Previous Comets'),
+      showsCurrentProfile: document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]')?.textContent.includes('Alexandria Montgomery-Williams · The Northside Comets Select Travel Club'),
+      showsSavedArtwork: Boolean(document.querySelector('[data-testid="reconnect-card-artwork"]')),
+      callsBeforeDecision: window.__hypeReconnectCalls
+    })`), {
+      showsSavedCard: true,
+      showsCurrentProfile: true,
+      showsSavedArtwork: true,
+      callsBeforeDecision: 0,
+    });
+    await evaluate(`document.querySelector('[data-testid="mobile-button-cancel-hype-card-reconnect"]').click()`);
+    await wait(`!document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]')`);
+    assert.equal(await evaluate(`window.__hypeReconnectCalls`), 0, 'canceling the review does not update the saved card');
+
+    await evaluate(`document.querySelector('[data-testid="button-reconnect-hype-card-saved-athlete-token"]').click()`);
+    await wait(`Boolean(document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]'))`);
+    await evaluate(`document.querySelector('[data-testid="mobile-button-confirm-hype-card-reconnect"]').click()`);
     await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
     assert.deepEqual(await evaluate(`({
       calls: window.__hypeReconnectCalls,
+      updatePath: window.__hypeReconnectPath,
       athleteName: window.__hypeReconnectBody?.athleteName,
       teamName: window.__hypeReconnectBody?.teamName,
       retainedVisibility: window.__hypeReconnectBody?.showHypeCard === true,
-      artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {}))
+      artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {})),
+      publicCardPath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname
     })`), {
       calls: 1,
+      updatePath: '/api/athlete-invites/saved-athlete-token',
       athleteName: 'Alexandria Montgomery-Williams',
       teamName: 'The Northside Comets Select Travel Club',
       retainedVisibility: true,
       artworkUntouched: true,
+      publicCardPath: '/fan/saved-athlete-token',
     });
 
     for (const state of ['empty', 'paused', 'hidden', 'error']) {
@@ -5402,6 +5425,114 @@ test('mobile saved HYPE Card follows authenticated real owner API saves, reloads
   try {
     await checkSavedHypeCardOwnerApi(appDirectory, chromiumPath);
   } finally {
+    release();
+  }
+});
+
+test('reconnecting a saved HYPE Card requires review and confirmation', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-hype-reconnect');
+  let devServer: ChildProcess | undefined, browser: ChildProcess | undefined;
+  let devMonitor: ProcessMonitor | undefined, browserMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  try {
+    const probe = createServer();
+    const { port } = await listen(probe);
+    await new Promise<void>((done) => probe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource());
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)));
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(port),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devMonitor = monitorProcess(devServer, 'HYPE reconnect fixture Vite');
+    await waitForUrl(`http://127.0.0.1:${port}/`, 20_000, devMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-hype-reconnect-'));
+    browser = spawn(chromiumPath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank'],
+      { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'HYPE reconnect fixture Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json());
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const fixtureUrl = `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?mobile-hype-pair`;
+    page = await openPage(connection, fixtureUrl);
+    const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
+    const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean);
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+    await evaluate(`window.__setHypePreviewState('mismatch')`);
+    await wait(`document.querySelector('[data-testid="mobile-saved-hype-card"]')?.textContent.includes('different athlete details')`);
+    await evaluate(`document.querySelector('[data-testid="button-reconnect-hype-card-saved-athlete-token"]').click()`);
+    await wait(`Boolean(document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]'))`);
+
+    assert.deepEqual(await evaluate(`({
+      savedIdentity: document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]')?.textContent.includes('Another athlete · Previous Comets'),
+      targetIdentity: document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]')?.textContent.includes('Alexandria Montgomery-Williams · The Northside Comets Select Travel Club'),
+      savedArtworkReviewed: Boolean(document.querySelector('[data-testid="reconnect-card-artwork"]')),
+      updatesBeforeConfirmation: window.__hypeReconnectCalls,
+    })`), {
+      savedIdentity: true,
+      targetIdentity: true,
+      savedArtworkReviewed: true,
+      updatesBeforeConfirmation: 0,
+    });
+
+    await evaluate(`document.querySelector('[data-testid="mobile-button-cancel-hype-card-reconnect"]').click()`);
+    await wait(`!Boolean(document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]'))`);
+    assert.equal(await evaluate('window.__hypeReconnectCalls'), 0, 'cancel leaves the invite untouched');
+
+    await evaluate(`document.querySelector('[data-testid="button-reconnect-hype-card-saved-athlete-token"]').click()`);
+    await wait(`Boolean(document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]'))`);
+    await evaluate(`document.querySelector('[data-testid="mobile-button-confirm-hype-card-reconnect"]').click()`);
+    await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+    await wait(`!Boolean(document.querySelector('[data-testid="mobile-hype-card-reconnect-review"]'))`);
+    assert.deepEqual(await evaluate(`({
+      updates: window.__hypeReconnectCalls,
+      updatePath: window.__hypeReconnectPath,
+      athleteName: window.__hypeReconnectBody?.athleteName,
+      teamName: window.__hypeReconnectBody?.teamName,
+      artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {})),
+      publicCardPath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname,
+    })`), {
+      updates: 1,
+      updatePath: '/api/athlete-invites/saved-athlete-token',
+      athleteName: 'Alexandria Montgomery-Williams',
+      teamName: 'The Northside Comets Select Travel Club',
+      artworkUntouched: true,
+      publicCardPath: '/fan/saved-athlete-token',
+    });
+  } finally {
+    if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devMonitor) {
+      if (!devMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
     release();
   }
 });
@@ -6057,6 +6188,7 @@ export function mount() {
     window.__hypeRequests = 0;
     window.__hypeReconnectCalls = 0;
     window.__hypeReconnectBody = null;
+    window.__hypeReconnectPath = '';
     window.__hypeReconnected = false;
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
@@ -6064,6 +6196,7 @@ export function mount() {
       const pathname = new URL(requestUrl, location.href).pathname;
       if (pathname.startsWith('/api/athlete-invites/')) {
         window.__hypeReconnectCalls++;
+        window.__hypeReconnectPath = pathname;
         window.__hypeReconnectBody = JSON.parse(String(init?.body || '{}'));
         window.__hypeReconnected = true;
         return new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -6083,7 +6216,8 @@ export function mount() {
       return new Response(JSON.stringify(state === 'empty' || user !== 'hype-owner' ? [] : [{
         inviteToken: 'saved-athlete-token',
         athleteName: state === 'mismatch' && !window.__hypeReconnected ? 'Another athlete' : profile.athleteName,
-        teamName: profile.teamName, seasonName: '2026', seasonEndsAt: '2030-01-01',
+        teamName: state === 'mismatch' && !window.__hypeReconnected ? 'Previous Comets' : profile.teamName,
+        seasonName: '2026', seasonEndsAt: '2030-01-01',
         sport: profile.sport, timezone: 'America/New_York', trackerProjectId: null, scheduleProjectId: null,
         showHypeCard: state !== 'hidden', showStats: true, showSchedule: true, showEvents: true,
         hypesEnabled: true, paused: state === 'paused', liveTrackerShareToken: null,
