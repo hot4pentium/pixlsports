@@ -360,6 +360,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       return Math.abs((card.left+card.right)/2-(viewport.left+viewport.right)/2);
     })()`);
     assert.ok(centeredCardOffset <= 2, `the HYPE Card centers in the carousel after using its arrow; offset ${centeredCardOffset}px`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="showcase-card-art"]').getBoundingClientRect().bottom < document.querySelector('[data-testid="showcase-slide-card"] .ps__card-caption').getBoundingClientRect().top`), true, 'card-specific options remain below the centered card art');
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='jersey'`);
     await browser.wait(`Array.from(document.querySelector('[data-testid="showcase-slide-jersey"]').getAnimations()).every(animation=>animation.playState==='finished')`);
