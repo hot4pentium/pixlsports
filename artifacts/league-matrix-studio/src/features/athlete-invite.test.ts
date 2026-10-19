@@ -25,10 +25,9 @@ test('HYPE Card creation directs athlete photo uploads to its manager, not Athle
 
 test('Player Showcase HYPE Card back actions return to the Dynamic Showcase carousel', () => {
   for (const testId of [
-    'link-hype-manager-studio',
     'link-management-sign-in-athlete',
     'link-management-unavailable-athlete',
-    'link-back-to-athlete-hype-page',
+    'link-back-to-dynamic-showcase',
   ]) {
     assert.match(
       source,
@@ -36,6 +35,12 @@ test('Player Showcase HYPE Card back actions return to the Dynamic Showcase caro
       `${testId} should return to the Dynamic Showcase`,
     );
   }
+  const ownerManagementStart = source.indexOf('data-testid="owner-athlete-invite-management-page"');
+  const ownerManagementEnd = source.indexOf('export function PublicAthleteInvitePage', ownerManagementStart);
+  const ownerManagementRoute = source.slice(ownerManagementStart, ownerManagementEnd);
+  assert.equal((ownerManagementRoute.match(/<BackNavigationLink/g) ?? []).length, 1, 'the owner HYPE Card Manager has one back button');
+  assert.match(ownerManagementRoute, /testId="link-back-to-dynamic-showcase"/);
+  assert.doesNotMatch(ownerManagementRoute, /link-hype-manager-studio/);
   assert.match(
     hypeCardSource,
     /href=\{athleteRestricted \? '\/studio\/player-showcase' : '\/studio'\} label=\{athleteRestricted \? 'Back to Dynamic Showcase' : 'Back to studio'\}/,

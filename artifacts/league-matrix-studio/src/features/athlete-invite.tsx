@@ -1305,13 +1305,12 @@ function OwnerHypePageManage({ invite, profile }: {
 
   return (
     <section className="mx-auto mt-7 max-w-5xl text-white" aria-labelledby="owner-hype-page-management" data-testid="owner-hype-page-management">
-      <div className="flex flex-col gap-3 pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="pb-5">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Owner only</p>
           <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase sm:text-5xl">HYPE Card Manager</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Build and share your athlete&apos;s story. Choose what you want to do next.</p>
         </div>
-        <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-hype-manager-studio" />
       </div>
       {notice && <p role="status" className="my-3 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed" data-testid="status-hype-manager">{notice}</p>}
 
@@ -1569,7 +1568,7 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="owner-athlete-invite-management-page">
       <PublicHeader />
       <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
-        <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-back-to-athlete-hype-page" variant="public" />
+        <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-back-to-dynamic-showcase" variant="public" />
          <OwnerHypePageManage invite={ownerInvite} profile={profile} />
       </main>
     </div>
