@@ -178,8 +178,8 @@ export function PlayerShowcaseContent({ profile, selectedSlide: controlledSlide,
                 <div className="ps__card-slide" data-testid="showcase-hype-card-preview">
                   {card ? <>
                     <div className="ps__card-caption">{cardPicker}<span>Saved front · {card.teamName || sportLabel(card.sport)}</span><div className="ps__card-links">
-                      <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card design</Link>
-                      {cardPublicHref && <Link href={cardPublicHref} className="ps__link" data-testid="link-showcase-card-public"><ExternalLink size={16} aria-hidden="true" /> Open public card</Link>}
+                      <Link href={cardEditHref} className="ps__link ps__link--primary" data-testid="link-showcase-card-edit"><Zap size={16} aria-hidden="true" /> Edit HYPE Card design</Link>
+                      {cardPublicHref && <Link href={cardPublicHref} className="ps__link ps__link--secondary" data-testid="link-showcase-card-public"><ExternalLink size={16} aria-hidden="true" /> Open public card</Link>}
                     </div></div>
                     <div className="ps__card-art" aria-label={`${card.athleteName} HYPE Card preview`} data-testid="showcase-card-art">
                       <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />

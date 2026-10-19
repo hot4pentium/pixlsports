@@ -374,6 +374,22 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`), null, 'the HYPE Card slide hides jersey equipment');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/player/fixture-athlete/manage#design`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/fixture-athlete`);
+    assert.deepEqual(await browser.evaluate(`(() => {
+      const edit=document.querySelector('[data-testid="link-showcase-card-edit"]');
+      const open=document.querySelector('[data-testid="link-showcase-card-public"]');
+      const editStyle=getComputedStyle(edit), openStyle=getComputedStyle(open);
+      return {
+        editPrimary:edit.classList.contains('ps__link--primary'),
+        openSecondary:open.classList.contains('ps__link--secondary'),
+        bothHaveLargeTargets:edit.getBoundingClientRect().height>=52&&open.getBoundingClientRect().height>=52,
+        treatmentsDiffer:editStyle.backgroundImage!==openStyle.backgroundImage,
+      };
+    })()`), {
+      editPrimary: true,
+      openSecondary: true,
+      bothHaveLargeTargets: true,
+      treatmentsDiffer: true,
+    }, 'the card actions have distinct visual hierarchy and remain easy to tap');
     for (const width of [320, 390, 1440]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Owner HYPE Card slide overflows at ${width}px`);
