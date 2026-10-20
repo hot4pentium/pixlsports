@@ -20,12 +20,16 @@ import{getGetAthleteInviteQueryKey}from'@workspace/api-client-react';
 import{FanCardAppearanceManager}from'./src/features/fan-card-appearance-manager';
 import{LivingAthleteCardFront}from'./src/features/living-athlete-card-front';
 import{LivingCardControls}from'./src/features/living-card-controls';
-import{defaultCardAppearance}from'./src/features/hype-card-appearance';
+import{defaultCardAppearance,normalizeCardAppearance}from'./src/features/hype-card-appearance';
 import photo from './src/assets/hypecard-player-photo-640.webp';
 import './src/index.css';import './src/features/living-athlete-card.css';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
 const initial=JSON.parse(localStorage.getItem('simple-card-settings')||'null')||{...defaultCardAppearance('glass'),jerseyNumber:'9'};
 const inviteKey=getGetAthleteInviteQueryKey('fixture');
+const secondInitial=normalizeCardAppearance({...defaultCardAppearance('spotlight'),lowerThirdTemplate:'wave',athleteX:-.09,athleteY:.08,athleteScale:1.4,jerseyNumber:'44',position:'Forward'});
+const secondPhoto=photo+'#second-athlete';
+window.secondSavedAppearance=secondInitial;
+window.appearanceRequests=[];
 window.savedCardAppearance=initial;
 window.refreshSavedCard=async(appearance)=>{
  window.savedCardAppearance=appearance;
@@ -34,10 +38,13 @@ window.refreshSavedCard=async(appearance)=>{
 };
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(url,init)=>{
- if(String(url).includes('/api/athlete-invites/fixture/appearance')){
+  const match=String(url).match(/\\/api\\/athlete-invites\\/(fixture|second-athlete)\\/appearance(?:\\?|$)/);
+  if(match){
+   const token=match[1],saved=JSON.parse(String(init.body));
+   window.appearanceRequests.push({token,method:init.method,appearance:saved});
   if(window.failSave)return new Response('{}',{status:500,headers:{'content-type':'application/json'}});
-  const saved=JSON.parse(String(init.body));localStorage.setItem('simple-card-settings',JSON.stringify(saved));window.lastSaved=saved;
-  window.savedCardAppearance=saved;
+   localStorage.setItem(token==='fixture'?'simple-card-settings':'second-card-settings',JSON.stringify(saved));window.lastSaved=saved;
+   if(token==='fixture')window.savedCardAppearance=saved;else window.secondSavedAppearance=saved;
   return new Response(JSON.stringify({cardAppearance:saved}),{headers:{'content-type':'application/json'}});
  }return nativeFetch(url,init);
 };
@@ -45,12 +52,18 @@ const NativeImage=window.Image;
 window.Image=class extends NativeImage{set src(v){if(v.startsWith('data:image/svg+xml'))window.exportMarkup=decodeURIComponent(v.slice(v.indexOf(',')+1));super.src=v;}get src(){return super.src;}};
 const nativeClick=HTMLAnchorElement.prototype.click;
 HTMLAnchorElement.prototype.click=function(){if(this.download){window.exportDownload=this.download;return;}nativeClick.call(this);};
-function App(){const[side,setSide]=useState('front');
- const{data:invite}=useQuery({queryKey:inviteKey,queryFn:async()=>({inviteToken:'fixture',athleteName:'Older name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cardAppearance:window.savedCardAppearance}),initialData:{inviteToken:'fixture',athleteName:'Older name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cardAppearance:initial},staleTime:Infinity});
+function App(){const[side,setSide]=useState('front');const[token,setToken]=useState('fixture');
+ const getInvite=()=>token==='fixture'
+  ?{inviteToken:token,athleteName:'Older name',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cardAppearance:window.savedCardAppearance}
+  :{inviteToken:token,athleteName:'Older second name',teamName:'Westside Comets',sport:'soccer',photoUrl:secondPhoto,cardAppearance:window.secondSavedAppearance};
+ const{data:invite}=useQuery({queryKey:getGetAthleteInviteQueryKey(token),queryFn:async()=>getInvite(),initialData:getInvite,staleTime:Infinity});
+ const profile=token==='fixture'?{athleteName:'Jordan Alexander Matthews',jerseyNumber:'23',position:'Quarterback'}:{athleteName:'Casey Rivera',jerseyNumber:'44',position:'Forward'};
  return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20}}>
  <h1 style={{fontSize:24,marginBottom:20}}>HYPE Card</h1>
+ <button data-testid="select-first-athlete" onClick={()=>setToken('fixture')}>Edit Jordan</button>
+ <button data-testid="select-second-athlete" onClick={()=>setToken('second-athlete')}>Edit Casey</button>
  <output hidden data-testid="saved-card-query-value">{JSON.stringify(invite.cardAppearance)}</output>
- <div style={{maxWidth:960,margin:'auto'}}><FanCardAppearanceManager invite={invite} profile={{athleteName:'Jordan Alexander Matthews',jerseyNumber:'23',position:'Quarterback'}}/></div>
+ <div style={{maxWidth:960,margin:'auto'}}><FanCardAppearanceManager invite={invite} profile={profile}/></div>
  <div style={{maxWidth:360,margin:'24px auto'}} data-testid="flip-harness"><div style={{position:'relative',aspectRatio:'3/4'}}>{side==='front'?<LivingAthleteCardFront athleteName="Jordan Matthews" teamName="Falcons" photoUrl={photo} appearance={initial}/>:<p data-testid="selected-side">{side}</p>}</div>
  <LivingCardControls side={side} onSelectSide={setSide}/><button data-testid="return-front" onClick={()=>setSide('front')}>Flip to card front</button></div>
  </div>}
@@ -311,6 +324,77 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       saveDisabled: true,
     }, 'a clean phone editor accepts refreshed styles and photo placement without becoming dirty');
     assert.notDeepEqual([savedDraft.athleteX, savedDraft.athleteY, savedDraft.athleteScale], [.17, -.12, 1.25], 'the refresh fixture has different photo placement from the draft');
+
+    // Keep this exact manager mounted: a keyed remount would hide token-reset regressions.
+    await connection.evaluate(`window.managerBeforeSwitch=document.querySelector('[data-testid="fan-card-appearance-manager"]');
+      document.querySelector('[data-testid="frame-template-cycler-previous"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent`, value => value === 'Glass', 5_000);
+    await connection.evaluate(`document.querySelector('[data-testid="lower-third-template-cycler-next"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="lower-third-template-cycler-selected"]')?.textContent`, value => value === 'Varsity', 5_000);
+    for (const axis of ['x', 'y', 'zoom']) {
+      await connection.evaluate(`document.querySelector('[data-testid="slider-photo-${axis}"]').focus()`, session);
+      await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 }, session);
+      await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 }, session);
+    }
+    const abandonedDraft = await connection.evaluate<Record<string, unknown>>(editorSnapshot, session);
+    assert.equal(abandonedDraft.saveDisabled, false, 'the first athlete has an unsaved phone draft before switching');
+    assert.notDeepEqual(
+      [abandonedDraft.photoX, abandonedDraft.photoY, abandonedDraft.photoZoom],
+      [cleanValues.photoX, cleanValues.photoY, cleanValues.photoZoom],
+      'the abandoned draft includes unsaved photo placement',
+    );
+    const firstPersistedBeforeSwitch = await connection.evaluate(`localStorage.getItem('simple-card-settings')`, session);
+    const firstSavedBeforeSwitch = await connection.evaluate('window.savedCardAppearance', session);
+    const requestsBeforeSwitch = await connection.evaluate<number>('window.appearanceRequests.length', session);
+    await connection.evaluate(`document.querySelector('[data-testid="select-second-athlete"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="lower-third-template-cycler-selected"]')?.textContent==='Wave' && document.querySelector('[data-testid="button-save-appearance"]').matches(':disabled')`, Boolean, 5_000);
+    assert.equal(await connection.evaluate(`window.managerBeforeSwitch===document.querySelector('[data-testid="fan-card-appearance-manager"]')`, session), true, 'invite selection updates the mounted manager without navigation or remounting');
+    const { preview: secondPreview, ...secondValues } = await connection.evaluate<Record<string, unknown>>(editorSnapshot, session);
+    assert.notEqual(secondPreview, abandonedDraft.preview, 'the second athlete does not inherit the abandoned preview');
+    assert.deepEqual(secondValues, {
+      frame: 'spotlight', lowerThird: 'wave', frameName: 'Spotlight', lowerThirdName: 'Wave',
+      placement: 'translate(-81 96)', photoX: '-0.09', photoY: '0.08', photoZoom: '1.4',
+      saveDisabled: true,
+    }, 'the newly selected athlete restores their saved frame, lower third and all photo controls cleanly');
+    const identitySnapshot = `(() => {
+      const manager=document.querySelector('[data-testid="fan-card-appearance-manager"]');
+      return {
+        name:manager.querySelector('[data-testid="svg-card-athlete-name"]').textContent,
+        label:manager.querySelector('[data-testid="classic-card-preview-surface"]').getAttribute('aria-label'),
+        number:manager.querySelector('[data-testid="text-living-card-jersey-number"]').textContent,
+        position:manager.querySelector('[data-testid="svg-card-position"]').textContent,
+        photo:manager.querySelector('[data-testid="svg-card-photo"]').getAttribute('href'),
+        photoWidth:manager.querySelector('[data-testid="svg-card-photo"]').getAttribute('width'),
+        links:[...manager.querySelectorAll('[data-testid="appearance-navigation-preview"] a')].map(a=>a.getAttribute('href')),
+      };
+    })()`;
+    const secondIdentity = await connection.evaluate<Record<string, unknown>>(identitySnapshot, session);
+    assert.deepEqual(secondIdentity, {
+      name: 'CASEY RIVERA', label: 'HYPE Card preview for Casey Rivera', number: 'Number 44', position: 'FORWARD',
+      photo: await connection.evaluate(`document.querySelector('[data-testid="flip-harness"] [data-testid="svg-card-photo"]').getAttribute('href')+'#second-athlete'`, session),
+      photoWidth: '1260.00',
+      links: ['/fan/second-athlete?side=responses', '/fan/second-athlete?side=stats', '/fan/second-athlete?side=live-taps', '/fan/second-athlete?side=events'],
+    }, 'the rendered identity, photo, zoom and card links belong only to the newly selected athlete');
+    assert.equal(await connection.evaluate('window.appearanceRequests.length', session), requestsBeforeSwitch, 'switching athletes does not auto-save either design');
+
+    const expectedSecondSaved = await connection.evaluate(`({...window.secondSavedAppearance,lowerThirdTemplate:'glass'})`, session);
+    await connection.evaluate(`document.querySelector('[data-testid="lower-third-template-cycler-next"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="lower-third-template-cycler-selected"]')?.textContent`, value => value === 'Glass', 5_000);
+    const secondDraft = await connection.evaluate<Record<string, unknown>>(editorSnapshot, session);
+    await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
+    await waitFor(connection, session, `window.appearanceRequests.length===${requestsBeforeSwitch + 1} && document.querySelector('[data-testid="button-save-appearance"]').matches(':disabled')`, Boolean, 10_000);
+    assert.deepEqual(await connection.evaluate(`window.appearanceRequests.slice(${requestsBeforeSwitch})`, session), [
+      { token: 'second-athlete', method: 'PATCH', appearance: expectedSecondSaved },
+    ], 'Save design sends exactly one update to the newly selected invite');
+    assert.deepEqual(await connection.evaluate(editorSnapshot, session), { ...secondDraft, saveDisabled: true }, 'saving keeps the second athlete preview intact and marks it clean');
+    assert.deepEqual(await connection.evaluate(identitySnapshot, session), secondIdentity, 'saving does not restore the first athlete identity or photo');
+    assert.deepEqual(await connection.evaluate(`JSON.parse(localStorage.getItem('second-card-settings'))`, session), expectedSecondSaved, 'only the second athlete receives the newly saved design');
+    assert.equal(await connection.evaluate(`localStorage.getItem('simple-card-settings')`, session), firstPersistedBeforeSwitch, 'the first athlete persisted design remains untouched');
+    assert.deepEqual(await connection.evaluate('window.savedCardAppearance', session), firstSavedBeforeSwitch, 'the first athlete server fixture remains untouched');
+
+    await connection.evaluate(`document.querySelector('[data-testid="select-first-athlete"]').click()`, session);
+    await waitFor(connection, session, `document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent==='Varsity' && document.querySelector('[data-testid="button-save-appearance"]').matches(':disabled')`, Boolean, 5_000);
+    assert.deepEqual(await connection.evaluate(editorSnapshot, session), cleanAfterRefresh, 'returning to the first athlete restores their saved design, not either unsaved or second-athlete design');
   } finally {
     connection?.close();
     browser.kill('SIGKILL');
