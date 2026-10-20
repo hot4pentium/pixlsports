@@ -11,6 +11,12 @@ For recipients viewing the HYPE Card side, keep the header to the athlete’s na
 
 **Why:** The user requested a larger recipient card and said “we only need the name at the top.”
 
+The Hub card’s Share button must share the public Player Showcase, not the standalone HYPE Card; both copied links and QR codes use that destination.
+
+**Why:** The user explicitly requested that the link from the Share button lead to the public Player Showcase.
+
+**How to apply:** Keep sharing destinations separate from preview/open-card navigation so changing Share does not change where tapping the card goes.
+
 **Why:** The user explicitly clarified that unrelated jersey and owner-management content must not remain visible when the carousel rotates to the HYPE Card, then repeated that the shared link must show the full card with flip buttons and data, not gear.
 
 **How to apply:** Keep the layered visual rotation, but suppress inactive-face controls and condition owner-only sections on the selected face. Card actions such as editing and opening the public card remain available on 02 HYPE CARD.

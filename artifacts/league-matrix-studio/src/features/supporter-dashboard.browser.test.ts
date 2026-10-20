@@ -5174,7 +5174,8 @@ test('mobile event guidance prioritizes live games and always offers a next acti
   }
 });
 
-test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh owner data', { concurrency: false }, async () => {
+for (const shareOnly of [false, true]) {
+test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and desktop' : 'mobile Calendar and saved HYPE Card stay paired with safe states and fresh owner data', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-hype-pair');
   let devServer: ChildProcess | undefined, browser: ChildProcess | undefined;
@@ -5216,7 +5217,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
     const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean);
     const verifyHypeCardShare = async (variant: 'mobile' | 'desktop') => {
-      const expectedUrl = new URL('/fan/saved-athlete-token', fixtureUrl).toString();
+      const expectedUrl = new URL('/showcase/saved-athlete-token', fixtureUrl).toString();
       await wait(`Boolean(document.querySelector('[data-testid="button-${variant}-hype-card-share"]'))`);
       await evaluate(`document.querySelector('[data-testid="button-${variant}-hype-card-share"]').click()`);
       await wait(`Boolean(document.querySelector('[data-testid="img-${variant}-hype-card-qr"]'))`);
@@ -5232,7 +5233,7 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       assert.deepEqual(revealed, {
         link: expectedUrl,
         qrSrc: revealed.qrSrc,
-        qrAlt: "QR code for Alexandria Montgomery-Williams's public HYPE Card",
+        qrAlt: "QR code for Alexandria Montgomery-Williams's public Player Showcase",
       });
       assert.match(revealed.qrSrc, /^data:image\/png;base64,/);
       await evaluate(`Object.defineProperty(navigator, 'clipboard', {
@@ -5302,17 +5303,26 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
       );
     };
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
-    await wait(`document.body?.textContent.includes('Loading your card')`);
+    if (shareOnly) {
+      await wait(`typeof window.__setHypePreviewState === 'function'`);
+      await evaluate(`window.__setHypePreviewState('velocity')`);
+    }
+    if (!shareOnly) await wait(`document.body?.textContent.includes('Loading your card')`);
     const initialPreviewStates = await evaluate<Array<{ testId: string | null; text: string }>>(`Array.from(document.querySelectorAll('.supporter-hype-preview')).map((preview) => ({
       testId: preview.getAttribute('data-testid'),
       text: preview.textContent || '',
     }))`);
-    assert.ok(
+    if (!shareOnly) assert.ok(
       initialPreviewStates.some((preview) => preview.testId === 'mobile-saved-hype-card' && preview.text.includes('Loading')),
       `the mobile card preview should expose its loading state: ${JSON.stringify(initialPreviewStates)}`,
     );
     await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
     await verifyHypeCardShare('mobile');
+    if (shareOnly) {
+      await connection.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, page.sessionId);
+      await verifyHypeCardShare('desktop');
+      return;
+    }
     for (const design of ['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']) {
       await evaluate(`window.__setHypePreviewState('${design}')`);
       await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design === '${design}'`);
@@ -5513,6 +5523,8 @@ test('mobile Calendar and saved HYPE Card stay paired with safe states and fresh
     release();
   }
 });
+
+}
 
 test('mobile saved HYPE Card follows authenticated real owner API saves, reloads and isolation', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
