@@ -65,7 +65,7 @@ import {
 import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, removeSavedGameOnCard, type SavedGameOnCard } from './game-on-card-storage';
 import { getBrowserTimeZone } from './game-on-timezone';
-import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
+import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredActiveGame, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
 import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
@@ -1016,6 +1016,25 @@ export function SupporterDashboardView({
     }, currentTime, { includePregameCaptureWindow: false }) === 'upcoming';
   }));
   const nextUpcomingEvent = upcomingEventCards[0] ?? null;
+  const liveEventCard = sortGameOnCardsByDate(dashboardCards).find((card) =>
+    card.date.trim() && getSupporterGameStage({
+      date: card.date, time: card.time, timezone: card.timezone, type: card.type,
+      status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
+    }, currentTime, { includePregameCaptureWindow: false }) === 'live',
+  );
+  const storedActiveGame = userId ? readStoredActiveGame(window.localStorage, userId) : null;
+  const activeTrackedGame = storedActiveGame && (storedActiveGame.status === 'live' || storedActiveGame.status === 'paused')
+    && (!profile.sport || storedActiveGame.sport === profile.sport) ? storedActiveGame : null;
+  const guidanceEventCard = liveEventCard ?? (activeTrackedGame ? null : nextUpcomingEvent);
+  const hasLiveGuidance = Boolean(liveEventCard || activeTrackedGame);
+  const openGuidanceEventCard = () => {
+    if (!guidanceEventCard) return;
+    selectCard(guidanceEventCard.id);
+    window.requestAnimationFrame(() => {
+      document.querySelector(`[data-testid="card-game-on-${CSS.escape(guidanceEventCard.id)}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
 
   const renderUpcomingEventsList = (variant: 'mobile' | 'desktop') => {
     if (upcomingEventCards.length === 0) {
@@ -1102,27 +1121,50 @@ export function SupporterDashboardView({
         {renderUpcomingEventsList('desktop')}
       </div>
     ) : (
-      <div className="supporter-event-graphic supporter-event-graphic--mobile">
+      <div className={`supporter-event-graphic supporter-event-graphic--mobile${hasLiveGuidance || !guidanceEventCard ? ' supporter-event-graphic--guidance' : ''}`}>
         <h2
           id="mobile-upcoming-calendar-events-heading"
           className="sr-only"
           data-testid="upcoming-calendar-events-heading"
         >
-          Upcoming events
+          Game-day guidance
         </h2>
-        {nextUpcomingEvent ? (
+        {guidanceEventCard && !hasLiveGuidance && (
           <SupporterUpcomingEventBadge
             src={`${basePath}/assets/upcoming-event-card-enlarged.png`}
-            category={nextUpcomingEvent.type === 'game' ? 'Upcoming game' : 'Upcoming practice'}
-            title={getUpcomingEventCardTitle(nextUpcomingEvent, profile.teamName)}
+            category={`Upcoming ${guidanceEventCard.type === 'game' ? 'game' : 'practice'}`}
+            title={getUpcomingEventCardTitle(guidanceEventCard, profile.teamName)}
             dateTime={[
-              formatDateDisplay(nextUpcomingEvent.date),
-              formatTimeDisplay(nextUpcomingEvent.time),
+              formatDateDisplay(guidanceEventCard.date),
+              formatTimeDisplay(guidanceEventCard.time),
             ].filter(Boolean).join(' · ')}
           />
-        ) : (
-          renderUpcomingEventsList('mobile')
         )}
+        {(!guidanceEventCard || hasLiveGuidance) && <div className="supporter-event-guidance" data-testid="mobile-event-guidance" data-state={hasLiveGuidance ? 'live' : 'empty'}>
+          <span className="supporter-event-guidance__label">{hasLiveGuidance ? 'Happening now' : 'Ready for what’s next'}</span>
+          <h3>{hasLiveGuidance
+            ? activeTrackedGame?.status === 'paused' && !liveEventCard ? 'Your game is paused.' : guidanceEventCard?.type === 'practice' ? 'Practice is live.' : 'Game day is live.'
+            : 'Keep your athlete’s week moving.'}</h3>
+          {hasLiveGuidance && <strong className="supporter-event-guidance__event">{guidanceEventCard
+            ? getUpcomingEventCardTitle(guidanceEventCard, profile.teamName)
+            : activeTrackedGame?.opponent ? `${profile.teamName || 'Your team'} vs ${activeTrackedGame.opponent}` : profile.athleteName || 'Your athlete'}</strong>}
+          <p>{hasLiveGuidance
+            ? guidanceEventCard?.type === 'practice'
+              ? 'Practice is underway. Open your Event Card for details and preparation.'
+              : 'Keep tracking your athlete’s moments. Open the game to update stats and the score.'
+            : 'Create an Event Card for the next game or practice. If a game is already underway, open the tracker.'}</p>
+          {guidanceEventCard ? (
+            <button type="button" onClick={openGuidanceEventCard} data-testid="button-guidance-event-card">
+              {hasLiveGuidance ? 'Open live Event Card' : 'Open Event Card'} <ArrowRight size={14} aria-hidden="true" />
+            </button>
+          ) : hasLiveGuidance ? (
+            <Link href={supporterToolRoutes.statTracker} data-testid="link-guidance-tracker">Continue tracking <ArrowRight size={14} aria-hidden="true" /></Link>
+          ) : <>
+            <button type="button" onClick={openCardWorkspace} data-testid="button-guidance-create-event">Create Event Card <ArrowRight size={14} aria-hidden="true" /></button>
+            <Link href={supporterToolRoutes.statTracker} data-testid="link-guidance-tracker">Game on now? Open tracker</Link>
+          </>}
+        </div>}
+        {!guidanceEventCard && !hasLiveGuidance && <span className="sr-only" data-testid="upcoming-calendar-events-empty">No upcoming games or practices are available as Event Cards.</span>}
         {upcomingEventCards.length > 0 && renderUpcomingEventsList('mobile')}
       </div>
     )

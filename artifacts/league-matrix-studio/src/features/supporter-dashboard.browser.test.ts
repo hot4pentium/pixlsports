@@ -319,7 +319,7 @@ async function waitFor<T>(
   }));
   throw new Error(
     `Timed out waiting for browser condition: ${expression}; testError=${diagnostic.testError || 'none'}; `
-    + `url=${diagnostic.url}; readyState=${diagnostic.readyState}; body=${diagnostic.body.slice(0, 400)}; html=${diagnostic.html.slice(0, 700)}`,
+    + `url=${diagnostic.url}; readyState=${diagnostic.readyState}; body=${diagnostic.body.slice(0, 400)}; html=${diagnostic.html.slice(0, 700)}; ${page.diagnostics()}`,
   );
 }
 
@@ -5083,6 +5083,93 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
     await rm(fixtures.harnessPath, { force: true });
     await rm(fixtures.htmlPath, { force: true });
     releaseBrowserTestLock();
+  }
+});
+
+test('mobile event guidance prioritizes live games and always offers a next action', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-event-guidance');
+  let devServer: ChildProcess | undefined, browser: ChildProcess | undefined;
+  let devMonitor: ProcessMonitor | undefined, browserMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined, connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  try {
+    const probe = createServer();
+    const { port } = await listen(probe);
+    await new Promise<void>((done) => probe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource());
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)));
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(port), BASE_PATH: '/', VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devMonitor = monitorProcess(devServer, 'Guidance fixture Vite');
+    await waitForUrl(`http://127.0.0.1:${port}/`, 20_000, devMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-event-guidance-'));
+    browser = spawn(chromiumPath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Guidance fixture Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, () => `${devMonitor?.diagnostics()}; ${browserMonitor?.diagnostics()}`);
+    page = await openPage(connection, `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?mobile-hype-pair`);
+    const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
+    const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean, 30_000);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+    await wait(`typeof window.__setSupporterDashboardEvents==='function'`);
+    await evaluate(`window.__setHypePreviewState('velocity'); window.__setSupporterDashboardEvents([])`);
+    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
+    assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Create Event Card/);
+    assert.equal(await evaluate(`document.querySelector('[data-testid="link-guidance-tracker"]').getAttribute('href')`), '/studio/stat-tracker');
+    await evaluate(`window.__setSupporterDashboardEvents([
+      {id:'guidance-live',type:'game',date:new Date().toISOString().slice(0,10),time:'00:00',timezone:'UTC',opponent:'Live Hawks',location:'Field 1',status:'live'},
+      {id:'guidance-future',type:'game',date:new Date(Date.now()+86400000*3).toISOString().slice(0,10),time:'18:00',timezone:'UTC',opponent:'Future Owls',location:'Field 2',status:'upcoming'}
+    ])`);
+    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='live'`);
+    assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Live Hawks/);
+    assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Future Owls|No upcoming/);
+    await evaluate(`document.querySelector('[data-testid="button-guidance-event-card"]').click()`);
+    await wait(`!!document.querySelector('[data-testid="card-game-on-draft:guidance-live"] input')`);
+    await evaluate(`document.querySelector('[aria-label="Close Event Card"]').click()`);
+    await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:guidance-live"]')`);
+    for (const width of [320, 390, 568]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+      assert.equal(await evaluate(`(() => {
+        const panel=document.querySelector('[data-testid="mobile-event-guidance"]'),button=panel.querySelector('button');
+        const p=panel.getBoundingClientRect(),b=button.getBoundingClientRect();
+        return b.width>0&&b.height>=44&&b.left>=p.left&&b.right<=p.right&&document.documentElement.scrollWidth<=innerWidth;
+      })()`), true, `live guidance remains actionable at ${width}px`);
+    }
+    await evaluate(`document.querySelector('[data-testid="mobile-event-guidance"]').scrollIntoView({block:'center'})`);
+    const capture = await connection.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 }, page.sessionId);
+    await writeFile(resolve(tmpdir(), 'pixl-live-event-guidance.jpg'), Buffer.from(capture.data, 'base64'));
+    await evaluate(`window.__setSupporterDashboardEvents([])`);
+    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
+    await evaluate(`document.querySelector('[data-testid="button-guidance-create-event"]').click()`);
+    await wait(`!!document.querySelector('[data-testid^="card-game-on-new-card-"]')`);
+    await evaluate(`localStorage.setItem('leaguematrix-stat-tracker-active-game:guidance-owner',JSON.stringify({
+      id:'guidance-tracker',sport:'basketball',status:'paused',date:new Date().toISOString().slice(0,10),opponent:'Tracker Falcons',period:1,score:2,opponentScore:0,notes:'',stats:{},events:[],startedAt:new Date().toISOString()
+    }));window.__setSupporterDashboardTrackerUserId('guidance-owner')`);
+    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='live'`);
+    assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /paused/);
+    assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Tracker Falcons/);
+    assert.equal(await evaluate(`document.querySelector('[data-testid="link-guidance-tracker"]').getAttribute('href')`), '/studio/stat-tracker');
+    await evaluate(`window.__setSupporterDashboardTrackerUserId('another-owner')`);
+    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
+    assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Tracker Falcons/);
+  } finally {
+    if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+    connection?.close();
+    if (browser && browserMonitor) { if (!browserMonitor.hasExited()) browser.kill('SIGTERM'); await browserMonitor.waitForExit(); }
+    if (devServer && devMonitor) { if (!devMonitor.hasExited()) devServer.kill('SIGTERM'); await devMonitor.waitForExit(); }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    release();
   }
 });
 
