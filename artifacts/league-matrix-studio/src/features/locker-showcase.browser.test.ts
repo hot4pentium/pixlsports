@@ -236,6 +236,9 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await writeFile(resolve(tmpdir(), 'pixl-shared-locker-check.jpg'), Buffer.from(publicCapture.data, 'base64'));
     await browser.evaluate(`window.__update({mode:'public-showcase'})`);
     await browser.wait(`document.querySelector('[data-testid="page-public-player-showcase"]')`);
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    assert.ok(await browser.evaluate(`(()=>{const name=document.querySelector('[data-testid="text-public-showcase-name"]').getBoundingClientRect();const gear=document.querySelector('[data-testid^="collection-sport-gear-"]').getBoundingClientRect();return Math.abs(name.left-gear.left)<1})()`), 'landscape gear cards align with the athlete name');
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), 'Jordan Lee.');
     assert.equal(await browser.evaluate(`document.querySelectorAll('a[href*="/fan/"]').length`), 0, 'the shared Showcase has no separate HYPE Card links');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')`), 'true');

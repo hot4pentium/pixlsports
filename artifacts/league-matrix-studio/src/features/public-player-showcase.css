@@ -111,6 +111,16 @@
 .public-showcase--card .public-showcase__hero-copy { display: flex; flex-direction: column; padding: 0; }
 .public-showcase--card .public-showcase__hero h1 { margin: 0; font-size: clamp(36px, 9vw, 56px); line-height: 1; }
 .public-showcase--card .public-showcase__carousel-tabs { margin-top: 12px; }
+.public-showcase__gear {
+  display: grid;
+  grid-template-columns: minmax(300px, .9fr) minmax(400px, 1.1fr);
+  column-gap: clamp(36px, 7vw, 104px);
+  width: min(1180px, calc(100% - 56px));
+  margin: 0 auto 40px;
+}
+.public-showcase__gear > .public-showcase__eyebrow,
+.public-showcase__gear > .sgc { grid-column: 1; }
+.public-showcase__gear > .public-showcase__eyebrow { margin-bottom: 10px; }
 .public-showcase__details {
   display: grid; grid-template-columns: repeat(4, 1fr); width: min(1180px, calc(100% - 56px));
   margin: 0 auto; border-top: 1px solid rgba(191, 216, 247, .18); border-bottom: 1px solid rgba(191, 216, 247, .18);
@@ -168,6 +178,7 @@
   .public-showcase__intro { margin-top: 18px; }
   .public-showcase__carousel-tabs { margin-top: 20px; }
   .public-showcase__visual { min-height: 380px; }
+  .public-showcase__gear { display: block; width: calc(100% - 36px); }
   .public-showcase__card-slide { padding: 50px 20px 16px; }
   .public-showcase__card-slide--interactive { padding: 0; }
   .public-showcase__card-art { width: min(100%, 205px); }

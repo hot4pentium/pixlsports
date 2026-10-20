@@ -157,7 +157,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
         </div>
       </section>
 
-      {activeSlide === 'jersey' && showcaseGear && <section aria-label="Earned equipment" data-testid="section-public-showcase-gear">
+      {activeSlide === 'jersey' && showcaseGear && <section className="public-showcase__gear" aria-label="Earned equipment" data-testid="section-public-showcase-gear">
         <p className="public-showcase__eyebrow">Earned equipment</p>
         <SportGearCollection sport={showcaseGear.sport} earnedGear={showcaseGear.earnedGear} equippedGear={showcaseGear.equippedGear} />
       </section>}
