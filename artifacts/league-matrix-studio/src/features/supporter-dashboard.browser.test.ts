@@ -266,6 +266,7 @@ async function openPage(connection: DevToolsConnection, url: string) {
   await connection.send('Page.enable', {}, sessionId);
   await connection.send('Runtime.enable', {}, sessionId);
   connection.registerTarget(target.targetId, sessionId);
+  await connection.send('Page.bringToFront', {}, sessionId);
   await connection.send('Page.navigate', { url }, sessionId);
   return { sessionId, targetId: target.targetId };
 }
@@ -307,8 +308,8 @@ async function waitFor<T>(
     if (predicate(value)) return value;
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
   }
-  const diagnostic = await page.evaluate<{ body: string; html: string; readyState: string; url: string; testError?: string }>(
-    '({ body: document.body?.innerText || "", html: document.documentElement?.outerHTML || "", readyState: document.readyState, url: location.href, testError: document.body?.dataset.testError })',
+  const diagnostic = await page.evaluate<{ body: string; html: string; readyState: string; url: string; testError?: string; root: string; resources: string[]; consoleErrors: string[] }>(
+    '({ body: document.body?.innerText || "", html: document.documentElement?.outerHTML || "", readyState: document.readyState, url: location.href, testError: document.body?.dataset.testError, root: document.querySelector("#test-root")?.innerHTML || "", resources: performance.getEntriesByType("resource").map((entry) => entry.name).slice(-12), consoleErrors: window.__browserTestConsoleErrors || [] })',
     sessionId,
   ).catch((error) => ({
     body: `unavailable: ${error instanceof Error ? error.message : String(error)}`,
@@ -316,10 +317,13 @@ async function waitFor<T>(
     readyState: 'unavailable',
     url: 'unavailable',
     testError: undefined,
+    root: '',
+    resources: [],
+    consoleErrors: [],
   }));
   throw new Error(
     `Timed out waiting for browser condition: ${expression}; testError=${diagnostic.testError || 'none'}; `
-    + `url=${diagnostic.url}; readyState=${diagnostic.readyState}; body=${diagnostic.body.slice(0, 400)}; html=${diagnostic.html.slice(0, 700)}; ${page.diagnostics()}`,
+    + `url=${diagnostic.url}; readyState=${diagnostic.readyState}; body=${diagnostic.body.slice(0, 400)}; root=${diagnostic.root.slice(0, 600)}; resources=${JSON.stringify(diagnostic.resources)}; consoleErrors=${JSON.stringify(diagnostic.consoleErrors)}; html=${diagnostic.html.slice(0, 700)}; ${page.diagnostics()}`,
   );
 }
 
@@ -6476,6 +6480,12 @@ function htmlSource(harnessFilename: string) {
 <html>
   <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Supporter dashboard browser test</title></head>
   <body><div id="test-root"></div><script type="module">
+    window.__browserTestConsoleErrors = [];
+    const nativeConsoleError = console.error.bind(console);
+    console.error = (...args) => {
+      window.__browserTestConsoleErrors.push(args.map((argument) => typeof argument === 'string' ? argument : argument?.stack || String(argument)).join(' '));
+      nativeConsoleError(...args);
+    };
     window.addEventListener('error', (event) => {
       document.body.dataset.testError = String(event.error?.stack || event.message);
     });

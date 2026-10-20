@@ -68,3 +68,9 @@ Chromium device-metrics overrides persist for the inspected page until another o
 **Why:** A desktop visibility assertion can accidentally run at the phone dimensions left by an earlier mobile check, making a correctly hidden desktop shell look like a layout failure.
 
 **How to apply:** Explicitly restore the intended width, height, and mobile setting before measuring each viewport class in a shared browser session.
+
+The standalone `mobile-hype-pair` fixture has left its React root empty before the first dashboard assertion even while Vite modules load and no window error is recorded.
+
+**Why:** Repeating the same dashboard run did not reach its navigation assertions, so the failure was in fixture startup rather than evidence about the HYPE Card link.
+
+**How to apply:** Inspect the fixture root and loaded resources; if it remains empty, verify preview navigation in a smaller browser fixture with Clerk stubbed instead of repeating the unchanged run.

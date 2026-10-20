@@ -95,6 +95,7 @@ import {SportGearBuilderPage} from './src/features/sport-gear-builder';
 import {sportGearItems} from './src/features/sport-gear-collection';
 import {FanCardAppearanceManager} from './src/features/fan-card-appearance-manager';
 import {AthleteEditorInvitationPanel} from './src/features/athlete-invite';
+import {SupporterHypeCardPreview} from './src/features/supporter-hype-card-preview';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
  const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],liveTaps:{active:false,gameId:null,cheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
@@ -170,7 +171,7 @@ function render() {
    const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
    const linkedCard = {...card,inviteToken:card.inviteToken,hypesEnabled:true,timezone:null,seasonEndsAt:'',photoUrl:null,cutoutUrl:null,hypeCard:null,videos:[],stats:null,scheduleEvents:[],replies:[],liveScoreboard:null,liveTaps:{active:false,taps:[]},updatedAt:''};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-      {state.mode==='appearance-editor' ? <FanCardAppearanceManager invite={{...card,photoUrl:null,cardAppearance:{design:'velocity',borderColor:'#123456',accentColor:'#ABCDEF',accentLinked:false,athleteX:0.1,athleteY:0.05,athleteScale:1,jerseyNumber:'17',position:'Striker'}}} profile={{athleteName:card.athleteName,jerseyNumber:'17',position:'Striker'}} athleteEditor/> : state.mode==='invitation-panel' ? <AthleteEditorInvitationPanel inviteToken="fixture-athlete-editor-invitation-token"/> : state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus} sportGear={sportState()} sportGearStatus="ready" athleteRestricted={state.athleteRestricted} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} hypeHref={'/player/'+card.inviteToken+'/manage#design'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
+       {state.mode==='appearance-editor' ? <FanCardAppearanceManager invite={{...card,photoUrl:null,cardAppearance:{design:'velocity',borderColor:'#123456',accentColor:'#ABCDEF',accentLinked:false,athleteX:0.1,athleteY:0.05,athleteScale:1,jerseyNumber:'17',position:'Striker'}}} profile={{athleteName:card.athleteName,jerseyNumber:'17',position:'Striker'}} athleteEditor/> : state.mode==='invitation-panel' ? <AthleteEditorInvitationPanel inviteToken="fixture-athlete-editor-invitation-token"/> : state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus} sportGear={sportState()} sportGearStatus="ready" athleteRestricted={state.athleteRestricted} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} hypeHref={'/player/'+card.inviteToken+'/manage#design'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : state.mode==='hype-preview' ? <div><SupporterHypeCardPreview placement="mobile" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/><SupporterHypeCardPreview placement="desktop" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/></div> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -730,6 +731,20 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
      await browser.wait(`document.querySelector('[data-testid="link-back-supporter-dashboard"]')`);
      await browser.evaluate(`document.querySelector('[data-testid="link-back-supporter-dashboard"]').click()`);
      await browser.wait(`location.pathname==='${base}/studio'`);
+     await browser.evaluate(`window.__update({mode:'hype-preview'})`);
+     await browser.wait(`document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
+     assert.equal(
+       await browser.evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').getAttribute('href')`),
+       `${base}/studio/player-showcase`,
+       'the mobile dashboard HYPE Card preview links to the owner Showcase',
+     );
+     assert.equal(
+       await browser.evaluate(`document.querySelector('[data-testid="link-desktop-hype-preview"]').getAttribute('href')`),
+       `${base}/fan/fixture-athlete`,
+       'the desktop preview keeps its direct HYPE Card destination',
+     );
+     await browser.evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').click()`);
+     await browser.wait(`location.pathname==='${base}/studio/player-showcase'`);
   } finally {
     browser?.close();
     await stop(chromium);

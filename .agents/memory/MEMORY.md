@@ -120,4 +120,5 @@
 - [Sharp sprite cropping](sharp-crop-trim-order.md) — materialize each crop before trimming; Sharp can otherwise apply trim ahead of extraction.
 - [Simplified interactive HYPE Card](simple-interactive-hype-card.md) — keep full 2:3 portrait framing, lower-third at the bottom, left branding, style choices, identity, positioning, and public flips.
 - [Showcase slide boundaries](showcase-slide-boundaries.md) — the HYPE Card slide shows only card content and card actions; jersey and owner-management content belongs to the Jersey slide.
+- [Mobile dashboard Showcase navigation](mobile-dashboard-showcase-navigation.md) — the mobile owner card opens private Showcase; sharing stays public, and the owner can return to Supporter Hub.
 - [Sport gear package sequence](sport-gear-package-sequence.md) — redesign and settle one sport’s earned gear pack at a time; wait before changing others.
