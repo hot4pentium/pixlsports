@@ -8,6 +8,8 @@ type Props = {
   side?: CardSide;
   eventToday?: boolean;
   eventCount?: number;
+  liveScoreboardAvailable?: boolean;
+  liveTapsActive?: boolean;
   onSelectSide?: (next: CardSide) => void;
   decorative?: boolean;
 };
@@ -35,15 +37,25 @@ export function LivingCardControls({
   side = 'front',
   eventToday = false,
   eventCount = 0,
+  liveScoreboardAvailable = false,
+  liveTapsActive = false,
   onSelectSide,
   decorative = false,
 }: Props) {
+  const isLive = (control: (typeof controls)[number]) => (
+    (control.side === 'stats' && liveScoreboardAvailable)
+    || (control.side === 'live-taps' && liveTapsActive)
+  );
+  const liveLabel = (control: (typeof controls)[number]) => (
+    control.side === 'stats' ? 'Live scoreboard available' : 'Game Day Live is active'
+  );
   const content = (control: (typeof controls)[number]) => (
     <>
       <ControlIcon side={control.side} />
       {control.label}
       {control.side === 'events' && eventCount > 0 && <span className="living-card-control-count">({eventCount})</span>}
       {control.side === 'events' && eventToday && <span className="sr-only"> · Event today</span>}
+      {isLive(control) && <span className="sr-only"> · {liveLabel(control)}</span>}
     </>
   );
 
@@ -55,7 +67,11 @@ export function LivingCardControls({
       aria-hidden={decorative || undefined}
     >
       {controls.map((control) => {
-        const className = `living-card-control${control.side === 'events' && eventToday ? ' living-card-control-today' : ''}`;
+        const className = [
+          'living-card-control',
+          control.side === 'events' && eventToday ? 'living-card-control-today' : '',
+          isLive(control) ? 'living-card-control-live' : '',
+        ].filter(Boolean).join(' ');
         if (decorative) {
           return <span key={control.side} className={className}>{content(control)}</span>;
         }
@@ -64,7 +80,7 @@ export function LivingCardControls({
             key={control.side}
             type="button"
             className={className}
-            aria-label={control.ariaLabel}
+            aria-label={isLive(control) ? `${control.ariaLabel ?? control.label}, ${liveLabel(control)}` : control.ariaLabel}
             aria-pressed={side === control.side}
             aria-controls="living-card-display"
             onClick={() => onSelectSide?.(control.side)}

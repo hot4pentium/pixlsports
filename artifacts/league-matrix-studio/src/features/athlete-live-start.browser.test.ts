@@ -392,6 +392,15 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await waitUi(tracker, `document.querySelector('[role="status"]')?.textContent?.includes('Game Day Live is active')`);
     const publicCard = await open('fan');
     await waitUi(publicCard, `Boolean(document.querySelector('[data-testid="button-living-card-stats"]'))`);
+    await waitUi(publicCard, `document.querySelector('[data-testid="button-living-card-stats"]')?.classList.contains('living-card-control-live') && document.querySelector('[data-testid="button-living-card-live-taps"]')?.classList.contains('living-card-control-live')`);
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="button-living-card-stats"]')?.getAttribute('aria-label')`,
+      publicCard,
+    ), 'Stats, Live scoreboard available');
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="button-living-card-live-taps"]')?.getAttribute('aria-label')`,
+      publicCard,
+    ), 'Live Taps, Game Day Live is active');
     await click(publicCard, 'button-living-card-stats');
     await waitUi(publicCard, `document.querySelector('[data-testid="fan-card-live-scoreboard"]')?.textContent?.includes('0–0')`);
     await click(tracker, 'live-stat-two-point');
@@ -453,6 +462,7 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await close(familyCard);
     const finalCard = await open('fan');
     await waitUi(finalCard, `Boolean(document.querySelector('[data-testid="button-living-card-stats"]'))`);
+    await waitUi(finalCard, `!document.querySelector('[data-testid="button-living-card-stats"]')?.classList.contains('living-card-control-live') && !document.querySelector('[data-testid="button-living-card-live-taps"]')?.classList.contains('living-card-control-live')`);
     await click(finalCard, 'button-living-card-stats');
     await waitUi(finalCard, `document.querySelector('[data-testid="fan-card-live-scoreboard"]') === null`);
     await click(finalCard, 'button-living-card-live-taps');

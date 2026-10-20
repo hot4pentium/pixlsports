@@ -759,7 +759,14 @@ export function LivingAthleteCardPage({
                 </div>
               </div>
             </div>
-            <LivingCardControls side={side} eventToday={eventToday} eventCount={linkedEvents.length} onSelectSide={selectSide} />
+            <LivingCardControls
+              side={side}
+              eventToday={eventToday}
+              eventCount={linkedEvents.length}
+              liveScoreboardAvailable={Boolean(invite.liveScoreboard)}
+              liveTapsActive={invite.liveTaps.active}
+              onSelectSide={selectSide}
+            />
             <button type="button" className="living-card-return-front" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Flip to card front</button>
 
             {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
