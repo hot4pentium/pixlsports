@@ -17,6 +17,12 @@ The shared Player Showcase presents the athlete’s sport-specific jersey and HY
 
 **How to apply:** Match the owner’s current athlete before constructing a Showcase URL or loading its card; keep public visibility rules intact and do not replace the card’s existing interactive route.
 
+Recipients must be able to find alert sign-up on the shared Showcase itself, rather than only on the separate HYPE Card page. Reuse the athlete's existing follow consent, and keep pre-event announcements explicitly opt-in and owner-initiated.
+
+**Why:** The user pointed out that recipients could not find a subscription option on the shared Showcase.
+
+**How to apply:** Keep an obvious recipient alert entry alongside shared Events without implying that following automatically enables alerts or scheduled reminders.
+
 The fan card and Athlete Hype Page are photo-first and do not expose video upload, playback, or video-side controls. Preserve older media records and direct share URLs.
 
 **Why:** The user removed video from Hype Cards and athlete profiles while explicitly preserving existing saved media and share records.

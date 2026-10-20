@@ -4,7 +4,7 @@ import {
   useGetAthleteFanCard,
   useGetPublicJerseyShowcaseGear,
 } from '@workspace/api-client-react';
-import { ArrowUpRight, CalendarDays, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, Bell, CalendarDays, ShieldCheck } from 'lucide-react';
 import { Link } from 'wouter';
 import { useState } from 'react';
 import { normalizeCardAppearance } from './hype-card-appearance';
@@ -113,6 +113,11 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} data-testid="button-public-showcase-slide-jersey"><span>01</span> Jersey</button>
             <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} data-testid="button-public-showcase-slide-card"><span>02</span> HYPE Card</button>
           </div>
+          {activeSlide === 'jersey' && invite.showEvents && (
+            <a className="public-showcase__alerts-link" href="#showcase-event-alerts" data-testid="link-public-showcase-alerts">
+              <Bell size={16} aria-hidden="true" /> Get event alerts
+            </a>
+          )}
           {activeSlide === 'jersey' && <span className="public-showcase__read-only"><ShieldCheck size={14} aria-hidden="true" /> Public view · read only</span>}
         </div>
 
@@ -209,7 +214,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           </p>
         )}
         {invite.showEvents && (
-          <div className="public-showcase__alerts" data-testid="section-public-showcase-alerts">
+          <div id="showcase-event-alerts" tabIndex={-1} className="public-showcase__alerts" data-testid="section-public-showcase-alerts">
             <FanCardFollow inviteToken={inviteToken} surface="showcase" />
           </div>
         )}

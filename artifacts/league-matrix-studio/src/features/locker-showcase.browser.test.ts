@@ -113,6 +113,7 @@ window.fetch = async (input,init) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url.includes('/api/')) {
     window.__requests.push(url);
+    if(url.endsWith('/api/notifications/config'))return new Response(JSON.stringify({available:false,publicKey:null}),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/api/athlete-invites/')&&url.includes('/editor-access')){
       if(init?.method==='POST'){
         const body=JSON.parse(init.body);window.__invitationPayloads.push(body);
@@ -246,6 +247,11 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="section-public-showcase-alerts"] h2')?.textContent`), 'Get event alerts');
     assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-alerts"] [data-testid="button-follow-fan-card"]'))`), true);
     assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="input-fan-alert-event"]'))`), true);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-alerts"]')?.getAttribute('href')`), '#showcase-event-alerts');
+    await browser.evaluate(`document.querySelector('[data-testid="button-follow-fan-card"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="button-follow-fan-card"]')?.getAttribute('aria-pressed')==='true'`);
+    assert.equal(await browser.evaluate(`JSON.parse(localStorage.getItem('pixl-fan-card-follow:fixture-athlete')).following`), true);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`), false, 'following does not silently enable event alerts');
     await swipe('[data-testid="figure-public-showcase-jersey"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')`), 'true');
@@ -271,12 +277,15 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')==='true'`);
     await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-jersey"]')`);
+    await browser.wait(`document.querySelector('[data-testid="button-follow-fan-card"]')?.getAttribute('aria-pressed')==='true'`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-follow-fan-card"]').click()`);
+    await browser.wait(`localStorage.getItem('pixl-fan-card-follow:fixture-athlete')===null`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
     await browser.wait(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')?.naturalWidth>0`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'earned gear appears on the public jersey Showcase without a HYPE Card sharing setting');
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="link-public-showcase-event-"]')?.getAttribute('href')`), `${base}/game-on/fixture-event`);
-    assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan') || url.includes('/athlete-invites/fixture-athlete/jersey-showcase/gear'))`), 'public gear uses its dedicated endpoint, separate from HYPE Card data');
+    assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan') || url.includes('/athlete-invites/fixture-athlete/jersey-showcase/gear') || url.endsWith('/api/notifications/config'))`), 'public gear and alert configuration use their dedicated endpoints, separate from HYPE Card data');
     const publicSoccerGearCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-public-soccer-gear-table-check.jpg'), Buffer.from(publicSoccerGearCapture.data, 'base64'));
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]'))`), 'gear remains on the Showcase without a visibility toggle');
