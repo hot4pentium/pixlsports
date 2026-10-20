@@ -89,30 +89,30 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
   const activeSlide = selectedSlide;
 
   return (
-    <main className="public-showcase" data-testid="page-public-player-showcase">
-      <header className="public-showcase__topbar">
+    <main className={`public-showcase${activeSlide === 'card' ? ' public-showcase--card' : ''}`} data-testid="page-public-player-showcase">
+      {activeSlide === 'jersey' && <header className="public-showcase__topbar">
         <div className="public-showcase__brand" aria-label="Pixl Sports">
           <span className="public-showcase__brand-icon" aria-hidden="true">P</span>
           <span>PIXL <b>SPORTS</b></span>
         </div>
         <span className="public-showcase__safe-label"><ShieldCheck size={15} aria-hidden="true" /> Shared by family</span>
-      </header>
+      </header>}
 
       <section className="public-showcase__hero" aria-labelledby="public-showcase-title">
         <div className="public-showcase__hero-copy">
-          <p className="public-showcase__eyebrow"><span /> Player profile / {sport}</p>
+          {activeSlide === 'jersey' && <p className="public-showcase__eyebrow"><span /> Player profile / {sport}</p>}
           <h1 id="public-showcase-title" data-testid="text-public-showcase-name">{invite.athleteName}<i>.</i></h1>
-          <p className="public-showcase__intro">The season so far, in one place.</p>
+          {activeSlide === 'jersey' && <><p className="public-showcase__intro">The season so far, in one place.</p>
           <div className="public-showcase__identity">
             <span>{invite.teamName || 'Team'}</span>
             <span aria-hidden="true">/</span>
             <span>{invite.seasonName || 'Current season'}</span>
-          </div>
+          </div></>}
           <div className="public-showcase__carousel-tabs" role="group" aria-label={`${firstName}’s Showcase`} data-testid="public-showcase-carousel-tabs">
             <button type="button" aria-pressed={activeSlide === 'jersey'} onClick={() => setSelectedSlide('jersey')} data-testid="button-public-showcase-slide-jersey"><span>01</span> Jersey</button>
             <button type="button" aria-pressed={activeSlide === 'card'} onClick={() => setSelectedSlide('card')} data-testid="button-public-showcase-slide-card"><span>02</span> HYPE Card</button>
           </div>
-          <span className="public-showcase__read-only"><ShieldCheck size={14} aria-hidden="true" /> Public view · read only</span>
+          {activeSlide === 'jersey' && <span className="public-showcase__read-only"><ShieldCheck size={14} aria-hidden="true" /> Public view · read only</span>}
         </div>
 
         <div className={`public-showcase__visual${activeSlide === 'card' ? ' public-showcase__visual--card' : ''}`} role="group" aria-roledescription="carousel" aria-label={`${firstName}’s jersey and HYPE Card`} {...swipeHandlers} style={{ ['--showcase-accent' as string]: appearance.accentColor }}>
@@ -150,12 +150,9 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
             <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
           </> : <div className="public-showcase__card-slide public-showcase__card-slide--interactive" data-testid="figure-public-showcase-hype-card">
-            <div className="public-showcase__visual-index" aria-hidden="true"><span>02</span> SAVED HYPE CARD</div>
             <div className="public-showcase__card-interactive" data-testid="public-showcase-interactive-hype-card">
               <LivingAthleteCardPage params={{ inviteToken }} embedded />
             </div>
-            <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
-            <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
           </div>}
         </div>
       </section>
