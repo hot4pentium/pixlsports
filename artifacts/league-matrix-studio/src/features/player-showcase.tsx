@@ -24,6 +24,7 @@ import { useKitGear } from './use-kit-gear';
 import { isGearSport, matchingSportGear, useSportGear } from './use-sport-gear';
 import { SportGearCollection } from './sport-gear-collection';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { useShowcaseSwipe } from './use-showcase-swipe';
 import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
 import './player-showcase.css';
@@ -373,7 +374,7 @@ export function AthleteShowcaseHome() {
   } as SupporterProfile;
   return (
     <AthleteStudioShell><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8" data-testid="athlete-showcase-home">
-      <AthleteShowcaseBody profile={profile} accountId={user?.id ?? null} projectId={access.projectId} />
+      <AthleteShowcaseBody profile={profile} accountId={user?.id ?? null} projectId={access.projectId} inviteToken={access.inviteToken} />
       <section className="mt-2 grid gap-4 sm:grid-cols-[1.1fr_.9fr]">
         <div className="border border-border bg-card p-5 sm:p-7">
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Your profile</p>
@@ -392,21 +393,93 @@ export function AthleteShowcaseHome() {
   );
 }
 
-function AthleteShowcaseBody({ profile, accountId, projectId }: { profile: SupporterProfile; accountId: string | null; projectId: string }) {
+function AthleteShowcaseBody({ profile, accountId, projectId, inviteToken }: {
+  profile: SupporterProfile;
+  accountId: string | null;
+  projectId: string | null;
+  inviteToken: string;
+}) {
   const gearQuery = useKitGear(accountId, profile.sport === 'soccer');
   const sportGearQuery = useSportGear(accountId, profile.sport, profile.athleteName);
   const sportGear = matchingSportGear(sportGearQuery.data, profile.athleteName, profile.sport);
   const gear = isSoccerGearForAthlete(gearQuery.data, profile.athleteName, profile.sport) ? gearQuery.data : null;
+  const cardQuery = useGetAthleteFanCard(inviteToken, {
+    query: {
+      enabled: !projectId,
+      queryKey: getGetAthleteFanCardQueryKey(inviteToken),
+      retry: false,
+      refetchOnWindowFocus: true,
+    },
+  });
+  const linkedCard = !projectId && cardQuery.data?.inviteToken === inviteToken ? cardQuery.data : null;
+  const cardStatus: PlayerShowcaseContentProps['cardStatus'] = projectId
+    ? 'not-linked'
+    : cardQuery.isLoading ? 'loading'
+      : cardQuery.isError || !linkedCard ? 'unavailable' : 'ready';
+  const cardEditHref = projectId
+    ? `/studio/player-showcase/hype-card/${encodeURIComponent(projectId)}`
+    : '/studio/player-showcase/hype-card';
   const gearStatus: AthleteLockerGearStatus = profile.sport !== 'soccer' || !accountId ? 'unavailable'
     : gearQuery.isLoading ? 'loading' : gearQuery.isError ? 'error' : gear ? 'ready' : 'unavailable';
   return (
     <PlayerShowcaseContent
       profile={profile} gear={gear} gearStatus={gearStatus} athleteRestricted
-      hypeHref={`/studio/player-showcase/hype-card/${encodeURIComponent(projectId)}`}
+      linkedCard={linkedCard} cardStatus={cardStatus}
+      hypeHref={cardEditHref} cardEditHref={cardEditHref}
+      cardPublicHref={!projectId ? `/fan/${encodeURIComponent(inviteToken)}` : undefined}
       onRetry={() => void gearQuery.refetch()}
       sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
       onRetrySportGear={() => void sportGearQuery.refetch()}
     />
+  );
+}
+
+export function AthleteFanCardAppearancePage() {
+  const accessQuery = useGetAthleteEditorAccess({
+    query: {
+      queryKey: getGetAthleteEditorAccessQueryKey(),
+      refetchOnMount: 'always',
+      staleTime: 0,
+      retry: false,
+    },
+  });
+  const access = accessQuery.data;
+  const cardQuery = useGetAthleteFanCard(access?.inviteToken ?? '', {
+    query: {
+      enabled: Boolean(access?.inviteToken && !access.projectId),
+      queryKey: getGetAthleteFanCardQueryKey(access?.inviteToken ?? ''),
+      retry: false,
+      refetchOnWindowFocus: true,
+    },
+  });
+  if (accessQuery.isLoading) {
+    return <AthleteStudioShell><main className="grid min-h-[70dvh] place-items-center px-5"><div className="h-40 w-full max-w-2xl animate-pulse bg-muted" /></main></AthleteStudioShell>;
+  }
+  if (accessQuery.isError || !access) {
+    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">This invite is unavailable.</h1><p className="mt-3 text-sm text-muted-foreground">Ask your parent or guardian to confirm your athlete design access.</p></section></main></AthleteStudioShell>;
+  }
+  if (access.projectId) {
+    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7"><h1 className="font-display text-4xl uppercase">This card uses a legacy editor.</h1><p className="mt-3 text-sm text-muted-foreground">Open the linked HYPE Card from your Showcase home.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Showcase</Link></section></main></AthleteStudioShell>;
+  }
+  if (cardQuery.isLoading) {
+    return <AthleteStudioShell><main className="grid min-h-[70dvh] place-items-center px-5"><div className="h-40 w-full max-w-2xl animate-pulse bg-muted" /></main></AthleteStudioShell>;
+  }
+  if (cardQuery.isError || !cardQuery.data || cardQuery.data.inviteToken !== access.inviteToken) {
+    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">HYPE Card unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Your parent may have paused the public card. Ask them to resume it before editing.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Showcase</Link></section></main></AthleteStudioShell>;
+  }
+  const profile = {
+    athleteName: access.athleteName,
+    jerseyNumber: access.jerseyNumber,
+    position: access.position,
+  };
+  return (
+    <AthleteStudioShell>
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8">
+        <Link href="/studio/player-showcase" className="mb-5 inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary">Back to Showcase</Link>
+        <h1 className="mb-6 font-display text-4xl uppercase">Edit your HYPE Card design</h1>
+        <FanCardAppearanceManager invite={cardQuery.data} profile={profile} athleteEditor />
+      </main>
+    </AthleteStudioShell>
   );
 }
 

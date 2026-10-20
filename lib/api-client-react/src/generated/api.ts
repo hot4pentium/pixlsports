@@ -38,6 +38,7 @@ import type {
   AdminSupportEmailReplyRejectionList,
   AdminSupportTicketList,
   AthleteEditorAccess,
+  AthleteEditorCardAppearance,
   AthleteEditorInvitation,
   AthleteEditorInvitationInput,
   AthleteInviteEventNotifyResult,
@@ -4444,6 +4445,94 @@ export function useGetAthleteEditorAccess<TData = Awaited<ReturnType<typeof getA
 
 
 
+
+export const getUpdateAthleteEditorCardAppearanceUrl = () => {
+
+
+
+
+  return `/api/athlete-editor/card/appearance`
+}
+
+/**
+ * @summary Save the linked Showcase HYPE Card appearance
+ */
+export const updateAthleteEditorCardAppearance = async (hypeCardAppearance: HypeCardAppearance, options?: Parameters<typeof customFetch>[1]): Promise<AthleteEditorCardAppearance> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteEditorCardAppearance>(getUpdateAthleteEditorCardAppearanceUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(hypeCardAppearance)
+  }
+);}
+
+
+
+
+
+export const getUpdateAthleteEditorCardAppearanceMutationKey = () => ['updateAthleteEditorCardAppearance'] as const;
+
+export const getUpdateAthleteEditorCardAppearanceMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteEditorCardAppearance>>, TError,UpdateAthleteEditorCardAppearanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAthleteEditorCardAppearance>>, TError,UpdateAthleteEditorCardAppearanceMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAthleteEditorCardAppearanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAthleteEditorCardAppearance>>, UpdateAthleteEditorCardAppearanceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAthleteEditorCardAppearance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAthleteEditorCardAppearanceMutationResult = NonNullable<Awaited<ReturnType<typeof updateAthleteEditorCardAppearance>>>
+    export type UpdateAthleteEditorCardAppearanceMutationBody = BodyType<HypeCardAppearance>
+    export type UpdateAthleteEditorCardAppearanceMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
+    export type UpdateAthleteEditorCardAppearanceMutationVariables = {data: BodyType<HypeCardAppearance>}
+
+    /**
+ * @summary Save the linked Showcase HYPE Card appearance
+ */
+export const useUpdateAthleteEditorCardAppearance = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteEditorCardAppearance>>, TError,UpdateAthleteEditorCardAppearanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAthleteEditorCardAppearance>>,
+        TError,
+        UpdateAthleteEditorCardAppearanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAthleteEditorCardAppearanceMutationOptions(options));
+    }
 
 export const getGetAthleteFanCardUrl = (inviteToken: string,) => {
 

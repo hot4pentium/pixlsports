@@ -4,6 +4,7 @@ import {
   getGetAthleteFanCardQueryKey,
   getGetAthleteInviteQueryKey,
   getListAthleteInvitesQueryKey,
+  useUpdateAthleteEditorCardAppearance,
   useUpdateAthleteInviteAppearance,
 } from '@workspace/api-client-react';
 import { Download, Share2 } from 'lucide-react';
@@ -66,9 +67,10 @@ function loadEmbeddedFonts(): Promise<string> {
   return fontCss;
 }
 
-export function FanCardAppearanceManager({ invite, profile }: {
+export function FanCardAppearanceManager({ invite, profile, athleteEditor = false }: {
   invite: FanCardAppearanceInvite;
   profile: Pick<UserProfile, 'athleteName' | 'jerseyNumber' | 'position'>;
+  athleteEditor?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
@@ -112,7 +114,8 @@ export function FanCardAppearanceManager({ invite, profile }: {
   const currentDraftKey = JSON.stringify(currentAppearance);
   const readyExport = preparedExport?.draftKey === currentDraftKey ? preparedExport : null;
   const nativeImageSharing = supportsImageSharing();
-  const mutation = useUpdateAthleteInviteAppearance();
+  const ownerMutation = useUpdateAthleteInviteAppearance();
+  const athleteMutation = useUpdateAthleteEditorCardAppearance();
   const dirty = currentDraftKey !== JSON.stringify(saved);
   const displayAthleteName = resolveHypeCardAthleteName(profile.athleteName, invite.athleteName);
   const edit = (patch: Partial<HypeCardAppearance>) => {
@@ -122,24 +125,34 @@ export function FanCardAppearanceManager({ invite, profile }: {
     setDraft(next); setStatus('idle'); setExportMessage('');
   };
   const cardHref = `/fan/${encodeURIComponent(invite.inviteToken)}`;
-  const busy = mutation.isPending;
+  const busy = ownerMutation.isPending || athleteMutation.isPending;
 
   const save = () => {
     setStatus('idle');
     setExportMessage('');
-    mutation.mutate({ inviteToken: invite.inviteToken, data: currentAppearance }, {
-      onSuccess: (res) => {
+    const callbacks = {
+      onSuccess: (res: { cardAppearance?: unknown }) => {
         const next = norm(res.cardAppearance);
         loadedRef.current = { token: invite.inviteToken, key: JSON.stringify(norm(next)) };
         setSaved(next); setDraft(next); setStatus('saved');
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
-          queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
+        const refreshes = [
           queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(invite.inviteToken) }),
-        ]);
+        ];
+        if (!athleteEditor) {
+          refreshes.push(
+            queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
+          );
+        }
+        void Promise.all(refreshes);
       },
       onError: () => setStatus('error'),
-    });
+    };
+    if (athleteEditor) {
+      athleteMutation.mutate({ data: currentAppearance }, callbacks);
+    } else {
+      ownerMutation.mutate({ inviteToken: invite.inviteToken, data: currentAppearance }, callbacks);
+    }
   };
   const downloadJpeg = (file: File) => {
     const url = URL.createObjectURL(file);
@@ -254,18 +267,20 @@ export function FanCardAppearanceManager({ invite, profile }: {
         </div>
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || busy} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{busy ? 'Saving…' : 'Save design'}</button>
-          <button type="button" onClick={() => void exportJpeg()} disabled={exportState === 'working'}
-            className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-export-appearance-jpeg">
-            {nativeImageSharing ? <Share2 className="h-4 w-4" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
-            {exportState === 'working' ? 'Preparing…' : nativeImageSharing ? (dirty ? 'Save draft to Photos' : 'Save JPG to Photos') : (dirty ? 'Download draft JPG' : 'Download JPG')}
-          </button>
+          {!athleteEditor && (
+            <button type="button" onClick={() => void exportJpeg()} disabled={exportState === 'working'}
+              className="inline-flex min-h-11 items-center gap-2 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-export-appearance-jpeg">
+              {nativeImageSharing ? <Share2 className="h-4 w-4" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
+              {exportState === 'working' ? 'Preparing…' : nativeImageSharing ? (dirty ? 'Save draft to Photos' : 'Save JPG to Photos') : (dirty ? 'Download draft JPG' : 'Download JPG')}
+            </button>
+          )}
         </div>
         <p role="status" aria-live="polite" className="text-sm text-white/80">
-          {status === 'saved' && 'Design saved. Supporters now see it.'}
+          {status === 'saved' && (athleteEditor ? 'Design saved.' : 'Design saved. Supporters now see it.')}
            {status === 'error' && <span className="text-red-200">Could not save the design. Your draft is kept.<button type="button" onClick={save} className="ml-2 underline" data-testid="button-retry-appearance">Retry</button></span>}
           {exportMessage && <span className={exportState === 'error' ? 'text-red-200' : ''} data-testid="status-export-appearance-jpeg">{exportMessage}</span>}
         </p>
-          <p className="text-[11px] text-white/50">The number comes from Athlete Profile. Adjust the photo, then save the design supporters will see.</p>
+          <p className="text-[11px] text-white/50">The number comes from Athlete Profile. Adjust the photo, then save the design{athleteEditor ? '.' : ' supporters will see.'}</p>
       </div>
     </div>
   );

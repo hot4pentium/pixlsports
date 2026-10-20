@@ -1466,7 +1466,8 @@ export interface AthleteEditorInvitationInput {
      * @maxLength 320
      */
   emailAddress: string;
-  projectId: string;
+  /** @nullable */
+  projectId?: string | null;
 }
 
 export type AthleteEditorInvitationStatus = typeof AthleteEditorInvitationStatus[keyof typeof AthleteEditorInvitationStatus];
@@ -1501,13 +1502,19 @@ export const AthleteEditorAccessSport = {
 } as const;
 
 export interface AthleteEditorAccess {
+  inviteToken: string;
   athleteName: string;
   teamName: string;
   seasonName: string;
   sport: AthleteEditorAccessSport;
   jerseyNumber: string;
   position: string;
-  projectId: string;
+  /** @nullable */
+  projectId: string | null;
+}
+
+export interface AthleteEditorCardAppearance {
+  cardAppearance: HypeCardAppearance;
 }
 
 export type OwnedAthleteInviteSport = typeof OwnedAthleteInviteSport[keyof typeof OwnedAthleteInviteSport];

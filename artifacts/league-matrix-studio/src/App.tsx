@@ -252,6 +252,9 @@ const AthleteStudioShell = lazy(() =>
 const AthleteShowcaseHome = lazy(() =>
   import('@/features/player-showcase').then(({ AthleteShowcaseHome }) => ({ default: AthleteShowcaseHome })),
 );
+const AthleteFanCardAppearancePage = lazy(() =>
+  import('@/features/player-showcase').then(({ AthleteFanCardAppearancePage }) => ({ default: AthleteFanCardAppearancePage })),
+);
 const SupporterProfileView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterProfileView }) => ({ default: SupporterProfileView })),
 );
@@ -4078,6 +4081,7 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
   const athleteOnlyPath = location === '/studio/player-showcase'
     || location === '/studio/player-showcase/gear'
     || location === '/studio/player-showcase/soccer-kit'
+    || location === '/studio/player-showcase/hype-card'
     || /^\/studio\/player-showcase\/hype-card\/[^/]+$/.test(location);
   if (location.startsWith('/studio') && !isLoaded) return <AccountLoadingScreen />;
   if (isSignedIn && user && isAthleteEditorAccount(user)) {
@@ -4086,6 +4090,7 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
   if (athleteOnlyPath) {
     if (getUserRole(user) === 'fan') {
       const editorPath = location.match(/^\/studio\/player-showcase\/hype-card\/([^/]+)$/);
+      if (location === '/studio/player-showcase/hype-card') return <Redirect to="/studio/player-showcase" />;
       if (location === '/studio/player-showcase/gear') return <Redirect to="/studio/gear" />;
       if (location === '/studio/player-showcase/soccer-kit') return <Redirect to="/studio/soccer-gear" />;
       return editorPath
@@ -4207,6 +4212,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
+              <Route path="/studio/player-showcase/hype-card" component={AthleteFanCardAppearancePage} />
               <Route path="/studio/player-showcase/hype-card/:id"><AthleteHypeCardEditorRoute /></Route>
               <Route path="/studio/player-showcase/gear"><AthleteGearStudioPage /></Route>
               <Route path="/studio/player-showcase/soccer-kit"><AthleteGearStudioPage legacySoccer /></Route>

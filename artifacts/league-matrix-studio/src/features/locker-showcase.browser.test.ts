@@ -93,13 +93,15 @@ import {PlayerShowcaseContent,PlayerShowcasePage} from './src/features/player-sh
 import {PublicPlayerShowcasePage} from './src/features/public-player-showcase';
 import {SportGearBuilderPage} from './src/features/sport-gear-builder';
 import {sportGearItems} from './src/features/sport-gear-collection';
+import {FanCardAppearanceManager} from './src/features/fan-card-appearance-manager';
+import {AthleteEditorInvitationPanel} from './src/features/athlete-invite';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[],ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
-window.__requests = []; window.__copied = '';
+window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = [];
 window.__gearSaves = [];
 function sportState() {
  const stored=JSON.parse(sessionStorage.getItem('gear-fixture:'+state.accountId+':'+state.sport)||'null');
@@ -111,6 +113,18 @@ window.fetch = async (input,init) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url.includes('/api/')) {
     window.__requests.push(url);
+    if(url.includes('/api/athlete-invites/')&&url.includes('/editor-access')){
+      if(init?.method==='POST'){
+        const body=JSON.parse(init.body);window.__invitationPayloads.push(body);
+        state.inviteStatus='pending';state.inviteEmail=body.emailAddress;
+        return new Response(JSON.stringify({emailAddress:state.inviteEmail,projectId:null,status:state.inviteStatus,updatedAt:new Date().toISOString()}),{status:201,headers:{'Content-Type':'application/json'}});
+      }
+      return new Response(JSON.stringify({emailAddress:state.inviteEmail,projectId:null,status:state.inviteStatus,updatedAt:state.inviteEmail?new Date().toISOString():null}),{status:200,headers:{'Content-Type':'application/json'}});
+    }
+    if(url.includes('/api/athlete-editor/card/appearance')&&init?.method==='PATCH'){
+      const body=JSON.parse(init.body);window.__appearanceSaves.push(body);
+      return new Response(JSON.stringify({cardAppearance:body}),{status:200,headers:{'Content-Type':'application/json'}});
+    }
     if(url.endsWith('/api/athlete-invites'))return new Response(JSON.stringify(state.ownerInvites),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.endsWith('/api/projects'))return new Response(JSON.stringify([]),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/athlete-gear/sports')){
@@ -141,7 +155,7 @@ function render() {
    const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
    const linkedCard = {...card,inviteToken:card.inviteToken,hypesEnabled:true,timezone:null,seasonEndsAt:'',photoUrl:null,cutoutUrl:null,hypeCard:null,videos:[],stats:null,scheduleEvents:[],replies:[],liveScoreboard:null,liveTaps:{active:false,taps:[]},updatedAt:''};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-      {state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus} sportGear={sportState()} sportGearStatus="ready" athleteRestricted={state.athleteRestricted} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} hypeHref={'/player/'+card.inviteToken+'/manage#design'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
+      {state.mode==='appearance-editor' ? <FanCardAppearanceManager invite={{...card,photoUrl:null,cardAppearance:{design:'velocity',borderColor:'#123456',accentColor:'#ABCDEF',accentLinked:false,athleteX:0.1,athleteY:0.05,athleteScale:1,jerseyNumber:'17',position:'Striker'}}} profile={{athleteName:card.athleteName,jerseyNumber:'17',position:'Striker'}} athleteEditor/> : state.mode==='invitation-panel' ? <AthleteEditorInvitationPanel inviteToken="fixture-athlete-editor-invitation-token"/> : state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus} sportGear={sportState()} sportGearStatus="ready" athleteRestricted={state.athleteRestricted} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} hypeHref={'/player/'+card.inviteToken+'/manage#design'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -610,6 +624,29 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="button-equip-"]').length`), 4);
       await browser.wait(`Array.from(document.querySelectorAll('[data-testid^="button-equip-"] img')).every(img=>img.complete&&img.naturalWidth>0)`);
     }
+    await browser.evaluate(`window.__update({mode:'appearance-editor'})`);
+    await browser.wait(`document.querySelector('[data-testid="fan-card-appearance-manager"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-export-appearance-jpeg"]')`), null, 'athlete card editing does not expose owner sharing/export actions');
+    await browser.evaluate(`document.querySelector('[data-testid="button-reset-photo-position"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="button-save-appearance"]').disabled===false`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="button-save-appearance"]').disabled===true`);
+    assert.ok(await browser.evaluate(`document.querySelector('[role="status"][aria-live="polite"]').textContent.includes('Design saved.')`));
+    const appearanceSave = await browser.evaluate(`window.__appearanceSaves.at(-1)`);
+    assert.equal(appearanceSave.athleteX, 0);
+    assert.equal(appearanceSave.jerseyNumber, '17');
+    assert.ok(await browser.evaluate(`window.__requests.some(url=>url.includes('/api/athlete-editor/card/appearance'))`), 'athlete card edits use the linked Showcase-only endpoint');
+    await browser.evaluate(`window.__update({mode:'invitation-panel'})`);
+    await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"]')`);
+    await browser.wait(`document.querySelector('[aria-label="Checking athlete editor access"]')===null`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] select')`), null, 'an owner does not need to choose a separate HYPE Card project');
+    assert.equal(await browser.evaluate(`window.__requests.some(url=>url.endsWith('/api/projects'))`), false, 'sending this invitation does not depend on a project list');
+    await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] input[type="email"]').focus()`);
+    await browser.send('Input.insertText', { text: 'athlete@example.com' });
+    await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] button[type="submit"]').click()`);
+    await browser.wait(`document.querySelector('[role="status"]')?.textContent.includes('Invitation sent')`);
+    const invitationPayload = await browser.evaluate(`window.__invitationPayloads.at(-1)`);
+    assert.deepEqual(invitationPayload, { emailAddress: 'athlete@example.com' }, 'new athlete invitations target the existing Showcase card without a project ID');
   } finally {
     browser?.close();
     await stop(chromium);

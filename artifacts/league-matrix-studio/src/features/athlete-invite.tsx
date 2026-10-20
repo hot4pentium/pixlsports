@@ -408,7 +408,6 @@ export function AthleteInviteManager() {
 export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: string | null }) {
   const queryClient = useQueryClient();
   const [emailAddress, setEmailAddress] = useState('');
-  const [projectId, setProjectId] = useState('');
   const [message, setMessage] = useState('');
   const invitationQuery = useGetAthleteInviteEditorAccess(inviteToken ?? '', {
     query: {
@@ -418,18 +417,13 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       staleTime: 0,
     },
   });
-  const projectsQuery = useListProjects({
-    query: { enabled: Boolean(inviteToken), queryKey: getListProjectsQueryKey() },
-  });
   const createInvitation = useCreateAthleteInviteEditorAccess();
   const revokeInvitation = useRevokeAthleteInviteEditorAccess();
-  const hypeProjects = projectsQuery.data?.filter((item) => item.project.tool === 'hype-card') ?? [];
   const invitation = invitationQuery.data;
   const invitationLocked = invitation?.status === 'pending' || invitation?.status === 'active';
   useEffect(() => {
     if (!invitation) return;
     setEmailAddress((current) => current || invitation.emailAddress || '');
-    setProjectId((current) => current || invitation.projectId || '');
   }, [invitation]);
   const refreshInvitation = async () => {
     if (!inviteToken) return;
@@ -441,11 +435,11 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
   const sendInvite = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage('');
-    if (!inviteToken || !emailAddress.trim() || !projectId) return;
+    if (!inviteToken || !emailAddress.trim()) return;
     try {
       const response = await createInvitation.mutateAsync({
         inviteToken,
-        data: { emailAddress: emailAddress.trim(), projectId },
+        data: { emailAddress: emailAddress.trim() },
       });
       await refreshInvitation();
       setMessage(response.status === 'active'
@@ -493,54 +487,44 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
           Create the athlete page first to connect a parent-owned HYPE Card.
           <Link href="/studio/athlete-page" className="ml-2 font-bold text-primary underline underline-offset-4">Open athlete page settings</Link>
         </div>
-      ) : projectsQuery.isLoading ? (
-        <div className="mt-5 h-16 animate-pulse bg-muted" aria-label="Loading HYPE Card projects" />
-      ) : projectsQuery.isError ? (
-        <div className="mt-5 border border-destructive/30 bg-destructive/5 p-4 text-sm">
-          <p>HYPE Card projects could not be loaded.</p>
-          <button type="button" onClick={() => void projectsQuery.refetch()} className="mt-2 font-bold text-primary underline underline-offset-4">Try again</button>
-        </div>
-      ) : hypeProjects.length === 0 ? (
-        <div className="mt-5 border border-dashed border-primary/40 bg-primary/5 p-5">
-          <p className="font-bold">Create a HYPE Card before inviting an athlete.</p>
-          <p className="mt-1 text-sm text-muted-foreground">The athlete needs one existing card to edit. They cannot create or choose projects.</p>
-          <Link href="/studio/hype-card" className="mt-4 inline-flex min-h-10 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground"><Palette className="h-4 w-4" /> Create HYPE Card</Link>
-        </div>
+      ) : invitationQuery.isLoading ? (
+        <div className="mt-5 h-16 animate-pulse bg-muted" aria-label="Checking athlete editor access" />
       ) : (
         <div className="mt-5">
+          <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            New invitations connect to the HYPE Card already shown in the Showcase. The athlete can edit its design and their soccer kit; page settings and sharing stay with you.
+          </p>
           {invitationQuery.isError && (
             <p className="mb-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2 text-sm" role="alert">
               Invitation status could not be loaded. <button type="button" onClick={() => void invitationQuery.refetch()} className="font-bold underline">Retry</button>
             </p>
           )}
-          <form onSubmit={sendInvite} className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          {invitation?.projectId && invitationLocked && (
+            <p className="mb-3 border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm">
+              This existing invitation is linked to a legacy HYPE Card project. Revoke it and send a new invitation to switch to the Showcase card.
+            </p>
+          )}
+          <form onSubmit={sendInvite} className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
             <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Athlete email
               <input type="email" required maxLength={320} value={invitationLocked ? invitation?.emailAddress ?? emailAddress : emailAddress} onChange={(event) => setEmailAddress(event.target.value)} placeholder="athlete@example.com" disabled={invitationLocked} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60" />
-            </label>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              HYPE Card project
-              <select required value={invitationLocked ? invitation?.projectId ?? '' : projectId} onChange={(event) => setProjectId(event.target.value)} disabled={invitationLocked} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60">
-                <option value="">Choose a card</option>
-                {hypeProjects.map((item) => <option key={item.id} value={item.id}>{item.name || 'Untitled HYPE Card'}</option>)}
-              </select>
             </label>
             {invitation?.status === 'pending' || invitation?.status === 'active' ? (
               <button type="button" onClick={() => void revoke()} disabled={revokeInvitation.isPending} className="inline-flex h-12 items-center justify-center gap-2 border border-destructive/40 px-4 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive/5 disabled:opacity-50">
                 <Trash2 className="h-4 w-4" />{revokeInvitation.isPending ? 'Revoking' : 'Revoke access'}
               </button>
             ) : (
-              <Button type="submit" disabled={createInvitation.isPending || !emailAddress.trim() || !projectId} className="h-12 rounded-none px-5 text-xs font-bold uppercase tracking-widest">
+              <Button type="submit" disabled={createInvitation.isPending || !emailAddress.trim()} className="h-12 rounded-none px-5 text-xs font-bold uppercase tracking-widest">
                 {createInvitation.isPending ? 'Sending' : invitation?.status === 'revoked' ? 'Invite again' : 'Send invitation'}
               </Button>
             )}
           </form>
           {invitation?.emailAddress && (
-            <p className="mt-3 text-xs text-muted-foreground">Current invite: <strong className="text-foreground">{invitation.emailAddress}</strong>{invitation.projectId ? ` · ${hypeProjects.find((item) => item.id === invitation.projectId)?.name || 'Linked HYPE Card'}` : ''}</p>
+            <p className="mt-3 text-xs text-muted-foreground">Current invite: <strong className="text-foreground">{invitation.emailAddress}</strong> · {invitation.projectId ? 'Legacy HYPE Card project' : 'Showcase HYPE Card'}</p>
           )}
-          {invitation?.projectId && hypeProjects.some((item) => item.id === invitation.projectId) && (
+          {invitation?.projectId && invitationLocked && (
             <Link href={`/studio/hype-card/${encodeURIComponent(invitation.projectId)}`} className="mt-3 inline-flex min-h-10 items-center gap-2 border border-border px-4 text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary" data-testid="link-edit-linked-athlete-card">
-              <Palette className="h-4 w-4" /> Open linked HYPE Card
+              <Palette className="h-4 w-4" /> Open linked legacy HYPE Card
             </Link>
           )}
           {message && <p className="mt-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm" role="status">{message}</p>}

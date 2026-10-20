@@ -12,5 +12,6 @@ export interface AthleteEditorInvitationInput {
      * @maxLength 320
      */
   emailAddress: string;
-  projectId: string;
+  /** @nullable */
+  projectId?: string | null;
 }

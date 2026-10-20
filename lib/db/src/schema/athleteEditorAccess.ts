@@ -5,7 +5,7 @@ export const athleteEditorAccessTable = pgTable("athlete_editor_access", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
   athleteInviteId: uuid("athlete_invite_id").notNull(),
-  projectId: uuid("project_id").notNull(),
+  projectId: uuid("project_id"),
   athleteEmail: text("athlete_email").notNull(),
   clerkInvitationId: text("clerk_invitation_id"),
   athleteClerkUserId: text("athlete_clerk_user_id"),

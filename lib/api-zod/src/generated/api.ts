@@ -3161,7 +3161,7 @@ export const createAthleteInviteEditorAccessBodyEmailAddressMax = 320;
 
 export const CreateAthleteInviteEditorAccessBody = zod.object({
   "emailAddress": zod.string().email().min(createAthleteInviteEditorAccessBodyEmailAddressMin).max(createAthleteInviteEditorAccessBodyEmailAddressMax),
-  "projectId": zod.string().uuid()
+  "projectId": zod.string().uuid().nullish()
 })
 
 export const CreateAthleteInviteEditorAccessResponse = zod.object({
@@ -3189,13 +3189,188 @@ export const RevokeAthleteInviteEditorAccessResponse = zod.void()
  * @summary Claim and load the signed-in athlete's limited editor access
  */
 export const GetAthleteEditorAccessResponse = zod.object({
+  "inviteToken": zod.string(),
   "athleteName": zod.string(),
   "teamName": zod.string(),
   "seasonName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "jerseyNumber": zod.string(),
   "position": zod.string(),
-  "projectId": zod.string().uuid()
+  "projectId": zod.string().uuid().nullable()
+})
+
+
+/**
+ * @summary Save the linked Showcase HYPE Card appearance
+ */
+export const updateAthleteEditorCardAppearanceBodyBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteEditorCardAppearanceBodyAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteEditorCardAppearanceBodyAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceBodyAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceBodyAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceBodyAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceBodyAthleteScaleMax = 1.6;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
+
+export const updateAthleteEditorCardAppearanceBodyNamePlateXMin = -0.2;
+export const updateAthleteEditorCardAppearanceBodyNamePlateXMax = 0.2;
+
+export const updateAthleteEditorCardAppearanceBodyNamePlateYMin = -0.12;
+export const updateAthleteEditorCardAppearanceBodyNamePlateYMax = 0.12;
+
+export const updateAthleteEditorCardAppearanceBodyJerseyNumberMax = 12;
+
+export const updateAthleteEditorCardAppearanceBodyPositionMax = 80;
+
+
+
+export const UpdateAthleteEditorCardAppearanceBody = zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
+  "borderColor": zod.string().regex(updateAthleteEditorCardAppearanceBodyBorderColorRegExp),
+  "accentColor": zod.string().regex(updateAthleteEditorCardAppearanceBodyAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "removeBackground": zod.boolean().optional(),
+  "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceBodyAthleteXMin).max(updateAthleteEditorCardAppearanceBodyAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceBodyAthleteYMin).max(updateAthleteEditorCardAppearanceBodyAthleteYMax),
+  "athleteScale": zod.number().min(1).max(updateAthleteEditorCardAppearanceBodyAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteXMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteYMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteScaleMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteXMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteYMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteXMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteYMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMin).max(updateAthleteEditorCardAppearanceBodyAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
+  "namePlateX": zod.number().min(updateAthleteEditorCardAppearanceBodyNamePlateXMin).max(updateAthleteEditorCardAppearanceBodyNamePlateXMax).optional(),
+  "namePlateY": zod.number().min(updateAthleteEditorCardAppearanceBodyNamePlateYMin).max(updateAthleteEditorCardAppearanceBodyNamePlateYMax).optional(),
+  "jerseyNumber": zod.string().max(updateAthleteEditorCardAppearanceBodyJerseyNumberMax),
+  "position": zod.string().max(updateAthleteEditorCardAppearanceBodyPositionMax)
+})
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteScaleMax = 1.6;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteScaleMin = 0.65;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteScaleMax = 1.2;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteScaleMin = 0.65;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteScaleMax = 1.2;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteXMin = -0.25;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteXMax = 0.25;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteYMin = -0.18;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteYMax = 0.18;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteScaleMin = 0.65;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteScaleMax = 1.2;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateXMin = -0.2;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateXMax = 0.2;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateYMin = -0.12;
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateYMax = 0.12;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearanceJerseyNumberMax = 12;
+
+export const updateAthleteEditorCardAppearanceResponseCardAppearancePositionMax = 80;
+
+
+
+export const UpdateAthleteEditorCardAppearanceResponse = zod.object({
+  "cardAppearance": zod.object({
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),
+  "lowerThirdTemplate": zod.enum(['velocity', 'wave', 'glass', 'varsity', 'spotlight', 'pixel-edge']).optional().describe('Independently selected lower-third artwork template.'),
+  "lowerThirdStyle": zod.enum(['classic', 'split', 'angled', 'none']).optional().describe('Identity treatment on the simplified full-photo interactive HYPE Card. None keeps the text directly over the photo without a panel. Legacy cards default to classic.'),
+  "borderColor": zod.string().regex(updateAthleteEditorCardAppearanceResponseCardAppearanceBorderColorRegExp),
+  "accentColor": zod.string().regex(updateAthleteEditorCardAppearanceResponseCardAppearanceAccentColorRegExp),
+  "accentLinked": zod.boolean(),
+  "removeBackground": zod.boolean().optional(),
+  "background": zod.enum(['sport', 'stadium', 'tunnel', 'studio']).optional().describe('Preset backdrop behind the athlete on premium HYPE Cards. Omitted legacy values use the athlete sport.'),
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteXMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteYMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteYMax),
+  "athleteScale": zod.number().min(1).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAthleteScaleMax),
+  "avatarPlacements": zod.object({
+  "gallery": zod.object({
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteXMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteYMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteScaleMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsGalleryAthleteScaleMax)
+}),
+  "spotlight": zod.object({
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteXMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteYMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteScaleMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsSpotlightAthleteScaleMax)
+}),
+  "breakout": zod.object({
+  "athleteX": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteXMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteXMax),
+  "athleteY": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteYMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteYMax),
+  "athleteScale": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteScaleMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceAvatarPlacementsBreakoutAthleteScaleMax)
+})
+}).optional(),
+  "namePlateX": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateXMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateXMax).optional(),
+  "namePlateY": zod.number().min(updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateYMin).max(updateAthleteEditorCardAppearanceResponseCardAppearanceNamePlateYMax).optional(),
+  "jerseyNumber": zod.string().max(updateAthleteEditorCardAppearanceResponseCardAppearanceJerseyNumberMax),
+  "position": zod.string().max(updateAthleteEditorCardAppearanceResponseCardAppearancePositionMax)
+})
 })
 
 

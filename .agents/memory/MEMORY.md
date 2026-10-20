@@ -34,7 +34,7 @@
 - [Hype Card watermark legibility](hype-card-watermark-legibility.md) — judge overlays at phone scale; clipped SVG text bounds can overrun slightly, so verify the clip and raster output.
 - [AI image edit proportions](ai-image-edit-proportions.md) — verify edited image dimensions before replacing fixed-ratio UI artwork.
 - [Athlete fan card and Hype Page lifecycle](athlete-hype-page-lifecycle.md) — share the fan card first, preserve the original page, and keep live sessions temporary.
-- [Athlete editor access boundaries](athlete-editor-access-boundaries.md) — athlete sign-in edits one linked HYPE Card and kit cosmetics; parents retain sharing/privacy controls and revocation persists.
+- [Athlete editor access boundaries](athlete-editor-access-boundaries.md) — new invites use the existing Showcase card; athletes edit card/kit only, while parent sharing controls and revocation persist.
 - [Hype manager task drafts](hype-manager-task-drafts.md) — keep task panels mounted; immediate visibility saves must not overwrite or implicitly save an unfinished time zone.
 - [Approved Hype manager layout](approved-hype-manager-layout.md) — the owner-only wallet-style task cards are approved; their chevrons should toggle panels open and closed.
 - [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.

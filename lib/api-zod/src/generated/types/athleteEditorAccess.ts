@@ -8,11 +8,13 @@
 import type { AthleteEditorAccessSport } from './athleteEditorAccessSport';
 
 export interface AthleteEditorAccess {
+  inviteToken: string;
   athleteName: string;
   teamName: string;
   seasonName: string;
   sport: AthleteEditorAccessSport;
   jerseyNumber: string;
   position: string;
-  projectId: string;
+  /** @nullable */
+  projectId: string | null;
 }

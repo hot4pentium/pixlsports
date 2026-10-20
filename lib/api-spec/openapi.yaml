@@ -1111,7 +1111,7 @@ paths:
       summary: Claim and load the signed-in athlete's limited editor access
       responses:
         "200":
-          description: The athlete's linked profile and HYPE Card project
+          description: The athlete's linked profile and HYPE Card
           content:
             application/json:
               schema:
@@ -1124,6 +1124,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /athlete-editor/card/appearance:
+    patch:
+      operationId: updateAthleteEditorCardAppearance
+      tags: [athlete-editor]
+      summary: Save the linked Showcase HYPE Card appearance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardAppearance"
+      responses:
+        "200":
+          description: Updated linked card appearance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteEditorCardAppearance"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: No active Showcase HYPE Card edit access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/fan:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -4056,10 +4086,10 @@ components:
         paused: { type: boolean, default: false }
     AthleteEditorInvitationInput:
       type: object
-      required: [emailAddress, projectId]
+      required: [emailAddress]
       properties:
         emailAddress: { type: string, format: email, minLength: 3, maxLength: 320 }
-        projectId: { type: string, format: uuid }
+        projectId: { type: ["string", "null"], format: uuid }
     AthleteEditorInvitation:
       type: object
       required: [emailAddress, projectId, status, updatedAt]
@@ -4070,15 +4100,22 @@ components:
         updatedAt: { type: ["string", "null"], format: date-time }
     AthleteEditorAccess:
       type: object
-      required: [athleteName, teamName, seasonName, sport, jerseyNumber, position, projectId]
+      required: [inviteToken, athleteName, teamName, seasonName, sport, jerseyNumber, position, projectId]
       properties:
+        inviteToken: { type: string }
         athleteName: { type: string }
         teamName: { type: string }
         seasonName: { type: string }
         sport: { type: string, enum: [baseball, basketball, football, soccer, volleyball] }
         jerseyNumber: { type: string }
         position: { type: string }
-        projectId: { type: string, format: uuid }
+        projectId: { type: ["string", "null"], format: uuid }
+    AthleteEditorCardAppearance:
+      type: object
+      required: [cardAppearance]
+      properties:
+        cardAppearance:
+          $ref: "#/components/schemas/HypeCardAppearance"
     OwnedAthleteInvite:
       type: object
       required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, showEvents, hypesEnabled, paused, liveTrackerShareToken, photoUrl, events, createdAt, updatedAt]

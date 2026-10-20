@@ -5,13 +5,16 @@ import { eq } from "drizzle-orm";
 import {
   accountAccessTable,
   athleteEditorAccessTable,
+  athleteInvitesTable,
   cloudProjectsTable,
   db,
   projectMediaTable,
   soccerGearActivityTable,
 } from "@workspace/db";
+import { CreateAthleteInviteEditorAccessBody } from "@workspace/api-zod";
 import projectsRouter from "./routes/projects";
 import storageRouter from "./routes/storage";
+import athleteEditorAccessRouter from "./routes/athleteEditorAccess";
 
 test("guest project creation rejects unsupported tools without persisting", async () => {
   const ownerId = `projects-guest-${crypto.randomUUID()}`;
@@ -343,6 +346,113 @@ test("athlete editor access is limited to one HYPE Card and stops after revocati
     if (linkedProjectId) await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, linkedProjectId));
     if (unrelatedProjectId) await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, unrelatedProjectId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, athleteId));
+  }
+});
+
+test("active athlete editor can update only the linked Showcase card appearance", async () => {
+  const ownerId = `athlete-showcase-owner-${crypto.randomUUID()}`;
+  const athleteId = `athlete-showcase-user-${crypto.randomUUID()}`;
+  const inviteToken = `athlete-showcase-${crypto.randomUUID()}`;
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteEditorAccessRouter);
+  const server = app.listen(0);
+  let inviteId: string | undefined;
+  let accessId: string | undefined;
+  const appearance = {
+    design: "velocity",
+    borderColor: "#123456",
+    accentColor: "#ABCDEF",
+    accentLinked: false,
+    athleteX: 0.1,
+    athleteY: -0.05,
+    athleteScale: 1.2,
+    jerseyNumber: "17",
+    position: "Striker",
+  };
+
+  try {
+    assert.equal(
+      CreateAthleteInviteEditorAccessBody.safeParse({ emailAddress: "athlete@example.com" }).success,
+      true,
+      "new invitations do not require a separate HYPE Card project",
+    );
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: athleteId,
+      role: "fan",
+      accessMode: "full",
+    });
+    const [invite] = await db.insert(athleteInvitesTable).values({
+      ownerClerkUserId: ownerId,
+      publicToken: inviteToken,
+      athleteName: "Jordan",
+      teamName: "Comets",
+      seasonName: "2026",
+      seasonEndsAt: new Date("2026-12-31T00:00:00.000Z"),
+      sport: "soccer",
+      cardAppearance: { design: "velocity", jerseyNumber: "8", position: "Forward" },
+    }).returning({ id: athleteInvitesTable.id });
+    inviteId = invite.id;
+    const [access] = await db.insert(athleteEditorAccessTable).values({
+      ownerClerkUserId: ownerId,
+      athleteInviteId: invite.id,
+      projectId: null,
+      athleteEmail: "athlete@example.com",
+      athleteClerkUserId: athleteId,
+      status: "active",
+    }).returning({ id: athleteEditorAccessTable.id });
+    accessId = access.id;
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const url = `http://127.0.0.1:${address.port}/api/athlete-editor/card/appearance`;
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user": athleteId,
+      },
+      body: JSON.stringify(appearance),
+    });
+    assert.equal(response.status, 200, await response.clone().text());
+    const body = await response.json() as { cardAppearance: Record<string, unknown> };
+    assert.equal(body.cardAppearance.jerseyNumber, "8", "athletes cannot change their profile number in the card editor");
+    assert.equal(body.cardAppearance.position, "Forward", "athletes cannot change their profile position in the card editor");
+    assert.equal(body.cardAppearance.accentColor, "#ABCDEF");
+    const [updatedInvite] = await db.select({ cardAppearance: athleteInvitesTable.cardAppearance })
+      .from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.id, invite.id));
+    assert.equal((updatedInvite.cardAppearance as { design?: string }).design, "velocity");
+
+    await db.update(athleteEditorAccessTable)
+      .set({ status: "revoked" })
+      .where(eq(athleteEditorAccessTable.id, access.id));
+    const revokedSave = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user": athleteId,
+      },
+      body: JSON.stringify({ ...appearance, jerseyNumber: "99" }),
+    });
+    assert.equal(revokedSave.status, 403);
+    const [unchangedInvite] = await db.select({ cardAppearance: athleteInvitesTable.cardAppearance })
+      .from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.id, invite.id));
+    assert.equal((unchangedInvite.cardAppearance as { jerseyNumber?: string }).jerseyNumber, "8");
+  } finally {
+    server.close();
+    if (accessId) await db.delete(athleteEditorAccessTable).where(eq(athleteEditorAccessTable.id, accessId));
+    if (inviteId) await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, inviteId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, athleteId));
   }
 });

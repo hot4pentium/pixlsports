@@ -7,6 +7,8 @@ import {
   GetAthleteInviteEditorAccessResponse,
   GetAthleteInviteParams,
   RevokeAthleteInviteEditorAccessParams,
+  UpdateAthleteInviteAppearanceBody,
+  UpdateAthleteEditorCardAppearanceResponse,
 } from "@workspace/api-zod";
 import {
   accountAccessTable,
@@ -15,7 +17,7 @@ import {
   cloudProjectsTable,
   db,
 } from "@workspace/db";
-import { getRequiredClerkUserId, requireAuthenticatedIdentity, requireAuth } from "../middlewares/requireAuth";
+import { getRequiredClerkUserId, requireAuthenticatedIdentity, requireAuth, requireProjectEditorAuth } from "../middlewares/requireAuth";
 import {
   ATHLETE_EDITOR_METADATA_KEY,
   createAthleteEditorClerkClient,
@@ -93,7 +95,7 @@ router.post("/athlete-invites/:inviteToken/editor-access", requireAuth, async (r
   const params = GetAthleteInviteParams.safeParse(req.params);
   const parsed = CreateAthleteInviteEditorAccessBody.safeParse(req.body);
   if (!params.success || !parsed.success) {
-    res.status(400).json({ error: "Provide a valid email and HYPE Card project." });
+    res.status(400).json({ error: "Provide a valid email and optional HYPE Card project." });
     return;
   }
   const ownerClerkUserId = getRequiredClerkUserId(res);
@@ -108,16 +110,19 @@ router.post("/athlete-invites/:inviteToken/editor-access", requireAuth, async (r
     res.status(404).json({ error: "Athlete page not found" });
     return;
   }
-  const [project] = await db.select()
-    .from(cloudProjectsTable)
-    .where(and(
-      eq(cloudProjectsTable.id, parsed.data.projectId),
-      eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
-    ))
-    .limit(1);
+  const projectId = parsed.data.projectId ?? null;
+  const [project] = projectId
+    ? await db.select()
+      .from(cloudProjectsTable)
+      .where(and(
+        eq(cloudProjectsTable.id, projectId),
+        eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+      ))
+      .limit(1)
+    : [undefined];
   const projectData = project?.project;
-  if (!project || !projectData || typeof projectData !== "object"
-    || (projectData as Record<string, unknown>).tool !== "hype-card") {
+  if (projectId && (!project || !projectData || typeof projectData !== "object"
+    || (projectData as Record<string, unknown>).tool !== "hype-card")) {
     res.status(400).json({ error: "Choose a HYPE Card owned by this account." });
     return;
   }
@@ -133,16 +138,18 @@ router.post("/athlete-invites/:inviteToken/editor-access", requireAuth, async (r
     res.status(409).json({ error: "An athlete invitation is already waiting for a response." });
     return;
   }
-  const activeProjectAccess = await db.select({ id: athleteEditorAccessTable.id })
-    .from(athleteEditorAccessTable)
-    .where(and(
-      eq(athleteEditorAccessTable.projectId, parsed.data.projectId),
-      inArray(athleteEditorAccessTable.status, ["pending", "active"]),
-    ))
-    .limit(1);
-  if (activeProjectAccess.length) {
-    res.status(409).json({ error: "This HYPE Card is already linked to an athlete sign-in." });
-    return;
+  if (projectId) {
+    const activeProjectAccess = await db.select({ id: athleteEditorAccessTable.id })
+      .from(athleteEditorAccessTable)
+      .where(and(
+        eq(athleteEditorAccessTable.projectId, projectId),
+        inArray(athleteEditorAccessTable.status, ["pending", "active"]),
+      ))
+      .limit(1);
+    if (activeProjectAccess.length) {
+      res.status(409).json({ error: "This HYPE Card is already linked to an athlete sign-in." });
+      return;
+    }
   }
 
   const emailAddress = parsed.data.emailAddress.trim().toLowerCase();
@@ -162,7 +169,7 @@ router.post("/athlete-invites/:inviteToken/editor-access", requireAuth, async (r
       let restored: typeof athleteEditorAccessTable.$inferSelect | undefined;
       try {
         [restored] = await db.update(athleteEditorAccessTable)
-          .set({ projectId: project.id, status: "active", updatedAt: new Date() })
+          .set({ projectId, status: "active", updatedAt: new Date() })
           .where(and(
             eq(athleteEditorAccessTable.id, previousAccess.id),
             eq(athleteEditorAccessTable.status, "revoked"),
@@ -205,7 +212,7 @@ router.post("/athlete-invites/:inviteToken/editor-access", requireAuth, async (r
     [access] = await db.insert(athleteEditorAccessTable).values({
       ownerClerkUserId,
       athleteInviteId: invite.id,
-      projectId: project.id,
+      projectId,
       athleteEmail: emailAddress,
       status: "pending",
     }).returning();
@@ -344,16 +351,18 @@ router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, r
       eq(athleteInvitesTable.ownerClerkUserId, access.ownerClerkUserId),
     ))
     .limit(1);
-  const [project] = await db.select()
-    .from(cloudProjectsTable)
-    .where(and(
-      eq(cloudProjectsTable.id, access.projectId),
-      eq(cloudProjectsTable.ownerClerkUserId, access.ownerClerkUserId),
-    ))
-    .limit(1);
+  const [project] = access.projectId
+    ? await db.select()
+      .from(cloudProjectsTable)
+      .where(and(
+        eq(cloudProjectsTable.id, access.projectId),
+        eq(cloudProjectsTable.ownerClerkUserId, access.ownerClerkUserId),
+      ))
+      .limit(1)
+    : [undefined];
   const projectData = project?.project;
-  if (!invite || !project || !projectData || typeof projectData !== "object"
-    || (projectData as Record<string, unknown>).tool !== "hype-card") {
+  if (!invite || (access.projectId && (!project || !projectData || typeof projectData !== "object"
+    || (projectData as Record<string, unknown>).tool !== "hype-card"))) {
     res.status(403).json({ error: "The linked HYPE Card is no longer available." });
     return;
   }
@@ -365,16 +374,81 @@ router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, r
   }).onConflictDoNothing({ target: accountAccessTable.ownerClerkUserId });
   await markAccountProvisioned(athleteClerkUserId);
 
-  const projectRecord = projectData as Record<string, unknown>;
+  const projectRecord = projectData && typeof projectData === "object"
+    ? projectData as Record<string, unknown>
+    : {};
+  const appearanceRecord = invite.cardAppearance && typeof invite.cardAppearance === "object"
+    ? invite.cardAppearance
+    : {};
   res.json(GetAthleteEditorAccessResponse.parse({
+    inviteToken: invite.publicToken,
     athleteName: invite.athleteName,
     teamName: invite.teamName,
     seasonName: invite.seasonName,
     sport: invite.sport,
-    jerseyNumber: typeof projectRecord.jerseyNumber === "string" ? projectRecord.jerseyNumber : "",
-    position: typeof projectRecord.position === "string" ? projectRecord.position : "",
-    projectId: project.id,
+    jerseyNumber: typeof projectRecord.jerseyNumber === "string"
+      ? projectRecord.jerseyNumber
+      : typeof appearanceRecord.jerseyNumber === "string" ? appearanceRecord.jerseyNumber : "",
+    position: typeof projectRecord.position === "string"
+      ? projectRecord.position
+      : typeof appearanceRecord.position === "string" ? appearanceRecord.position : "",
+    projectId: access.projectId,
   }));
+});
+
+router.patch("/athlete-editor/card/appearance", requireProjectEditorAuth, async (req, res): Promise<void> => {
+  const parsed = UpdateAthleteInviteAppearanceBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Choose valid card colors and athlete placement." });
+    return;
+  }
+  const athleteClerkUserId = getRequiredClerkUserId(res);
+  const appearance = parsed.data;
+  const updated = await db.transaction(async (tx) => {
+    const [access] = await tx.select({ id: athleteEditorAccessTable.id, athleteInviteId: athleteEditorAccessTable.athleteInviteId, ownerClerkUserId: athleteEditorAccessTable.ownerClerkUserId })
+      .from(athleteEditorAccessTable)
+      .where(and(
+        eq(athleteEditorAccessTable.athleteClerkUserId, athleteClerkUserId),
+        eq(athleteEditorAccessTable.status, "active"),
+        isNull(athleteEditorAccessTable.projectId),
+      ))
+      .limit(1)
+      .for("update");
+    if (!access) return null;
+    const [linkedInvite] = await tx.select({ cardAppearance: athleteInvitesTable.cardAppearance })
+      .from(athleteInvitesTable)
+      .where(and(
+        eq(athleteInvitesTable.id, access.athleteInviteId),
+        eq(athleteInvitesTable.ownerClerkUserId, access.ownerClerkUserId),
+      ))
+      .limit(1)
+      .for("update");
+    if (!linkedInvite) return null;
+    const savedAppearance = linkedInvite.cardAppearance && typeof linkedInvite.cardAppearance === "object"
+      ? linkedInvite.cardAppearance
+      : {};
+    const [invite] = await tx.update(athleteInvitesTable)
+      .set({
+        cardAppearance: {
+          ...appearance,
+          jerseyNumber: typeof savedAppearance.jerseyNumber === "string" ? savedAppearance.jerseyNumber : "",
+          position: typeof savedAppearance.position === "string" ? savedAppearance.position : "",
+          accentColor: appearance.accentLinked ? appearance.borderColor : appearance.accentColor,
+        },
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(athleteInvitesTable.id, access.athleteInviteId),
+        eq(athleteInvitesTable.ownerClerkUserId, access.ownerClerkUserId),
+      ))
+      .returning({ cardAppearance: athleteInvitesTable.cardAppearance });
+    return invite ?? null;
+  });
+  if (!updated?.cardAppearance) {
+    res.status(403).json({ error: "No active Showcase HYPE Card edit access." });
+    return;
+  }
+  res.json(UpdateAthleteEditorCardAppearanceResponse.parse({ cardAppearance: updated.cardAppearance }));
 });
 
 export default router;

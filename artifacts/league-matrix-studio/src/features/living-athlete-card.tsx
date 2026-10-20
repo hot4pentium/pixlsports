@@ -60,10 +60,10 @@ function gameOutcome(game: FanGame) {
   return game.score > game.opponentScore ? 'W' : game.score < game.opponentScore ? 'L' : 'T';
 }
 
-function Shell({ children, inviteToken }: { children: ReactNode; inviteToken: string }) {
+function Shell({ children, inviteToken, embedded = false }: { children: ReactNode; inviteToken: string; embedded?: boolean }) {
   return (
-    <div className="living-card-page">
-      <header className="living-card-header">
+    <div className={`living-card-page${embedded ? ' living-card-page--embedded' : ''}`}>
+      {!embedded && <header className="living-card-header">
         <div className="living-card-header-inner">
           <Link href="/" className="living-card-brand" data-testid="link-living-card-home">
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports home" />
@@ -71,7 +71,7 @@ function Shell({ children, inviteToken }: { children: ReactNode; inviteToken: st
           <span className="living-card-header-label">A season worth keeping / Pixl Sports</span>
           <BackNavigationLink href={`/showcase/${encodeURIComponent(inviteToken)}`} label="Back to Dynamic Showcase" testId="link-back-public-showcase" variant="public" />
         </div>
-      </header>
+      </header>}
       {children}
     </div>
   );
@@ -80,9 +80,11 @@ function Shell({ children, inviteToken }: { children: ReactNode; inviteToken: st
 export function LivingAthleteCardPage({
   params,
   followControls,
+  embedded = false,
 }: {
   params: { inviteToken?: string };
   followControls?: ReactNode;
+  embedded?: boolean;
 }) {
   const inviteToken = params.inviteToken ?? '';
   const [side, setSide] = useState<CardSide>('front');
@@ -109,7 +111,7 @@ export function LivingAthleteCardPage({
   const queryClient = useQueryClient();
   const ownedInvitesQuery = useListAthleteInvites({
     query: {
-      enabled: Boolean(isSignedIn),
+      enabled: !embedded && Boolean(isSignedIn),
       queryKey: getListAthleteInvitesQueryKey(),
       retry: false,
     },
@@ -128,7 +130,7 @@ export function LivingAthleteCardPage({
       refetchInterval: (query) => query.state.data?.liveTaps.active ? 5_000 : 10_000,
     },
   });
-  const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
+  const ownerInvite = embedded ? null : ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
   const publicShoutouts = useListPublicAthleteInviteHypes(inviteToken, {
     query: {
       enabled: !!inviteToken && side === 'responses',
@@ -226,6 +228,10 @@ export function LivingAthleteCardPage({
     setLiveTapFeedback('');
   }, [inviteToken]);
   useEffect(() => {
+    if (embedded) {
+      setLiveTapAccessToken(null);
+      return;
+    }
     const storageKey = `pixlSports:liveTaps:${inviteToken}`;
     try {
       const suppliedToken = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('live-taps');
@@ -240,7 +246,7 @@ export function LivingAthleteCardPage({
     } catch {
       setLiveTapAccessToken(null);
     }
-  }, [inviteToken]);
+  }, [embedded, inviteToken]);
   useEffect(() => { setBrokenPhoto(false); }, [photoUrl]);
   useEffect(() => {
     const updateToday = () => setTodayTick(Date.now());
@@ -249,11 +255,11 @@ export function LivingAthleteCardPage({
     return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', updateToday); };
   }, []);
   useEffect(() => {
-    if (!invite) return;
+    if (embedded || !invite) return;
     const previous = document.title;
     document.title = `${displayAthleteName} · HYPE Card | Pixl Sports`;
     return () => { document.title = previous; };
-  }, [displayAthleteName]);
+  }, [displayAthleteName, embedded]);
   useEffect(() => {
     if (!invite?.stats) return;
     setTrendStatId((current) => (
@@ -263,25 +269,26 @@ export function LivingAthleteCardPage({
     ));
   }, [invite?.stats]);
 
+  const MainElement = embedded ? 'div' : 'main';
   if (isLoading) {
     return (
-      <Shell inviteToken={inviteToken}>
-        <main aria-busy="true" aria-label="Loading athlete card" role="status">
+      <Shell inviteToken={inviteToken} embedded={embedded}>
+        <MainElement className={embedded ? 'living-card-main--embedded' : undefined} aria-busy="true" aria-label="Loading athlete card" role="status">
           <div className="living-card-skeleton"><div /><aside><span /><span /><span /></aside></div>
           <span className="sr-only">Loading athlete card</span>
-        </main>
+        </MainElement>
       </Shell>
     );
   }
   if (isError || !invite || !inviteToken) {
     return (
-      <Shell inviteToken={inviteToken}>
-        <main className="living-card-state" role="alert" data-testid="state-living-card-unavailable">
+      <Shell inviteToken={inviteToken} embedded={embedded}>
+        <MainElement className={`living-card-state${embedded ? ' living-card-state--embedded' : ''}`} role="alert" data-testid="state-living-card-unavailable">
           <span className="living-card-eyebrow">The card is off the field</span>
           <h1>This HYPE Card is paused or unavailable.</h1>
           <p>The link may have changed, or the owner may have paused the athlete's page. Check with the person who shared it, or try again.</p>
           {inviteToken && <button type="button" onClick={() => void refetch()} data-testid="button-retry-living-card">Try again</button>}
-        </main>
+        </MainElement>
       </Shell>
     );
   }
@@ -293,7 +300,7 @@ export function LivingAthleteCardPage({
   const shoutouts = ownerInvite ? ownerShoutouts.data : publicShoutouts.data;
   const shoutoutsLoading = ownerInvite ? ownerShoutouts.isPending : publicShoutouts.isPending;
   const shoutoutsError = ownerInvite ? ownerShoutouts.isError : publicShoutouts.isError;
-  const showSupportActions = clerkLoaded && (
+  const showSupportActions = !embedded && clerkLoaded && (
     !isSignedIn
     || (ownedInvitesQuery.isSuccess && !ownedInvitesQuery.isFetching && !ownerInvite)
   );
@@ -430,14 +437,14 @@ export function LivingAthleteCardPage({
   };
 
   return (
-    <Shell inviteToken={inviteToken}>
-      <main className="living-card-main">
-        {ownerInvite && profileNameSyncKey && updateInvite.isPending && (
+    <Shell inviteToken={inviteToken} embedded={embedded}>
+      <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`}>
+        {!embedded && ownerInvite && profileNameSyncKey && updateInvite.isPending && (
           <p className="mb-4 border-l-2 border-sky-300 bg-sky-950/60 px-4 py-3 text-sm text-white" role="status" data-testid="status-profile-name-sync">
             Updating the shared HYPE Card name from your athlete profile…
           </p>
         )}
-        {ownerInvite && profileNameSyncError && (
+        {!embedded && ownerInvite && profileNameSyncError && (
           <div className="mb-4 border-l-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="alert" data-testid="error-profile-name-sync">
             <p>The card preview uses your profile name, but the shared card could not be updated for other viewers.</p>
             <button
@@ -453,7 +460,7 @@ export function LivingAthleteCardPage({
             </button>
           </div>
         )}
-        {ownerInvite && (
+        {!embedded && ownerInvite && (
           <div className="living-card-intro">
             <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
               <span>Manage this athletic card</span><ArrowRight aria-hidden="true" />
@@ -763,7 +770,7 @@ export function LivingAthleteCardPage({
             <LivingCardControls side={side} eventToday={eventToday} eventCount={linkedEvents.length} onSelectSide={selectSide} />
             <button type="button" className="living-card-return-front" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Flip to card front</button>
 
-             {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
+            {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
                <Dialog open={followDialogOpen} onOpenChange={setFollowDialogOpen}>
                  <DialogTrigger asChild>
                    <button type="button" className="living-card-support-action living-card-support-action-follow" data-testid="button-open-fan-card-follow">
@@ -836,8 +843,8 @@ export function LivingAthleteCardPage({
                  </DialogContent>
                </Dialog>
               </div>}
-            <p className="living-card-instruction">Choose a side to turn the card.</p>
-            {invite.soccerGear && <details className="soccer-gear-public" data-testid="public-soccer-gear">
+            {!embedded && <p className="living-card-instruction">Choose a side to turn the card.</p>}
+            {!embedded && invite.soccerGear && <details className="soccer-gear-public" data-testid="public-soccer-gear">
               <summary data-testid="button-open-public-soccer-gear">See {displayAthleteName}'s soccer kit</summary>
               <div className="soccer-gear">
                 <div className="gear-stage" style={{ minHeight: 430 }} aria-label="Shared soccer kit">
@@ -849,8 +856,8 @@ export function LivingAthleteCardPage({
           </section>
 
         </div>
-        <footer className="living-card-footer"><span>Pixl Sports / Every game adds a chapter</span><span>{invite.seasonName} · {sport}</span></footer>
-      </main>
+        {!embedded && <footer className="living-card-footer"><span>Pixl Sports / Every game adds a chapter</span><span>{invite.seasonName} · {sport}</span></footer>}
+      </MainElement>
     </Shell>
   );
 }

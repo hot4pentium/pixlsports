@@ -1077,7 +1077,11 @@ export function AthleteHypeCardEditorRoute() {
   });
   const [, setLocation] = useLocation();
   useEffect(() => {
-    if (accessQuery.data && params.id !== accessQuery.data.projectId) {
+    if (accessQuery.data && !accessQuery.data.projectId) {
+      setLocation('/studio/player-showcase/hype-card');
+      return;
+    }
+    if (accessQuery.data?.projectId && params.id !== accessQuery.data.projectId) {
       setLocation(`/studio/player-showcase/hype-card/${encodeURIComponent(accessQuery.data.projectId)}`);
     }
   }, [accessQuery.data, params.id, setLocation]);
@@ -1085,6 +1089,7 @@ export function AthleteHypeCardEditorRoute() {
   if (!isSignedIn) return <div className="grid min-h-dvh place-items-center px-5 text-center"><Link href={`/sign-in?redirect_url=${encodeURIComponent(window.location.pathname)}`} className="bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in to continue</Link></div>;
   if (accessQuery.isLoading) return <div className="grid min-h-dvh place-items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading your HYPE Card…</div>;
   if (accessQuery.isError || !accessQuery.data) return <div className="grid min-h-dvh place-items-center px-5 text-center"><div><h1 className="font-display text-4xl uppercase">Access unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Ask your parent or guardian to check your invitation.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to showcase</Link></div></div>;
+  if (!accessQuery.data.projectId) return <div className="grid min-h-dvh place-items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">Opening your Showcase HYPE Card…</div>;
   if (params.id !== accessQuery.data.projectId) return <div className="grid min-h-dvh place-items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">Opening your linked card…</div>;
   const athleteProfile = {
     ...getUserProfile(user),
