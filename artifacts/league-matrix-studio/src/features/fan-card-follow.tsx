@@ -40,7 +40,13 @@ export function FanCardActions({ inviteToken }: { inviteToken: string }) {
   );
 }
 
-function FanCardFollow({ inviteToken }: { inviteToken: string }) {
+export function FanCardFollow({
+  inviteToken,
+  surface = 'card',
+}: {
+  inviteToken: string;
+  surface?: 'card' | 'showcase';
+}) {
   const [following, setFollowing] = useState(() => storedFollow(inviteToken).following);
   const [followToken, setFollowToken] = useState(() => storedFollow(inviteToken).followToken);
   const [message, setMessage] = useState('');
@@ -196,12 +202,16 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
             : '';
 
   return (
-    <section className="border border-[#8ecbff]/30 bg-[#102b4d] p-5 text-white" aria-label="Follow this athlete" data-testid="fan-card-follow">
+    <section className="border border-[#8ecbff]/30 bg-[#102b4d] p-5 text-white" aria-label={surface === 'showcase' ? 'Event alerts' : 'Follow this athlete'} data-testid="fan-card-follow">
       <div className="flex items-start gap-3">
         {following ? <Bell className="mt-0.5 h-5 w-5 text-[#ff7849]" aria-hidden="true" /> : <BellOff className="mt-0.5 h-5 w-5 text-[#8ecbff]" aria-hidden="true" />}
         <div>
-          <h2 className="font-display text-2xl uppercase">Follow this card</h2>
-          <p className="mt-1 text-xs leading-relaxed text-white/65">Keep this athlete’s season close. Alerts are optional and only sent to this device when you choose them.</p>
+          <h2 className="font-display text-2xl uppercase">{surface === 'showcase' ? 'Get event alerts' : 'Follow this card'}</h2>
+          <p className="mt-1 text-xs leading-relaxed text-white/65">
+            {surface === 'showcase'
+              ? 'Follow this athlete on your device, then choose which event-day alerts you want. No account is needed.'
+              : 'Keep this athlete’s season close. Alerts are optional and only sent to this device when you choose them.'}
+          </p>
         </div>
       </div>
       <button type="button" onClick={() => void toggleFollow()} disabled={pending} className="mt-4 min-h-11 border border-[#ff7849] bg-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#102b4d] disabled:opacity-50" aria-pressed={following} data-testid="button-follow-fan-card">

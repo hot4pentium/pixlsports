@@ -13,6 +13,7 @@ import { JerseyLayerStage } from './jersey-layers';
 import { FootballJerseyPreview } from './football-jersey-preview';
 import { SportGearCollection } from './sport-gear-collection';
 import { LivingAthleteCardPage } from './living-athlete-card';
+import { FanCardFollow } from './fan-card-follow';
 import { useShowcaseSwipe } from './use-showcase-swipe';
 import './public-player-showcase.css';
 
@@ -206,6 +207,11 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           <p className="public-showcase__empty-events" data-testid="text-public-showcase-no-events">
             {invite.showEvents ? 'No public Event Cards have been shared yet.' : 'The family has kept event details private.'}
           </p>
+        )}
+        {invite.showEvents && (
+          <div className="public-showcase__alerts" data-testid="section-public-showcase-alerts">
+            <FanCardFollow inviteToken={inviteToken} surface="showcase" />
+          </div>
         )}
       </section>}
 
