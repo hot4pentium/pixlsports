@@ -127,8 +127,8 @@ export function HypeCardTemplateCyclers({ appearance, onChange, disabled = false
     <div className="grid grid-cols-2 gap-2" data-testid="hype-card-template-cyclers">
       <TemplateCycler label="Frame" selectedName={frame.name} testId="frame-template-cycler"
         previousLabel="Previous frame" nextLabel="Next frame" disabled={disabled}
-        onPrevious={() => onChange(switchCardAppearanceDesign(appearance, adjacentTemplate(frame.id, -1)))}
-        onNext={() => onChange(switchCardAppearanceDesign(appearance, adjacentTemplate(frame.id, 1)))} />
+        onPrevious={() => onChange(normalizeCardAppearance({ ...appearance, design: adjacentTemplate(frame.id, -1) }))}
+        onNext={() => onChange(normalizeCardAppearance({ ...appearance, design: adjacentTemplate(frame.id, 1) }))} />
       <TemplateCycler label="Lower third" selectedName={lowerThird.name} testId="lower-third-template-cycler"
         previousLabel="Previous lower third" nextLabel="Next lower third" disabled={disabled}
         onPrevious={() => onChange(normalizeCardAppearance({ ...appearance, lowerThirdTemplate: adjacentTemplate(lowerThird.id, -1) }))}

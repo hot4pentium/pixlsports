@@ -102,6 +102,13 @@
 .public-showcase__card-slide { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; gap: clamp(16px, 4vw, 32px); padding: 44px 24px 16px; }
 .public-showcase__card-art { position: relative; width: min(100%, 280px); aspect-ratio: 2 / 3; justify-self: center; overflow: hidden; border: 1px solid rgba(221, 237, 255, .48); background: #102b4d; box-shadow: 14px 18px 0 rgba(1, 9, 20, .45), 0 24px 48px rgba(0, 0, 0, .34); }
 .public-showcase__card-art .living-card-simple-face { position: absolute; inset: 0; }
+.public-showcase__visual--card { min-height: 620px; }
+.public-showcase__card-interactive { width: 100%; }
+.public-showcase__card-interactive .living-card-stage { width: min(100%, 300px); max-width: 300px; }
+@media (max-width: 760px) {
+  .public-showcase__visual.public-showcase__visual--card { min-height: 560px; }
+  .public-showcase__card-interactive .living-card-stage { width: min(100%, 260px); max-width: 260px; }
+}
 .public-showcase__details {
   display: grid; grid-template-columns: repeat(4, 1fr); width: min(1180px, calc(100% - 56px));
   margin: 0 auto; border-top: 1px solid rgba(191, 216, 247, .18); border-bottom: 1px solid rgba(191, 216, 247, .18);

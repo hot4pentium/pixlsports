@@ -243,7 +243,7 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
           <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={currentAppearance} cardHref={cardHref} />
         </div>
         <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
-        <div className="mx-auto mt-3 w-full max-w-[360px]">
+        <div className="mx-auto mt-3 w-full max-w-[360px] lg:hidden">
           <HypeCardTemplateCyclers appearance={currentAppearance} onChange={updateAppearance} disabled={busy} />
         </div>
       </div>

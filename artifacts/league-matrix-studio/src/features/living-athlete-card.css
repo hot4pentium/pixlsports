@@ -424,3 +424,14 @@
   overflow: hidden;
   clip-path: polygon(4% 0, 96% 0, 100% 3%, 100% 97%, 96% 100%, 4% 100%, 0 97%, 0 3%);
 }
+.living-card-page--embedded { width: 100%; min-height: 0; overflow: visible; background: transparent; }
+.living-card-page--embedded::before,
+.living-card-page--embedded::after { display: none; }
+.living-card-main.living-card-main--embedded { width: 100%; max-width: none; margin: 0; padding: 0; }
+.living-card-main--embedded .living-card-layout-solo { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.living-card-main--embedded .living-card-frame { height: auto; min-height: 0; max-height: none; aspect-ratio: 3 / 4; }
+.living-card-main--embedded .living-card-stage > .living-card-controls { position: relative; inset: auto; width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 10px auto 0; }
+.living-card-main--embedded .living-card-return-front { width: 100%; margin-top: 10px; }
+.living-card-main--embedded .living-card-alt-title { font-size: 42px; }
+.living-card-main--embedded .living-card-face-alt { inset: 0; padding: 18px; }
+.living-card-state--embedded { margin: 0; }

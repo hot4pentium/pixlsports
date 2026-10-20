@@ -97,7 +97,7 @@ import {FanCardAppearanceManager} from './src/features/fan-card-appearance-manag
 import {AthleteEditorInvitationPanel} from './src/features/athlete-invite';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
-const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
+ const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],liveTaps:{active:false,gameId:null,cheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
 const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
@@ -186,7 +186,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
   try {
     await writeFile(sourcePath, harness());
     await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
-    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-gear-art',configureServer(server){server.middlewares.use('/api/athlete-gear/art',(_request,response)=>{response.statusCode=200;response.setHeader('Content-Type','image/png');response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==','base64'));});}}]});`);
+     await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-public-identity',enforce:'pre',resolveId(id){if(id==='@clerk/react')return '\\0fixture-public-identity';},load(id){if(id==='\\0fixture-public-identity')return 'export function useUser(){return {user:null,isLoaded:true,isSignedIn:false}} export function useClerk(){return {signOut:async()=>{}}}';}},{name:'fixture-gear-art',configureServer(server){server.middlewares.use('/api/athlete-gear/art',(_request,response)=>{response.statusCode=200;response.setHeader('Content-Type','image/png');response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==','base64'));});}}]});`);
     vite = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
       cwd: appDirectory, env: { ...process.env, PORT: String(port), BASE_PATH: `${base}/` }, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -244,7 +244,18 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')`), 'true');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-card-interactive"]')`), null, 'the HYPE Card preview itself is not a second link');
     assert.equal(await browser.evaluate(`document.querySelectorAll('a[href*="/fan/"]').length`), 0, 'the HYPE Card slide still has no direct card links');
-    await swipe('[data-testid="figure-public-showcase-hype-card"] .public-showcase__card-art', 'right');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="section-public-showcase-gear"]')`), null, 'the public HYPE Card side has no earned gear');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="public-soccer-gear"]')`), null, 'the embedded card has no kit section');
+    assert.equal(await browser.evaluate(`document.querySelector('.public-showcase__details')`), null, 'Jersey details do not appear below the card');
+    await browser.evaluate(`document.querySelector('[data-testid="button-living-card-stats"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="text-living-card-record"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-living-card-record"]').textContent`), '3–1–0', 'the embedded full card shows its real stats data');
+    await browser.evaluate(`document.querySelector('[data-testid="button-living-card-events"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="living-card-events-side"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="card-living-event-fixture-event"] h3').textContent`), 'vs Hawks');
+    await browser.evaluate(`document.querySelector('[data-testid="button-living-card-front"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="img-living-card-athlete"]')`);
+    await swipe('[data-testid="figure-public-showcase-hype-card"] .living-card-frame', 'right');
     await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').getAttribute('aria-pressed')==='true'`);
     await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').focus()`);
     await browser.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space' });
@@ -275,7 +286,8 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"]')`);
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public HYPE Card slide overflows at ${width}px`);
       assert.equal(await browser.evaluate(`document.querySelectorAll('a[href*="/fan/"]').length`), 0, `HYPE Card links remain absent at ${width}px`);
-      assert.ok(await browser.evaluate(`(()=>{const visual=document.querySelector('.public-showcase__visual').getBoundingClientRect();const card=document.querySelector('.public-showcase__card-art').getBoundingClientRect();return card.left>=visual.left&&card.right<=visual.right&&card.top>=visual.top&&card.bottom<=visual.bottom+1})()`), `HYPE Card artwork escapes its display at ${width}px`);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="section-public-showcase-gear"]')`), null, `HYPE Card has no equipment at ${width}px`);
+      assert.ok(await browser.evaluate(`(()=>{const visual=document.querySelector('.public-showcase__visual').getBoundingClientRect();const card=document.querySelector('.public-showcase__card-interactive .living-card-stage').getBoundingClientRect();return card.left>=visual.left&&card.right<=visual.right&&card.top>=visual.top&&card.bottom<=visual.bottom+1})()`), `full HYPE Card and flip controls escape their display at ${width}px`);
       if (width === 390) {
         const cardCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 85 });
         await writeFile(resolve(tmpdir(), 'pixl-public-showcase-card-slide-check.jpg'), Buffer.from(cardCapture.data, 'base64'));
