@@ -12,7 +12,7 @@ import { gameOnHref } from './athlete-event-links';
 import { JerseyLayerStage } from './jersey-layers';
 import { FootballJerseyPreview } from './football-jersey-preview';
 import { SportGearCollection } from './sport-gear-collection';
-import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { LivingAthleteCardPage } from './living-athlete-card';
 import { useShowcaseSwipe } from './use-showcase-swipe';
 import './public-player-showcase.css';
 
@@ -115,7 +115,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           <span className="public-showcase__read-only"><ShieldCheck size={14} aria-hidden="true" /> Public view · read only</span>
         </div>
 
-        <div className="public-showcase__visual" role="group" aria-roledescription="carousel" aria-label={`${firstName}’s jersey and HYPE Card`} {...swipeHandlers} style={{ ['--showcase-accent' as string]: appearance.accentColor }}>
+        <div className={`public-showcase__visual${activeSlide === 'card' ? ' public-showcase__visual--card' : ''}`} role="group" aria-roledescription="carousel" aria-label={`${firstName}’s jersey and HYPE Card`} {...swipeHandlers} style={{ ['--showcase-accent' as string]: appearance.accentColor }}>
           {activeSlide === 'jersey' ? <>
             <div className="public-showcase__visual-orbit" aria-hidden="true" />
             <div className="public-showcase__visual-index" aria-hidden="true"><span>01</span> / SEASON ID</div>
@@ -149,10 +149,10 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             </div>
             <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
             <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
-          </> : <div className="public-showcase__card-slide" data-testid="figure-public-showcase-hype-card">
+          </> : <div className="public-showcase__card-slide public-showcase__card-slide--interactive" data-testid="figure-public-showcase-hype-card">
             <div className="public-showcase__visual-index" aria-hidden="true"><span>02</span> SAVED HYPE CARD</div>
-            <div className="public-showcase__card-art">
-              <LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={invite.cardAppearance} sport={invite.sport} cutoutUrl={invite.cutoutUrl} />
+            <div className="public-showcase__card-interactive" data-testid="public-showcase-interactive-hype-card">
+              <LivingAthleteCardPage params={{ inviteToken }} embedded />
             </div>
             <span className="public-showcase__corner public-showcase__corner--one" aria-hidden="true" />
             <span className="public-showcase__corner public-showcase__corner--two" aria-hidden="true" />
@@ -160,12 +160,12 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
         </div>
       </section>
 
-      {showcaseGear && <section aria-label="Earned equipment" data-testid="section-public-showcase-gear">
+      {activeSlide === 'jersey' && showcaseGear && <section aria-label="Earned equipment" data-testid="section-public-showcase-gear">
         <p className="public-showcase__eyebrow">Earned equipment</p>
         <SportGearCollection sport={showcaseGear.sport} earnedGear={showcaseGear.earnedGear} equippedGear={showcaseGear.equippedGear} />
       </section>}
 
-      <section className="public-showcase__details" aria-label="Athlete details">
+      {activeSlide === 'jersey' && <section className="public-showcase__details" aria-label="Athlete details">
         <div className="public-showcase__detail">
           <span className="public-showcase__detail-label">Sport</span>
           <strong>{sport}</strong>
@@ -182,9 +182,9 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           <span className="public-showcase__detail-label">Position</span>
           <strong>{appearance.position}</strong>
         </div>}
-      </section>
+      </section>}
 
-      <section className="public-showcase__events" aria-labelledby="public-showcase-events-title" data-testid="section-public-showcase-events">
+      {activeSlide === 'jersey' && <section className="public-showcase__events" aria-labelledby="public-showcase-events-title" data-testid="section-public-showcase-events">
         <div className="public-showcase__section-heading">
           <div>
             <p className="public-showcase__eyebrow">On the calendar</p>
@@ -210,12 +210,12 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
             {invite.showEvents ? 'No public Event Cards have been shared yet.' : 'The family has kept event details private.'}
           </p>
         )}
-      </section>
+      </section>}
 
-      <footer className="public-showcase__footer">
+      {activeSlide === 'jersey' && <footer className="public-showcase__footer">
         <span>PIXL SPORTS <i>·</i> ATHLETE FIRST</span>
         <span>Made to celebrate the work.</span>
-      </footer>
+      </footer>}
     </main>
   );
 }
