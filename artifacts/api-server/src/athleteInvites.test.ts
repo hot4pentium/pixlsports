@@ -24,6 +24,24 @@ import {
 import athleteInvitesRouter from "./routes/athleteInvites";
 import athleteLiveTapsRouter from "./routes/athleteLiveTaps";
 import statTrackerSharesRouter from "./routes/statTrackerShares";
+import { getLiveTapCheerPresets } from "./lib/athleteLiveTaps";
+
+test("every supported sport offers the three shared Live Taps cheers", () => {
+  const sharedCheerKeys = ["thumbs-up", "way-to-go", "big-play"];
+  for (const sport of ["baseball", "softball", "basketball", "football", "soccer", "volleyball"]) {
+    assert.deepEqual(
+      getLiveTapCheerPresets(sport)
+        .filter(({ key }) => sharedCheerKeys.includes(key))
+        .map(({ key, label }) => ({ key, label })),
+      [
+        { key: "thumbs-up", label: "Thumbs Up" },
+        { key: "way-to-go", label: "Way to Go!" },
+        { key: "big-play", label: "Big Play" },
+      ],
+      `${sport} includes the shared Live Taps`,
+    );
+  }
+});
 
 function dateKey(offsetDays: number) {
   const date = new Date();
@@ -814,6 +832,26 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.equal(tapSummary.active, true);
     assert.equal(tapSummary.gameId, liveSession.gameId);
     assert.equal(tapSummary.cheers.find((cheer) => cheer.key === "bucket")?.count, 1);
+    assert.deepEqual(
+      tapSummary.cheers.filter((cheer) => ["thumbs-up", "way-to-go", "big-play"].includes(cheer.key))
+        .map(({ key, label }) => ({ key, label })),
+      [
+        { key: "thumbs-up", label: "Thumbs Up" },
+        { key: "way-to-go", label: "Way to Go!" },
+        { key: "big-play", label: "Big Play" },
+      ],
+      "every sport includes the shared cheers in its live tally",
+    );
+    for (const cheerKey of ["thumbs-up", "way-to-go", "big-play"]) {
+      const sharedCheerResponse = await fetch(tapUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cheerKey, accessToken: familyLink.accessToken }),
+      });
+      assert.equal(sharedCheerResponse.status, 201, `${cheerKey} is accepted for this sport`);
+      const sharedCheerSummary = SendAthleteLiveTapResponse.parse(await sharedCheerResponse.json());
+      assert.equal(sharedCheerSummary.cheers.find((cheer) => cheer.key === cheerKey)?.count, 1);
+    }
     const concurrentTaps = await Promise.all(Array.from({ length: 8 }, () => fetch(tapUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -890,10 +928,13 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       gameId: athleteInviteLiveTapsTable.gameId,
       cheerKey: athleteInviteLiveTapsTable.cheerKey,
     }).from(athleteInviteLiveTapsTable).where(eq(athleteInviteLiveTapsTable.inviteId, inviteRow.id));
-    assert.deepEqual(savedTaps.sort((left, right) => left.gameId.localeCompare(right.gameId)), [
+    assert.deepEqual(savedTaps.sort((left, right) => `${left.gameId}:${left.cheerKey}`.localeCompare(`${right.gameId}:${right.cheerKey}`)), [
       ...Array.from({ length: 9 }, () => ({ gameId: liveSession.gameId, cheerKey: "bucket" })),
+      { gameId: liveSession.gameId, cheerKey: "thumbs-up" },
+      { gameId: liveSession.gameId, cheerKey: "way-to-go" },
+      { gameId: liveSession.gameId, cheerKey: "big-play" },
       { gameId: "previous-game", cheerKey: "bucket" },
-    ].sort((left, right) => left.gameId.localeCompare(right.gameId)));
+    ].sort((left, right) => `${left.gameId}:${left.cheerKey}`.localeCompare(`${right.gameId}:${right.cheerKey}`)));
 
     const attachedAgain = await fetch(liveUrl, {
       method: "POST",

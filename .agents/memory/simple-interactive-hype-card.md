@@ -13,4 +13,4 @@ Keep the public HYPE Card free of the “Manage this athletic card” banner, in
 
 **Why:** The user explicitly requested removing the management text and extending the card vertically so more content is visible.
 
-**How to apply:** Preserve side navigation and scrolling for longer content rather than shrinking the card when it flips.
+**How to apply:** Preserve side navigation and scrolling for longer content rather than shrinking the card when it flips. Browser checks should allow the 2:3 frame to exceed the old viewport-fit height cap.

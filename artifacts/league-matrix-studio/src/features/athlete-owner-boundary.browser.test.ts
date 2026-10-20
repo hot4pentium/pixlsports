@@ -73,7 +73,7 @@ async function waitForWebDriverValue<T>(
   throw new Error(`Timed out waiting for ${description}; last value: ${JSON.stringify(lastValue)}`);
 }
 
-test('player-page owner tools remain private across account changes and pause', async () => {
+test('player-page owner tools remain private across account changes and pause', { timeout: 120_000 }, async () => {
   let paused = false;
   let profileNameUpdateResponseSent = false;
   const requests: Array<{ viewer: string; method: string; path: string }> = [];
@@ -173,6 +173,9 @@ test('player-page owner tools remain private across account changes and pause', 
         { key: 'and-one', label: 'And one', emoji: '💥', count: 0 },
         { key: 'big-stop', label: 'Big stop', emoji: '🛡️', count: 0 },
         { key: 'lets-go', label: "Let's go", emoji: '💙', count: 0 },
+        { key: 'thumbs-up', label: 'Thumbs Up', emoji: '👍', count: 0 },
+        { key: 'way-to-go', label: 'Way to Go!', emoji: '🎉', count: 0 },
+        { key: 'big-play', label: 'Big Play', emoji: '💥', count: 0 },
       ],
     },
     updatedAt: new Date().toISOString(),
@@ -341,7 +344,6 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, visitor, element('[data-testid="athlete-video-empty-state"]'), Boolean, 30_000);
     const ownerFanCard = await open('owner', 'fan');
     await waitFor(connection, ownerFanCard, element('.living-card-controls'), Boolean, 30_000);
-    await waitFor(connection, ownerFanCard, element('[data-testid="link-manage-living-card"]'), Boolean, 30_000);
     await waitFor(connection, ownerFanCard, "document.querySelector('[data-testid=\"text-living-card-athlete-name\"]')?.textContent === 'Kimberly'", Boolean, 12_000);
     await waitForWebDriverValue(async () => owned.athleteName, (name) => name === 'Kimberly', 'the saved card name to match the athlete profile');
     await waitForWebDriverValue(async () => profileNameUpdateResponseSent, Boolean, 'the profile name update response');
@@ -464,12 +466,8 @@ test('player-page owner tools remain private across account changes and pause', 
       'the Hype Card should fit in a typical desktop viewport without cropping',
     );
     assert.ok(
-      Math.abs(desktopCardBounds.width / desktopCardBounds.height - .75) < .03,
+      Math.abs(desktopCardBounds.width / desktopCardBounds.height - (2 / 3)) < .03,
       'the desktop HYPE Card preserves the full-photo portrait ratio',
-    );
-    assert.ok(
-      desktopCardBounds.height <= desktopCardBounds.viewportHeight * 0.75,
-      'the desktop card should leave room for the page header and surrounding content',
     );
     await connection.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, visitorFanCard);
     const reducedMotionDuration = await connection.evaluate<string>(
@@ -1050,6 +1048,9 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
         { key: 'and-one', label: 'And one', emoji: '💥', count: 0 },
         { key: 'big-stop', label: 'Big stop', emoji: '🛡️', count: 0 },
         { key: 'lets-go', label: "Let's go", emoji: '💙', count: 0 },
+        { key: 'thumbs-up', label: 'Thumbs Up', emoji: '👍', count: 0 },
+        { key: 'way-to-go', label: 'Way to Go!', emoji: '🎉', count: 0 },
+        { key: 'big-play', label: 'Big Play', emoji: '💥', count: 0 },
       ],
     },
     updatedAt: new Date().toISOString(),

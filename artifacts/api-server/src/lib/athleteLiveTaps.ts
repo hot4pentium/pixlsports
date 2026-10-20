@@ -3,6 +3,12 @@ import { athleteInviteLiveTapsTable, db } from "@workspace/db";
 
 type CheerPreset = { key: string; label: string; emoji: string };
 
+const allSportCheers: readonly CheerPreset[] = [
+  { key: "thumbs-up", label: "Thumbs Up", emoji: "👍" },
+  { key: "way-to-go", label: "Way to Go!", emoji: "🎉" },
+  { key: "big-play", label: "Big Play", emoji: "💥" },
+];
+
 const cheerPresets: Record<string, readonly CheerPreset[]> = {
   baseball: [
     { key: "hit", label: "Big hit", emoji: "⚾" },
@@ -49,7 +55,8 @@ const cheerPresets: Record<string, readonly CheerPreset[]> = {
 };
 
 export function getLiveTapCheerPresets(sport: string): readonly CheerPreset[] {
-  return cheerPresets[sport] ?? [];
+  const sportCheers = cheerPresets[sport];
+  return sportCheers ? [...allSportCheers, ...sportCheers] : [];
 }
 
 export function isLiveTapCheerForSport(sport: string, cheerKey: string) {

@@ -14,3 +14,9 @@ For write access, the owner creates revocable family QR codes for in-person scan
 **Why:** The public card is meant to be shared broadly, so its URL cannot also grant write access. The user prefers QR access because family members need to be present to send Live Taps. Game-scoped records preserve cheer history without changing the official stat record.
 
 **How to apply:** Keep QR authorization independent of public-card loading, and preserve old tap rows when access is revoked or a live share ends.
+
+Every supported sport also includes the shared cheers “Thumbs Up,” “Way to Go!” and “Big Play,” alongside its sport-specific options.
+
+**Why:** The user explicitly requested these three buttons on all Live Taps.
+
+**How to apply:** Keep them in the server-defined cheer presets so display, tally, and API validation stay consistent for every supported sport.
