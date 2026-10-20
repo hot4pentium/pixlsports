@@ -5445,7 +5445,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
       teamName: window.__hypeReconnectBody?.teamName,
       retainedVisibility: window.__hypeReconnectBody?.showHypeCard === true,
       artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {})),
-      publicCardPath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname
+      showcasePath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname
     })`), {
       calls: 1,
       updatePath: '/api/athlete-invites/saved-athlete-token',
@@ -5453,7 +5453,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
       teamName: 'The Northside Comets Select Travel Club',
       retainedVisibility: true,
       artworkUntouched: true,
-      publicCardPath: '/fan/saved-athlete-token',
+      showcasePath: '/studio/player-showcase',
     });
 
     for (const state of ['empty', 'paused', 'hidden', 'error']) {
@@ -5507,11 +5507,11 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
     assert.equal(await evaluate(`document.activeElement?.getAttribute('data-testid')`), 'link-mobile-hype-preview');
     await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
     await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
-    await wait(`location.pathname==='/fan/saved-athlete-token'`);
+     await wait(`location.pathname==='/studio/player-showcase'`);
      await connection.send('Page.navigate', { url: fixtureUrl }, page.sessionId);
      await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
      await tap('[data-testid="link-mobile-hype-preview"]');
-     await wait(`location.pathname==='/fan/saved-athlete-token'`);
+     await wait(`location.pathname==='/studio/player-showcase'`);
   } finally {
     if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
     connection?.close();
@@ -5616,14 +5616,14 @@ test('reconnecting a saved HYPE Card requires review and confirmation', { concur
       athleteName: window.__hypeReconnectBody?.athleteName,
       teamName: window.__hypeReconnectBody?.teamName,
       artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {})),
-      publicCardPath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname,
+      showcasePath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname,
     })`), {
       updates: 1,
       updatePath: '/api/athlete-invites/saved-athlete-token',
       athleteName: 'Alexandria Montgomery-Williams',
       teamName: 'The Northside Comets Select Travel Club',
       artworkUntouched: true,
-      publicCardPath: '/fan/saved-athlete-token',
+      showcasePath: '/studio/player-showcase',
     });
   } finally {
     if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});

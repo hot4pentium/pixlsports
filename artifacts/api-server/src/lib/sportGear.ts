@@ -2,12 +2,13 @@ import { and, eq, sql } from "drizzle-orm";
 import { GetSportGearForAthleteResponse } from "@workspace/api-zod";
 import { athleteInvitesTable, athleteSportGearLooksTable, db, soccerGearLooksTable } from "@workspace/db";
 import { readGearProgress, type GearDatabase } from "./soccerGear";
-import { defaultSportGearLoadout, gearSports, sportGearItems, type GearSport } from "./sportGearPolicy";
+import { defaultSportGearLoadout, gearSports, migrateEquippedGearIds, sportGearItems, type GearSport } from "./sportGearPolicy";
 
 export function savedSportLook(payload: Record<string, unknown> | undefined, sport: GearSport) {
   const looks = payload?.sportLooks as Partial<Record<GearSport, unknown>> | undefined;
   const direct = payload && !looks ? payload : undefined;
-  return GetSportGearForAthleteResponse.shape.loadout.parse(looks?.[sport] ?? direct ?? defaultSportGearLoadout());
+  const loadout = GetSportGearForAthleteResponse.shape.loadout.parse(looks?.[sport] ?? direct ?? defaultSportGearLoadout());
+  return { ...loadout, equippedGear: migrateEquippedGearIds(sport, loadout.equippedGear) };
 }
 
 export async function readSportGear(owner: string, sport: GearSport, database: GearDatabase = db, inviteId?: string, athleteName?: string) {

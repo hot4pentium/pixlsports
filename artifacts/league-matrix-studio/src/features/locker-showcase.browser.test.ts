@@ -635,6 +635,11 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'public Showcase gear is not controlled by HYPE Card visibility');
     await browser.evaluate(`window.__update({mode:'owner-showcase',sport:'soccer',gearStatus:'ready'})`);
     await browser.wait(`document.querySelector('[data-testid="link-public-showcase-url"]')`);
+     assert.equal(
+       await browser.evaluate(`document.querySelector('[data-testid="link-back-supporter-dashboard"]').getAttribute('href')`),
+       `${base}/studio`,
+       'the owner Showcase provides a return link to the Supporter Hub',
+     );
     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]').getAttribute('href').endsWith('/showcase/fixture-athlete')`), 'the share link resolves the invite matching the selected athlete rather than the first saved invite');
     await browser.evaluate(`window.__update({profileSeason:'Spring 2027'})`);
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
@@ -690,6 +695,13 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       await browser.wait(`document.querySelector('[data-testid="page-sport-gear-${sport}"]')`);
       assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="button-equip-"]').length`), 4);
       await browser.wait(`Array.from(document.querySelectorAll('[data-testid^="button-equip-"] img')).every(img=>img.complete&&img.naturalWidth>0)`);
+      if (sport === 'baseball') {
+        assert.deepEqual(
+          await browser.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-equip-baseball-"] img')).map(img=>new URL(img.src).pathname.split('/').pop())`),
+          ['baseball-glove-pack.webp', 'baseball-bat-pack-outline.webp', 'baseball-ball-pack.webp', 'baseball-jersey-pack-outline.webp'],
+          'baseball rewards use the new pack art with full-color and locked variants',
+        );
+      }
     }
     await browser.evaluate(`window.__update({mode:'appearance-editor'})`);
     await browser.wait(`document.querySelector('[data-testid="fan-card-appearance-manager"]')`);
@@ -714,6 +726,10 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[role="status"]')?.textContent.includes('Invitation sent')`);
     const invitationPayload = await browser.evaluate(`window.__invitationPayloads.at(-1)`);
     assert.deepEqual(invitationPayload, { emailAddress: 'athlete@example.com' }, 'new athlete invitations target the existing Showcase card without a project ID');
+     await browser.evaluate(`window.__update({mode:'owner-showcase',sport:'soccer'})`);
+     await browser.wait(`document.querySelector('[data-testid="link-back-supporter-dashboard"]')`);
+     await browser.evaluate(`document.querySelector('[data-testid="link-back-supporter-dashboard"]').click()`);
+     await browser.wait(`location.pathname==='${base}/studio'`);
   } finally {
     browser?.close();
     await stop(chromium);

@@ -6,7 +6,7 @@ const equipment: Record<GearSport, readonly [string, string][]> = {
   football: [["helmet", "Helmet"], ["pads", "Shoulder pads"], ["gloves", "Receiver gloves"], ["cleats", "Football cleats"]],
   soccer: [["ball", "Soccer ball"], ["shin-guards", "Shin guards"], ["cleats", "Soccer cleats"], ["wristbands", "Wristbands"]],
   basketball: [["ball", "Basketball"], ["shoes", "Basketball shoes"], ["arm-sleeve", "Arm sleeve"], ["headband", "Headband"]],
-  baseball: [["glove", "Fielding glove"], ["bat", "Baseball bat"], ["helmet", "Batting helmet"], ["cleats", "Baseball cleats"]],
+  baseball: [["glove", "Fielding glove"], ["bat", "Baseball bat"], ["ball", "Baseball"], ["jersey", "Baseball jersey"]],
   softball: [["glove", "Softball glove"], ["bat", "Softball bat"], ["helmet", "Batting helmet"], ["cleats", "Softball cleats"]],
   volleyball: [["ball", "Volleyball"], ["knee-pads", "Knee pads"], ["shoes", "Court shoes"], ["wristbands", "Wristbands"]],
 };
@@ -28,8 +28,22 @@ export function invalidSportGearSelection(sport: GearSport, equippedGear: string
 
 export const defaultSportGearLoadout = () => ({ jerseyColor: "#2878F5", equippedGear: [] as string[] });
 
+const retiredGearIds: Partial<Record<GearSport, Record<string, string>>> = {
+  baseball: {
+    "baseball-helmet": "baseball-ball",
+    "baseball-cleats": "baseball-jersey",
+  },
+};
+
+export function migrateEquippedGearIds(sport: GearSport, equippedGear: string[]) {
+  const migration = retiredGearIds[sport];
+  return [...new Set(equippedGear.map((id) => migration?.[id] ?? id))];
+}
+
 const allEarned = { activeWeeks: 3, eventCardsCreated: 10, trackerGamesCompleted: 5, hypeCardShared: true };
 export const publicGearArtFiles = new Set([
   ...gearSports.flatMap((sport) => sportGearItems(sport, allEarned).flatMap((item) => [`${item.id}.webp`, `${item.id}-outline.webp`])),
+  ...["baseball-ball-pack", "baseball-bat-pack", "baseball-glove-pack", "baseball-jersey-pack"]
+    .flatMap((asset) => [`${asset}.webp`, `${asset}-outline.webp`]),
   "football-jersey-base.webp", "football-jersey-mask.webp",
 ]);

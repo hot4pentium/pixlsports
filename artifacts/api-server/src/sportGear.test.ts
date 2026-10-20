@@ -9,6 +9,7 @@ import soccerGearRouter from "./routes/soccerGear";
 import athleteInvitesRouter from "./routes/athleteInvites";
 import { defaultSoccerLoadout } from "./lib/soccerGearPolicy";
 import { defaultSportGearLoadout, gearSports, invalidSportGearSelection, sportGearItems } from "./lib/sportGearPolicy";
+import { savedSportLook } from "./lib/sportGear";
 
 test("all sport rewards reject locked, foreign-sport, and duplicate equipment", () => {
   const empty = { activeWeeks: 0, eventCardsCreated: 0, trackerGamesCompleted: 0, hypeCardShared: false };
@@ -23,6 +24,22 @@ test("all sport rewards reject locked, foreign-sport, and duplicate equipment", 
     assert.ok(invalidSportGearSelection(sport, [ids[0], ids[0]], full));
     assert.ok(invalidSportGearSelection(sport, ["another-sport-item"], full));
   }
+});
+
+test("baseball gear uses the new pack while keeping milestone order and migrating saved equipment", () => {
+  const progress = { activeWeeks: 1, eventCardsCreated: 1, trackerGamesCompleted: 5, hypeCardShared: false };
+  const items = sportGearItems("baseball", progress);
+  assert.deepEqual(items.map((item) => item.id), ["baseball-glove", "baseball-bat", "baseball-ball", "baseball-jersey"]);
+  assert.deepEqual(items.map((item) => item.earned), [true, true, true, true]);
+  assert.deepEqual(
+    savedSportLook({ sportLooks: { baseball: { jerseyColor: "#D7EF80", equippedGear: ["baseball-glove", "baseball-helmet", "baseball-cleats"] } } }, "baseball"),
+    { jerseyColor: "#D7EF80", equippedGear: ["baseball-glove", "baseball-ball", "baseball-jersey"] },
+  );
+  assert.deepEqual(
+    savedSportLook({ jerseyColor: "#2878F5", equippedGear: ["baseball-helmet", "baseball-ball"] }, "baseball").equippedGear,
+    ["baseball-ball"],
+    "duplicate old and current IDs collapse during migration",
+  );
 });
 
 test("sport gear persists, gates rewards, preserves soccer, and respects parent and athlete boundaries", { timeout: 90_000 }, async () => {
@@ -68,10 +85,22 @@ test("sport gear persists, gates rewards, preserves soccer, and respects parent 
     };
     assert.equal((await call("/athlete-gear/sports?sport=football&athleteName=Gear%20Player", "GET", undefined, "")).status, 401);
     assert.equal((await call("/athlete-gear/art/v1/private-photo.webp", "GET", undefined, "")).status, 404, "artwork route cannot serve arbitrary public or private objects");
-    const artwork = await call("/athlete-gear/art/v1/football-helmet-outline.webp", "GET", undefined, "");
-    assert.equal(artwork.status, 200);
-    assert.equal(artwork.headers.get("content-type"), "image/webp");
-    assert.ok((await artwork.arrayBuffer()).byteLength > 0);
+    for (const filename of [
+      "football-helmet-outline.webp",
+      "baseball-ball-pack.webp",
+      "baseball-ball-pack-outline.webp",
+      "baseball-bat-pack.webp",
+      "baseball-bat-pack-outline.webp",
+      "baseball-glove-pack.webp",
+      "baseball-glove-pack-outline.webp",
+      "baseball-jersey-pack.webp",
+      "baseball-jersey-pack-outline.webp",
+    ]) {
+      const artwork = await call(`/athlete-gear/art/v1/${filename}`, "GET", undefined, "");
+      assert.equal(artwork.status, 200, `${filename} is stored in the curated public art folder`);
+      assert.equal(artwork.headers.get("content-type"), "image/webp");
+      assert.ok((await artwork.arrayBuffer()).byteLength > 0);
+    }
     assert.equal((await call("/athlete-gear/sports?sport=cricket")).status, 400);
     assert.equal((await read()).athleteId, invite.id);
     assert.equal((await read(owner, "soccer")).athleteId, null, "the selected athlete name is not matched to a different athlete's soccer HYPE Card");

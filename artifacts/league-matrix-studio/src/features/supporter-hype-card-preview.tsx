@@ -64,6 +64,7 @@ export function SupporterHypeCardPreview({
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   const showcaseHref = card ? `${basePath}/showcase/${encodeURIComponent(card.inviteToken)}` : '';
   const shareUrl = shareOrigin ? new URL(showcaseHref, shareOrigin).toString() : showcaseHref;
+  const previewHref = isMobile ? '/studio/player-showcase' : href;
 
   useEffect(() => {
     if (!shareOpen || loading || failed || !card || unavailable) return;
@@ -178,9 +179,9 @@ export function SupporterHypeCardPreview({
         ) : (
           <div className="supporter-hype-preview__card-wrap">
             <Link
-              href={href}
+              href={previewHref}
               className="supporter-hype-preview__link"
-              aria-label={`View ${card.athleteName}'s HYPE Card`}
+              aria-label={isMobile ? `View ${card.athleteName}'s Player Showcase` : `View ${card.athleteName}'s HYPE Card`}
               data-testid={isMobile ? 'link-mobile-hype-preview' : 'link-desktop-hype-preview'}
             >
               <div className="supporter-hype-preview__surface" data-design={appearance?.design ?? 'velocity'}>

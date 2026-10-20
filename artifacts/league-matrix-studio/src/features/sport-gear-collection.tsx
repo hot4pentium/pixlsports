@@ -6,18 +6,28 @@ const ids: Record<GearSport, string[]> = {
   football: ['helmet', 'pads', 'gloves', 'cleats'],
   soccer: ['ball', 'shin-guards', 'cleats', 'wristbands'],
   basketball: ['ball', 'shoes', 'arm-sleeve', 'headband'],
-  baseball: ['glove', 'bat', 'helmet', 'cleats'],
+  baseball: ['glove', 'bat', 'ball', 'jersey'],
   softball: ['glove', 'bat', 'helmet', 'cleats'],
   volleyball: ['ball', 'knee-pads', 'shoes', 'wristbands'],
 };
-const title = (s: string) => s.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+const title = (sport: GearSport, id: string) => {
+  if (sport === 'baseball') {
+    if (id === 'ball') return 'Baseball';
+    if (id === 'jersey') return 'Baseball jersey';
+  }
+  return id.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+};
 
 export function sportGearItems(sport: GearSport): { id: string; label: string }[] {
-  return ids[sport].map((n) => ({ id: `${sport}-${n}`, label: title(n) }));
+  return ids[sport].map((n) => ({ id: `${sport}-${n}`, label: title(sport, n) }));
 }
 
 // The API is its own artifact mounted at /api, independent of the studio base.
-const url = (id: string, outline: boolean) => getGetSportGearArtUrl(`${id}${outline ? '-outline' : ''}.webp`);
+const baseballPackIds = new Set(['baseball-ball', 'baseball-bat', 'baseball-glove', 'baseball-jersey']);
+const url = (id: string, outline: boolean) => {
+  const asset = baseballPackIds.has(id) ? `${id}-pack` : id;
+  return getGetSportGearArtUrl(`${asset}${outline ? '-outline' : ''}.webp`);
+};
 
 export function SportGearArt({ id, label, earned }: { id: string; label: string; earned: boolean }) {
   return (

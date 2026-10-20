@@ -2,6 +2,7 @@ import { ArrowRight, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Footp
 import { Link } from 'wouter';
 import { useClerk, useUser } from '@clerk/react';
 import { useState, type ReactNode } from 'react';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import {
   getListAthleteInvitesQueryKey,
   useListAthleteInvites,
@@ -303,6 +304,13 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   };
   return (
     <>
+      <div className="mx-auto w-full max-w-6xl px-4 pt-5 sm:px-8">
+        <BackNavigationLink
+          href="/studio"
+          label="Back to Supporter Hub"
+          testId="link-back-supporter-dashboard"
+        />
+      </div>
       <PlayerShowcaseContent profile={profile} selectedSlide={selectedSlide} onSlideChange={setSelectedSlide} gear={gear} gearStatus={gearStatus} onRetry={retry}
         sportGear={sportGear} sportGearStatus={sportGearQuery.isLoading ? 'loading' : sportGearQuery.isError ? 'error' : sportGear ? 'ready' : 'unavailable'}
         onRetrySportGear={() => void sportGearQuery.refetch()}
