@@ -317,8 +317,9 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
     await browser.wait(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')?.naturalWidth>0`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'earned gear appears on the public jersey Showcase without a HYPE Card sharing setting');
-    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 1);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="link-public-showcase-event-"]')?.getAttribute('href')`), `${base}/game-on/fixture-event`);
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="item-public-showcase-event-"]').length`), 1);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="item-public-showcase-event-"]')?.closest('a')`), null, 'shared calendar entries are informational, not clickable');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="item-public-showcase-event-"] svg')`), null, 'informational calendar entries have no navigation arrow');
     assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan') || url.includes('/athlete-invites/fixture-athlete/jersey-showcase/gear') || url.includes('/athlete-invites/fixture-athlete/follows') || url.endsWith('/api/notifications/config'))`), 'public gear and alert configuration use their dedicated endpoints, separate from HYPE Card data');
     const publicSoccerGearCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-public-soccer-gear-table-check.jpg'), Buffer.from(publicSoccerGearCapture.data, 'base64'));
@@ -356,7 +357,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-shared-locker-event-"]').length`), 0);
     await browser.evaluate(`window.__update({mode:'public-showcase'})`);
     await browser.wait(`document.querySelector('[data-testid="text-public-showcase-no-events"]')?.textContent.includes('kept event details private')`);
-    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 0);
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="item-public-showcase-event-"]').length`), 0);
     await browser.evaluate(`window.__update({fail:true})`);
     await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-shared-locker-name"]')`), null);

@@ -5,10 +5,8 @@ import {
   useGetPublicJerseyShowcaseGear,
 } from '@workspace/api-client-react';
 import { ArrowUpRight, Bell, CalendarDays, ShieldCheck } from 'lucide-react';
-import { Link } from 'wouter';
 import { useState } from 'react';
 import { normalizeCardAppearance } from './hype-card-appearance';
-import { gameOnHref } from './athlete-event-links';
 import { JerseyLayerStage } from './jersey-layers';
 import { FootballJerseyPreview } from './football-jersey-preview';
 import { SportGearCollection } from './sport-gear-collection';
@@ -198,14 +196,13 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
         {events.length ? (
           <div className="public-showcase__event-list">
             {events.map((event) => (
-              <Link key={`${event.shareToken}-${event.eventId}`} href={gameOnHref(event.shareToken)} className="public-showcase__event" data-testid={`link-public-showcase-event-${event.eventId}`}>
+              <div key={`${event.shareToken}-${event.eventId}`} className="public-showcase__event" data-testid={`item-public-showcase-event-${event.eventId}`}>
                 <span className="public-showcase__event-date">{event.date || 'UP NEXT'}</span>
                 <span className="public-showcase__event-main">
                   <strong>{event.opponent ? `vs ${event.opponent}` : event.title || 'Event'}</strong>
                   <small>{[event.time, event.location].filter(Boolean).join(' · ') || 'Event details'}</small>
                 </span>
-                <ArrowUpRight size={18} aria-hidden="true" />
-              </Link>
+              </div>
             ))}
           </div>
         ) : (
