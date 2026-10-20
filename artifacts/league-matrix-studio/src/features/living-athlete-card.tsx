@@ -460,14 +460,6 @@ export function LivingAthleteCardPage({
             </button>
           </div>
         )}
-        {!embedded && ownerInvite && (
-          <div className="living-card-intro">
-            <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
-              <span>Manage this athletic card</span><ArrowRight aria-hidden="true" />
-            </Link>
-          </div>
-        )}
-
         <div className="living-card-layout living-card-layout-solo">
           <section
             className="living-card-stage"

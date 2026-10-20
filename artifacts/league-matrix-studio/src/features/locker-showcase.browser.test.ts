@@ -250,6 +250,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.evaluate(`document.querySelector('[data-testid="button-living-card-stats"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="text-living-card-record"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-living-card-record"]').textContent`), '3–1–0', 'the embedded full card shows its real stats data');
+    assert.ok(await browser.evaluate(`(()=>{const frame=document.querySelector('.living-card-frame').getBoundingClientRect();return frame.height>=frame.width*1.49})()`), 'the stats side keeps the taller portrait frame');
     await browser.evaluate(`document.querySelector('[data-testid="button-living-card-events"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="living-card-events-side"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="card-living-event-fixture-event"] h3').textContent`), 'vs Hawks');
@@ -284,6 +285,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
       assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="button-public-showcase-slide-card"]'))`), `HYPE Card tab is missing at ${width}px`);
       await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').click()`);
       await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"]')`);
+      assert.ok(await browser.evaluate(`(()=>{const frame=document.querySelector('.living-card-frame').getBoundingClientRect();return frame.height>=frame.width*1.49})()`), `the HYPE Card has the extended portrait height at ${width}px`);
       assert.equal(await browser.evaluate(`document.querySelector('.public-showcase__intro, .public-showcase__identity, .public-showcase__read-only, .public-showcase__topbar, .public-showcase__visual-index')`), null, `the recipient card header contains only the name and slide navigation at ${width}px`);
       assert.ok(await browser.evaluate(`(()=>{const card=document.querySelector('.public-showcase__card-interactive .living-card-stage').getBoundingClientRect();return card.width>=Math.min(innerWidth-36,480)&&card.top<200})()`), `the recipient HYPE Card is large and close to the header at ${width}px`);
       assert.ok(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`), `Public HYPE Card slide overflows at ${width}px`);
