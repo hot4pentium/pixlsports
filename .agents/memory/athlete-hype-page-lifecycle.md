@@ -23,6 +23,12 @@ Recipients must be able to find alert sign-up on the shared Showcase itself, rat
 
 **How to apply:** Keep an obvious recipient alert entry alongside shared Events without implying that following automatically enables alerts or scheduled reminders.
 
+Alert eligibility must follow browser capabilities and server configuration, not a blanket production-only restriction. Secure preview opt-ins must never install an offline cache over the development app.
+
+**Why:** The production-only gate left recipients with followed cards and checkboxes that silently refused clicks in preview.
+
+**How to apply:** Allow genuine push opt-ins where supported, show actionable permission or availability feedback elsewhere, and keep preview notification workers separate from offline-shell caching.
+
 The fan card and Athlete Hype Page are photo-first and do not expose video upload, playback, or video-side controls. Preserve older media records and direct share URLs.
 
 **Why:** The user removed video from Hype Cards and athlete profiles while explicitly preserving existing saved media and share records.

@@ -115,7 +115,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
           </div>
           {activeSlide === 'jersey' && invite.showEvents && (
             <a className="public-showcase__alerts-link" href="#showcase-event-alerts" data-testid="link-public-showcase-alerts">
-              <Bell size={16} aria-hidden="true" /> Get event alerts
+              <Bell size={20} aria-hidden="true" /> Subscribe to alerts
             </a>
           )}
           {activeSlide === 'jersey' && <span className="public-showcase__read-only"><ShieldCheck size={14} aria-hidden="true" /> Public view · read only</span>}

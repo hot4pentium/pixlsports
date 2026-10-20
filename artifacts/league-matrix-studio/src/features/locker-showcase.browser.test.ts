@@ -102,6 +102,12 @@ const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',s
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = [];
+window.__alertPreferences = {liveAlerts:false,eventAlerts:false,preEventAlerts:false,active:true};
+window.__followCreates = [];
+window.__permissionResult = 'granted';
+Object.defineProperty(window,'Notification',{configurable:true,value:{permission:'default',requestPermission:async()=>window.__permissionResult}});
+Object.defineProperty(window,'PushManager',{configurable:true,value:function(){}});
+Object.defineProperty(navigator,'serviceWorker',{configurable:true,value:{register:async()=>({active:{},pushManager:{getSubscription:async()=>({toJSON:()=>({endpoint:'https://push.example.com/showcase-test',keys:{p256dh:'fixture-key',auth:'fixture-auth'}})})}})}});
 window.__gearSaves = [];
 function sportState() {
  const stored=JSON.parse(sessionStorage.getItem('gear-fixture:'+state.accountId+':'+state.sport)||'null');
@@ -113,7 +119,15 @@ window.fetch = async (input,init) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url.includes('/api/')) {
     window.__requests.push(url);
-    if(url.endsWith('/api/notifications/config'))return new Response(JSON.stringify({available:false,publicKey:null}),{status:200,headers:{'Content-Type':'application/json'}});
+    if(url.endsWith('/api/notifications/config'))return new Response(JSON.stringify({available:true,publicKey:'AQID'}),{status:200,headers:{'Content-Type':'application/json'}});
+    if(url.includes('/follows')){
+      if(init?.method==='DELETE')return new Response(null,{status:204});
+      if(init?.method==='POST'||init?.method==='PATCH'){
+        const body=JSON.parse(init.body);Object.assign(window.__alertPreferences,body);
+        if(init.method==='POST')window.__followCreates.push(body);
+      }
+      return new Response(JSON.stringify({...window.__alertPreferences,followToken:'fixture-follow-token'}),{status:200,headers:{'Content-Type':'application/json'}});
+    }
     if(url.includes('/api/athlete-invites/')&&url.includes('/editor-access')){
       if(init?.method==='POST'){
         const body=JSON.parse(init.body);window.__invitationPayloads.push(body);
@@ -252,6 +266,26 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     await browser.wait(`document.querySelector('[data-testid="button-follow-fan-card"]')?.getAttribute('aria-pressed')==='true'`);
     assert.equal(await browser.evaluate(`JSON.parse(localStorage.getItem('pixl-fan-card-follow:fixture-athlete')).following`), true);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`), false, 'following does not silently enable event alerts');
+    const toggleAlert = async (kind: string) => {
+      await browser!.evaluate(`document.querySelector('[data-testid="input-fan-alert-${kind}"]').focus()`);
+      await browser!.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space' });
+      await browser!.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space' });
+    };
+    await browser.evaluate(`window.__permissionResult='denied'`);
+    await toggleAlert('event');
+    await browser.wait(`document.querySelector('[data-testid="status-fan-follow"]')?.textContent.includes('blocked alerts')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`), false, 'denied permission never claims a saved subscription');
+    await browser.evaluate(`window.__permissionResult='granted'`);
+    await toggleAlert('event');
+    await browser.wait(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`);
+    assert.equal(await browser.evaluate(`window.__followCreates[0].preEventAlerts`), true);
+    assert.equal(await browser.evaluate(`window.__followCreates[0].liveAlerts`), false);
+    await toggleAlert('live');
+    await browser.wait(`document.querySelector('[data-testid="input-fan-alert-live"]').checked`);
+    await toggleAlert('event');
+    await browser.wait(`!document.querySelector('[data-testid="input-fan-alert-event"]').checked`);
+    assert.equal(await browser.evaluate(`window.__alertPreferences.liveAlerts`), true, 'turning off event alerts preserves live consent');
+    await browser.evaluate(`window.scrollTo(0,0)`);
     await swipe('[data-testid="figure-public-showcase-jersey"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"] [data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')`), 'true');
@@ -285,7 +319,7 @@ test('Locker sharing keeps public data filtered and parent controls explicit acr
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'earned gear appears on the public jersey Showcase without a HYPE Card sharing setting');
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="link-public-showcase-event-"]').length`), 1);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid^="link-public-showcase-event-"]')?.getAttribute('href')`), `${base}/game-on/fixture-event`);
-    assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan') || url.includes('/athlete-invites/fixture-athlete/jersey-showcase/gear') || url.endsWith('/api/notifications/config'))`), 'public gear and alert configuration use their dedicated endpoints, separate from HYPE Card data');
+    assert.ok(await browser.evaluate(`window.__requests.slice(1).every(url => url.includes('/athlete-invites/fixture-athlete/fan') || url.includes('/athlete-invites/fixture-athlete/jersey-showcase/gear') || url.includes('/athlete-invites/fixture-athlete/follows') || url.endsWith('/api/notifications/config'))`), 'public gear and alert configuration use their dedicated endpoints, separate from HYPE Card data');
     const publicSoccerGearCapture = await browser.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 });
     await writeFile(resolve(tmpdir(), 'pixl-public-soccer-gear-table-check.jpg'), Buffer.from(publicSoccerGearCapture.data, 'base64'));
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]'))`), 'gear remains on the Showcase without a visibility toggle');

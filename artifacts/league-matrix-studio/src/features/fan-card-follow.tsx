@@ -12,6 +12,7 @@ import {
 import { isIosDevice } from './schedule-install';
 import { FanCardInstall } from './fan-card-install';
 import { nextFanAlertPreferences, type FanAlertChoice } from './fan-card-alerts';
+import { fanPushRegistration } from './fan-push-registration';
 
 function decodePublicKey(value: string): Uint8Array<ArrayBuffer> {
   const padded = `${value}${'='.repeat((4 - value.length % 4) % 4)}`.replace(/-/g, '+').replace(/_/g, '/');
@@ -70,7 +71,7 @@ export function FanCardFollow({
   const standalone = window.matchMedia('(display-mode: standalone)').matches
     || ('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
   const supported = Boolean(
-    import.meta.env.PROD && window.isSecureContext && config.data?.available && config.data?.publicKey
+    window.isSecureContext && config.data?.available && config.data?.publicKey
     && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
     && (!isIOS || standalone),
   );
@@ -138,7 +139,7 @@ export function FanCardFollow({
         return;
       }
       if (enabling && (!supported || !config.data?.publicKey)) {
-        setMessage('Alerts are not available in this browser. You can still keep this card on your home screen.');
+        setMessage(availability || 'Alerts are not available in this browser right now. Please try again.');
         return;
       }
       if (enabling && permission !== 'granted') {
@@ -153,7 +154,7 @@ export function FanCardFollow({
       }
       if (!followToken) {
         if (!config.data?.publicKey) throw new Error('Push alerts are not configured on this server.');
-        const registration = await navigator.serviceWorker.ready;
+        const registration = await fanPushRegistration();
         const subscription = await registration.pushManager.getSubscription()
           ?? await registration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -189,9 +190,7 @@ export function FanCardFollow({
     }
   }
 
-  const availability = !import.meta.env.PROD
-    ? 'Push alerts are available on the published site. You can follow and save the card here.'
-    : isIOS && !standalone
+  const availability = isIOS && !standalone
       ? 'On iPhone, first add this card to your home screen and open it there to enable alerts.'
       : permission === 'denied'
         ? 'Alerts are blocked in this browser’s notification settings.'
@@ -215,21 +214,22 @@ export function FanCardFollow({
         </div>
       </div>
       <button type="button" onClick={() => void toggleFollow()} disabled={pending} className="mt-4 min-h-11 border border-[#ff7849] bg-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#102b4d] disabled:opacity-50" aria-pressed={following} data-testid="button-follow-fan-card">
-        {following ? 'Unfollow this card' : 'Follow on this device'}
+        {following ? 'Unfollow this card' : surface === 'showcase' ? 'Subscribe on this device' : 'Follow on this device'}
       </button>
+      {availability && <p className="mt-4 border-l-2 border-[#ff7849] pl-3 text-sm leading-relaxed text-white/80" data-testid="status-fan-alert-availability">{availability}</p>}
+      {config.isError && <button type="button" onClick={() => void config.refetch()} className="mt-2 min-h-11 underline" data-testid="button-retry-fan-alert-config">Check alert availability again</button>}
       <div className="mt-5 space-y-3 border-t border-white/15 pt-4" role="group" aria-label="Optional phone alerts">
           {!following && <p className="text-xs leading-relaxed text-white/65">Follow this card to choose your phone alerts. Both choices start off.</p>}
           <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
             <span>Game Day Live starts</span>
-            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert('live')} disabled={!following || pending || status.isLoading || Boolean(followToken && (status.isError || !status.data)) || (!liveAlerts && (!supported || permission === 'denied'))} className="h-5 w-5 accent-[#ff7849] disabled:opacity-40" data-testid="input-fan-alert-live" />
+            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert('live')} disabled={!following || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-live" />
           </label>
           <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
             <span>Pre-event Hype Card announcements</span>
-            <input type="checkbox" checked={preEventAlerts} onChange={() => void toggleAlert('event')} disabled={!following || pending || status.isLoading || Boolean(followToken && (status.isError || !status.data)) || (!preEventAlerts && (!supported || permission === 'denied'))} className="h-5 w-5 accent-[#ff7849] disabled:opacity-40" data-testid="input-fan-alert-event" />
+            <input type="checkbox" checked={preEventAlerts} onChange={() => void toggleAlert('event')} disabled={!following || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-event" />
           </label>
           <p className="text-xs leading-relaxed text-white/55">The card owner chooses whether to send a pre-event announcement. Following or enabling Game Day Live does not turn these on. Change either choice or unfollow here at any time; no account is needed.</p>
       </div>
-      {availability && <p className="mt-3 text-xs leading-relaxed text-white/65" data-testid="status-fan-alert-availability">{availability}</p>}
       {message && <p role="status" className="mt-3 text-xs leading-relaxed text-[#ffae8f]" data-testid="status-fan-follow">{message}</p>}
     </section>
   );
