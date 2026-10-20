@@ -9,8 +9,8 @@ The supporter dashboard event panel is sourced from Event Cards, including stand
 
 **How to apply:** Derive the list from the existing Event Card entries, including published shares with no schedule link, filter to upcoming game/practice cards, and sort chronologically.
 
-The mobile space beside the HYPE Card must always provide guidance. A live event offers an action to open its Event Card; an active or paused tracker without a card offers Continue tracking. When neither exists, offer Create Event Card and Open tracker rather than just reporting that no events are available.
+The mobile space beside the HYPE Card must always provide guidance. A live event offers an action to open its Event Card. Without a live or upcoming Event Card, offer only Create Event Card, not Open tracker or Continue tracking. A standalone tracker session must not override this panel's Event Card guidance.
 
-**Why:** The user reported an ongoing game while this space displayed “No upcoming games or practices” and said, “This space needs to always provide guidance to the user.”
+**Why:** The user said, “This space needs to always provide guidance to the user,” then corrected the tracker fallback: “If there is no event card, then obviously there is no game to track.”
 
-**How to apply:** Treat “no upcoming Event Cards” as distinct from “nothing happening.” Keep live/paused tracker context account-scoped and preserve the upcoming badge when no live activity takes priority.
+**How to apply:** Use Event Cards as the authority for this panel. Preserve live-card priority and the upcoming badge, but make the no-card state an unambiguous invitation to create a card first.

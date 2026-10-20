@@ -5124,7 +5124,8 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     await evaluate(`window.__setHypePreviewState('velocity'); window.__setSupporterDashboardEvents([])`);
     await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
     assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Create Event Card/);
-    assert.equal(await evaluate(`document.querySelector('[data-testid="link-guidance-tracker"]').getAttribute('href')`), '/studio/stat-tracker');
+    assert.equal(await evaluate(`document.querySelector('[data-testid="link-guidance-tracker"]')`), null, 'no tracker action without an Event Card');
+    assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /open tracker|open the tracker|continue tracking|already underway/i);
     await evaluate(`window.__setSupporterDashboardEvents([
       {id:'guidance-live',type:'game',date:new Date().toISOString().slice(0,10),time:'00:00',timezone:'UTC',opponent:'Live Hawks',location:'Field 1',status:'live'},
       {id:'guidance-future',type:'game',date:new Date(Date.now()+86400000*3).toISOString().slice(0,10),time:'18:00',timezone:'UTC',opponent:'Future Owls',location:'Field 2',status:'upcoming'}
@@ -5154,10 +5155,10 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     await evaluate(`localStorage.setItem('leaguematrix-stat-tracker-active-game:guidance-owner',JSON.stringify({
       id:'guidance-tracker',sport:'basketball',status:'paused',date:new Date().toISOString().slice(0,10),opponent:'Tracker Falcons',period:1,score:2,opponentScore:0,notes:'',stats:{},events:[],startedAt:new Date().toISOString()
     }));window.__setSupporterDashboardTrackerUserId('guidance-owner')`);
-    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='live'`);
-    assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /paused/);
-    assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Tracker Falcons/);
-    assert.equal(await evaluate(`document.querySelector('[data-testid="link-guidance-tracker"]').getAttribute('href')`), '/studio/stat-tracker');
+    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
+    assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Tracker Falcons|paused|open tracker|open the tracker|continue tracking/i, 'a tracker session alone cannot imply a game exists in the Event Card panel');
+    assert.equal(await evaluate(`document.querySelector('[data-testid="mobile-event-guidance"] a')`), null);
+    assert.equal(await evaluate(`document.querySelectorAll('[data-testid="mobile-event-guidance"] button').length`), 1);
     await evaluate(`window.__setSupporterDashboardTrackerUserId('another-owner')`);
     await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
     assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Tracker Falcons/);
