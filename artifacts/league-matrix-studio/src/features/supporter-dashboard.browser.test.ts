@@ -1227,7 +1227,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     }>(`(() => {
       const trend = document.querySelector('[data-testid="supporter-stat-trends"]');
       const rect = trend?.getBoundingClientRect();
-      const summary = trend?.closest('.supporter-game-on-summary--desktop');
+      const summary = document.querySelector('.supporter-game-on-summary--desktop');
       const badge = document.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
       const panelHeight = (selector) => summary?.querySelector(selector)?.getBoundingClientRect().height || 0;
       return {
@@ -1242,9 +1242,9 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
         recordPanelHeight: panelHeight('.supporter-game-on-summary__record'),
       };
     })()`, page.sessionId);
-    assert.equal(desktopTrend.visible, true, 'the desktop summary displays the stat trends panel');
+    assert.equal(desktopTrend.visible, true, 'the desktop dashboard displays the stat trends panel');
     assert.equal(desktopTrend.heading, 'STAT TRENDS');
-    assert.equal(desktopTrend.desktopBadgeVisible, true, 'the generic Event Card artwork remains visible beside desktop trends');
+    assert.equal(desktopTrend.desktopBadgeVisible, true, 'the generic Event Card artwork remains visible in the desktop event context');
     assert.equal(desktopTrend.hasTrendContent, true, 'the chart or its honest empty state is visible');
     assert.ok([
       desktopTrend.trendHeight,
@@ -1679,7 +1679,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       scrollY: number;
     }>(`(() => {
       const section = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="section-next-game-context"]');
-      const trend = section?.querySelector('[data-testid="supporter-stat-trends"]');
+      const trend = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="supporter-stat-trends"]');
       const badge = section?.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
       const event = section?.querySelector('[data-testid="upcoming-calendar-event"]');
       return {
@@ -4968,6 +4968,8 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       mobileHidden: boolean;
       desktopHypeCardVisible: boolean;
       desktopHypePreviewVisible: boolean;
+      desktopHypeCardAtTopLeft: boolean;
+      desktopHypeCardNextToStatTrends: boolean;
       quickLinksBelowHypeCard: boolean;
       eventCardsCentered: boolean;
       statsVisible: boolean;
@@ -4986,6 +4988,12 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       const quickLinks = sidebar?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
       const hypeRect = hypeCard instanceof HTMLElement ? hypeCard.getBoundingClientRect() : null;
       const quickLinksRect = quickLinks instanceof HTMLElement ? quickLinks.getBoundingClientRect() : null;
+      const summary = shell?.querySelector('.supporter-game-on-summary--desktop');
+      const summaryRect = summary instanceof HTMLElement ? summary.getBoundingClientRect() : null;
+      const trend = shell?.querySelector('[data-testid="supporter-stat-trends"]');
+      const trendRect = trend instanceof HTMLElement ? trend.getBoundingClientRect() : null;
+      const hypeRow = shell?.querySelector('[data-testid="dashboard-hype-trends-row"]');
+      const hypeRowRect = hypeRow instanceof HTMLElement ? hypeRow.getBoundingClientRect() : null;
       const collectionGrid = shell?.querySelector('[data-testid="game-on-dashboard-collection"] .game-on-collection__grid');
       const stats = shell?.querySelector('[data-testid="link-desktop-independent-stats"]');
       const group = shell?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
@@ -5003,6 +5011,13 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         mobileHidden: mobile instanceof HTMLElement && getComputedStyle(mobile).display === 'none',
         desktopHypeCardVisible: visible(hypeCard),
         desktopHypePreviewVisible: visible(preview),
+        desktopHypeCardAtTopLeft: Boolean(hypeRect && summaryRect
+          && hypeRect.top < summaryRect.top
+          && Math.abs(hypeRect.left - (hypeRowRect?.left ?? 0)) <= 1),
+        desktopHypeCardNextToStatTrends: Boolean(hypeRect && trendRect
+          && Math.abs(hypeRect.top - trendRect.top) <= 10
+          && trendRect.left >= hypeRect.right
+          && trendRect.left - hypeRect.right < 32),
         quickLinksBelowHypeCard: Boolean(hypeRect && quickLinksRect && quickLinksRect.top >= hypeRect.bottom - 1),
         eventCardsCentered: collectionGrid instanceof HTMLElement && getComputedStyle(collectionGrid).justifyContent === 'center',
         statsVisible: visible(stats),
@@ -5028,6 +5043,8 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       mobileHidden: true,
       desktopHypeCardVisible: true,
       desktopHypePreviewVisible: true,
+      desktopHypeCardAtTopLeft: true,
+      desktopHypeCardNextToStatTrends: true,
       quickLinksBelowHypeCard: true,
       eventCardsCentered: true,
       statsVisible: true,

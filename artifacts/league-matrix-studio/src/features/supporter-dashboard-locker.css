@@ -354,6 +354,7 @@
   .pixl-locker-dashboard .supporter-game-on-summary--desktop {
     display: grid;
     grid-column: 1 / -1;
+    grid-row: 2;
     grid-template-columns: minmax(270px, .84fr) minmax(0, 1.16fr);
     overflow: hidden;
   }
@@ -432,16 +433,41 @@
   }
 
   .pixl-locker-dashboard .pixl-locker-content > .game-on-collection {
-    grid-column: 1;
+    grid-column: 1 / -1;
+    grid-row: 3;
     min-width: 0;
   }
 
-  .pixl-locker-dashboard .pixl-locker-content > .supporter-dashboard-desktop-sidebar {
-    grid-column: 2;
+  .pixl-locker-dashboard .dashboard-hype-trends-row > .supporter-dashboard-desktop-sidebar {
     align-self: start;
     min-width: 0;
-    position: sticky;
-    top: 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pixl-locker-dashboard .pixl-locker-content > .dashboard-hype-trends-row {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 18px;
+    min-width: 0;
+  }
+
+  .pixl-locker-dashboard .dashboard-hype-card-panel__body {
+    justify-items: center;
+    gap: 16px;
+    padding: 0 clamp(18px, 4vw, 42px) clamp(20px, 3vw, 32px);
+  }
+
+  .pixl-locker-dashboard .dashboard-hype-card-panel__meta {
+    width: min(100%, 640px);
+    font-size: 10px;
+  }
+
+  .pixl-locker-dashboard .supporter-hype-preview--desktop .supporter-hype-preview__card-wrap {
+    width: min(100%, 320px);
   }
 
   .pixl-locker-dashboard .pixl-locker-content > p[role="alert"],
