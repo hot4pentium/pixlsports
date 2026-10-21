@@ -20,7 +20,7 @@ import {
 } from '@workspace/api-client-react';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
-  Users, ArrowLeft, ArrowRight, PenSquare, Loader2, AlertTriangle, X,
+  ArrowLeft, ArrowRight, PenSquare, Loader2, AlertTriangle, X,
   Menu, Bell, ShieldCheck, BookOpen
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
@@ -159,17 +159,6 @@ export interface SupporterScheduleOption {
   revision?: number;
   updatedAt: string | Date;
   eventCount: number;
-}
-
-function athleteInitials(name: string): string {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-  return initials || 'A';
 }
 
 export interface SupporterDashboardViewProps {
@@ -500,14 +489,6 @@ export function SupporterDashboardView({
     return () => desktop.removeEventListener('change', updateViewport);
   }, []);
 
-  const hasAthlete = Boolean(profile.athleteName);
-  const summaryAthleteAvatar = savedFanCard?.photoUrl ? (
-    <img src={savedFanCard.photoUrl} alt="" className="h-full w-full rounded-full object-cover" />
-  ) : hasAthlete ? (
-    <span>{athleteInitials(profile.athleteName)}</span>
-  ) : (
-    <Users className="h-5 w-5" aria-hidden="true" />
-  );
   const gameEvents = events.filter((event) => event.type === 'game');
   const activeJourneyEvents = events.filter((event) => event.type !== 'meeting');
   const selectedWorkspaceEvent = getVisibleSupporterSelection(
@@ -1326,12 +1307,7 @@ export function SupporterDashboardView({
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
           <SupporterGameOnSummary
             variant="mobile"
-            athleteName={profile.athleteName}
-            teamName={profile.teamName}
             seasonName={profile.seasonName}
-            jerseyNumber={profile.jerseyNumber}
-            athleteAvatar={summaryAthleteAvatar}
-            profileHref={supporterToolRoutes.profile}
             sport={recordSport}
             record={gameRecord}
             headerAction={!isDesktopDashboard ? dashboardChecklist : undefined}
@@ -1496,42 +1472,53 @@ export function SupporterDashboardView({
             </div>
           </section>
         </aside>
-        {renderDesktopStatTrends()}
+        <div className="dashboard-desktop-stat-stack" data-testid="dashboard-desktop-stat-stack">
+          <div className="dashboard-desktop-overview-heading" data-testid="dashboard-desktop-overview-heading">
+            <h2 id="game-on-summary-heading-desktop">Athlete overview</h2>
+            <div className="supporter-game-on-summary__locker-kicker">
+              <span className="supporter-game-on-summary__locker-dot" aria-hidden="true" />
+              <span>All in, all season</span>
+              {profile.seasonName && (
+                <span className="supporter-game-on-summary__locker-season">
+                  Family season · {profile.seasonName}
+                </span>
+              )}
+            </div>
+          </div>
+          {renderDesktopStatTrends()}
+          <SupporterGameOnSummary
+            variant="desktop"
+            seasonName={profile.seasonName}
+            sport={recordSport}
+            record={gameRecord}
+            showTitle={false}
+            showSeasonKicker={false}
+            headerAction={isDesktopDashboard ? dashboardChecklist : undefined}
+          >
+            {renderGameOnEventContent('desktop')}
+          </SupporterGameOnSummary>
+        </div>
       </div>
-      <SupporterGameOnSummary
-        variant="desktop"
-        athleteName={profile.athleteName}
-        teamName={profile.teamName}
-        seasonName={profile.seasonName}
-        jerseyNumber={profile.jerseyNumber}
-        athleteAvatar={summaryAthleteAvatar}
-        profileHref={supporterToolRoutes.profile}
-        sport={recordSport}
-        record={gameRecord}
-        headerAction={isDesktopDashboard ? dashboardChecklist : undefined}
-        installReminder={<DashboardInstallReminder action={installAction} showInstructions={showInstallInstructions} onInstall={handleInstallPrompt} variant="desktop" />}
-      >
-        {renderGameOnEventContent('desktop')}
-      </SupporterGameOnSummary>
-      <div id="event-cards-desktop" className="scroll-mt-6" />
-      <GameOnDashboardCollection
-        cards={collectionCards}
-        onCreate={openCardWorkspace}
-        createDisabled={Boolean(newCardDraft)}
-        onOpen={selectCard}
-        onCancelDraft={cancelNewCardDraft}
-        onDeleteCard={deleteGameOnCard}
-        selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
-        isActiveShell={isDesktopDashboard}
-        featuredCardId={featuredCardId}
-        renderSelectedCard={renderDesktopSelectedGameOnCard}
-        statTrackerUserId={userId}
-        prepUserId={prepUserId ?? userId}
-        statTrackerSport={profile.sport}
-        statTrackerAthleteName={profile.athleteName}
-        statTrackerTeamName={profile.teamName}
-        onCompleteScheduledGame={onCompleteScheduledGame}
-      />
+      <div id="event-cards-desktop" className="dashboard-event-cards-row scroll-mt-6">
+        <GameOnDashboardCollection
+          cards={collectionCards}
+          onCreate={openCardWorkspace}
+          createDisabled={Boolean(newCardDraft)}
+          onOpen={selectCard}
+          onCancelDraft={cancelNewCardDraft}
+          onDeleteCard={deleteGameOnCard}
+          selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
+          isActiveShell={isDesktopDashboard}
+          featuredCardId={featuredCardId}
+          renderSelectedCard={renderDesktopSelectedGameOnCard}
+          statTrackerUserId={userId}
+          prepUserId={prepUserId ?? userId}
+          statTrackerSport={profile.sport}
+          statTrackerAthleteName={profile.athleteName}
+          statTrackerTeamName={profile.teamName}
+          onCompleteScheduledGame={onCompleteScheduledGame}
+        />
+      </div>
       {selectionSyncError && <p role="status" className="text-sm text-red-300" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>

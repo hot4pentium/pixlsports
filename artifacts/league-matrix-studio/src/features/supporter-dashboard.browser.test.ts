@@ -1242,12 +1242,15 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
           && Boolean(rect && rect.width > 0 && rect.height > 0),
         heading: trend?.querySelector('h2')?.textContent?.trim() || '',
         desktopBadgeVisible: badge instanceof HTMLImageElement && badge.complete && badge.naturalWidth > 0,
-        badgeAlignedWithTrend: Boolean(trendStage && badge?.parentElement === trendStage && trendRect && badgeRect
+        badgeAlignedWithTrend: Boolean(trendStage
+          && badge instanceof HTMLElement
+          && badge.closest('.supporter-stat-trends-stage') === trendStage
+          && trendRect && badgeRect
           && Math.abs(trendRect.top - badgeRect.top) <= 2
           && badgeRect.left >= trendRect.right
           && badgeRect.left - trendRect.right <= 10),
         alignmentGeometry: JSON.stringify({
-          sameStage: Boolean(trendStage && badge?.parentElement === trendStage),
+          sameStage: Boolean(trendStage && badge instanceof HTMLElement && badge.closest('.supporter-stat-trends-stage') === trendStage),
           trend: trendRect && { left: trendRect.left, right: trendRect.right, top: trendRect.top, height: trendRect.height },
           badge: badgeRect && { left: badgeRect.left, right: badgeRect.right, top: badgeRect.top, height: badgeRect.height },
           stage: trendStage instanceof HTMLElement && {
@@ -1415,14 +1418,14 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     await waitFor(
       connection,
       page.sessionId,
-      'Boolean(document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\') && document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\'))',
+      'Boolean(document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\') && !document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\'))',
       Boolean,
     );
     const desktopReminderVisibility = await connection.evaluate<boolean>(
-      'document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')?.getBoundingClientRect().width > 0 && document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\')?.getBoundingClientRect().width === 0',
+      '!document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\') && document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\')?.getBoundingClientRect().width === 0',
       page.sessionId,
     );
-    assert.equal(desktopReminderVisibility, true, 'desktop shows its reminder while the mobile shell stays hidden');
+    assert.equal(desktopReminderVisibility, true, 'desktop omits the install reminder while the mobile shell stays hidden');
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -1433,7 +1436,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\')?.getBoundingClientRect().width > 0 && document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')?.getBoundingClientRect().width === 0',
+      'document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\')?.getBoundingClientRect().width > 0 && !document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')',
       Boolean,
     );
     await connection.evaluate(
@@ -2212,11 +2215,13 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerTop: number;
         headerTopAfterScroll: number;
         heroClearsHeader: boolean;
+        athleteCardRemoved: boolean;
+        profileIconVisible: boolean;
+        installReminderContained: boolean;
         heroColumnCount: number;
         heroCardsShareRow: boolean;
         heroCornerRadius: string;
         heroCardsContained: boolean;
-        heroKickerFits: boolean;
         collectionVisible: boolean;
         heroAboveCollection: boolean;
         heroDomBeforeCollection: boolean;
@@ -2236,19 +2241,31 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const grid = collection?.querySelector('[data-testid="grid-game-on-cards"]');
         const card = collection?.querySelector('.game-on-collection__card');
         const columns = document.querySelector('.mobile-hero-columns');
-        const athleteCard = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
-        const summaryHeader = hero?.querySelector('[data-testid="mobile-athlete-summary"]');
+        const profileIcon = header.querySelector('[data-testid="btn-mobile-open-profile"]');
+        const summaryHeader = hero?.querySelector('[data-testid="mobile-dashboard-summary-header"]');
         const installReminder = summaryHeader?.querySelector('[data-testid="dashboard-install-reminder-mobile"]');
         const installButton = installReminder?.querySelector('button');
         const eventCard = document.querySelector('[data-testid="card-mobile-featured-event"]');
-        const eventKicker = document.querySelector('.mobile-featured-event-kicker');
         if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)
           || !(collection instanceof HTMLElement) || !(grid instanceof HTMLElement) || !(card instanceof HTMLElement)
-          || !(columns instanceof HTMLElement) || !(athleteCard instanceof HTMLElement)
+          || !(columns instanceof HTMLElement) || !(profileIcon instanceof HTMLElement)
           || !(summaryHeader instanceof HTMLElement) || !(installReminder instanceof HTMLElement)
           || !(installButton instanceof HTMLButtonElement)
-          || !(eventCard instanceof HTMLElement) || !(eventKicker instanceof HTMLElement)) {
-          throw new Error('Mobile dashboard shell is incomplete');
+          || !(eventCard instanceof HTMLElement)) {
+          throw new Error('Mobile dashboard shell is incomplete: ' + JSON.stringify({
+            root: root instanceof HTMLElement,
+            header: header instanceof HTMLElement,
+            hero: hero instanceof HTMLElement,
+            collection: collection instanceof HTMLElement,
+            grid: grid instanceof HTMLElement,
+            card: card instanceof HTMLElement,
+            columns: columns instanceof HTMLElement,
+            profileIcon: profileIcon instanceof HTMLElement,
+            summaryHeader: summaryHeader instanceof HTMLElement,
+            installReminder: installReminder instanceof HTMLElement,
+            installButton: installButton instanceof HTMLButtonElement,
+            eventCard: eventCard instanceof HTMLElement,
+          }));
         }
         const scroller = document.scrollingElement;
         if (!(scroller instanceof HTMLElement)) throw new Error('Missing document scroller');
@@ -2260,6 +2277,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const summaryHeaderRect = summaryHeader.getBoundingClientRect();
         const installReminderRect = installReminder.getBoundingClientRect();
         const installButtonFits = installButton.scrollWidth <= installButton.clientWidth;
+        const profileIconVisible = profileIcon.getClientRects().length > 0;
         const kind = card.querySelector('.game-on-collection__kind');
         const date = card.querySelector('.game-on-collection__date');
         const status = card.querySelector('.game-on-collection__status');
@@ -2272,15 +2290,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const summary = card.querySelector('.game-on-collection__summary');
         const summaryRect = summary?.getBoundingClientRect();
         const cardActions = Array.from(card.querySelectorAll('.game-on-collection__actions > button'));
-        const athleteRect = athleteCard.getBoundingClientRect();
-        const headerControlsShareRow = innerWidth >= 640 || Math.abs(
-          (installReminderRect.top + installReminderRect.bottom) / 2
-          - (athleteRect.top + athleteRect.bottom) / 2,
-        ) <= 1;
-        const headerControlsContained = installReminderRect.left >= summaryHeaderRect.left - 1
-          && installReminderRect.right <= summaryHeaderRect.right + 1
-          && athleteRect.left >= summaryHeaderRect.left - 1
-          && athleteRect.right <= summaryHeaderRect.right + 1;
+        const installReminderContained = installReminderRect.left >= summaryHeaderRect.left - 1
+          && installReminderRect.right <= summaryHeaderRect.right + 1;
         const eventRect = eventCard.getBoundingClientRect();
         const repliesRect = hero.querySelector('.supporter-game-on-summary__replies')?.getBoundingClientRect();
       const headerHorn = header.querySelector('[data-testid="reply-inbox-header-horn"]');
@@ -2319,8 +2330,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           headerTop: Math.round(initialHeaderRect.top - rootRect.top),
           headerTopAfterScroll: Math.round(scrolledHeaderRect.top),
           heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
-          headerControlsShareRow,
-          headerControlsContained,
+          athleteCardRemoved: hero.querySelector('[data-testid="btn-mobile-athlete-switcher"]') === null,
+          profileIconVisible,
+          installReminderContained,
           installButtonFits,
           heroColumnCount: heroColumns.length,
           heroCardsShareRow: Boolean(repliesRect && Math.abs(eventRect.top - repliesRect.top) <= 1),
@@ -2328,11 +2340,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerBullhornVisible: Boolean(headerHorn),
         headerBullhornUnlit: Boolean(headerHorn && !headerHorn.classList.contains('reply-inbox-header-horn--unread')),
           heroCornerRadius: getComputedStyle(hero).borderRadius,
-          heroCardsContained: athleteRect.left >= heroRect.left
-            && athleteRect.right <= heroRect.right
-            && eventRect.left >= heroRect.left
+          heroCardsContained: eventRect.left >= heroRect.left
             && eventRect.right <= heroRect.right,
-          heroKickerFits: eventKicker.scrollWidth <= eventKicker.clientWidth,
           collectionVisible: getComputedStyle(collection).display !== 'none',
           heroAboveCollection: heroRect.bottom <= collectionRect.top + 1,
           heroDomBeforeCollection: Boolean(hero.compareDocumentPosition(collection) & Node.DOCUMENT_POSITION_FOLLOWING),
@@ -2356,8 +2365,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerTop: 0,
         headerTopAfterScroll: 0,
         heroClearsHeader: true,
-        headerControlsShareRow: true,
-        headerControlsContained: true,
+        athleteCardRemoved: true,
+        profileIconVisible: true,
+        installReminderContained: true,
         installButtonFits: true,
         heroColumnCount: width < 640 ? 1 : 2,
         heroCardsShareRow: false,
@@ -2366,7 +2376,6 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerBullhornUnlit: true,
         heroCornerRadius: '20px',
         heroCardsContained: true,
-        heroKickerFits: true,
         collectionVisible: true,
         heroAboveCollection: true,
         heroDomBeforeCollection: true,
@@ -4998,7 +5007,16 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       desktopHypeCardVisible: boolean;
       desktopHypePreviewVisible: boolean;
       desktopHypeCardAtTopLeft: boolean;
-      desktopHypeCardNextToStatTrends: boolean;
+      desktopHypeCardNextToRightStack: boolean;
+      overviewHeadingAboveTrends: boolean;
+      overviewLabelsVisible: boolean;
+      seasonLabelAboveTrends: boolean;
+      desktopSummaryUnderTrends: boolean;
+      shoutoutsUnderTrends: boolean;
+      recordUnderShoutouts: boolean;
+      desktopInstallReminderRemoved: boolean;
+      eventCardsBelowTopRow: boolean;
+      eventCardsFillHorizontalSpace: boolean;
       quickLinksBelowHypeCard: boolean;
       eventCardsCentered: boolean;
       statsVisible: boolean;
@@ -5015,14 +5033,27 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       const hypeCard = sidebar?.querySelector('[data-testid="dashboard-hype-card-desktop"]');
       const preview = hypeCard?.querySelector('[data-testid="desktop-saved-hype-card"]');
       const quickLinks = sidebar?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
+      const overview = shell?.querySelector('[data-testid="dashboard-desktop-overview-heading"]');
+      const overviewRect = overview instanceof HTMLElement ? overview.getBoundingClientRect() : null;
+      const overviewText = overview?.textContent?.replace(/\\s+/g, ' ').trim() || '';
+      const seasonLabel = overview?.querySelector('.supporter-game-on-summary__locker-season');
+      const seasonLabelRect = seasonLabel instanceof HTMLElement ? seasonLabel.getBoundingClientRect() : null;
       const hypeRect = hypeCard instanceof HTMLElement ? hypeCard.getBoundingClientRect() : null;
       const quickLinksRect = quickLinks instanceof HTMLElement ? quickLinks.getBoundingClientRect() : null;
       const summary = shell?.querySelector('.supporter-game-on-summary--desktop');
       const summaryRect = summary instanceof HTMLElement ? summary.getBoundingClientRect() : null;
+      const replies = summary?.querySelector('.supporter-game-on-summary__replies');
+      const repliesRect = replies instanceof HTMLElement ? replies.getBoundingClientRect() : null;
+      const record = summary?.querySelector('.supporter-game-on-summary__record');
+      const recordRect = record instanceof HTMLElement ? record.getBoundingClientRect() : null;
       const trend = shell?.querySelector('[data-testid="supporter-stat-trends"]');
       const trendRect = trend instanceof HTMLElement ? trend.getBoundingClientRect() : null;
       const hypeRow = shell?.querySelector('[data-testid="dashboard-hype-trends-row"]');
       const hypeRowRect = hypeRow instanceof HTMLElement ? hypeRow.getBoundingClientRect() : null;
+      const rightStack = shell?.querySelector('[data-testid="dashboard-desktop-stat-stack"]');
+      const rightStackRect = rightStack instanceof HTMLElement ? rightStack.getBoundingClientRect() : null;
+      const collection = shell?.querySelector('[data-testid="game-on-dashboard-collection"]');
+      const collectionRect = collection instanceof HTMLElement ? collection.getBoundingClientRect() : null;
       const collectionGrid = shell?.querySelector('[data-testid="game-on-dashboard-collection"] .game-on-collection__grid');
       const stats = shell?.querySelector('[data-testid="link-desktop-independent-stats"]');
       const group = shell?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
@@ -5043,10 +5074,20 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         desktopHypeCardAtTopLeft: Boolean(hypeRect && summaryRect
           && hypeRect.top < summaryRect.top
           && Math.abs(hypeRect.left - (hypeRowRect?.left ?? 0)) <= 1),
-        desktopHypeCardNextToStatTrends: Boolean(hypeRect && trendRect
-          && Math.abs(hypeRect.top - trendRect.top) <= 10
-          && trendRect.left >= hypeRect.right
-          && trendRect.left - hypeRect.right < 32),
+        desktopHypeCardNextToRightStack: Boolean(hypeRect && rightStackRect
+          && Math.abs(hypeRect.top - rightStackRect.top) <= 10
+          && rightStackRect.left >= hypeRect.right
+          && rightStackRect.left - hypeRect.right < 32),
+        overviewHeadingAboveTrends: Boolean(overviewRect && trendRect && overviewRect.bottom <= trendRect.top),
+        overviewLabelsVisible: overviewText.includes('Athlete overview') && overviewText.includes('All in, all season'),
+        seasonLabelAboveTrends: !summary?.querySelector('.supporter-game-on-summary__locker-season')
+          && (!seasonLabel || Boolean(seasonLabelRect && trendRect && seasonLabelRect.bottom <= trendRect.top)),
+        desktopSummaryUnderTrends: Boolean(trendRect && summaryRect && summaryRect.top >= trendRect.bottom - 1),
+        shoutoutsUnderTrends: Boolean(trendRect && repliesRect && repliesRect.top >= trendRect.bottom - 1),
+        recordUnderShoutouts: Boolean(repliesRect && recordRect && recordRect.top >= repliesRect.bottom - 1),
+        desktopInstallReminderRemoved: !shell?.querySelector('[data-testid="dashboard-install-reminder-desktop"]'),
+        eventCardsBelowTopRow: Boolean(hypeRowRect && collectionRect && collectionRect.top >= hypeRowRect.bottom - 1),
+        eventCardsFillHorizontalSpace: Boolean(hypeRowRect && collectionRect && Math.abs(collectionRect.width - hypeRowRect.width) <= 1),
         quickLinksBelowHypeCard: Boolean(hypeRect && quickLinksRect && quickLinksRect.top >= hypeRect.bottom - 1),
         eventCardsCentered: collectionGrid instanceof HTMLElement && getComputedStyle(collectionGrid).justifyContent === 'center',
         statsVisible: visible(stats),
@@ -5073,7 +5114,16 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       desktopHypeCardVisible: true,
       desktopHypePreviewVisible: true,
       desktopHypeCardAtTopLeft: true,
-      desktopHypeCardNextToStatTrends: true,
+      desktopHypeCardNextToRightStack: true,
+      overviewHeadingAboveTrends: true,
+      overviewLabelsVisible: true,
+      seasonLabelAboveTrends: true,
+      desktopSummaryUnderTrends: true,
+      shoutoutsUnderTrends: true,
+      recordUnderShoutouts: true,
+      desktopInstallReminderRemoved: true,
+      eventCardsBelowTopRow: true,
+      eventCardsFillHorizontalSpace: true,
       quickLinksBelowHypeCard: true,
       eventCardsCentered: true,
       statsVisible: true,
@@ -5087,7 +5137,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
     assert.equal(
       await connection.evaluate<boolean>(`!document.querySelector('.supporter-dashboard-desktop-shell .supporter-game-on-summary__athlete-link')`, session),
       true,
-      'the redundant athlete-photo tile is absent below the desktop install reminder',
+      'the desktop summary does not repeat the athlete-photo tile',
     );
 
     await connection.evaluate(`(() => {
@@ -5376,20 +5426,19 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
           const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
           const card = slot.querySelector('.supporter-hype-preview__surface'), c = card.getBoundingClientRect();
           const eventCard = event.querySelector('[data-testid="card-mobile-featured-event"]').getBoundingClientRect();
+          const cardWidthMatches = Math.abs(eventCard.width-c.width)<1;
+          const cardHeightMatches = Math.abs(eventCard.height-c.height)<1;
+          const cardTopMatches = Math.abs(eventCard.top-c.top)<1;
           const graphic = event.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
           const graphicRect = graphic?.getBoundingClientRect();
           const navLink = slot.querySelector('[data-testid="link-mobile-hype-preview"]');
           const nav = slot.querySelector('[data-testid="saved-card-navigation"]');
           const athleteLink = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
-          const athleteHeader = athleteLink?.closest('.supporter-game-on-summary__header');
-          const headerStyle = athleteHeader ? getComputedStyle(athleteHeader) : null;
-          const headerContentWidth = athleteHeader && headerStyle
-            ? athleteHeader.clientWidth - parseFloat(headerStyle.paddingLeft) - parseFloat(headerStyle.paddingRight)
-            : 0;
-          const athleteLinkWidth = athleteLink?.getBoundingClientRect().width ?? 0;
+          const profileIcon = document.querySelector('[data-testid="btn-mobile-open-profile"]');
           const quickHypeLink = document.querySelector('[data-testid="link-mobile-independent-hype"]');
           return { equal: Math.abs(a.width-b.width)<1, paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
-            cardsAligned: Math.abs(eventCard.width-c.width)<1 && Math.abs(eventCard.height-c.height)<1 && Math.abs(eventCard.top-c.top)<1,
+            cardWidthMatches, cardHeightMatches, cardTopMatches,
+            cardsAligned: cardWidthMatches && cardHeightMatches && cardTopMatches,
             graphicFits: !graphic || Boolean(graphicRect && graphicRect.left>=eventCard.left && graphicRect.right<=eventCard.right
               && graphicRect.top>=eventCard.top && graphicRect.bottom<=eventCard.bottom),
             graphicKeepsRatio: !graphic || (graphic instanceof HTMLImageElement && graphic.naturalWidth>0
@@ -5397,9 +5446,9 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
             noEventAction: !event.querySelector('a,button'),
             ratio: Math.abs(c.width/c.height-3/4)<.01,
             noOverflow: document.documentElement.scrollWidth<=innerWidth,
-            athleteSwitcherUsesAvailableWidth: athleteLink instanceof HTMLElement
-              && Boolean(athleteHeader)
-              && Math.abs(athleteLinkWidth - Math.min(300, headerContentWidth)) < 1,
+            athleteCardRemoved: athleteLink === null,
+            profileAccessRemainsInHeader: profileIcon instanceof HTMLElement
+              && profileIcon.getClientRects().length > 0,
             hypeQuickLinkRemoved: quickHypeLink === null,
             cardPreviewStillLinks: navLink instanceof HTMLAnchorElement && Boolean(navLink.getAttribute('href')),
             noLandingCardControls: nav === null,
@@ -5412,13 +5461,23 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
             preserved: !!document.querySelector('[data-testid="supporter-game-record-mobile"]') && !document.querySelector('.supporter-game-on-summary--mobile .supporter-game-on-summary__replies'),
             desktopInboxRetained: !!document.querySelector('.supporter-game-on-summary--desktop .supporter-game-on-summary__replies') };
         })()`);
-        assert.deepEqual(layout, { equal: true, paired: true, cardsAligned: true, graphicFits: true, graphicKeepsRatio: true,
+        const cardGeometry = await evaluate<{ event: { width: number; height: number; top: number }; hype: { width: number; height: number; top: number } }>(`(() => {
+          const event = document.querySelector('[data-testid="card-mobile-featured-event"]').getBoundingClientRect();
+          const hype = document.querySelector('.supporter-hype-preview__surface').getBoundingClientRect();
+          return {
+            event: { width: event.width, height: event.height, top: event.top },
+            hype: { width: hype.width, height: hype.height, top: hype.top },
+          };
+        })()`);
+        assert.deepEqual(layout, { equal: true, paired: true, cardWidthMatches: true, cardHeightMatches: true,
+          cardTopMatches: true, cardsAligned: true, graphicFits: true, graphicKeepsRatio: true,
           noEventAction: true, ratio: true, noOverflow: true,
-          athleteSwitcherUsesAvailableWidth: true,
+          athleteCardRemoved: true, profileAccessRemainsInHeader: true,
           hypeQuickLinkRemoved: true, cardPreviewStillLinks: true,
           noLandingCardControls: true,
           noCardTextLabels: true,
-          nativeArt: true, spillover: true, noInteractiveControls: true, preserved: true, desktopInboxRetained: true }, `${design} at ${width}px`);
+          nativeArt: true, spillover: true, noInteractiveControls: true, preserved: true, desktopInboxRetained: true },
+        `${design} at ${width}px: ${JSON.stringify(cardGeometry)}`);
         if (design === 'spotlight' && width === 390) {
           const screenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
           await writeFile('/tmp/supporter-hype-pair-390.png', Buffer.from(screenshot.data, 'base64'));

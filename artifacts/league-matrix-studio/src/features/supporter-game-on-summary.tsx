@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { Link } from 'wouter';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { SupporterGameRecord } from './supporter-game-record-model';
 import type { Sport } from './stat-tracker';
@@ -9,37 +7,32 @@ export type { SupporterGameRecord } from './supporter-game-record-model';
 
 type SupporterGameOnSummaryProps = {
   variant: 'mobile' | 'desktop';
-  athleteName: string;
-  teamName: string;
   seasonName?: string;
-  jerseyNumber: string;
-  athleteAvatar: ReactNode;
-  profileHref: string;
   sport: Sport | null;
   record: SupporterGameRecord;
   headerAction?: ReactNode;
   installReminder?: ReactNode;
+  showTitle?: boolean;
+  showSeasonKicker?: boolean;
   children: ReactNode;
   mobileHypeCard?: ReactNode;
 };
 
 export function SupporterGameOnSummary({
   variant,
-  athleteName,
-  teamName,
   seasonName,
-  jerseyNumber,
-  athleteAvatar,
-  profileHref,
   sport,
   record,
   headerAction,
   installReminder,
+  showTitle = true,
+  showSeasonKicker = true,
   children,
   mobileHypeCard,
 }: SupporterGameOnSummaryProps) {
   const isMobile = variant === 'mobile';
-  const athleteHeadingId = isMobile ? 'mobile-athlete-summary-heading' : 'athlete-summary-heading';
+  const showHeader = isMobile || Boolean(headerAction || installReminder || showSeasonKicker);
+  const hasDashboardTools = Boolean(headerAction || installReminder);
 
   return (
     <section
@@ -47,45 +40,28 @@ export function SupporterGameOnSummary({
       aria-labelledby={`game-on-summary-heading-${variant}`}
       data-testid={isMobile ? 'mobile-hero-banner' : 'desktop-game-on-summary'}
     >
-      <header
-        className={`supporter-game-on-summary__header${headerAction || installReminder ? ' supporter-game-on-summary__header--with-action' : ''}`}
-        aria-label={isMobile
-          ? headerAction || installReminder ? 'Dashboard tools and athlete profile' : 'Athlete profile'
-          : 'Dashboard tools'}
-        data-testid={isMobile ? 'mobile-athlete-summary' : 'athlete-summary'}
-      >
+      {showTitle && (
         <h1 id={`game-on-summary-heading-${variant}`} className="sr-only" tabIndex={-1}>Athlete overview</h1>
-        {headerAction && <div className="supporter-game-on-summary__header-action">{headerAction}</div>}
-        {installReminder}
-        <div className="supporter-game-on-summary__locker-kicker">
-          <span className="supporter-game-on-summary__locker-dot" aria-hidden="true" />
-          <span>All in, all season</span>
-          {seasonName && <span className="supporter-game-on-summary__locker-season">Family season · {seasonName}</span>}
-        </div>
-        {isMobile && (
-          <Link
-            href={profileHref}
-            className="supporter-game-on-summary__athlete-link"
-            aria-label={athleteName ? `Edit ${athleteName}'s athlete profile` : 'Set up athlete details'}
-            data-testid="btn-mobile-athlete-switcher"
-          >
-            <span className="supporter-game-on-summary__athlete-avatar" aria-hidden="true">
-              {athleteAvatar}
-            </span>
-            <span className="supporter-game-on-summary__athlete-copy">
-              <span className="supporter-game-on-summary__eyebrow">ATHLETE</span>
-              <span className="supporter-game-on-summary__athlete-details">
-                <span className="supporter-game-on-summary__athlete-name" id={athleteHeadingId}>
-                  {athleteName || 'Set up athlete details'}
-                </span>
-                {jerseyNumber && <span className="supporter-game-on-summary__jersey">#{jerseyNumber}</span>}
-              </span>
-              {teamName && <span className="supporter-game-on-summary__team-name" data-testid="athlete-team-name">{teamName}</span>}
-            </span>
-            <ChevronRight size={17} aria-hidden="true" />
-          </Link>
-        )}
-      </header>
+      )}
+      {showHeader && (
+        <header
+          className={`supporter-game-on-summary__header${headerAction || installReminder ? ' supporter-game-on-summary__header--with-action' : ''}`}
+          aria-label={hasDashboardTools
+            ? showSeasonKicker ? 'Dashboard tools and season' : 'Dashboard tools'
+            : 'Season overview'}
+          data-testid={isMobile ? 'mobile-dashboard-summary-header' : 'athlete-summary'}
+        >
+          {headerAction && <div className="supporter-game-on-summary__header-action">{headerAction}</div>}
+          {installReminder}
+          {showSeasonKicker && (
+            <div className="supporter-game-on-summary__locker-kicker">
+              <span className="supporter-game-on-summary__locker-dot" aria-hidden="true" />
+              <span>All in, all season</span>
+              {seasonName && <span className="supporter-game-on-summary__locker-season">Family season · {seasonName}</span>}
+            </div>
+          )}
+        </header>
+      )}
 
       <div className={`supporter-game-on-summary__grid${isMobile ? ' mobile-hero-columns' : ''}`}>
         {(() => {

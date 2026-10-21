@@ -353,28 +353,35 @@
 
   .pixl-locker-dashboard .supporter-game-on-summary--desktop {
     display: grid;
-    grid-column: 1 / -1;
-    grid-row: 2;
-    grid-template-columns: minmax(270px, .84fr) minmax(0, 1.16fr);
-    overflow: hidden;
+    grid-column: auto;
+    grid-row: auto;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__header {
-    grid-column: 1;
-    grid-row: 1;
+    grid-column: auto;
+    grid-row: auto;
     min-width: 0;
     min-height: 0;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: 18px;
-    padding: 26px;
-    border-right: 1px solid rgba(114, 201, 255, .18);
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0 0 2px;
+    border-right: 0;
     border-bottom: 0;
   }
 
   .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__locker-kicker {
-    margin-bottom: 4px;
+    margin: 0;
   }
 
   .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__athlete-link {
@@ -406,16 +413,26 @@
   }
 
   .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__grid {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: auto;
+    grid-row: auto;
     grid-template-columns: minmax(0, 1fr);
     align-content: start;
     gap: 10px;
-    padding: 16px;
+    padding: 0;
   }
 
-  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__event {
-    min-height: 200px;
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__event.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    min-height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+    padding: 0;
   }
 
   .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__replies,
@@ -425,16 +442,49 @@
 
   .pixl-locker-dashboard .pixl-locker-content > #event-cards-desktop {
     grid-column: 1 / -1;
-    width: 0;
-    height: 0;
+    grid-row: 2;
+    width: 100%;
+    height: auto;
     min-height: 0;
     margin: 0;
-    overflow: hidden;
+    overflow: visible;
+    min-width: 0;
   }
 
-  .pixl-locker-dashboard .pixl-locker-content > .game-on-collection {
-    grid-column: 1 / -1;
-    grid-row: 3;
+  .pixl-locker-dashboard .dashboard-hype-trends-row > .dashboard-desktop-stat-stack {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .pixl-locker-dashboard .dashboard-desktop-overview-heading {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .pixl-locker-dashboard .dashboard-desktop-overview-heading > h2 {
+    margin: 0;
+    color: #f6f8ff;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: clamp(18px, 1.7vw, 24px);
+    font-weight: 800;
+    letter-spacing: .02em;
+    line-height: 1.1;
+  }
+
+  .pixl-locker-dashboard .dashboard-desktop-overview-heading .supporter-game-on-summary__locker-kicker {
+    margin: 0;
+  }
+
+  .pixl-locker-dashboard .dashboard-desktop-stat-stack > .supporter-game-on-summary--desktop::before {
+    display: none;
+  }
+
+  .pixl-locker-dashboard #event-cards-desktop > .game-on-collection {
+    width: 100%;
     min-width: 0;
   }
 
@@ -468,6 +518,10 @@
 
   .pixl-locker-dashboard .supporter-hype-preview--desktop .supporter-hype-preview__card-wrap {
     width: min(100%, 320px);
+  }
+
+  .pixl-locker-dashboard .supporter-stat-trends-stage > .supporter-event-graphic--desktop {
+    align-self: flex-start;
   }
 
   .pixl-locker-dashboard .pixl-locker-content > p[role="alert"],
