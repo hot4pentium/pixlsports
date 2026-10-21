@@ -2172,8 +2172,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         active: getComputedStyle(document.querySelector('[data-testid="link-mobile-parent-week"]')).color,
         inactive: getComputedStyle(document.querySelector('[data-testid="link-mobile-player-showcase"]')).color
       }))()`, page.sessionId);
-      assert.equal(supporterTabColors.active, 'rgb(18, 33, 58)', 'the active mobile section tab is dark enough to read on the light header');
-      assert.equal(supporterTabColors.inactive, 'rgb(83, 101, 124)', 'the inactive mobile section tab remains readable on the light header');
+      assert.equal(supporterTabColors.active, 'rgb(255, 255, 255)', 'the active mobile section tab remains readable on the Locker header');
+      assert.equal(supporterTabColors.inactive, 'rgb(169, 191, 216)', 'the inactive mobile section tab remains readable on the Locker header');
       const result = await connection.evaluate<{
         dashboardVisible: boolean;
         viewportOverflow: boolean;
@@ -2335,7 +2335,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         mobileShoutoutsCardRemoved: true,
         headerBullhornVisible: true,
         headerBullhornUnlit: true,
-        heroCornerRadius: '24px',
+        heroCornerRadius: '20px',
         heroCardsContained: true,
         heroKickerFits: true,
         collectionVisible: true,

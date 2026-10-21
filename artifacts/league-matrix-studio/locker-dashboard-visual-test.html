@@ -1,0 +1,25 @@
+
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Supporter dashboard browser test</title></head>
+  <body><div id="test-root"></div><script type="module">
+    window.__browserTestConsoleErrors = [];
+    const nativeConsoleError = console.error.bind(console);
+    console.error = (...args) => {
+      window.__browserTestConsoleErrors.push(args.map((argument) => typeof argument === 'string' ? argument : argument?.stack || String(argument)).join(' '));
+      nativeConsoleError(...args);
+    };
+    window.addEventListener('error', (event) => {
+      document.body.dataset.testError = String(event.error?.stack || event.message);
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      document.body.dataset.testError = String(event.reason?.stack || event.reason);
+    });
+    import('/locker-dashboard-visual-test.tsx?browser-test=' + Date.now()).then(({ mount }) => {
+      for (const stage of ['upcoming', 'live', 'complete']) localStorage.setItem('pixlsports-supporter-stage-ack:game-1:' + stage, '1');
+      mount();
+    }).catch((error) => {
+      document.body.dataset.testError = String(error?.stack || error);
+    });
+  </script></body>
+</html>

@@ -11,6 +11,7 @@ type SupporterGameOnSummaryProps = {
   variant: 'mobile' | 'desktop';
   athleteName: string;
   teamName: string;
+  seasonName?: string;
   jerseyNumber: string;
   athleteAvatar: ReactNode;
   profileHref: string;
@@ -26,6 +27,7 @@ export function SupporterGameOnSummary({
   variant,
   athleteName,
   teamName,
+  seasonName,
   jerseyNumber,
   athleteAvatar,
   profileHref,
@@ -53,6 +55,11 @@ export function SupporterGameOnSummary({
         <h1 id={`game-on-summary-heading-${variant}`} className="sr-only" tabIndex={-1}>Athlete overview</h1>
         {headerAction && <div className="supporter-game-on-summary__header-action">{headerAction}</div>}
         {installReminder}
+        <div className="supporter-game-on-summary__locker-kicker">
+          <span className="supporter-game-on-summary__locker-dot" aria-hidden="true" />
+          <span>All in, all season</span>
+          {seasonName && <span className="supporter-game-on-summary__locker-season">Family season · {seasonName}</span>}
+        </div>
         <Link
           href={profileHref}
           className="supporter-game-on-summary__athlete-link"

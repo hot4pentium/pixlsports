@@ -93,6 +93,7 @@ import {
 import './supporter-dashboard-pixl.css';
 import './supporter-game-on-summary.css';
 import './supporter-profile-wallet.css';
+import './supporter-dashboard-locker.css';
 
 const SupporterStatTrends = lazy(() => import('./supporter-stat-trends'));
 
@@ -1260,7 +1261,7 @@ export function SupporterDashboardView({
         </div>
       )}
       {/* MOBILE VIEW */}
-      <div className="supporter-dashboard-mobile-shell relative z-0 min-h-dvh w-full pixl-dashboard-mobile flex-col">
+      <div className="supporter-dashboard-mobile-shell pixl-locker-dashboard relative z-0 min-h-dvh w-full pixl-dashboard-mobile flex-col">
         {/* Mobile Header */}
         <header className="bg-white flex items-center justify-between px-4 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
           <div className="flex items-center gap-2">
@@ -1322,6 +1323,7 @@ export function SupporterDashboardView({
             variant="mobile"
             athleteName={profile.athleteName}
             teamName={profile.teamName}
+            seasonName={profile.seasonName}
             jerseyNumber={profile.jerseyNumber}
             athleteAvatar={summaryAthleteAvatar}
             profileHref={supporterToolRoutes.profile}
@@ -1399,8 +1401,8 @@ export function SupporterDashboardView({
       </div>
 
       {/* DESKTOP VIEW (hidden on mobile) */}
-      <div className="supporter-dashboard-desktop-shell w-full">
-    <div className="pixl-dashboard w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
+      <div className="supporter-dashboard-desktop-shell pixl-locker-dashboard w-full">
+    <div className="pixl-dashboard pixl-locker-content w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
       {showStageReminder && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 p-5 backdrop-blur-sm"
@@ -1438,6 +1440,7 @@ export function SupporterDashboardView({
         variant="desktop"
         athleteName={profile.athleteName}
         teamName={profile.teamName}
+        seasonName={profile.seasonName}
         jerseyNumber={profile.jerseyNumber}
         athleteAvatar={summaryAthleteAvatar}
         profileHref={supporterToolRoutes.profile}

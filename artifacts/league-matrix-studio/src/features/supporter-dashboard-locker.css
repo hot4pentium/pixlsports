@@ -1,0 +1,458 @@
+/*
+ * PIXL Locker treatment for the real supporter dashboard.
+ * The content and routes stay production-owned; only this page's presentation changes.
+ */
+.studio-page-background.supporter-dashboard-page-background {
+  background: #071329;
+}
+
+.supporter-locker-toolbar {
+  border-color: #29486d !important;
+  background: #08162c !important;
+}
+
+.supporter-locker-toolbar > div {
+  background: transparent !important;
+}
+
+.supporter-locker-toolbar a {
+  border-color: transparent;
+  color: #a9bfd8;
+}
+
+.supporter-locker-toolbar a[aria-current="page"],
+.supporter-locker-toolbar a.border-primary {
+  border-color: #b8f45c !important;
+  color: #f6f8ff !important;
+}
+
+.supporter-dashboard-mobile-shell.pixl-locker-dashboard,
+.supporter-dashboard-desktop-shell.pixl-locker-dashboard {
+  --locker-night: #071329;
+  --locker-deep: #08162c;
+  --locker-panel: #0c2140;
+  --locker-panel-raised: #102b50;
+  --locker-line: #29486d;
+  --locker-ice: #dcecff;
+  --locker-muted: #a9bfd8;
+  --locker-lime: #b8f45c;
+  --locker-cyan: #72c9ff;
+  color: #f6f8ff;
+}
+
+.supporter-dashboard-mobile-shell.pixl-locker-dashboard {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse at 88% 4%, rgba(75, 151, 225, .18), transparent 25rem),
+    linear-gradient(180deg, #08162c, #071329 42rem);
+}
+
+.supporter-dashboard-desktop-shell.pixl-locker-dashboard {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse at 82% 0%, rgba(75, 151, 225, .16), transparent 32rem),
+    #071329;
+}
+
+.pixl-locker-dashboard :is(a, button):focus-visible {
+  outline: 3px solid var(--locker-lime, #b8f45c);
+  outline-offset: 3px;
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary {
+  border: 1px solid var(--locker-line);
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 80% 4%, rgba(80, 159, 235, .2), transparent 24rem),
+    linear-gradient(145deg, #102b50, #0a1d38 65%, #08162c);
+  box-shadow: 0 22px 50px rgba(2, 9, 20, .36);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary::before {
+  opacity: .2;
+  background-image:
+    linear-gradient(90deg, rgba(114, 201, 255, .14) 1px, transparent 1px),
+    linear-gradient(rgba(114, 201, 255, .12) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__header {
+  border-color: rgba(114, 201, 255, .18);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__locker-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--locker-lime);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .17em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__locker-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--locker-lime);
+  box-shadow: 0 0 12px rgba(184, 244, 92, .65);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__locker-season {
+  padding-left: 8px;
+  border-left: 1px solid rgba(220, 236, 255, .3);
+  color: var(--locker-muted);
+  letter-spacing: .08em;
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__athlete-link {
+  border-color: rgba(114, 201, 255, .28);
+  background: rgba(8, 22, 44, .68);
+  color: var(--locker-ice);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__athlete-avatar {
+  border-color: var(--locker-cyan);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #2869ce, #102b50);
+  box-shadow: 0 8px 20px rgba(1, 8, 18, .35);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__athlete-avatar img {
+  border-radius: inherit !important;
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__athlete-name {
+  color: #fff;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__team-name,
+.pixl-locker-dashboard .supporter-game-on-summary__eyebrow {
+  color: var(--locker-muted);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__event,
+.pixl-locker-dashboard .supporter-game-on-summary__replies,
+.pixl-locker-dashboard .supporter-game-on-summary__record {
+  border-color: rgba(114, 201, 255, .2);
+  border-radius: 16px;
+  background: rgba(8, 22, 44, .72);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__record-stat strong {
+  color: #fff;
+  font-family: "Barlow Condensed", sans-serif;
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__record-stat span,
+.pixl-locker-dashboard .supporter-game-on-summary__record-footnote {
+  color: var(--locker-muted);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__record-stat {
+  border-color: rgba(114, 201, 255, .2);
+}
+
+.pixl-locker-dashboard .supporter-game-on-summary__record-stat:first-child strong {
+  color: var(--locker-lime);
+}
+
+.pixl-locker-dashboard .game-on-collection {
+  border-color: var(--locker-line);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(114, 201, 255, .12), transparent 26rem),
+    linear-gradient(145deg, #102b50, #0b1f3a 72%);
+  box-shadow: 0 20px 46px rgba(2, 9, 20, .3);
+}
+
+.pixl-locker-dashboard .game-on-collection::before {
+  height: 3px;
+  background: linear-gradient(90deg, #b8f45c, #72c9ff 62%, #2869ce);
+}
+
+.pixl-locker-dashboard .game-on-collection__eyebrow-line {
+  background: var(--locker-lime);
+}
+
+.pixl-locker-dashboard .game-on-collection__create {
+  border-color: #d7ff9a;
+  border-radius: 10px;
+  background: var(--locker-lime);
+  box-shadow: 0 5px 0 rgba(3, 14, 30, .38);
+  color: #14233b;
+}
+
+.pixl-locker-dashboard .game-on-collection__create:hover {
+  background: #cbff83;
+}
+
+.pixl-locker-dashboard .game-on-collection__search {
+  color: var(--locker-cyan);
+}
+
+.pixl-locker-dashboard .game-on-collection__search input {
+  border-color: rgba(114, 201, 255, .34);
+  border-radius: 9px;
+  background: rgba(4, 16, 33, .48);
+}
+
+.pixl-locker-dashboard .game-on-collection__search input:focus-visible {
+  outline-color: var(--locker-lime);
+}
+
+.pixl-locker-dashboard .combined-actions-card {
+  border-color: var(--locker-line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #102b50, #0b1f3a);
+  box-shadow: 0 16px 38px rgba(2, 9, 20, .28);
+}
+
+.pixl-locker-dashboard .combined-actions-card__heading {
+  color: #b8cde5;
+}
+
+.pixl-locker-dashboard .combined-actions-card__heading-mark {
+  background: var(--locker-lime);
+  box-shadow: 0 0 12px rgba(184, 244, 92, .45);
+}
+
+.pixl-locker-dashboard .supporter-dashboard-desktop-sidebar {
+  gap: 14px;
+}
+
+.pixl-locker-dashboard .dashboard-hype-card-panel__meta {
+  color: var(--locker-muted);
+}
+
+.pixl-locker-dashboard .dashboard-hype-card-panel__meta span:last-child {
+  color: var(--locker-ice);
+}
+
+.pixl-locker-dashboard .supporter-event-guidance {
+  border-color: #416891;
+  background: linear-gradient(145deg, #14345e, #0b1f3a);
+}
+
+.pixl-locker-dashboard .supporter-event-guidance__label {
+  color: var(--locker-lime);
+}
+
+@media (max-width: 1023px) {
+  .pixl-locker-dashboard > header {
+    background: linear-gradient(90deg, #08162c, #0c2140) !important;
+    border-bottom: 1px solid var(--locker-line);
+    box-shadow: 0 8px 22px rgba(2, 9, 20, .24);
+  }
+
+  .pixl-locker-dashboard > header [data-testid="btn-mobile-open-profile"] {
+    border-color: rgba(114, 201, 255, .55);
+    background: #102b50;
+    color: #f6f8ff;
+  }
+
+  .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] {
+    border-color: var(--locker-line);
+    background: rgba(8, 22, 44, .92);
+  }
+
+  .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] a {
+    color: var(--locker-muted);
+  }
+
+  .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] a[aria-current="page"] {
+    border-color: var(--locker-lime) !important;
+    color: #fff;
+  }
+
+  .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] a:not([aria-current="page"]):hover {
+    color: var(--locker-ice);
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile {
+    border-radius: 20px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__header-action,
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__athlete-link {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__header {
+    padding: 15px;
+    background: rgba(8, 22, 44, .32);
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__locker-kicker {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    font-size: 9px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__athlete-link {
+    width: 100%;
+    max-width: 300px;
+    border-radius: 12px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__athlete-avatar {
+    width: 56px;
+    height: 70px;
+    flex-basis: 56px;
+    border-radius: 10px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__athlete-name {
+    font-size: 17px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__grid {
+    padding: 10px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--mobile .supporter-game-on-summary__record {
+    border-color: rgba(114, 201, 255, .2);
+    background: rgba(8, 22, 44, .72);
+  }
+
+  .supporter-dashboard-mobile-shell.pixl-locker-dashboard > footer {
+    border-color: rgba(114, 201, 255, .2);
+    color: var(--locker-muted);
+  }
+}
+
+@media (min-width: 1024px) {
+  .pixl-locker-dashboard .pixl-locker-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr);
+    align-items: start;
+    gap: 18px;
+    padding: 24px clamp(18px, 2.6vw, 36px) 40px;
+    background: transparent;
+    border: 0;
+  }
+
+  .pixl-locker-dashboard .pixl-locker-content > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(270px, .84fr) minmax(0, 1.16fr);
+    overflow: hidden;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__header {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    min-height: 410px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 18px;
+    padding: 26px;
+    border-right: 1px solid rgba(114, 201, 255, .18);
+    border-bottom: 0;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__locker-kicker {
+    margin-bottom: 4px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__athlete-link {
+    display: grid;
+    width: 100%;
+    max-width: none;
+    grid-template-columns: minmax(94px, 122px) minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 14px;
+    border-radius: 14px;
+    padding: 10px;
+    text-align: left;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__athlete-avatar {
+    width: 100%;
+    max-width: 122px;
+    height: 164px;
+    flex-basis: 122px;
+    border-radius: 11px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__athlete-copy {
+    text-align: left;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__athlete-details {
+    justify-content: flex-start;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__grid {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__event {
+    min-height: 200px;
+  }
+
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__replies,
+  .pixl-locker-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__record {
+    min-height: 120px;
+  }
+
+  .pixl-locker-dashboard .pixl-locker-content > #event-cards-desktop {
+    grid-column: 1 / -1;
+    width: 0;
+    height: 0;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .pixl-locker-dashboard .pixl-locker-content > .game-on-collection {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .pixl-locker-dashboard .pixl-locker-content > .supporter-dashboard-desktop-sidebar {
+    grid-column: 2;
+    align-self: start;
+    min-width: 0;
+    position: sticky;
+    top: 18px;
+  }
+
+  .pixl-locker-dashboard .pixl-locker-content > p[role="alert"],
+  .pixl-locker-dashboard .pixl-locker-content > p[role="status"] {
+    grid-column: 1 / -1;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixl-locker-dashboard .game-on-collection__create {
+    transition: none;
+  }
+}

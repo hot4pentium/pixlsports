@@ -1214,7 +1214,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
         <SiteNav dark />
       </div>
       {!isChecklistPage && (
-        <div className={isFanDashboard ? 'hidden lg:block border-b border-border bg-background bg-tech-grid' : 'border-b border-border bg-background bg-tech-grid'} data-testid="studio-tool-toolbar">
+        <div className={isFanDashboard ? 'supporter-locker-toolbar hidden border-b border-border bg-background bg-tech-grid lg:block' : 'border-b border-border bg-background bg-tech-grid'} data-testid="studio-tool-toolbar">
           <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
             <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">{homeLabel}</Link>
             {activeRole === 'fan' && (
