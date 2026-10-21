@@ -49,7 +49,9 @@ export function SupporterGameOnSummary({
     >
       <header
         className={`supporter-game-on-summary__header${headerAction || installReminder ? ' supporter-game-on-summary__header--with-action' : ''}`}
-        aria-label={headerAction || installReminder ? 'Dashboard tools and athlete profile' : 'Athlete profile'}
+        aria-label={isMobile
+          ? headerAction || installReminder ? 'Dashboard tools and athlete profile' : 'Athlete profile'
+          : 'Dashboard tools'}
         data-testid={isMobile ? 'mobile-athlete-summary' : 'athlete-summary'}
       >
         <h1 id={`game-on-summary-heading-${variant}`} className="sr-only" tabIndex={-1}>Athlete overview</h1>
@@ -60,27 +62,29 @@ export function SupporterGameOnSummary({
           <span>All in, all season</span>
           {seasonName && <span className="supporter-game-on-summary__locker-season">Family season · {seasonName}</span>}
         </div>
-        <Link
-          href={profileHref}
-          className="supporter-game-on-summary__athlete-link"
-          aria-label={athleteName ? `Edit ${athleteName}'s athlete profile` : 'Set up athlete details'}
-          data-testid={isMobile ? 'btn-mobile-athlete-switcher' : 'btn-edit-athlete-avatar'}
-        >
-          <span className="supporter-game-on-summary__athlete-avatar" aria-hidden="true">
-            {athleteAvatar}
-          </span>
-          <span className="supporter-game-on-summary__athlete-copy">
-            <span className="supporter-game-on-summary__eyebrow">ATHLETE</span>
-            <span className="supporter-game-on-summary__athlete-details">
-              <span className="supporter-game-on-summary__athlete-name" id={athleteHeadingId}>
-                {athleteName || 'Set up athlete details'}
-              </span>
-              {jerseyNumber && <span className="supporter-game-on-summary__jersey">#{jerseyNumber}</span>}
+        {isMobile && (
+          <Link
+            href={profileHref}
+            className="supporter-game-on-summary__athlete-link"
+            aria-label={athleteName ? `Edit ${athleteName}'s athlete profile` : 'Set up athlete details'}
+            data-testid="btn-mobile-athlete-switcher"
+          >
+            <span className="supporter-game-on-summary__athlete-avatar" aria-hidden="true">
+              {athleteAvatar}
             </span>
-            {teamName && <span className="supporter-game-on-summary__team-name" data-testid="athlete-team-name">{teamName}</span>}
-          </span>
-          <ChevronRight size={17} aria-hidden="true" />
-        </Link>
+            <span className="supporter-game-on-summary__athlete-copy">
+              <span className="supporter-game-on-summary__eyebrow">ATHLETE</span>
+              <span className="supporter-game-on-summary__athlete-details">
+                <span className="supporter-game-on-summary__athlete-name" id={athleteHeadingId}>
+                  {athleteName || 'Set up athlete details'}
+                </span>
+                {jerseyNumber && <span className="supporter-game-on-summary__jersey">#{jerseyNumber}</span>}
+              </span>
+              {teamName && <span className="supporter-game-on-summary__team-name" data-testid="athlete-team-name">{teamName}</span>}
+            </span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </Link>
+        )}
       </header>
 
       <div className={`supporter-game-on-summary__grid${isMobile ? ' mobile-hero-columns' : ''}`}>
@@ -88,8 +92,9 @@ export function SupporterGameOnSummary({
           const hasHype = isMobile && !!mobileHypeCard;
           const eventSection = (
             <section
-              className="supporter-game-on-summary__event"
-              aria-labelledby={isMobile ? 'mobile-upcoming-calendar-events-heading' : 'supporter-stat-trends-heading'}
+              className={`supporter-game-on-summary__event${isMobile ? '' : ' sr-only'}`}
+              aria-labelledby={isMobile ? 'mobile-upcoming-calendar-events-heading' : undefined}
+              aria-label={isMobile ? undefined : 'Upcoming Event Cards'}
               data-testid={isMobile ? undefined : 'section-next-game-context'}
             >
               <div className="supporter-game-on-summary__event-content" data-testid={isMobile ? 'card-mobile-featured-event' : undefined}>

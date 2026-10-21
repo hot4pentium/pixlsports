@@ -1219,7 +1219,10 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       visible: boolean;
       heading: string;
       desktopBadgeVisible: boolean;
+      badgeAlignedWithTrend: boolean;
+      alignmentGeometry: string;
       hasTrendContent: boolean;
+      eventContextScreenReaderOnly: boolean;
       trendHeight: number;
       eventPanelHeight: number;
       shoutoutsPanelHeight: number;
@@ -1229,13 +1232,33 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       const rect = trend?.getBoundingClientRect();
       const summary = document.querySelector('.supporter-game-on-summary--desktop');
       const badge = document.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
+      const trendStage = trend?.closest('[data-testid="dashboard-stat-trends-panel"]');
+      const trendRect = trend instanceof HTMLElement ? trend.getBoundingClientRect() : null;
+      const badgeRect = badge instanceof HTMLElement ? badge.getBoundingClientRect() : null;
+      const eventContext = summary?.querySelector('[data-testid="section-next-game-context"]');
       const panelHeight = (selector) => summary?.querySelector(selector)?.getBoundingClientRect().height || 0;
       return {
         visible: trend instanceof HTMLElement && trend.getClientRects().length > 0
           && Boolean(rect && rect.width > 0 && rect.height > 0),
         heading: trend?.querySelector('h2')?.textContent?.trim() || '',
         desktopBadgeVisible: badge instanceof HTMLImageElement && badge.complete && badge.naturalWidth > 0,
+        badgeAlignedWithTrend: Boolean(trendStage && badge?.parentElement === trendStage && trendRect && badgeRect
+          && Math.abs(trendRect.top - badgeRect.top) <= 2
+          && badgeRect.left >= trendRect.right
+          && badgeRect.left - trendRect.right <= 10),
+        alignmentGeometry: JSON.stringify({
+          sameStage: Boolean(trendStage && badge?.parentElement === trendStage),
+          trend: trendRect && { left: trendRect.left, right: trendRect.right, top: trendRect.top, height: trendRect.height },
+          badge: badgeRect && { left: badgeRect.left, right: badgeRect.right, top: badgeRect.top, height: badgeRect.height },
+          stage: trendStage instanceof HTMLElement && {
+            left: trendStage.getBoundingClientRect().left,
+            right: trendStage.getBoundingClientRect().right,
+            top: trendStage.getBoundingClientRect().top,
+            height: trendStage.getBoundingClientRect().height,
+          },
+        }),
         hasTrendContent: Boolean(trend?.querySelector('[data-testid="supporter-stat-trends-chart"], [data-testid="supporter-stat-trends-empty"]')),
+        eventContextScreenReaderOnly: eventContext?.classList.contains('sr-only') ?? false,
         trendHeight: rect?.height || 0,
         eventPanelHeight: panelHeight('.supporter-game-on-summary__event'),
         shoutoutsPanelHeight: panelHeight('.supporter-game-on-summary__replies'),
@@ -1245,7 +1268,13 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     assert.equal(desktopTrend.visible, true, 'the desktop dashboard displays the stat trends panel');
     assert.equal(desktopTrend.heading, 'STAT TRENDS');
     assert.equal(desktopTrend.desktopBadgeVisible, true, 'the generic Event Card artwork remains visible in the desktop event context');
+    assert.equal(
+      desktopTrend.badgeAlignedWithTrend,
+      true,
+      `the trend chart and Event Card artwork share one aligned stage: ${desktopTrend.alignmentGeometry}`,
+    );
     assert.equal(desktopTrend.hasTrendContent, true, 'the chart or its honest empty state is visible');
+    assert.equal(desktopTrend.eventContextScreenReaderOnly, true, 'upcoming Event Card details remain available without an empty visual panel');
     assert.ok([
       desktopTrend.trendHeight,
       desktopTrend.eventPanelHeight,
@@ -1680,7 +1709,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     }>(`(() => {
       const section = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="section-next-game-context"]');
       const trend = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="supporter-stat-trends"]');
-      const badge = section?.querySelector('[data-testid="img-upcoming-event-card-desktop"]');
+      const badge = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="img-upcoming-event-card-desktop"]');
       const event = section?.querySelector('[data-testid="upcoming-calendar-event"]');
       return {
         visible: trend instanceof HTMLElement && trend.getClientRects().length > 0
@@ -5055,19 +5084,11 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       actionsUseTwoColumnQuickLinks: true,
       statsMatchesReference: true,
     });
-    assert.deepEqual(await connection.evaluate<{
-      profilePath: string;
-      profileVisible: boolean;
-    }>(`(() => {
-      const profile = document.querySelector('.supporter-dashboard-desktop-shell .supporter-game-on-summary__athlete-link');
-      return {
-        profilePath: profile instanceof HTMLAnchorElement ? new URL(profile.href).pathname : '',
-        profileVisible: profile instanceof HTMLElement && profile.getClientRects().length > 0,
-      };
-    })()`, session), {
-      profilePath: '/studio/profile',
-      profileVisible: true,
-    });
+    assert.equal(
+      await connection.evaluate<boolean>(`!document.querySelector('.supporter-dashboard-desktop-shell .supporter-game-on-summary__athlete-link')`, session),
+      true,
+      'the redundant athlete-photo tile is absent below the desktop install reminder',
+    );
 
     await connection.evaluate(`(() => {
       const card = Array.from(document.querySelectorAll('.game-on-collection__grid .game-on-collection__card'))
