@@ -1,16 +1,16 @@
 ---
 name: Athlete editor access boundaries
-description: Product ownership, role, and persistence rules for athlete editing of the existing Showcase HYPE Card and kit.
+description: Product ownership and access rules for athlete participation through the HYPE Card.
 ---
 
-Use a separate, limited athlete sign-in for card and kit editing. An athlete may edit only the parent-selected HYPE Card project and that linked athlete's cosmetic soccer kit. The parent can edit the same kit, including for a younger athlete, and retains athlete-page publishing, visibility, privacy, sharing, invitation, and account controls. Keep public/shared Locker routes and the parent-focused dashboard unchanged.
+Use a separate, limited athlete sign-in for the parent-selected HYPE Card only. The athlete may edit that linked card and focused card content, but not publishing, visibility, privacy, sharing, invitation, or account controls. Keep those controls with the parent.
 
-New athlete invitations should link to the HYPE Card already shown in the Showcase instead of requiring the owner to create a separate card. Preserve existing project-based invitations as a legacy path.
+New athlete invitations should link to the HYPE Card already shown in the Showcase instead of requiring the owner to create a separate card. Preserve existing project-based invitations as a legacy path where needed for compatibility.
+
+Retire the user-facing jersey, Soccer Kit, Athlete Locker, and gear-reward tools; do not delete existing kit or reward data as part of that retirement.
 
 Revocation must block the athlete identity from parent-only APIs, even if the athlete still has a valid Clerk session. Preserve the access record independently of its athlete invite or project so deleting either cannot erase the revocation marker.
 
-The user loves the HYPE Card but is concerned the Player Showcase may feel like too much; athlete involvement should be explored without broadening the Showcase by default.
+**Why:** The user chose athlete editing as a limited delegation, not a transfer of ownership or parent account role, and explicitly said parents should also be able to edit in case the athlete is too young. They now want the Showcase to retain its name but focus on the HYPE Card, with jersey and gear tools retired.
 
-**Why:** The user chose athlete editing as a limited delegation, not a transfer of ownership or parent account role, and explicitly said parents should also be able to edit in case the athlete is too young. The user also clarified that the Showcase already contains the HYPE Card, and later said they want athletes involved while feeling unsure about the Showcase's scope.
-
-**How to apply:** Keep authorization server-side and scope card edits to the existing Showcase card and kit cosmetics to its linked athlete. Keep older project-based invitations usable. Both kit editors must follow existing milestone gates. Treat the athlete interface as a narrow route set, not a general supporter account. Prefer focused HYPE Card participation over new Showcase sections unless the user chooses otherwise.
+**How to apply:** Keep authorization server-side and scope athlete edits to the linked HYPE Card. Preserve parent controls and legacy invitation safety, but do not expose the retired kit or gear editors. Treat athlete access as a narrow card-editing role, not a general supporter account.

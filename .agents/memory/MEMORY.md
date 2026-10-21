@@ -34,7 +34,7 @@
 - [Hype Card watermark legibility](hype-card-watermark-legibility.md) — judge overlays at phone scale; clipped SVG text bounds can overrun slightly, so verify the clip and raster output.
 - [AI image edit proportions](ai-image-edit-proportions.md) — verify edited image dimensions before replacing fixed-ratio UI artwork.
 - [Athlete fan card and Hype Page lifecycle](athlete-hype-page-lifecycle.md) — share the fan card first, preserve the original page, and keep live sessions temporary.
-- [Athlete editor access boundaries](athlete-editor-access-boundaries.md) — new invites use the existing Showcase card; athletes edit card/kit only, while parent sharing controls and revocation persist.
+- [Athlete editor access boundaries](athlete-editor-access-boundaries.md) — athlete editing stays limited to the linked HYPE Card; parents retain publishing, privacy, and sharing controls.
 - [Hype manager task drafts](hype-manager-task-drafts.md) — keep task panels mounted; immediate visibility saves must not overwrite or implicitly save an unfinished time zone.
 - [Approved Hype manager layout](approved-hype-manager-layout.md) — the owner-only wallet-style task cards are approved; their chevrons should toggle panels open and closed.
 - [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.
@@ -115,10 +115,8 @@
 - [Standalone Clerk browser fixtures](standalone-clerk-browser-fixtures.md) — test-owned Vite servers need a harmless Clerk publishable-key fallback or React may stay unmounted.
 - [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — generic arguments on JSX components can be corrupted by source instrumentation; infer generics or pass casts through callback parameters.
 - [Support reply receiving domain](support-reply-receiving-domain.md) — use a Resend-managed or dedicated subdomain; never replace the root-domain MX serving normal support mail.
-- [Sport Gear and soccer scope](soccer-gear-product-scope.md) — earned gear is HYPE Card-independent and belongs on the Jersey Showcase; keep the legacy Soccer Kit distinct.
-- [Immersive Athlete Locker](immersive-athlete-locker.md) — use the supplied full Locker reference while keeping the dashboard and existing account roles unchanged.
+- [Showcase HYPE Card focus](soccer-gear-product-scope.md) — retire jersey/gear tools and rewards while keeping the Showcase name, HYPE Card, and saved data.
 - [Sharp sprite cropping](sharp-crop-trim-order.md) — materialize each crop before trimming; Sharp can otherwise apply trim ahead of extraction.
 - [Simplified interactive HYPE Card](simple-interactive-hype-card.md) — keep full 2:3 portrait framing, lower-third at the bottom, left branding, style choices, identity, positioning, and public flips.
-- [Showcase slide boundaries](showcase-slide-boundaries.md) — the HYPE Card slide shows only card content and card actions; jersey and owner-management content belongs to the Jersey slide.
+- [Showcase slide boundaries](showcase-slide-boundaries.md) — keep the named Showcase centered on the full interactive HYPE Card; do not reintroduce jersey or gear surfaces.
 - [Mobile dashboard Showcase navigation](mobile-dashboard-showcase-navigation.md) — the mobile owner card opens private Showcase; sharing stays public, and the owner can return to Supporter Hub.
-- [Sport gear package sequence](sport-gear-package-sequence.md) — redesign and settle one sport’s earned gear pack at a time; wait before changing others.
