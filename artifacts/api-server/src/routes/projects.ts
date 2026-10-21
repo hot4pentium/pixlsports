@@ -12,7 +12,6 @@ import { getRequiredClerkUserId, requireAuth, requireProjectEditorAuth } from ".
 import { ObjectStorageService } from "../lib/objectStorage";
 import { consumeGuestUsageBatch, getAccountAccessSnapshot } from "./accountAccess";
 import { hasActivePaidEntitlement } from "../lib/accountLifecycle";
-import { creditSoccerTrackerGames } from "../lib/soccerGear";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -166,7 +165,6 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
           project: withoutMedia(parsed.data.project, paid),
         })
         .returning();
-      await creditSoccerTrackerGames(tx, ownerClerkUserId, project.project);
       return project;
     });
     res.status(201).json(await projectResponse(created, ownerClerkUserId));
@@ -288,7 +286,6 @@ router.patch("/projects/:projectId", requireProjectEditorAuth, async (req, res):
           ),
         )
         .returning();
-      if (project) await creditSoccerTrackerGames(tx, ownerClerkUserId, project.project);
       return project;
     });
 

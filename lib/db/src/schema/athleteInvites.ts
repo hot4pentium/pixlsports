@@ -24,6 +24,7 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   photoObjectPath: text("photo_object_path"),
   cutoutObjectPath: text("cutout_object_path"),
   cardAppearance: jsonb("card_appearance").$type<Record<string, unknown> | null>(),
+  favoriteMoment: text("favorite_moment"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

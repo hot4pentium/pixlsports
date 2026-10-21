@@ -15,13 +15,17 @@ import type { AthleteInviteVideo } from './athleteInviteVideo';
 import type { HypeCardAppearance } from './hypeCardAppearance';
 import type { HypeCardShareStats } from './hypeCardShareStats';
 import type { PublicAthleteFanCardSport } from './publicAthleteFanCardSport';
-import type { SoccerGearLoadout } from './soccerGearLoadout';
 
 export interface PublicAthleteFanCard {
   inviteToken: string;
   hypesEnabled: boolean;
   athleteName: string;
   teamName: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
   seasonName: string;
   seasonEndsAt: Date;
   /**
@@ -33,7 +37,6 @@ export interface PublicAthleteFanCard {
   sport: PublicAthleteFanCardSport;
   /** @nullable */
   photoUrl: string | null;
-  soccerGear?: SoccerGearLoadout | null;
   /** @nullable */
   cutoutUrl?: string | null;
   cardAppearance?: HypeCardAppearance | null;

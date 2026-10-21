@@ -3,10 +3,20 @@ import { Router, type IRouter } from "express";
 import { GetSoccerGearResponse, RecordSoccerGearShareActionBody, SaveSoccerGearBody } from "@workspace/api-zod";
 import { athleteEditorAccessTable, athleteInvitesTable, cloudProjectsTable, db, hypeCardSharesTable, soccerGearActivityTable, soccerGearLooksTable, type AthleteEditorAccess } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth, requireProjectEditorAuth } from "../middlewares/requireAuth";
-import { creditExistingSoccerEventCards, creditExistingSoccerTrackerGames, readSoccerGear } from "../lib/soccerGear";
+import { readSoccerGear } from "../lib/soccerGear";
 import { lockedSoccerSelection, soccerWeekKey } from "../lib/soccerGearPolicy";
 
 const router: IRouter = Router();
+const retiredGearResponse = (_req: unknown, res: { status: (code: number) => { json: (body: unknown) => void } }) => {
+  res.status(410).json({
+    error: "Jersey and gear features have been retired. Open the HYPE Card Showcase.",
+    showcaseUrl: "/studio/player-showcase",
+  });
+};
+
+router.all("/athlete-gear/soccer", retiredGearResponse);
+router.all("/athlete-gear/soccer/activity", retiredGearResponse);
+router.all("/athlete-gear/soccer/share-action", retiredGearResponse);
 router.use("/athlete-gear", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
@@ -35,10 +45,6 @@ router.get("/athlete-gear/soccer", requireProjectEditorAuth, async (_req, res, n
       res.status(403).json({ error: "The linked athlete kit is no longer available." }); return;
     }
     const owner = access?.ownerClerkUserId ?? getRequiredClerkUserId(res);
-    if (!access) await Promise.all([
-      creditExistingSoccerEventCards(owner),
-      creditExistingSoccerTrackerGames(owner),
-    ]);
     res.json(GetSoccerGearResponse.parse(await readSoccerGear(owner, db, access?.athleteInviteId)));
   }
   catch (error) { next(error); }

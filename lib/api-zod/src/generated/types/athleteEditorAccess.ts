@@ -17,4 +17,9 @@ export interface AthleteEditorAccess {
   position: string;
   /** @nullable */
   projectId: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
 }

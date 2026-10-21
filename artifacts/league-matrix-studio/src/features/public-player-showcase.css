@@ -211,3 +211,17 @@
 @media (prefers-reduced-motion: reduce) {
   .public-showcase *, .public-showcase *::before, .public-showcase *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+@media (min-width: 900px) {
+  .public-showcase--card-only .public-showcase__hero {
+    grid-template-columns: minmax(0, .72fr) minmax(340px, .9fr);
+    gap: clamp(36px, 7vw, 100px);
+    width: min(1160px, calc(100% - 80px));
+    min-height: min(78dvh, 820px);
+    padding: 36px 0 48px;
+  }
+  .public-showcase--card-only .public-showcase__visual { max-width: 570px; }
+}
+.public-showcase--card-only .public-showcase__hero-copy { display: flex; flex-direction: column; gap: 12px; }
+.public-showcase--card-only .public-showcase__intro { margin: 4px 0 0; }
+.public-showcase--card-only .public-showcase__read-only { margin-top: 12px; }
+.public-showcase--card-only .public-showcase__footer { margin-top: auto; }

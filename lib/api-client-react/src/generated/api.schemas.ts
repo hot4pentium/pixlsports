@@ -489,6 +489,11 @@ export interface Error {
   code?: string;
 }
 
+export interface RetiredGearFeature {
+  error: string;
+  showcaseUrl: string;
+}
+
 export type ScheduleEventType = typeof ScheduleEventType[keyof typeof ScheduleEventType];
 
 
@@ -1511,6 +1516,24 @@ export interface AthleteEditorAccess {
   position: string;
   /** @nullable */
   projectId: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
+}
+
+export interface AthleteFavoriteMomentInput {
+  /** @maxLength 160 */
+  favoriteMoment: string;
+}
+
+export interface AthleteFavoriteMoment {
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
 }
 
 export interface AthleteEditorCardAppearance {
@@ -1801,6 +1824,11 @@ export interface PublicAthleteInvite {
   inviteToken: string;
   athleteName: string;
   teamName: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
   seasonName: string;
   seasonEndsAt: string;
   sport: PublicAthleteInviteSport;
@@ -2779,88 +2807,16 @@ export const PublicAthleteFanCardSport = {
   volleyball: 'volleyball',
 } as const;
 
-export type SoccerGearLoadoutShinGuards = typeof SoccerGearLoadoutShinGuards[keyof typeof SoccerGearLoadoutShinGuards];
-
-
-export const SoccerGearLoadoutShinGuards = {
-  slim: 'slim',
-  shield: 'shield',
-} as const;
-
-export type SoccerGearLoadoutJerseyStyle = typeof SoccerGearLoadoutJerseyStyle[keyof typeof SoccerGearLoadoutJerseyStyle];
-
-
-export const SoccerGearLoadoutJerseyStyle = {
-  classic: 'classic',
-  stripes: 'stripes',
-} as const;
-
-export type SoccerGearLoadoutShortsStyle = typeof SoccerGearLoadoutShortsStyle[keyof typeof SoccerGearLoadoutShortsStyle];
-
-
-export const SoccerGearLoadoutShortsStyle = {
-  classic: 'classic',
-  contrast: 'contrast',
-} as const;
-
-export type SoccerGearLoadoutSocksStyle = typeof SoccerGearLoadoutSocksStyle[keyof typeof SoccerGearLoadoutSocksStyle];
-
-
-export const SoccerGearLoadoutSocksStyle = {
-  plain: 'plain',
-  stripe: 'stripe',
-} as const;
-
-export type SoccerGearLoadoutCleatsStyle = typeof SoccerGearLoadoutCleatsStyle[keyof typeof SoccerGearLoadoutCleatsStyle];
-
-
-export const SoccerGearLoadoutCleatsStyle = {
-  classic: 'classic',
-  speed: 'speed',
-} as const;
-
-export type SoccerGearLoadoutSweatband = typeof SoccerGearLoadoutSweatband[keyof typeof SoccerGearLoadoutSweatband];
-
-
-export const SoccerGearLoadoutSweatband = {
-  none: 'none',
-  head: 'head',
-  wrist: 'wrist',
-} as const;
-
-export type SoccerGearLoadoutBackground = typeof SoccerGearLoadoutBackground[keyof typeof SoccerGearLoadoutBackground];
-
-
-export const SoccerGearLoadoutBackground = {
-  field: 'field',
-  goal: 'goal',
-} as const;
-
-export interface SoccerGearLoadout {
-  shinGuards: SoccerGearLoadoutShinGuards;
-  /** @pattern ^#[0-9A-Fa-f]{6}$ */
-  shinGuardColor: string;
-  jerseyStyle: SoccerGearLoadoutJerseyStyle;
-  /** @pattern ^#[0-9A-Fa-f]{6}$ */
-  jerseyColor: string;
-  shortsStyle: SoccerGearLoadoutShortsStyle;
-  /** @pattern ^#[0-9A-Fa-f]{6}$ */
-  shortsColor: string;
-  socksStyle: SoccerGearLoadoutSocksStyle;
-  /** @pattern ^#[0-9A-Fa-f]{6}$ */
-  socksColor: string;
-  cleatsStyle: SoccerGearLoadoutCleatsStyle;
-  /** @pattern ^#[0-9A-Fa-f]{6}$ */
-  cleatsColor: string;
-  sweatband: SoccerGearLoadoutSweatband;
-  background: SoccerGearLoadoutBackground;
-}
-
 export interface PublicAthleteFanCard {
   inviteToken: string;
   hypesEnabled: boolean;
   athleteName: string;
   teamName: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
   seasonName: string;
   seasonEndsAt: string;
   /**
@@ -2872,7 +2828,6 @@ export interface PublicAthleteFanCard {
   sport: PublicAthleteFanCardSport;
   /** @nullable */
   photoUrl: string | null;
-  soccerGear?: SoccerGearLoadout | null;
   /** @nullable */
   cutoutUrl?: string | null;
   cardAppearance?: HypeCardAppearance | null;
@@ -3035,6 +2990,83 @@ export interface PublicJerseyShowcaseGear {
   sport: GearSport;
   loadout: SportGearLoadout;
   earnedGear: string[];
+}
+
+export type SoccerGearLoadoutShinGuards = typeof SoccerGearLoadoutShinGuards[keyof typeof SoccerGearLoadoutShinGuards];
+
+
+export const SoccerGearLoadoutShinGuards = {
+  slim: 'slim',
+  shield: 'shield',
+} as const;
+
+export type SoccerGearLoadoutJerseyStyle = typeof SoccerGearLoadoutJerseyStyle[keyof typeof SoccerGearLoadoutJerseyStyle];
+
+
+export const SoccerGearLoadoutJerseyStyle = {
+  classic: 'classic',
+  stripes: 'stripes',
+} as const;
+
+export type SoccerGearLoadoutShortsStyle = typeof SoccerGearLoadoutShortsStyle[keyof typeof SoccerGearLoadoutShortsStyle];
+
+
+export const SoccerGearLoadoutShortsStyle = {
+  classic: 'classic',
+  contrast: 'contrast',
+} as const;
+
+export type SoccerGearLoadoutSocksStyle = typeof SoccerGearLoadoutSocksStyle[keyof typeof SoccerGearLoadoutSocksStyle];
+
+
+export const SoccerGearLoadoutSocksStyle = {
+  plain: 'plain',
+  stripe: 'stripe',
+} as const;
+
+export type SoccerGearLoadoutCleatsStyle = typeof SoccerGearLoadoutCleatsStyle[keyof typeof SoccerGearLoadoutCleatsStyle];
+
+
+export const SoccerGearLoadoutCleatsStyle = {
+  classic: 'classic',
+  speed: 'speed',
+} as const;
+
+export type SoccerGearLoadoutSweatband = typeof SoccerGearLoadoutSweatband[keyof typeof SoccerGearLoadoutSweatband];
+
+
+export const SoccerGearLoadoutSweatband = {
+  none: 'none',
+  head: 'head',
+  wrist: 'wrist',
+} as const;
+
+export type SoccerGearLoadoutBackground = typeof SoccerGearLoadoutBackground[keyof typeof SoccerGearLoadoutBackground];
+
+
+export const SoccerGearLoadoutBackground = {
+  field: 'field',
+  goal: 'goal',
+} as const;
+
+export interface SoccerGearLoadout {
+  shinGuards: SoccerGearLoadoutShinGuards;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  shinGuardColor: string;
+  jerseyStyle: SoccerGearLoadoutJerseyStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  jerseyColor: string;
+  shortsStyle: SoccerGearLoadoutShortsStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  shortsColor: string;
+  socksStyle: SoccerGearLoadoutSocksStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  socksColor: string;
+  cleatsStyle: SoccerGearLoadoutCleatsStyle;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  cleatsColor: string;
+  sweatband: SoccerGearLoadoutSweatband;
+  background: SoccerGearLoadoutBackground;
 }
 
 export interface SoccerGearLoadoutInput {

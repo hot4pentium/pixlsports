@@ -526,6 +526,12 @@ paths:
                 $ref: "#/components/schemas/SportGearState"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Gear features have been retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetiredGearFeature"
   /athlete-gear/sports/{sport}:
     parameters:
       - in: path
@@ -554,6 +560,12 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Gear features have been retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetiredGearFeature"
   /athlete-gear/soccer:
     get:
       operationId: getSoccerGear
@@ -568,6 +580,12 @@ paths:
                 $ref: "#/components/schemas/SoccerGearState"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Gear features have been retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetiredGearFeature"
     put:
       operationId: saveSoccerGear
       tags: [athlete-gear]
@@ -589,6 +607,12 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Gear features have been retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetiredGearFeature"
   /athlete-gear/soccer/activity:
     post:
       operationId: recordSoccerGearWeeklyLogin
@@ -604,6 +628,12 @@ paths:
                 $ref: "#/components/schemas/SoccerGearState"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Gear features have been retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetiredGearFeature"
   /athlete-gear/soccer/share-action:
     post:
       operationId: recordSoccerGearShareAction
@@ -627,6 +657,12 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Gear features have been retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetiredGearFeature"
         "404":
           $ref: "#/components/responses/NotFound"
   /game-on-cards/owned:
@@ -1124,6 +1160,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /athlete-editor/card/favorite-moment:
+    patch:
+      operationId: updateAthleteEditorFavoriteMoment
+      tags: [athlete-editor]
+      summary: Save the signed-in athlete's optional HYPE Card favorite moment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteFavoriteMomentInput"
+      responses:
+        "200":
+          description: Saved favorite moment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteFavoriteMoment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: No active athlete editor access to a linked HYPE Card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /athlete-editor/card/appearance:
     patch:
       operationId: updateAthleteEditorCardAppearance
@@ -1188,6 +1252,12 @@ paths:
                 $ref: "#/components/schemas/PublicJerseyShowcaseGear"
         "404":
           $ref: "#/components/responses/NotFound"
+        "410":
+          description: Jersey and gear features have been retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetiredGearFeature"
   /athlete-invites/{inviteToken}/events/{shareToken}/notify:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -3409,6 +3479,12 @@ components:
         code:
           type: string
       required: [error]
+    RetiredGearFeature:
+      type: object
+      required: [error, showcaseUrl]
+      properties:
+        error: { type: string }
+        showcaseUrl: { type: string }
     ScheduleEvent:
       type: object
       required: [id, type, date, time, location, opponent, snacks, drinks, notes]
@@ -4100,7 +4176,7 @@ components:
         updatedAt: { type: ["string", "null"], format: date-time }
     AthleteEditorAccess:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, sport, jerseyNumber, position, projectId]
+      required: [inviteToken, athleteName, teamName, seasonName, sport, jerseyNumber, position, projectId, favoriteMoment]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -4110,6 +4186,17 @@ components:
         jerseyNumber: { type: string }
         position: { type: string }
         projectId: { type: ["string", "null"], format: uuid }
+        favoriteMoment: { type: ["string", "null"], maxLength: 160 }
+    AthleteFavoriteMomentInput:
+      type: object
+      required: [favoriteMoment]
+      properties:
+        favoriteMoment: { type: string, maxLength: 160 }
+    AthleteFavoriteMoment:
+      type: object
+      required: [favoriteMoment]
+      properties:
+        favoriteMoment: { type: ["string", "null"], maxLength: 160 }
     AthleteEditorCardAppearance:
       type: object
       required: [cardAppearance]
@@ -4301,11 +4388,12 @@ components:
         - $ref: "#/components/schemas/AthleteInviteLiveSession"
     PublicAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveGame, liveTaps, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveGame, liveTaps, updatedAt, favoriteMoment]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
         teamName: { type: string }
+        favoriteMoment: { type: ["string", "null"], maxLength: 160 }
         seasonName: { type: string }
         seasonEndsAt: { type: string, format: date-time }
         sport:
@@ -4817,12 +4905,13 @@ components:
         teamName: { type: string, maxLength: 160 }
     PublicAthleteFanCard:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveScoreboard, liveTaps, hypesEnabled, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveScoreboard, liveTaps, hypesEnabled, updatedAt, favoriteMoment]
       properties:
         inviteToken: { type: string }
         hypesEnabled: { type: boolean }
         athleteName: { type: string }
         teamName: { type: string }
+        favoriteMoment: { type: ["string", "null"], maxLength: 160 }
         seasonName: { type: string }
         seasonEndsAt: { type: string, format: date-time }
         timezone:
@@ -4833,10 +4922,6 @@ components:
           type: string
           enum: [baseball, basketball, football, soccer, volleyball]
         photoUrl: { type: ["string", "null"] }
-        soccerGear:
-          anyOf:
-            - $ref: "#/components/schemas/SoccerGearLoadout"
-            - type: "null"
         cutoutUrl: { type: ["string", "null"] }
         cardAppearance:
           anyOf:

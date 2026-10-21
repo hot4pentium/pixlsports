@@ -9,6 +9,8 @@ import {
   RevokeAthleteInviteEditorAccessParams,
   UpdateAthleteInviteAppearanceBody,
   UpdateAthleteEditorCardAppearanceResponse,
+  UpdateAthleteEditorFavoriteMomentBody,
+  UpdateAthleteEditorFavoriteMomentResponse,
 } from "@workspace/api-zod";
 import {
   accountAccessTable,
@@ -393,6 +395,56 @@ router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, r
       ? projectRecord.position
       : typeof appearanceRecord.position === "string" ? appearanceRecord.position : "",
     projectId: access.projectId,
+    favoriteMoment: invite.favoriteMoment ?? null,
+  }));
+});
+
+router.patch("/athlete-editor/card/favorite-moment", requireAuthenticatedIdentity, async (req, res): Promise<void> => {
+  const parsed = UpdateAthleteEditorFavoriteMomentBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Enter a favorite moment of 160 characters or fewer." });
+    return;
+  }
+  const athleteClerkUserId = getRequiredClerkUserId(res);
+  const access = await getAthleteEditorAccessForUser(athleteClerkUserId);
+  if (!access || access.status !== "active") {
+    res.status(403).json({ error: "Active athlete editor access is required to update this HYPE Card." });
+    return;
+  }
+
+  const updated = await db.transaction(async (tx) => {
+    const [currentAccess] = await tx.select({ id: athleteEditorAccessTable.id })
+      .from(athleteEditorAccessTable)
+      .where(and(
+        eq(athleteEditorAccessTable.id, access.id),
+        eq(athleteEditorAccessTable.status, "active"),
+        eq(athleteEditorAccessTable.athleteClerkUserId, athleteClerkUserId),
+        eq(athleteEditorAccessTable.ownerClerkUserId, access.ownerClerkUserId),
+        eq(athleteEditorAccessTable.athleteInviteId, access.athleteInviteId),
+      ))
+      .for("update")
+      .limit(1);
+    if (!currentAccess) return null;
+
+    const [invite] = await tx.update(athleteInvitesTable)
+      .set({
+        favoriteMoment: parsed.data.favoriteMoment.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(athleteInvitesTable.id, access.athleteInviteId),
+        eq(athleteInvitesTable.ownerClerkUserId, access.ownerClerkUserId),
+      ))
+      .returning({ favoriteMoment: athleteInvitesTable.favoriteMoment });
+    return invite ?? null;
+  });
+
+  if (!updated) {
+    res.status(403).json({ error: "Athlete editor access is no longer active." });
+    return;
+  }
+  res.json(UpdateAthleteEditorFavoriteMomentResponse.parse({
+    favoriteMoment: updated.favoriteMoment ?? null,
   }));
 });
 

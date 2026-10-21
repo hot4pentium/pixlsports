@@ -23,7 +23,6 @@ import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth"
 import { isAccountActive } from "../lib/accountLifecycle";
 import { isIanaTimezone } from "../lib/timezone";
 import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
-import { creditSoccerEventCard } from "../lib/soccerGear";
 
 const router: IRouter = Router();
 // Stored in an existing non-card metadata field until the card has its own durable model.
@@ -116,7 +115,6 @@ router.post("/schedule-shares", requireAuth, async (req, res): Promise<void> => 
             : {}),
         })
         .returning();
-      if (event?.id) await creditSoccerEventCard(tx, ownerClerkUserId, event.id);
       return row;
     });
     try {

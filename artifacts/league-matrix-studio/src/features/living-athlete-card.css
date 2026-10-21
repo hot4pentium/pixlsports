@@ -440,3 +440,6 @@
 .living-card-main--embedded .living-card-alt-title { font-size: 42px; }
 .living-card-main--embedded .living-card-face-alt { inset: 0; padding: 18px; }
 .living-card-state--embedded { margin: 0; }
+.living-card-favorite-moment { margin: 0 0 18px; padding: 14px 16px; border-left: 3px solid var(--lc-accent, #dff56f); background: rgba(255,255,255,.07); }
+.living-card-favorite-moment-label { margin: 0 0 6px; color: var(--lc-accent, #dff56f); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.living-card-favorite-moment-copy { margin: 0; color: var(--lc-text, #f5f8fb); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }

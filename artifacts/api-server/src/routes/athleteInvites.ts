@@ -1,6 +1,4 @@
 import { createHash, randomBytes } from "crypto";
-import { publicSoccerGear } from "../lib/soccerGear";
-import { publicJerseyShowcaseGear } from "../lib/sportGear";
 import { and, count, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -19,8 +17,6 @@ import {
   GetAthleteInviteResponse,
   GetAthleteFanCardParams,
   GetAthleteFanCardResponse,
-  GetPublicJerseyShowcaseGearParams,
-  GetPublicJerseyShowcaseGearResponse,
   GetAthleteInviteEventNotificationProgressParams,
   GetAthleteInviteEventNotificationProgressResponse,
   ListAthleteInvitesResponse,
@@ -358,6 +354,9 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
     inviteToken: invite.publicToken,
     athleteName: invite.athleteName,
     teamName: invite.teamName,
+    favoriteMoment: isOwner || (invite.showHypeCard && !invite.paused)
+      ? invite.favoriteMoment ?? null
+      : null,
     seasonName: invite.seasonName,
     seasonEndsAt: invite.seasonEndsAt,
     sport: invite.sport,
@@ -521,34 +520,17 @@ router.get("/athlete-invites/:inviteToken/fan", async (req, res): Promise<void> 
   void _liveGame;
   res.json(GetAthleteFanCardResponse.parse({
     ...card,
-    soccerGear: await publicSoccerGear(invite),
     timezone: isIanaTimezone(invite.timezone) ? invite.timezone : null,
     hypesEnabled: invite.hypesEnabled,
   }));
 });
 
-router.get("/athlete-invites/:inviteToken/jersey-showcase/gear", async (req, res, next): Promise<void> => {
-  const params = GetPublicJerseyShowcaseGearParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(404).json({ error: "Athlete invite not found" });
-    return;
-  }
-  try {
-    const [invite] = await db.select().from(athleteInvitesTable)
-      .where(eq(athleteInvitesTable.publicToken, params.data.inviteToken)).limit(1);
-    if (!invite || invite.paused || !(await isAccountActive(invite.ownerClerkUserId))) {
-      res.status(404).json({ error: "Athlete invite not found" });
-      return;
-    }
-    const gear = await publicJerseyShowcaseGear(invite);
-    if (!gear) {
-      res.status(404).json({ error: "Jersey showcase gear not found" });
-      return;
-    }
-    res.json(GetPublicJerseyShowcaseGearResponse.parse(gear));
-  } catch (error) {
-    next(error);
-  }
+router.get("/athlete-invites/:inviteToken/jersey-showcase/gear", (req, res): void => {
+  const token = typeof req.params.inviteToken === "string" ? req.params.inviteToken : "";
+  res.status(410).json({
+    error: "Jersey and gear features have been retired. Open the HYPE Card Showcase.",
+    showcaseUrl: `/showcase/${encodeURIComponent(token)}`,
+  });
 });
 
 router.post("/athlete-invites/:inviteToken/events/:shareToken/notify", requireAuth, async (req, res): Promise<void> => {

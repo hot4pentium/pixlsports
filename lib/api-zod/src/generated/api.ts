@@ -2731,6 +2731,8 @@ export const GetAthleteInviteParams = zod.object({
   "inviteToken": zod.coerce.string().regex(getAthleteInvitePathInviteTokenRegExp)
 })
 
+export const getAthleteInviteResponseFavoriteMomentMax = 160;
+
 export const getAthleteInviteResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteInviteResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteInviteResponseCardAppearanceOneAthleteXMin = -0.25;
@@ -2828,6 +2830,7 @@ export const GetAthleteInviteResponse = zod.object({
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
   "teamName": zod.string(),
+  "favoriteMoment": zod.string().max(getAthleteInviteResponseFavoriteMomentMax).nullable(),
   "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
@@ -3188,6 +3191,10 @@ export const RevokeAthleteInviteEditorAccessResponse = zod.void()
 /**
  * @summary Claim and load the signed-in athlete's limited editor access
  */
+export const getAthleteEditorAccessResponseFavoriteMomentMax = 160;
+
+
+
 export const GetAthleteEditorAccessResponse = zod.object({
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
@@ -3196,7 +3203,28 @@ export const GetAthleteEditorAccessResponse = zod.object({
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "jerseyNumber": zod.string(),
   "position": zod.string(),
-  "projectId": zod.string().uuid().nullable()
+  "projectId": zod.string().uuid().nullable(),
+  "favoriteMoment": zod.string().max(getAthleteEditorAccessResponseFavoriteMomentMax).nullable()
+})
+
+
+/**
+ * @summary Save the signed-in athlete's optional HYPE Card favorite moment
+ */
+export const updateAthleteEditorFavoriteMomentBodyFavoriteMomentMax = 160;
+
+
+
+export const UpdateAthleteEditorFavoriteMomentBody = zod.object({
+  "favoriteMoment": zod.string().max(updateAthleteEditorFavoriteMomentBodyFavoriteMomentMax)
+})
+
+export const updateAthleteEditorFavoriteMomentResponseFavoriteMomentMax = 160;
+
+
+
+export const UpdateAthleteEditorFavoriteMomentResponse = zod.object({
+  "favoriteMoment": zod.string().max(updateAthleteEditorFavoriteMomentResponseFavoriteMomentMax).nullable()
 })
 
 
@@ -3385,13 +3413,10 @@ export const GetAthleteFanCardParams = zod.object({
   "inviteToken": zod.coerce.string().regex(getAthleteFanCardPathInviteTokenRegExp)
 })
 
+export const getAthleteFanCardResponseFavoriteMomentMax = 160;
+
 export const getAthleteFanCardResponseTimezoneMax = 100;
 
-export const getAthleteFanCardResponseSoccerGearOneShinGuardColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const getAthleteFanCardResponseSoccerGearOneJerseyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const getAthleteFanCardResponseSoccerGearOneShortsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const getAthleteFanCardResponseSoccerGearOneSocksColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const getAthleteFanCardResponseSoccerGearOneCleatsColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const getAthleteFanCardResponseCardAppearanceOneAthleteXMin = -0.25;
@@ -3500,25 +3525,12 @@ export const GetAthleteFanCardResponse = zod.object({
   "hypesEnabled": zod.boolean(),
   "athleteName": zod.string(),
   "teamName": zod.string(),
+  "favoriteMoment": zod.string().max(getAthleteFanCardResponseFavoriteMomentMax).nullable(),
   "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
   "timezone": zod.string().max(getAthleteFanCardResponseTimezoneMax).nullable().describe('Validated IANA timezone, or null for a legacy invite without one.'),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "photoUrl": zod.string().nullable(),
-  "soccerGear": zod.union([zod.object({
-  "shinGuards": zod.enum(['slim', 'shield']),
-  "shinGuardColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneShinGuardColorRegExp),
-  "jerseyStyle": zod.enum(['classic', 'stripes']),
-  "jerseyColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneJerseyColorRegExp),
-  "shortsStyle": zod.enum(['classic', 'contrast']),
-  "shortsColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneShortsColorRegExp),
-  "socksStyle": zod.enum(['plain', 'stripe']),
-  "socksColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneSocksColorRegExp),
-  "cleatsStyle": zod.enum(['classic', 'speed']),
-  "cleatsColor": zod.string().regex(getAthleteFanCardResponseSoccerGearOneCleatsColorRegExp),
-  "sweatband": zod.enum(['none', 'head', 'wrist']),
-  "background": zod.enum(['field', 'goal'])
-}),zod.null()]).optional(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
   "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout', 'velocity', 'wave', 'glass', 'varsity', 'pixel-edge']).describe('HYPE Card frame template. New cards use the six supplied styles; the original values remain accepted for saved cards and are normalized by the client.'),

@@ -20,6 +20,11 @@ export interface PublicAthleteInvite {
   inviteToken: string;
   athleteName: string;
   teamName: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
   seasonName: string;
   seasonEndsAt: Date;
   sport: PublicAthleteInviteSport;

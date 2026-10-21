@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { runGearQualifiedShareAction } from './soccer-gear-engagement';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -198,7 +197,7 @@ export function AthleteInviteManager() {
 
   if (!isLoaded || isLoading) return <InviteShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading athlete page…</p></InviteShell>;
   if (!isSignedIn) return <InviteShell><div className="max-w-lg text-center"><h1 className="font-display text-5xl uppercase">Sign in to manage the athlete page</h1><Link href="/sign-in" className="mt-6 inline-flex bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link></div></InviteShell>;
-  if (!isParentAccount) return <InviteShell><div className="mx-auto max-w-xl px-5 py-20 text-center"><h1 className="font-display text-4xl uppercase">Parent controls only</h1><p className="mt-4 text-sm leading-relaxed text-muted-foreground">Your athlete access is limited to the linked HYPE Card and soccer kit your parent or guardian set up.</p><Link href="/studio/player-showcase" className="mt-6 inline-flex bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Open athlete showcase</Link></div></InviteShell>;
+  if (!isParentAccount) return <InviteShell><div className="mx-auto max-w-xl px-5 py-20 text-center"><h1 className="font-display text-4xl uppercase">Parent controls only</h1><p className="mt-4 text-sm leading-relaxed text-muted-foreground">Your athlete access is limited to the linked HYPE Card your parent or guardian set up.</p><Link href="/studio/player-showcase" className="mt-6 inline-flex bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Open athlete Showcase</Link></div></InviteShell>;
 
   const payload = (): AthleteInviteInput => ({
     athleteName: athleteName.trim(),
@@ -238,17 +237,21 @@ export function AthleteInviteManager() {
   };
   const copy = async () => {
     if (!existing) return;
-    const credited = await runGearQualifiedShareAction(() => navigator.clipboard.writeText(fanCardUrl(existing.inviteToken)), user?.id, existing.inviteToken);
-    setNotice(credited ? 'HYPE Card URL copied.' : 'HYPE Card URL copied. Gear reward will retry when you reconnect or open Soccer Gear.');
+    try {
+      await navigator.clipboard.writeText(fanCardUrl(existing.inviteToken));
+      setNotice('HYPE Card URL copied.');
+    } catch {
+      setNotice('The HYPE Card URL could not be copied.');
+    }
   };
   const share = async () => {
     if (!existing) return;
     const url = fanCardUrl(existing.inviteToken);
     if (navigator.share) {
       try {
-        const credited = await runGearQualifiedShareAction(() => navigator.share({ title: `${existing.athleteName} HYPE Card`, text: `Follow ${existing.athleteName}'s season.`, url }), user?.id, existing.inviteToken);
-        setNotice(credited ? 'HYPE Card share completed.' : 'Share completed. Gear reward will retry when you reconnect or open Soccer Gear.');
-      } catch { setNotice('Share menu closed. No gear progress was added.'); }
+        await navigator.share({ title: `${existing.athleteName} HYPE Card`, text: `Follow ${existing.athleteName}'s season.`, url });
+        setNotice('HYPE Card share completed.');
+      } catch { setNotice('Share menu closed.'); }
     }
     else await copy();
   };
@@ -444,18 +447,18 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       await refreshInvitation();
       setMessage(response.status === 'active'
         ? 'Access restored. The athlete can sign in and edit this card.'
-        : 'Invitation sent. The athlete can edit the card design and soccer kit after signing in.');
+        : 'Invitation sent. The athlete can edit the linked HYPE Card and add a favorite-moment note after signing in.');
     } catch {
       setMessage('The invitation could not be sent. Check the email and try again.');
     }
   };
   const revoke = async () => {
-    if (!inviteToken || !window.confirm('Revoke this athlete’s HYPE Card and soccer kit access?')) return;
+    if (!inviteToken || !window.confirm('Revoke this athlete’s HYPE Card access?')) return;
     setMessage('');
     try {
       await revokeInvitation.mutateAsync({ inviteToken });
       await refreshInvitation();
-      setMessage('Athlete HYPE Card and soccer kit access revoked.');
+      setMessage('Athlete HYPE Card access revoked.');
     } catch {
       setMessage('Access could not be revoked. Try again.');
     }
@@ -474,7 +477,7 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Design access only</p>
           <h2 id="athlete-editor-invitation-title" className="mt-2 font-display text-3xl uppercase">Invite athlete to edit</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Parents remain in control of the athlete page, visibility, publishing, privacy, and sharing. The athlete can edit only the linked HYPE Card design and soccer kit.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Parents remain in control of the athlete page, visibility, publishing, privacy, and sharing. The athlete can edit only the linked HYPE Card design and add a favorite-moment note.</p>
         </div>
         {inviteToken && (
           <span className={`inline-flex w-fit items-center gap-2 border px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${invitation?.status === 'active' ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}`}>
@@ -492,7 +495,7 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       ) : (
         <div className="mt-5">
           <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            New invitations connect to the HYPE Card already shown in the Showcase. The athlete can edit its design and their soccer kit; page settings and sharing stay with you.
+            New invitations connect to the HYPE Card already shown in the Showcase. The athlete can edit its design and add one short favorite-moment note; page settings and sharing stay with you.
           </p>
           {invitationQuery.isError && (
             <p className="mb-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2 text-sm" role="alert">
@@ -1177,8 +1180,12 @@ function OwnerHypePageManage({ invite, profile }: {
     }
   };
   const copyFanCard = async () => {
-    const credited = await runGearQualifiedShareAction(() => navigator.clipboard.writeText(fanCardUrl(invite.inviteToken)), user?.id, invite.inviteToken);
-    setNotice(credited ? 'HYPE Card URL copied.' : 'HYPE Card URL copied. Gear reward will retry when you reconnect or open Soccer Gear.');
+    try {
+      await navigator.clipboard.writeText(fanCardUrl(invite.inviteToken));
+      setNotice('HYPE Card URL copied.');
+    } catch {
+      setNotice('The HYPE Card URL could not be copied.');
+    }
   };
   const createFamilyTapQrCode = async () => {
     setFamilyTapNotice('');
@@ -1227,9 +1234,9 @@ function OwnerHypePageManage({ invite, profile }: {
     const url = fanCardUrl(invite.inviteToken);
     if (navigator.share) {
       try {
-        const credited = await runGearQualifiedShareAction(() => navigator.share({ title: `${invite.athleteName} HYPE Card`, text: `Follow ${invite.athleteName}'s season.`, url }), user?.id, invite.inviteToken);
-        setNotice(credited ? 'HYPE Card share completed.' : 'Share completed. Gear reward will retry when you reconnect or open Soccer Gear.');
-      } catch { setNotice('Share menu closed. No gear progress was added.'); }
+        await navigator.share({ title: `${invite.athleteName} HYPE Card`, text: `Follow ${invite.athleteName}'s season.`, url });
+        setNotice('HYPE Card share completed.');
+      } catch { setNotice('Share menu closed.'); }
     }
     else await copyFanCard();
   };

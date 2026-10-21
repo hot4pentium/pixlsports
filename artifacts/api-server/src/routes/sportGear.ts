@@ -3,13 +3,21 @@ import { Router, type IRouter } from "express";
 import { GetSportGearForAthleteQueryParams, GetSportGearForAthleteResponse, SaveSportGearBody, SaveSportGearParams } from "@workspace/api-zod";
 import { athleteEditorAccessTable, athleteInvitesTable, athleteSportGearLooksTable, cloudProjectsTable, db, type AthleteEditorAccess } from "@workspace/db";
 import { getRequiredClerkUserId, requireProjectEditorAuth } from "../middlewares/requireAuth";
-import { creditExistingSoccerEventCards, creditExistingSoccerTrackerGames } from "../lib/soccerGear";
 import { readSportGear } from "../lib/sportGear";
 import { invalidSportGearSelection, publicGearArtFiles, type GearSport } from "../lib/sportGearPolicy";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 const sportSchema = SaveSportGearParams.shape.sport;
+const retiredGearResponse = (_req: unknown, res: { status: (code: number) => { json: (body: unknown) => void } }) => {
+  res.status(410).json({
+    error: "Jersey and gear features have been retired. Open the HYPE Card Showcase.",
+    showcaseUrl: "/studio/player-showcase",
+  });
+};
+
+router.all("/athlete-gear/sports", retiredGearResponse);
+router.all("/athlete-gear/sports/:sport", retiredGearResponse);
 
 // This public route serves only our curated artwork, never user-uploaded media.
 router.get("/athlete-gear/art/v1/:filename", async (req, res, next) => {
@@ -41,7 +49,6 @@ router.get("/athlete-gear/sports", requireProjectEditorAuth, async (req, res, ne
     const access = res.locals.athleteEditorAccess as AthleteEditorAccess | undefined;
     if (access && !await validLinkedKit(access, query.data.sport)) { res.status(403).json({ error: "The linked athlete gear is unavailable." }); return; }
     const owner = access?.ownerClerkUserId ?? getRequiredClerkUserId(res);
-    if (!access) await Promise.all([creditExistingSoccerEventCards(owner), creditExistingSoccerTrackerGames(owner)]);
     res.json(GetSportGearForAthleteResponse.parse(await readSportGear(owner, query.data.sport, db, access?.athleteInviteId, access ? undefined : query.data.athleteName)));
   } catch (error) { next(error); }
 });

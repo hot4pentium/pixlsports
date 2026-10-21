@@ -41,6 +41,8 @@ import type {
   AthleteEditorCardAppearance,
   AthleteEditorInvitation,
   AthleteEditorInvitationInput,
+  AthleteFavoriteMoment,
+  AthleteFavoriteMomentInput,
   AthleteInviteEventNotifyResult,
   AthleteInviteFanFollow,
   AthleteInviteFanFollowCreated,
@@ -117,6 +119,7 @@ import type {
   PublicAthleteInviteHype,
   PublicJerseyShowcaseGear,
   ResendEmailReceivedEvent,
+  RetiredGearFeature,
   ScheduleShare,
   ScheduleShareInput,
   SoccerGearLoadoutInput,
@@ -1900,7 +1903,7 @@ export const getGetSportGearForAthleteQueryKey = (params?: GetSportGearForAthlet
     }
 
 
-export const getGetSportGearForAthleteQueryOptions = <TData = Awaited<ReturnType<typeof getSportGearForAthlete>>, TError = ErrorType<UnauthorizedResponse>>(params: GetSportGearForAthleteParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGearForAthlete>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSportGearForAthleteQueryOptions = <TData = Awaited<ReturnType<typeof getSportGearForAthlete>>, TError = ErrorType<UnauthorizedResponse | RetiredGearFeature>>(params: GetSportGearForAthleteParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGearForAthlete>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1919,14 +1922,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetSportGearForAthleteQueryResult = NonNullable<Awaited<ReturnType<typeof getSportGearForAthlete>>>
-export type GetSportGearForAthleteQueryError = ErrorType<UnauthorizedResponse>
+export type GetSportGearForAthleteQueryError = ErrorType<UnauthorizedResponse | RetiredGearFeature>
 
 
 /**
  * @summary Get sport-specific earned equipment and saved Showcase look
  */
 
-export function useGetSportGearForAthlete<TData = Awaited<ReturnType<typeof getSportGearForAthlete>>, TError = ErrorType<UnauthorizedResponse>>(
+export function useGetSportGearForAthlete<TData = Awaited<ReturnType<typeof getSportGearForAthlete>>, TError = ErrorType<UnauthorizedResponse | RetiredGearFeature>>(
  params: GetSportGearForAthleteParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSportGearForAthlete>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1987,7 +1990,7 @@ return customFetch<SportGearState>(getSaveSportGearUrl(sport),
 
 export const getSaveSportGearMutationKey = () => ['saveSportGear'] as const;
 
-export const getSaveSportGearMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const getSaveSportGearMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSportGear>>, TError,SaveSportGearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveSportGear>>, TError,SaveSportGearMutationVariables, TContext> => {
 
@@ -2016,13 +2019,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SaveSportGearMutationResult = NonNullable<Awaited<ReturnType<typeof saveSportGear>>>
     export type SaveSportGearMutationBody = BodyType<SportGearLookInput>
-    export type SaveSportGearMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type SaveSportGearMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | RetiredGearFeature>
     export type SaveSportGearMutationVariables = {sport: GearSport;data: BodyType<SportGearLookInput>}
 
     /**
  * @summary Save earned sport gear and jersey color
  */
-export const useSaveSportGear = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const useSaveSportGear = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSportGear>>, TError,SaveSportGearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof saveSportGear>>,
@@ -2066,7 +2069,7 @@ export const getGetSoccerGearQueryKey = () => {
     }
 
 
-export const getGetSoccerGearQueryOptions = <TData = Awaited<ReturnType<typeof getSoccerGear>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSoccerGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSoccerGearQueryOptions = <TData = Awaited<ReturnType<typeof getSoccerGear>>, TError = ErrorType<UnauthorizedResponse | RetiredGearFeature>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSoccerGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -2085,14 +2088,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetSoccerGearQueryResult = NonNullable<Awaited<ReturnType<typeof getSoccerGear>>>
-export type GetSoccerGearQueryError = ErrorType<UnauthorizedResponse>
+export type GetSoccerGearQueryError = ErrorType<UnauthorizedResponse | RetiredGearFeature>
 
 
 /**
  * @summary Get the signed-in athlete's soccer gear and progress
  */
 
-export function useGetSoccerGear<TData = Awaited<ReturnType<typeof getSoccerGear>>, TError = ErrorType<UnauthorizedResponse>>(
+export function useGetSoccerGear<TData = Awaited<ReturnType<typeof getSoccerGear>>, TError = ErrorType<UnauthorizedResponse | RetiredGearFeature>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSoccerGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -2152,7 +2155,7 @@ return customFetch<SoccerGearState>(getSaveSoccerGearUrl(),
 
 export const getSaveSoccerGearMutationKey = () => ['saveSoccerGear'] as const;
 
-export const getSaveSoccerGearMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const getSaveSoccerGearMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSoccerGear>>, TError,SaveSoccerGearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveSoccerGear>>, TError,SaveSoccerGearMutationVariables, TContext> => {
 
@@ -2181,13 +2184,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SaveSoccerGearMutationResult = NonNullable<Awaited<ReturnType<typeof saveSoccerGear>>>
     export type SaveSoccerGearMutationBody = BodyType<SoccerGearLoadoutInput>
-    export type SaveSoccerGearMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type SaveSoccerGearMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | RetiredGearFeature>
     export type SaveSoccerGearMutationVariables = {data: BodyType<SoccerGearLoadoutInput>}
 
     /**
  * @summary Save the signed-in athlete's soccer gear look
  */
-export const useSaveSoccerGear = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const useSaveSoccerGear = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSoccerGear>>, TError,SaveSoccerGearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof saveSoccerGear>>,
@@ -2227,7 +2230,7 @@ export const recordSoccerGearWeeklyLogin = async ( options?: Parameters<typeof c
 
 export const getRecordSoccerGearWeeklyLoginMutationKey = () => ['recordSoccerGearWeeklyLogin'] as const;
 
-export const getRecordSoccerGearWeeklyLoginMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+export const getRecordSoccerGearWeeklyLoginMutationOptions = <TError = ErrorType<UnauthorizedResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSoccerGearWeeklyLogin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof recordSoccerGearWeeklyLogin>>, TError,void, TContext> => {
 
@@ -2256,13 +2259,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RecordSoccerGearWeeklyLoginMutationResult = NonNullable<Awaited<ReturnType<typeof recordSoccerGearWeeklyLogin>>>
 
-    export type RecordSoccerGearWeeklyLoginMutationError = ErrorType<UnauthorizedResponse>
+    export type RecordSoccerGearWeeklyLoginMutationError = ErrorType<UnauthorizedResponse | RetiredGearFeature>
 
 
     /**
  * @summary Record one signed-in activity week
  */
-export const useRecordSoccerGearWeeklyLogin = <TError = ErrorType<UnauthorizedResponse>,
+export const useRecordSoccerGearWeeklyLogin = <TError = ErrorType<UnauthorizedResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSoccerGearWeeklyLogin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof recordSoccerGearWeeklyLogin>>,
@@ -2316,7 +2319,7 @@ return customFetch<SoccerGearState>(getRecordSoccerGearShareActionUrl(),
 
 export const getRecordSoccerGearShareActionMutationKey = () => ['recordSoccerGearShareAction'] as const;
 
-export const getRecordSoccerGearShareActionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+export const getRecordSoccerGearShareActionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSoccerGearShareAction>>, TError,RecordSoccerGearShareActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof recordSoccerGearShareAction>>, TError,RecordSoccerGearShareActionMutationVariables, TContext> => {
 
@@ -2345,13 +2348,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RecordSoccerGearShareActionMutationResult = NonNullable<Awaited<ReturnType<typeof recordSoccerGearShareAction>>>
     export type RecordSoccerGearShareActionMutationBody = BodyType<SoccerGearShareActionInput>
-    export type RecordSoccerGearShareActionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type RecordSoccerGearShareActionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | RetiredGearFeature>
     export type RecordSoccerGearShareActionMutationVariables = {data: BodyType<SoccerGearShareActionInput>}
 
     /**
  * @summary Record a completed HYPE Card share action
  */
-export const useRecordSoccerGearShareAction = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+export const useRecordSoccerGearShareAction = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | RetiredGearFeature>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSoccerGearShareAction>>, TError,RecordSoccerGearShareActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof recordSoccerGearShareAction>>,
@@ -4446,6 +4449,94 @@ export function useGetAthleteEditorAccess<TData = Awaited<ReturnType<typeof getA
 
 
 
+export const getUpdateAthleteEditorFavoriteMomentUrl = () => {
+
+
+
+
+  return `/api/athlete-editor/card/favorite-moment`
+}
+
+/**
+ * @summary Save the signed-in athlete's optional HYPE Card favorite moment
+ */
+export const updateAthleteEditorFavoriteMoment = async (athleteFavoriteMomentInput: AthleteFavoriteMomentInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteFavoriteMoment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteFavoriteMoment>(getUpdateAthleteEditorFavoriteMomentUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteFavoriteMomentInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAthleteEditorFavoriteMomentMutationKey = () => ['updateAthleteEditorFavoriteMoment'] as const;
+
+export const getUpdateAthleteEditorFavoriteMomentMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteEditorFavoriteMoment>>, TError,UpdateAthleteEditorFavoriteMomentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAthleteEditorFavoriteMoment>>, TError,UpdateAthleteEditorFavoriteMomentMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAthleteEditorFavoriteMomentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAthleteEditorFavoriteMoment>>, UpdateAthleteEditorFavoriteMomentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAthleteEditorFavoriteMoment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAthleteEditorFavoriteMomentMutationResult = NonNullable<Awaited<ReturnType<typeof updateAthleteEditorFavoriteMoment>>>
+    export type UpdateAthleteEditorFavoriteMomentMutationBody = BodyType<AthleteFavoriteMomentInput>
+    export type UpdateAthleteEditorFavoriteMomentMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type UpdateAthleteEditorFavoriteMomentMutationVariables = {data: BodyType<AthleteFavoriteMomentInput>}
+
+    /**
+ * @summary Save the signed-in athlete's optional HYPE Card favorite moment
+ */
+export const useUpdateAthleteEditorFavoriteMoment = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteEditorFavoriteMoment>>, TError,UpdateAthleteEditorFavoriteMomentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAthleteEditorFavoriteMoment>>,
+        TError,
+        UpdateAthleteEditorFavoriteMomentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAthleteEditorFavoriteMomentMutationOptions(options));
+    }
+
 export const getUpdateAthleteEditorCardAppearanceUrl = () => {
 
 
@@ -4646,7 +4737,7 @@ export const getGetPublicJerseyShowcaseGearQueryKey = (inviteToken: string,) => 
     }
 
 
-export const getGetPublicJerseyShowcaseGearQueryOptions = <TData = Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetPublicJerseyShowcaseGearQueryOptions = <TData = Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError = ErrorType<NotFoundResponse | RetiredGearFeature>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -4665,14 +4756,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetPublicJerseyShowcaseGearQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>>
-export type GetPublicJerseyShowcaseGearQueryError = ErrorType<NotFoundResponse>
+export type GetPublicJerseyShowcaseGearQueryError = ErrorType<NotFoundResponse | RetiredGearFeature>
 
 
 /**
  * @summary Get earned gear for the public jersey showcase
  */
 
-export function useGetPublicJerseyShowcaseGear<TData = Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError = ErrorType<NotFoundResponse>>(
+export function useGetPublicJerseyShowcaseGear<TData = Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError = ErrorType<NotFoundResponse | RetiredGearFeature>>(
  inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicJerseyShowcaseGear>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {

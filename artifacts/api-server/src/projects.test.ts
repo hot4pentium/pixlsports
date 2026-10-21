@@ -15,6 +15,7 @@ import { CreateAthleteInviteEditorAccessBody } from "@workspace/api-zod";
 import projectsRouter from "./routes/projects";
 import storageRouter from "./routes/storage";
 import athleteEditorAccessRouter from "./routes/athleteEditorAccess";
+import athleteInvitesRouter from "./routes/athleteInvites";
 
 test("guest project creation rejects unsupported tools without persisting", async () => {
   const ownerId = `projects-guest-${crypto.randomUUID()}`;
@@ -143,7 +144,7 @@ test("standalone Calendar projects cannot be created or updated while other proj
   }
 });
 
-test("finalized tracker games earn durable Locker progress once", async () => {
+test("finalized tracker games no longer accrue retired gear rewards", async () => {
   const ownerId = `projects-locker-${crypto.randomUUID()}`;
   const app = express();
   app.use(express.json());
@@ -202,10 +203,7 @@ test("finalized tracker games earn durable Locker progress once", async () => {
 
     const credits = await db.select().from(soccerGearActivityTable)
       .where(eq(soccerGearActivityTable.ownerClerkUserId, ownerId));
-    assert.deepEqual(
-      credits.filter((credit) => credit.kind === "tracker-game").map((credit) => credit.eventKey).sort(),
-      ["game-final-1", "game-final-2"],
-    );
+    assert.deepEqual(credits.filter((credit) => credit.kind === "tracker-game"), []);
   } finally {
     server.close();
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
@@ -364,7 +362,7 @@ test("active athlete editor can update only the linked Showcase card appearance"
     (req as any).log = { error: () => undefined, warn: () => undefined };
     next();
   });
-  app.use("/api", athleteEditorAccessRouter);
+  app.use("/api", athleteEditorAccessRouter, athleteInvitesRouter);
   const server = app.listen(0);
   let inviteId: string | undefined;
   let accessId: string | undefined;
@@ -386,11 +384,10 @@ test("active athlete editor can update only the linked Showcase card appearance"
       true,
       "new invitations do not require a separate HYPE Card project",
     );
-    await db.insert(accountAccessTable).values({
-      ownerClerkUserId: athleteId,
-      role: "fan",
-      accessMode: "full",
-    });
+    await db.insert(accountAccessTable).values([
+      { ownerClerkUserId: ownerId, role: "fan", accessMode: "full" },
+      { ownerClerkUserId: athleteId, role: "fan", accessMode: "full" },
+    ]);
     const [invite] = await db.insert(athleteInvitesTable).values({
       ownerClerkUserId: ownerId,
       publicToken: inviteToken,
@@ -400,6 +397,8 @@ test("active athlete editor can update only the linked Showcase card appearance"
       seasonEndsAt: new Date("2026-12-31T00:00:00.000Z"),
       sport: "soccer",
       cardAppearance: { design: "velocity", jerseyNumber: "8", position: "Forward" },
+      showHypeCard: true,
+      paused: false,
     }).returning({ id: athleteInvitesTable.id });
     inviteId = invite.id;
     const [access] = await db.insert(athleteEditorAccessTable).values({
@@ -433,6 +432,52 @@ test("active athlete editor can update only the linked Showcase card appearance"
       .where(eq(athleteInvitesTable.id, invite.id));
     assert.equal((updatedInvite.cardAppearance as { design?: string }).design, "velocity");
 
+    const momentUrl = `http://127.0.0.1:${address.port}/api/athlete-editor/card/favorite-moment`;
+    const momentHeaders = { "content-type": "application/json", "x-test-user": athleteId };
+    const tooLong = await fetch(momentUrl, {
+      method: "PATCH",
+      headers: momentHeaders,
+      body: JSON.stringify({ favoriteMoment: "x".repeat(161) }),
+    });
+    assert.equal(tooLong.status, 400, "the API enforces the 160-character limit");
+    const favoriteMoment = "I stayed focused and scored my first goal.";
+    const saveMoment = await fetch(momentUrl, {
+      method: "PATCH",
+      headers: momentHeaders,
+      body: JSON.stringify({ favoriteMoment }),
+    });
+    assert.equal(saveMoment.status, 200, await saveMoment.clone().text());
+    assert.deepEqual(await saveMoment.json(), { favoriteMoment });
+    const [savedMoment] = await db.select({ favoriteMoment: athleteInvitesTable.favoriteMoment })
+      .from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.id, invite.id));
+    assert.equal(savedMoment.favoriteMoment, favoriteMoment, "the note persists on its linked athlete invite");
+
+    const parentCannotEditMoment = await fetch(momentUrl, {
+      method: "PATCH",
+      headers: { ...momentHeaders, "x-test-user": ownerId },
+      body: JSON.stringify({ favoriteMoment: "An owner-authored replacement" }),
+    });
+    assert.equal(parentCannotEditMoment.status, 403, "only the linked athlete can author the note");
+
+    const publicFanUrl = `http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}/fan`;
+    const publishedCard = await fetch(publicFanUrl);
+    assert.equal(publishedCard.status, 200, await publishedCard.clone().text());
+    assert.equal((await publishedCard.json() as { favoriteMoment: string | null }).favoriteMoment, favoriteMoment);
+
+    await db.update(athleteInvitesTable)
+      .set({ showHypeCard: false })
+      .where(eq(athleteInvitesTable.id, invite.id));
+    const unpublishedCard = await fetch(publicFanUrl);
+    assert.equal(unpublishedCard.status, 200, await unpublishedCard.clone().text());
+    assert.equal((await unpublishedCard.json() as { favoriteMoment: string | null }).favoriteMoment, null);
+
+    await db.update(athleteInvitesTable)
+      .set({ showHypeCard: true, paused: true })
+      .where(eq(athleteInvitesTable.id, invite.id));
+    const pausedCard = await fetch(publicFanUrl);
+    assert.equal(pausedCard.status, 404, "pausing the parent-controlled share hides the note with the card");
+
     await db.update(athleteEditorAccessTable)
       .set({ status: "revoked" })
       .where(eq(athleteEditorAccessTable.id, access.id));
@@ -453,6 +498,7 @@ test("active athlete editor can update only the linked Showcase card appearance"
     server.close();
     if (accessId) await db.delete(athleteEditorAccessTable).where(eq(athleteEditorAccessTable.id, accessId));
     if (inviteId) await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, inviteId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, athleteId));
   }
 });

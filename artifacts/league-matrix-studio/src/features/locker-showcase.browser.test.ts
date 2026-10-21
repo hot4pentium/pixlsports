@@ -90,6 +90,7 @@ import {Router} from 'wouter';
 import {SharedLockerPage} from './src/features/shared-locker';
 import {AthleteLocker} from './src/features/athlete-locker';
 import {PlayerShowcaseContent,PlayerShowcasePage} from './src/features/player-showcase';
+import {AthleteShowcaseHome} from './src/features/player-showcase';
 import {PublicPlayerShowcasePage} from './src/features/public-player-showcase';
 import {SportGearBuilderPage} from './src/features/sport-gear-builder';
 import {sportGearItems} from './src/features/sport-gear-collection';
@@ -98,11 +99,11 @@ import {AthleteEditorInvitationPanel} from './src/features/athlete-invite';
 import {SupporterHypeCardPreview} from './src/features/supporter-hype-card-preview';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
- const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],liveTaps:{active:false,gameId:null,cheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},soccerGear:loadout,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
+ const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],liveTaps:{active:false,gameId:null,cheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:null,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,favoriteMoment:null,patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
-window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = [];
+window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = []; window.__momentSaves = [];
 window.__alertPreferences = {liveAlerts:false,eventAlerts:false,preEventAlerts:false,active:true};
 window.__followCreates = [];
 window.__permissionResult = 'granted';
@@ -141,6 +142,11 @@ window.fetch = async (input,init) => {
       const body=JSON.parse(init.body);window.__appearanceSaves.push(body);
       return new Response(JSON.stringify({cardAppearance:body}),{status:200,headers:{'Content-Type':'application/json'}});
     }
+    if(url.endsWith('/api/athlete-editor/access'))return new Response(JSON.stringify({inviteToken:card.inviteToken,athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,sport:card.sport,jerseyNumber:'17',position:'',projectId:null,favoriteMoment:state.favoriteMoment}),{status:200,headers:{'Content-Type':'application/json'}});
+    if(url.includes('/api/athlete-editor/card/favorite-moment')&&init?.method==='PATCH'){
+      const body=JSON.parse(init.body);window.__momentSaves.push(body);state.favoriteMoment=body.favoriteMoment.trim()||null;
+      return new Response(JSON.stringify({favoriteMoment:state.favoriteMoment}),{status:200,headers:{'Content-Type':'application/json'}});
+    }
     if(url.endsWith('/api/athlete-invites'))return new Response(JSON.stringify(state.ownerInvites),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.endsWith('/api/projects'))return new Response(JSON.stringify([]),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/athlete-gear/sports')){
@@ -159,7 +165,7 @@ window.fetch = async (input,init) => {
     const requestedInviteToken=requestPathParts.at(-1)==='fan'?decodeURIComponent(requestPathParts.at(-2)??''):'';
     const requestedCard=state.ownerInvites.find(invite=>invite.inviteToken===requestedInviteToken)??card;
     const responseSport=state.mode==='owner-showcase'?state.cardSport??requestedCard.sport??state.sport:state.cardSport??state.sport;
-    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,...requestedCard,showEvents:state.showEvents,sport:responseSport}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
+    return new Response(JSON.stringify(state.fail ? {error:'Unavailable'} : {...card,...requestedCard,showEvents:state.showEvents,sport:responseSport,favoriteMoment:state.favoriteMoment}),{status:state.fail ? 404 : 200,headers:{'Content-Type':'application/json'}});
   }
   return originalFetch(input,init);
 };
@@ -171,7 +177,7 @@ function render() {
    const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
    const linkedCard = {...card,inviteToken:card.inviteToken,hypesEnabled:true,timezone:null,seasonEndsAt:'',photoUrl:null,cutoutUrl:null,hypeCard:null,videos:[],stats:null,scheduleEvents:[],replies:[],liveScoreboard:null,liveTaps:{active:false,taps:[]},updatedAt:''};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-       {state.mode==='appearance-editor' ? <FanCardAppearanceManager invite={{...card,photoUrl:null,cardAppearance:{design:'velocity',borderColor:'#123456',accentColor:'#ABCDEF',accentLinked:false,athleteX:0.1,athleteY:0.05,athleteScale:1,jerseyNumber:'17',position:'Striker'}}} profile={{athleteName:card.athleteName,jerseyNumber:'17',position:'Striker'}} athleteEditor/> : state.mode==='invitation-panel' ? <AthleteEditorInvitationPanel inviteToken="fixture-athlete-editor-invitation-token"/> : state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} gear={gear} gearStatus={state.gearStatus} sportGear={sportState()} sportGearStatus="ready" athleteRestricted={state.athleteRestricted} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} hypeHref={'/player/'+card.inviteToken+'/manage#design'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : state.mode==='hype-preview' ? <div><SupporterHypeCardPreview placement="mobile" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/><SupporterHypeCardPreview placement="desktop" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/></div> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
+        {state.mode==='athlete-home' ? <AthleteShowcaseHome/> : state.mode==='appearance-editor' ? <FanCardAppearanceManager invite={{...card,photoUrl:null,cardAppearance:{design:'velocity',borderColor:'#123456',accentColor:'#ABCDEF',accentLinked:false,athleteX:0.1,athleteY:0.05,athleteScale:1,jerseyNumber:'17',position:'Striker'}}} profile={{athleteName:card.athleteName,jerseyNumber:'17',position:'Striker'}} athleteEditor/> : state.mode==='invitation-panel' ? <AthleteEditorInvitationPanel inviteToken="fixture-athlete-editor-invitation-token"/> : state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : state.mode==='hype-preview' ? <div><SupporterHypeCardPreview placement="mobile" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/><SupporterHypeCardPreview placement="desktop" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/></div> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -188,7 +194,79 @@ async function stop(process: ChildProcess | undefined) {
   });
 }
 
-test('Locker sharing keeps public data filtered and parent controls explicit across phone and desktop', { timeout: 120_000 }, async () => {
+test('Showcase keeps the HYPE Card central and the athlete moment parent-controlled', { timeout: 120_000 }, async () => {
+  const suffix = `showcase-card-only-${process.pid}`;
+  const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
+  const htmlPath = resolve(appDirectory, `${suffix}.html`);
+  const configPath = resolve(appDirectory, `${suffix}.config.ts`);
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-showcase-chromium-'));
+  const port = await availablePort();
+  const debugPort = await availablePort();
+  let vite: ChildProcess | undefined;
+  let chromium: ChildProcess | undefined;
+  let browser: Browser | undefined;
+  try {
+    await writeFile(sourcePath, harness());
+    await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
+    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-public-identity',enforce:'pre',resolveId(id){if(id==='@clerk/react')return '\\0fixture-public-identity';},load(id){if(id==='\\0fixture-public-identity')return 'export function useUser(){return {user:null,isLoaded:true,isSignedIn:false}} export function useClerk(){return {signOut:async()=>{}}}';}},{name:'fixture-gear-art',configureServer(server){server.middlewares.use('/api/athlete-gear/art',(_request,response)=>{response.statusCode=200;response.setHeader('Content-Type','image/png');response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==','base64'));});}}]});`);
+    vite = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
+      cwd: appDirectory, env: { ...process.env, PORT: String(port), BASE_PATH: `${base}/` }, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const viteMonitor = monitorProcess(vite, 'Showcase fixture Vite');
+    await waitForUrl(`http://127.0.0.1:${port}${base}/`, 25_000, viteMonitor);
+    chromium = spawn(process.env.CHROMIUM_PATH || 'chromium', [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const chromeMonitor = monitorProcess(chromium, 'Showcase fixture Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 15_000, chromeMonitor);
+    const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json() as Array<{ type: string; webSocketDebuggerUrl: string }>;
+    browser = await Browser.connect(tabs.find((tab) => tab.type === 'page')!.webSocketDebuggerUrl);
+    await browser.send('Page.enable');
+    await browser.send('Runtime.enable');
+    await browser.send('Log.enable');
+    await browser.send('Network.enable');
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?mode=athlete-home` });
+    await browser.wait(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`);
+    const note = 'x'.repeat(161);
+    await browser.evaluate(`document.querySelector('[data-testid="input-athlete-favorite-moment"]').focus()`);
+    await browser.send('Input.insertText', { text: note });
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-athlete-favorite-moment"]').value.length`), 160, 'the browser prevents notes longer than 160 characters');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-favorite-moment-count"]').textContent`), '160/160 characters');
+    await browser.evaluate(`document.querySelector('[data-testid="button-save-athlete-favorite-moment"]').click()`);
+    await browser.wait(`window.__momentSaves.length===1`);
+    assert.equal(await browser.evaluate(`window.__momentSaves[0].favoriteMoment.length`), 160, 'the save request contains only the allowed length');
+    await browser.wait(`document.querySelector('[data-testid="status-athlete-favorite-moment"]')?.textContent==='Favorite moment saved.'`);
+
+    await browser.evaluate(`window.__update({mode:'public-showcase'})`);
+    await browser.evaluate(`Array.from(document.querySelectorAll('button')).find(button => /events/i.test(button.getAttribute('aria-label') ?? button.textContent ?? ''))?.click()`);
+    await browser.wait(`document.querySelector('[data-testid="living-card-favorite-moment"] .living-card-favorite-moment-copy')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="living-card-favorite-moment"] .living-card-favorite-moment-copy').textContent`), 'x'.repeat(160));
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="section-public-showcase-gear"]')`), null);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="figure-public-showcase-jersey"]')`), null);
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="card-living-event-"]').length`), 1, 'Event Cards remain inside the interactive HYPE Card');
+    assert.ok(await browser.evaluate(`document.documentElement.scrollWidth<=innerWidth`), 'the public card fits a phone viewport');
+
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    assert.ok(await browser.evaluate(`document.documentElement.scrollWidth<=innerWidth`), 'the public card fits a desktop viewport');
+    await browser.evaluate(`window.__update({mode:'owner-showcase'})`);
+    await browser.wait(`document.querySelector('[data-testid="panel-share-public-showcase"]')`);
+    await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"]')`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-public-showcase-url"]'))`), 'the parent share control remains available');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), 'athlete invitation management remains available');
+  } finally {
+    browser?.close();
+    await stop(chromium);
+    await stop(vite);
+    await rm(sourcePath, { force: true });
+    await rm(htmlPath, { force: true });
+    await rm(configPath, { force: true });
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test.skip('Retired Locker sharing behavior is no longer an application flow', { timeout: 120_000 }, async () => {
   const suffix = `locker-check-${process.pid}`;
   const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
   const htmlPath = resolve(appDirectory, `${suffix}.html`);

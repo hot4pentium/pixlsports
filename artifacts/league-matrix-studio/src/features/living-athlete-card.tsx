@@ -32,7 +32,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
-import { PlayerKit } from './soccer-gear-builder';
 import { LivingCardControls, type CardSide } from './living-card-controls';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 
@@ -648,6 +647,12 @@ export function LivingAthleteCardPage({
                         ? `All eligible Event Cards saved by ${displayAthleteName}’s card owner appear here.`
                         : 'The card owner has turned off event sharing.'}
                     </p>
+                    {invite.favoriteMoment && (
+                      <aside className="living-card-favorite-moment" aria-label="Athlete favorite moment" data-testid="living-card-favorite-moment">
+                        <p className="living-card-favorite-moment-label">A moment I’m proud of</p>
+                        <p className="living-card-favorite-moment-copy">{invite.favoriteMoment}</p>
+                      </aside>
+                    )}
                     {invite.showEvents && linkedEvents.length > 0 ? (
                       <ol className="living-card-events-list" aria-label="Event Cards">
                         {linkedEvents.map((event) => (
@@ -843,15 +848,6 @@ export function LivingAthleteCardPage({
                </Dialog>
               </div>}
             {!embedded && <p className="living-card-instruction">Choose a side to turn the card.</p>}
-            {!embedded && invite.soccerGear && <details className="soccer-gear-public" data-testid="public-soccer-gear">
-              <summary data-testid="button-open-public-soccer-gear">See {displayAthleteName}'s soccer kit</summary>
-              <div className="soccer-gear">
-                <div className="gear-stage" style={{ minHeight: 430 }} aria-label="Shared soccer kit">
-                  <div className={`gear-pitch ${invite.soccerGear.background === 'goal' ? 'is-goal' : ''}`} />
-                  <PlayerKit athleteName={displayAthleteName} loadout={invite.soccerGear} />
-                </div>
-              </div>
-            </details>}
           </section>
 
         </div>
