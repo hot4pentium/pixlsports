@@ -9,6 +9,8 @@ New athlete invitations should link to the HYPE Card already shown in the Showca
 
 Revocation must block the athlete identity from parent-only APIs, even if the athlete still has a valid Clerk session. Preserve the access record independently of its athlete invite or project so deleting either cannot erase the revocation marker.
 
-**Why:** The user chose athlete editing as a limited delegation, not a transfer of ownership or parent account role, and explicitly said parents should also be able to edit in case the athlete is too young. The user also clarified that the Showcase already contains the HYPE Card.
+The user loves the HYPE Card but is concerned the Player Showcase may feel like too much; athlete involvement should be explored without broadening the Showcase by default.
 
-**How to apply:** Keep authorization server-side and scope card edits to the existing Showcase card and kit cosmetics to its linked athlete. Keep older project-based invitations usable. Both kit editors must follow existing milestone gates. Treat the athlete interface as a narrow route set, not a general supporter account.
+**Why:** The user chose athlete editing as a limited delegation, not a transfer of ownership or parent account role, and explicitly said parents should also be able to edit in case the athlete is too young. The user also clarified that the Showcase already contains the HYPE Card, and later said they want athletes involved while feeling unsure about the Showcase's scope.
+
+**How to apply:** Keep authorization server-side and scope card edits to the existing Showcase card and kit cosmetics to its linked athlete. Keep older project-based invitations usable. Both kit editors must follow existing milestone gates. Treat the athlete interface as a narrow route set, not a general supporter account. Prefer focused HYPE Card participation over new Showcase sections unless the user chooses otherwise.
