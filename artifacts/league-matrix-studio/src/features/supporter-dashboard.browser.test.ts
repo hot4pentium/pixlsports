@@ -5356,6 +5356,166 @@ test('the authenticated Supporter Hub restores upcoming Event Card preparation a
   }
 });
 
+test('an open Event Card updates its suggested action as the game changes stages', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-event-card-suggested-action');
+  const accountId = 'supporter-game-record-user';
+  const eventId = 'suggested-action-game';
+  const eventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  let devServer: ChildProcess | undefined;
+  let browser: ChildProcess | undefined;
+  let devMonitor: ProcessMonitor | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port } = await listen(viteProbe);
+    await new Promise<void>((done) => viteProbe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(port),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devMonitor = monitorProcess(devServer, 'Suggested Event Card action fixture Vite');
+    await waitForUrl(`http://127.0.0.1:${port}/`, 20_000, devMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-event-card-suggestion-'));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Suggested Event Card action fixture Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(
+      version.webSocketDebuggerUrl,
+      () => `${devMonitor?.diagnostics()}; ${browserMonitor?.diagnostics()}`,
+    );
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-game-record`,
+    );
+    const wait = (expression: string) =>
+      waitFor(connection!, page!.sessionId, expression, Boolean, 30_000);
+    await wait('Boolean(document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]"))');
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{
+      id: ${JSON.stringify(eventId)},
+      type: 'game',
+      date: ${JSON.stringify(eventDate)},
+      time: '18:30',
+      timezone: 'UTC',
+      location: 'Northside Gym',
+      opponent: 'Rivals',
+      status: 'upcoming',
+    }])`, page.sessionId);
+
+    await wait(`Boolean(document.querySelector('[data-testid="card-game-on-draft:${eventId}"]'))`);
+    await connection.evaluate(`document.querySelector('[data-testid="card-game-on-draft:${eventId}"] .game-on-collection__summary')?.click()`, page.sessionId);
+    await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]'))`);
+
+    const getSuggestedActions = () => connection!.evaluate<string[]>(`Array.from(
+      document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]')
+        ?.querySelectorAll('[data-suggested-next="true"]') ?? []
+    ).map((action) => action.getAttribute('data-testid') || '')`, page!.sessionId);
+    const assertSingleSuggestion = async (expectedTestId: string) => {
+      assert.deepEqual(await getSuggestedActions(), [expectedTestId]);
+    };
+
+    await assertSingleSuggestion(`button-open-card-prep-draft:${eventId}`);
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{
+      id: ${JSON.stringify(eventId)},
+      type: 'game',
+      date: ${JSON.stringify(eventDate)},
+      time: '18:30',
+      timezone: 'UTC',
+      location: 'Northside Gym',
+      opponent: 'Rivals',
+      status: 'live',
+    }])`, page.sessionId);
+    await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'live'`);
+    await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{
+      id: ${JSON.stringify(eventId)},
+      type: 'game',
+      date: ${JSON.stringify(eventDate)},
+      time: '18:30',
+      timezone: 'UTC',
+      location: 'Northside Gym',
+      opponent: 'Rivals',
+      status: 'final',
+    }])`, page.sessionId);
+    await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'complete'`);
+    await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
+
+    const trackerHistory = {
+      version: 1,
+      games: [{
+        id: 'saved-suggested-action-game',
+        sport: 'basketball',
+        status: 'final',
+        date: eventDate,
+        opponent: 'Rivals',
+        period: 4,
+        score: 12,
+        opponentScore: 7,
+        notes: '',
+        stats: { points: 12 },
+        events: [],
+        startedAt: new Date(`${eventDate}T18:30:00.000Z`).toISOString(),
+        sourceEventId: eventId,
+      }],
+    };
+    const historyKey = `leaguematrix-stat-tracker:${encodeURIComponent(accountId)}`;
+    await connection.evaluate(`(() => {
+      localStorage.setItem(${JSON.stringify(historyKey)}, ${JSON.stringify(JSON.stringify(trackerHistory))});
+      window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents());
+    })()`, page.sessionId);
+    await wait(`Boolean(document.querySelector('[data-testid="link-view-card-stats-draft:${eventId}"]')
+      ?.getAttribute('data-suggested-next') === 'true')`);
+    await assertSingleSuggestion(`link-view-card-stats-draft:${eventId}`);
+  } finally {
+    if (page && connection) {
+      await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+    }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devMonitor) {
+      if (!devMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devMonitor.waitForExit();
+    }
+    if (tempDirectory) {
+      await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    release();
+  }
+});
+
 test('mobile event guidance prioritizes live games and always offers a next action', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-event-guidance');
