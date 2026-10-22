@@ -408,8 +408,6 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     assert.deepEqual(await fixtureState(), { shares: [], activeShareToken: null, taps: [] },
       'opening a scheduled game must not create a public Game Day Live session');
     await click(tracker, 'button-use-upcoming-game');
-    await waitUi(tracker, `Boolean(document.querySelector('[data-testid="button-open-advanced-team-stats"]'))`);
-    await click(tracker, 'button-open-advanced-team-stats');
     await waitUi(tracker, `Boolean(document.querySelector('[data-testid="button-confirm-start-game"]'))`);
     await click(tracker, 'button-confirm-start-game');
     await waitUi(tracker, `Boolean(document.querySelector('[data-testid="live-tracker-scoreboard"]'))`);
