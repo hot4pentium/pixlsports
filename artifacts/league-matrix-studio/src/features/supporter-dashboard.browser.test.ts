@@ -5469,15 +5469,26 @@ test('an open Event Card updates its suggested action as the game changes stages
     await connection.evaluate(`document.querySelector('[data-testid="card-game-on-draft:${eventId}"] .game-on-collection__summary')?.click()`, page.sessionId);
     await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]'))`);
 
-    const getSuggestedActions = () => connection!.evaluate<string[]>(`Array.from(
-      document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]')
+    const getSuggestedActions = (cardId = eventId) => connection!.evaluate<string[]>(`Array.from(
+      document.querySelector('[data-testid="dialog-game-on-card-draft:${cardId}"]')
         ?.querySelectorAll('[data-suggested-next="true"]') ?? []
     ).map((action) => action.getAttribute('data-testid') || '')`, page!.sessionId);
+    const getActionAccessibleName = (testId: string) => connection!.evaluate<string | null>(
+      `document.querySelector('[data-testid="${testId}"]')?.getAttribute('aria-label') ?? null`,
+      page!.sessionId,
+    );
     const assertSingleSuggestion = async (expectedTestId: string) => {
       assert.deepEqual(await getSuggestedActions(), [expectedTestId]);
+      assert.match(await getActionAccessibleName(expectedTestId) ?? '', /suggested next/i);
+    };
+    const assertNotSuggestedInAccessibleName = async (testId: string) => {
+      const accessibleName = await getActionAccessibleName(testId);
+      assert.ok(accessibleName, `expected ${testId} to have an accessible name`);
+      assert.doesNotMatch(accessibleName, /suggested next/i);
     };
 
     await assertSingleSuggestion(`button-open-card-prep-draft:${eventId}`);
+    await assertNotSuggestedInAccessibleName(`button-open-stat-tracker-draft:${eventId}`);
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
       id: ${JSON.stringify(eventId)},
       type: 'game',
@@ -5490,6 +5501,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     }])`, page.sessionId);
     await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'live'`);
     await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
+    await assertNotSuggestedInAccessibleName(`button-open-card-prep-draft:${eventId}`);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
       id: ${JSON.stringify(eventId)},
@@ -5530,6 +5542,31 @@ test('an open Event Card updates its suggested action as the game changes stages
     await wait(`Boolean(document.querySelector('[data-testid="link-view-card-stats-draft:${eventId}"]')
       ?.getAttribute('data-suggested-next') === 'true')`);
     await assertSingleSuggestion(`link-view-card-stats-draft:${eventId}`);
+
+    const practiceId = 'suggested-action-practice';
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{
+      id: ${JSON.stringify(practiceId)},
+      type: 'practice',
+      date: ${JSON.stringify(eventDate)},
+      time: '17:00',
+      timezone: 'UTC',
+      location: 'Northside Gym',
+      status: 'upcoming',
+    }])`, page.sessionId);
+    await wait(`Boolean(document.querySelector('[data-testid="button-open-game-on-card-draft:${practiceId}"]'))`);
+    await connection.evaluate(`document.querySelector('[data-testid="button-open-game-on-card-draft:${practiceId}"]')?.click()`, page.sessionId);
+    await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${practiceId}"]'))`);
+    assert.deepEqual(await getSuggestedActions(practiceId), [`button-open-card-prep-draft:${practiceId}`]);
+    assert.match(await getActionAccessibleName(`button-open-card-prep-draft:${practiceId}`) ?? '', /suggested next/i);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        `Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${practiceId}"] [data-testid^="button-open-stat-tracker-"]'))`,
+        page.sessionId,
+      ),
+      false,
+      'practice cards must not expose a Stat Tracker action',
+    );
+    await assertNotSuggestedInAccessibleName(`button-edit-calendar-draft:${practiceId}`);
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
