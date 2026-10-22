@@ -215,6 +215,67 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     );
     assert.equal(finalUpdate.publicFanCardPath, `/fan/${publicToken}`);
     assert.match(await readEvent('"revision":3'), new RegExp(`/fan/${publicToken}`));
+    assert.equal(finalUpdate.game.status, "final");
+    assert.equal(finalUpdate.game.score, 21);
+    assert.equal(finalUpdate.game.opponentScore, 7);
+
+    await db.update(athleteInvitesTable)
+      .set({ teamName: "Comets" })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const differentTeamView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(differentTeamView.publicFanCardPath, null, "a card for another team is not linked");
+    assert.equal(differentTeamView.game.status, "final");
+    assert.equal(differentTeamView.game.score, 21);
+    assert.equal(differentTeamView.game.opponentScore, 7);
+
+    await db.update(athleteInvitesTable)
+      .set({ teamName: "Falcons" })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const restoredTeamView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(restoredTeamView.publicFanCardPath, `/fan/${publicToken}`, "restoring the matching team makes the card link available again");
+
+    await db.update(athleteInvitesTable)
+      .set({ sport: "basketball" })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const differentSportView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(differentSportView.publicFanCardPath, null, "a card for another sport is not linked");
+    assert.equal(differentSportView.game.status, "final");
+    assert.equal(differentSportView.game.score, 21);
+    assert.equal(differentSportView.game.opponentScore, 7);
+
+    await db.update(athleteInvitesTable)
+      .set({ sport: "football" })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const restoredSportView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(restoredSportView.publicFanCardPath, `/fan/${publicToken}`, "restoring the matching sport makes the card link available again");
 
     const replacementPublicToken = crypto.randomUUID();
     await db.update(athleteInvitesTable)

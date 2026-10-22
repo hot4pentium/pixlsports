@@ -119,7 +119,7 @@ async function getPublicFanCardPath(share: typeof statTrackerSharesTable.$inferS
 
   const shareTeamName = normalizePublicIdentity(share.teamName);
   const inviteTeamName = normalizePublicIdentity(invite.teamName);
-  if (shareTeamName && shareTeamName !== inviteTeamName) return null;
+  if (shareTeamName !== inviteTeamName) return null;
 
   return `/fan/${encodeURIComponent(invite.publicToken)}`;
 }
