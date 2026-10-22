@@ -176,6 +176,20 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     }
     : undefined;
   const statusLabel = getCardStatus(card);
+  const [recommendationAnnouncement, setRecommendationAnnouncement] = useState('');
+  const recommendationIdentity = card.eventId ?? card.id;
+  const previousRecommendation = useRef({ identity: recommendationIdentity, status: statusLabel, action: suggestedAction });
+  useEffect(() => {
+    const previous = previousRecommendation.current;
+    previousRecommendation.current = { identity: recommendationIdentity, status: statusLabel, action: suggestedAction };
+    if (!isDialogCard || !selected || !visible || card.isUnsavedDraft || previous.identity !== recommendationIdentity) {
+      setRecommendationAnnouncement('');
+      return;
+    }
+    if (previous.status === statusLabel && previous.action === suggestedAction) return;
+    const actionLabel = suggestedAction === 'prep' ? 'Prep' : suggestedAction === 'stats' ? 'View stats' : 'Stat Tracker';
+    setRecommendationAnnouncement(`Event Card ${title} is now ${statusLabel}. Suggested next: ${actionLabel}.`);
+  }, [isDialogCard, selected, visible, card.isUnsavedDraft, recommendationIdentity, statusLabel, suggestedAction, title]);
   const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
   const shareEventCard = async () => {
     if (!card.shareToken) return;
@@ -220,6 +234,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
       data-details-open={calendarOpen ? 'true' : 'false'}
       role="listitem"
     >
+      {isDialogCard && (
+        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="status-game-on-recommendation">
+          {recommendationAnnouncement}
+        </p>
+      )}
       <div className="game-on-collection__flip-inner">
         <div ref={frontFaceRef} className="game-on-collection__flip-front" aria-hidden={panelOpen}>
           <div className="game-on-collection__summary-wrap">
@@ -354,7 +373,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                   </button>
                 )}
                 {shareLinkNotice && (
-                  <p className="basis-full text-xs font-semibold text-current" role="status" aria-live="polite">
+                  <p className="basis-full text-xs font-semibold text-current" role="status" aria-live="polite" data-testid="status-game-on-share">
                     {shareLinkNotice}
                   </p>
                 )}

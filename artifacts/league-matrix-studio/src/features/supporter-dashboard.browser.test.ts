@@ -2094,7 +2094,7 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card shared.'`, Boolean);
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card shared.'`, Boolean);
     const sharedCardDetails = await connection.evaluate<{
       sharedUrl: string;
       expectedUrl: string;
@@ -2131,7 +2131,7 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `Boolean(window.__eventCardCopiedUrl)
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card link copied.'`, Boolean);
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card link copied.'`, Boolean);
     assert.equal(
       await connection.evaluate<string>('window.__eventCardCopiedUrl', page.sessionId),
       sharedCardDetails.expectedUrl,
@@ -2163,7 +2163,7 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `window.__eventCardShareCancelled === true
-      && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [role="status"][aria-live="polite"]')`, Boolean);
+      && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-game-on-share"]')`, Boolean);
     assert.equal(
       await connection.evaluate<number>('window.__eventCardClipboardCalls', page.sessionId),
       0,
@@ -2953,7 +2953,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     })()`, page.sessionId);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card shared.'`, Boolean);
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card shared.'`, Boolean);
     const sharedCardDetails = await connection.evaluate<{
       sharedUrl: string;
       expectedUrl: string;
@@ -2988,7 +2988,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     })()`, page.sessionId);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Boolean(window.__eventCardCopiedUrl)
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card link copied.'`, Boolean);
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card link copied.'`, Boolean);
     const copiedCardUrl = await connection.evaluate<string>('window.__eventCardCopiedUrl', page.sessionId);
     assert.equal(copiedCardUrl, sharedCardDetails.expectedUrl,
       'browsers without Web Share should copy the same Event Card link');
@@ -5484,6 +5484,22 @@ test('an open Event Card updates its suggested action as the game changes stages
 
     await assertSingleSuggestion(`button-open-card-prep-draft:${eventId}`);
     await assertNotSuggestedInAccessibleName(`button-open-stat-tracker-draft:${eventId}`);
+    const readAnnouncement = () => connection!.evaluate<string>(
+      `document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.trim() ?? ''`,
+      page!.sessionId,
+    );
+    assert.equal(await readAnnouncement(), '', 'opening an upcoming card must not announce its initial recommendation');
+    assert.deepEqual(await connection.evaluate(`(() => {
+      const region = document.querySelector('[data-testid="status-game-on-recommendation"]');
+      const close = document.querySelector('[aria-label="Close Event Card"]');
+      close.focus();
+      window.__recommendationChanges = [];
+      window.__recommendationObserver = new MutationObserver(() => {
+        window.__recommendationChanges.push(region.textContent.trim());
+      });
+      window.__recommendationObserver.observe(region, { childList: true, subtree: true, characterData: true });
+      return [region.getAttribute('role'), region.getAttribute('aria-live'), region.getAttribute('aria-atomic')];
+    })()`, page.sessionId), ['status', 'polite', 'true']);
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
       id: ${JSON.stringify(eventId)},
       type: 'game',
@@ -5497,6 +5513,10 @@ test('an open Event Card updates its suggested action as the game changes stages
     await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'live'`);
     await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
     await assertNotSuggestedInAccessibleName(`button-open-card-prep-draft:${eventId}`);
+    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Live. Suggested next: Stat Tracker.')`);
+    assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.');
+    assert.equal(await connection.evaluate(`document.activeElement?.getAttribute('aria-label')`, page.sessionId), 'Close Event Card',
+      'a recommendation update must not move focus');
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
       id: ${JSON.stringify(eventId)},
@@ -5510,6 +5530,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     }])`, page.sessionId);
     await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'complete'`);
     await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
+    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Complete. Suggested next: Stat Tracker.')`);
 
     const trackerHistory = {
       version: 1,
@@ -5537,6 +5558,24 @@ test('an open Event Card updates its suggested action as the game changes stages
     await wait(`Boolean(document.querySelector('[data-testid="link-view-card-stats-draft:${eventId}"]')
       ?.getAttribute('data-suggested-next') === 'true')`);
     await assertSingleSuggestion(`link-view-card-stats-draft:${eventId}`);
+    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('Suggested next: View stats.')`);
+    assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
+      'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
+      'Event Card vs Rivals is now Complete. Suggested next: Stat Tracker.',
+      'Event Card vs Rivals is now Complete. Suggested next: View stats.',
+    ], 'each stage or action change must update the mounted live region exactly once');
+    await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
+    await connection.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page.sessionId);
+    assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Complete. Suggested next: View stats.',
+      'an unrelated render must not clear or repeat the announcement');
+    assert.equal(await connection.evaluate<number>('window.__recommendationChanges.length', page.sessionId), 3,
+      'an unchanged recommendation must not mutate the live region');
+    await connection.evaluate('window.__recommendationObserver.disconnect()', page.sessionId);
+    await connection.evaluate(`document.querySelector('[aria-label="Close Event Card"]').click()`, page.sessionId);
+    await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]')`);
+    await connection.evaluate(`document.querySelector('[data-testid="button-open-game-on-card-draft:${eventId}"]').click()`, page.sessionId);
+    await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]'))`);
+    assert.equal(await readAnnouncement(), '', 'reopening a completed card must not replay an old announcement');
 
     const practiceId = 'suggested-action-practice';
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
@@ -5552,6 +5591,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     await connection.evaluate(`document.querySelector('[data-testid="button-open-game-on-card-draft:${practiceId}"]')?.click()`, page.sessionId);
     await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${practiceId}"]'))`);
     assert.deepEqual(await getSuggestedActions(practiceId), [`button-open-card-prep-draft:${practiceId}`]);
+    assert.equal(await readAnnouncement(), '', 'opening a different card must not announce an initial recommendation');
     assert.match(await getActionAccessibleName(`button-open-card-prep-draft:${practiceId}`) ?? '', /suggested next/i);
     assert.equal(
       await connection.evaluate<boolean>(
@@ -5561,7 +5601,7 @@ test('an open Event Card updates its suggested action as the game changes stages
       false,
       'practice cards must not expose a Stat Tracker action',
     );
-    await assertNotSuggestedInAccessibleName(`button-edit-calendar-draft:${practiceId}`);
+    await assertNotSuggestedInAccessibleName(`button-edit-event-arrow-draft:${practiceId}`);
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
