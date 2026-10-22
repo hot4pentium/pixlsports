@@ -8,6 +8,7 @@ import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, Di
 import { buildWorkspaceToolHref } from './workspace-context';
 import { copyGameOnCardPublicLink, gameOnCardPublicHref, shareGameOnCardPublicLink } from './game-on-card-links';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
+import { getSuggestedGameOnAction } from './game-on-dashboard-model';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
 import type { Sport } from './stat-tracker';
 import './game-on-dashboard-collection.css';
@@ -148,6 +149,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
   const prepPanelId = `panel-inline-prep-${card.id}-${editorId}`;
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
+  const suggestedAction = getSuggestedGameOnAction({
+    type: card.type,
+    status: getCardStatus(card),
+    recordedGameId: card.recordedGameId,
+  });
   const isFeatured = card.id === featuredCardId;
   const isUpNext = isFeatured && card.status !== 'Live';
   const isActive = isFeatured && card.status === 'Live';
@@ -287,39 +293,45 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
               <>
                 <button
                   type="button"
-                  className="game-on-collection__action--prep"
+                  className={`game-on-collection__action--prep${suggestedAction === 'prep' ? ' game-on-collection__action--suggested' : ''}`}
                   onClick={(event) => onOpenPanel(card.id, 'prep', event.currentTarget)}
-                  aria-label="Open Prep"
+                  aria-label={suggestedAction === 'prep' ? 'Open Prep. Suggested next.' : 'Open Prep'}
                   aria-expanded={prepOpen}
                   aria-controls={prepOpen ? prepPanelId : undefined}
                   data-prep-href={buildWorkspaceToolHref('prep', eventContext)}
                   data-testid={`button-open-card-prep-${card.id}`}
+                  data-suggested-next={suggestedAction === 'prep' ? 'true' : undefined}
                 >
                   <ClipboardCheck size={15} aria-hidden="true" />
                   <span>Prep</span>
+                  {suggestedAction === 'prep' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                 </button>
                 {!practice && (
                   card.recordedGameId
                     ? <Link
                         href={`/studio/season-stats?gameId=${encodeURIComponent(card.recordedGameId)}`}
-                        className="game-on-collection__action--tracker"
-                        aria-label={`View stats for ${card.opponent ? `the game versus ${card.opponent}` : 'this completed game'}`}
+                        className={`game-on-collection__action--tracker${suggestedAction === 'stats' ? ' game-on-collection__action--suggested' : ''}`}
+                        aria-label={`View stats for ${card.opponent ? `the game versus ${card.opponent}` : 'this completed game'}${suggestedAction === 'stats' ? '. Suggested next.' : ''}`}
                         data-testid={`link-view-card-stats-${card.id}`}
+                        data-suggested-next={suggestedAction === 'stats' ? 'true' : undefined}
                       >
                         <Activity size={15} aria-hidden="true" />
                         <span>View stats</span>
+                        {suggestedAction === 'stats' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                       </Link>
                     : <button
                         type="button"
-                        className="game-on-collection__action--tracker"
+                        className={`game-on-collection__action--tracker${suggestedAction === 'tracker' ? ' game-on-collection__action--suggested' : ''}`}
                         onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
-                        aria-label="Open Stat Tracker"
+                        aria-label={suggestedAction === 'tracker' ? 'Open Stat Tracker. Suggested next.' : 'Open Stat Tracker'}
                         aria-expanded={trackerOpen}
                         aria-controls={trackerPanelId}
                         data-testid={`button-open-stat-tracker-${card.id}`}
+                        data-suggested-next={suggestedAction === 'tracker' ? 'true' : undefined}
                       >
                         <Activity size={15} aria-hidden="true" />
                         <span>Stat Tracker</span>
+                        {suggestedAction === 'tracker' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                       </button>
                 )}
                 <button

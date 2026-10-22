@@ -1,11 +1,27 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type GameOnDashboardEvent } from './game-on-dashboard-model';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, getSuggestedGameOnAction, sortGameOnCardsByDate, type GameOnDashboardEvent } from './game-on-dashboard-model';
 
 const now = new Date('2026-09-24T12:00:00');
 const event = (id: string, type: GameOnDashboardEvent['type'], date: string): GameOnDashboardEvent => ({
   id, type, date, time: '10:00', location: 'North Field', opponent: 'Ravens', status: 'upcoming',
+});
+
+test('suggested Event Card actions follow game stage and never send practices to Stat Tracker', () => {
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Draft' }), 'prep');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Starting Soon' }), 'prep');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Live' }), 'tracker');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Complete' }), 'tracker');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Complete', recordedGameId: 'saved-game' }), 'stats');
+
+  for (const status of ['Draft', 'Published', 'Starting Soon', 'Live', 'Complete'] as const) {
+    assert.equal(
+      getSuggestedGameOnAction({ type: 'practice', status }),
+      'prep',
+      `${status} practices should suggest Prep rather than Stat Tracker`,
+    );
+  }
 });
 
 test('cards follow calendar order, including completed dates, and meetings are excluded', () => {

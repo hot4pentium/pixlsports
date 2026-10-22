@@ -35,6 +35,17 @@ export type GameOnDashboardEntry = {
   isPublished: boolean;
 };
 
+export type GameOnSuggestedAction = 'prep' | 'tracker' | 'stats';
+
+export function getSuggestedGameOnAction(
+  card: Pick<GameOnDashboardEntry, 'type' | 'status'> & { recordedGameId?: string },
+): GameOnSuggestedAction {
+  if (card.type === 'practice') return 'prep';
+  if (card.recordedGameId) return 'stats';
+  if (card.status === 'Live' || card.status === 'Complete') return 'tracker';
+  return 'prep';
+}
+
 function calendarKey(date: string, time: string) {
   const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(date.trim());
   if (!match) return '9999-12-31T23:59';

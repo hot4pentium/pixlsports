@@ -604,6 +604,23 @@
 .game-on-collection__actions .game-on-collection__action--tracker svg { color: #9fceff; }
 .game-on-collection__actions .game-on-collection__action--details { border-color: #8cb8e2; background: #e7f2ff; color: #14559e; box-shadow: 0 3px 0 #b5cfe8; }
 .game-on-collection__actions .game-on-collection__action--details:hover { background: #d2e8ff; }
+.game-on-collection__actions :is(button, a).game-on-collection__action--suggested {
+  position: relative;
+  outline: 2px solid #dff56f;
+  outline-offset: 1px;
+}
+.game-on-collection__suggested-badge {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  z-index: 1;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: #dff56f;
+  color: #12355c;
+  font: 900 7px/1 'DM Sans', var(--app-font-sans), sans-serif;
+  letter-spacing: .08em;
+}
 .game-on-collection__actions .game-on-collection__cancel-draft {
   flex-direction: row;
   min-height: 44px;
