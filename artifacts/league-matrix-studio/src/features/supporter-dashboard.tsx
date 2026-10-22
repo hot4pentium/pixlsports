@@ -32,6 +32,7 @@ import {
   getSupporterFanCard,
   getSupporterFanCardReconnectionCandidates,
   getSupporterPreparationContext,
+  getSupporterDashboardContextEvent,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
   getSupporterStageAcknowledgmentKey,
@@ -508,7 +509,6 @@ export function SupporterDashboardView({
     currentTime,
   );
   const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime);
-  const contextEvent = recommendedPreparationEvent ?? nextGame;
   const serverCardShares = ownedGameOnCardsQuery.data ?? [];
   const serverCardTokens = new Set(serverCardShares.map((share) => share.shareToken));
   const localCardShares: OwnedGameOnShare[] = localGameOnCards
@@ -553,6 +553,12 @@ export function SupporterDashboardView({
     opponent: recommendedGameCard.opponent,
     status: recommendedGameCard.status === 'Live' ? 'live' : 'upcoming',
   } : undefined;
+  const contextEvent = getSupporterDashboardContextEvent(
+    recommendedPreparationEvent,
+    nextGame,
+    recommendedGame,
+    currentTime,
+  );
   const newDraftCollectionCard = newCardDraft ? {
     id: newCardDraft.id,
     layoutId: newCardDraft.id,
@@ -784,8 +790,9 @@ export function SupporterDashboardView({
     && !justCompleted
     && !mobileMenuOpen,
   );
-  const gameTitle = nextGame
-    ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
+  const gameTitleEvent = contextEvent?.type === 'game' ? contextEvent : nextGame;
+  const gameTitle = gameTitleEvent
+    ? `${profile.teamName || 'Your team'}${gameTitleEvent.opponent ? ` vs ${gameTitleEvent.opponent}` : ''}`
     : 'Your next game';
   const preparationCopy = getSupporterPreparationCopy(contextEvent?.type ?? null);
   const preparationSchedule = contextEvent

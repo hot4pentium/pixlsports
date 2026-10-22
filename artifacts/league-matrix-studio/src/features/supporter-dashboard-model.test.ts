@@ -8,6 +8,7 @@ import {
   isSupporterGameInPregameCaptureWindow,
   getNextUpcomingSupporterEvent,
   getSupporterPreparationContext,
+  getSupporterDashboardContextEvent,
   getSupporterScheduleSelection,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
@@ -466,6 +467,39 @@ test('a saved September 21 game selection cannot hide the next September 24 prac
   assert.equal(recommendation?.event.id, 'practice-24');
   assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', false, now)?.id, 'practice-24');
   assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', true, now), undefined);
+});
+
+test('a standalone upcoming Event Card supplies dashboard prep when the Calendar game is complete', () => {
+  const now = new Date('2026-10-22T12:00:00');
+  const completedCalendarGame = {
+    id: 'calendar-game',
+    type: 'game' as const,
+    date: '2026-10-20',
+    time: '18:00',
+    status: 'final' as const,
+  };
+  const standaloneEventCard = {
+    id: 'event-card-game',
+    type: 'game' as const,
+    date: '2026-10-24',
+    time: '09:00',
+    status: 'upcoming' as const,
+  };
+  const selectedPractice = {
+    id: 'selected-practice',
+    type: 'practice' as const,
+    date: '2026-10-25',
+    time: '17:00',
+  };
+
+  assert.equal(
+    getSupporterDashboardContextEvent(undefined, completedCalendarGame, standaloneEventCard, now)?.id,
+    'event-card-game',
+  );
+  assert.equal(
+    getSupporterDashboardContextEvent(selectedPractice, completedCalendarGame, standaloneEventCard, now)?.id,
+    'selected-practice',
+  );
 });
 
 test('a remembered September 18 game yields to the latest September 23 game but remains reviewable when chosen now', () => {

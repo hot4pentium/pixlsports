@@ -506,6 +506,19 @@ export function getSupporterPreparationContext<T extends SupporterWeekEventLike>
   return recommendation.event;
 }
 
+export function getSupporterDashboardContextEvent<T extends SupporterWeekEventLike>(
+  preparationEvent: T | undefined,
+  nextScheduledGame: T | undefined,
+  nextEventCardGame: T | undefined,
+  now = new Date(),
+): T | undefined {
+  if (preparationEvent) return preparationEvent;
+  if (nextScheduledGame && getSupporterGameStage(nextScheduledGame, now) !== 'completed') {
+    return nextScheduledGame;
+  }
+  return nextEventCardGame ?? nextScheduledGame;
+}
+
 export function readSupporterActiveGame(storage: Pick<Storage, 'getItem'>): string | null {
   try {
     return storage.getItem(supporterActiveGameStorageKey);

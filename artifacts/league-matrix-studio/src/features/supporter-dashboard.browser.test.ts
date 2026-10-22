@@ -1696,6 +1696,28 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null',
+      Boolean,
+    );
+    const standaloneGamePrepReminder = await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]")?.textContent || ""',
+      page.sessionId,
+    );
+    assert.match(standaloneGamePrepReminder, /Get ready/i);
+    assert.match(standaloneGamePrepReminder, /Night Owls/);
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"stage-reminder-got-it\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null',
+      Boolean,
+    );
     await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
     await waitFor(connection, page.sessionId, `Boolean(
       document.querySelector('.supporter-dashboard-desktop-shell [data-testid="supporter-stat-trends-chart"] svg .recharts-line-curve')
