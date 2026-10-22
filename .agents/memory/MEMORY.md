@@ -121,3 +121,4 @@
 - [Showcase slide boundaries](showcase-slide-boundaries.md) — keep the named Showcase centered on the full interactive HYPE Card; do not reintroduce jersey or gear surfaces.
 - [Mobile dashboard Showcase navigation](mobile-dashboard-showcase-navigation.md) — the mobile owner card opens private Showcase; sharing stays public, and the owner can return to Supporter Hub.
 - [Installed offline priorities](installed-offline-priorities.md) — preload day-of tools; cache other tools on use rather than downloading every feature at installation.
+- [Fixed paired-card content](fixed-paired-card-content.md) — preserve equal 3:4 card sizing by keeping required text from flex-shrinking and reclaiming space inside the card.

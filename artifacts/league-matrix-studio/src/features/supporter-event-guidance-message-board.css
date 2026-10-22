@@ -81,6 +81,7 @@
 
 .supporter-event-guidance-board__title {
   display: -webkit-box;
+  flex: 0 0 auto;
   overflow: hidden;
   margin: 0;
   color: #12233d;
@@ -180,7 +181,72 @@
 
 .supporter-event-guidance-board__prep button:focus-visible {
   outline: 3px solid #fff;
-  outline-offset: 3px;
+  outline-offset: 2px;
+}
+
+@media (max-width: 359px) {
+  .supporter-event-guidance-board {
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .supporter-event-guidance-board__ticket {
+    padding: 7px 7px 4px;
+  }
+
+  .supporter-event-guidance-board__masthead {
+    margin-top: 4px;
+    padding-bottom: 2px;
+    font-size: 7px;
+  }
+
+  .supporter-event-guidance-board__masthead span:last-child {
+    font-size: 5px;
+  }
+
+  .supporter-event-guidance-board__category {
+    margin: 3px 0 1px;
+    font-size: 6px;
+  }
+
+  .supporter-event-guidance-board__title {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .supporter-event-guidance-board__date {
+    gap: 1px;
+    padding-top: 3px;
+  }
+
+  .supporter-event-guidance-board__date span {
+    font-size: 5px;
+  }
+
+  .supporter-event-guidance-board__date strong {
+    font-size: 7px;
+    line-height: 1.05;
+  }
+
+  .supporter-event-guidance-board__prep {
+    padding: 0 1px;
+  }
+
+  .supporter-event-guidance-board__prep-label {
+    margin-bottom: 1px;
+    font-size: 6px;
+  }
+
+  .supporter-event-guidance-board__prep-copy {
+    margin-bottom: 3px;
+    font-size: 7px;
+    line-height: 1.1;
+  }
+
+  .supporter-event-guidance-board__prep button {
+    padding-inline: 6px;
+    font-size: 7px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

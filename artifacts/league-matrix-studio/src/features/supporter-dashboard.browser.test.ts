@@ -5604,6 +5604,26 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
           const a = event.getBoundingClientRect(), b = slot.getBoundingClientRect();
           const card = slot.querySelector('.supporter-hype-preview__surface'), c = card.getBoundingClientRect();
           const eventCard = event.querySelector('[data-testid="card-mobile-featured-event"]').getBoundingClientRect();
+          const board = event.querySelector('[data-testid="upcoming-event-badge"]');
+          const title = board?.querySelector('.supporter-event-guidance-board__title');
+          const date = board?.querySelector('.supporter-event-guidance-board__date strong');
+          const preparation = board?.querySelector('.supporter-event-guidance-board__prep-copy');
+          const action = board?.querySelector('[data-testid="button-guidance-event-card"]');
+          const boardRect = board?.getBoundingClientRect();
+          const actionRect = action?.getBoundingClientRect();
+          const textElements = [title, date, preparation].filter((element) => element instanceof HTMLElement);
+          const textFits = textElements.every((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0
+              && rect.left >= eventCard.left && rect.right <= eventCard.right
+              && rect.top >= eventCard.top && rect.bottom <= eventCard.bottom
+              && element.scrollHeight <= element.clientHeight + 1;
+          });
+          const actionFits = action instanceof HTMLElement && actionRect
+            && actionRect.width > 0 && actionRect.height >= 44
+            && actionRect.left >= eventCard.left && actionRect.right <= eventCard.right
+            && actionRect.top >= eventCard.top && actionRect.bottom <= eventCard.bottom
+            && action.textContent?.includes('Open Event Card');
           const cardWidthMatches = Math.abs(eventCard.width-c.width)<1;
           const cardHeightMatches = Math.abs(eventCard.height-c.height)<1;
           const cardTopMatches = Math.abs(eventCard.top-c.top)<1;
@@ -5617,11 +5637,16 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
           return { equal: Math.abs(a.width-b.width)<1, paired: Math.abs(a.top-b.top)<1 && a.right<=b.left,
             cardWidthMatches, cardHeightMatches, cardTopMatches,
             cardsAligned: cardWidthMatches && cardHeightMatches && cardTopMatches,
+            messageBoardFits: board instanceof HTMLElement && !!boardRect
+              && boardRect.left >= eventCard.left && boardRect.right <= eventCard.right
+              && boardRect.top >= eventCard.top && boardRect.bottom <= eventCard.bottom,
+            messageTextFits: textFits,
+            messageActionFits: Boolean(actionFits),
             graphicFits: !graphic || Boolean(graphicRect && graphicRect.left>=eventCard.left && graphicRect.right<=eventCard.right
               && graphicRect.top>=eventCard.top && graphicRect.bottom<=eventCard.bottom),
             graphicKeepsRatio: !graphic || (graphic instanceof HTMLImageElement && graphic.naturalWidth>0
               && graphicRect?.height>0 && Math.abs(graphicRect.width/graphicRect.height-graphic.naturalWidth/graphic.naturalHeight)<.01),
-            noEventAction: !event.querySelector('a,button'),
+            eventActionAvailable: action instanceof HTMLButtonElement,
             ratio: Math.abs(c.width/c.height-3/4)<.01,
             noOverflow: document.documentElement.scrollWidth<=innerWidth,
             athleteCardRemoved: athleteLink === null,
@@ -5647,15 +5672,62 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
             hype: { width: hype.width, height: hype.height, top: hype.top },
           };
         })()`);
+        const messageTextMetrics = await evaluate<Array<{ selector: string; text: string; height: number; clientHeight: number; scrollHeight: number }>>(`Array.from(document.querySelectorAll(
+          '[data-testid="upcoming-event-badge"] .supporter-event-guidance-board__title, [data-testid="upcoming-event-badge"] .supporter-event-guidance-board__date strong, [data-testid="upcoming-event-badge"] .supporter-event-guidance-board__prep-copy',
+        )).map((element) => ({
+          selector: element.className,
+          text: element.textContent?.trim() || '',
+          height: element.getBoundingClientRect().height,
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+        }))`);
         assert.deepEqual(layout, { equal: true, paired: true, cardWidthMatches: true, cardHeightMatches: true,
-          cardTopMatches: true, cardsAligned: true, graphicFits: true, graphicKeepsRatio: true,
-          noEventAction: true, ratio: true, noOverflow: true,
+          cardTopMatches: true, cardsAligned: true, messageBoardFits: true, messageTextFits: true,
+          messageActionFits: true, graphicFits: true, graphicKeepsRatio: true,
+          eventActionAvailable: true, ratio: true, noOverflow: true,
           athleteCardRemoved: true, profileAccessRemainsInHeader: true,
           hypeQuickLinkRemoved: true, cardPreviewStillLinks: true,
           noLandingCardControls: true,
           noCardTextLabels: true,
           nativeArt: true, spillover: true, noInteractiveControls: true, preserved: true, desktopInboxRetained: true },
-        `${design} at ${width}px: ${JSON.stringify(cardGeometry)}`);
+        `${design} at ${width}px: ${JSON.stringify({ cardGeometry, messageTextMetrics })}`);
+        if (design === 'velocity') {
+          await evaluate(`(() => {
+            const button = document.querySelector('[data-testid="button-guidance-event-card"]');
+            button?.focus();
+          })()`);
+          await connection.send('Input.dispatchKeyEvent', {
+            type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: 8,
+          }, page.sessionId);
+          await connection.send('Input.dispatchKeyEvent', {
+            type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: 8,
+          }, page.sessionId);
+          await connection.send('Input.dispatchKeyEvent', {
+            type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9,
+          }, page.sessionId);
+          await connection.send('Input.dispatchKeyEvent', {
+            type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9,
+          }, page.sessionId);
+          const focusVisibility = await evaluate<{ focused: boolean; visibleRing: boolean }>(`(() => {
+            const button = document.querySelector('[data-testid="button-guidance-event-card"]');
+            const style = button && getComputedStyle(button);
+            const rect = button?.getBoundingClientRect();
+            const parent = button?.closest('[data-testid="upcoming-event-badge"]')?.getBoundingClientRect();
+            const offset = style ? Number.parseFloat(style.outlineOffset) : 0;
+            const width = style ? Number.parseFloat(style.outlineWidth) : 0;
+            return {
+              focused: document.activeElement === button,
+              visibleRing: Boolean(button?.matches(':focus-visible') && style?.outlineStyle !== 'none'
+                && width >= 2 && rect && parent
+                && rect.top - offset - width >= parent.top - 1
+                && rect.bottom + offset + width <= parent.bottom + 1
+                && rect.left - offset - width >= parent.left - 1
+                && rect.right + offset + width <= parent.right + 1),
+            };
+          })()`);
+          assert.deepEqual(focusVisibility, { focused: true, visibleRing: true },
+            `keyboard focus remains visible on the Event Card action at ${width}px`);
+        }
         if (design === 'spotlight' && width === 390) {
           const screenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
           await writeFile('/tmp/supporter-hype-pair-390.png', Buffer.from(screenshot.data, 'base64'));
@@ -5773,9 +5845,15 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
        await connection!.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, page!.sessionId);
      };
       assert.equal(await evaluate(`(() => {
-        const graphic = document.querySelector('[data-testid="img-upcoming-event-card-mobile"]');
-        return graphic instanceof HTMLImageElement && graphic.closest('a,button') === null;
-      })()`), true, 'the Upcoming Event graphic remains inline and non-interactive');
+        const board = document.querySelector('[data-testid="upcoming-event-badge"]');
+        const action = board?.querySelector('[data-testid="button-guidance-event-card"]');
+        return board instanceof HTMLElement
+          && board.querySelector('.supporter-event-guidance-board__title')
+          && board.querySelector('.supporter-event-guidance-board__date')
+          && board.querySelector('.supporter-event-guidance-board__prep-copy')
+          && action instanceof HTMLButtonElement
+          && action.closest('a') === null;
+      })()`), true, 'the upcoming Event Card keeps its details, preparation copy, and native action');
     await evaluate(`window.__setSupporterDashboardEvents([])`);
     await wait(`document.querySelector('[data-testid="upcoming-calendar-events-empty"]')?.textContent.includes('No upcoming games or practices')`);
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`), true);
