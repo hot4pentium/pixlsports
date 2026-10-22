@@ -101,7 +101,7 @@
 - [Stale API client declarations](stale-api-client-declarations.md) — refresh API client project-reference declarations before diagnosing missing generated exports in consumer type checks.
 - [Live Taps and in-person QR access](live-taps-concept.md) — keep cheers separate from stats; only an owner-created, revocable family QR grants tap access, not the public card URL.
 - [Browser-native control testing](browser-native-control-fixtures.md) — drive file, color, and range controls through native Chromium interactions so React state and disabled semantics are tested correctly.
-- [Premium card cutout runtime](premium-card-background-removal.md) — Classic always uses the full photo; premium cutouts stay local, preserve originals, and must be ready before upload.
+- [Uploaded athlete photo policy](premium-card-background-removal.md) — background removal and separate cutout uploads are retired; preserve legacy saved artwork.
 - [Premium artwork layers and export backgrounds](premium-artwork-layers.md) — SVG resources stay self-contained; keep live transparency, but flatten phone-save JPEGs onto black.
 - [Breakout frame terminology](breakout-frame-terminology.md) — keep the silver outline as the only outer frame; remove both blue layers behind it.
 - [Designer HYPE Card navigation](designer-hype-card-navigation.md) — dashboard card previews omit visible labels and side controls; public cards retain interactive navigation.

@@ -110,8 +110,8 @@ test('shell updates preserve cached schedules and Clerk code without retaining o
 
   await worker.activate();
 
-  assert.deepEqual(await worker.caches.keys(), ['pixl-sports-shell-v13']);
-  const currentCache = await worker.caches.open('pixl-sports-shell-v13');
+  assert.deepEqual(await worker.caches.keys(), ['pixl-sports-shell-v14']);
+  const currentCache = await worker.caches.open('pixl-sports-shell-v14');
   assert.equal(await (await currentCache.match(clerk))?.text(), 'public Clerk code');
   assert.equal(await currentCache.match(optionalTool), undefined);
   assert.equal(await currentCache.match(wasm), undefined);
@@ -120,18 +120,21 @@ test('shell updates preserve cached schedules and Clerk code without retaining o
   assert.equal(offlineSchedule?.headers.get('X-Pixl-Schedule-Cache'), 'offline');
 });
 
-test('WASM caches after first online use and private API requests remain uncached', async () => {
+test('optional scripts cache on use while retired WASM and private APIs remain uncached', async () => {
   const worker = await createWorker();
   const wasm = new Request(`${scope}assets/ort-runtime.wasm`);
-  const currentCache = await worker.caches.open('pixl-sports-shell-v13');
+  const currentCache = await worker.caches.open('pixl-sports-shell-v14');
   assert.equal(await currentCache.match(wasm), undefined);
+  assert.equal(await worker.request(wasm), undefined);
+  const script = new Request(`${scope}assets/player-showcase.js`);
+  Object.defineProperty(script, 'destination', { value: 'script' });
 
-  worker.setFetch(async () => new Response('runtime bytes'));
-  assert.equal(await (await worker.request(wasm))?.text(), 'runtime bytes');
-  assert.equal(await (await currentCache.match(wasm))?.text(), 'runtime bytes');
+  worker.setFetch(async () => new Response('optional script'));
+  assert.equal(await (await worker.request(script))?.text(), 'optional script');
+  assert.equal(await (await currentCache.match(script))?.text(), 'optional script');
 
   worker.setFetch(async () => { throw new TypeError('offline'); });
-  assert.equal(await (await worker.request(wasm))?.text(), 'runtime bytes');
+  assert.equal(await (await worker.request(script))?.text(), 'optional script');
   const privateApi = new Request(`${scope}api/profile`);
   assert.equal(await worker.request(privateApi), undefined);
   assert.equal(await currentCache.match(privateApi), undefined);

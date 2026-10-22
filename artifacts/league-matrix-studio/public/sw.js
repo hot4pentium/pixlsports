@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v13`;
+const CACHE_NAME = `${CACHE_PREFIX}-v14`;
 const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
 const SCHEDULE_CACHE_HEADER = 'X-Pixl-Schedule-Cache';
 
@@ -171,33 +171,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.pathname.includes('/api/')) return;
-
-  // The background-removal runtime downloads this large, public WASM asset
-  // only when the feature is used. Cache it then, not during app installation.
-  if (
-    request.destination === ''
-    && url.pathname.includes('/assets/')
-    && /\.wasm$/i.test(url.pathname)
-  ) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const cached = await cache.match(request);
-        if (cached) {
-          event.waitUntil(
-            fetch(request).then(async (response) => {
-              if (response.ok) await cache.put(request, response.clone());
-            }).catch(() => undefined),
-          );
-          return cached;
-        }
-
-        const response = await fetch(request);
-        if (response.ok) await cache.put(request, response.clone());
-        return response;
-      }),
-    );
-    return;
-  }
 
   if (request.mode === 'navigate') {
     // Only serve this app's SPA routes; other artifacts may share our origin

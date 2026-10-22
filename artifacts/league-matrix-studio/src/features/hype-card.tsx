@@ -67,7 +67,6 @@ import {
 import { HypeCardBreakoutControls, type BreakoutTransform } from './hype-card-breakout-controls';
 import { CardFinishOptions } from './hype-card-design-controls';
 import { HypeCardAppearanceControls } from './hype-card-appearance-controls';
-import { removeAthleteBackground } from './athlete-background-removal';
 import { HypeCardRepositionPreview } from './hype-card-reposition-preview';
 import { hasUsableTransparency } from './hype-card-breakout-validation';
 import { applyLatestLinkedStat } from './hype-card-stat-sync';
@@ -1135,7 +1134,6 @@ export function HypeCardEditor({
   const [notice, setNotice] = useState('');
   const [breakoutAvailabilityMessage, setBreakoutAvailabilityMessage] = useState<string | null>(null);
   const [templateMediaNotice, setTemplateMediaNotice] = useState(false);
-  const [backgroundRemovalBusy, setBackgroundRemovalBusy] = useState(false);
   const [positioningPhoto, setPositioningPhoto] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(
@@ -2191,24 +2189,6 @@ export function HypeCardEditor({
     setAutosaveWarning('');
     setPreparingVideo(false);
     setNotice('Video preparation cancelled. Choose the video again when you are ready.');
-  };
-
-  const preparePremiumCutout = async (sourceId: string | null, photo: string | null) => {
-    if (!sourceId || !photo || backgroundRemovalBusy) return;
-    setBackgroundRemovalBusy(true);
-    try {
-      const original = await (await fetch(photo)).blob();
-      const cutout = await removeAthleteBackground(original, setNotice);
-      const dataUrl = await blobToDataUrl(cutout);
-      const id = `cutout-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      await saveMediaBlob(id, cutout);
-      setProject((current) => current.mediaId === sourceId ? {
-        ...current, breakoutCutout: dataUrl, breakoutCutoutMediaId: id,
-      } : current);
-      setNotice('Athlete cutout ready. Your original photo is unchanged.');
-    } catch (error) {
-      setNotice(`Original photo retained. ${error instanceof Error ? error.message : 'Background removal failed.'} Retry in Design or upload a transparent cutout.`);
-    } finally { setBackgroundRemovalBusy(false); }
   };
 
   const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -3414,7 +3394,7 @@ export function HypeCardEditor({
                   {project.cardAppearance.design !== 'classic' && <HypeCardRepositionPreview appearance={project.cardAppearance} moving={positioningPhoto} onChange={(appearance) => updateProject('cardAppearance', appearance)}>
                     <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
                   </HypeCardRepositionPreview>}
-                  <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} disabled={backgroundRemovalBusy} onChange={(cardAppearance) => setProject((current) => ({
+                  <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} onChange={(cardAppearance) => setProject((current) => ({
                     ...current, cardAppearance, cardSport: current.cardSport || profile.sport || '',
                     jerseyNumber: cardAppearance.jerseyNumber, position: cardAppearance.position,
                   }))} placementActions={<div>
@@ -3427,7 +3407,6 @@ export function HypeCardEditor({
                       {['soccer', 'baseball', 'basketball', 'football', 'volleyball'].map((sport) => <option key={sport} value={sport}>{sport.charAt(0).toUpperCase() + sport.slice(1)}</option>)}
                     </select>
                   </label>
-                  {project.mediaType === 'image' && <button type="button" className="mt-3 min-h-11 border border-white/30 px-3 text-xs text-white disabled:opacity-50" disabled={backgroundRemovalBusy} onClick={() => void preparePremiumCutout(project.mediaId, project.photo)} data-testid="button-retry-premium-cutout">{backgroundRemovalBusy ? 'Preparing athlete…' : project.breakoutCutout ? 'Regenerate athlete cutout' : 'Remove athlete background'}</button>}
                 </div>
                 {project.cardAppearance.design === 'classic' && <CardFinishOptions project={project} onFinishChange={(finish) => updateProject('finish', finish)} />}
 

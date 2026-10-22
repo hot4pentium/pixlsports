@@ -297,9 +297,6 @@ export default defineConfig({
     emptyOutDir: true,
     manifest: true,
   },
-  // Prebundle the lazy worker dependency before the first upload. Otherwise
-  // Vite's first-use optimizer reload can interrupt background removal.
-  optimizeDeps: { include: ['@huggingface/transformers'] },
   server: {
     port,
     strictPort: true,

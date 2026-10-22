@@ -1,25 +1,19 @@
 ---
-name: Premium card background removal
-description: Runtime and licensing decisions for athlete cutouts in Gallery and Spotlight.
+name: Uploaded athlete photo policy
+description: Background removal is retired; use uploaded photos and preserve legacy saved artwork.
 ---
 
-Keep background removal local to the device, preserve the original photo, and treat the cutout as a replaceable derivative.
+Do not offer background removal or separate cutout uploads. Use the uploaded photo.
 
-**Why:** A failed download, inference, or stale asynchronous result must not destroy the user's photo or require a paid image-processing service. MODNet was selected with an Apache-2.0 model license rather than a restrictive runtime/model license.
+**Why:** The user said, “we can remove the background removal tool. we are just going with the uploaded photo.”
 
-**How to apply:** Keep the original-photo fallback and an explicit retry available. Retain source identity checks when introducing new derivative-generation paths.
+**How to apply:** Keep upload, positioning, replacement, and removal controls. Preserve previously saved artwork and media; do not reintroduce inference dependencies or cutout generation.
 
 Classic HYPE Cards always show the full original photo filling the card, with the athlete's name in a lower third and navigation beneath the card; only premium styles may use the background-removed cutout.
 
 **Why:** The user rejected the contained-thumbnail preview and explicitly requested a photo-filled Classic card, a lower-third name, and navigation beneath it.
 
 **How to apply:** Keep the owner design preview consistent with the live Classic card. Use the original photo even when a cutout exists; fill the frame rather than letterboxing it.
-
-Prebundle lazy browser-inference dependencies before the first upload in Vite development.
-
-**Why:** First-use optimization of Transformers.js caused a full page reload during inference; the pending worker promise disappeared even though the inference code itself was sound.
-
-**How to apply:** Warm/prebundle the dependency before browser smoke tests. Test real inference as well as download-failure fallback; a screenshot cannot establish that a worker completed.
 
 Keep one placement workflow, not separate "Move athlete" and horizontal/vertical placement panels.
 
