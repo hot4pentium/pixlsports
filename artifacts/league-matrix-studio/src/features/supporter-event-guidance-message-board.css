@@ -1,0 +1,190 @@
+.supporter-event-guidance-board {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  gap: 5px;
+  overflow: hidden;
+  padding: 6px;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 13px;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgb(99 174 255 / 44%), transparent 44%),
+    linear-gradient(145deg, #2478e0 0%, #1257b1 52%, #0c3471 100%);
+  box-shadow: 0 12px 24px rgb(2 17 39 / 22%);
+  color: #fff;
+}
+
+.supporter-event-guidance-board__ticket {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 11px 9px 8px;
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, rgb(19 43 79 / 3%) 1px, transparent 1px) 0 0 / 18px 100%,
+    #fffefa;
+  box-shadow: 0 4px 12px rgb(3 24 57 / 20%), 0 2px 0 rgb(255 255 255 / 48%) inset;
+  color: #12233d;
+}
+
+.supporter-event-guidance-board__ticket::before {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 28px;
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(#e3e5e8, #fff 65%);
+  box-shadow: inset 0 1px 2px rgb(20 35 56 / 28%);
+  content: '';
+  transform: translateX(-50%);
+}
+
+.supporter-event-guidance-board__masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 7px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #d7dce4;
+  color: #12233d;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .03em;
+}
+
+.supporter-event-guidance-board__masthead span:last-child {
+  color: #3474d3;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 6px;
+  letter-spacing: .1em;
+}
+
+.supporter-event-guidance-board__category {
+  margin: 7px 0 3px;
+  color: #3474d3;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.supporter-event-guidance-board__title {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #12233d;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(14px, 3.7vw, 19px);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.supporter-event-guidance-board__date {
+  display: grid;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 5px;
+  border-top: 1px solid #27384d;
+}
+
+.supporter-event-guidance-board__date span {
+  color: #3474d3;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.supporter-event-guidance-board__date strong {
+  color: #16263b;
+  font-size: clamp(8px, 2.45vw, 10px);
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.supporter-event-guidance-board__prep {
+  flex: 0 0 auto;
+  padding: 2px 2px 0;
+}
+
+.supporter-event-guidance-board__prep-label {
+  margin: 0 0 2px;
+  color: #ffcf80;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.supporter-event-guidance-board__prep-copy {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.supporter-event-guidance-board__prep button {
+  display: flex;
+  min-height: 44px;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: #ffbe70;
+  box-shadow: 0 3px 0 #cf7e34;
+  color: #163456;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.supporter-event-guidance-board__prep button:hover {
+  background: #ffca87;
+}
+
+.supporter-event-guidance-board__prep button:active {
+  transform: translateY(2px);
+}
+
+.supporter-event-guidance-board__prep button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supporter-event-guidance-board__prep button {
+    transition: none;
+  }
+}

@@ -1688,6 +1688,17 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       statSelectorOptions: ['Team score', 'Free throw'],
     });
     assert.match(standaloneCardSummary.title, /Night Owls/);
+    const standalonePrepBoard = await connection.evaluate<string>(
+      `document.querySelector('[data-testid="upcoming-event-badge"]')?.textContent || ''`,
+      page.sessionId,
+    );
+    assert.match(standalonePrepBoard, /Night Owls/);
+    assert.match(standalonePrepBoard, /Game day is coming up\. Check what you need before you leave\./);
+    const standalonePrepBoardAction = await connection.evaluate<boolean>(
+      `Boolean(document.querySelector('[data-testid="upcoming-event-badge"] [data-testid="button-guidance-event-card"]'))`,
+      page.sessionId,
+    );
+    assert.equal(standalonePrepBoardAction, true);
     assert.equal(standaloneCardSummary.trendPointCount, 2, 'the graph includes real saved completed games');
     assert.deepEqual(standaloneCardSummary.statSelectorOptions, ['Team score', 'Free throw']);
     await connection.send('Emulation.setDeviceMetricsOverride', {

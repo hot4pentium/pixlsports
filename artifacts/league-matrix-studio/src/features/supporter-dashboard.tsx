@@ -1,6 +1,5 @@
 import { lazy, Suspense, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
-import { renderSupporterEventBadgeImage } from './supporter-event-badge-image';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -71,6 +70,7 @@ import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './track
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
+import { SupporterEventGuidanceMessageBoard } from './supporter-event-guidance-message-board';
 import { SupporterHypeCardPreview } from './supporter-hype-card-preview';
 import { NotificationSettings } from './notification-settings';
 import {
@@ -219,54 +219,6 @@ function formatDaysUntil(dateStr: string) {
   if (days <= 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `${days} days`;
-}
-
-function SupporterUpcomingEventBadge({
-  src,
-  category,
-  title,
-  dateTime,
-}: {
-  src: string;
-  category: string;
-  title: string;
-  dateTime: string;
-}) {
-  const imageKey = JSON.stringify([src, category, title, dateTime]);
-  const [preparedImage, setPreparedImage] = useState<{ key: string; src: string } | null>(null);
-  const [failedKey, setFailedKey] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    renderSupporterEventBadgeImage({ src, category, title, dateTime })
-      .then((imageSrc) => {
-        if (!cancelled) setPreparedImage({ key: imageKey, src: imageSrc });
-      })
-      .catch(() => {
-        if (!cancelled) setFailedKey(imageKey);
-      });
-    return () => { cancelled = true; };
-  }, [src, category, title, dateTime, imageKey]);
-
-  return (
-    <div className="supporter-upcoming-event-badge" data-testid="upcoming-event-badge">
-      {preparedImage?.key === imageKey ? (
-        <img
-          className="supporter-event-graphic__image"
-          src={preparedImage.src}
-          alt=""
-          data-testid="img-upcoming-event-card-mobile"
-          data-base-artwork={src}
-          data-event-category={category}
-          data-event-title={title}
-          data-event-date-time={dateTime}
-        />
-      ) : (
-        <span role="status">
-          {failedKey === imageKey ? 'Event badge could not load. Refresh to retry.' : 'Preparing event badge…'}
-        </span>
-      )}
-    </div>
-  );
 }
 
 function getEventDateParts(dateStr: string) {
@@ -1121,14 +1073,15 @@ export function SupporterDashboardView({
           Game-day guidance
         </h2>
         {guidanceEventCard && !hasLiveGuidance && (
-          <SupporterUpcomingEventBadge
-            src={`${basePath}/assets/upcoming-event-card-enlarged.png`}
+          <SupporterEventGuidanceMessageBoard
             category={`Upcoming ${guidanceEventCard.type === 'game' ? 'game' : 'practice'}`}
             title={getUpcomingEventCardTitle(guidanceEventCard, profile.teamName)}
             dateTime={[
               formatDateDisplay(guidanceEventCard.date),
               formatTimeDisplay(guidanceEventCard.time),
             ].filter(Boolean).join(' · ')}
+            preparation={getSupporterPreparationCopy(guidanceEventCard.type).description}
+            onOpen={openGuidanceEventCard}
           />
         )}
         {(!guidanceEventCard || hasLiveGuidance) && <div className="supporter-event-guidance" data-testid="mobile-event-guidance" data-state={hasLiveGuidance ? 'live' : 'empty'}>

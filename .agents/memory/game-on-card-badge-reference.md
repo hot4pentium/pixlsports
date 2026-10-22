@@ -20,3 +20,9 @@ Native long-press image previews must retain the same current event details as t
 **Why:** The user confirmed the correct event appeared on the dashboard, but it disappeared when long-pressing for an enlarged image view.
 
 **How to apply:** Verify the image independently from the surrounding page; visible page overlays alone do not satisfy the enlarged-view requirement.
+
+The Supporter Hub's future-event preparation message board is separate from the public Event Card badge. Keep the shared public badge artwork unchanged when adding dashboard guidance.
+
+**Why:** The user asked to apply the upcoming-game design to the Hub's guidance area while preserving the public Event Card badge artwork.
+
+**How to apply:** Keep preparation copy and message-board styling in the Supporter Hub; do not change the public badge graphic or published card treatment for dashboard-only guidance requests.
