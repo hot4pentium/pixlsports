@@ -73,7 +73,7 @@ async function requestJson<T>(
 }
 
 test("stat tracker shares sanitize snapshots, stream revisions, and enforce owner revocation", async () => {
-  const ownerId = `tracker-share-owner-${crypto.randomUUID()}`;
+  const ownerId = `tracker-share-duplicate-${crypto.randomUUID()}`;
   const viewerId = `tracker-share-viewer-${crypto.randomUUID()}`;
   const foreignId = `tracker-share-foreign-${crypto.randomUUID()}`;
   const publicToken = crypto.randomUUID();
@@ -83,14 +83,13 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
   app.use(express.json());
   app.use((req, _res, next) => {
     const userId = req.header("x-test-user");
-    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    const auth = () => ({ userId: req.header("x-test-user") || undefined, tokenType: "session_token" });
     (auth as any)[Symbol.for("@clerk/express.auth")] = true;
     (req as any).auth = auth;
     (req as any).log = { error: () => undefined };
     next();
   });
   app.use("/api", statTrackerSharesRouter);
-
   const server = app.listen(0);
   try {
     await db.insert(accountAccessTable).values({
@@ -98,23 +97,9 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
       role: "fan",
       accessMode: "full",
     });
-    await db.insert(accountAccessTable).values({
-      ownerClerkUserId: foreignId,
-      role: "fan",
-      accessMode: "full",
-    });
-    await db.insert(athleteInvitesTable).values({
-      ownerClerkUserId: ownerId,
-      publicToken,
-      athleteName: "Maya",
-      teamName: "Falcons",
-      seasonName: "Fall 2026",
-      seasonEndsAt: new Date("2027-01-01T00:00:00.000Z"),
-      sport: "football",
-    });
     const address = server.address();
     assert.ok(address && typeof address === "object");
-    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const baseUrl = `http://127.0.0.1:${address.port}/api/stat-tracker-shares/${share.id}`;
     const input = CreateStatTrackerShareBody.parse({
       athleteName: "Maya",
       teamName: "Falcons",
@@ -228,12 +213,30 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
       undefined,
       CreateStatTrackerShareResponse.parse,
     );
+
+    const restoredAfterHiddenView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
     assert.equal(hiddenCardView.publicFanCardPath, null, "hidden HYPE Cards are not promoted from a final scoreboard");
 
     await db.update(athleteInvitesTable)
       .set({ showHypeCard: true, paused: true })
       .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
     const pausedCardView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+
+    const restoredAfterPausedView = await requestJson(
       baseUrl,
       "GET",
       `/api/stat-tracker-shares/${created.shareToken}`,
@@ -326,7 +329,7 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
 });
 
 test("expired stat tracker shares are not readable", async () => {
-  const ownerId = `tracker-share-expired-${crypto.randomUUID()}`;
+  const ownerId = `tracker-share-duplicate-${crypto.randomUUID()}`;
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -339,18 +342,23 @@ test("expired stat tracker shares are not readable", async () => {
   app.use("/api", statTrackerSharesRouter);
   const server = app.listen(0);
   try {
-    await db.insert(accountAccessTable).values({ ownerClerkUserId: ownerId, role: "fan", accessMode: "full" });
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+      lifecycleStatus: "cancelled",
+    });
     const [share] = await db.insert(statTrackerSharesTable).values({
       ownerClerkUserId: ownerId,
       gameId: game.id,
       athleteName: "Maya",
       teamName: "Falcons",
       game,
-      expiresAt: new Date(Date.now() - 1000),
+      expiresAt: new Date(Date.now() + 60_000),
     }).returning();
     const address = server.address();
     assert.ok(address && typeof address === "object");
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/stat-tracker-shares/${share.id}`);
+    const response = await fetch(url, { headers: { "x-test-user": ownerId } });
     assert.equal(response.status, 404);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
@@ -360,7 +368,7 @@ test("expired stat tracker shares are not readable", async () => {
 });
 
 test("inactive account stat tracker shares are not readable or streamable", async () => {
-  const ownerId = `tracker-share-inactive-${crypto.randomUUID()}`;
+  const ownerId = `tracker-share-duplicate-${crypto.randomUUID()}`;
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -400,7 +408,7 @@ test("inactive account stat tracker shares are not readable or streamable", asyn
 });
 
 test("owner share list requires auth and excludes other owners and expired shares", async () => {
-  const ownerId = `tracker-share-list-owner-${crypto.randomUUID()}`;
+  const ownerId = `tracker-share-duplicate-${crypto.randomUUID()}`;
   const otherId = `tracker-share-list-other-${crypto.randomUUID()}`;
   const app = express();
   app.use(express.json());
