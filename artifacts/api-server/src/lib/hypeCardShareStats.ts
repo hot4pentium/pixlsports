@@ -46,7 +46,7 @@ function collectAthleteStats(value: unknown) {
 const CORRECTABLE_STAT_IDS: Record<HypeCardSport, ReadonlySet<string>> = {
   basketball: new Set(["one-point", "two-point", "three-point", "rebound", "assist", "steal", "block", "turnover", "foul"]),
   football: new Set(["touchdown", "field-goal", "extra-point", "two-point-conversion", "pass-yard", "rush-yard", "reception", "tackle", "interception", "sack"]),
-  soccer: new Set(["goal", "assist", "shot", "shot-on-target", "corner-kick", "penalty-kick", "save", "yellow-card", "red-card"]),
+  soccer: new Set(["goal", "assist", "shot", "shot-on-target", "pass", "header", "clearance", "corner-kick", "penalty-kick", "save", "yellow-card", "red-card"]),
   baseball: new Set(["run", "hit", "single", "double", "triple", "rbi", "home-run", "strikeout", "walk", "stolen-base", "pitch", "fastball", "changeup", "slider", "curveball", "four-seam-fastball", "two-seam-fastball"]),
   softball: new Set(["run", "hit", "rbi", "home-run", "strikeout", "walk", "stolen-base", "pitch"]),
   volleyball: new Set(["kill", "ace", "block", "dig", "assist", "service-error", "reception"]),

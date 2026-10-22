@@ -96,7 +96,7 @@ import { GameOutcomePicker, TrackerCompletionDialog } from './tracker-completion
 import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 import { trackEvent } from '../lib/analytics';
-import { toStatTrackerShareInput } from './stat-tracker-share';
+import { copyStatTrackerShareUrl, toStatTrackerShareInput } from './stat-tracker-share';
 import { saveCompletionHandoff } from './tracker-completion-handoff';
 
 const trackerBasePath = (
@@ -591,29 +591,29 @@ export function StatTrackerSharePanel({
   onCopy: () => void;
 }) {
   return (
-    <section className="mb-6 border border-primary/40 bg-primary/5 p-4 clip-angled-sm sm:p-5" data-testid="stat-tracker-share-panel">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+    <section className="mb-4 border border-primary/40 bg-primary/5 p-3 clip-angled-sm sm:p-4" data-testid="stat-tracker-share-panel">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent"><Share2 className="h-4 w-4 text-accent" /> Live supporter link</p>
-          <h2 className="mt-1 font-display text-2xl uppercase tracking-wide">Share the scoreboard</h2>
-          <p className="mt-2 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">Read-only view for this game. It shows the live score and recent plays, never private notes or editing controls. The link expires in 24 hours.</p>
+          <h2 className="font-display text-lg uppercase tracking-wide">Share the scoreboard</h2>
+          <p className="basis-full text-xs font-medium leading-relaxed text-muted-foreground">Read-only live scoreboard. No private notes or edit access. Expires in 24 hours.</p>
         </div>
         {share && <span className="shrink-0 border border-primary/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-ink">Active · rev {share.revision}</span>}
       </div>
       {!share ? (
-        <button type="button" disabled={busy} onClick={onCreate} data-testid="button-create-stat-tracker-share" className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={onCreate} data-testid="button-create-stat-tracker-share" className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50">
           <Share2 className="h-4 w-4" /> {busy ? 'Creating link…' : 'Create supporter link'}
         </button>
       ) : (
-        <div className="mt-4 flex min-w-0 flex-col gap-3">
+        <div className="mt-3 flex min-w-0 flex-col gap-2">
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <input readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} data-testid="input-stat-tracker-share-url" aria-label="Live supporter link" className="min-h-11 min-w-0 flex-1 border border-border bg-background px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-primary" />
             <div className="flex shrink-0 gap-2">
-              <button type="button" onClick={onCopy} data-testid="button-copy-stat-tracker-share" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-background px-3 py-2 text-xs font-bold uppercase tracking-widest hover:border-primary"><Copy className="h-4 w-4" /> Copy</button>
-              <a href={shareUrl} target="_blank" rel="noreferrer" data-testid="link-open-stat-tracker-share" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-background px-3 py-2 text-xs font-bold uppercase tracking-widest hover:border-primary"><ExternalLink className="h-4 w-4" /> Open</a>
+              <button type="button" onClick={onCopy} data-testid="button-copy-stat-tracker-share" className="inline-flex min-h-11 min-w-24 items-center justify-center gap-2 border border-[#7394b7] bg-[#102b4d] px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:border-[#9bc4ec] hover:bg-[#174e9c]"><Copy className="h-4 w-4" /> Copy</button>
+              <a href={shareUrl} target="_blank" rel="noreferrer" data-testid="link-open-stat-tracker-share" className="inline-flex min-h-11 min-w-24 items-center justify-center gap-2 border border-[#7394b7] bg-[#102b4d] px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:border-[#9bc4ec] hover:bg-[#174e9c]"><ExternalLink className="h-4 w-4" /> Open</a>
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Expires {new Date(share.expiresAt).toLocaleString()}</p>
             <button type="button" disabled={busy} onClick={onRevoke} data-testid="button-revoke-stat-tracker-share" className="inline-flex min-h-10 items-center justify-center gap-2 border border-destructive/50 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-50">Revoke link</button>
           </div>
@@ -2069,11 +2069,11 @@ export function StatTrackerPage() {
 
   const copySupporterLink = async () => {
     if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
+    const input = document.querySelector<HTMLInputElement>('[data-testid="input-stat-tracker-share-url"]');
+    if (await copyStatTrackerShareUrl(shareUrl, input)) {
       setShareNotice('Link copied.');
-    } catch {
-      setShareNotice('Clipboard unavailable — select the link above to copy it.');
+    } else {
+      setShareNotice('Link selected. Press and hold it, then choose Copy.');
     }
   };
 
@@ -2120,13 +2120,9 @@ export function StatTrackerPage() {
   return (
     <div className="studio-editor-page-background stat-tracker-editor-page min-h-dvh">
       <div className="pixl-editor-main mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
-      <div className="pixl-editor-header mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <BackNavigationLink href="/studio" label="Back to Game Day Hub" testId="link-stat-tracker-studio" className="mb-5" />
-          <p className="text-xs font-bold uppercase tracking-widest text-accent">Athlete game log</p>
-          <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">ATHLETE <span className="text-primary-ink studio-textured-heading-accent">STATS.</span></h1>
-          <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Track the game with the live scoreboard, athlete and team stats, play-by-play, and supporter sharing.</p>
-        </div>
+      <div className="mb-3 flex min-h-11 items-center justify-between gap-3" data-testid="stat-tracker-page-heading">
+        <BackNavigationLink href="/studio" label="Back to Game Day Hub" testId="link-stat-tracker-studio" />
+        <h1 className="sr-only">Stat Tracker</h1>
         {saveStatus && <StatTrackerSaveStatus status={saveStatus} />}
       </div>
 

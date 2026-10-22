@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { computeHypeCardShareStats } from "./hypeCardShareStats";
 
-test("soccer kicks and red cards remain available in corrected public athlete stats", () => {
-  const athleteStats = { "corner-kick": 1, "penalty-kick": 1, "red-card": 1 };
+test("soccer tracking stats remain available in corrected public athlete stats", () => {
+  const athleteStats = { pass: 1, header: 1, clearance: 1, "corner-kick": 1, "penalty-kick": 1, "red-card": 1 };
   const result = computeHypeCardShareStats({
     tool: "stat-tracker",
     games: [{

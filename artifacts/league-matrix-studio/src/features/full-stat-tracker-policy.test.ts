@@ -5,7 +5,7 @@ import { addStatEvent, createGameSession, endGame, getSportRule, normalizeTracke
 import { buildWorkspaceToolHref } from './workspace-context';
 
 test('all requested soccer stats are visible by default and survive undo, save, and reload', () => {
-  const ids = ['corner-kick', 'penalty-kick', 'red-card'];
+  const ids = ['pass', 'header', 'clearance', 'corner-kick', 'penalty-kick', 'red-card'];
   const rule = getSportRule('soccer');
   let game = createGameSession('soccer', { opponent: 'Northside', soccerPeriodFormat: 'halves' });
   for (const id of ids) {
@@ -14,7 +14,7 @@ test('all requested soccer stats are visible by default and survive undo, save, 
     game = addStatEvent(game, id, new Date(), 0, 'athlete');
   }
   assert.equal(game.score, 0, 'kicks and cards are not automatically goals');
-  assert.equal(game.events.length, 6);
+  assert.equal(game.events.length, ids.length * 2);
   const undone = undoLastStatEvent(game);
   assert.equal(undone.stats['red-card'], 1);
   assert.equal(game.stats['red-card'], 2);

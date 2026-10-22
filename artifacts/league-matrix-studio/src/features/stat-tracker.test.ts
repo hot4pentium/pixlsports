@@ -62,9 +62,41 @@ import {
   subscribeToTrackerOnlineRetry,
 } from './stat-tracker-page';
 import { GameReportView } from './stat-tracker-game-report';
+import { copyStatTrackerShareUrl } from './stat-tracker-share';
 import { readScheduleDraft, scheduleStorageKey, type ScheduleDraft } from './schedule-draft';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+test('supporter link copy falls back when the browser clipboard rejects the write', async () => {
+  let selected = 0;
+  let focused = 0;
+  let fallbackCalls = 0;
+  const input = {
+    focus: () => { focused++; },
+    select: () => { selected++; },
+  } as HTMLInputElement;
+  const copied = await copyStatTrackerShareUrl(
+    'https://pixlsports.com/live/example',
+    input,
+    { writeText: async () => { throw new Error('Clipboard permission denied'); } },
+    () => { fallbackCalls++; return true; },
+  );
+  assert.equal(copied, true);
+  assert.equal(focused, 2);
+  assert.equal(selected, 2);
+  assert.equal(fallbackCalls, 1);
+});
+
+test('supporter link copy reports failure when neither clipboard method works', async () => {
+  const input = { focus: () => {}, select: () => {} } as HTMLInputElement;
+  const copied = await copyStatTrackerShareUrl(
+    'https://pixlsports.com/live/example',
+    input,
+    { writeText: async () => { throw new Error('Clipboard permission denied'); } },
+    () => false,
+  );
+  assert.equal(copied, false);
+});
 
 function createMemoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));

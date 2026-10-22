@@ -582,7 +582,7 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await waitFor(connection, page.sessionId, 'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).stats["shot-on-target"]', (count) => count === 4);
     assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"stat-count-shot-on-target\\"]").textContent.trim()', page.sessionId), /^4/);
     assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]").textContent', page.sessionId), /Team 3.*Maya 1/);
-    for (const statId of ['corner-kick', 'penalty-kick', 'red-card']) {
+    for (const statId of ['pass', 'header', 'clearance', 'corner-kick', 'penalty-kick', 'red-card']) {
       await connection.evaluate(`document.querySelector('[data-testid="live-stat-${statId}"]').click(); document.querySelector('[data-testid="athlete-stat-target-${statId}"]').click();`, page.sessionId);
       await waitFor(connection, page.sessionId, `JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).stats["${statId}"]`, (count) => count === 2);
       assert.match(await connection.evaluate<string>(`document.querySelector('[data-testid="stat-count-${statId}"]').textContent.trim()`, page.sessionId), /^2/);

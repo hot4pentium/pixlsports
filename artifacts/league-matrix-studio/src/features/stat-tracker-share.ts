@@ -1,6 +1,34 @@
 import type { StatTrackerShareInput } from '@workspace/api-client-react';
 import type { GameSession } from './stat-tracker';
 
+export async function copyStatTrackerShareUrl(
+  url: string,
+  input: HTMLInputElement | null,
+  clipboard: Pick<Clipboard, 'writeText'> | undefined =
+    typeof navigator === 'undefined' ? undefined : navigator.clipboard,
+  legacyCopy: () => boolean = () =>
+    typeof document !== 'undefined' && document.execCommand('copy'),
+): Promise<boolean> {
+  if (!url) return false;
+  input?.focus();
+  input?.select();
+  try {
+    if (clipboard?.writeText) {
+      await clipboard.writeText(url);
+      return true;
+    }
+  } catch {
+    // Continue to the selection-based fallback for browsers that reject clipboard writes.
+  }
+  try {
+    input?.focus();
+    input?.select();
+    return legacyCopy();
+  } catch {
+    return false;
+  }
+}
+
 export function toStatTrackerShareInput(
   game: GameSession,
   athleteName: string,

@@ -32,6 +32,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router, Route } from 'wouter';
 import { PublicStatTrackerPage } from './src/features/stat-tracker-spectator';
 import { StatTrackerSharePanel } from './src/features/stat-tracker-page';
+import { copyStatTrackerShareUrl } from './src/features/stat-tracker-share';
 import './src/index.css';
 
 const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:new Date(Date.now() + 60000).toISOString(), canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
@@ -68,7 +69,7 @@ function App() {
   const [owner, setOwner] = useState(false);
   window.__showOwner = () => setOwner(true);
   return createElement('div', null,
-    owner && createElement(StatTrackerSharePanel, { share: { ...current, canManage:true }, shareUrl:'https://pixlsports.com/live/token-one', game: current.game, athleteName:'Maya', teamName:'Falcons', busy:false, error:'', notice:'', onCreate:()=>{}, onRevoke:()=>{}, onCopy:()=>{} }),
+    owner && createElement(StatTrackerSharePanel, { share: { ...current, canManage:true }, shareUrl:'https://pixlsports.com/live/token-one', game: current.game, athleteName:'Maya', teamName:'Falcons', busy:false, error:'', notice:'', onCreate:()=>{}, onRevoke:()=>{}, onCopy:()=>{ void copyStatTrackerShareUrl('https://pixlsports.com/live/token-one', document.querySelector('[data-testid="input-stat-tracker-share-url"]')).then((copied) => { window.__copySucceeded = copied; }); } }),
     createElement(Router,{hook:()=>['/live/token-one',()=>{}]},createElement(Route,{path:'/live/:shareToken',component:PublicStatTrackerPage}))
   );
 }
@@ -157,6 +158,38 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"public-stat-tracker-unavailable\\"]") !== null', Boolean);
     await connection.evaluate('window.__setLongExpiry(); window.__sendUpdate("live")', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("LIVE")', Boolean);
+    await connection.evaluate('window.__showOwner()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-copy-stat-tracker-share\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<boolean>(`(() => {
+      const panel = document.querySelector('[data-testid="stat-tracker-share-panel"]');
+      const copy = document.querySelector('[data-testid="button-copy-stat-tracker-share"]');
+      const open = document.querySelector('[data-testid="link-open-stat-tracker-share"]');
+      return !!panel && !!copy && !!open
+        && panel.textContent.includes('Read-only live scoreboard')
+        && getComputedStyle(copy).color === 'rgb(255, 255, 255)'
+        && getComputedStyle(open).color === 'rgb(255, 255, 255)'
+        && copy.getBoundingClientRect().height >= 44
+        && open.getBoundingClientRect().height >= 44;
+    })()`, page.sessionId), true);
+    await connection.evaluate(`(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text) => { window.__copiedShareUrl = text; } } });
+      document.querySelector('[data-testid="button-copy-stat-tracker-share"]').click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.__copySucceeded === true', Boolean);
+    assert.equal(await connection.evaluate<string>('window.__copiedShareUrl', page.sessionId), 'https://pixlsports.com/live/token-one');
+    await connection.evaluate(`(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('Clipboard permission denied'); } } });
+      document.execCommand = (command) => {
+        if (command !== 'copy') return false;
+        const input = document.querySelector('[data-testid="input-stat-tracker-share-url"]');
+        window.__legacyCopySelected = input?.selectionStart === 0 && input?.selectionEnd === input?.value.length;
+        return true;
+      };
+      window.__copySucceeded = false;
+      document.querySelector('[data-testid="button-copy-stat-tracker-share"]').click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.__copySucceeded === true', Boolean);
+    assert.equal(await connection.evaluate<boolean>('window.__legacyCopySelected', page.sessionId), true, 'blocked clipboard permissions should fall back to the selected link');
     await connection.evaluate('window.__sendUpdate("final")',page.sessionId);
     await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") && document.querySelector("[data-testid=\\"stat-tracker-scores\\"]")?.textContent.includes("21")',Boolean);
     assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"connection-status\\"]")?.textContent || ""',page.sessionId),/Live Sync|Reconnecting|Polling/);
