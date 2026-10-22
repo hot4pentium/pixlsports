@@ -428,6 +428,53 @@ test('athlete result panel defaults to result entry, supports skipping stats, an
   assert.equal(openedAdvanced, true);
 });
 
+test('live games use their saved sport when profile controls belong to another sport', () => {
+  for (const [gameSport, profileSport, statId] of [
+    ['soccer', 'basketball', 'shot-on-target'],
+    ['basketball', 'soccer', 'three-point'],
+  ] as const) {
+    let game = createGameSession(gameSport, { opponent: 'Northside' });
+    const requestedRule = getSportRule(profileSport);
+    let notifications = 0;
+    let renderer!: ReturnType<typeof create>;
+    const renderGame = () => createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule: requestedRule,
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: requestedRule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (next: typeof game) => { game = next; notifications++; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    });
+    act(() => { renderer = create(renderGame()); });
+    assert.deepEqual(renderer.root.findByProps({ 'data-testid': 'live-tracker-sport' }).children, [getSportRule(gameSport).label]);
+    const statButton = renderer.root.findByProps({ 'data-testid': `live-stat-${statId}` });
+    act(() => {
+      statButton.props.onClick();
+      statButton.props.onClick();
+      renderer.update(renderGame());
+    });
+    assert.equal(game.stats[statId], 2);
+    assert.equal(game.events.length, 2);
+    assert.equal(game.sport, gameSport);
+    assert.equal(notifications, 2);
+    assert.equal(renderer.root.findByProps({ 'data-testid': `stat-count-${statId}` }).children[0], '2');
+
+    game = { ...game, status: 'paused' };
+    act(() => { renderer.update(renderGame()); });
+    act(() => renderer.root.findByProps({ 'data-testid': `live-stat-${statId}` }).props.onClick());
+    assert.equal(notifications, 2, 'a rejected tap must not notify the parent of a successful update');
+    assert.equal(game.stats[statId], 2);
+    act(() => renderer.unmount());
+  }
+});
+
 test('mobile live game keeps scoreboard and stat controls ahead of recent activity', () => {
   const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('basketball');
@@ -1312,6 +1359,9 @@ test('profile sport controls the tracker while accounts without one resume their
   assert.equal(getTrackerSportForProfile({ version: 1, games: [] }, null), null);
   assert.equal(getTrackerSportForProfile({ version: 1, games: [] }, null, 'baseball'), 'baseball');
   assert.equal(getTrackerSportForSession({ version: 1, games: [] }, null, 'baseball'), 'baseball');
+  assert.equal(getTrackerSportForSession(history, 'soccer', 'basketball'), 'basketball');
+  assert.equal(getTrackerSportForSession(history, 'basketball', 'soccer'), 'soccer');
+  assert.equal(getTrackerSportForSession(history, 'soccer'), 'soccer');
   assert.equal(getPreferredTrackerSport({ version: 1, games: [] }, 'baseball'), 'baseball');
 });
 

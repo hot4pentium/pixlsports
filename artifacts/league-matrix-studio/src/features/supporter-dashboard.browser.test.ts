@@ -1926,6 +1926,12 @@ test('Game On card stays compact and opens cleanly across phone widths', { concu
       await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
       await waitFor(connection, page.sessionId, `!document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"]')`, Boolean);
     }
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"] .game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]'))`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]').click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.location.pathname === "/studio/stat-tracker"', Boolean);
+    assert.equal(await connection.evaluate<string>('new URLSearchParams(location.search).get("eventId")', page.sessionId), 'game-1');
+    assert.equal(await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]"))', page.sessionId), false);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

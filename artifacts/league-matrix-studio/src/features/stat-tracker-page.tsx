@@ -43,7 +43,6 @@ import {
   clearStoredTrackerConflict,
   countStatEventsByAttribution,
   createGameSession,
-  createAthleteResultGame,
   endGame,
   getGameOutcome,
   getGamePhaseLabel,
@@ -700,12 +699,12 @@ function latestYardEventIds(game: GameSession) {
 
 export function LiveTrackerGame({
   currentGame,
-  rule,
+  rule: requestedRule,
   athleteName,
   athleteImageUrl,
   athleteImageCrop,
   teamName,
-  displayStats,
+  displayStats: requestedStats,
   showAllStats,
   saving,
   captureNotice,
@@ -715,6 +714,11 @@ export function LiveTrackerGame({
   onLeaveGame,
   onEndGame,
 }: LiveTrackerGameProps) {
+  // A restored game retains its sport even when profile/setup data changes.
+  const rule = requestedRule.id === currentGame.sport ? requestedRule : getSportRule(currentGame.sport);
+  const displayStats = requestedRule.id === currentGame.sport
+    ? requestedStats
+    : rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured));
   const currentGameRef = useRef(currentGame);
   const [yardDrafts, setYardDrafts] = useState<Record<string, number>>({});
   const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>(() => latestYardEventIds(currentGame));
@@ -730,6 +734,7 @@ export function LiveTrackerGame({
   const wasConfirmingEndGame = useRef(false);
   const updateCurrentGame = (next: GameSession | ((game: GameSession) => GameSession)) => {
     const resolved = typeof next === 'function' ? next(currentGameRef.current) : next;
+    if (resolved === currentGameRef.current) return;
     currentGameRef.current = resolved;
     onGameChange(resolved);
   };
@@ -879,7 +884,8 @@ export function LiveTrackerGame({
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 lg:col-start-1 lg:row-start-1">
         <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 border-t-2 border-t-accent bg-[#0B1F3A] p-3 text-white clip-angled-sm sm:p-6" aria-live="polite">
-          <div className="flex min-w-0 items-center justify-between gap-3 pr-24 sm:pr-52"><span className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
+          <div className="flex min-w-0 items-center justify-between gap-3 pr-24 sm:pr-52"><span data-testid="live-tracker-game-state" className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className={`h-2 w-2 bg-current ${currentGame.status === 'live' ? 'animate-pulse' : ''}`} />{currentGame.status}</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
+          <p data-testid="live-tracker-sport" className="mt-2 truncate text-xs font-bold uppercase tracking-widest text-white/70">{rule.label}</p>
           <p data-testid="live-tracker-matchup" className="mt-3 min-w-0 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
           <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
             {([
@@ -890,8 +896,8 @@ export function LiveTrackerGame({
                 <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{label}</p>
                 <p className={`mt-1 font-display text-4xl leading-none sm:text-5xl ${side === 'athlete' ? 'text-primary' : 'text-white'}`}>{score}</p>
                 <div className="mt-2 flex flex-wrap gap-2 sm:mt-3">
-                  <button type="button" onClick={() => updateCurrentGame((game) => adjustScore(game, side, -1))} aria-label={`Subtract one from ${label}`} data-testid={`score-adjust-${side}-decrease`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => updateCurrentGame((game) => adjustScore(game, side, 1))} aria-label={`Add one to ${label}`} data-testid={`score-adjust-${side}-increase`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></button>
+                  <button type="button" disabled={currentGame.status !== 'live'} onClick={() => updateCurrentGame((game) => adjustScore(game, side, -1))} aria-label={`Subtract one from ${label}`} data-testid={`score-adjust-${side}-decrease`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10 disabled:opacity-40"><Minus className="h-4 w-4" /></button>
+                  <button type="button" disabled={currentGame.status !== 'live'} onClick={() => updateCurrentGame((game) => adjustScore(game, side, 1))} aria-label={`Add one to ${label}`} data-testid={`score-adjust-${side}-increase`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10 disabled:opacity-40"><Plus className="h-4 w-4" /></button>
                 </div>
               </div>
             ))}
@@ -901,7 +907,7 @@ export function LiveTrackerGame({
             <span className="shrink-0 text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{phaseLabel} {currentGame.period}</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 sm:mt-7">
-            <button type="button" onClick={() => onGameChange({ ...currentGame, status: currentGame.status === 'paused' ? 'live' : 'paused' })} data-testid="button-toggle-live-game-pause" className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
+            <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: game.status === 'paused' ? 'live' : 'paused' }))} data-testid="button-toggle-live-game-pause" className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
             <button type="button" onClick={() => updateCurrentGame(advanceGamePeriod)} aria-label={`Advance to ${phaseLabel} ${currentGame.period + 1}`} data-testid="button-advance-game-period" className="min-h-11 border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">Next {phaseLabel}</button>
           </div>
           <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 sm:right-5 sm:top-5" data-testid="live-tracker-capture-controls">
@@ -923,6 +929,13 @@ export function LiveTrackerGame({
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-accent">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
+        {currentGame.status === 'paused' && (
+          <div role="status" className="mb-5 border border-primary/40 bg-primary/10 p-4 text-sm" data-testid="notice-live-tracker-paused">
+            <p className="font-bold">Game paused. Resume to record stats.</p>
+            <p className="mt-1 text-muted-foreground">Stat taps are not recorded while paused. Your existing stats are kept.</p>
+            <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: 'live' }))} className="mt-3 min-h-11 border border-primary px-4 font-bold text-primary-ink" data-testid="button-resume-live-stats">Resume tracking</button>
+          </div>
+        )}
         {isYardageTrackingAvailable(currentGame.sport) && (
           <div className="mb-5 border border-primary/30 bg-primary/5 p-3" data-testid="football-yard-tracking">
             <label className="flex cursor-pointer items-start gap-3 text-xs font-bold uppercase tracking-widest text-foreground">
@@ -942,7 +955,7 @@ export function LiveTrackerGame({
             </label>
           </div>
         )}
-        <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+        <fieldset disabled={currentGame.status !== 'live'} aria-label="Record game stats" className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 disabled:opacity-50">
           {getLiveTrackingStats(currentGame.sport, displayStats).map((item) => {
             const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
             const yardMetricId = isYardageTrackingAvailable(currentGame.sport)
@@ -994,7 +1007,7 @@ export function LiveTrackerGame({
                 <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item, 'team')} aria-label={`Record ${item.label} for ${teamName || 'team'}`} aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined} aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? Boolean(choicesAttribution) : undefined} className="group block min-h-[76px] w-full min-w-0 overflow-hidden pr-12 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
                   <span data-testid={`stat-title-${item.id}`} className="block min-w-0 truncate text-xs font-bold uppercase tracking-wide text-muted-foreground group-hover:text-primary-ink sm:text-sm">{item.label}</span>
                   <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
-                  <span className="mt-1 block truncate text-xs font-bold text-primary-ink">
+                  <span data-testid={`stat-count-${item.id}`} className="mt-1 block truncate text-xs font-bold text-primary-ink">
                     {statCount}
                     {item.points ? ` · +${item.points}` : yardMetricId ? ` · ${yardSummary}` : ' · tracked'}
                   </span>
@@ -1109,7 +1122,7 @@ export function LiveTrackerGame({
               </div>
             );
           })}
-        </div>
+        </fieldset>
         <button type="button" onClick={onToggleShowAllStats} className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">{showAllStats ? 'Show featured stats' : 'Show more stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showAllStats ? 'rotate-180' : ''}`} /></button>
         <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary-ink" /> Game notes</span>
           <textarea value={currentGame.notes} onChange={(event) => onGameChange({ ...currentGame, notes: event.target.value })} placeholder="Add a note to look back on later." rows={4} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
@@ -1246,8 +1259,7 @@ export function StatTrackerPage() {
   const [captureNotice, setCaptureNotice] = useState('');
   const [notice, setNotice] = useState('');
   const [showUpcomingNotice, setShowUpcomingNotice] = useState(false);
-  const [showManualSetup, setShowManualSetup] = useState(false);
-  const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
+  const [showManualSetup, setShowManualSetup] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<TrackerSaveStatus | null>(null);
@@ -1600,7 +1612,14 @@ export function StatTrackerPage() {
     saveStoredActiveGame(window.localStorage, accountId, currentGame);
   }, [accountId, currentGame, storageAccountId]);
 
-  const rule = getSportRule(sport);
+  useEffect(() => {
+    // Returning to setup must restore the profile choice, without changing
+    // the rules or recorded plays of a resumed game.
+    if (currentGame) setSport(currentGame.sport);
+    else if (profile.sport) setSport(profile.sport);
+  }, [currentGame?.sport, profile.sport]);
+
+  const rule = getSportRule(currentGame?.sport ?? sport);
   const totals = seasonTotals(data.games, sport);
   const yardTotals = seasonYardTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured));
@@ -1717,11 +1736,10 @@ export function StatTrackerPage() {
     setDate(nextGame.date);
     setOpponent(nextGame.opponent);
     setShowUpcomingNotice(false);
-    setShowAdvancedSetup(false);
-    setShowManualSetup(false);
+    setShowManualSetup(true);
     setupSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     window.setTimeout(() => {
-      setupSectionRef.current?.querySelector<HTMLInputElement>('[data-testid="input-athlete-result-date"]')?.focus();
+      setupSectionRef.current?.querySelector<HTMLInputElement>('[data-testid="input-stat-tracker-date"]')?.focus();
     }, 350);
   };
 
@@ -1731,8 +1749,11 @@ export function StatTrackerPage() {
   };
 
   const updateCurrentGame = (next: GameSession) => {
+    if (next === currentGame) return;
     setCurrentGame(next);
-    announce('STAT UPDATED');
+    announce(next.status !== currentGame?.status
+      ? next.status === 'paused' ? 'GAME PAUSED — RESUME TO RECORD STATS' : 'GAME RESUMED — STATS ARE READY'
+      : 'STAT UPDATED');
   };
 
   const syncTrackerData = async (
@@ -1877,29 +1898,6 @@ export function StatTrackerPage() {
       activeTrackerShare,
       true,
     );
-  };
-
-  const saveAthleteResult = async (capture: AthleteResultCapture) => {
-    if (saving) return;
-    setError('');
-    setRetryAvailable(false);
-    setRevisionConflict(false);
-    setTrackerConflict(null);
-    setSelectedConflictResolution(null);
-    setSaveStatus(null);
-    activeScheduledGame.current = nextGame
-      && nextGame.date === capture.date
-      && nextGame.opponent === capture.opponent
-      ? nextGame
-      : undefined;
-    try {
-      const completed = createAthleteResultGame(sport, capture);
-      await persistCompletedGame(completed);
-      setNotes('');
-      setShowUpcomingNotice(false);
-    } catch (captureError) {
-      setError(captureError instanceof Error ? captureError.message : 'Could not save this result.');
-    }
   };
 
   const retryCloudSync = async () => {
@@ -2127,13 +2125,13 @@ export function StatTrackerPage() {
           <BackNavigationLink href="/studio" label="Back to Game Day Hub" testId="link-stat-tracker-studio" className="mb-5" />
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Athlete game log</p>
           <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">ATHLETE <span className="text-primary-ink studio-textured-heading-accent">STATS.</span></h1>
-          <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Save the result, optional athlete stats, and the moments you want to remember. Use Advanced team stats when you want live play-by-play.</p>
+          <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Track the game with the live scoreboard, athlete and team stats, play-by-play, and supporter sharing.</p>
         </div>
         {saveStatus && <StatTrackerSaveStatus status={saveStatus} />}
       </div>
 
       <div className="pixl-editor-tabs mb-6 flex gap-2 overflow-x-auto border-b border-border pb-1" role="tablist" aria-label="Choose athlete sport">
-        {(profile.sport ? [profile.sport] : sports).map((option) => (
+        {(currentGame ? [currentGame.sport] : profile.sport ? [profile.sport] : sports).map((option) => (
           <button key={option} type="button" role="tab" aria-selected={sport === option} onClick={() => !currentGame && setSport(option)} disabled={Boolean(currentGame)} className={`shrink-0 border-b-4 px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed ${sport === option ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {getSportRule(option).label}
           </button>
@@ -2146,7 +2144,6 @@ export function StatTrackerPage() {
           onUseUpcomingGame={useNextGameForSetup}
           onDismiss={() => setShowUpcomingNotice(false)}
           onToggleManualSetup={() => {
-            setShowAdvancedSetup(true);
             setShowManualSetup((value) => !value);
           }}
           showManualSetup={showManualSetup}
@@ -2224,33 +2221,7 @@ export function StatTrackerPage() {
       ) : !currentGame ? (
         <section ref={setupSectionRef} className="grid scroll-mt-6 gap-6 lg:grid-cols-[1.2fr_0.8fr]" data-testid="stat-tracker-setup">
           <div className="space-y-5">
-            <AthleteResultPanel
-              athleteName={profile.athleteName}
-              teamName={profile.teamName}
-              rule={rule}
-              date={date}
-              opponent={opponent}
-              notes={notes}
-              saving={saving}
-              onDateChange={(value) => { manuallyEditedSetup.current.date = true; setDate(value); }}
-              onOpponentChange={(value) => { manuallyEditedSetup.current.opponent = true; setOpponent(value); }}
-              onNotesChange={setNotes}
-              onSave={(capture) => void saveAthleteResult(capture)}
-              onOpenAdvanced={() => {
-                setShowAdvancedSetup(true);
-                setShowManualSetup(true);
-              }}
-            />
-            {showAdvancedSetup && (
-              <div data-testid="advanced-team-stats-setup">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-accent">Advanced team stats</p>
-                    <p className="mt-1 text-sm font-medium text-muted-foreground">Use the full live scoreboard, play-by-play, team attribution, and supporter link.</p>
-                  </div>
-                  <button type="button" onClick={() => { setShowAdvancedSetup(false); setShowManualSetup(false); }} className="inline-flex min-h-10 min-w-10 items-center justify-center border border-border text-muted-foreground hover:border-primary hover:text-foreground" aria-label="Close advanced team stats setup"><X className="h-4 w-4" /></button>
-                </div>
-                <StatTrackerStartPanel
+            <StatTrackerStartPanel
                   label={rule.label}
                   date={date}
                   opponent={opponent}
@@ -2264,9 +2235,7 @@ export function StatTrackerPage() {
                   onSoccerPeriodFormatChange={sport === 'soccer' ? setSoccerPeriodFormat : undefined}
                   onStartGame={beginGame}
                   onReviewPreviousGames={reviewPreviousGames}
-                />
-              </div>
-            )}
+            />
           </div>
           <section className="border border-border bg-card p-6 text-card-foreground clip-angled-sm sm:p-8" data-testid="stat-tracker-season-snapshot">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Season snapshot</p>
@@ -2319,6 +2288,12 @@ export function StatTrackerPage() {
             </button>
           </div>
         )}
+        {profile.sport && profile.sport !== currentGame.sport && (
+          <p role="status" className="mb-5 border-l-2 border-primary bg-primary/5 p-4 text-sm" data-testid="notice-restored-game-sport">
+            This saved game uses {getSportRule(currentGame.sport).label}. Your profile uses {getSportRule(profile.sport).label}.
+            {' '}Its existing stats are kept in the original sport. Finish this game before starting a new {getSportRule(profile.sport).label} game.
+          </p>
+        )}
         <LiveTrackerGame
           currentGame={currentGame}
           rule={rule}
@@ -2330,7 +2305,7 @@ export function StatTrackerPage() {
           saving={saving}
            captureNotice={captureNotice}
            onCapture={handleCapture}
-           onGameChange={(next) => { setCurrentGame(next); announce('STAT UPDATED'); }}
+           onGameChange={updateCurrentGame}
           onToggleShowAllStats={() => setShowAllStats((value) => !value)}
           onLeaveGame={() => { setCurrentGame(null); setShowUpcomingNotice(false); }}
            onEndGame={(scoreRecorded, outcome) => void saveCompletedGame(scoreRecorded, outcome)}

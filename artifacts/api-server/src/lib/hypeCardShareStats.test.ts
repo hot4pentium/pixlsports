@@ -2,6 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { computeHypeCardShareStats } from "./hypeCardShareStats";
 
+test("soccer kicks and red cards remain available in corrected public athlete stats", () => {
+  const athleteStats = { "corner-kick": 1, "penalty-kick": 1, "red-card": 1 };
+  const result = computeHypeCardShareStats({
+    tool: "stat-tracker",
+    games: [{
+      sport: "soccer", status: "final", date: "2026-10-22",
+      score: 0, opponentScore: 0, stats: athleteStats, events: [],
+      finalCorrection: { athleteStats, correctedAt: "2026-10-22T12:00:00.000Z" },
+    }],
+  }, "Jordan", "soccer", new Date("2026-10-22T13:00:00.000Z"));
+  for (const id of Object.keys(athleteStats)) assert.equal(result?.games[0]?.athleteStats[id], 1);
+});
+
 test("a fresh Hype Card stats read reflects corrected finalized score and athlete totals", () => {
   const original = {
     tool: "stat-tracker",

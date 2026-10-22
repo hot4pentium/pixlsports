@@ -407,9 +407,11 @@ export const sportRules: Record<Sport, SportRule> = {
       stat('assist', 'Assist', 'AST', 0),
       stat('shot', 'Shot', 'SHOT', 0),
       stat('shot-on-target', 'Shot on target', 'SOG', 0),
+      stat('corner-kick', 'Corner Kick', 'CK', 0),
+      stat('penalty-kick', 'Penalty Kick', 'PK', 0),
       stat('save', 'Save', 'SAVE', 0),
       stat('yellow-card', 'Yellow card', 'YC', 0),
-      stat('red-card', 'Red card', 'RC', 0, false),
+      stat('red-card', 'Red Card', 'RC', 0),
     ],
   },
   football: {
@@ -977,7 +979,8 @@ export function getTrackerSportForSession(
   profileSport: Sport | null,
   activeGameSport?: Sport | null,
 ): Sport | null {
-  return profileSport ?? activeGameSport ?? getPreferredTrackerSport(value);
+  // The profile selects new work, not the rules of an already-recorded game.
+  return activeGameSport ?? profileSport ?? getPreferredTrackerSport(value);
 }
 
 export function trackerPayload(data: StatTrackerData): TrackerPayload {

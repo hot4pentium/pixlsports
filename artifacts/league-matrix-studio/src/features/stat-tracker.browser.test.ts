@@ -343,6 +343,10 @@ function TrackerHarness() {
   }, [nextGame]);
 
   window.__setTrackerNextGame = (game) => setNextGame(game || undefined);
+  window.__startSoccerRegression = () => persistActiveGame(createGameSession('soccer', {
+    date, opponent, notes, soccerPeriodFormat: 'halves',
+  }));
+  window.__clearSoccerRegression = () => persistActiveGame(null);
   const report = selectedReportGameId
     ? buildGameReport(savedGames, 'football', selectedReportGameId)
     : null;
@@ -367,6 +371,8 @@ function TrackerHarness() {
     currentGame
       ? createElement(LiveTrackerGame, {
           currentGame,
+          // Deliberately stale setup rules: a resumed soccer game must still
+          // render and record soccer, not silently reject football stat IDs.
           rule: getSportRule('football'),
           athleteName: 'Maya',
           teamName: 'Falcons',
@@ -501,7 +507,7 @@ function htmlSource() {
 `;
 }
 
-test('stat tracker protects scheduled, live football, and completed-game states in the browser', async () => {
+async function runTrackerBrowserChecks(soccerOnly = false) {
   const viteProbe = createServer();
   const { port: vitePort } = await listen(viteProbe);
   await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
@@ -552,6 +558,43 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       mobile: true,
     }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") !== null', Boolean);
+
+    if (soccerOnly) {
+    // Reproduce the reported soccer stat path, including paused taps and reload.
+    await connection.evaluate('window.__startSoccerRegression()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]") !== null', Boolean);
+    await connection.evaluate(`(() => {
+      const shot = document.querySelector('[data-testid="live-stat-shot-on-target"]');
+      shot.click(); shot.click(); shot.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).stats["shot-on-target"]', (count) => count === 3);
+    assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"stat-count-shot-on-target\\"]").textContent.trim()', page.sessionId), /^3/);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-toggle-live-game-pause\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<boolean>(`['live-stat-shot-on-target', 'athlete-stat-target-shot-on-target', 'score-adjust-athlete-increase'].every(id => document.querySelector('[data-testid="' + id + '"]').matches(':disabled'))`, page.sessionId), true);
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]").click()', page.sessionId);
+    assert.equal(await connection.evaluate<number>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).events.length', page.sessionId), 3);
+    await reloadPage(connection, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-resume-live-stats\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]")?.matches(":enabled")', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"athlete-stat-target-shot-on-target\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).stats["shot-on-target"]', (count) => count === 4);
+    assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"stat-count-shot-on-target\\"]").textContent.trim()', page.sessionId), /^4/);
+    assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]").textContent', page.sessionId), /Team 3.*Maya 1/);
+    for (const statId of ['corner-kick', 'penalty-kick', 'red-card']) {
+      await connection.evaluate(`document.querySelector('[data-testid="live-stat-${statId}"]').click(); document.querySelector('[data-testid="athlete-stat-target-${statId}"]').click();`, page.sessionId);
+      await waitFor(connection, page.sessionId, `JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).stats["${statId}"]`, (count) => count === 2);
+      assert.match(await connection.evaluate<string>(`document.querySelector('[data-testid="stat-count-${statId}"]').textContent.trim()`, page.sessionId), /^2/);
+      assert.match(await connection.evaluate<string>(`document.querySelector('[data-testid="live-stat-${statId}"]').textContent`, page.sessionId), /Team 1.*Maya 1/);
+    }
+    await reloadPage(connection, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-count-corner-kick\\"]")?.textContent.trim().startsWith("2")', Boolean);
+    assert.equal(await connection.evaluate<number>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).score', page.sessionId), 0);
+    await connection.evaluate('window.__clearSoccerRegression()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") !== null', Boolean);
+    return;
+    }
 
     const noticeText = await connection.evaluate<string>(
       'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]")?.textContent || ""',
@@ -851,7 +894,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       true,
     );
 
-    await connection.evaluate('window.location.reload()', page.sessionId);
+    await reloadPage(connection, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"live-tracker-layout\\"]"))', page.sessionId),
@@ -1193,4 +1236,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await rm(harnessPath, { force: true });
     await rm(htmlPath, { force: true });
   }
-});
+}
+
+test('soccer stat cards increment live, block paused taps, and resume after reload', () => runTrackerBrowserChecks(true));
+test('stat tracker protects scheduled, live football, and completed-game states in the browser', () => runTrackerBrowserChecks());

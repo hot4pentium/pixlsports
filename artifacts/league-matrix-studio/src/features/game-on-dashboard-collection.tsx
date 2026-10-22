@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, Copy, ExternalLink, MapPin, Plus, Search, Share2, Swords, Trash2, X } from 'lucide-react';
@@ -8,7 +8,6 @@ import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, Di
 import { buildWorkspaceToolHref } from './workspace-context';
 import { copyGameOnCardPublicLink, gameOnCardPublicHref, shareGameOnCardPublicLink } from './game-on-card-links';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
-import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
 import type { Sport } from './stat-tracker';
 import './game-on-dashboard-collection.css';
@@ -423,18 +422,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
               <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-stat-tracker-${card.id}`}>
                 <ArrowLeft size={15} aria-hidden="true" /> Back to badge
               </button>
-              <GameOnInlineStatTracker
-                userId={statTrackerUserId}
-                sport={statTrackerSport ?? null}
-                athleteName={statTrackerAthleteName ?? card.athleteName}
-                  teamName={statTrackerTeamName ?? ''}
-                eventId={eventId}
-                date={card.date}
-                time={card.time}
-                location={card.location}
-                opponent={card.opponent}
-                onGameEnded={handleGameEnded}
-              />
+              <Link href={buildWorkspaceToolHref('stats', eventContext)} className="game-on-quick-tracker__primary">Open stat tracker</Link>
             </>
           )}
         </div>
@@ -461,6 +449,7 @@ export function GameOnDashboardCollection({
   statTrackerTeamName,
   onCompleteScheduledGame,
 }: GameOnDashboardCollectionProps) {
+  const [, setLocation] = useLocation();
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
   const [deleteAnnouncement, setDeleteAnnouncement] = useState('');
@@ -551,6 +540,20 @@ export function GameOnDashboardCollection({
   }, [openPanel, selectedId]);
 
   const openCardPanel = (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => {
+    if (panel === 'tracker') {
+      const card = cards.find((candidate) => candidate.id === id);
+      if (!card || card.type === 'practice') return;
+      setOpenPanel(null);
+      setLocation(buildWorkspaceToolHref('stats', {
+        id: card.eventId ?? card.id.replace(/^(?:share|draft):/, ''),
+        type: card.type,
+        date: card.date,
+        time: card.time,
+        location: card.location,
+        opponent: card.opponent,
+      }));
+      return;
+    }
     const frontAction = trigger.closest('.game-on-collection__flip-back')
       ?.closest('.game-on-collection__card')
       ?.querySelector<HTMLButtonElement>(`.game-on-collection__action--${panel === 'calendar' ? 'details' : panel}`);

@@ -3,7 +3,9 @@ name: Simple tracker end state
 description: How the inline Game On tracker pauses and completes device-local games without losing or duplicating sessions.
 ---
 
-The inline Game On tracker treats Pause as a persisted active session and End as a confirmed local-history completion; reopening a completed event should not auto-create a fresh session. When the tracker is linked to a Calendar game, End also persists that event as final with a completion timestamp through the schedule’s owner-write path.
+Historical guidance: the inline Game On tracker is retired from the product. The user requires the full Stat Tracker as the only tracker. Preserve legacy sessions and history; do not reintroduce an inline tracking surface. The completion safeguards below remain useful when maintaining legacy data or the full tracker's Calendar handoff.
+
+The former inline Game On tracker treated Pause as a persisted active session and End as a confirmed local-history completion; reopening a completed event should not auto-create a fresh session. When the tracker is linked to a Calendar game, End also persists that event as final with a completion timestamp through the schedule’s owner-write path.
 
 **Why:** The compact tracker intentionally captures locally, while the full tracker provides review and sync. Calendar status is separate from tracker history, so saving the final stats alone left the badge and dashboard marked Live.
 

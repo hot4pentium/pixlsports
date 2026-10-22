@@ -134,7 +134,7 @@ export function TrackerCompletionDialog({
             {saveStatus === 'saving' ? 'Saved on this device. Syncing your cloud history…'
               : saveStatus === 'local-saved' ? 'Saved on this device. Cloud sync needs attention in Stat Tracker.'
                 : saveStatus === 'cloud-saved' ? 'Saved to your history and synced to your account.'
-                  : 'Saved on this device. Open the full tracker to review or sync.'}
+                  : 'Saved on this device. Open Stat Tracker to review or sync.'}
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             {onViewStats && <button type="button" onClick={onViewStats} className="min-h-11 flex-1 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="button-completion-view-stats">View game stats</button>}

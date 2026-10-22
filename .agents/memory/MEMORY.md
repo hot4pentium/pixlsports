@@ -13,7 +13,7 @@
 - [Checklist owner sync](checklist-owner-sync.md) — after an edit link exists, owner and collaborator edits must update the same shared checklist; local saves alone are insufficient.
 - [Athlete-first positioning](season-first-positioning.md) — lead with celebrating one athlete; use season context to support continuity.
 - [Public athlete page boundaries](public-hype-card-boundaries.md) — keep combined trends distinct from athlete-only game counts and never expose raw tracker events.
-- [Profile sport precedence](profile-sport-precedence.md) — a selected profile sport controls sport-specific tools; history chooses the sport only when the profile has none.
+- [Profile sport precedence](profile-sport-precedence.md) — profile sport controls new work; active games retain their saved sport and matching live controls.
 - [TSX test JSX runtime](tsx-test-jsx-runtime.md) — TSX modules rendered by Node tests need a React binding even when Vite and TypeScript accept named-only React imports.
 - [Reply inbox retention](reply-inbox-retention.md) — owner reply history remains visible after a shared Hype Card expires or is revoked.
 - [Supporter game-day media](supporter-game-day-media.md) — capture stays device-managed; the web journey passes game context between existing tools without creating a moment library.
@@ -76,7 +76,7 @@
 - [Event Card terminology](event-card-terminology.md) — use Event Card(s) in user-facing copy while preserving the established Game On contracts and routes.
 - [Bundled job entrypoints](bundled-job-entrypoints.md) — separate one-off CLI execution from API-imported jobs; bundling can activate a direct-run guard and close the pool.
 - [Embedded Game On drafts](embedded-game-on-drafts.md) — keep editor identity stable as parent previews mirror draft edits.
-- [Simple tracker end state](simple-tracker-end-state.md) — pause stays resumable; ending saves locally and avoids auto-starting a duplicate on reopen.
+- [Legacy tracker completion](simple-tracker-end-state.md) — inline tracking is retired; preserve saved sessions and completion safeguards in the full tracker.
 - [Game On card focus boundaries](game-on-badge-panel-focus.md) — keep interactive panels in the modal, out of compact grid tiles, and return focus to visible actions.
 - [Game On status filtering](game-on-status-filtering.md) — hide nonmatching cards without unmounting editors, so filtering preserves in-progress changes.
 - [Concurrent merge patch context](concurrent-merge-patch-context.md) — after active task merges, re-check latest source before retrying patches so merged behavior remains intact.

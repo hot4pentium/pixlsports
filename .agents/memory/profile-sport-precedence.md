@@ -8,3 +8,9 @@ When a supporter has chosen a profile sport, use it as the only available sport 
 **Why:** The profile setting represents the athlete's sport and should remove irrelevant choices throughout the supporter experience. History provides continuity only when the profile is unset; silently defaulting an account with no sport or history can create a game with the wrong sport.
 
 **How to apply:** Tools should read the validated profile sport and hide other sport selectors when it exists. Otherwise use recent valid activity, or ask for a sport in the tracker before creating a game. Restore an in-progress session from its saved sport, keep the choice local to tracking, and never rewrite existing activity.
+
+An active saved game takes precedence over the current profile sport until that game ends. Use the profile again for new games.
+
+**Why:** A restored game can belong to a different sport than the current profile. Showing profile-sport buttons against that saved game silently rejects otherwise valid stat taps; changing its sport would reinterpret existing plays.
+
+**How to apply:** Bind live labels, stat controls, periods, and recording to the same saved-game sport. Explain a profile mismatch without converting the game or deleting its stats.
