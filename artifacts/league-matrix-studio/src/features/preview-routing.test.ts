@@ -9,21 +9,23 @@ const artifactDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../.
 test('the HTML entrypoint loads the app through the artifact base path', async () => {
   const html = await readFile(resolve(artifactDirectory, 'index.html'), 'utf8');
 
-  assert.match(html, /src="\.\/src\/main\.tsx"/);
-  assert.doesNotMatch(html, /src="\/src\/main\.tsx"/);
+  assert.match(html, /src="\.\/src\/bootstrap\.ts"/);
+  assert.doesNotMatch(html, /src="\/src\/bootstrap\.ts"/);
 });
 
 test('the offline shell rotates caches for new builds and removes superseded versions', async () => {
   const serviceWorker = await readFile(resolve(artifactDirectory, 'public/sw.js'), 'utf8');
 
-  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v12`;/);
+  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v13`;/);
   assert.match(
     serviceWorker,
-    /\.filter\(\(key\) => key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME\)[\s\S]*\.map\(\(key\) => caches\.delete\(key\)\)/,
+    /migrateShellCache\(oldCacheName\)[\s\S]*await caches\.delete\(oldCacheName\)/,
   );
+  assert.match(serviceWorker, /api\/schedule-shares\/[\s\S]*api\/__clerk\/npm\//, 'cache rotation must preserve offline schedules and Clerk static code');
   assert.match(serviceWorker, /if \(!isAppRoute\(url\)\) return;/);
   assert.match(serviceWorker, /cache\.match\(getScopePath\(\)\)/);
   assert.doesNotMatch(serviceWorker, /cache\.put\(getScopePath\(\), copy\)/, 'old workers must not overwrite their shell with new HTML before its assets are precached');
   assert.match(serviceWorker, /\/api\/__clerk\/npm\//, 'the installed shell should retain Clerk static code for offline session restoration');
   assert.match(serviceWorker, /if \(url\.pathname\.includes\('\/api\/'\)\) return;/, 'private API responses must stay out of the service-worker cache');
+  assert.match(serviceWorker, /request\.destination === ''[\s\S]*\.wasm\$\/i\.test\(url\.pathname\)/, 'large WASM should be cached on first feature use rather than precached');
 });

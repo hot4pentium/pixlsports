@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v12`;
+const CACHE_NAME = `${CACHE_PREFIX}-v13`;
 const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
 const SCHEDULE_CACHE_HEADER = 'X-Pixl-Schedule-Cache';
 
@@ -45,6 +45,22 @@ async function acknowledgeDisplayed(deliveryId) {
   }
 }
 
+async function migrateShellCache(oldCacheName) {
+  const oldCache = await caches.open(oldCacheName);
+  const currentCache = await caches.open(CACHE_NAME);
+  const requests = await oldCache.keys();
+
+  for (const request of requests) {
+    const pathname = new URL(request.url).pathname;
+    if (!pathname.includes('/api/schedule-shares/') && !pathname.includes('/api/__clerk/npm/')) {
+      continue;
+    }
+
+    const response = await oldCache.match(request);
+    if (response) await currentCache.put(request, response);
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -58,13 +74,15 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
-          .map((key) => caches.delete(key)),
-      ))
-      .then(() => self.clients.claim()),
+    (async () => {
+      const oldCacheNames = (await caches.keys())
+        .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME);
+      for (const oldCacheName of oldCacheNames) {
+        await migrateShellCache(oldCacheName);
+        await caches.delete(oldCacheName);
+      }
+      await self.clients.claim();
+    })(),
   );
 });
 
@@ -154,6 +172,33 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.includes('/api/')) return;
 
+  // The background-removal runtime downloads this large, public WASM asset
+  // only when the feature is used. Cache it then, not during app installation.
+  if (
+    request.destination === ''
+    && url.pathname.includes('/assets/')
+    && /\.wasm$/i.test(url.pathname)
+  ) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(request);
+        if (cached) {
+          event.waitUntil(
+            fetch(request).then(async (response) => {
+              if (response.ok) await cache.put(request, response.clone());
+            }).catch(() => undefined),
+          );
+          return cached;
+        }
+
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      }),
+    );
+    return;
+  }
+
   if (request.mode === 'navigate') {
     // Only serve this app's SPA routes; other artifacts may share our origin
     // when the studio is mounted at /.
@@ -174,7 +219,7 @@ self.addEventListener('fetch', (event) => {
           const refreshed = fetch(request).then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
           }
           return response;
           });

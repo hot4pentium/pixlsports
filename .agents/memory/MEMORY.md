@@ -120,3 +120,4 @@
 - [Simplified interactive HYPE Card](simple-interactive-hype-card.md) — keep full 2:3 portrait framing, lower-third at the bottom, left branding, style choices, identity, positioning, and public flips.
 - [Showcase slide boundaries](showcase-slide-boundaries.md) — keep the named Showcase centered on the full interactive HYPE Card; do not reintroduce jersey or gear surfaces.
 - [Mobile dashboard Showcase navigation](mobile-dashboard-showcase-navigation.md) — the mobile owner card opens private Showcase; sharing stays public, and the owner can return to Supporter Hub.
+- [Installed offline priorities](installed-offline-priorities.md) — preload day-of tools; cache other tools on use rather than downloading every feature at installation.

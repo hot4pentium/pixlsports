@@ -117,6 +117,29 @@ function dashboardHeroAssetGuard(): Plugin {
 function offlineShellPrecache(): Plugin {
   const outputDirectory = path.resolve(import.meta.dirname, 'dist/public');
   const placeholder = '__PIXL_PRECACHE_MANIFEST__';
+  const requiredCoreEntries = [
+    'index.html',
+    'src/features/supporter-dashboard.tsx',
+    'src/features/stat-tracker-page.tsx',
+  ];
+  const additionalCoreEntries = [
+    'src/features/game-on-inline-stat-tracker.tsx',
+    'src/features/game-on-inline-prep-checklist.tsx',
+    'src/features/game-on-dashboard-collection.tsx',
+    'src/features/supporter-stat-trends.tsx',
+  ];
+  const additionalCoreEntryNames = [
+    'hype-card-preview',
+  ];
+  const maxPrecacheBytes = 12 * 1024 * 1024;
+
+  type ManifestEntry = {
+    file: string;
+    imports?: string[];
+    dynamicImports?: string[];
+    css?: string[];
+    assets?: string[];
+  };
 
   async function listFiles(directory: string, prefix = ''): Promise<string[]> {
     const entries = await fs.readdir(directory, { withFileTypes: true });
@@ -138,18 +161,87 @@ function offlineShellPrecache(): Plugin {
       if (!worker.includes(placeholder)) {
         throw new Error('Offline service worker precache placeholder was not found.');
       }
-      const files = (await listFiles(outputDirectory))
-        .filter((file) => file !== 'sw.js')
-        // Keep the installed shell fast to install. Optional marketing media and
-        // sample video are still available online and are cached when requested.
-        // The four Hype Card template backgrounds are the exception: they are
-        // part of the offline editor experience after the user picks a layout.
+      const manifestPath = path.join(outputDirectory, '.vite/manifest.json');
+      const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as Record<string, ManifestEntry>;
+      const coreFiles = new Set<string>();
+      const visitedEntries = new Set<string>();
+      const appBootstrapEntries = new Set(manifest['index.html']?.dynamicImports ?? []);
+
+      function includeEntry(entryId: string, required: boolean) {
+        const entry = manifest[entryId];
+        if (!entry) {
+          if (required) {
+            throw new Error(`Required offline entry is missing from the Vite manifest: ${entryId}`);
+          }
+          return;
+        }
+        if (visitedEntries.has(entryId)) return;
+        visitedEntries.add(entryId);
+
+        coreFiles.add(entry.file);
+        for (const asset of entry.css ?? []) {
+          coreFiles.add(asset);
+        }
+        for (const asset of entry.assets ?? []) {
+          // The app bootstrap also references landing-page artwork. Keep the
+          // shell and core-tool assets, but leave that optional media on demand.
+          if (
+            !appBootstrapEntries.has(entryId)
+            || !/\.(?:mp4|png|jpe?g|webp)$/i.test(asset)
+          ) {
+            coreFiles.add(asset);
+          }
+        }
+        for (const importedEntry of entry.imports ?? []) {
+          includeEntry(importedEntry, true);
+        }
+      }
+
+      for (const entryId of requiredCoreEntries) includeEntry(entryId, true);
+      for (const entryId of manifest['index.html'].dynamicImports ?? []) {
+        includeEntry(entryId, true);
+      }
+      for (const entryId of additionalCoreEntries) includeEntry(entryId, false);
+      for (const entryName of additionalCoreEntryNames) {
+        const match = Object.entries(manifest).find(([, entry]) => (
+          path.basename(entry.file).startsWith(`${entryName}-`)
+        ));
+        if (match) includeEntry(match[0], false);
+      }
+
+      const allFiles = (await listFiles(outputDirectory))
+        .filter((file) => file !== 'sw.js' && file !== '.vite/manifest.json');
+      const rootFiles = allFiles.filter((file) => !file.includes('/'));
+      const precacheSet = new Set([
+        ...rootFiles,
+        ...coreFiles,
+        'assets/upcoming-event-card.png',
+        'assets/upcoming-event-card-enlarged.png',
+        'assets/upcoming-event-card-finished.png',
+      ]);
+      const availableFiles = new Set(allFiles);
+      const files = [...precacheSet]
+        .filter((file) => availableFiles.has(file) && !/\.wasm$/i.test(file) && !/\.mp4$/i.test(file))
         .filter((file) => (
-          !/\.(?:mp4|png|jpe?g|webp)$/i.test(file)
-          || /(?:^|\/)pwa-icon-\d+\.png$/i.test(file)
-          || /(?:^|\/)(?:stadium-entrance|sunset-stadium|locker-room-walkout|split-light-arena)-[^/]+\.webp$/i.test(file)
+          !/\.(?:png|jpe?g|webp)$/i.test(file)
+          || coreFiles.has(file)
+          || /^pwa-icon-\d+\.png$/i.test(path.basename(file))
+          || file.startsWith('assets/upcoming-event-card')
         ))
         .sort();
+      const totalBytes = (await Promise.all(
+        files.map(async (file) => (await fs.stat(path.join(outputDirectory, file))).size),
+      )).reduce((total, size) => total + size, 0);
+
+      if (totalBytes > maxPrecacheBytes) {
+        throw new Error(
+          `Offline core precache is ${totalBytes} bytes, exceeding the ${maxPrecacheBytes}-byte budget.`,
+        );
+      }
+
+      console.info(
+        `[offline-shell-precache] ${files.length} files, ${totalBytes} bytes (${(totalBytes / 1024 / 1024).toFixed(2)} MiB).`,
+      );
       await fs.writeFile(
         workerPath,
         worker.replace(placeholder, JSON.stringify(files)),
@@ -203,6 +295,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    manifest: true,
   },
   // Prebundle the lazy worker dependency before the first upload. Otherwise
   // Vite's first-use optimizer reload can interrupt background removal.
