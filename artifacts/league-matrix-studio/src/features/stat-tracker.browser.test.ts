@@ -698,6 +698,12 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-resume-live-stats\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]")?.matches(":enabled")', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(`document.querySelector('[data-testid="toggle-stat-favorite-shot-on-target"]')?.getAttribute('aria-pressed') === 'true' &&
+        document.querySelector('[data-testid="live-stat-group-favorites"] [data-testid="live-stat-card-shot-on-target"]') !== null`, page.sessionId),
+      true,
+      'the favorite and its section placement should survive a full page reload',
+    );
     await connection.evaluate('document.querySelector("[data-testid=\\"athlete-stat-target-shot-on-target\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).stats["shot-on-target"]', (count) => count === 4);
     assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"stat-count-shot-on-target\\"]").textContent.trim()', page.sessionId), /^4/);
