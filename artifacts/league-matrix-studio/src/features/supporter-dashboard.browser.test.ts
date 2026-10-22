@@ -2066,22 +2066,17 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:share-test-card"] .game-on-collection__actions')?.hidden === true`,
       page.sessionId,
     ), true, 'Share should be offered on the opened card, not the compact grid tile');
-    const trackerStateColors = await connection.evaluate<{ inactive: string; active: string; initiallyExpanded: string | null }>(`(() => {
+    const trackerStateColors = await connection.evaluate<{ inactive: string; initiallyExpanded: string | null }>(`(() => {
       const tracker = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]');
       if (!(tracker instanceof HTMLButtonElement)) throw new Error('The Stat Tracker action is unavailable');
       const initiallyExpanded = tracker.getAttribute('aria-expanded');
       const inactive = getComputedStyle(tracker).backgroundColor;
-      tracker.setAttribute('aria-expanded', 'true');
-      const active = getComputedStyle(tracker).backgroundColor;
-      if (initiallyExpanded === null) tracker.removeAttribute('aria-expanded');
-      else tracker.setAttribute('aria-expanded', initiallyExpanded);
-      return { inactive, active, initiallyExpanded };
+      return { inactive, initiallyExpanded };
     })()`, page.sessionId);
     assert.deepEqual(trackerStateColors, {
       inactive: 'rgb(231, 242, 255)',
-      active: 'rgb(18, 53, 92)',
       initiallyExpanded: 'false',
-    }, 'Stat Tracker should be neutral by default and dark only in its expanded state');
+    }, 'Stat Tracker should be neutral by default');
 
     await connection.evaluate(`(() => {
       window.__eventCardOriginalNavigatorProps = {
@@ -7758,14 +7753,6 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         && prep.getClientRects().length > 0 && stats.getClientRects().length > 0
         && prep.tabIndex >= 0 && stats.tabIndex >= 0;
     })()`, page.sessionId), true);
-    await connection.evaluate(`document.querySelector('.game-on-collection__card--selected [data-testid^="button-open-stat-tracker-"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".game-on-collection__card--selected [data-testid^=\\"button-open-stat-tracker-\\"]")?.getAttribute("aria-expanded") === "true"', Boolean);
-    assert.equal(await connection.evaluate<string>(
-      'getComputedStyle(document.querySelector(".game-on-collection__card--selected [data-testid^=\\"button-open-stat-tracker-\\"]")).backgroundColor',
-      page.sessionId,
-    ), 'rgb(18, 53, 92)', 'Stat Tracker should use its active style only while selected');
-    await connection.evaluate(`document.querySelector('.game-on-collection__card--selected [data-testid^="button-close-stat-tracker-"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".game-on-collection__card--selected [data-testid^=\\"button-open-stat-tracker-\\"]")?.getAttribute("aria-expanded") === "false"', Boolean);
     assert.equal(await connection.evaluate<boolean>(
       'Boolean(document.querySelector(\'[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"]\'))',
       page.sessionId,

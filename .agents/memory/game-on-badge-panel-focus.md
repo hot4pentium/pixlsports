@@ -8,3 +8,9 @@ When a focused Game On card is shown in a modal, only the modal card should rece
 **Why:** A modal and its compact grid tile represent the same card at once. Mirroring panel state into both creates duplicate interactive trackers and can direct focus into the obscured tile. The shortcut on the back is hidden when the badge returns to its front, so restoring focus there also fails. Unmounting Details during another flip silently discards fields that have not been saved.
 
 **How to apply:** Route panel state only to the active modal card; keep grid tiles compact and noninteractive beyond opening the card. For new shortcuts and panels, map return focus to a visible front control and preserve in-progress editor state across face changes. Clear an open panel when its selected badge is no longer selected.
+
+The Supporter Hub Event Card uses its right arrow to enter event editing and a “Back to Event Card” control to return. Do not restore separate Details, Copy Link, or Open Card action tiles. Keep Stat Tracker neutral before selection.
+
+**Why:** The user explicitly requested these dashboard controls to be simplified. This request concerns the opened dashboard Event Card, not the separate post-save confirmation.
+
+**How to apply:** Preserve the event's date, time, and location facts, retain Share and its clipboard fallback, and restore editor-return focus to the visible edit arrow.
