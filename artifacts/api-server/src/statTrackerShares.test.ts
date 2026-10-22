@@ -97,9 +97,23 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
       role: "fan",
       accessMode: "full",
     });
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: foreignId,
+      role: "fan",
+      accessMode: "full",
+    });
+    await db.insert(athleteInvitesTable).values({
+      ownerClerkUserId: ownerId,
+      publicToken,
+      athleteName: "Maya",
+      teamName: "Falcons",
+      seasonName: "2026",
+      seasonEndsAt: new Date("2026-12-31T23:59:59.000Z"),
+      sport: "football",
+    });
     const address = server.address();
     assert.ok(address && typeof address === "object");
-    const baseUrl = `http://127.0.0.1:${address.port}/api/stat-tracker-shares/${share.id}`;
+    const baseUrl = `http://127.0.0.1:${address.port}`;
     const input = CreateStatTrackerShareBody.parse({
       athleteName: "Maya",
       teamName: "Falcons",
@@ -201,6 +215,23 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     );
     assert.equal(finalUpdate.publicFanCardPath, `/fan/${publicToken}`);
     assert.match(await readEvent('"revision":3'), new RegExp(`/fan/${publicToken}`));
+
+    const replacementPublicToken = crypto.randomUUID();
+    await db.update(athleteInvitesTable)
+      .set({ publicToken: replacementPublicToken })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const refreshedFinalView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(refreshedFinalView.publicFanCardPath, `/fan/${replacementPublicToken}`);
+    assert.notEqual(refreshedFinalView.publicFanCardPath, `/fan/${publicToken}`, "refreshes must not keep the replaced HYPE Card URL");
+    assert.equal(refreshedFinalView.game.status, "final");
+    assert.equal(refreshedFinalView.game.score, 21);
 
     await db.update(athleteInvitesTable)
       .set({ showHypeCard: false })
@@ -358,6 +389,7 @@ test("expired stat tracker shares are not readable", async () => {
     }).returning();
     const address = server.address();
     assert.ok(address && typeof address === "object");
+    const url = `http://127.0.0.1:${address.port}/api/stat-tracker-shares/${share.id}`;
     const response = await fetch(url, { headers: { "x-test-user": ownerId } });
     assert.equal(response.status, 404);
   } finally {

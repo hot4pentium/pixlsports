@@ -41,6 +41,7 @@ let revoked = false;
 let poll404 = false;
 let hypeCardHidden = false;
 let hypeCardPaused = false;
+let hypeCardPath = '/fan/verified-card';
 class MockEventSource {
   static instances = [];
   onopen = null; onerror = null; listeners = {};
@@ -55,6 +56,7 @@ window.__sendUpdate = (status, publicFanCardPath = status === 'final' ? '/fan/ve
   MockEventSource.instances.at(-1)?.emit('stat-tracker', current);
 };
 window.__setHypeCardState = (hidden, paused) => { hypeCardHidden = hidden; hypeCardPaused = paused; };
+window.__setHypeCardPath = (path) => { hypeCardPath = path; };
 window.__sendDuplicate = () => {
   const source = MockEventSource.instances.at(-1);
   source?.emit('stat-tracker', current);
@@ -69,7 +71,7 @@ const queryClient = new QueryClient();
 window.__poll = () => queryClient.refetchQueries();
 window.fetch = async () => revoked || poll404 ? new Response(JSON.stringify({ error:'not found' }), { status:404 }) : new Response(JSON.stringify({
   ...current,
-  publicFanCardPath: current.game.status === 'final' && !hypeCardHidden && !hypeCardPaused ? '/fan/verified-card' : null,
+  publicFanCardPath: current.game.status === 'final' && !hypeCardHidden && !hypeCardPaused ? hypeCardPath : null,
 }), { status:200, headers:{'content-type':'application/json'} });
 function App() {
   const [owner, setOwner] = useState(false);
@@ -205,16 +207,19 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     await connection.evaluate('window.__sendUpdate("final")',page.sessionId);
     await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") && document.querySelector("[data-testid=\\"stat-tracker-scores\\"]")?.textContent.includes("21")',Boolean);
     assert.equal(await connection.evaluate<boolean>('(() => { const message = document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]"); const link = document.querySelector("[data-testid=\\"link-final-fan-card\\"]"); return message?.getAttribute("aria-live") === "polite" && message.textContent.includes("Thanks for watching Maya") && link instanceof HTMLAnchorElement && link.getAttribute("href") === "/fan/verified-card"; })()', page.sessionId), true);
+    await connection.evaluate('window.__setHypeCardPath("/fan/replacement-card"); window.__poll()', page.sessionId);
+    await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"link-final-fan-card\\"]")?.getAttribute("href") === "/fan/replacement-card"',Boolean);
+    assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-final-fan-card\\"]"); const message = document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]"); return link?.getAttribute("href") === "/fan/replacement-card" && link.getAttribute("href") !== "/fan/verified-card" && document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") === true && document.querySelector("[data-testid=\\"score-home\\"]")?.textContent === "21" && document.querySelector("[data-testid=\\"score-away\\"]")?.textContent === "7" && message?.textContent.includes("Thanks for watching Maya") === true; })()', page.sessionId), true, 'refreshing an already-open final scoreboard replaces the old HYPE Card link and preserves the score and thank-you');
     await connection.evaluate('window.__setHypeCardState(false, true); window.__poll()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]") === null', Boolean);
     assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") === true && document.querySelector("[data-testid=\\"score-home\\"]")?.textContent === "21" && document.querySelector("[data-testid=\\"score-away\\"]")?.textContent === "7" && document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]")?.textContent.includes("Thanks for watching Maya") === true', page.sessionId), true, 'pausing the HYPE Card removes its follow link after refresh without removing the final score or thank-you');
     await connection.evaluate('window.__setHypeCardState(false, false); window.__poll()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]")?.getAttribute("href") === "/fan/verified-card"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]")?.getAttribute("href") === "/fan/replacement-card"', Boolean);
     await connection.evaluate('window.__setHypeCardState(true, false); window.__poll()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]") === null', Boolean);
     assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") === true && document.querySelector("[data-testid=\\"score-home\\"]")?.textContent === "21" && document.querySelector("[data-testid=\\"score-away\\"]")?.textContent === "7" && document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]")?.textContent.includes("Thanks for watching Maya") === true', page.sessionId), true, 'hiding the HYPE Card also removes its follow link after refresh while preserving the final scoreboard');
     await connection.evaluate('window.__setHypeCardState(false, false); window.__poll()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]")?.getAttribute("href") === "/fan/verified-card"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]")?.getAttribute("href") === "/fan/replacement-card"', Boolean);
     assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"connection-status\\"]")?.textContent || ""',page.sessionId),/Live Sync|Reconnecting|Polling/);
     assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"public-stat-tracker-page\\"]")?.scrollWidth <= document.querySelector("[data-testid=\\"public-stat-tracker-page\\"]")?.clientWidth',page.sessionId),true);
     await connection.evaluate('window.__revoke()',page.sessionId);
