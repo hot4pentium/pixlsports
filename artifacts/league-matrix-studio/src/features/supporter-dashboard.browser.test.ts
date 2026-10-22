@@ -5217,6 +5217,145 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
   }
 });
 
+test('the authenticated Supporter Hub restores upcoming Event Card preparation after reload', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-future-event-reload');
+  let devServer: ChildProcess | undefined;
+  let browser: ChildProcess | undefined;
+  let devMonitor: ProcessMonitor | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port } = await listen(viteProbe);
+    await new Promise<void>((done) => viteProbe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(port),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devMonitor = monitorProcess(devServer, 'Future Event Card fixture Vite');
+    await waitForUrl(`http://127.0.0.1:${port}/`, 20_000, devMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-future-event-reload-'));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Future Event Card fixture Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, () =>
+      `${devMonitor?.diagnostics()}; ${browserMonitor?.diagnostics()}`);
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-future-event-reload`,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    const wait = (expression: string) =>
+      waitFor(connection!, page!.sessionId, expression, Boolean, 30_000);
+    await wait('Boolean(document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]"))');
+
+    await connection.evaluate(`(() => {
+      const userId = 'supporter-future-event-reload-user';
+      const savedCard = {
+        shareToken: 'standalone-reload-card',
+        title: 'Night Owls game',
+        savedAt: new Date().toISOString(),
+        event: {
+          id: 'standalone-reload-event',
+          type: 'game',
+          date: '2999-01-02',
+          time: '20:30',
+          timezone: 'UTC',
+          location: 'Northside Gym',
+          opponent: 'Night Owls',
+          status: 'upcoming',
+        },
+      };
+      localStorage.setItem(
+        \`pixlsports-game-on-cards:\${userId}\`,
+        JSON.stringify([savedCard]),
+      );
+    })()`, page.sessionId);
+
+    await reloadPage(connection, page);
+    await wait('Boolean(document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]"))');
+    await wait(`Boolean(
+      document.querySelector('[data-testid="upcoming-event-badge"]')
+        ?.querySelector('[data-testid="button-guidance-event-card"]')
+        ?.getClientRects().length
+    )`);
+    const board = await connection.evaluate<string>(
+      'document.querySelector(\'[data-testid="upcoming-event-badge"]\')?.textContent || ""',
+      page.sessionId,
+    );
+    assert.match(board, /The Northside Comets Select Travel Club vs Night Owls/);
+    assert.match(board, /Jan 2, 2999 · 8:30 PM/);
+    assert.match(board, /Game day is coming up\. Check what you need before you leave\./);
+    assert.match(board, /Open Event Card/);
+
+    await connection.evaluate(
+      'document.querySelector(\'[data-testid="upcoming-event-badge"] [data-testid="button-guidance-event-card"]\')?.click()',
+      page.sessionId,
+    );
+    await wait(`Boolean(document.querySelector(
+      '[data-testid="dialog-game-on-card-share:standalone-reload-card"]'
+    ))`);
+    assert.match(
+      await connection.evaluate<string>(
+        'document.querySelector(\'[data-testid="dialog-game-on-card-share:standalone-reload-card"]\')?.textContent || ""',
+        page.sessionId,
+      ),
+      /Game vs Night Owls/,
+    );
+  } finally {
+    if (page && connection) {
+      await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+    }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devMonitor) {
+      if (!devMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devMonitor.waitForExit();
+    }
+    if (tempDirectory) {
+      await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    release();
+  }
+});
+
 test('mobile event guidance prioritizes live games and always offers a next action', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-event-guidance');
@@ -6427,7 +6566,12 @@ export function mount() {
     ? 'supporter-game-record-user'
     : window.location.search.includes('supporter-active-game-sync')
       ? 'supporter-sync-user'
+      : window.location.search.includes('supporter-future-event-reload')
+        ? 'supporter-future-event-reload-user'
       : undefined;
+  if (window.location.search.includes('supporter-future-event-reload')) {
+    dashboardEvents = [];
+  }
   if (window.location.search.includes('mobile-hype-pair')) {
     dashboardUserId = 'hype-owner';
     window.__hypePreviewState = JSON.parse(localStorage.getItem('hype-preview-fixture') || '"loading"');
