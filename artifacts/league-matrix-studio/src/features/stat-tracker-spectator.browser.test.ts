@@ -35,7 +35,7 @@ import { StatTrackerSharePanel } from './src/features/stat-tracker-page';
 import { copyStatTrackerShareUrl } from './src/features/stat-tracker-share';
 import './src/index.css';
 
-const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:new Date(Date.now() + 60000).toISOString(), canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
+const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:new Date(Date.now() + 60000).toISOString(), canManage:false, publicFanCardPath:null, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
 let current = initial;
 let revoked = false;
 let poll404 = false;
@@ -48,8 +48,8 @@ class MockEventSource {
   close() { this.closed = true; }
 }
 window.EventSource = MockEventSource;
-window.__sendUpdate = (status) => {
-  current = { ...current, revision: current.revision + 1, updatedAt:'2026-09-21T18:02:00.000Z', game:{ ...current.game, status, score: status === 'final' ? 21 : 18, events:[...current.game.events,{id:'event-2',statId:'touchdown',createdAt:'2026-09-21T18:02:00.000Z',period:2,yards:null}] } };
+window.__sendUpdate = (status, publicFanCardPath = status === 'final' ? '/fan/verified-card' : null) => {
+  current = { ...current, revision: current.revision + 1, updatedAt:'2026-09-21T18:02:00.000Z', publicFanCardPath, game:{ ...current.game, status, score: status === 'final' ? 21 : 18, events:[...current.game.events,{id:'event-2',statId:'touchdown',createdAt:'2026-09-21T18:02:00.000Z',period:2,yards:null}] } };
   MockEventSource.instances.at(-1)?.emit('stat-tracker', current);
 };
 window.__sendDuplicate = () => {
@@ -121,6 +121,7 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-public-support-header\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "/help" && !!rect && rect.width > 0 && rect.height >= 44 && rect.top >= -1 && rect.bottom <= innerHeight + 1; })()', page.sessionId), true);
     const initial = await connection.evaluate<string>('document.body.textContent || ""',page.sessionId);
     assert.match(initial,/14/); assert.match(initial,/LIVE/); assert.match(initial,/Pass yard/);
+    assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]") === null', page.sessionId), true);
     assert.match(initial,/Game day \/ live feed/);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"recent-activity-completed-pass-play-1\\"]") !== null', Boolean);
     assert.equal(await connection.evaluate<boolean>('document.querySelectorAll("[data-testid^=\\"recent-activity-\\"]:not([data-testid^=\\"recent-activity-attribution-\\"])").length === 2 && document.querySelector("[data-testid=\\"recent-activity-completed-pass-play-1\\"]")?.textContent.includes("Completed pass") && !document.querySelector("[data-testid=\\"recent-activity-completed-pass-play-1\\"]")?.textContent.includes("20 yds") && !document.body.textContent.includes("20 yds") && document.querySelector("[data-testid=\\"recent-activity-attribution-completed-pass-play-1\\"]")?.textContent.includes("Falcons") && document.querySelector("[data-testid=\\"recent-activity-event-legacy\\"]")?.textContent.includes("Tackle") && document.querySelector("[data-testid=\\"recent-activity-attribution-event-legacy\\"]")?.textContent.includes("Maya")', page.sessionId), true);
@@ -158,6 +159,11 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"public-stat-tracker-unavailable\\"]") !== null', Boolean);
     await connection.evaluate('window.__setLongExpiry(); window.__sendUpdate("live")', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("LIVE")', Boolean);
+    await connection.evaluate('window.__sendUpdate("paused")', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("PAUSED")', Boolean);
+    assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]") === null', page.sessionId), true);
+    await connection.evaluate('window.__sendUpdate("live")', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("LIVE")', Boolean);
     await connection.evaluate('window.__showOwner()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-copy-stat-tracker-share\\"]") !== null', Boolean);
     assert.equal(await connection.evaluate<boolean>(`(() => {
@@ -192,6 +198,10 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     assert.equal(await connection.evaluate<boolean>('window.__legacyCopySelected', page.sessionId), true, 'blocked clipboard permissions should fall back to the selected link');
     await connection.evaluate('window.__sendUpdate("final")',page.sessionId);
     await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") && document.querySelector("[data-testid=\\"stat-tracker-scores\\"]")?.textContent.includes("21")',Boolean);
+    assert.equal(await connection.evaluate<boolean>('(() => { const message = document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]"); const link = document.querySelector("[data-testid=\\"link-final-fan-card\\"]"); return message?.getAttribute("aria-live") === "polite" && message.textContent.includes("Thanks for watching Maya") && link instanceof HTMLAnchorElement && link.getAttribute("href") === "/fan/verified-card"; })()', page.sessionId), true);
+    await connection.evaluate('window.__sendUpdate("final", null)', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]") === null', Boolean);
+    assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]")?.textContent.includes("Thanks for watching Maya") === true', page.sessionId), true, 'the thank-you remains when no public HYPE Card is available');
     assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"connection-status\\"]")?.textContent || ""',page.sessionId),/Live Sync|Reconnecting|Polling/);
     assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"public-stat-tracker-page\\"]")?.scrollWidth <= document.querySelector("[data-testid=\\"public-stat-tracker-page\\"]")?.clientWidth',page.sessionId),true);
     await connection.evaluate('window.__revoke()',page.sessionId);

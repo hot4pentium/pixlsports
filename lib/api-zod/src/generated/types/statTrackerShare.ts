@@ -7,7 +7,7 @@
  */
 import type { StatTrackerShareInput } from './statTrackerShareInput';
 
-export type StatTrackerShare = StatTrackerShareInput & {
+export type StatTrackerShare = StatTrackerShareInput & ({
   shareToken: string;
   /** @minimum 1 */
   revision: number;
@@ -15,4 +15,9 @@ export type StatTrackerShare = StatTrackerShareInput & {
   updatedAt: Date;
   expiresAt: Date;
   canManage: boolean;
-};
+  /**
+     * @maxLength 512
+     * @nullable
+     */
+  publicFanCardPath?: string | null;
+});

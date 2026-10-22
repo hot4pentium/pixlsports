@@ -61,6 +61,7 @@ export function getPublicEvents(storedEvents: unknown[]) {
 function publicResponse(
   share: typeof statTrackerSharesTable.$inferSelect,
   canManage = false,
+  publicFanCardPath: string | null = null,
 ) {
   const storedGame = share.game as Record<string, unknown>;
   const storedEvents = Array.isArray(storedGame.events) ? storedGame.events : [];
@@ -89,7 +90,38 @@ function publicResponse(
     updatedAt: share.updatedAt,
     expiresAt: share.expiresAt,
     canManage,
+    publicFanCardPath,
   });
+}
+
+function normalizePublicIdentity(value: unknown) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+async function getPublicFanCardPath(share: typeof statTrackerSharesTable.$inferSelect) {
+  const game = share.game as Record<string, unknown>;
+  if (game.status !== "final") return null;
+
+  const [invite] = await db.select({
+    publicToken: athleteInvitesTable.publicToken,
+    athleteName: athleteInvitesTable.athleteName,
+    teamName: athleteInvitesTable.teamName,
+    sport: athleteInvitesTable.sport,
+    showHypeCard: athleteInvitesTable.showHypeCard,
+    paused: athleteInvitesTable.paused,
+  }).from(athleteInvitesTable)
+    .where(eq(athleteInvitesTable.ownerClerkUserId, share.ownerClerkUserId))
+    .limit(1);
+
+  if (!invite || invite.paused || !invite.showHypeCard) return null;
+  if (normalizePublicIdentity(invite.athleteName) !== normalizePublicIdentity(share.athleteName)) return null;
+  if (normalizePublicIdentity(invite.sport) !== normalizePublicIdentity(game.sport)) return null;
+
+  const shareTeamName = normalizePublicIdentity(share.teamName);
+  const inviteTeamName = normalizePublicIdentity(invite.teamName);
+  if (shareTeamName && shareTeamName !== inviteTeamName) return null;
+
+  return `/fan/${encodeURIComponent(invite.publicToken)}`;
 }
 
 function writeEvent(res: Response, event: string, payload: unknown, revision?: number) {
@@ -135,6 +167,7 @@ router.get("/stat-tracker-shares/:shareToken/events", async (req, res): Promise<
     res.status(404).json({ error: "Stat tracker share not found" });
     return;
   }
+  const publicFanCardPath = await getPublicFanCardPath(share);
 
   res.status(200);
   res.set({
@@ -188,7 +221,7 @@ router.get("/stat-tracker-shares/:shareToken/events", async (req, res): Promise<
       heartbeatChecking = false;
     }
   }, 20000);
-  writeEvent(res, "stat-tracker", publicResponse(share), share.revision);
+  writeEvent(res, "stat-tracker", publicResponse(share, false, publicFanCardPath), share.revision);
 });
 
 router.get("/stat-tracker-shares", requireAuth, async (req, res): Promise<void> => {
@@ -198,7 +231,10 @@ router.get("/stat-tracker-shares", requireAuth, async (req, res): Promise<void> 
       eq(statTrackerSharesTable.ownerClerkUserId, ownerId),
       gt(statTrackerSharesTable.expiresAt, new Date()),
     )).orderBy(desc(statTrackerSharesTable.createdAt));
-    res.json(ListStatTrackerSharesResponse.parse(shares.map((share) => publicResponse(share, true))));
+    const responses = await Promise.all(shares.map(async (share) => (
+      publicResponse(share, true, await getPublicFanCardPath(share))
+    )));
+    res.json(ListStatTrackerSharesResponse.parse(responses));
   } catch (error) {
     req.log.error({ err: error }, "Unable to list stat tracker shares");
     res.status(500).json({ error: "Unable to list stat tracker shares" });
@@ -260,7 +296,7 @@ router.post("/stat-tracker-shares", requireAuth, async (req, res): Promise<void>
       res.status(409).json({ error: "Unable to create stat tracker share" });
       return;
     }
-    res.status(201).json(publicResponse(created, true));
+    res.status(201).json(publicResponse(created, true, await getPublicFanCardPath(created)));
   } catch (error) {
     req.log.error({ err: error }, "Unable to create stat tracker share");
     res.status(500).json({ error: "Unable to create stat tracker share" });
@@ -278,7 +314,8 @@ router.get("/stat-tracker-shares/:shareToken", async (req, res): Promise<void> =
     res.status(404).json({ error: "Stat tracker share not found" });
     return;
   }
-  res.json(publicResponse(share, getAuth(req)?.userId === share.ownerClerkUserId));
+  const publicFanCardPath = await getPublicFanCardPath(share);
+  res.json(publicResponse(share, getAuth(req)?.userId === share.ownerClerkUserId, publicFanCardPath));
 });
 
 router.patch("/stat-tracker-shares/:shareToken", requireAuth, async (req, res): Promise<void> => {
@@ -296,9 +333,10 @@ router.patch("/stat-tracker-shares/:shareToken", requireAuth, async (req, res): 
       return;
     }
     if (current.revision !== parsed.data.expectedRevision) {
+      const publicFanCardPath = await getPublicFanCardPath(current);
       res.status(409).json({
         error: "Stat tracker share revision is stale",
-        current: publicResponse(current, true),
+        current: publicResponse(current, true, publicFanCardPath),
       });
       return;
     }
@@ -318,8 +356,14 @@ router.patch("/stat-tracker-shares/:shareToken", requireAuth, async (req, res): 
       res.status(409).json({ error: "Stat tracker share revision is stale" });
       return;
     }
-    const response = publicResponse(updated, true);
-    broadcast(params.data.shareToken, "stat-tracker", publicResponse(updated), updated.revision);
+    const publicFanCardPath = await getPublicFanCardPath(updated);
+    const response = publicResponse(updated, true, publicFanCardPath);
+    broadcast(
+      params.data.shareToken,
+      "stat-tracker",
+      publicResponse(updated, false, publicFanCardPath),
+      updated.revision,
+    );
     if (parsed.data.game.status === "final") {
       await db.update(athleteInvitesTable).set({
         liveTrackerShareToken: null,

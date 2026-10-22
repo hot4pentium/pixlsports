@@ -104,6 +104,7 @@ import { saveCompletionHandoff } from './tracker-completion-handoff';
 const trackerBasePath = (
   (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
 ).replace(/\/$/, '');
+const finalRecapRetryMessage = 'The game is saved to the cloud, but its final HYPE Card recap did not publish. Retry sync to finish the handoff.';
 const trackerAppOrigin = typeof window === 'undefined'
   ? ''
   : ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
@@ -1430,13 +1431,14 @@ export function StatTrackerPage() {
       queryKey: [...getListProjectsQueryKey(), accountId],
     },
   });
-  const { data: trackerShares } = useListStatTrackerShares({
+  const trackerSharesQuery = useListStatTrackerShares({
     query: {
-      enabled: Boolean(accountId && accountAccess && currentGame),
+      enabled: Boolean(accountId && accountAccess),
       staleTime: 10000,
-      queryKey: getListStatTrackerSharesQueryKey(),
+      queryKey: [...getListStatTrackerSharesQueryKey(), accountId],
     },
   });
+  const { data: trackerShares } = trackerSharesQuery;
   const createTrackerShare = useCreateStatTrackerShare();
   const updateTrackerShare = useUpdateStatTrackerShare();
   const deleteTrackerShare = useDeleteStatTrackerShare();
@@ -1447,7 +1449,7 @@ export function StatTrackerPage() {
   const [athleteLiveRetry, setAthleteLiveRetry] = useState(0);
   const attemptedAthleteLiveGameId = useRef<string | null>(null);
   const shareUpdateTimer = useRef<number | null>(null);
-  const shareUpdateQueue = useRef(Promise.resolve());
+  const shareUpdateQueue = useRef<Promise<boolean>>(Promise.resolve(true));
   const athleteInvitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(accountId),
@@ -1480,11 +1482,11 @@ export function StatTrackerPage() {
   const shareUrl = activeTrackerShare
     ? `${trackerAppOrigin}${trackerBasePath}/live/${encodeURIComponent(activeTrackerShare.shareToken)}`
     : '';
-  const publishTrackerShare = (game: GameSession, share: StatTrackerShare | null | undefined = activeTrackerShare): Promise<void> => {
-    if (!share) return Promise.resolve();
+  const publishTrackerShare = (game: GameSession, share: StatTrackerShare | null | undefined = activeTrackerShare): Promise<boolean> => {
+    if (!share) return Promise.resolve(true);
     const input = toStatTrackerShareInput(game, profile.athleteName, profile.teamName);
     shareUpdateQueue.current = shareUpdateQueue.current
-      .catch(() => undefined)
+      .catch(() => false)
       .then(async () => {
         try {
           const updated = await updateTrackerShare.mutateAsync({
@@ -1497,9 +1499,10 @@ export function StatTrackerPage() {
           }
           setShareError('');
           setShareNotice(updated.revision === share.revision ? '' : 'Live link updated');
+          return true;
         } catch {
           await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
-          const latest = queryClient.getQueryData<StatTrackerShare[]>(getListStatTrackerSharesQueryKey())
+          const latest = queryClient.getQueryData<StatTrackerShare[]>([...getListStatTrackerSharesQueryKey(), accountId])
             ?.find((item) => item.shareToken === share.shareToken);
           if (latest && latest.revision !== share.revision) {
             try {
@@ -1511,15 +1514,52 @@ export function StatTrackerPage() {
                 await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
               }
               setShareError('');
-              return;
+              return true;
             } catch {
               // The bounded retry below reports the durable failure.
             }
           }
           setShareError('Private game is safe, but the supporter link could not sync. Try again.');
+          if (game.status === 'final') {
+            setError(finalRecapRetryMessage);
+            setRetryAvailable(true);
+            if (accountId) saveStoredTrackerSyncFailure(window.localStorage, accountId, 'retry');
+          }
+          return false;
         }
       });
     return shareUpdateQueue.current;
+  };
+
+  const publishPendingFinalTrackerShares = async (syncedData: StatTrackerData) => {
+    const finalGames = new Map(
+      syncedData.games
+        .filter((game) => game.status === 'final')
+        .map((game) => [game.id, game]),
+    );
+    if (!finalGames.size) return true;
+
+    try {
+      const { data: refreshedShares, isError } = await trackerSharesQuery.refetch();
+      if (isError && !refreshedShares && !trackerShares) {
+        setError(finalRecapRetryMessage);
+        setRetryAvailable(true);
+        if (accountId) saveStoredTrackerSyncFailure(window.localStorage, accountId, 'retry');
+        return false;
+      }
+      const results = await Promise.all((refreshedShares ?? trackerShares ?? []).map((share) => {
+        const game = finalGames.get(share.game.id);
+        return game && share.game.status !== 'final'
+          ? publishTrackerShare(game, share)
+          : Promise.resolve(true);
+      }));
+      return results.every(Boolean);
+    } catch {
+      setError(finalRecapRetryMessage);
+      setRetryAvailable(true);
+      if (accountId) saveStoredTrackerSyncFailure(window.localStorage, accountId, 'retry');
+      return false;
+    }
   };
 
   useEffect(() => {
@@ -1940,6 +1980,7 @@ export function StatTrackerPage() {
     setCloudProject({ id: saved.id, revision: saved.revision });
     await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+    return publishPendingFinalTrackerShares(safeData);
   };
 
   const rememberSyncFailure = (
@@ -1990,7 +2031,6 @@ export function StatTrackerPage() {
       setJustCompletedGame(completed);
       setCompletionOpen(true);
     }
-    void publishTrackerShare(completed, share ?? undefined);
     updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final', completed.endedAt);
     setSaving(true);
     setSaveStatus('saving');
@@ -2001,13 +2041,20 @@ export function StatTrackerPage() {
     setSelectedConflictResolution(null);
     let completionSaveStatus: 'cloud-saved' | 'local-saved' = 'local-saved';
     try {
-      await syncTrackerData(nextData);
+      const finalRecapPublished = await syncTrackerData(nextData);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
-      if (accountId) clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      if (accountId && finalRecapPublished) clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      if (!finalRecapPublished) {
+        setError(finalRecapRetryMessage);
+        setRetryAvailable(true);
+        if (accountId) saveStoredTrackerSyncFailure(window.localStorage, accountId, 'retry');
+      }
       trackTrackerSyncOutcome('cloud_success', 'initial_save', completed.sport);
       setSaveStatus('cloud-saved');
       completionSaveStatus = 'cloud-saved';
-      announce('GAME SAVED — SEASON TOTALS UPDATED');
+      announce(finalRecapPublished
+        ? 'GAME SAVED — SEASON TOTALS UPDATED'
+        : 'GAME SAVED — FINAL HYPE CARD RECAP NEEDS RETRY');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
       const conflict = getTrackerConflict(saveError, nextData);
@@ -2020,7 +2067,9 @@ export function StatTrackerPage() {
         'initial_save',
         completed.sport,
       );
-      setError(recovery.message);
+      setError(share
+        ? `${recovery.message} The final supporter recap will publish after cloud sync succeeds.`
+        : recovery.message);
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
       setTrackerConflict(conflict);
@@ -2060,16 +2109,24 @@ export function StatTrackerPage() {
     setSaveStatus('saving');
     setError('');
     try {
-      await syncTrackerData(data);
+      const finalRecapPublished = await syncTrackerData(data);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
-      if (accountId) clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      if (accountId && finalRecapPublished) clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      if (!finalRecapPublished) {
+        setError(finalRecapRetryMessage);
+        setRetryAvailable(true);
+        if (accountId) saveStoredTrackerSyncFailure(window.localStorage, accountId, 'retry');
+      }
       trackTrackerSyncOutcome('retry_success', 'retry', sport);
-      setRetryAvailable(false);
+      setRetryAvailable(!finalRecapPublished);
       setRevisionConflict(false);
       setTrackerConflict(null);
       setSelectedConflictResolution(null);
       setSaveStatus('cloud-saved');
-      announce('CLOUD SYNC RESTORED — SEASON HISTORY IS SAFE');
+      announce(finalRecapPublished
+        ? 'CLOUD SYNC RESTORED — SEASON HISTORY IS SAFE'
+        : 'CLOUD SAVE IS SAFE — FINAL HYPE CARD RECAP NEEDS RETRY');
+      if (finalRecapPublished) setError('');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
       const conflict = getTrackerConflict(saveError, data);
@@ -2141,15 +2198,22 @@ export function StatTrackerPage() {
     setRetryAvailable(false);
     const selectedData = data;
     try {
-      await syncTrackerData(selectedData, selectedConflictResolution);
+      const finalRecapPublished = await syncTrackerData(selectedData, selectedConflictResolution);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
-      if (accountId) clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      if (accountId && finalRecapPublished) clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      if (!finalRecapPublished) {
+        setError(finalRecapRetryMessage);
+        setRetryAvailable(true);
+        if (accountId) saveStoredTrackerSyncFailure(window.localStorage, accountId, 'retry');
+      }
       trackTrackerSyncOutcome('retry_success', 'conflict_resolution', sport);
       setRevisionConflict(false);
       setTrackerConflict(null);
       setSelectedConflictResolution(null);
       setSaveStatus('cloud-saved');
-      announce('HISTORY RESOLVED — CLOUD SYNC RESTORED');
+      announce(finalRecapPublished
+        ? 'HISTORY RESOLVED — CLOUD SYNC RESTORED'
+        : 'HISTORY SAVED — FINAL HYPE CARD RECAP NEEDS RETRY');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
       const nextConflict = getTrackerConflict(saveError, selectedData);

@@ -1002,7 +1002,7 @@ export type StatTrackerShareUpdate = StatTrackerShareInput & {
   expectedRevision: number;
 };
 
-export type StatTrackerShare = StatTrackerShareInput & {
+export type StatTrackerShare = StatTrackerShareInput & ({
   shareToken: string;
   /** @minimum 1 */
   revision: number;
@@ -1010,7 +1010,12 @@ export type StatTrackerShare = StatTrackerShareInput & {
   updatedAt: string;
   expiresAt: string;
   canManage: boolean;
-};
+  /**
+     * @maxLength 512
+     * @nullable
+     */
+  publicFanCardPath?: string | null;
+});
 
 export interface StatTrackerConflict {
   error: string;

@@ -4,6 +4,7 @@ import express from "express";
 import { and, eq } from "drizzle-orm";
 import {
   accountAccessTable,
+  athleteInvitesTable,
   db,
   statTrackerSharesTable,
 } from "@workspace/db";
@@ -75,6 +76,7 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
   const ownerId = `tracker-share-owner-${crypto.randomUUID()}`;
   const viewerId = `tracker-share-viewer-${crypto.randomUUID()}`;
   const foreignId = `tracker-share-foreign-${crypto.randomUUID()}`;
+  const publicToken = crypto.randomUUID();
   const app = express();
   const eventsAbortController = new AbortController();
 
@@ -95,6 +97,20 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
       ownerClerkUserId: ownerId,
       role: "fan",
       accessMode: "full",
+    });
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: foreignId,
+      role: "fan",
+      accessMode: "full",
+    });
+    await db.insert(athleteInvitesTable).values({
+      ownerClerkUserId: ownerId,
+      publicToken,
+      athleteName: "Maya",
+      teamName: "Falcons",
+      seasonName: "Fall 2026",
+      seasonEndsAt: new Date("2027-01-01T00:00:00.000Z"),
+      sport: "football",
     });
     const address = server.address();
     assert.ok(address && typeof address === "object");
@@ -129,6 +145,7 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     assert.equal(publicView.game.events.length, 2);
     assert.equal(publicView.game.events[0]?.attribution, "team");
     assert.equal(publicView.game.events[1]?.attribution, "athlete");
+    assert.equal(publicView.publicFanCardPath, null, "live scoreboards do not offer the follow link");
     assert.equal((publicView as unknown as Record<string, unknown>).ownerClerkUserId, undefined);
     assert.equal((publicView.game as unknown as Record<string, unknown>).notes, undefined);
     const boundaryEvents = [
@@ -182,7 +199,62 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     );
     assert.equal(update.revision, 2);
     assert.equal(update.game.score, 21);
+    assert.equal(update.publicFanCardPath, null, "paused scoreboards do not offer the follow link");
     assert.match(await readEvent('"revision":2'), /"score":21/);
+
+    const finalUpdate = await requestJson(
+      baseUrl,
+      "PATCH",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      ownerId,
+      UpdateStatTrackerShareBody.parse({
+        ...input,
+        game: { ...game, score: 21, status: "final" },
+        expectedRevision: 2,
+      }),
+      UpdateStatTrackerShareResponse.parse,
+    );
+    assert.equal(finalUpdate.publicFanCardPath, `/fan/${publicToken}`);
+    assert.match(await readEvent('"revision":3'), new RegExp(`/fan/${publicToken}`));
+
+    await db.update(athleteInvitesTable)
+      .set({ showHypeCard: false })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const hiddenCardView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(hiddenCardView.publicFanCardPath, null, "hidden HYPE Cards are not promoted from a final scoreboard");
+
+    await db.update(athleteInvitesTable)
+      .set({ showHypeCard: true, paused: true })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const pausedCardView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(pausedCardView.publicFanCardPath, null, "paused HYPE Cards are not promoted from a final scoreboard");
+
+    await db.update(athleteInvitesTable)
+      .set({ paused: false, athleteName: "Jordan" })
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    const differentAthleteView = await requestJson(
+      baseUrl,
+      "GET",
+      `/api/stat-tracker-shares/${created.shareToken}`,
+      viewerId,
+      undefined,
+      CreateStatTrackerShareResponse.parse,
+    );
+    assert.equal(differentAthleteView.publicFanCardPath, null, "a card for another athlete is not linked");
 
     await assert.rejects(
       () => requestJson(
@@ -207,7 +279,7 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
       (error: unknown) => {
         assert.ok(error instanceof ApiContractError);
         assert.equal(error.status, 409);
-        assert.equal((error.data as { current: typeof update }).current.revision, 2);
+        assert.equal((error.data as { current: typeof update }).current.revision, 3);
         return true;
       },
     );
@@ -247,7 +319,9 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     eventsAbortController.abort();
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, foreignId));
   }
 });
 
@@ -340,6 +414,11 @@ test("owner share list requires auth and excludes other owners and expired share
   app.use("/api", statTrackerSharesRouter);
   const server = app.listen(0);
   try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
     const now = Date.now();
     const rows = await db.insert(statTrackerSharesTable).values([
       {
@@ -393,6 +472,7 @@ test("owner share list requires auth and excludes other owners and expired share
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
     await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, otherId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }
 });
 
@@ -410,6 +490,11 @@ test("duplicate creates return one active token sequentially and concurrently", 
   app.use("/api", statTrackerSharesRouter);
   const server = app.listen(0);
   try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
     const address = server.address();
     assert.ok(address && typeof address === "object");
     const url = `http://127.0.0.1:${address.port}/api/stat-tracker-shares`;
@@ -439,5 +524,6 @@ test("duplicate creates return one active token sequentially and concurrently", 
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }
 });

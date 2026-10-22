@@ -215,6 +215,8 @@ function makeFixtureServer() {
       const fanMatch = path.match(/^\/api\/athlete-invites\/([^/]+)\/fan$/);
       if (fanMatch && method === 'GET') {
         const activeShare = state.shares.find((share) => share.shareToken === state.activeShareToken);
+        const finalShare = state.shares.find((share) => share.game.status === 'final');
+        const finalGame = finalShare?.game;
         const invite = {
           inviteToken,
           hypesEnabled: true,
@@ -227,7 +229,29 @@ function makeFixtureServer() {
           photoUrl: null,
           hypeCard: null,
           videos: [],
-          stats: null,
+          stats: finalGame && finalShare ? {
+            athleteName: finalShare.athleteName,
+            sport: 'basketball',
+            gamesPlayed: 1,
+            score: finalGame.score,
+            record: {
+              wins: Number(finalGame.score > finalGame.opponentScore),
+              losses: Number(finalGame.score < finalGame.opponentScore),
+              ties: Number(finalGame.score === finalGame.opponentScore),
+              gamesPlayed: 1,
+            },
+            games: [{
+              date: finalGame.date,
+              opponent: finalGame.opponent,
+              score: finalGame.score,
+              opponentScore: finalGame.opponentScore,
+              scoreRecorded: true,
+              stats: finalGame.stats,
+              athleteStats: { 'two-point': 1 },
+            }],
+            stats: finalGame.stats,
+            updatedAt: finalShare.updatedAt,
+          } : null,
           scheduleEvents: [],
           showEvents: false,
           events: [],
@@ -465,6 +489,14 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await waitUi(finalCard, `!document.querySelector('[data-testid="button-living-card-stats"]')?.classList.contains('living-card-control-live') && !document.querySelector('[data-testid="button-living-card-live-taps"]')?.classList.contains('living-card-control-live')`);
     await click(finalCard, 'button-living-card-stats');
     await waitUi(finalCard, `document.querySelector('[data-testid="fan-card-live-scoreboard"]') === null`);
+    await waitUi(finalCard, `document.querySelector('[data-testid="living-card-selected-game"]')?.textContent?.includes('FINAL')`);
+    const finalRecapText = await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"living-card-selected-game\\"]")?.textContent || ""',
+      finalCard,
+    );
+    assert.match(finalRecapText, /FINAL/);
+    assert.match(finalRecapText, /Combined team stats/);
+    assert.match(finalRecapText, /individual stats/);
     await click(finalCard, 'button-living-card-live-taps');
     await waitUi(finalCard, `Boolean(document.querySelector('[data-testid="live-taps-not-active"]'))`);
     await close(finalCard);

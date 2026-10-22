@@ -1002,6 +1002,15 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.equal(finalFallback.liveGame, null);
     assert.equal(finalFallback.stats?.gamesPlayed, 1);
     assert.equal(finalFallback.stats?.stats.points, 18);
+    assert.deepEqual(finalFallback.stats?.games[0], {
+      date: dateKey(-1),
+      opponent: "Comets",
+      score: 42,
+      opponentScore: 40,
+      scoreRecorded: true,
+      stats: { points: 18 },
+      athleteStats: {},
+    });
 
     const [expiredSession] = await db.insert(statTrackerSharesTable).values({
       ownerClerkUserId: ownerId,

@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
+  ArrowRight,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -372,6 +373,35 @@ export function PublicStatTrackerPage() {
                 <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Revision {data.revision}</span>
               </div>
             </div>
+
+            {game.status === "final" && (
+              <section
+                className="mt-4 flex flex-col gap-4 border border-primary/35 bg-primary/10 p-4 clip-angled sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                aria-live="polite"
+                data-testid="stat-tracker-final-thank-you"
+              >
+                <div className="min-w-0">
+                  <h2 className="font-display text-xl uppercase tracking-wide text-foreground">
+                    Thanks for watching {data.athleteName || "the game"}!
+                  </h2>
+                  {data.publicFanCardPath && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Keep cheering them on—visit their HYPE Card to follow.
+                    </p>
+                  )}
+                </div>
+                {data.publicFanCardPath && (
+                  <a
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-primary bg-primary px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    href={`${basePath}${data.publicFanCardPath}`}
+                    data-testid="link-final-fan-card"
+                    aria-label={`Visit ${data.athleteName || "the athlete"}'s HYPE Card to follow`}
+                  >
+                    Visit HYPE Card <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </a>
+                )}
+              </section>
+            )}
 
             {allStats.length > 0 && (
               <section className="mt-5 border border-foreground/10 bg-card p-5 clip-angled sm:p-7" data-testid="stat-tracker-stats-summary">

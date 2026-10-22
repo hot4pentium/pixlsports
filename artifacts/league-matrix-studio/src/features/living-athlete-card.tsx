@@ -583,7 +583,7 @@ export function LivingAthleteCardPage({
                                   >
                                     <span>
                                       <strong>{game.opponent ? `vs ${game.opponent}` : `Game ${index + 1}`}</strong>
-                                      <small>{formatDate(game.date)}</small>
+                                      <small>{formatDate(game.date)} · FINAL</small>
                                     </span>
                                     <span className={`living-card-result living-card-result-${outcome ?? 'pending'}`}>
                                       {outcome ?? '—'}
@@ -599,7 +599,7 @@ export function LivingAthleteCardPage({
                               <section className="living-card-game-detail" aria-label="Selected game stats" data-testid="living-card-selected-game">
                                 <div>
                                   <h4>{selectedGameOption.game.opponent ? `vs ${selectedGameOption.game.opponent}` : 'Game recap'}</h4>
-                                  <p>{formatDate(selectedGameOption.game.date)} · {selectedGameOption.game.scoreRecorded
+                                  <p>FINAL · {formatDate(selectedGameOption.game.date)} · {selectedGameOption.game.scoreRecorded
                                     ? `${selectedGameOption.game.score}–${selectedGameOption.game.opponentScore}`
                                     : 'Final score not recorded'}</p>
                                 </div>

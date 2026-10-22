@@ -3821,6 +3821,9 @@ components:
             updatedAt: { type: string, format: date-time }
             expiresAt: { type: string, format: date-time }
             canManage: { type: boolean }
+            publicFanCardPath:
+              type: ["string", "null"]
+              maxLength: 512
     StatTrackerConflict:
       type: object
       required: [error, current]

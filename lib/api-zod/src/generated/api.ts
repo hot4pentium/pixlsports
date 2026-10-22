@@ -2039,6 +2039,8 @@ export const listStatTrackerSharesResponseOneGameEventsItemYardsMin = 0;
 export const listStatTrackerSharesResponseOneGameEventsMax = 10;
 
 
+export const listStatTrackerSharesResponseTwoPublicFanCardPathMax = 512;
+
 
 
 export const ListStatTrackerSharesResponseItem = zod.object({
@@ -2073,7 +2075,8 @@ export const ListStatTrackerSharesResponseItem = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
-  "canManage": zod.boolean()
+  "canManage": zod.boolean(),
+  "publicFanCardPath": zod.string().max(listStatTrackerSharesResponseTwoPublicFanCardPathMax).nullish()
 }))
 export const ListStatTrackerSharesResponse = zod.array(ListStatTrackerSharesResponseItem)
 
@@ -2172,6 +2175,8 @@ export const createStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 export const createStatTrackerShareResponseOneGameEventsMax = 10;
 
 
+export const createStatTrackerShareResponseTwoPublicFanCardPathMax = 512;
+
 
 
 export const CreateStatTrackerShareResponse = zod.object({
@@ -2206,7 +2211,8 @@ export const CreateStatTrackerShareResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
-  "canManage": zod.boolean()
+  "canManage": zod.boolean(),
+  "publicFanCardPath": zod.string().max(createStatTrackerShareResponseTwoPublicFanCardPathMax).nullish()
 }))
 
 
@@ -2248,6 +2254,8 @@ export const getStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 export const getStatTrackerShareResponseOneGameEventsMax = 10;
 
 
+export const getStatTrackerShareResponseTwoPublicFanCardPathMax = 512;
+
 
 
 export const GetStatTrackerShareResponse = zod.object({
@@ -2282,7 +2290,8 @@ export const GetStatTrackerShareResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
-  "canManage": zod.boolean()
+  "canManage": zod.boolean(),
+  "publicFanCardPath": zod.string().max(getStatTrackerShareResponseTwoPublicFanCardPathMax).nullish()
 }))
 
 
@@ -2387,6 +2396,8 @@ export const updateStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 export const updateStatTrackerShareResponseOneGameEventsMax = 10;
 
 
+export const updateStatTrackerShareResponseTwoPublicFanCardPathMax = 512;
+
 
 
 export const UpdateStatTrackerShareResponse = zod.object({
@@ -2421,7 +2432,8 @@ export const UpdateStatTrackerShareResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
-  "canManage": zod.boolean()
+  "canManage": zod.boolean(),
+  "publicFanCardPath": zod.string().max(updateStatTrackerShareResponseTwoPublicFanCardPathMax).nullish()
 }))
 
 
