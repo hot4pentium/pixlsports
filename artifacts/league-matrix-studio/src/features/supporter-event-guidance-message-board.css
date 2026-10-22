@@ -120,66 +120,37 @@
   overflow-wrap: anywhere;
 }
 
-.supporter-event-guidance-board__prep {
+.supporter-event-guidance-board__action {
   flex: 0 0 auto;
-  padding: 2px 2px 0;
+  padding: 0 2px;
 }
 
-.supporter-event-guidance-board__prep-label {
-  margin: 0 0 2px;
-  color: #ffcf80;
-  font-size: 7px;
-  font-weight: 900;
-  letter-spacing: .08em;
-  line-height: 1.1;
-  text-transform: uppercase;
-}
-
-.supporter-event-guidance-board__prep-copy {
-  display: -webkit-box;
-  overflow: hidden;
-  margin: 0 0 5px;
-  color: #fff;
-  font-size: 8px;
-  font-weight: 600;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.supporter-event-guidance-board__prep button {
+.supporter-event-guidance-board__action button {
   display: flex;
   min-height: 44px;
-  width: 100%;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 6px;
+  padding: 0 2px;
   border: 0;
-  border-radius: 6px;
-  background: #ffbe70;
-  box-shadow: 0 3px 0 #cf7e34;
-  color: #163456;
+  background: transparent;
+  color: #ffcf80;
   font-family: 'DM Sans', sans-serif;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 900;
-  letter-spacing: .04em;
+  letter-spacing: .06em;
   text-align: left;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms ease;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 160ms ease;
 }
 
-.supporter-event-guidance-board__prep button:hover {
-  background: #ffca87;
+.supporter-event-guidance-board__action button:hover {
+  color: #fff;
 }
 
-.supporter-event-guidance-board__prep button:active {
-  transform: translateY(2px);
-}
-
-.supporter-event-guidance-board__prep button:focus-visible {
+.supporter-event-guidance-board__action button:focus-visible {
   outline: 3px solid #fff;
   outline-offset: 2px;
 }
@@ -228,29 +199,17 @@
     line-height: 1.05;
   }
 
-  .supporter-event-guidance-board__prep {
+  .supporter-event-guidance-board__action {
     padding: 0 1px;
   }
 
-  .supporter-event-guidance-board__prep-label {
-    margin-bottom: 1px;
-    font-size: 6px;
-  }
-
-  .supporter-event-guidance-board__prep-copy {
-    margin-bottom: 3px;
-    font-size: 7px;
-    line-height: 1.1;
-  }
-
-  .supporter-event-guidance-board__prep button {
-    padding-inline: 6px;
-    font-size: 7px;
+  .supporter-event-guidance-board__action button {
+    font-size: 8px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .supporter-event-guidance-board__prep button {
+  .supporter-event-guidance-board__action button {
     transition: none;
   }
 }

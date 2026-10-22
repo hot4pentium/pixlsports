@@ -5,7 +5,6 @@ type SupporterEventGuidanceMessageBoardProps = {
   category: string;
   title: string;
   dateTime: string;
-  preparation: string;
   onOpen: () => void;
 };
 
@@ -13,7 +12,6 @@ export function SupporterEventGuidanceMessageBoard({
   category,
   title,
   dateTime,
-  preparation,
   onOpen,
 }: SupporterEventGuidanceMessageBoardProps) {
   return (
@@ -36,9 +34,7 @@ export function SupporterEventGuidanceMessageBoard({
           </div>
         )}
       </article>
-      <div className="supporter-event-guidance-board__prep">
-        <p className="supporter-event-guidance-board__prep-label">Game-day prep</p>
-        <p className="supporter-event-guidance-board__prep-copy">{preparation}</p>
+      <div className="supporter-event-guidance-board__action">
         <button
           type="button"
           onClick={onOpen}

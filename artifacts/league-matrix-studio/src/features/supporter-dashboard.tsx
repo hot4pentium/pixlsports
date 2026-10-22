@@ -1080,7 +1080,6 @@ export function SupporterDashboardView({
               formatDateDisplay(guidanceEventCard.date),
               formatTimeDisplay(guidanceEventCard.time),
             ].filter(Boolean).join(' · ')}
-            preparation={getSupporterPreparationCopy(guidanceEventCard.type).description}
             onOpen={openGuidanceEventCard}
           />
         )}

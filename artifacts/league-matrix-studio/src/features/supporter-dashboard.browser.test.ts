@@ -1693,7 +1693,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       page.sessionId,
     );
     assert.match(standalonePrepBoard, /Night Owls/);
-    assert.match(standalonePrepBoard, /Game day is coming up\. Check what you need before you leave\./);
+    assert.doesNotMatch(standalonePrepBoard, /Game-day prep|Game day is coming up/);
     const standalonePrepBoardAction = await connection.evaluate<boolean>(
       `Boolean(document.querySelector('[data-testid="upcoming-event-badge"] [data-testid="button-guidance-event-card"]'))`,
       page.sessionId,
@@ -2066,6 +2066,22 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:share-test-card"] .game-on-collection__actions')?.hidden === true`,
       page.sessionId,
     ), true, 'Share should be offered on the opened card, not the compact grid tile');
+    const trackerStateColors = await connection.evaluate<{ inactive: string; active: string; initiallyExpanded: string | null }>(`(() => {
+      const tracker = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]');
+      if (!(tracker instanceof HTMLButtonElement)) throw new Error('The Stat Tracker action is unavailable');
+      const initiallyExpanded = tracker.getAttribute('aria-expanded');
+      const inactive = getComputedStyle(tracker).backgroundColor;
+      tracker.setAttribute('aria-expanded', 'true');
+      const active = getComputedStyle(tracker).backgroundColor;
+      if (initiallyExpanded === null) tracker.removeAttribute('aria-expanded');
+      else tracker.setAttribute('aria-expanded', initiallyExpanded);
+      return { inactive, active, initiallyExpanded };
+    })()`, page.sessionId);
+    assert.deepEqual(trackerStateColors, {
+      inactive: 'rgb(231, 242, 255)',
+      active: 'rgb(18, 53, 92)',
+      initiallyExpanded: 'false',
+    }, 'Stat Tracker should be neutral by default and dark only in its expanded state');
 
     await connection.evaluate(`(() => {
       window.__eventCardOriginalNavigatorProps = {
@@ -2088,19 +2104,22 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       sharedUrl: string;
       expectedUrl: string;
       selectedCardActionVisible: boolean;
+      editArrowVisible: boolean;
+      removedActionTilesAbsent: boolean;
     }>(`(() => {
       const dialog = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"]');
-      const link = dialog?.querySelector('[data-testid="link-open-game-on-card-share:share-test-card"]');
       const cardAction = dialog?.querySelector('[data-testid="button-share-game-on-card-share:share-test-card"]');
       return {
         sharedUrl: window.__eventCardShareCalls[0]?.url ?? '',
-        expectedUrl: link instanceof HTMLAnchorElement
-          ? new URL(link.getAttribute('href') || '', location.href).href
-          : '',
+        expectedUrl: new URL('/game-on/share-test-card', location.href).href,
         selectedCardActionVisible: Boolean(cardAction?.getClientRects().length),
+        editArrowVisible: Boolean(dialog?.querySelector('[data-testid^="button-edit-event-arrow-"]')?.getClientRects().length),
+        removedActionTilesAbsent: !dialog?.querySelector('[data-testid^="button-edit-calendar-"], [data-testid^="button-copy-game-on-card-link-"], [data-testid^="link-open-game-on-card-"]'),
       };
     })()`, page.sessionId);
     assert.equal(sharedCardDetails.selectedCardActionVisible, true, 'Share should be visible on the selected Event Card');
+    assert.equal(sharedCardDetails.editArrowVisible, true, 'the Event Card arrow should provide the edit entry point');
+    assert.equal(sharedCardDetails.removedActionTilesAbsent, true, 'Details, Copy link, and Open card should not appear as action tiles');
     assert.equal(sharedCardDetails.sharedUrl, sharedCardDetails.expectedUrl,
       'the device share sheet should receive this Event Card public link');
 
@@ -2162,6 +2181,15 @@ test('Event Card sharing sends the selected card link and copies it when sharing
         else delete navigator[key];
       }
     })()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-edit-event-arrow-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card[data-calendar-open="true"] [data-testid="input-inline-date"]'))`, Boolean);
+    assert.match(await connection.evaluate<string>(
+      `document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-close-calendar-editor-"]')?.textContent || ''`,
+      page.sessionId,
+    ), /Back to Event Card/);
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-close-calendar-editor-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.activeElement?.getAttribute('data-testid')?.startsWith('button-edit-event-arrow-') === true`, Boolean);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -2665,18 +2693,22 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           && Array.from(card.querySelectorAll('.game-on-collection__detail-value')).map((value) => value.textContent?.trim()).join('|') === '6:30 PM|Northside Gym',
         editorOnFront: Boolean(card.querySelector('.game-on-collection__flip-front [data-testid^="game-on-inline-editor-"]')),
         options: options.filter((option) => option.getClientRects().length > 0)
-          .map((option) => option.textContent?.trim() || ''),
-        optionsAreTouchFriendly: options.length === 3 && options.every((option) => option.getBoundingClientRect().height >= 44),
+          .map((option) => {
+            const label = option.cloneNode(true);
+            label.querySelector('.game-on-collection__suggested-badge')?.remove();
+            return label.textContent?.trim() || '';
+          }),
+        optionsAreTouchFriendly: options.length === 2 && options.every((option) => option.getBoundingClientRect().height >= 44),
       };
     })()`, page.sessionId), {
       expanded: true,
       detailVisible: true,
       factsVisible: true,
       editorOnFront: false,
-      options: ['Prep', 'Stat Tracker', 'Details'],
+      options: ['Prep', 'Stat Tracker'],
       optionsAreTouchFriendly: true,
     });
-    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-edit-calendar-"]'))
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-edit-event-arrow-"]'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
       .some((card) => card.getAttribute('data-details-open') === 'true'
@@ -2931,22 +2963,25 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       sharedUrl: string;
       expectedUrl: string;
       selectedCardActionVisible: boolean;
+      editArrowVisible: boolean;
+      removedActionTilesAbsent: boolean;
     }>(`(() => {
       const dialog = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"]');
-      const link = dialog?.querySelector('[data-testid="link-open-game-on-card-share:filter-test-published"]');
       const cardAction = dialog?.querySelector('[data-testid="button-share-game-on-card-share:filter-test-published"]');
       return {
         sharedUrl: window.__eventCardShareCalls[0]?.url ?? '',
-        expectedUrl: link instanceof HTMLAnchorElement
-          ? new URL(link.getAttribute('href') || '', location.href).href
-          : '',
+        expectedUrl: new URL('/game-on/filter-test-published', location.href).href,
         selectedCardActionVisible: Boolean(cardAction?.getClientRects().length),
+        editArrowVisible: Boolean(dialog?.querySelector('[data-testid^="button-edit-event-arrow-"]')?.getClientRects().length),
+        removedActionTilesAbsent: !dialog?.querySelector('[data-testid^="button-edit-calendar-"], [data-testid^="button-copy-game-on-card-link-"], [data-testid^="link-open-game-on-card-"]'),
       };
     })()`, page.sessionId);
     assert.deepEqual(sharedCardDetails, {
       sharedUrl: sharedCardDetails.expectedUrl,
       expectedUrl: sharedCardDetails.expectedUrl,
       selectedCardActionVisible: true,
+      editArrowVisible: true,
+      removedActionTilesAbsent: true,
     }, 'Share should send the selected Event Card public link');
     await connection.evaluate(`(() => {
       window.__eventCardCopiedUrl = '';
@@ -4359,10 +4394,11 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       game?.querySelector('.game-on-collection__summary')?.click();
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-edit-calendar-"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-edit-event-arrow-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card[data-calendar-open=\\"true\\"] [data-testid=\\"input-inline-date\\"]") !== null', Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-calendar-editor-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-calendar-open") === "false"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid")?.startsWith("button-edit-event-arrow-") === true', Boolean);
 
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
 
@@ -5191,12 +5227,12 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
     }>(`(() => {
       const card = document.querySelector('.game-on-collection__dialog-card');
       return {
-        calendarLabel: card?.querySelector('[data-testid^="button-edit-calendar-"]')?.getAttribute('aria-label') || '',
+        calendarLabel: card?.querySelector('[data-testid^="button-edit-event-arrow-"]')?.getAttribute('aria-label') || '',
         prepDestination: card?.querySelector('[data-testid^="button-open-card-prep-"]')?.getAttribute('data-prep-href') || '',
       };
     })()`, session);
     assert.deepEqual(eventCardActions, {
-      calendarLabel: 'Details: edit event',
+      calendarLabel: 'Edit event details',
       prepDestination: '/studio/checklist?gameId=game-1&eventType=game',
     });
   } finally {
@@ -5217,7 +5253,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
   }
 });
 
-test('the authenticated Supporter Hub restores upcoming Event Card preparation after reload', { concurrency: false }, async () => {
+test('the authenticated Supporter Hub restores the upcoming Event Card after reload', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-future-event-reload');
   let devServer: ChildProcess | undefined;
@@ -5317,7 +5353,7 @@ test('the authenticated Supporter Hub restores upcoming Event Card preparation a
     );
     assert.match(board, /The Northside Comets Select Travel Club vs Night Owls/);
     assert.match(board, /Jan 2, 2999 · 8:30 PM/);
-    assert.match(board, /Game day is coming up\. Check what you need before you leave\./);
+    assert.doesNotMatch(board, /Game-day prep|Game day is coming up/);
     assert.match(board, /Open Event Card/);
 
     await connection.evaluate(
@@ -5765,13 +5801,14 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
           const card = slot.querySelector('.supporter-hype-preview__surface'), c = card.getBoundingClientRect();
           const eventCard = event.querySelector('[data-testid="card-mobile-featured-event"]').getBoundingClientRect();
           const board = event.querySelector('[data-testid="upcoming-event-badge"]');
+          const ticket = board?.querySelector('.supporter-event-guidance-board__ticket');
+          const ticketRect = ticket?.getBoundingClientRect();
           const title = board?.querySelector('.supporter-event-guidance-board__title');
           const date = board?.querySelector('.supporter-event-guidance-board__date strong');
-          const preparation = board?.querySelector('.supporter-event-guidance-board__prep-copy');
           const action = board?.querySelector('[data-testid="button-guidance-event-card"]');
           const boardRect = board?.getBoundingClientRect();
           const actionRect = action?.getBoundingClientRect();
-          const textElements = [title, date, preparation].filter((element) => element instanceof HTMLElement);
+          const textElements = [title, date].filter((element) => element instanceof HTMLElement);
           const textFits = textElements.every((element) => {
             const rect = element.getBoundingClientRect();
             return rect.width > 0 && rect.height > 0
@@ -5802,6 +5839,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
               && boardRect.top >= eventCard.top && boardRect.bottom <= eventCard.bottom,
             messageTextFits: textFits,
             messageActionFits: Boolean(actionFits),
+            badgeExtended: Boolean(ticketRect && actionRect && ticketRect.height > actionRect.height * 2),
             graphicFits: !graphic || Boolean(graphicRect && graphicRect.left>=eventCard.left && graphicRect.right<=eventCard.right
               && graphicRect.top>=eventCard.top && graphicRect.bottom<=eventCard.bottom),
             graphicKeepsRatio: !graphic || (graphic instanceof HTMLImageElement && graphic.naturalWidth>0
@@ -5833,7 +5871,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
           };
         })()`);
         const messageTextMetrics = await evaluate<Array<{ selector: string; text: string; height: number; clientHeight: number; scrollHeight: number }>>(`Array.from(document.querySelectorAll(
-          '[data-testid="upcoming-event-badge"] .supporter-event-guidance-board__title, [data-testid="upcoming-event-badge"] .supporter-event-guidance-board__date strong, [data-testid="upcoming-event-badge"] .supporter-event-guidance-board__prep-copy',
+          '[data-testid="upcoming-event-badge"] .supporter-event-guidance-board__title, [data-testid="upcoming-event-badge"] .supporter-event-guidance-board__date strong',
         )).map((element) => ({
           selector: element.className,
           text: element.textContent?.trim() || '',
@@ -5843,7 +5881,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
         }))`);
         assert.deepEqual(layout, { equal: true, paired: true, cardWidthMatches: true, cardHeightMatches: true,
           cardTopMatches: true, cardsAligned: true, messageBoardFits: true, messageTextFits: true,
-          messageActionFits: true, graphicFits: true, graphicKeepsRatio: true,
+          messageActionFits: true, badgeExtended: true, graphicFits: true, graphicKeepsRatio: true,
           eventActionAvailable: true, ratio: true, noOverflow: true,
           athleteCardRemoved: true, profileAccessRemainsInHeader: true,
           hypeQuickLinkRemoved: true, cardPreviewStillLinks: true,
@@ -6010,10 +6048,10 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
         return board instanceof HTMLElement
           && board.querySelector('.supporter-event-guidance-board__title')
           && board.querySelector('.supporter-event-guidance-board__date')
-          && board.querySelector('.supporter-event-guidance-board__prep-copy')
+           && !board.querySelector('.supporter-event-guidance-board__prep-label, .supporter-event-guidance-board__prep-copy')
           && action instanceof HTMLButtonElement
           && action.closest('a') === null;
-      })()`), true, 'the upcoming Event Card keeps its details, preparation copy, and native action');
+      })()`), true, 'the upcoming Event Card keeps its details and native open action without the prep copy');
     await evaluate(`window.__setSupporterDashboardEvents([])`);
     await wait(`document.querySelector('[data-testid="upcoming-calendar-events-empty"]')?.textContent.includes('No upcoming games or practices')`);
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`), true);
@@ -7651,25 +7689,29 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       .some((card) => card.classList.contains('game-on-collection__card--selected')
         && card.querySelector('[data-testid^="button-open-card-prep-"]')?.getClientRects().length
         && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length
-        && card.querySelector('[data-testid^="button-edit-calendar-"]')?.getClientRects().length)`, Boolean);
+        && card.querySelector('[data-testid^="button-edit-event-arrow-"]')?.getClientRects().length)`, Boolean);
     const primaryRoutes = await connection.evaluate<Record<string, string>>(`(() => {
       const card = document.querySelector('.game-on-collection__card--selected');
       const prep = card?.querySelector('[data-testid^="button-open-card-prep-"]');
       const stats = card?.querySelector('[data-testid^="button-open-stat-tracker-"]');
-      const calendar = card?.querySelector('[data-testid^="button-edit-calendar-"]');
+      const calendar = card?.querySelector('[data-testid^="button-edit-event-arrow-"]');
       const dashboardStats = document.querySelector('[data-testid="link-desktop-independent-stats"]');
       const dashboardStatsUrl = dashboardStats instanceof HTMLAnchorElement ? new URL(dashboardStats.href) : null;
       return {
         calendar: calendar?.getAttribute('aria-label') || '',
         prep: prep?.getAttribute('data-prep-href') || '',
         stats: stats?.textContent?.trim() || '',
+        statsBackground: stats instanceof HTMLElement ? getComputedStyle(stats).backgroundColor : '',
+        trackerExpanded: stats?.getAttribute('aria-expanded') || '',
         dashboardStatsPath: dashboardStatsUrl?.pathname || '',
         dashboardStatsEventId: dashboardStatsUrl?.searchParams.get('eventId') || '',
       };
     })()`, page.sessionId);
-    assert.equal(primaryRoutes.calendar, 'Details: edit event');
+    assert.equal(primaryRoutes.calendar, 'Edit event details');
     assert.match(primaryRoutes.prep, /^\/studio\/checklist(?:\?|$)/);
     assert.equal(primaryRoutes.stats, 'Open Stat Tracker');
+    assert.equal(primaryRoutes.statsBackground, 'rgb(231, 242, 255)', 'Stat Tracker should use a neutral style before opening');
+    assert.equal(primaryRoutes.trackerExpanded, 'false');
     assert.equal(primaryRoutes.dashboardStatsPath, '/studio/stat-tracker');
     assert.equal(await connection.evaluate<boolean>(`(() => {
       const card = document.querySelector('.game-on-collection__card--selected');
@@ -7679,6 +7721,14 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         && prep.getClientRects().length > 0 && stats.getClientRects().length > 0
         && prep.tabIndex >= 0 && stats.tabIndex >= 0;
     })()`, page.sessionId), true);
+    await connection.evaluate(`document.querySelector('.game-on-collection__card--selected [data-testid^="button-open-stat-tracker-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".game-on-collection__card--selected [data-testid^=\\"button-open-stat-tracker-\\"]")?.getAttribute("aria-expanded") === "true"', Boolean);
+    assert.equal(await connection.evaluate<string>(
+      'getComputedStyle(document.querySelector(".game-on-collection__card--selected [data-testid^=\\"button-open-stat-tracker-\\"]")).backgroundColor',
+      page.sessionId,
+    ), 'rgb(18, 53, 92)', 'Stat Tracker should use its active style only while selected');
+    await connection.evaluate(`document.querySelector('.game-on-collection__card--selected [data-testid^="button-close-stat-tracker-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".game-on-collection__card--selected [data-testid^=\\"button-open-stat-tracker-\\"]")?.getAttribute("aria-expanded") === "false"', Boolean);
     assert.equal(await connection.evaluate<boolean>(
       'Boolean(document.querySelector(\'[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"]\'))',
       page.sessionId,
@@ -9174,7 +9224,7 @@ test('deleting selected games and practices falls back across Calendar and works
       await connection!.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`, session);
       await waitFor(connection!, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-stats-"]\'))', Boolean);
       return connection!.evaluate<Record<string, string>>(`(() => {
-        const calendar = document.querySelector('.game-on-collection__dialog-card [data-testid^="button-edit-calendar-"]');
+        const calendar = document.querySelector('.game-on-collection__dialog-card [data-testid^="button-edit-event-arrow-"]');
         const prep = document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"]');
         const stats = document.querySelector('[data-testid^="link-card-stats-"]');
         return {
@@ -9204,7 +9254,7 @@ test('deleting selected games and practices falls back across Calendar and works
     await click('journey-return-dashboard');
     await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"]\'))', Boolean);
     const afterGame = await links();
-    assert.equal(afterGame.calendarAction, 'Details: edit event');
+    assert.equal(afterGame.calendarAction, 'Edit event details');
     for (const [tool, href] of Object.entries(afterGame).filter(([tool]) => tool !== 'calendarAction')) {
       assert.ok(href, `${tool} has a destination`);
       assert.doesNotMatch(href, /game-selected|Tigers|2026-10-13/, `${tool} must drop the deleted game`);
@@ -9222,7 +9272,7 @@ test('deleting selected games and practices falls back across Calendar and works
     await click('journey-return-dashboard');
     await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"]\'))', Boolean);
     const afterPractice = await links();
-    assert.equal(afterPractice.calendarAction, 'Details: edit event');
+    assert.equal(afterPractice.calendarAction, 'Edit event details');
     for (const [tool, href] of Object.entries(afterPractice).filter(([tool]) => tool !== 'calendarAction')) {
       assert.ok(href, `${tool} has a destination after practice deletion`);
       assert.doesNotMatch(href, /game-selected|practice-selected|Tigers|2026-10-14/, `${tool} must drop deleted event context`);

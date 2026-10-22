@@ -2,11 +2,11 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { Link, useLocation } from 'wouter';
 import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, Copy, ExternalLink, MapPin, Plus, Search, Share2, Swords, Trash2, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Share2, Swords, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { buildWorkspaceToolHref } from './workspace-context';
-import { copyGameOnCardPublicLink, gameOnCardPublicHref, shareGameOnCardPublicLink } from './game-on-card-links';
+import { shareGameOnCardPublicLink } from './game-on-card-links';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { getSuggestedGameOnAction } from './game-on-dashboard-model';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
@@ -177,13 +177,6 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     : undefined;
   const statusLabel = getCardStatus(card);
   const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
-  const copyEventCardLink = async () => {
-    if (!card.shareToken) return;
-    const copied = await copyGameOnCardPublicLink(card.shareToken);
-    setShareLinkNotice(copied
-      ? 'Event Card link copied.'
-      : 'Event Card link could not be copied. Open card to copy its address.');
-  };
   const shareEventCard = async () => {
     if (!card.shareToken) return;
     setShareLinkNotice('');
@@ -191,7 +184,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     if (result === 'shared') setShareLinkNotice('Event Card shared.');
     else if (result === 'copied') setShareLinkNotice('Event Card link copied.');
     else if (result === 'failed') {
-      setShareLinkNotice('Event Card link could not be shared or copied. Use Copy link or Open card.');
+      setShareLinkNotice('Event Card link could not be shared or copied.');
     }
   };
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
@@ -229,6 +222,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     >
       <div className="game-on-collection__flip-inner">
         <div ref={frontFaceRef} className="game-on-collection__flip-front" aria-hidden={panelOpen}>
+          <div className="game-on-collection__summary-wrap">
           <button
             type="button"
             className="game-on-collection__summary"
@@ -274,9 +268,22 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                 <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span className="game-on-collection__detail-label">Time</span><span className="game-on-collection__detail-value">{displayTime(card.time)}</span></span>
                 <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span className="game-on-collection__detail-label">Location</span><span className="game-on-collection__detail-value">{card.location || 'Location TBD'}</span></span>
               </span>
-              <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
             </span>
           </button>
+          {selected && !card.isUnsavedDraft && (
+            <button
+              type="button"
+              className="game-on-collection__card-arrow"
+              onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
+              aria-label="Edit event details"
+              aria-expanded={calendarOpen}
+              aria-controls={calendarOpen ? calendarPanelId : undefined}
+              data-testid={`button-edit-event-arrow-${card.id}`}
+            >
+              <ArrowRight size={17} aria-hidden="true" />
+            </button>
+          )}
+          </div>
           <div className={`game-on-collection__actions${practice ? ' game-on-collection__actions--practice' : ''}`} aria-label={`${practice ? 'Practice' : 'Game'} badge actions`} hidden={!selected}>
             {card.isUnsavedDraft && (
               <button
@@ -334,52 +341,17 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                         {suggestedAction === 'tracker' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                       </button>
                 )}
-                <button
-                  type="button"
-                  className="game-on-collection__action--details"
-                  onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
-                  aria-label="Details: edit event"
-                  aria-expanded={calendarOpen}
-                  aria-controls={calendarOpen ? calendarPanelId : undefined}
-                  data-testid={`button-edit-calendar-${card.id}`}
-                >
-                  <CalendarDays size={15} aria-hidden="true" />
-                  <span>Details</span>
-                </button>
                 {card.shareToken && (
-                  <>
-                    <button
-                      type="button"
-                      className="game-on-collection__action--details"
-                      onClick={() => void shareEventCard()}
-                      aria-label={`Share ${card.athleteName}'s Event Card`}
-                      data-testid={`button-share-game-on-card-${card.id}`}
-                    >
-                      <Share2 size={15} aria-hidden="true" />
-                      <span>Share</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="game-on-collection__action--details"
-                      onClick={() => void copyEventCardLink()}
-                      aria-label="Copy Event Card link"
-                      data-testid={`button-copy-game-on-card-link-${card.id}`}
-                    >
-                      <Copy size={15} aria-hidden="true" />
-                      <span>Copy link</span>
-                    </button>
-                    <Link
-                      href={gameOnCardPublicHref(card.shareToken)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="game-on-collection__action--details"
-                      aria-label="Open card"
-                      data-testid={`link-open-game-on-card-${card.id}`}
-                    >
-                      <ExternalLink size={15} aria-hidden="true" />
-                      <span>Open card</span>
-                    </Link>
-                  </>
+                  <button
+                    type="button"
+                    className="game-on-collection__action--share"
+                    onClick={() => void shareEventCard()}
+                    aria-label={`Share ${card.athleteName}'s Event Card`}
+                    data-testid={`button-share-game-on-card-${card.id}`}
+                  >
+                    <Share2 size={15} aria-hidden="true" />
+                    <span>Share</span>
+                  </button>
                 )}
                 {shareLinkNotice && (
                   <p className="basis-full text-xs font-semibold text-current" role="status" aria-live="polite">
@@ -410,7 +382,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
           {hasDetails && (
             <div id={calendarPanelId} data-testid={`panel-inline-calendar-${card.id}`} hidden={!calendarOpen}>
               <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-calendar-editor-${card.id}`}>
-                <ArrowLeft size={15} aria-hidden="true" /> Back to badge
+                <ArrowLeft size={15} aria-hidden="true" /> Back to Event Card
               </button>
               {renderSelectedCard?.(card, {
                 view: 'calendar',
@@ -568,7 +540,9 @@ export function GameOnDashboardCollection({
     }
     const frontAction = trigger.closest('.game-on-collection__flip-back')
       ?.closest('.game-on-collection__card')
-      ?.querySelector<HTMLButtonElement>(`.game-on-collection__action--${panel === 'calendar' ? 'details' : panel}`);
+      ?.querySelector<HTMLButtonElement>(panel === 'calendar'
+        ? '.game-on-collection__card-arrow'
+        : `.game-on-collection__action--${panel}`);
     panelTriggerRef.current = frontAction ?? trigger;
     setOpenPanel({ cardId: id, panel });
   };
