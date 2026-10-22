@@ -29,6 +29,7 @@ import {
   hasDivergentCorrectedFinalHistory,
   getTrackerSyncRecovery,
   getTrackerStorageKeys,
+  getTrackerFavoriteStorageKey,
   getFootballYardMetricId,
   getSportRule,
   isTrackerRevisionConflict,
@@ -39,10 +40,12 @@ import {
   readStoredActiveGame,
   readStoredTrackerConflict,
   readStoredTrackerSyncFailure,
+  readStoredTrackerFavorites,
   readStoredTrackerData,
   saveStoredActiveGame,
   saveStoredTrackerConflict,
   saveStoredTrackerSyncFailure,
+  saveStoredTrackerFavorites,
   seasonTotals,
   seasonYardTotals,
   syncTrackerDataToCloud,
@@ -107,6 +110,37 @@ function createMemoryStorage(initial: Record<string, string> = {}) {
     has: (key: string) => values.has(key),
   };
 }
+
+test('tracker favorites persist separately for each account and sport', () => {
+  const storage = createMemoryStorage();
+  const accountId = 'favorite-account';
+  const validBasketballIds = getSportRule('basketball').stats
+    .filter((item) => !item.liveHidden)
+    .map((item) => item.id);
+  const game = endGame(addStatEvent(createGameSession('basketball', {}), 'rebound'));
+  storage.setItem(getTrackerStorageKeys(accountId).history, JSON.stringify({ version: 1, games: [game] }));
+  const historyBefore = readStoredTrackerData(storage, accountId);
+
+  saveStoredTrackerFavorites(
+    storage,
+    accountId,
+    'basketball',
+    ['rebound', 'assist', 'rebound', 'unknown'],
+    validBasketballIds,
+  );
+
+  assert.deepEqual(
+    readStoredTrackerFavorites(storage, accountId, 'basketball', validBasketballIds),
+    ['rebound', 'assist'],
+  );
+  assert.deepEqual(readStoredTrackerFavorites(storage, 'another-account', 'basketball', validBasketballIds), []);
+  assert.deepEqual(readStoredTrackerFavorites(storage, accountId, 'soccer', ['goal', 'shot-on-target']), []);
+  assert.notEqual(
+    getTrackerFavoriteStorageKey(accountId, 'basketball'),
+    getTrackerFavoriteStorageKey(accountId, 'soccer'),
+  );
+  assert.deepEqual(readStoredTrackerData(storage, accountId), historyBefore);
+});
 
 function renderedText(renderer: { toJSON: () => ReactTestRendererNode | ReactTestRendererNode[] | null }): string {
   const visit = (node: ReactTestRendererNode | ReactTestRendererNode[] | null): string => {
@@ -458,6 +492,111 @@ test('athlete result panel defaults to result entry, supports skipping stats, an
 
   act(() => renderer.root.findByProps({ 'data-testid': 'button-open-advanced-team-stats' }).props.onClick());
   assert.equal(openedAdvanced, true);
+});
+
+test('live stat favorites move above other stats without changing stat recording or expansion', () => {
+  const rule = getSportRule('basketball');
+  const nonFeatured = rule.stats.find((item) => !item.featured && !item.liveHidden)!;
+  let game = createGameSession('basketball', { opponent: 'Northside' });
+  let favoriteStatIds = ['rebound'];
+  let showAllStats = false;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = () => createElement(LiveTrackerGame, {
+    currentGame: game,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured)),
+    showAllStats,
+    favoriteStatIds,
+    onToggleFavorite: (statId) => {
+      favoriteStatIds = favoriteStatIds.includes(statId)
+        ? favoriteStatIds.filter((id) => id !== statId)
+        : [...favoriteStatIds, statId];
+    },
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame) => { game = nextGame; },
+    onToggleShowAllStats: () => { showAllStats = !showAllStats; },
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+  act(() => { renderer = create(renderGame()); });
+
+  const cardIds = () => renderer.root
+    .findAll((node) => String(node.props['data-testid'] ?? '').startsWith('live-stat-card-'))
+    .map((node) => node.props['data-testid'] as string);
+  const expectedInitialOrder = [
+    'live-stat-card-rebound',
+    ...rule.stats
+      .filter((item) => item.featured && !item.liveHidden && item.id !== 'rebound')
+      .map((item) => `live-stat-card-${item.id}`),
+  ];
+  assert.deepEqual(cardIds(), expectedInitialOrder);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-favorites' })
+    .findAllByProps({ 'data-testid': 'live-stat-card-rebound' }).length, 1);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-other' })
+    .findAllByProps({ 'data-testid': 'live-stat-card-rebound' }).length, 0);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-toggle-show-all-stats' }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(showAllStats, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-other' })
+    .findAllByProps({ 'data-testid': `live-stat-card-${nonFeatured.id}` }).length, 1);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': `toggle-stat-favorite-${nonFeatured.id}` }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-favorites' })
+    .findAllByProps({ 'data-testid': `live-stat-card-${nonFeatured.id}` }).length, 1);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-other' })
+    .findAllByProps({ 'data-testid': `live-stat-card-${nonFeatured.id}` }).length, 0);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-toggle-show-all-stats' }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(showAllStats, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-favorites' })
+    .findAllByProps({ 'data-testid': `live-stat-card-${nonFeatured.id}` }).length, 1);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-other' })
+    .findAllByProps({ 'data-testid': `live-stat-card-${nonFeatured.id}` }).length, 0);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': `toggle-stat-favorite-${nonFeatured.id}` }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'live-stat-favorites-empty' }).length, 0);
+  assert.equal(cardIds().includes(`live-stat-card-${nonFeatured.id}`), false);
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'toggle-stat-favorite-rebound' }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.ok(renderer.root.findByProps({ 'data-testid': 'live-stat-favorites-empty' }));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-other' })
+    .findAllByProps({ 'data-testid': 'live-stat-card-rebound' }).length, 1);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'live-stat-rebound' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-assist' }).props.onClick();
+  });
+  assert.equal(game.stats.rebound, 1);
+  assert.equal(game.stats.assist, 1);
+  assert.deepEqual(countStatEventsByAttribution(game, ['rebound']), { team: 1, athlete: 0 });
+  assert.deepEqual(countStatEventsByAttribution(game, ['assist']), { team: 0, athlete: 1 });
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-toggle-show-all-stats' }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(showAllStats, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-group-other' })
+    .findAllByProps({ 'data-testid': `live-stat-card-${nonFeatured.id}` }).length, 1);
+  act(() => renderer.unmount());
 });
 
 test('live games use their saved sport when profile controls belong to another sport', () => {
@@ -1617,7 +1756,9 @@ test('long live tracker names cannot push score or featured stat controls off-sc
     /min-w-0/,
   );
   const featuredStatButtons = renderer.root.findAll(
-    (node) => typeof node.props['data-testid'] === 'string' && node.props['data-testid'].startsWith('live-stat-'),
+    (node) => node.type === 'button'
+      && typeof node.props['data-testid'] === 'string'
+      && node.props['data-testid'].startsWith('live-stat-'),
   );
   assert.ok(featuredStatButtons.length > 0);
   for (const button of featuredStatButtons) {

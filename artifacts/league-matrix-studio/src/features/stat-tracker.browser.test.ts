@@ -62,12 +62,15 @@ import {
   clearStoredTrackerSyncFailure,
   createGameSession,
   endGame,
+  getLiveTrackingStats,
   getSportRule,
   getTrackerStorageKeys,
   normalizeTrackerData,
   readStoredTrackerData,
   readStoredTrackerSyncFailure,
+  readStoredTrackerFavorites,
   saveStoredTrackerSyncFailure,
+  saveStoredTrackerFavorites,
   trackerSaveErrorMessage,
 } from './src/features/stat-tracker';
 import './src/index.css';
@@ -314,6 +317,34 @@ function TrackerHarness() {
       return null;
     }
   });
+  const favoriteSport = currentGame?.sport ?? (footballMode ? 'football' : 'soccer');
+  const validFavoriteIds = getLiveTrackingStats(
+    favoriteSport,
+    getSportRule(favoriteSport).stats.filter((item) => !item.liveHidden),
+  ).map((item) => item.id);
+  const [favoriteStatIds, setFavoriteStatIds] = useState(() =>
+    readStoredTrackerFavorites(window.localStorage, 'tracker-browser-user', favoriteSport, validFavoriteIds));
+  useEffect(() => {
+    setFavoriteStatIds(readStoredTrackerFavorites(
+      window.localStorage,
+      'tracker-browser-user',
+      favoriteSport,
+      validFavoriteIds,
+    ));
+  }, [favoriteSport]);
+  const toggleFavorite = (statId) => {
+    const nextFavorites = favoriteStatIds.includes(statId)
+      ? favoriteStatIds.filter((id) => id !== statId)
+      : [...favoriteStatIds, statId];
+    setFavoriteStatIds(nextFavorites);
+    saveStoredTrackerFavorites(
+      window.localStorage,
+      'tracker-browser-user',
+      favoriteSport,
+      nextFavorites,
+      validFavoriteIds,
+    );
+  };
   const [savedGames, setSavedGames] = useState(() => {
     try {
       return normalizeTrackerData(JSON.parse(window.localStorage.getItem(trackerHistoryStorageKey) || 'null')).games;
@@ -326,6 +357,7 @@ function TrackerHarness() {
   const [opponent, setOpponent] = useState(scheduledGame.opponent);
   const [notes, setNotes] = useState('');
   const [reviewed, setReviewed] = useState(false);
+  const [captureNotice, setCaptureNotice] = useState('');
   const historyRef = useRef(null);
   const persistActiveGame = (game) => {
     if (game) window.localStorage.setItem(trackerActiveStorageKey, JSON.stringify(game));
@@ -343,9 +375,12 @@ function TrackerHarness() {
   }, [nextGame]);
 
   window.__setTrackerNextGame = (game) => setNextGame(game || undefined);
-  window.__startSoccerRegression = () => persistActiveGame(createGameSession('soccer', {
-    date, opponent, notes, soccerPeriodFormat: 'halves',
-  }));
+  window.__startSoccerRegression = () => {
+    setCaptureNotice('');
+    persistActiveGame(createGameSession('soccer', {
+      date, opponent, notes, soccerPeriodFormat: 'halves',
+    }));
+  };
   window.__clearSoccerRegression = () => persistActiveGame(null);
   const report = selectedReportGameId
     ? buildGameReport(savedGames, 'football', selectedReportGameId)
@@ -355,7 +390,7 @@ function TrackerHarness() {
   if (reconnectRecoveryMode) return createElement(ReconnectRecoveryHarness);
   if (completionMode) return createElement(CompletionHarness);
 
-  return createElement('main', null,
+  return createElement('main', { className: 'studio-editor-page-background stat-tracker-editor-page min-h-dvh w-full min-w-0' },
     createElement('output', {
       hidden: true,
       'data-testid': 'tracker-next-game-source',
@@ -378,9 +413,15 @@ function TrackerHarness() {
           teamName: 'Falcons',
           displayStats: getSportRule('football').stats.filter((item) => !item.liveHidden && item.featured),
           showAllStats: false,
+          favoriteStatIds,
+          onToggleFavorite: toggleFavorite,
           saving: false,
-          captureNotice: '',
-          onCapture: () => {},
+           captureNotice,
+           onCapture: (kind, file) => setCaptureNotice(!file
+             ? 'No media selected. You can try again whenever you are ready.'
+             : kind === 'photo'
+               ? 'Photo ready for Falcons vs ' + (currentGame?.opponent || 'this game') + '. Tap Save to Photos below; Pixl Sports does not upload or store it here.'
+               : 'Video ready for Falcons vs ' + (currentGame?.opponent || 'this game') + '. Pixl Sports does not upload or store it here.'),
            onGameChange: persistActiveGame,
           onToggleShowAllStats: () => {},
            onLeaveGame: () => persistActiveGame(null),
@@ -532,6 +573,8 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
   let page: { sessionId: string; targetId: string } | undefined;
 
   try {
+    const capturedPhotoPath = resolve(tempDirectory, 'captured-photo.png');
+    await writeFile(capturedPhotoPath, Buffer.from('captured photo fixture'));
     await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
     const debugProbe = createServer();
     const { port: debugPort } = await listen(debugProbe);
@@ -564,6 +607,82 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await connection.evaluate('window.__startSoccerRegression()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]") !== null', Boolean);
     await connection.evaluate(`(() => {
+      Object.defineProperty(navigator, 'canShare', {
+        configurable: true,
+        value: (data) => Boolean(data?.files?.length),
+      });
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async (data) => {
+          window.__trackerPhotoShare = {
+            name: data.files[0].name,
+            type: data.files[0].type,
+            size: data.files[0].size,
+          };
+        },
+      });
+    })()`, page.sessionId);
+    const documentNode = await connection.send<{ root: { nodeId: number } }>('DOM.getDocument', {}, page.sessionId);
+    const photoInput = await connection.send<{ nodeId: number }>('DOM.querySelector', {
+      nodeId: documentNode.root.nodeId,
+      selector: '[data-testid="input-stat-tracker-capture-photo"]',
+    }, page.sessionId);
+    assert.ok(photoInput.nodeId, 'the game photo input should be mounted');
+    await connection.send('DOM.setFileInputFiles', { files: [capturedPhotoPath], nodeId: photoInput.nodeId }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-save-captured-photo\\"]") !== null', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"status-stat-tracker-capture-notice\\"]")?.textContent || ""', page.sessionId),
+      /Tap Save to Photos below/,
+    );
+    const capturedPhotoLayout = await connection.evaluate<{ viewport: number; document: number; scoreboardRight: number }>(`(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+      scoreboardRight: document.querySelector('[data-testid="live-tracker-scoreboard"]').getBoundingClientRect().right,
+    }))()`, page.sessionId);
+    assert.ok(capturedPhotoLayout.document <= capturedPhotoLayout.viewport + 1, 'captured-photo status must not widen the phone page');
+    assert.ok(capturedPhotoLayout.scoreboardRight <= capturedPhotoLayout.viewport + 1, 'scoreboard stays inside the phone viewport after capture');
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"button-save-captured-photo\\"]")?.textContent.trim() || ""', page.sessionId),
+      'Save to Photos',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-save-captured-photo\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.__trackerPhotoShare?.name === "captured-photo.png"', Boolean);
+    assert.equal(await connection.evaluate<string>('window.__trackerPhotoShare.type', page.sessionId), 'image/png');
+    assert.ok(await connection.evaluate<number>('window.__trackerPhotoShare.size', page.sessionId) > 0);
+    assert.equal(
+      await connection.evaluate<boolean>('localStorage.getItem("stat-tracker-browser-active-game")?.includes("captured-photo.png") || false', page.sessionId),
+      false,
+      'captured photo metadata must not be persisted with tracker data',
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"status-captured-photo-save\\"]")?.textContent || ""', page.sessionId),
+      /If you chose Save Image/,
+    );
+    await connection.evaluate(`Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false })`, page.sessionId);
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"toggle-stat-favorite-shot-on-target\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="toggle-stat-favorite-shot-on-target"]')?.getAttribute('aria-pressed') === 'true' &&
+      document.querySelector('[data-testid="live-stat-group-favorites"] [data-testid="live-stat-card-shot-on-target"]') !== null &&
+      document.activeElement?.getAttribute('data-testid') === 'toggle-stat-favorite-shot-on-target'`, Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"button-save-captured-photo\\"]")?.textContent.trim() || ""', page.sessionId),
+      'Download photo',
+      'unsupported file sharing should offer an explicit download instead',
+    );
+    assert.deepEqual(
+      await connection.evaluate<string[]>('JSON.parse(localStorage.getItem("leaguematrix-stat-tracker:favorites:tracker-browser-user:soccer"))', page.sessionId),
+      ['shot-on-target'],
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const star = document.querySelector('[data-testid="toggle-stat-favorite-shot-on-target"]').getBoundingClientRect();
+        const athlete = document.querySelector('[data-testid="athlete-stat-target-shot-on-target"]').getBoundingClientRect();
+        return star.width >= 44 && star.height >= 44 && athlete.width >= 44 && athlete.height >= 44;
+      })()`, page.sessionId),
+      true,
+      'mobile favorite and athlete controls should remain full-size touch targets',
+    );
+    await connection.evaluate(`(() => {
       const shot = document.querySelector('[data-testid="live-stat-shot-on-target"]');
       shot.click(); shot.click(); shot.click();
     })()`, page.sessionId);
@@ -572,6 +691,7 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await connection.evaluate('document.querySelector("[data-testid=\\"button-toggle-live-game-pause\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null', Boolean);
     assert.equal(await connection.evaluate<boolean>(`['live-stat-shot-on-target', 'athlete-stat-target-shot-on-target', 'score-adjust-athlete-increase'].every(id => document.querySelector('[data-testid="' + id + '"]').matches(':disabled'))`, page.sessionId), true);
+    assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"toggle-stat-favorite-shot-on-target\\"]")?.matches(":enabled")', page.sessionId), true);
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]").click()', page.sessionId);
     assert.equal(await connection.evaluate<number>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).events.length', page.sessionId), 3);
     await reloadPage(connection, page.sessionId);

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, Copy, ExternalLink, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Share2, Trophy, Video, X } from 'lucide-react';
+import { Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, Copy, ExternalLink, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Share2, Star, Trophy, Video, X } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -64,10 +64,12 @@ import {
   readStoredActiveGame,
   readStoredTrackerConflict,
   readStoredTrackerSyncFailure,
+  readStoredTrackerFavorites,
   readStoredTrackerData,
   saveStoredActiveGame,
   saveStoredTrackerConflict,
   saveStoredTrackerSyncFailure,
+  saveStoredTrackerFavorites,
   seasonTotals,
   seasonYardTotals,
   sports,
@@ -675,6 +677,8 @@ type LiveTrackerGameProps = {
   teamName: string;
   displayStats: StatDefinition[];
   showAllStats: boolean;
+  favoriteStatIds?: string[];
+  onToggleFavorite?: (statId: string) => void;
   saving: boolean;
   captureNotice: string;
   onCapture: (kind: 'photo' | 'video', file?: File) => void;
@@ -697,6 +701,17 @@ function latestYardEventIds(game: GameSession) {
   }, {});
 }
 
+function supportsTrackerPhotoSharing(file: File): boolean {
+  if (typeof navigator === 'undefined'
+    || typeof navigator.share !== 'function'
+    || typeof navigator.canShare !== 'function') return false;
+  try {
+    return navigator.canShare({ files: [file] });
+  } catch {
+    return false;
+  }
+}
+
 export function LiveTrackerGame({
   currentGame,
   rule: requestedRule,
@@ -706,6 +721,8 @@ export function LiveTrackerGame({
   teamName,
   displayStats: requestedStats,
   showAllStats,
+  favoriteStatIds = [],
+  onToggleFavorite = () => {},
   saving,
   captureNotice,
   onCapture,
@@ -714,11 +731,28 @@ export function LiveTrackerGame({
   onLeaveGame,
   onEndGame,
 }: LiveTrackerGameProps) {
+  const pendingFavoriteFocusRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const statId = pendingFavoriteFocusRef.current;
+    if (!statId) return;
+    pendingFavoriteFocusRef.current = null;
+    if (typeof document === 'undefined') return;
+    document.querySelector<HTMLButtonElement>(`[data-testid="toggle-stat-favorite-${statId}"]`)?.focus();
+  }, [favoriteStatIds]);
   // A restored game retains its sport even when profile/setup data changes.
   const rule = requestedRule.id === currentGame.sport ? requestedRule : getSportRule(currentGame.sport);
   const displayStats = requestedRule.id === currentGame.sport
     ? requestedStats
     : rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured));
+  const allStatCards = getLiveTrackingStats(currentGame.sport, rule.stats.filter((item) => !item.liveHidden));
+  const favoriteStatIdSet = new Set(favoriteStatIds);
+  const favoriteStatCards = allStatCards.filter((item) => favoriteStatIdSet.has(item.id));
+  const visibleStatCards = getLiveTrackingStats(currentGame.sport, displayStats)
+    .filter((item) => !favoriteStatIdSet.has(item.id));
+  const statGroups = [
+    { id: 'favorites', label: 'Favorites', stats: favoriteStatCards },
+    { id: 'other', label: 'Other stats', stats: visibleStatCards },
+  ];
   const currentGameRef = useRef(currentGame);
   const [yardDrafts, setYardDrafts] = useState<Record<string, number>>({});
   const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>(() => latestYardEventIds(currentGame));
@@ -849,6 +883,9 @@ export function LiveTrackerGame({
     .join('') || 'A';
 
   const [athleteImageFailed, setAthleteImageFailed] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<File | null>(null);
+  const [photoShareStatus, setPhotoShareStatus] = useState('');
+  const [sharingCapturedPhoto, setSharingCapturedPhoto] = useState(false);
   useEffect(() => {
     setAthleteImageFailed(false);
   }, [athleteImageUrl]);
@@ -861,9 +898,45 @@ export function LiveTrackerGame({
     const file = input.files?.[0];
     input.value = '';
     if (typeof input.blur === 'function') input.blur();
+    setCapturedPhoto(kind === 'photo' ? file ?? null : null);
+    setPhotoShareStatus('');
     onCapture(kind, file);
   };
 
+  const saveCapturedPhoto = async () => {
+    if (!capturedPhoto) return;
+    if (supportsTrackerPhotoSharing(capturedPhoto)) {
+      try {
+        // Invoke immediately from the tap so iOS can open its native share sheet.
+        const sharing = navigator.share({
+          files: [capturedPhoto],
+          title: capturedPhoto.name || 'Game-day photo',
+        });
+        setSharingCapturedPhoto(true);
+        await sharing;
+        setPhotoShareStatus('Share menu closed. If you chose Save Image, the photo is in Photos.');
+      } catch (error) {
+        setPhotoShareStatus(
+          error instanceof Error && error.name === 'AbortError'
+            ? 'Share menu closed without saving. Tap Save to Photos to open it again.'
+            : 'The photo is still available here. Tap Save to Photos to try again.',
+        );
+      } finally {
+        setSharingCapturedPhoto(false);
+      }
+      return;
+    }
+
+    const url = URL.createObjectURL(capturedPhoto);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = capturedPhoto.name || `game-photo-${currentGame.id}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setPhotoShareStatus('Photo downloaded. Open it from Downloads and choose Save Image to add it to Photos.');
+  };
   if (currentGame.sport === 'soccer' && currentGame.soccerPeriodFormat === null) {
     return (
       <section data-testid="live-tracker-layout" className="border border-border bg-card p-5 sm:p-7">
@@ -881,8 +954,8 @@ export function LiveTrackerGame({
 
   const phaseLabel = getGamePhaseLabel(currentGame);
   return (
-    <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
-      <div className="order-1 lg:col-start-1 lg:row-start-1">
+    <section data-testid="live-tracker-layout" className="grid min-w-0 w-full max-w-full gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
+      <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
         <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 border-t-2 border-t-accent bg-[#0B1F3A] p-3 text-white clip-angled-sm sm:p-6" aria-live="polite">
           <div className="flex min-w-0 items-center justify-between gap-3 pr-24 sm:pr-52"><span data-testid="live-tracker-game-state" className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className={`h-2 w-2 bg-current ${currentGame.status === 'live' ? 'animate-pulse' : ''}`} />{currentGame.status}</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
           <p data-testid="live-tracker-sport" className="mt-2 truncate text-xs font-bold uppercase tracking-widest text-white/70">{rule.label}</p>
@@ -924,7 +997,27 @@ export function LiveTrackerGame({
               <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => handleMediaSelection('video', event)} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
             </label>
           </div>
-          {captureNotice && <p className="mt-3 truncate text-[10px] font-bold uppercase tracking-widest text-primary" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}
+          {captureNotice && <p className="mt-3 min-w-0 max-w-full truncate text-[10px] font-bold uppercase tracking-widest text-primary" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}
+          {capturedPhoto && (
+            <div className="mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-2" data-testid="captured-photo-actions">
+              <button
+                type="button"
+                onClick={() => void saveCapturedPhoto()}
+                disabled={sharingCapturedPhoto}
+                aria-label={supportsTrackerPhotoSharing(capturedPhoto) ? 'Open sharing options to save this photo to Photos' : 'Download this game photo'}
+                data-testid="button-save-captured-photo"
+                className="min-h-11 shrink-0 border border-white/25 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white hover:border-primary hover:bg-white/10 disabled:opacity-60"
+              >
+                {sharingCapturedPhoto ? 'Opening share menu…' : supportsTrackerPhotoSharing(capturedPhoto) ? 'Save to Photos' : 'Download photo'}
+              </button>
+              <p className="min-w-0 flex-1 text-[10px] font-medium text-white/70">
+                {supportsTrackerPhotoSharing(capturedPhoto)
+                  ? 'Choose Save Image in the share menu.'
+                  : 'Download it, then save it to Photos from Downloads.'}
+              </p>
+            </div>
+          )}
+          {photoShareStatus && <p className="mt-2 min-w-0 max-w-full break-words text-[10px] font-bold text-white/80" role="status" data-testid="status-captured-photo-save">{photoShareStatus}</p>}
         </div>
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -955,8 +1048,18 @@ export function LiveTrackerGame({
             </label>
           </div>
         )}
-        <fieldset disabled={currentGame.status !== 'live'} aria-label="Record game stats" className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 disabled:opacity-50">
-          {getLiveTrackingStats(currentGame.sport, displayStats).map((item) => {
+        <div role="group" aria-label="Record game stats" className="space-y-5">
+          {statGroups.map((group) => (
+          group.id === 'other' && group.stats.length === 0 ? null : (
+          <section key={group.id} data-testid={`live-stat-group-${group.id}`}>
+            <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">{group.label}</h3>
+            {group.id === 'favorites' && group.stats.length === 0 ? (
+              <p className="border border-dashed border-border bg-background/30 px-3 py-3 text-xs text-muted-foreground" data-testid="live-stat-favorites-empty">
+                Star a stat card to keep it in Favorites.
+              </p>
+            ) : (
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+          {group.stats.map((item) => {
             const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
             const yardMetricId = isYardageTrackingAvailable(currentGame.sport)
               ? (isCombinedPassReception ? 'pass-yard' : getFootballYardMetricId(item.id))
@@ -981,7 +1084,7 @@ export function LiveTrackerGame({
             const activeYardEvent = activeYardEventId
               ? currentGame.events.find((event) => event.id === activeYardEventId)
               : undefined;
-            const yardControlEnabled = yardTrackingEnabled && Boolean(activeYardEvent);
+            const yardControlEnabled = currentGame.status === 'live' && yardTrackingEnabled && Boolean(activeYardEvent);
             const yardDraft = yardControlEnabled
               ? yardDrafts[item.id] ?? activeYardEvent?.yards ?? 0
               : 0;
@@ -1004,7 +1107,8 @@ export function LiveTrackerGame({
             const choicesAttribution = item.id === 'hit' ? baseballHitAttribution : baseballPitchAttribution;
             return (
               <div key={item.id} data-testid={`live-stat-card-${item.id}`} data-athlete-assigned={athleteAssigned ? 'true' : 'false'} className="relative min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
-                <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item, 'team')} aria-label={`Record ${item.label} for ${teamName || 'team'}`} aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined} aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? Boolean(choicesAttribution) : undefined} className="group block min-h-[76px] w-full min-w-0 overflow-hidden pr-12 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                <div className="flex min-w-0 gap-2">
+                <button type="button" disabled={currentGame.status !== 'live'} data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item, 'team')} aria-label={`Record ${item.label} for ${teamName || 'team'}`} aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined} aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? Boolean(choicesAttribution) : undefined} className="group block min-h-[84px] min-w-0 flex-1 overflow-hidden text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed">
                   <span data-testid={`stat-title-${item.id}`} className="block min-w-0 truncate text-xs font-bold uppercase tracking-wide text-muted-foreground group-hover:text-primary-ink sm:text-sm">{item.label}</span>
                   <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
                   <span data-testid={`stat-count-${item.id}`} className="mt-1 block truncate text-xs font-bold text-primary-ink">
@@ -1013,14 +1117,29 @@ export function LiveTrackerGame({
                   </span>
                   <span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Team {attributedCounts.team} · {athleteTargetName} {attributedCounts.athlete}</span>
                 </button>
+                <div className="flex shrink-0 flex-col gap-1">
                 <button
                   type="button"
+                  onClick={() => {
+                    pendingFavoriteFocusRef.current = item.id;
+                    onToggleFavorite(item.id);
+                  }}
+                  aria-label={`${favoriteStatIdSet.has(item.id) ? 'Remove' : 'Add'} ${item.label} ${favoriteStatIdSet.has(item.id) ? 'from' : 'to'} Favorites`}
+                  aria-pressed={favoriteStatIdSet.has(item.id)}
+                  data-testid={`toggle-stat-favorite-${item.id}`}
+                  className={`flex min-h-11 min-w-11 items-center justify-center border focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${favoriteStatIdSet.has(item.id) ? 'border-amber-300/60 bg-amber-300/10 text-amber-300' : 'border-border text-muted-foreground hover:border-primary hover:text-primary-ink'}`}
+                >
+                  <Star className={`h-4 w-4 ${favoriteStatIdSet.has(item.id) ? 'fill-current' : ''}`} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  disabled={currentGame.status !== 'live'}
                   onClick={() => recordStat(item, 'athlete')}
                   aria-label={`Record ${item.label} for ${athleteTargetName}`}
                   aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined}
                   aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? choicesAttribution === 'athlete' : undefined}
                   data-testid={`athlete-stat-target-${item.id}`}
-                  className="absolute right-2 top-2 flex min-h-11 min-w-11 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-primary/10 text-[10px] font-black uppercase text-primary-ink shadow-sm hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="flex min-h-11 min-w-11 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-primary/10 text-[10px] font-black uppercase text-primary-ink shadow-sm hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed"
                 >
                   {athleteImageUrl && !athleteImageFailed
                     ? (
@@ -1040,6 +1159,8 @@ export function LiveTrackerGame({
                     )
                     : <span aria-hidden="true" className="truncate">{athleteInitials}</span>}
                 </button>
+                </div>
+                </div>
                 {athleteAssigned && <span id={athleteAssignmentDescriptionId} className="sr-only">{athleteTargetName} is assigned to this stat.</span>}
                 {currentGame.sport === 'baseball' && item.id === 'hit' && baseballHitAttribution && (
                   <div className="mt-3 grid grid-cols-3 gap-1.5 border-t border-border/70 pt-3" data-testid="baseball-hit-choices">
@@ -1047,6 +1168,7 @@ export function LiveTrackerGame({
                       <button
                         key={choice.id}
                         type="button"
+                        disabled={currentGame.status !== 'live'}
                         onClick={() => recordBaseballHit(choice.id)}
                         data-testid={`baseball-hit-${choice.id}`}
                         className="min-h-10 border border-primary/30 bg-primary/5 px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-primary hover:bg-primary/15"
@@ -1063,6 +1185,7 @@ export function LiveTrackerGame({
                       <button
                         key={choice.id}
                         type="button"
+                        disabled={currentGame.status !== 'live'}
                         onClick={() => recordBaseballPitch(choice.id)}
                         data-testid={`baseball-pitch-${choice.id}`}
                         className="min-h-10 border border-primary/30 bg-primary/5 px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-primary hover:bg-primary/15"
@@ -1122,8 +1245,12 @@ export function LiveTrackerGame({
               </div>
             );
           })}
-        </fieldset>
-        <button type="button" onClick={onToggleShowAllStats} className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">{showAllStats ? 'Show featured stats' : 'Show more stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showAllStats ? 'rotate-180' : ''}`} /></button>
+            </div>
+            )}
+          </section>
+          )))}
+        </div>
+        <button type="button" data-testid="button-toggle-show-all-stats" onClick={onToggleShowAllStats} className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">{showAllStats ? 'Show featured stats' : 'Show more stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showAllStats ? 'rotate-180' : ''}`} /></button>
         <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary-ink" /> Game notes</span>
           <textarea value={currentGame.notes} onChange={(event) => onGameChange({ ...currentGame, notes: event.target.value })} placeholder="Add a note to look back on later." rows={4} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
         </label>
@@ -1271,6 +1398,7 @@ export function StatTrackerPage() {
   const [trackerConflict, setTrackerConflict] = useState<TrackerConflict | null>(null);
   const [selectedConflictResolution, setSelectedConflictResolution] = useState<'local' | 'cloud' | 'merge' | null>(null);
   const [showAllStats, setShowAllStats] = useState(false);
+  const [favoriteStatIds, setFavoriteStatIds] = useState<string[]>([]);
   const [selectedReportGameId, setSelectedReportGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('reportGame')
   ));
@@ -1478,6 +1606,32 @@ export function StatTrackerPage() {
   }, [accountId]);
 
   useEffect(() => {
+    if (!accountId || storageAccountId !== accountId) {
+      setFavoriteStatIds([]);
+      return;
+    }
+    const validStatIds = getLiveTrackingStats(
+      sport,
+      getSportRule(sport).stats.filter((item) => !item.liveHidden),
+    ).map((item) => item.id);
+    setFavoriteStatIds(readStoredTrackerFavorites(window.localStorage, accountId, sport, validStatIds));
+  }, [accountId, sport, storageAccountId]);
+
+  const toggleStatFavorite = (statId: string) => {
+    if (!accountId || storageAccountId !== accountId) return;
+    const validStatIds = getLiveTrackingStats(
+      sport,
+      getSportRule(sport).stats.filter((item) => !item.liveHidden),
+    ).map((item) => item.id);
+    if (!validStatIds.includes(statId)) return;
+    const nextFavorites = favoriteStatIds.includes(statId)
+      ? favoriteStatIds.filter((favoriteId) => favoriteId !== statId)
+      : [...favoriteStatIds, statId];
+    setFavoriteStatIds(nextFavorites);
+    saveStoredTrackerFavorites(window.localStorage, accountId, sport, nextFavorites, validStatIds);
+  };
+
+  useEffect(() => {
     if (!accountId || storageAccountId !== accountId) return;
     const existing = (projects ?? [])
       .filter((project) => project.project.tool === 'stat-tracker')
@@ -1665,9 +1819,9 @@ export function StatTrackerPage() {
     }
     const captureOpponent = currentGame?.opponent ?? opponent;
     const gameTitle = captureOpponent ? `${profile.teamName || 'Your team'} vs ${captureOpponent}` : 'this game';
-    setCaptureNotice(
-      `${kind === 'photo' ? 'Photo' : 'Video'} ready for ${gameTitle}. It stays in your camera roll; Pixl Sports does not upload or store it here.`,
-    );
+    setCaptureNotice(kind === 'photo'
+      ? `Photo ready for ${gameTitle}. Tap Save to Photos below; Pixl Sports does not upload or store it here.`
+      : `Video ready for ${gameTitle}. Pixl Sports does not upload or store it here.`);
   };
 
   const updateOwnedScheduledGameStatus = (
@@ -2118,8 +2272,8 @@ export function StatTrackerPage() {
   }
 
   return (
-    <div className="studio-editor-page-background stat-tracker-editor-page min-h-dvh">
-      <div className="pixl-editor-main mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
+    <div className="studio-editor-page-background stat-tracker-editor-page min-h-dvh w-full min-w-0">
+      <div className="pixl-editor-main mx-auto w-full min-w-0 max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
       <div className="mb-3 flex min-h-11 items-center justify-between gap-3" data-testid="stat-tracker-page-heading">
         <BackNavigationLink href="/studio" label="Back to Game Day Hub" testId="link-stat-tracker-studio" />
         <h1 className="sr-only">Stat Tracker</h1>
@@ -2293,6 +2447,8 @@ export function StatTrackerPage() {
         <LiveTrackerGame
           currentGame={currentGame}
           rule={rule}
+          favoriteStatIds={favoriteStatIds}
+          onToggleFavorite={toggleStatFavorite}
           athleteName={profile.athleteName}
           athleteImageUrl={athleteFanCard?.photoUrl ?? undefined}
           teamName={profile.teamName}

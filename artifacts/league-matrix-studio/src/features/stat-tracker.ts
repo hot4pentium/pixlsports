@@ -169,6 +169,38 @@ export function getTrackerStorageKeys(accountId: string) {
   };
 }
 
+export function getTrackerFavoriteStorageKey(accountId: string, sport: Sport) {
+  return `${trackerLocalStorageKey}:favorites:${encodeURIComponent(accountId)}:${sport}`;
+}
+
+export function readStoredTrackerFavorites(
+  storage: TrackerStorage,
+  accountId: string,
+  sport: Sport,
+  validStatIds: readonly string[],
+): string[] {
+  try {
+    const stored = JSON.parse(storage.getItem(getTrackerFavoriteStorageKey(accountId, sport)) ?? '[]');
+    if (!Array.isArray(stored)) return [];
+    const valid = new Set(validStatIds);
+    return [...new Set(stored.filter((id): id is string => typeof id === 'string' && valid.has(id)))];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredTrackerFavorites(
+  storage: TrackerStorage,
+  accountId: string,
+  sport: Sport,
+  favoriteStatIds: readonly string[],
+  validStatIds: readonly string[],
+) {
+  const valid = new Set(validStatIds);
+  const favorites = [...new Set(favoriteStatIds.filter((id) => valid.has(id)))];
+  storage.setItem(getTrackerFavoriteStorageKey(accountId, sport), JSON.stringify(favorites));
+}
+
 function migrateLegacyStorageValue(storage: TrackerStorage, legacyKey: string, scopedKey: string) {
   const legacyValue = storage.getItem(legacyKey);
   if (legacyValue === null) return;
