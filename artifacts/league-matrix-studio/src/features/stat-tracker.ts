@@ -183,7 +183,13 @@ export function readStoredTrackerFavorites(
     const stored = JSON.parse(storage.getItem(getTrackerFavoriteStorageKey(accountId, sport)) ?? '[]');
     if (!Array.isArray(stored)) return [];
     const valid = new Set(validStatIds);
-    return [...new Set(stored.filter((id): id is string => typeof id === 'string' && valid.has(id)))];
+    const normalized = stored.flatMap((id) => {
+      if (sport === 'football' && id === 'pass-reception') {
+        return ['pass-yard', 'reception'].filter((statId) => valid.has(statId));
+      }
+      return typeof id === 'string' && valid.has(id) ? [id] : [];
+    });
+    return [...new Set(normalized)];
   } catch {
     return [];
   }
@@ -462,7 +468,7 @@ export const sportRules: Record<Sport, SportRule> = {
       stat('rush-yard', 'Rushing yards', 'RUSH YDS', 0),
       stat('interception', 'Interception', 'INT', 0),
       stat('tackle', 'Tackle', 'TACKLE', 0),
-      stat('reception', 'Reception', 'REC', 0, false),
+      stat('reception', 'Reception', 'REC', 0),
       stat('sack', 'Sack', 'SACK', 0, false),
     ],
   },
@@ -528,9 +534,20 @@ export function getSportRule(sport: Sport): SportRule {
   return sportRules[sport];
 }
 
-/** Share live-card labels between compact and full trackers; preserve stored stat IDs. */
-export function getLiveTrackingStats(sport: Sport, stats: StatDefinition[]): StatDefinition[] {
+/** Share live-card labels while keeping the full tracker able to use separate football stat IDs. */
+export function getLiveTrackingStats(
+  sport: Sport,
+  stats: StatDefinition[],
+  options: { combinePassReception?: boolean } = {},
+): StatDefinition[] {
   if (sport !== 'football') return stats;
+  if (options.combinePassReception === false) {
+    return stats.map((item) => {
+      if (item.id === 'pass-yard') return { ...item, label: 'Pass', shortLabel: 'PASS' };
+      if (item.id === 'rush-yard') return { ...item, label: 'Rush', shortLabel: 'RUSH' };
+      return item;
+    });
+  }
   return stats.filter((item) => item.id !== 'reception').map((item) => {
     if (item.id === 'pass-yard') {
       return { ...item, id: 'pass-reception', label: 'Pass/Rec', shortLabel: 'PASS/REC' };

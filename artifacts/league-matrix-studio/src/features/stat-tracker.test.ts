@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { act, create, type ReactTestRendererNode } from 'react-test-renderer';
 import { createElement } from 'react';
+import { Router } from 'wouter';
 import { GameOutcomePicker } from './tracker-completion-dialog';
 import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
@@ -135,6 +136,12 @@ test('tracker favorites persist separately for each account and sport', () => {
   );
   assert.deepEqual(readStoredTrackerFavorites(storage, 'another-account', 'basketball', validBasketballIds), []);
   assert.deepEqual(readStoredTrackerFavorites(storage, accountId, 'soccer', ['goal', 'shot-on-target']), []);
+  storage.setItem(getTrackerFavoriteStorageKey(accountId, 'football'), JSON.stringify(['pass-reception']));
+  assert.deepEqual(
+    readStoredTrackerFavorites(storage, accountId, 'football', ['pass-yard', 'reception', 'rush-yard']),
+    ['pass-yard', 'reception'],
+    'a saved combined favorite becomes separate Pass and Reception favorites',
+  );
   assert.notEqual(
     getTrackerFavoriteStorageKey(accountId, 'basketball'),
     getTrackerFavoriteStorageKey(accountId, 'soccer'),
@@ -1162,20 +1169,33 @@ test('football live tracker hides yard controls while keeping one-tap play count
 
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'football-yard-tracking' }).length, 0);
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'toggle-football-yard-tracking' }).length, 0);
-  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-reception' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-yard' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-reception' }).length, 0);
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'yard-control-rush-yard' }).length, 0);
 
-  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-pass-reception' }).props.onClick());
-  assert.equal(changedGame.events.length, 2);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'live-stat-pass-yard' }).length, 1);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'live-stat-reception' }).length, 1);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'live-stat-pass-reception' }).length, 0);
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-pass-yard' }).props.onClick());
+  assert.equal(changedGame.events.length, 1);
   assert.equal(changedGame.stats['pass-yard'], 1);
+  assert.equal(changedGame.stats.reception ?? 0, 0);
+  assert.equal(changedGame.events[0]?.statId, 'pass-yard');
+  assert.equal(changedGame.events[0]?.playId, undefined);
+  act(() => renderer.update(renderGame(changedGame)));
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-reception' }).props.onClick());
+  assert.equal(changedGame.events.length, 2);
   assert.equal(changedGame.stats.reception, 1);
-  assert.equal(changedGame.events[0]?.playId, changedGame.events[1]?.playId);
+  assert.equal(changedGame.events[1]?.statId, 'reception');
+  assert.equal(changedGame.events[1]?.playId, undefined);
   act(() => renderer.update(renderGame(changedGame)));
 
   act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-rush-yard' }).props.onClick());
   act(() => renderer.update(renderGame(changedGame)));
   assert.equal(changedGame.stats['rush-yard'], 1);
   assert.equal(changedGame.events.length, 3);
+  assert.deepEqual(changedGame.events.map((event) => event.statId), ['pass-yard', 'reception', 'rush-yard']);
   assert.deepEqual(changedGame.events.map((event) => event.yards), [undefined, undefined, undefined]);
   assert.deepEqual(changedGame.yardStats, {});
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-rush-yard' }).length, 0);
@@ -1206,10 +1226,18 @@ test('football athlete targets keep attribution working while yardage controls a
     renderer = create(renderGame(game));
   });
 
-  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-reception' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-yard' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-reception' }).length, 0);
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'button-correct-yards' }).length, 0);
-  act(() => renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-pass-reception' }).props.onClick());
+  act(() => renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-pass-yard' }).props.onClick());
   act(() => renderer.update(renderGame(changedGame)));
+  assert.deepEqual(changedGame.events.map((event) => event.statId), ['pass-yard']);
+  assert.deepEqual(changedGame.events.map((event) => event.attribution), ['athlete']);
+  assert.deepEqual(changedGame.events.map((event) => event.yards), [undefined]);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-reception' }).props.onClick());
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.deepEqual(changedGame.events.map((event) => event.statId), ['pass-yard', 'reception']);
   assert.deepEqual(changedGame.events.map((event) => event.attribution), ['athlete', 'athlete']);
   assert.deepEqual(changedGame.events.map((event) => event.yards), [undefined, undefined]);
 
@@ -1258,7 +1286,8 @@ test('restored football yard values stay saved but hidden while yardage tracking
     renderer = create(renderGame());
   });
 
-  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-reception' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-yard' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-reception' }).length, 0);
   assert.equal(renderer.root.findAllByProps({ 'data-testid': `button-correct-yards-${firstPassId}` }).length, 0);
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'report-yardage' }).length, 0);
   assert.doesNotMatch(renderedText(renderer), /5 yds|10 yds/);
@@ -1905,12 +1934,13 @@ test('game report renders every sport stat and closes without changing the repor
   let renderer!: ReturnType<typeof create>;
 
   act(() => {
-    renderer = create(createElement(GameReportView, {
-      report,
-      rule: getSportRule('soccer'),
-      onClose: () => { closeCount += 1; },
-      onSelectGame: () => {},
-    }));
+    renderer = create(createElement(Router, { hook: () => ['/studio', () => {}] },
+      createElement(GameReportView, {
+        report,
+        rule: getSportRule('soccer'),
+        onClose: () => { closeCount += 1; },
+        onSelectGame: () => {},
+      })));
   });
 
   assert.equal(renderer.root.findAll((node) => (
@@ -1943,14 +1973,15 @@ test('game report keeps statistics visible and retries a failed chart download',
   let renderer!: ReturnType<typeof create>;
 
   await act(async () => {
-    renderer = create(createElement(GameReportView, {
-      report,
-      rule: getSportRule('soccer'),
-      onClose: () => {},
-      onSelectGame: () => {},
-      loadCharts,
-      onRetryCharts: () => { retryCount += 1; },
-    }));
+    renderer = create(createElement(Router, { hook: () => ['/studio', () => {}] },
+      createElement(GameReportView, {
+        report,
+        rule: getSportRule('soccer'),
+        onClose: () => {},
+        onSelectGame: () => {},
+        loadCharts,
+        onRetryCharts: () => { retryCount += 1; },
+      })));
   });
 
   assert.match(renderedText(renderer), /Charts couldn’t load/);

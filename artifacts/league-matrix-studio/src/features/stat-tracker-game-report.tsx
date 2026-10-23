@@ -1,5 +1,6 @@
 import React, { Component, lazy, Suspense, useEffect, useMemo, useState, type ComponentType, type ErrorInfo, type ReactNode } from 'react';
 import { ArrowLeft, FileText, RotateCcw } from 'lucide-react';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 
 import { countStatEventsByAttribution, footballYardMetricDefinitions, getGameOutcome, hasRecordedGameScore, isYardageTrackingAvailable, type GameReport, type SportRule } from './stat-tracker';
 
@@ -114,13 +115,16 @@ export function GameReportView({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md" data-testid="game-report-overlay" role="dialog" aria-modal="true" aria-labelledby="game-report-title">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-5 py-4 backdrop-blur-md sm:px-8">
-        <div>
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/80 px-5 py-4 backdrop-blur-md sm:px-8">
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Game Report</p>
-          <h2 id="game-report-title" className="font-display text-2xl uppercase tracking-wide">{selectedGame.opponent ? `vs ${selectedGame.opponent}` : 'Game'}</h2>
+          <h2 id="game-report-title" className="truncate font-display text-2xl uppercase tracking-wide">{selectedGame.opponent ? `vs ${selectedGame.opponent}` : 'Game'}</h2>
           {getGameOutcome(selectedGame) && <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">{getGameOutcome(selectedGame)}</p>}
         </div>
-        <button type="button" autoFocus onClick={onClose} data-testid="game-report-close" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-muted clip-angled-sm"><ArrowLeft className="h-4 w-4" /> Back to Tracker</button>
+        <div className="flex shrink-0 items-center gap-2">
+          <BackNavigationLink href="/studio" label="Dashboard" testId="link-game-report-dashboard" className="px-2 sm:px-3" />
+          <button type="button" autoFocus onClick={onClose} data-testid="game-report-close" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-card px-3 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-muted clip-angled-sm sm:px-4"><ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Back to Tracker</span><span className="sm:hidden">Tracker</span></button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 sm:p-8">

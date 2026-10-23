@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, Copy, ExternalLink, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Share2, Star, Trophy, Video, X } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, Copy, ExternalLink, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Share2, Star, Trophy, Video, X } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -32,7 +32,6 @@ import {
   type ScheduleEventStatus,
 } from './schedule-draft';
 import {
-  addFootballPassReception,
   addStatEvent,
   advanceGamePeriod,
   adjustYardValue,
@@ -693,10 +692,7 @@ function latestYardEventIds(game: GameSession) {
   if (!isYardageTrackingAvailable(game.sport) || game.trackYards !== true) return {};
   return game.events.reduce<Record<string, string>>((eventIds, event) => {
     if (getFootballYardMetricId(event.statId)) {
-      const controlId = event.statId === 'pass-yard' || event.statId === 'reception'
-        ? 'pass-reception'
-        : event.statId;
-      return { [controlId]: event.id };
+      return { [event.statId]: event.id };
     }
     return eventIds;
   }, {});
@@ -745,10 +741,14 @@ export function LiveTrackerGame({
   const displayStats = requestedRule.id === currentGame.sport
     ? requestedStats
     : rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured));
-  const allStatCards = getLiveTrackingStats(currentGame.sport, rule.stats.filter((item) => !item.liveHidden));
+  const allStatCards = getLiveTrackingStats(
+    currentGame.sport,
+    rule.stats.filter((item) => !item.liveHidden),
+    { combinePassReception: false },
+  );
   const favoriteStatIdSet = new Set(favoriteStatIds);
   const favoriteStatCards = allStatCards.filter((item) => favoriteStatIdSet.has(item.id));
-  const visibleStatCards = getLiveTrackingStats(currentGame.sport, displayStats)
+  const visibleStatCards = getLiveTrackingStats(currentGame.sport, displayStats, { combinePassReception: false })
     .filter((item) => !favoriteStatIdSet.has(item.id));
   const statGroups = [
     { id: 'favorites', label: 'Favorites', stats: favoriteStatCards },
@@ -832,10 +832,7 @@ export function LiveTrackerGame({
 
   const selectYardEvent = (event: GameSession['events'][number]) => {
     if (!getFootballYardMetricId(event.statId)) return;
-    const controlId = currentGame.sport === 'football' && (event.statId === 'pass-yard' || event.statId === 'reception')
-      ? 'pass-reception'
-      : event.statId;
-    activateYardEvent(controlId, event.id, event.yards ?? 0);
+    activateYardEvent(event.statId, event.id, event.yards ?? 0);
   };
 
   const recordStat = (item: StatDefinition, attribution: StatAttribution) => {
@@ -847,13 +844,8 @@ export function LiveTrackerGame({
       setBaseballPitchAttribution((current) => current === attribution ? null : attribution);
       return;
     }
-    const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
-    const yardMetricId = yardTrackingEnabled
-      ? (isCombinedPassReception ? 'pass-yard' : getFootballYardMetricId(item.id))
-      : null;
-    const nextGame = isCombinedPassReception
-      ? addFootballPassReception(currentGameRef.current, new Date(), 0, attribution)
-      : addStatEvent(currentGameRef.current, item.id, new Date(), 0, attribution);
+    const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
+    const nextGame = addStatEvent(currentGameRef.current, item.id, new Date(), 0, attribution);
     updateCurrentGame(nextGame);
     if (yardMetricId && nextGame.events.length > currentGame.events.length) {
       const eventId = nextGame.events.at(-1)?.id;
@@ -948,7 +940,9 @@ export function LiveTrackerGame({
           onChange={(format) => updateCurrentGame((game) => ({ ...game, soccerPeriodFormat: format }))}
           className="mt-5"
         />
-        <button type="button" onClick={onLeaveGame} className="mt-4 min-h-11 border border-border px-4 text-xs font-bold uppercase tracking-widest">Leave game open</button>
+        <button type="button" onClick={onLeaveGame} data-testid="button-leave-game-open" aria-label="Back to Game Day Hub and leave the game open" className="mt-4 inline-flex min-h-11 items-center gap-2 border border-border px-4 text-xs font-bold uppercase tracking-widest">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Game Day Hub · Leave game open
+        </button>
       </section>
     );
   }
@@ -1061,22 +1055,12 @@ export function LiveTrackerGame({
             ) : (
             <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
           {group.stats.map((item) => {
-            const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
-            const yardMetricId = isYardageTrackingAvailable(currentGame.sport)
-              ? (isCombinedPassReception ? 'pass-yard' : getFootballYardMetricId(item.id))
-              : null;
+            const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
             const yardTotal = yardMetricId ? currentGame.yardStats?.[yardMetricId] ?? 0 : 0;
-            const receivingYardTotal = isCombinedPassReception ? currentGame.yardStats?.['receiving-yard'] ?? 0 : 0;
-            const yardSummary = isCombinedPassReception && yardTotal !== receivingYardTotal
-              ? `Pass ${yardTotal} · Rec ${receivingYardTotal}`
-              : isCombinedPassReception
-                ? `${yardTotal} each`
-                : currentGame.sport === 'football' && item.id === 'rush-yard'
-                  ? `${yardTotal}`
-                  : `${yardTotal} yds`;
-            const statCount = isCombinedPassReception
-              ? Math.max(currentGame.stats['pass-yard'] ?? 0, currentGame.stats.reception ?? 0)
-              : currentGame.sport === 'baseball' && item.id === 'hit'
+            const yardSummary = currentGame.sport === 'football' && item.id === 'rush-yard'
+              ? `${yardTotal}`
+              : `${yardTotal} yds`;
+            const statCount = currentGame.sport === 'baseball' && item.id === 'hit'
                 ? (currentGame.stats.hit ?? 0) + baseballHitChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
                 : currentGame.sport === 'baseball' && item.id === 'pitch'
                   ? (currentGame.stats.pitch ?? 0) + baseballPitchChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
@@ -1093,16 +1077,9 @@ export function LiveTrackerGame({
               ? ['hit', ...baseballHitChoices.map((choice) => choice.id)]
               : currentGame.sport === 'baseball' && item.id === 'pitch'
                 ? ['pitch', ...baseballPitchChoices.map((choice) => choice.id)]
-                : isCombinedPassReception
-                  ? ['pass-yard', 'reception']
                 : item.id;
             const rawAttributedCounts = countStatEventsByAttribution(currentGame, attributedStatIds);
-            const attributedCounts = isCombinedPassReception
-              ? {
-                team: Math.ceil(rawAttributedCounts.team / 2),
-                athlete: Math.ceil(rawAttributedCounts.athlete / 2),
-              }
-              : rawAttributedCounts;
+            const attributedCounts = rawAttributedCounts;
             const athleteAssigned = attributedCounts.athlete > 0;
             const athleteAssignmentDescriptionId = `athlete-assignment-${item.id}`;
             const choicesAttribution = item.id === 'hit' ? baseballHitAttribution : baseballPitchAttribution;
@@ -1298,7 +1275,15 @@ export function LiveTrackerGame({
           </div>
         ) : (
           <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
-            <button type="button" onClick={onLeaveGame} className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"><Minus className="h-4 w-4" /> Leave game open</button>
+            <button
+              type="button"
+              onClick={onLeaveGame}
+              aria-label="Back to Game Day Hub and leave the game open"
+              data-testid="button-leave-game-open"
+              className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub · Leave game open
+            </button>
             <button
               type="button"
               ref={endGameButtonRef}
@@ -1653,6 +1638,7 @@ export function StatTrackerPage() {
     const validStatIds = getLiveTrackingStats(
       sport,
       getSportRule(sport).stats.filter((item) => !item.liveHidden),
+      { combinePassReception: false },
     ).map((item) => item.id);
     setFavoriteStatIds(readStoredTrackerFavorites(window.localStorage, accountId, sport, validStatIds));
   }, [accountId, sport, storageAccountId]);
@@ -1662,6 +1648,7 @@ export function StatTrackerPage() {
     const validStatIds = getLiveTrackingStats(
       sport,
       getSportRule(sport).stats.filter((item) => !item.liveHidden),
+      { combinePassReception: false },
     ).map((item) => item.id);
     if (!validStatIds.includes(statId)) return;
     const nextFavorites = favoriteStatIds.includes(statId)
@@ -2523,7 +2510,7 @@ export function StatTrackerPage() {
            onCapture={handleCapture}
            onGameChange={updateCurrentGame}
           onToggleShowAllStats={() => setShowAllStats((value) => !value)}
-          onLeaveGame={() => { setCurrentGame(null); setShowUpcomingNotice(false); }}
+           onLeaveGame={() => setLocation('/studio')}
            onEndGame={(scoreRecorded, outcome) => void saveCompletedGame(scoreRecorded, outcome)}
         />
         </>
