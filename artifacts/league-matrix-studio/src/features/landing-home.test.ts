@@ -74,7 +74,7 @@ test('hero message omits the numbered athlete-card label', () => {
 
 test('week step numbers use circular badges and a one-time staggered reveal', () => {
   assert.match(source, /IntersectionObserver/);
-  assert.match(source, /observer\.unobserve\(section\)/);
+  assert.match(source, /observer\.unobserve\(grid\)/);
   assert.match(source, /week-grid--visible/);
   assert.match(source, /data-testid=\{`landing-step-number-\$\{number\}`\}/);
   assert.match(styles, /\.step-card \.step-number \{[^}]*width: 52px; height: 52px;[^}]*border-radius: 50%;[^}]*background: var\(--pixl-lime\)/);
