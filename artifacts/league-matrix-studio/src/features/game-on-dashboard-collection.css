@@ -1004,6 +1004,19 @@
 .game-on-collection__dialog-card.game-on-collection__card--prep-open { min-height: 600px; }
 .game-on-collection__dialog-card.game-on-collection__card--tracker-open { min-height: 750px; }
 
+/* Let desktop Prep grow with its form; the dialog owns the only scrollbar. */
+@media (min-width: 601px) {
+  .game-on-collection__dialog-card.game-on-collection__card--prep-open .game-on-collection__flip-front {
+    position: absolute;
+    inset: 0;
+  }
+  .game-on-collection__dialog-card.game-on-collection__card--prep-open .game-on-collection__flip-back {
+    position: relative;
+    inset: auto;
+    overflow: visible;
+  }
+}
+
 .game-on-collection :is(button, [tabindex="0"]):focus-visible {
   outline: 3px solid #ffad78;
   outline-offset: 3px;
