@@ -5688,11 +5688,21 @@ test(`an open Event Card updates its suggested action as the game changes stages
     await assertOpenPanelAnnouncement();
     if (openPanel === 'prep') {
       const dialogSelector = `[data-testid="dialog-game-on-card-draft:${eventId}"]`;
-      const assertPrepFlip = async (prepOpen: boolean) => {
+      const assertPrepFlip = async (
+        prepOpen: boolean,
+        announcement: string,
+        changes: string[],
+        suggestedAction: string | null,
+      ) => {
         await connection!.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page!.sessionId);
         await wait(`Array.from(document.querySelector(${JSON.stringify(dialogSelector)})
           ?.querySelector('.game-on-collection__flip-inner')?.getAnimations() ?? [])
           .every(animation => animation.playState !== 'running')`);
+        if (suggestedAction) {
+          await assertSingleSuggestion(suggestedAction);
+        } else {
+          assert.deepEqual(await getSuggestedActions(), [], 'a completed card must not retain a suggested game-day action');
+        }
         assert.deepEqual(await connection!.evaluate(`(() => {
           const dialog = document.querySelector(${JSON.stringify(dialogSelector)});
           const region = dialog?.querySelector('[data-testid="status-game-on-recommendation"]');
@@ -5717,20 +5727,41 @@ test(`an open Event Card updates its suggested action as the game changes stages
           sameDialog: true,
           sameRegion: true,
           regionCount: 1,
-          text: 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
-          changes: ['Event Card vs Rivals is now Live. Suggested next: Stat Tracker.'],
+          text: announcement,
+          changes,
           exposed: true,
           frontActive: !prepOpen,
           backActive: prepOpen,
           focusCorrect: true,
-        }, `the Prep ${prepOpen ? 'reopening' : 'closing'} flip must preserve the announcement without mutations and move focus to the visible face`);
+        }, `the Prep ${prepOpen ? 'reopening' : 'closing'} flip must preserve the current announcement without replay and move focus to the visible face`);
       };
       await connection.evaluate(`document.querySelector('${dialogSelector} [data-testid="button-close-card-prep-${eventId}"]').click()`, page.sessionId);
       await wait(`document.activeElement?.matches('${dialogSelector} [data-testid="button-open-card-prep-draft:${eventId}"]')`);
-      await assertPrepFlip(false);
+      const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.';
+      const liveChanges = [liveAnnouncement];
+      await assertPrepFlip(false, liveAnnouncement, liveChanges, `button-open-stat-tracker-draft:${eventId}`);
+      await connection.evaluate(`window.__setSupporterDashboardEvents([{
+        id: ${JSON.stringify(eventId)},
+        type: 'game',
+        date: ${JSON.stringify(eventDate)},
+        time: '18:30',
+        timezone: 'UTC',
+        location: 'Northside Gym',
+        opponent: 'Rivals',
+        status: 'final',
+      }])`, page.sessionId);
+      const completeAnnouncement = 'Event Card vs Rivals is now Complete. Suggested next: No suggested action.';
+      const completeChanges = [...liveChanges, completeAnnouncement];
+      await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'complete'`);
+      await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes(${JSON.stringify(completeAnnouncement)})`);
+      await assertPrepFlip(false, completeAnnouncement, completeChanges, null);
+      assert.equal(await readAnnouncement(), completeAnnouncement,
+        'the Live-to-Complete transition while Prep is closed must announce the updated stage once');
       await connection.evaluate(`document.querySelector('${dialogSelector} [data-testid="button-open-card-prep-draft:${eventId}"]').click()`, page.sessionId);
       await wait(`document.activeElement?.matches('${dialogSelector} [data-testid="panel-inline-prep-draft:${eventId}"] .game-on-prep__title')`);
-      await assertPrepFlip(true);
+      await assertPrepFlip(true, completeAnnouncement, completeChanges, null);
+      assert.equal(await readAnnouncement(), completeAnnouncement,
+        'reopening Prep must not replay the Complete announcement');
       // Later stage changes should preserve the reopened panel's focused input.
       await connection.evaluate(`(() => {
         window.__activeRecommendationControl = document.querySelector('${dialogSelector} [data-testid="input-card-prep-title-${eventId}"]');
