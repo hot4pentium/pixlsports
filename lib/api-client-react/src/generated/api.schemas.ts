@@ -980,6 +980,10 @@ export type StatTrackerGameSnapshotStats = {[key: string]: number};
 
 export type StatTrackerGameSnapshotOpponentStats = {[key: string]: number};
 
+export type StatTrackerGameSnapshotAthleteStats = {[key: string]: number};
+
+export type StatTrackerGameSnapshotAthleteYardStats = {[key: string]: number};
+
 export type StatTrackerGameSnapshotYardStats = {[key: string]: number};
 
 export type StatTrackerGameSnapshotOpponentYardStats = {[key: string]: number};
@@ -1006,6 +1010,8 @@ export interface StatTrackerGameSnapshot {
   possessionSide?: StatTrackerGameSnapshotPossessionSide;
   stats: StatTrackerGameSnapshotStats;
   opponentStats?: StatTrackerGameSnapshotOpponentStats;
+  athleteStats?: StatTrackerGameSnapshotAthleteStats;
+  athleteYardStats?: StatTrackerGameSnapshotAthleteYardStats;
   trackYards: boolean;
   yardStats: StatTrackerGameSnapshotYardStats;
   opponentYardStats?: StatTrackerGameSnapshotOpponentYardStats;

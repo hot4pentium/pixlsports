@@ -2027,6 +2027,10 @@ export const listStatTrackerSharesResponseOneGameStatsMinOne = 0;
 
 export const listStatTrackerSharesResponseOneGameOpponentStatsMinOne = 0;
 
+export const listStatTrackerSharesResponseOneGameAthleteStatsMinOne = 0;
+
+export const listStatTrackerSharesResponseOneGameAthleteYardStatsMinOne = 0;
+
 export const listStatTrackerSharesResponseOneGameYardStatsMinOne = 0;
 
 export const listStatTrackerSharesResponseOneGameOpponentYardStatsMinOne = 0;
@@ -2063,6 +2067,8 @@ export const ListStatTrackerSharesResponseItem = zod.object({
   "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameStatsMinOne)),
   "opponentStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameOpponentStatsMinOne)).optional(),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameAthleteStatsMinOne)).optional(),
+  "athleteYardStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameAthleteYardStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameYardStatsMinOne)),
   "opponentYardStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameOpponentYardStatsMinOne)).optional(),
@@ -2111,6 +2117,10 @@ export const createStatTrackerShareBodyGameStatsMinOne = 0;
 
 export const createStatTrackerShareBodyGameOpponentStatsMinOne = 0;
 
+export const createStatTrackerShareBodyGameAthleteStatsMinOne = 0;
+
+export const createStatTrackerShareBodyGameAthleteYardStatsMinOne = 0;
+
 export const createStatTrackerShareBodyGameYardStatsMinOne = 0;
 
 export const createStatTrackerShareBodyGameOpponentYardStatsMinOne = 0;
@@ -2144,6 +2154,8 @@ export const CreateStatTrackerShareBody = zod.object({
   "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameStatsMinOne)),
   "opponentStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameOpponentStatsMinOne)).optional(),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameAthleteStatsMinOne)).optional(),
+  "athleteYardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameAthleteYardStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameYardStatsMinOne)),
   "opponentYardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameOpponentYardStatsMinOne)).optional(),
@@ -2178,6 +2190,10 @@ export const createStatTrackerShareResponseOneGameOpponentScoreMin = 0;
 export const createStatTrackerShareResponseOneGameStatsMinOne = 0;
 
 export const createStatTrackerShareResponseOneGameOpponentStatsMinOne = 0;
+
+export const createStatTrackerShareResponseOneGameAthleteStatsMinOne = 0;
+
+export const createStatTrackerShareResponseOneGameAthleteYardStatsMinOne = 0;
 
 export const createStatTrackerShareResponseOneGameYardStatsMinOne = 0;
 
@@ -2215,6 +2231,8 @@ export const CreateStatTrackerShareResponse = zod.object({
   "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameStatsMinOne)),
   "opponentStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameOpponentStatsMinOne)).optional(),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameAthleteStatsMinOne)).optional(),
+  "athleteYardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameAthleteYardStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameYardStatsMinOne)),
   "opponentYardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameOpponentYardStatsMinOne)).optional(),
@@ -2266,6 +2284,10 @@ export const getStatTrackerShareResponseOneGameStatsMinOne = 0;
 
 export const getStatTrackerShareResponseOneGameOpponentStatsMinOne = 0;
 
+export const getStatTrackerShareResponseOneGameAthleteStatsMinOne = 0;
+
+export const getStatTrackerShareResponseOneGameAthleteYardStatsMinOne = 0;
+
 export const getStatTrackerShareResponseOneGameYardStatsMinOne = 0;
 
 export const getStatTrackerShareResponseOneGameOpponentYardStatsMinOne = 0;
@@ -2302,6 +2324,8 @@ export const GetStatTrackerShareResponse = zod.object({
   "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameStatsMinOne)),
   "opponentStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameOpponentStatsMinOne)).optional(),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameAthleteStatsMinOne)).optional(),
+  "athleteYardStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameAthleteYardStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameYardStatsMinOne)),
   "opponentYardStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameOpponentYardStatsMinOne)).optional(),
@@ -2353,6 +2377,10 @@ export const updateStatTrackerShareBodyOneGameStatsMinOne = 0;
 
 export const updateStatTrackerShareBodyOneGameOpponentStatsMinOne = 0;
 
+export const updateStatTrackerShareBodyOneGameAthleteStatsMinOne = 0;
+
+export const updateStatTrackerShareBodyOneGameAthleteYardStatsMinOne = 0;
+
 export const updateStatTrackerShareBodyOneGameYardStatsMinOne = 0;
 
 export const updateStatTrackerShareBodyOneGameOpponentYardStatsMinOne = 0;
@@ -2387,6 +2415,8 @@ export const UpdateStatTrackerShareBody = zod.object({
   "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameStatsMinOne)),
   "opponentStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameOpponentStatsMinOne)).optional(),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameAthleteStatsMinOne)).optional(),
+  "athleteYardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameAthleteYardStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameYardStatsMinOne)),
   "opponentYardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameOpponentYardStatsMinOne)).optional(),
@@ -2424,6 +2454,10 @@ export const updateStatTrackerShareResponseOneGameStatsMinOne = 0;
 
 export const updateStatTrackerShareResponseOneGameOpponentStatsMinOne = 0;
 
+export const updateStatTrackerShareResponseOneGameAthleteStatsMinOne = 0;
+
+export const updateStatTrackerShareResponseOneGameAthleteYardStatsMinOne = 0;
+
 export const updateStatTrackerShareResponseOneGameYardStatsMinOne = 0;
 
 export const updateStatTrackerShareResponseOneGameOpponentYardStatsMinOne = 0;
@@ -2460,6 +2494,8 @@ export const UpdateStatTrackerShareResponse = zod.object({
   "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameStatsMinOne)),
   "opponentStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameOpponentStatsMinOne)).optional(),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameAthleteStatsMinOne)).optional(),
+  "athleteYardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameAthleteYardStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameYardStatsMinOne)),
   "opponentYardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameOpponentYardStatsMinOne)).optional(),

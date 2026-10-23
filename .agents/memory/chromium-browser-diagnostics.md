@@ -32,3 +32,9 @@ Very tall headless Chromium screenshots can show transformed PNG previews as bla
 **Why:** An oversized viewport capture showed white dashboard frames while the same page's images had nonzero natural dimensions and rendered correctly in ordinary desktop and phone viewport captures.
 
 **How to apply:** Before treating blank areas in a tall capture as an app bug, check image loading and capture a normal-height viewport after scrolling the section into view through CDP.
+
+Back-to-back test-owned Vite/Chromium fixtures can intermittently time out at an initial test-ID selector even though the page text has rendered; the same spectator check passed in isolation and on a later combined run. Preserve failure-only DOM test-ID diagnostics before deciding the app is broken.
+
+**Why:** A visible text dump alone cannot distinguish a missing attribute from a transient CDP/fixture startup condition.
+
+**How to apply:** On an initial-element timeout, inspect the page's actual test IDs and rerun the focused fixture once before changing product code.

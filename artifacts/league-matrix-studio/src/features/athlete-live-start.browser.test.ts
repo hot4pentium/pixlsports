@@ -80,6 +80,7 @@ async function readJson(request: IncomingMessage): Promise<Record<string, any>> 
 
 function makeFixtureServer() {
   const state: FixtureState = { shares: [], activeShareToken: null, taps: [] };
+  const historySaves = { beforeSave: async () => {} };
   const accessLinks: FixtureAccessLink[] = [];
   const server = createServer(async (request, response) => {
     if (request.method === 'OPTIONS') {
@@ -133,6 +134,7 @@ function makeFixtureServer() {
       }
       if (path === '/api/projects' && method === 'POST') {
         const body = await readJson(request);
+        await historySaves.beforeSave();
         json(response, 201, {
           id: 'browser-stat-tracker-project',
           name: body.name || 'Stat Tracker',
@@ -365,7 +367,7 @@ function makeFixtureServer() {
       json(response, 500, { error: error instanceof Error ? error.message : 'Fixture request failed' });
     }
   });
-  return { server, state };
+  return { server, state, historySaves };
 }
 
 async function availablePort() {
@@ -386,7 +388,8 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
   const apiPort = await availablePort();
   const vitePort = await availablePort();
   const debugPort = await availablePort();
-  const { server: apiServer } = makeFixtureServer();
+  const { server: apiServer, historySaves } = makeFixtureServer();
+  let releaseHistorySave = () => {};
   await new Promise<void>((done, reject) => {
     apiServer.once('error', reject);
     apiServer.listen(apiPort, '127.0.0.1', () => done());
@@ -519,6 +522,8 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await waitUi(familyCard, `document.querySelector('[data-testid="text-live-tap-total"]')?.textContent === '1'`);
     assert.equal((await fixtureState()).taps.length, 1, 'a valid family QR link can send a cheer');
 
+    const pendingHistorySave = new Promise<void>((resolve) => { releaseHistorySave = resolve; });
+    historySaves.beforeSave = () => pendingHistorySave;
     await click(tracker, 'button-end-live-game');
     await waitUi(tracker, `Boolean(document.querySelector('[data-testid="button-confirm-end-live-game"]'))`);
     await click(tracker, 'button-confirm-end-live-game');
@@ -532,6 +537,9 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       return fixtureState();
     })();
     assert.equal(closedFullGame.activeShareToken, null, 'finalizing closes Game Day Live');
+    assert.equal(closedFullGame.shares[0]?.game.status, 'final', 'recipients receive the final state while the separate cloud-history save is still pending');
+    releaseHistorySave();
+    historySaves.beforeSave = async () => {};
     assert.equal(closedFullGame.taps.length, 1, 'finalizing keeps earlier family taps');
     await close(familyCard);
     const finalCard = await open('fan');
@@ -678,6 +686,7 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     ), null, 'ending Live Taps-only leaves no Stat Tracker game behind');
     await close(liveTapsOnly);
   } finally {
+    releaseHistorySave();
     if (connection) {
       for (const page of pages) {
         await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

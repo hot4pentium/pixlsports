@@ -260,6 +260,8 @@ export * from './statTrackerEvent';
 export * from './statTrackerEventAttribution';
 export * from './statTrackerEventPossessionSide';
 export * from './statTrackerGameSnapshot';
+export * from './statTrackerGameSnapshotAthleteStats';
+export * from './statTrackerGameSnapshotAthleteYardStats';
 export * from './statTrackerGameSnapshotOpponentStats';
 export * from './statTrackerGameSnapshotOpponentYardStats';
 export * from './statTrackerGameSnapshotPossessionSide';

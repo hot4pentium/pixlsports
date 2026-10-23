@@ -117,7 +117,7 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     const input = CreateStatTrackerShareBody.parse({
       athleteName: "Maya",
       teamName: "Falcons",
-      game,
+      game: { ...game, athleteStats: { tackle: 4 }, athleteYardStats: {} },
     });
     const created = await requestJson(
       baseUrl,
@@ -144,6 +144,7 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     assert.equal(publicView.game.events.length, 2);
     assert.equal(publicView.game.events[0]?.attribution, "team");
     assert.equal(publicView.game.events[1]?.attribution, "athlete");
+    assert.deepEqual(publicView.game.athleteStats, { tackle: 4 }, "full-game athlete totals survive public API serialization");
     assert.equal(publicView.publicFanCardPath, null, "live scoreboards do not offer the follow link");
     assert.equal((publicView as unknown as Record<string, unknown>).ownerClerkUserId, undefined);
     assert.equal((publicView.game as unknown as Record<string, unknown>).notes, undefined);

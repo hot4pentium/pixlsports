@@ -62,7 +62,7 @@ import {
   type GameOnCardRenderOptions,
   type DashboardGameOnCard,
 } from './game-on-dashboard-collection';
-import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, getRecentlyCompletedGameOnCard, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, removeSavedGameOnCard, type SavedGameOnCard } from './game-on-card-storage';
 import { getBrowserTimeZone } from './game-on-timezone';
 import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
@@ -958,14 +958,16 @@ export function SupporterDashboardView({
   }));
   const nextUpcomingEvent = upcomingEventCards[0] ?? null;
   const liveEventCard = sortGameOnCardsByDate(dashboardCards).find((card) =>
-    card.date.trim() && getSupporterGameStage({
+    !card.completedAt && card.date.trim() && getSupporterGameStage({
       date: card.date, time: card.time, timezone: card.timezone, type: card.type,
       status: card.status === 'Complete' ? 'final' : card.status === 'Live' || card.status === 'Sharing' ? 'live' : 'upcoming',
     }, currentTime, { includePregameCaptureWindow: false, maxLiveDurationMs: 2 * 60 * 60 * 1000 }) === 'live',
   );
-  const guidanceEventCard = liveEventCard ?? nextUpcomingEvent;
+  const completedEventCard = getRecentlyCompletedGameOnCard(dashboardCards, currentTime);
+  const hasPostGameGuidance = !liveEventCard && Boolean(completedEventCard);
+  const guidanceEventCard = liveEventCard ?? completedEventCard ?? nextUpcomingEvent;
   const hasLiveGuidance = Boolean(liveEventCard);
-  const guidanceStepLabel = liveEventCard?.status === 'Sharing' && Boolean(liveEventCard.shareToken)
+  const guidanceStepLabel = hasPostGameGuidance || (liveEventCard?.status === 'Sharing' && Boolean(liveEventCard.shareToken))
     ? 'Share'
     : stageCopy[hasLiveGuidance ? 'live' : 'upcoming'].label;
   const openGuidanceEventCard = () => {
@@ -1085,7 +1087,7 @@ export function SupporterDashboardView({
         </h2>
         {guidanceEventCard && !hasLiveGuidance && (
           <SupporterEventGuidanceMessageBoard
-            category={`Upcoming ${guidanceEventCard.type === 'game' ? 'game' : 'practice'}`}
+            category={hasPostGameGuidance ? 'Game ended · Share your Event Card' : `Upcoming ${guidanceEventCard.type === 'game' ? 'game' : 'practice'}`}
             title={getUpcomingEventCardTitle(guidanceEventCard, profile.teamName)}
             dateTime={[
               formatDateDisplay(guidanceEventCard.date),

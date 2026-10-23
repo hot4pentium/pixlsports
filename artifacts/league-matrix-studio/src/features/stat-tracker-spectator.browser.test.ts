@@ -36,7 +36,7 @@ import { copyStatTrackerShareUrl } from './src/features/stat-tracker-share';
 import './src/index.css';
 
 const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:new Date(Date.now() + 60000).toISOString(), canManage:false, publicFanCardPath:null, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
-let current = initial;
+let current = { ...initial, game: { ...initial.game, athleteStats: { tackle: 3 }, athleteYardStats: {} } };
 let revoked = false;
 let poll404 = false;
 let hypeCardHidden = false;
@@ -61,6 +61,10 @@ window.__sendDuplicate = () => {
   const source = MockEventSource.instances.at(-1);
   source?.emit('stat-tracker', current);
   source?.emit('stat-tracker', current);
+};
+window.__sendFollowLinkOnly = (publicFanCardPath) => {
+  current = { ...current, publicFanCardPath };
+  MockEventSource.instances.at(-1)?.emit('stat-tracker', current);
 };
 window.__revoke = () => { revoked = true; MockEventSource.instances.at(-1)?.emit('revoked', { shareToken: current.shareToken }); };
 window.__poll404 = () => { poll404 = true; };
@@ -110,7 +114,10 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, monitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${port}/stat-tracker-spectator-test.html`);
     await connection.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},page.sessionId);
-    await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"stat-tracker-scores\\"]") !== null || document.querySelector("[data-testid=\\"public-stat-tracker-unavailable\\"]") !== null',Boolean);
+    await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"stat-tracker-scores\\"]") !== null || document.querySelector("[data-testid=\\"public-stat-tracker-unavailable\\"]") !== null',Boolean).catch(async (error) => {
+      console.error('Initial scoreboard diagnostics', await connection!.evaluate('({ ids: Array.from(document.querySelectorAll("[data-testid]")).map(element => element.getAttribute("data-testid")).slice(0, 25), scoreboard: document.querySelector("[data-testid=stat-tracker-scores]")?.outerHTML.slice(0, 300) || null })', page!.sessionId));
+      throw error;
+    });
     await connection.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},page.sessionId);
     assert.equal(
       await connection.evaluate<boolean>(`(() => {
@@ -137,6 +144,7 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     await connection.evaluate('window.__sendDuplicate()', page.sessionId);
     assert.equal(await connection.evaluate<boolean>('document.querySelectorAll("[data-testid^=\\"recent-activity-\\"]:not([data-testid^=\\"recent-activity-attribution-\\"])").length === 2', page.sessionId), true);
     assert.equal(await connection.evaluate<boolean>('document.querySelector(`[data-testid="scoreboard-hero"]`) !== null && document.querySelector(`[data-testid="stat-tracker-period"]`)?.textContent === "2"',page.sessionId),true);
+    assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"score-home-team-name\\"]")?.textContent.trim() === "Falcons" && document.querySelector("[data-testid=\\"athlete-snapshot-stat-tackle\\"]")?.textContent.includes("3") && !document.querySelector("[data-testid=\\"athlete-snapshot-stat-touchdown\\"]")', page.sessionId), true, 'home scoreboard uses the team and athlete snapshot uses full-game assigned totals');
     await connection.send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false},page.sessionId);
     assert.equal(
       await connection.evaluate<boolean>(
@@ -204,11 +212,26 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'window.__copySucceeded === true', Boolean);
     assert.equal(await connection.evaluate<boolean>('window.__legacyCopySelected', page.sessionId), true, 'blocked clipboard permissions should fall back to the selected link');
-    await connection.evaluate('window.__sendUpdate("final")',page.sessionId);
+    await connection.evaluate('window.scrollTo(0, document.body.scrollHeight); window.__sendUpdate("final")',page.sessionId);
     await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") && document.querySelector("[data-testid=\\"stat-tracker-scores\\"]")?.textContent.includes("21")',Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-final-prompt\\"]")?.open === true', Boolean);
+    assert.equal(await connection.evaluate<boolean>(`(() => {
+      const prompt = document.querySelector('[data-testid="stat-tracker-final-prompt"]');
+      const link = document.querySelector('[data-testid="link-final-prompt-follow"]');
+      const rect = prompt.getBoundingClientRect();
+      return prompt.matches(':modal') && prompt.contains(document.activeElement)
+        && prompt.textContent.includes('Thanks for watching Maya!')
+        && link?.textContent.includes('Follow Maya') && link?.getAttribute('href') === '/fan/verified-card'
+        && rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight;
+    })()`, page.sessionId), true, 'ending a game presents a visible, focused thank-you and follow prompt even when the viewer was scrolled down');
+    await connection.evaluate('window.__sendFollowLinkOnly("/fan/stream-updated-card")', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-prompt-follow\\"]")?.getAttribute("href") === "/fan/stream-updated-card"', Boolean);
+    await connection.evaluate('window.__sendFollowLinkOnly("/fan/verified-card"); document.querySelector("[data-testid=\\"button-final-view-stats\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-final-prompt\\"]") === null', Boolean);
     assert.equal(await connection.evaluate<boolean>('(() => { const message = document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]"); const link = document.querySelector("[data-testid=\\"link-final-fan-card\\"]"); return message?.getAttribute("aria-live") === "polite" && message.textContent.includes("Thanks for watching Maya") && link instanceof HTMLAnchorElement && link.getAttribute("href") === "/fan/verified-card"; })()', page.sessionId), true);
     await connection.evaluate('window.__setHypeCardPath("/fan/replacement-card"); window.__poll()', page.sessionId);
     await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"link-final-fan-card\\"]")?.getAttribute("href") === "/fan/replacement-card"',Boolean);
+    assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-final-prompt\\"]") === null', page.sessionId), true, 'a dismissed prompt does not reopen on background refresh');
     assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-final-fan-card\\"]"); const message = document.querySelector("[data-testid=\\"stat-tracker-final-thank-you\\"]"); return link?.getAttribute("href") === "/fan/replacement-card" && link.getAttribute("href") !== "/fan/verified-card" && document.querySelector("[data-testid=\\"stat-tracker-status\\"]")?.textContent.includes("FINAL") === true && document.querySelector("[data-testid=\\"score-home\\"]")?.textContent === "21" && document.querySelector("[data-testid=\\"score-away\\"]")?.textContent === "7" && message?.textContent.includes("Thanks for watching Maya") === true; })()', page.sessionId), true, 'refreshing an already-open final scoreboard replaces the old HYPE Card link and preserves the score and thank-you');
     await connection.evaluate('window.__setHypeCardState(false, true); window.__poll()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-final-fan-card\\"]") === null', Boolean);

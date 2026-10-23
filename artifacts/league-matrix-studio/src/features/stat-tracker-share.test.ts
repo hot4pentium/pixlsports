@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { toStatTrackerShareInput } from './stat-tracker-share';
+import { needsFinalTrackerShareUpdate, toStatTrackerShareInput } from './stat-tracker-share';
 import { addFootballPassReception, createGameSession } from './stat-tracker';
 import type { GameSession } from './stat-tracker';
 
@@ -47,7 +47,29 @@ test('tracker share input is explicitly sanitized and keeps the last ten events'
   assert.equal('endedAt' in input.game, false);
   assert.equal(input.game.events[0]?.attribution, 'team');
   assert.equal(input.game.events.at(-1)?.attribution, 'athlete');
-  assert.deepEqual(Object.keys(input.game.events[0] ?? {}).sort(), ['attribution', 'createdAt', 'id', 'period', 'statId', 'yards']);
+  assert.deepEqual(Object.keys(input.game.events[0] ?? {}).sort(), ['attribution', 'createdAt', 'id', 'period', 'possessionSide', 'statId', 'yards']);
+});
+
+test('athlete snapshots include full-game assigned stats before the recent feed is truncated', () => {
+  const source = game();
+  source.events = [
+    { id: 'early-athlete', statId: 'tackle', createdAt: '2026-09-21T17:00:00Z', period: 1, attribution: 'athlete' },
+    ...source.events,
+    { id: 'opponent', statId: 'touchdown', createdAt: '2026-09-21T18:30:00Z', period: 2, attribution: 'athlete', possessionSide: 'opponent' },
+  ];
+  const input = toStatTrackerShareInput(source, 'Maya', 'Falcons');
+  assert.equal(input.game.events.some((event) => event.id === 'early-athlete'), false);
+  assert.deepEqual(input.game.athleteStats, { tackle: 1, touchdown: 1 });
+  assert.equal(input.game.stats.touchdown, 2, 'team totals stay separate');
+});
+
+test('a cloud conflict can correct an already-final public game without duplicating unchanged shares', () => {
+  const finalGame = { ...game(), status: 'final' as const };
+  const published = toStatTrackerShareInput(finalGame, 'Maya', 'Falcons');
+  assert.equal(needsFinalTrackerShareUpdate(published, finalGame, 'Maya', 'Falcons'), false);
+  const correctedGame = { ...finalGame, score: 21, events: finalGame.events.slice(0, -1) };
+  assert.equal(needsFinalTrackerShareUpdate(published, correctedGame, 'Maya', 'Falcons'), true);
+  assert.equal(needsFinalTrackerShareUpdate(published, finalGame, 'Maya', 'Renamed Falcons'), true);
 });
 
 test('paired football pass and reception events keep their shared play id in a share', () => {

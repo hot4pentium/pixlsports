@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { StatTrackerEvent } from './statTrackerEvent';
+import type { StatTrackerGameSnapshotAthleteStats } from './statTrackerGameSnapshotAthleteStats';
+import type { StatTrackerGameSnapshotAthleteYardStats } from './statTrackerGameSnapshotAthleteYardStats';
 import type { StatTrackerGameSnapshotOpponentStats } from './statTrackerGameSnapshotOpponentStats';
 import type { StatTrackerGameSnapshotOpponentYardStats } from './statTrackerGameSnapshotOpponentYardStats';
 import type { StatTrackerGameSnapshotPossessionSide } from './statTrackerGameSnapshotPossessionSide';
@@ -37,6 +39,8 @@ export interface StatTrackerGameSnapshot {
   possessionSide?: StatTrackerGameSnapshotPossessionSide;
   stats: StatTrackerGameSnapshotStats;
   opponentStats?: StatTrackerGameSnapshotOpponentStats;
+  athleteStats?: StatTrackerGameSnapshotAthleteStats;
+  athleteYardStats?: StatTrackerGameSnapshotAthleteYardStats;
   trackYards: boolean;
   yardStats: StatTrackerGameSnapshotYardStats;
   opponentYardStats?: StatTrackerGameSnapshotOpponentYardStats;

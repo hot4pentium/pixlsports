@@ -134,6 +134,21 @@ function cleanLiveGame(payload: unknown, fallbackId: string) {
   const item = payload as Record<string, unknown>;
   const id = typeof item.id === "string" ? item.id.slice(0, 120) : fallbackId;
   const status = item.status === "final" ? "final" : "live";
+  const athleteStats: Record<string, number> = Object.create(null);
+  const athleteYardStats: Record<string, number> = Object.create(null);
+  for (const rawEvent of Array.isArray(item.events) ? item.events : []) {
+    if (!rawEvent || typeof rawEvent !== "object") continue;
+    const event = rawEvent as Record<string, unknown>;
+    if (event.attribution !== "athlete" || event.possessionSide === "opponent" || typeof event.statId !== "string") continue;
+    athleteStats[event.statId] = (athleteStats[event.statId] ?? 0) + 1;
+    const metric = item.sport === "football"
+      ? event.statId === "reception" ? "receiving-yard"
+        : event.statId === "pass-yard" || event.statId === "rush-yard" ? event.statId : null
+      : null;
+    if (metric && typeof event.yards === "number" && Number.isFinite(event.yards) && event.yards > 0) {
+      athleteYardStats[metric] = (athleteYardStats[metric] ?? 0) + event.yards;
+    }
+  }
   return {
     id,
     sport: typeof item.sport === "string" ? item.sport.slice(0, 30) : "unknown",
@@ -146,6 +161,10 @@ function cleanLiveGame(payload: unknown, fallbackId: string) {
       ? item.opponentScore
       : 0,
     stats: item.stats && typeof item.stats === "object" && !Array.isArray(item.stats) ? item.stats : {},
+    athleteStats: item.athleteStats && typeof item.athleteStats === "object" && !Array.isArray(item.athleteStats)
+      ? item.athleteStats : athleteStats,
+    athleteYardStats: item.athleteYardStats && typeof item.athleteYardStats === "object" && !Array.isArray(item.athleteYardStats)
+      ? item.athleteYardStats : athleteYardStats,
     trackYards: item.trackYards === true,
     yardStats: item.yardStats && typeof item.yardStats === "object" && !Array.isArray(item.yardStats)
       ? item.yardStats

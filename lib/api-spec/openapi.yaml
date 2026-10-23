@@ -3794,6 +3794,16 @@ components:
           additionalProperties:
             type: integer
             minimum: 0
+        athleteStats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        athleteYardStats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
         trackYards: { type: boolean }
         yardStats:
           type: object

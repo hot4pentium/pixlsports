@@ -20,7 +20,7 @@ export function SupporterEventGuidanceMessageBoard({
     <section
       className="supporter-event-guidance-board"
       data-testid="upcoming-event-badge"
-      aria-label="Upcoming Event Card message board"
+      aria-label="Event Card message board"
     >
       <article className="supporter-event-guidance-board__ticket">
         <header className="supporter-event-guidance-board__masthead">

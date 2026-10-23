@@ -101,7 +101,7 @@ import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 import { TrackerHubNavigation, TrackerLiveExitDialog } from './tracker-hub-navigation';
 import { trackEvent } from '../lib/analytics';
-import { copyStatTrackerShareUrl, toStatTrackerShareInput } from './stat-tracker-share';
+import { copyStatTrackerShareUrl, needsFinalTrackerShareUpdate, toStatTrackerShareInput } from './stat-tracker-share';
 import { saveCompletionHandoff } from './tracker-completion-handoff';
 
 const trackerBasePath = (
@@ -1675,7 +1675,7 @@ export function StatTrackerPage() {
       }
       const results = await Promise.all((refreshedShares ?? trackerShares ?? []).map((share) => {
         const game = finalGames.get(share.game.id);
-        return game && share.game.status !== 'final'
+        return game && needsFinalTrackerShareUpdate(share, game, profile.athleteName, profile.teamName)
           ? publishTrackerShare(game, share)
           : Promise.resolve(true);
       }));
@@ -2196,8 +2196,12 @@ export function StatTrackerPage() {
     setTrackerConflict(null);
     setSelectedConflictResolution(null);
     let completionSaveStatus: 'cloud-saved' | 'local-saved' = 'local-saved';
+    let finalSharePublished = false;
     try {
+      // End the recipient's live session before waiting on the separate season-history save.
+      if (share) finalSharePublished = await publishTrackerShare(completed, share);
       const finalRecapPublished = await syncTrackerData(nextData);
+      if (finalRecapPublished) setError('');
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
       if (accountId && finalRecapPublished) clearStoredTrackerSyncFailure(window.localStorage, accountId);
       if (!finalRecapPublished) {
@@ -2224,7 +2228,9 @@ export function StatTrackerPage() {
         completed.sport,
       );
       setError(share
-        ? `${recovery.message} The final supporter recap will publish after cloud sync succeeds.`
+        ? finalSharePublished
+          ? `${recovery.message} The supporter link already shows the final score.`
+          : `${recovery.message} The final supporter recap will publish after cloud sync succeeds.`
         : recovery.message);
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);

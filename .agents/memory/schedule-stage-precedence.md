@@ -23,6 +23,8 @@ The mobile “Coming up” card should show the closest upcoming calendar event,
 
 For a fan-owned tracked game, persist its completion time with the final schedule status. A recently finalized game should stay ahead of future preparation recommendations for the short post-game Send window; once that window expires, the next scheduled event should win again.
 
+The mobile message board follows the same post-game priority: direct the supporter back to the ended Event Card to share, rather than immediately showing the next event.
+
 **Why:** Ending tracking previously changed only the status, so the dashboard could immediately jump from Capture to preparation for the next event and skip Send. A completion timestamp distinguishes that transition from an old final game.
 
 **How to apply:** Keep the post-game window bounded and require the explicit final status plus a valid timestamp; do not let legacy or stale completed games override future practice, meeting, or game guidance.

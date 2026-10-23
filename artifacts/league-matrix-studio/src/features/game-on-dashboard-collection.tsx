@@ -30,6 +30,7 @@ export type DashboardGameOnCard = {
   isPublished: boolean;
   isUnsavedDraft?: boolean;
   recordedGameId?: string;
+  completedAt?: string;
 };
 
 export type GameOnCardDeleteResult = {

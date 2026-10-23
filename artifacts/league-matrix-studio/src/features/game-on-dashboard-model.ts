@@ -14,6 +14,7 @@ export type GameOnDashboardEvent = {
   location: string;
   opponent?: string;
   status?: 'upcoming' | 'live' | 'final';
+  completedAt?: string;
 };
 
 export type OwnedGameOnShare = {
@@ -37,7 +38,19 @@ export type GameOnDashboardEntry = {
   location: string;
   status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Sharing' | 'Complete';
   isPublished: boolean;
+  completedAt?: string;
 };
+
+export function getRecentlyCompletedGameOnCard<T extends Pick<GameOnDashboardEntry, 'type' | 'completedAt'>>(
+  cards: readonly T[],
+  now = new Date(),
+): T | undefined {
+  return cards.filter((card) => {
+    const completedAt = Date.parse(card.completedAt ?? '');
+    return card.type === 'game' && Number.isFinite(completedAt)
+      && completedAt <= now.getTime() && now.getTime() - completedAt < 24 * 60 * 60 * 1000;
+  }).sort((a, b) => Date.parse(b.completedAt!) - Date.parse(a.completedAt!))[0];
+}
 
 export type GameOnSuggestedAction = 'prep' | 'tracker' | 'share' | 'stats' | 'none';
 
@@ -135,6 +148,7 @@ function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice'
           ? 'Starting Soon'
           : shareToken ? 'Published' : 'Draft',
     isPublished: Boolean(shareToken),
+    ...(event.status === 'final' && event.completedAt ? { completedAt: event.completedAt } : {}),
   };
 }
 
@@ -143,7 +157,7 @@ export function buildGameOnDashboardEntries(
   shares: readonly OwnedGameOnShare[],
   athleteName: string,
   now = new Date(),
-  completedLocalGames: readonly { date: string; opponent: string }[] = [],
+  completedLocalGames: readonly { date: string; opponent: string; sourceEventId?: string; endedAt?: string }[] = [],
 ): GameOnDashboardEntry[] {
   const scheduledById = new Map(events.filter(isCardEvent).map((event) => [event.id, event]));
   const published = shares
@@ -166,5 +180,18 @@ export function buildGameOnDashboardEntries(
     .filter((event) => !publishedEventIds.has(event.id))
     .map((event) => entryForEvent(event, athleteName, now));
 
-  return sortGameOnCardsByDate([...published, ...drafts]);
+  const cards = [...published, ...drafts];
+  for (const card of cards) {
+    if (card.type !== 'game') continue;
+    if (scheduledById.has(card.eventId) && scheduledById.get(card.eventId)?.status !== 'final') continue;
+    const exact = completedLocalGames.filter((game) => game.sourceEventId === card.eventId);
+    const legacy = completedLocalGames.filter((game) => !game.sourceEventId && game.date === card.date
+      && game.opponent.trim().toLowerCase() === card.opponent.trim().toLowerCase());
+    const unambiguousLegacy = cards.filter((other) => other.type === 'game' && other.date === card.date
+      && other.opponent.trim().toLowerCase() === card.opponent.trim().toLowerCase()).length === 1;
+    const completed = exact.sort((a, b) => Date.parse(b.endedAt ?? '') - Date.parse(a.endedAt ?? ''))[0]
+      ?? (unambiguousLegacy && legacy.length === 1 ? legacy[0] : undefined);
+    if (!card.completedAt && completed?.endedAt) card.completedAt = completed.endedAt;
+  }
+  return sortGameOnCardsByDate(cards);
 }

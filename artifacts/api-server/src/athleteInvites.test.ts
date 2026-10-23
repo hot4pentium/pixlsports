@@ -734,7 +734,10 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
             opponentScore: 7,
             stats: { points: 6 },
             privateNotes: "never expose this live snapshot",
-            events: [{ private: "live play" }],
+            events: [
+              { id: "early-athlete", statId: "assist", attribution: "athlete", period: 1, createdAt: new Date().toISOString() },
+              ...Array.from({ length: 12 }, (_, index) => ({ id: `team-play-${index}`, statId: "assist", attribution: "team", period: 2, createdAt: new Date().toISOString() })),
+            ],
           },
         ],
       },
@@ -774,6 +777,8 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.equal(started.status, 201);
     const liveSession = StartAthleteInviteLiveResponse.parse(await started.json());
     assert.equal(liveSession.gameId, "live-game");
+    const [storedLiveShare] = await db.select().from(statTrackerSharesTable).where(eq(statTrackerSharesTable.id, liveSession.shareToken));
+    assert.deepEqual((storedLiveShare.game as Record<string, unknown>).athleteStats, { assist: 1 });
     assert.ok(liveSession.expiresAt.getTime() > Date.now());
     const linkedFromTracker = await fetch(liveUrl, {
       method: "POST",

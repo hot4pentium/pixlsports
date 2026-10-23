@@ -14,3 +14,9 @@ When a spectator response also derives a public link from independently editable
 **Why:** Public-card tokens can change without a tracker update, so an event stream keyed only to tracker revisions cannot by itself keep the derived link current.
 
 **How to apply:** Test the database-backed response after token rotation and the existing spectator page's polling path; confirm the old destination is gone while the final score and thank-you remain.
+
+When tracking ends, publish the final state to the existing spectator link independently of the separate private cloud-history save. Show a visible, dismissible thank-you and a Follow athlete action only if the matching public HYPE Card is available. Later cloud conflict resolution must be able to update an already-final link if the saved game changes.
+
+**Why:** A viewer otherwise keeps seeing LIVE, or misses an inline message below the fold, while the owner's unrelated history upload is delayed or fails. A resolved history conflict must not strand the public final at an obsolete score.
+
+**How to apply:** Keep the link's final update queued after outstanding live updates; retain independent history retry and explicit conflict handling. Test with the private save intentionally held while the public link finalizes, then test the recipient prompt on an already-open mobile page.

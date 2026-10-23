@@ -6238,6 +6238,17 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     await wait(`!!document.querySelector('[data-testid="card-game-on-draft:guidance-live"] input')`);
     await evaluate(`document.querySelector('[aria-label="Close Event Card"]').click()`);
     await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:guidance-live"]')`);
+    await evaluate(`window.__setSupporterDashboardEvents([
+      {id:'guidance-live',type:'game',date:new Date().toISOString().slice(0,10),time:new Date().toISOString().slice(11,16),timezone:'UTC',opponent:'Live Hawks',location:'Field 1',status:'final',completedAt:new Date().toISOString()},
+      {id:'guidance-future',type:'game',date:new Date(Date.now()+86400000*3).toISOString().slice(0,10),time:'18:00',timezone:'UTC',opponent:'Future Owls',location:'Field 2',status:'upcoming'}
+    ])`);
+    await wait(`document.querySelector('[data-testid="upcoming-event-badge"]')?.textContent.includes('Game ended')`);
+    assert.match(await evaluate<string>(`document.querySelector('[data-testid="upcoming-event-badge"]').textContent`), /Live Hawks/);
+    assert.equal(await evaluate<string>(`document.querySelector('[data-testid="button-guidance-event-card"]').textContent.trim()`), 'Share');
+    await evaluate(`document.querySelector('[data-testid="button-guidance-event-card"]').click()`);
+    await wait(`!!document.querySelector('[data-testid="card-game-on-draft:guidance-live"] input')`);
+    await evaluate(`document.querySelector('[aria-label="Close Event Card"]').click()`);
+    await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:guidance-live"]')`);
     await evaluate(`(() => {
       const start = new Date(Date.now() - 121 * 60 * 1000).toISOString();
       window.__setSupporterDashboardEvents([

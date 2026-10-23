@@ -1,5 +1,6 @@
-import type { StatTrackerShareInput } from '@workspace/api-client-react';
+import type { StatTrackerShare, StatTrackerShareInput } from '@workspace/api-client-react';
 import type { GameSession } from './stat-tracker';
+import { getAthleteSnapshotStats } from './stat-tracker-athlete-snapshot';
 
 export async function copyStatTrackerShareUrl(
   url: string,
@@ -34,6 +35,7 @@ export function toStatTrackerShareInput(
   athleteName: string,
   teamName: string,
 ): StatTrackerShareInput {
+  const athleteSnapshot = getAthleteSnapshotStats(game.sport, game.events);
   return {
     athleteName,
     teamName,
@@ -55,6 +57,8 @@ export function toStatTrackerShareInput(
         opponentYardStats: { ...(game.opponentYardStats ?? {}) },
       } : {}),
       stats: { ...game.stats },
+      athleteStats: athleteSnapshot.stats,
+      athleteYardStats: athleteSnapshot.yardStats,
       trackYards: game.trackYards === true,
       yardStats: { ...(game.yardStats ?? {}) },
       events: game.events.slice(-10).map((event) => ({
@@ -69,4 +73,21 @@ export function toStatTrackerShareInput(
       })),
     },
   };
+}
+
+// Compare the published game, not just its status: resolving a cloud-history
+// conflict can replace an already-final local game with a corrected final.
+export function needsFinalTrackerShareUpdate(
+  share: Pick<StatTrackerShare, 'athleteName' | 'teamName' | 'game'>,
+  game: GameSession,
+  athleteName: string,
+  teamName: string,
+): boolean {
+  const canonical = (value: unknown) => JSON.stringify(value, (_, item) =>
+    item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)))
+      : item,
+  );
+  return canonical({ athleteName: share.athleteName, teamName: share.teamName, game: share.game })
+    !== canonical(toStatTrackerShareInput(game, athleteName, teamName));
 }

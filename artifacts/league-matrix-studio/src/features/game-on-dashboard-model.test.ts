@@ -1,11 +1,43 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, getSuggestedGameOnAction, sortGameOnCardsByDate, type GameOnDashboardEvent } from './game-on-dashboard-model';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, getRecentlyCompletedGameOnCard, getSuggestedGameOnAction, sortGameOnCardsByDate, type GameOnDashboardEvent } from './game-on-dashboard-model';
 
 const now = new Date('2026-09-24T12:00:00');
 const event = (id: string, type: GameOnDashboardEvent['type'], date: string): GameOnDashboardEvent => ({
   id, type, date, time: '10:00', location: 'North Field', opponent: 'Ravens', status: 'upcoming',
+});
+
+test('recently ended games remain available for sharing ahead of the next event', () => {
+  const ended = { ...event('ended-game', 'game', '2026-09-24'), status: 'final' as const, completedAt: now.toISOString() };
+  const cards = buildGameOnDashboardEntries(
+    [ended, event('next-practice', 'practice', '2026-09-25')],
+    [{ shareToken: 'ended-card', title: 'Ended game', createdAt: now.toISOString(), events: [ended] }],
+    'Alex', now,
+  );
+  assert.equal(getRecentlyCompletedGameOnCard(cards, now)?.id, 'share:ended-card');
+  assert.equal(getRecentlyCompletedGameOnCard(cards, new Date(now.getTime() + 24 * 60 * 60 * 1000)), undefined);
+  assert.equal(getRecentlyCompletedGameOnCard([{ ...cards[0], completedAt: 'invalid' }], now), undefined);
+  assert.equal(getRecentlyCompletedGameOnCard([{ ...cards[0], completedAt: new Date(now.getTime() + 1000).toISOString() }], now), undefined);
+});
+
+test('standalone tracked finals keep their exact Event Card for sharing after reload', () => {
+  const source = event('standalone-game', 'game', '2026-09-24');
+  const cards = buildGameOnDashboardEntries([], [
+    { shareToken: 'standalone', title: 'Game', createdAt: now.toISOString(), events: [source] },
+  ], 'Alex', now, [{ date: source.date, opponent: 'Ravens', sourceEventId: source.id, endedAt: now.toISOString() }]);
+  assert.equal(getRecentlyCompletedGameOnCard(cards, now)?.id, 'share:standalone');
+  const wrongEvent = buildGameOnDashboardEntries([], [
+    { shareToken: 'standalone', title: 'Game', createdAt: now.toISOString(), events: [source] },
+  ], 'Alex', now, [{ date: source.date, opponent: 'Ravens', sourceEventId: 'different-game', endedAt: now.toISOString() }]);
+  assert.equal(getRecentlyCompletedGameOnCard(wrongEvent, now), undefined);
+});
+
+test('a saved final does not advertise sharing until its linked Calendar completion succeeds', () => {
+  const source = { ...event('linked-game', 'game', '2026-09-24'), status: 'live' as const };
+  const cards = buildGameOnDashboardEntries([source], [], 'Alex', now,
+    [{ date: source.date, opponent: 'Ravens', sourceEventId: source.id, endedAt: now.toISOString() }]);
+  assert.equal(getRecentlyCompletedGameOnCard(cards, now), undefined);
 });
 
 test('Event Cards expire two hours after kickoff in the saved time zone, regardless of stale status', () => {

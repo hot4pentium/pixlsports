@@ -22,6 +22,8 @@ import {
   type StatTrackerEvent,
 } from "@workspace/api-client-react";
 import { isYardageTrackingAvailable } from "./stat-tracker";
+import { getAthleteSnapshotStats } from "./stat-tracker-athlete-snapshot";
+import { StatTrackerFinalPrompt } from "./stat-tracker-final-prompt";
 import { PublicSupportLink } from "./public-support-link";
 import { BackNavigationLink } from "@/components/back-navigation-link";
 
@@ -122,6 +124,7 @@ export function PublicStatTrackerPage() {
 
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "reconnecting">("connecting");
   const [unavailable, setUnavailable] = useState(false);
+  const [dismissedFinalGame, setDismissedFinalGame] = useState<string | null>(null);
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const queryClient = useQueryClient();
@@ -188,6 +191,9 @@ export function PublicStatTrackerPage() {
         }
         queryClient.setQueryData(queryKey, (old: StatTrackerShare | undefined) => {
           if (!old || update.revision > old.revision) return update;
+          if (update.revision === old.revision && update.publicFanCardPath !== old.publicFanCardPath) {
+            return { ...old, publicFanCardPath: update.publicFanCardPath };
+          }
           return old;
         });
         setUnavailable(false);
@@ -257,6 +263,7 @@ export function PublicStatTrackerPage() {
   }
 
   const game = data.game;
+  const finalGameKey = `${shareToken}:${game.id}`;
   const phaseLabel = getPhaseLabel(game.sport, game.soccerPeriodFormat);
   const status = getStatusCopy(game.status);
   const allStats = [
@@ -266,6 +273,13 @@ export function PublicStatTrackerPage() {
       : []),
   ];
   const recentEvents = groupCompletedPassEvents(game.events.slice().reverse());
+  const legacyAthleteSnapshot = getAthleteSnapshotStats(game.sport, game.events);
+  const athleteStats = [
+    ...Object.entries(game.athleteStats ?? legacyAthleteSnapshot.stats).map(([key, value]) => ({ key, value: String(value) })),
+    ...(isYardageTrackingAvailable(game.sport)
+      ? Object.entries(game.athleteYardStats ?? legacyAthleteSnapshot.yardStats).map(([key, value]) => ({ key, value: `${value} yds` }))
+      : []),
+  ];
   const updatedTime = new Date(data.updatedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const statusTone = {
     live: "border-primary/55 bg-primary text-primary-foreground",
@@ -276,6 +290,17 @@ export function PublicStatTrackerPage() {
 
   return (
     <div className="noise stat-tracker-public-page min-h-dvh overflow-hidden bg-background text-foreground" data-testid="public-stat-tracker-page">
+      {game.status === "final" && dismissedFinalGame !== finalGameKey && (
+        <StatTrackerFinalPrompt
+          key={finalGameKey}
+          athleteName={data.athleteName}
+          followHref={data.publicFanCardPath ? `${basePath}${data.publicFanCardPath}` : null}
+          onDismiss={() => {
+            setDismissedFinalGame(finalGameKey);
+            window.requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-testid="scoreboard-hero"]')?.focus());
+          }}
+        />
+      )}
       <div className="pointer-events-none fixed inset-0 bg-tech-grid opacity-30" aria-hidden="true" />
       <div className="stat-tracker-public-main relative mx-auto w-full max-w-[1180px] px-4 pb-16 pt-4 sm:px-8 sm:pt-7 lg:px-10">
         <header className="flex items-center justify-between border-b border-foreground/10 pb-4 sm:pb-5">
@@ -339,15 +364,15 @@ export function PublicStatTrackerPage() {
                 </div>
               </div>
 
-              <div className="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch bg-background/35" data-testid="scoreboard-hero">
+              <div tabIndex={-1} className="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch bg-background/35" data-testid="scoreboard-hero">
                 <div className="min-w-0 px-4 py-7 sm:px-8 sm:py-10">
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.19em] text-primary">
                     <span className="h-2 w-2 bg-primary" /> Your side
                   </div>
-                  <p className="mt-3 truncate text-sm font-bold uppercase tracking-[0.1em] text-foreground sm:text-base" title={data.athleteName || "Athlete"}>
-                    {data.athleteName || "Athlete"}
+                  <p data-testid="score-home-team-name" className="mt-3 truncate text-sm font-bold uppercase tracking-[0.1em] text-foreground sm:text-base" title={data.teamName || "Home team"}>
+                    {data.teamName || "Home team"}
                   </p>
-                  <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{data.teamName || "Team"}</p>
+                  <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Tracking {data.athleteName || "Athlete"}</p>
                   <p className="mt-5 font-display text-[clamp(4.75rem,14vw,9rem)] leading-[.78] text-primary" data-testid="score-home">{game.score}</p>
                 </div>
                 <div className="flex flex-col items-center justify-center border-x border-foreground/10 px-3 sm:px-6">
@@ -397,7 +422,7 @@ export function PublicStatTrackerPage() {
                     data-testid="link-final-fan-card"
                     aria-label={`Visit ${data.athleteName || "the athlete"}'s HYPE Card to follow`}
                   >
-                    Visit HYPE Card <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    Follow {data.athleteName || "athlete"} <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </a>
                 )}
               </section>
@@ -408,7 +433,7 @@ export function PublicStatTrackerPage() {
                 <div className="flex items-end justify-between border-b border-foreground/10 pb-4">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-accent">Live line</p>
-                    <h2 className="mt-1 font-display text-3xl uppercase tracking-wide">Stats snapshot</h2>
+                    <h2 className="mt-1 font-display text-3xl uppercase tracking-wide">Team stats snapshot</h2>
                   </div>
                   <Activity className="h-5 w-5 text-primary" />
                 </div>
@@ -422,6 +447,21 @@ export function PublicStatTrackerPage() {
                 </div>
               </section>
             )}
+            <section className="mt-5 border border-primary/30 bg-card p-5 clip-angled sm:p-7" data-testid="stat-tracker-athlete-snapshot">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-accent">Athlete-only stats</p>
+              <h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{data.athleteName || "Athlete"}’s stats snapshot</h2>
+              <p className="mt-2 text-xs text-muted-foreground">{game.athleteStats ? "Only plays recorded for this athlete. Team and opponent stats are separate." : "Athlete-assigned plays from the available recent activity."}</p>
+              {athleteStats.length > 0 ? (
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+                  {athleteStats.map(({ key, value }) => (
+                    <div key={key} data-testid={`athlete-snapshot-stat-${key}`} className="border border-foreground/10 bg-background/40 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-muted-foreground">{formatStatKey(key)}</p>
+                      <p className="mt-2 font-display text-3xl leading-none text-primary">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="mt-4 text-sm text-muted-foreground">No stats have been assigned to {data.athleteName || "this athlete"} yet.</p>}
+            </section>
           </section>
 
           <aside className="min-w-0" data-testid="stat-tracker-recent-activity">
