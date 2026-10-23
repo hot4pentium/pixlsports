@@ -804,8 +804,8 @@ export function updateStatEventYards(
   };
 }
 
-export function undoLastStatEvent(game: GameSession): GameSession {
-  const event = game.events.at(-1);
+export function undoStatEvent(game: GameSession, eventId: string): GameSession {
+  const event = game.events.find((item) => item.id === eventId);
   if (!event || game.status === 'final') return game;
   const removedEvents = event.playId
     ? game.events.filter((item) => item.playId === event.playId)
@@ -838,6 +838,11 @@ export function undoLastStatEvent(game: GameSession): GameSession {
     score: Math.max(0, game.score - scoreDelta),
     events: game.events.filter((item) => !removedEventIds.has(item.id)),
   };
+}
+
+export function undoLastStatEvent(game: GameSession): GameSession {
+  const event = game.events.at(-1);
+  return event ? undoStatEvent(game, event.id) : game;
 }
 
 export function endGame(

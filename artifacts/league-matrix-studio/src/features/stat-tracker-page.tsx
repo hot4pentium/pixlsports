@@ -76,7 +76,7 @@ import {
   trackerSaveStatusMessage,
   updateStatEventAttribution,
   updateStatEventYards,
-  undoLastStatEvent,
+  undoStatEvent,
   buildGameReport,
   type GameSession,
   type GameOutcome,
@@ -96,6 +96,7 @@ import { GameReportView } from './stat-tracker-game-report';
 import { GameOutcomePicker, TrackerCompletionDialog } from './tracker-completion-dialog';
 import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
+import { TrackerHubNavigation, TrackerLiveExitDialog } from './tracker-hub-navigation';
 import { trackEvent } from '../lib/analytics';
 import { copyStatTrackerShareUrl, toStatTrackerShareInput } from './stat-tracker-share';
 import { saveCompletionHandoff } from './tracker-completion-handoff';
@@ -686,6 +687,8 @@ type LiveTrackerGameProps = {
   onToggleShowAllStats: () => void;
   onLeaveGame: () => void;
   onEndGame: (scoreRecorded: boolean, outcome: GameOutcome | null) => void;
+  endGamePromptRequest?: number;
+  onEndGamePromptRequestHandled?: () => void;
 };
 
 function latestYardEventIds(game: GameSession) {
@@ -727,6 +730,8 @@ export function LiveTrackerGame({
   onToggleShowAllStats,
   onLeaveGame,
   onEndGame,
+  endGamePromptRequest = 0,
+  onEndGamePromptRequestHandled,
 }: LiveTrackerGameProps) {
   const pendingFavoriteFocusRef = useRef<string | null>(null);
   useLayoutEffect(() => {
@@ -760,12 +765,18 @@ export function LiveTrackerGame({
   const [baseballHitAttribution, setBaseballHitAttribution] = useState<StatAttribution | null>(null);
   const [baseballPitchAttribution, setBaseballPitchAttribution] = useState<StatAttribution | null>(null);
   const [confirmEndGame, setConfirmEndGame] = useState(false);
+  const [pendingUndoEventId, setPendingUndoEventId] = useState<string | null>(null);
   const [includeFinalScore, setIncludeFinalScore] = useState(
     currentGame.scoreRecorded === true || currentGame.score > 0 || currentGame.opponentScore > 0,
   );
   const [manualOutcome, setManualOutcome] = useState<GameOutcome | null>(null);
   const endGameButtonRef = useRef<HTMLButtonElement>(null);
   const cancelEndGameButtonRef = useRef<HTMLButtonElement>(null);
+  const endGamePromptHandledRef = useRef(onEndGamePromptRequestHandled);
+  endGamePromptHandledRef.current = onEndGamePromptRequestHandled;
+  const undoTriggerButtonRef = useRef<HTMLButtonElement | null>(null);
+  const undoConfirmButtonRef = useRef<HTMLButtonElement>(null);
+  const wasUndoConfirmationOpen = useRef(false);
   const wasConfirmingEndGame = useRef(false);
   const updateCurrentGame = (next: GameSession | ((game: GameSession) => GameSession)) => {
     const resolved = typeof next === 'function' ? next(currentGameRef.current) : next;
@@ -795,6 +806,26 @@ export function LiveTrackerGame({
     }
     wasConfirmingEndGame.current = confirmEndGame;
   }, [confirmEndGame]);
+
+  useEffect(() => {
+    if (endGamePromptRequest <= 0) return;
+    setConfirmEndGame(true);
+    endGamePromptHandledRef.current?.();
+  }, [endGamePromptRequest]);
+
+  useEffect(() => {
+    if (pendingUndoEventId) {
+      undoConfirmButtonRef.current?.focus?.();
+      wasUndoConfirmationOpen.current = true;
+    } else if (wasUndoConfirmationOpen.current) {
+      const trigger = undoTriggerButtonRef.current;
+      if (trigger?.isConnected) trigger.focus();
+      else if (typeof document !== 'undefined') {
+        document.querySelector<HTMLButtonElement>('[data-testid^="button-undo-event-"]')?.focus();
+      }
+      wasUndoConfirmationOpen.current = false;
+    }
+  }, [pendingUndoEventId]);
 
   useEffect(() => {
     setYardDrafts({});
@@ -940,8 +971,8 @@ export function LiveTrackerGame({
           onChange={(format) => updateCurrentGame((game) => ({ ...game, soccerPeriodFormat: format }))}
           className="mt-5"
         />
-        <button type="button" onClick={onLeaveGame} data-testid="button-leave-game-open" aria-label="Back to Game Day Hub and leave the game open" className="mt-4 inline-flex min-h-11 items-center gap-2 border border-border px-4 text-xs font-bold uppercase tracking-widest">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Game Day Hub · Leave game open
+        <button type="button" onClick={onLeaveGame} data-testid="button-leave-game-open" aria-label="Back to Game Day Hub" className="mt-4 inline-flex min-h-11 items-center gap-2 border border-border px-4 text-xs font-bold uppercase tracking-widest">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Game Day Hub
         </button>
       </section>
     );
@@ -1021,12 +1052,7 @@ export function LiveTrackerGame({
           <div role="status" className="mb-5 border border-primary/40 bg-primary/10 p-4 text-sm" data-testid="notice-live-tracker-paused">
             <p className="font-bold">Game paused. Resume to record stats.</p>
             <p className="mt-1 text-muted-foreground">Stat taps are not recorded while paused. Your existing stats are kept.</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: 'live' }))} className="min-h-11 border border-primary px-4 font-bold text-primary-ink" data-testid="button-resume-live-stats">Resume tracking</button>
-              <button type="button" onClick={onLeaveGame} className="inline-flex min-h-11 items-center gap-2 border border-border px-4 font-bold text-foreground hover:border-primary" data-testid="button-leave-paused-game-open">
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Game Day Hub · Leave game open
-              </button>
-            </div>
+            <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: 'live' }))} className="mt-3 min-h-11 border border-primary px-4 font-bold text-primary-ink" data-testid="button-resume-live-stats">Resume tracking</button>
           </div>
         )}
         {isYardageTrackingAvailable(currentGame.sport) && (
@@ -1279,16 +1305,7 @@ export function LiveTrackerGame({
             </div>
           </div>
         ) : (
-          <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
-            <button
-              type="button"
-              onClick={onLeaveGame}
-              aria-label="Back to Game Day Hub and leave the game open"
-              data-testid="button-leave-game-open"
-              className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub · Leave game open
-            </button>
+          <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
             <button
               type="button"
               ref={endGameButtonRef}
@@ -1339,13 +1356,60 @@ export function LiveTrackerGame({
                       {isSelectedYardEvent ? 'Editing this play' : 'Correct yards'}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={(actionEvent) => {
+                      undoTriggerButtonRef.current = actionEvent.currentTarget;
+                      setPendingUndoEventId(event.id);
+                    }}
+                    disabled={currentGame.status === 'final' || pendingUndoEventId !== null}
+                    aria-expanded={pendingUndoEventId === event.id}
+                    aria-controls={`confirm-undo-event-${event.id}`}
+                    aria-label={`Undo ${eventLabel(event.statId)} from this game`}
+                    data-testid={`button-undo-event-${event.id}`}
+                    className="inline-flex min-h-11 items-center gap-1.5 border border-border px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-destructive/60 hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <RotateCcw className="h-4 w-4" aria-hidden="true" /> Undo
+                  </button>
+                  <div
+                    id={`confirm-undo-event-${event.id}`}
+                    className={`${pendingUndoEventId === event.id ? 'inline-flex' : 'hidden'} min-h-11 flex-wrap items-center gap-2 border border-primary/40 bg-primary/5 px-2 py-1`}
+                    role="group"
+                    aria-label={`Confirm undo of ${eventLabel(event.statId)}`}
+                    data-testid={`confirm-undo-event-${event.id}`}
+                  >
+                    <span className="text-[10px] font-bold text-foreground">
+                      {event.playId ? 'Undo this paired play?' : 'Undo this entry?'}
+                    </span>
+                    <button
+                      type="button"
+                      ref={pendingUndoEventId === event.id ? undoConfirmButtonRef : undefined}
+                      onClick={() => {
+                        updateCurrentGame((game) => undoStatEvent(game, event.id));
+                        setPendingUndoEventId(null);
+                      }}
+                      aria-label={`Confirm undo of ${eventLabel(event.statId)}`}
+                      data-testid={`button-confirm-undo-event-${event.id}`}
+                      className="inline-flex min-h-10 items-center gap-1 border border-primary px-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      <Check className="h-4 w-4" aria-hidden="true" /> Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingUndoEventId(null)}
+                      aria-label={`Cancel undo of ${eventLabel(event.statId)}`}
+                      data-testid={`button-cancel-undo-event-${event.id}`}
+                      className="inline-flex min-h-10 items-center gap-1 border border-border px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" /> Cancel
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
           {!currentGame.events.length && <p className="text-sm text-muted-foreground">Your taps will appear here.</p>}
         </div>
-        <button type="button" onClick={() => updateCurrentGame(undoLastStatEvent(currentGame))} disabled={!currentGame.events.length} className="mt-5 inline-flex min-h-11 items-center gap-2 border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-40"><RotateCcw className="h-4 w-4" /> Undo last</button>
       </div>
     </section>
   );
@@ -1383,6 +1447,8 @@ export function StatTrackerPage() {
   const [saveStatus, setSaveStatus] = useState<TrackerSaveStatus | null>(null);
   const [justCompletedGame, setJustCompletedGame] = useState<GameSession | null>(null);
   const [completionOpen, setCompletionOpen] = useState(false);
+  const [liveGameExitDialogOpen, setLiveGameExitDialogOpen] = useState(false);
+  const [endGamePromptRequest, setEndGamePromptRequest] = useState(0);
   const [handoffPending, setHandoffPending] = useState(false);
   const [retryAvailable, setRetryAvailable] = useState(false);
   const [revisionConflict, setRevisionConflict] = useState(false);
@@ -1942,6 +2008,34 @@ export function StatTrackerPage() {
       : 'STAT UPDATED');
   };
 
+  const requestBackToHub = () => {
+    if (currentGame && currentGame.status !== 'paused' && currentGame.status !== 'final') {
+      setLiveGameExitDialogOpen(true);
+      return;
+    }
+    setLocation('/studio');
+  };
+
+  const pauseAndReturnToHub = () => {
+    if (!currentGame) {
+      setLiveGameExitDialogOpen(false);
+      setLocation('/studio');
+      return;
+    }
+    const pausedGame = { ...currentGame, status: 'paused' as const };
+    if (accountId && storageAccountId === accountId) {
+      saveStoredActiveGame(window.localStorage, accountId, pausedGame);
+    }
+    updateCurrentGame(pausedGame);
+    setLiveGameExitDialogOpen(false);
+    setLocation('/studio');
+  };
+
+  const requestEndGameFromExitDialog = () => {
+    setLiveGameExitDialogOpen(false);
+    setEndGamePromptRequest((request) => request + 1);
+  };
+
   const syncTrackerData = async (
     nextData: StatTrackerData,
     confirmedChoice: TrackerConflictResolution | null = null,
@@ -2330,10 +2424,13 @@ export function StatTrackerPage() {
   return (
     <div className="studio-editor-page-background stat-tracker-editor-page min-h-dvh w-full min-w-0">
       <div className="pixl-editor-main mx-auto w-full min-w-0 max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
-      <div className="mb-3 flex min-h-11 items-center justify-between gap-3" data-testid="stat-tracker-page-heading">
-        <BackNavigationLink href="/studio" label="Back to Game Day Hub" testId="link-stat-tracker-studio" />
+      <div className="mb-3 flex flex-col gap-3" data-testid="stat-tracker-page-heading">
+        <TrackerHubNavigation
+          gameStatus={currentGame?.status ?? null}
+          onBack={requestBackToHub}
+        />
         <h1 className="sr-only">Stat Tracker</h1>
-        {saveStatus && <StatTrackerSaveStatus status={saveStatus} />}
+        {saveStatus && <div className="self-end"><StatTrackerSaveStatus status={saveStatus} /></div>}
       </div>
 
       <div className="pixl-editor-tabs mb-6 flex gap-2 overflow-x-auto border-b border-border pb-1" role="tablist" aria-label="Choose athlete sport">
@@ -2515,8 +2612,10 @@ export function StatTrackerPage() {
            onCapture={handleCapture}
            onGameChange={updateCurrentGame}
           onToggleShowAllStats={() => setShowAllStats((value) => !value)}
-           onLeaveGame={() => setLocation('/studio')}
+            onLeaveGame={requestBackToHub}
            onEndGame={(scoreRecorded, outcome) => void saveCompletedGame(scoreRecorded, outcome)}
+            endGamePromptRequest={endGamePromptRequest}
+            onEndGamePromptRequestHandled={() => setEndGamePromptRequest(0)}
         />
         </>
       )}
@@ -2540,6 +2639,12 @@ export function StatTrackerPage() {
         teamName={profile.teamName}
         saveStatus={saveStatus === 'saving' || saveStatus === 'cloud-saved' || saveStatus === 'local-saved' ? saveStatus : undefined}
         onViewStats={() => { if (justCompletedGame) setSelectedReportGameId(justCompletedGame.id); setCompletionOpen(false); }}
+      />
+      <TrackerLiveExitDialog
+        open={liveGameExitDialogOpen}
+        onPauseAndLeave={pauseAndReturnToHub}
+        onEndGame={requestEndGameFromExitDialog}
+        onKeepTracking={() => setLiveGameExitDialogOpen(false)}
       />
       {notice && <div className="fixed bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-primary bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary shadow-lg" role="status"><Check className="h-4 w-4" /> {notice}</div>}
       </div>

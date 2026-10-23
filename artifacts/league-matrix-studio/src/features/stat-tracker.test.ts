@@ -5,6 +5,7 @@ import { createElement } from 'react';
 import { Router } from 'wouter';
 import { GameOutcomePicker } from './tracker-completion-dialog';
 import { TrackerEndGameChoices } from './tracker-end-game-choices';
+import { TrackerHubNavigation } from './tracker-hub-navigation';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 
 import {
@@ -55,6 +56,7 @@ import {
   trackerSaveErrorMessage,
   updateStatEventAttribution,
   updateStatEventYards,
+  undoStatEvent,
   undoLastStatEvent,
 } from './stat-tracker';
 import {
@@ -845,11 +847,10 @@ test('back-to-back live stat taps preserve both events from one render', () => {
   assert.equal(changedGame.score, 6);
 });
 
-test('football First Down and Sack are featured stats, and paused games can return to the hub without ending', () => {
+test('football First Down and Sack are featured stats, and pausing preserves the unfinished game', () => {
   const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('football');
   let changedGame = game;
-  let leaveGameOpen = false;
   let renderer!: ReturnType<typeof create>;
   const renderGame = () => createElement(LiveTrackerGame, {
     currentGame: changedGame,
@@ -863,7 +864,7 @@ test('football First Down and Sack are featured stats, and paused games can retu
     onCapture: () => {},
     onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
     onToggleShowAllStats: () => {},
-    onLeaveGame: () => { leaveGameOpen = true; },
+    onLeaveGame: () => {},
     onEndGame: () => {},
   });
 
@@ -886,12 +887,35 @@ test('football First Down and Sack are featured stats, and paused games can retu
     renderer.update(renderGame());
   });
   assert.equal(changedGame.status, 'paused');
-  act(() => {
-    renderer.root.findByProps({ 'data-testid': 'button-leave-paused-game-open' }).props.onClick();
-  });
-  assert.equal(leaveGameOpen, true);
   assert.equal(changedGame.status, 'paused');
   assert.equal(changedGame.endedAt, undefined);
+});
+
+test('the tracker hub button sits at the top and routes through its shared back handler', () => {
+  let backCount = 0;
+  let renderer!: ReturnType<typeof create>;
+  act(() => {
+    renderer = create(createElement(TrackerHubNavigation, {
+      gameStatus: 'live',
+      onBack: () => { backCount++; },
+    }));
+  });
+  const backButton = renderer.root.findByProps({ 'data-testid': 'button-back-to-game-day-hub' });
+
+  assert.match(backButton.props.className, /w-full/);
+  assert.match(backButton.props.className, /min-h-14/);
+  assert.match(backButton.props['aria-label'], /Back to Game Day Hub/);
+  act(() => backButton.props.onClick());
+  assert.equal(backCount, 1);
+
+  act(() => renderer.update(createElement(TrackerHubNavigation, {
+    gameStatus: 'paused',
+    onBack: () => { backCount++; },
+  })));
+  assert.match(
+    renderer.root.findByProps({ 'data-testid': 'button-back-to-game-day-hub' }).props['aria-label'],
+    /Leave game open/,
+  );
 });
 
 test('team card and athlete avatar taps preserve separate attribution during rapid play', () => {
@@ -1025,6 +1049,56 @@ test('recent activity exposes a mobile-sized attribution correction with its des
   assert.deepEqual(changedGame.events.map((event) => event.attribution), ['athlete', 'team']);
   assert.deepEqual(changedGame.events.map((event) => event.statId), ['three-point', 'rebound']);
   assert.equal(changedGame.score, game.score);
+});
+
+test('recent activity undo is per-entry, reversible until confirmed, and accessible by icon controls', () => {
+  let game = createGameSession('soccer', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'goal', new Date('2026-09-17T12:01:00Z'));
+  game = addStatEvent(game, 'shot', new Date('2026-09-17T12:02:00Z'));
+  const goalId = game.events[0]!.id;
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = () => createElement(LiveTrackerGame, {
+    currentGame: changedGame,
+    rule: getSportRule('soccer'),
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: getSportRule('soccer').stats.filter((item) => item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame());
+  });
+  const undoButton = renderer.root.findByProps({ 'data-testid': `button-undo-event-${goalId}` });
+  assert.equal(undoButton.props['aria-label'], 'Undo Goal from this game');
+  assert.equal(undoButton.props['aria-expanded'], false);
+  assert.match(undoButton.props.className, /min-h-11/);
+
+  act(() => undoButton.props.onClick({ currentTarget: {} }));
+  assert.equal(changedGame, game, 'the event remains until confirmation');
+  const confirmButton = renderer.root.findByProps({ 'data-testid': `button-confirm-undo-event-${goalId}` });
+  const cancelButton = renderer.root.findByProps({ 'data-testid': `button-cancel-undo-event-${goalId}` });
+  assert.equal(renderer.root.findByProps({ 'data-testid': `button-undo-event-${goalId}` }).props['aria-expanded'], true);
+  assert.equal(confirmButton.props['aria-label'], 'Confirm undo of Goal');
+  assert.equal(cancelButton.props['aria-label'], 'Cancel undo of Goal');
+
+  act(() => cancelButton.props.onClick());
+  assert.equal(changedGame, game, 'cancel leaves the event untouched');
+
+  act(() => renderer.update(renderGame()));
+  act(() => renderer.root.findByProps({ 'data-testid': `button-undo-event-${goalId}` }).props.onClick({ currentTarget: {} }));
+  act(() => renderer.root.findByProps({ 'data-testid': `button-confirm-undo-event-${goalId}` }).props.onClick());
+  assert.deepEqual(changedGame.events.map((event) => event.statId), ['shot']);
+  assert.deepEqual(changedGame.stats, { shot: 1 });
+  assert.equal(changedGame.score, 0);
 });
 
 test('athlete stat target can use the HYPE Card photo crop and falls back to initials when it fails', () => {
@@ -1871,6 +1945,19 @@ test('undo reverses the most recent event and its score contribution', () => {
   assert.equal(game.score, 3);
   assert.deepEqual(game.stats, { 'three-point': 1 });
   assert.equal(game.events.length, 1);
+});
+
+test('undoing one event removes its paired pass and reception together', () => {
+  let game = createGameSession('football', {}, new Date('2026-09-17T12:00:00Z'));
+  game = addFootballPassReception(game, new Date('2026-09-17T12:01:00Z'), 22, 'athlete');
+  game = addStatEvent(game, 'touchdown', new Date('2026-09-17T12:02:00Z'));
+
+  const result = undoStatEvent(game, game.events[0]!.id);
+
+  assert.deepEqual(result.events.map((event) => event.statId), ['touchdown']);
+  assert.deepEqual(result.stats, { touchdown: 1 });
+  assert.equal(result.score, 6);
+  assert.deepEqual(result.yardStats, {});
 });
 
 test('manual score adjustments track both sides and never go below zero', () => {

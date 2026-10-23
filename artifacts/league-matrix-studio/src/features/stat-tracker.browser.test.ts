@@ -57,6 +57,7 @@ import {
 import { GameOnInlineStatTracker } from './src/features/game-on-inline-stat-tracker';
 import { GameReportView } from './src/features/stat-tracker-game-report';
 import { TrackerCompletionDialog } from './src/features/tracker-completion-dialog';
+import { TrackerHubNavigation, TrackerLiveExitDialog } from './src/features/tracker-hub-navigation';
 import {
   buildGameReport,
   clearStoredTrackerSyncFailure,
@@ -318,6 +319,8 @@ function TrackerHarness() {
     }
   });
   const [leftGameOpen, setLeftGameOpen] = useState(false);
+  const [liveGameExitDialogOpen, setLiveGameExitDialogOpen] = useState(false);
+  const [endGamePromptRequest, setEndGamePromptRequest] = useState(0);
   const favoriteSport = currentGame?.sport ?? (footballMode ? 'football' : 'soccer');
   const validFavoriteIds = getLiveTrackingStats(
     favoriteSport,
@@ -366,6 +369,22 @@ function TrackerHarness() {
     else window.localStorage.removeItem(trackerActiveStorageKey);
     setCurrentGame(game);
   };
+  const requestBackToHub = () => {
+    if (currentGame && currentGame.status !== 'paused' && currentGame.status !== 'final') {
+      setLiveGameExitDialogOpen(true);
+      return;
+    }
+    setLeftGameOpen(true);
+  };
+  const pauseAndReturnToHub = () => {
+    if (currentGame) persistActiveGame({ ...currentGame, status: 'paused' });
+    setLiveGameExitDialogOpen(false);
+    setLeftGameOpen(true);
+  };
+  const requestEndGame = () => {
+    setLiveGameExitDialogOpen(false);
+    setEndGamePromptRequest((request) => request + 1);
+  };
 
   useEffect(() => {
     setShowNotice(Boolean(nextGame));
@@ -398,6 +417,16 @@ function TrackerHarness() {
   if (completionMode) return createElement(CompletionHarness);
 
   return createElement('main', { className: 'studio-editor-page-background stat-tracker-editor-page min-h-dvh w-full min-w-0' },
+    createElement(TrackerHubNavigation, {
+      gameStatus: currentGame?.status || null,
+      onBack: requestBackToHub,
+    }),
+    createElement(TrackerLiveExitDialog, {
+      open: liveGameExitDialogOpen,
+      onPauseAndLeave: pauseAndReturnToHub,
+      onEndGame: requestEndGame,
+      onKeepTracking: () => setLiveGameExitDialogOpen(false),
+    }),
     createElement('output', {
       hidden: true,
       'data-testid': 'tracker-next-game-source',
@@ -431,7 +460,9 @@ function TrackerHarness() {
                : 'Video ready for Falcons vs ' + (currentGame?.opponent || 'this game') + '. Pixl Sports does not upload or store it here.'),
            onGameChange: persistActiveGame,
           onToggleShowAllStats: () => {},
-            onLeaveGame: () => setLeftGameOpen(true),
+             onLeaveGame: requestBackToHub,
+            endGamePromptRequest,
+            onEndGamePromptRequestHandled: () => setEndGamePromptRequest(0),
            onEndGame: () => {
              if (!persistenceMode || !currentGame) return;
              const completed = endGame(currentGame);
@@ -695,6 +726,23 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).stats["shot-on-target"]', (count) => count === 3);
     assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"stat-count-shot-on-target\\"]").textContent.trim()', page.sessionId), /^3/);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-back-to-game-day-hub\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]")?.getAttribute("role") === "alertdialog"', page.sessionId),
+      true,
+      'leaving a live game should ask for an explicit choice',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-end-game-from-leave-choice\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-end-live-game\\"]") !== null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-cancel-end-live-game\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-end-live-game\\"]") === null', Boolean);
+    assert.equal(await connection.evaluate<string>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).status', page.sessionId), 'live');
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-back-to-game-day-hub\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]") !== null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-keep-tracking\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]") === null', Boolean);
+    assert.equal(await connection.evaluate<string>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).status', page.sessionId), 'live');
     await connection.evaluate('document.querySelector("[data-testid=\\"button-toggle-live-game-pause\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null', Boolean);
     assert.equal(await connection.evaluate<boolean>(`['live-stat-shot-on-target', 'athlete-stat-target-shot-on-target', 'score-adjust-athlete-increase'].every(id => document.querySelector('[data-testid="' + id + '"]').matches(':disabled'))`, page.sessionId), true);
@@ -725,9 +773,9 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-count-corner-kick\\"]")?.textContent.trim().startsWith("2")', Boolean);
     assert.equal(await connection.evaluate<number>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).score', page.sessionId), 0);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-toggle-live-game-pause\\"]").click()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-leave-paused-game-open\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-back-to-game-day-hub\\"]")?.getAttribute("aria-label").includes("Leave game open")', Boolean);
     const activeGameBeforeLeaving = await connection.evaluate('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game"))', page.sessionId);
-    await connection.evaluate('document.querySelector("[data-testid=\\"button-leave-paused-game-open\\"]").click()', page.sessionId);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-back-to-game-day-hub\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"tracker-returned-to-dashboard\\"]") !== null', Boolean);
     assert.deepEqual(
       await connection.evaluate('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game"))', page.sessionId),
@@ -926,6 +974,60 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
       ),
       true,
       'First Down and Sack should record as distinct, zero-point football events',
+    );
+    const firstDownEventId = await connection.evaluate<string>(
+      'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null").events.findLast((event) => event.statId === "first-down").id',
+      page.sessionId,
+    );
+    await connection.evaluate(
+      `document.querySelector('[data-testid="button-undo-event-${firstDownEventId}"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      `!document.querySelector('[data-testid="confirm-undo-event-${firstDownEventId}"]')?.classList.contains("hidden")`,
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<string>(
+        `document.querySelector('[data-testid="button-confirm-undo-event-${firstDownEventId}"]')?.getAttribute("aria-label") || ""`,
+        page.sessionId,
+      ),
+      'Confirm undo of First Down',
+    );
+    await connection.evaluate(
+      `document.querySelector('[data-testid="button-cancel-undo-event-${firstDownEventId}"]')?.click()`,
+      page.sessionId,
+    );
+    assert.equal(
+      await connection.evaluate<number>(
+        'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null").stats["first-down"]',
+        page.sessionId,
+      ),
+      1,
+      'cancel must keep the stat event',
+    );
+    await connection.evaluate(
+      `document.querySelector('[data-testid="button-undo-event-${firstDownEventId}"]')?.click()`,
+      page.sessionId,
+    );
+    await connection.evaluate(
+      `document.querySelector('[data-testid="button-confirm-undo-event-${firstDownEventId}"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null").stats["first-down"] === undefined',
+      Boolean,
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-first-down\\"]")?.click()', page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null").stats["first-down"] === 1',
+      Boolean,
     );
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click(); document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1") && document.querySelector("[data-testid=\\"live-stat-card-tackle\\"]")?.textContent.includes("1")', Boolean);
