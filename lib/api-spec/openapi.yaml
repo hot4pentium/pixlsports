@@ -3757,6 +3757,9 @@ components:
         attribution:
           type: string
           enum: [team, athlete]
+        possessionSide:
+          type: string
+          enum: [athlete, opponent]
         playId: { type: string, minLength: 1, maxLength: 160 }
         yards: { type: ["integer", "null"], minimum: 0 }
     StatTrackerGameSnapshot:
@@ -3778,13 +3781,26 @@ components:
           enum: [halves, quarters]
         score: { type: integer, minimum: 0 }
         opponentScore: { type: integer, minimum: 0 }
+        possessionSide:
+          type: string
+          enum: [athlete, opponent]
         stats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        opponentStats:
           type: object
           additionalProperties:
             type: integer
             minimum: 0
         trackYards: { type: boolean }
         yardStats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        opponentYardStats:
           type: object
           additionalProperties:
             type: integer

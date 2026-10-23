@@ -2025,7 +2025,11 @@ export const listStatTrackerSharesResponseOneGameOpponentScoreMin = 0;
 
 export const listStatTrackerSharesResponseOneGameStatsMinOne = 0;
 
+export const listStatTrackerSharesResponseOneGameOpponentStatsMinOne = 0;
+
 export const listStatTrackerSharesResponseOneGameYardStatsMinOne = 0;
+
+export const listStatTrackerSharesResponseOneGameOpponentYardStatsMinOne = 0;
 
 export const listStatTrackerSharesResponseOneGameEventsItemIdMax = 160;
 
@@ -2056,15 +2060,19 @@ export const ListStatTrackerSharesResponseItem = zod.object({
   "soccerPeriodFormat": zod.enum(['halves', 'quarters']).optional(),
   "score": zod.number().int().min(listStatTrackerSharesResponseOneGameScoreMin),
   "opponentScore": zod.number().int().min(listStatTrackerSharesResponseOneGameOpponentScoreMin),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameStatsMinOne)),
+  "opponentStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameOpponentStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameYardStatsMinOne)),
+  "opponentYardStats": zod.record(zod.string(), zod.number().int().min(listStatTrackerSharesResponseOneGameOpponentYardStatsMinOne)).optional(),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(listStatTrackerSharesResponseOneGameEventsItemIdMax),
   "statId": zod.string().min(1).max(listStatTrackerSharesResponseOneGameEventsItemStatIdMax),
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "playId": zod.string().min(1).max(listStatTrackerSharesResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(listStatTrackerSharesResponseOneGameEventsItemYardsMin).nullable()
 })).max(listStatTrackerSharesResponseOneGameEventsMax)
@@ -2101,7 +2109,11 @@ export const createStatTrackerShareBodyGameOpponentScoreMin = 0;
 
 export const createStatTrackerShareBodyGameStatsMinOne = 0;
 
+export const createStatTrackerShareBodyGameOpponentStatsMinOne = 0;
+
 export const createStatTrackerShareBodyGameYardStatsMinOne = 0;
+
+export const createStatTrackerShareBodyGameOpponentYardStatsMinOne = 0;
 
 export const createStatTrackerShareBodyGameEventsItemIdMax = 160;
 
@@ -2129,15 +2141,19 @@ export const CreateStatTrackerShareBody = zod.object({
   "soccerPeriodFormat": zod.enum(['halves', 'quarters']).optional(),
   "score": zod.number().int().min(createStatTrackerShareBodyGameScoreMin),
   "opponentScore": zod.number().int().min(createStatTrackerShareBodyGameOpponentScoreMin),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameStatsMinOne)),
+  "opponentStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameOpponentStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameYardStatsMinOne)),
+  "opponentYardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareBodyGameOpponentYardStatsMinOne)).optional(),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(createStatTrackerShareBodyGameEventsItemIdMax),
   "statId": zod.string().min(1).max(createStatTrackerShareBodyGameEventsItemStatIdMax),
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "playId": zod.string().min(1).max(createStatTrackerShareBodyGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(createStatTrackerShareBodyGameEventsItemYardsMin).nullable()
 })).max(createStatTrackerShareBodyGameEventsMax)
@@ -2161,7 +2177,11 @@ export const createStatTrackerShareResponseOneGameOpponentScoreMin = 0;
 
 export const createStatTrackerShareResponseOneGameStatsMinOne = 0;
 
+export const createStatTrackerShareResponseOneGameOpponentStatsMinOne = 0;
+
 export const createStatTrackerShareResponseOneGameYardStatsMinOne = 0;
+
+export const createStatTrackerShareResponseOneGameOpponentYardStatsMinOne = 0;
 
 export const createStatTrackerShareResponseOneGameEventsItemIdMax = 160;
 
@@ -2192,15 +2212,19 @@ export const CreateStatTrackerShareResponse = zod.object({
   "soccerPeriodFormat": zod.enum(['halves', 'quarters']).optional(),
   "score": zod.number().int().min(createStatTrackerShareResponseOneGameScoreMin),
   "opponentScore": zod.number().int().min(createStatTrackerShareResponseOneGameOpponentScoreMin),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameStatsMinOne)),
+  "opponentStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameOpponentStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameYardStatsMinOne)),
+  "opponentYardStats": zod.record(zod.string(), zod.number().int().min(createStatTrackerShareResponseOneGameOpponentYardStatsMinOne)).optional(),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(createStatTrackerShareResponseOneGameEventsItemIdMax),
   "statId": zod.string().min(1).max(createStatTrackerShareResponseOneGameEventsItemStatIdMax),
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "playId": zod.string().min(1).max(createStatTrackerShareResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(createStatTrackerShareResponseOneGameEventsItemYardsMin).nullable()
 })).max(createStatTrackerShareResponseOneGameEventsMax)
@@ -2240,7 +2264,11 @@ export const getStatTrackerShareResponseOneGameOpponentScoreMin = 0;
 
 export const getStatTrackerShareResponseOneGameStatsMinOne = 0;
 
+export const getStatTrackerShareResponseOneGameOpponentStatsMinOne = 0;
+
 export const getStatTrackerShareResponseOneGameYardStatsMinOne = 0;
+
+export const getStatTrackerShareResponseOneGameOpponentYardStatsMinOne = 0;
 
 export const getStatTrackerShareResponseOneGameEventsItemIdMax = 160;
 
@@ -2271,15 +2299,19 @@ export const GetStatTrackerShareResponse = zod.object({
   "soccerPeriodFormat": zod.enum(['halves', 'quarters']).optional(),
   "score": zod.number().int().min(getStatTrackerShareResponseOneGameScoreMin),
   "opponentScore": zod.number().int().min(getStatTrackerShareResponseOneGameOpponentScoreMin),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameStatsMinOne)),
+  "opponentStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameOpponentStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameYardStatsMinOne)),
+  "opponentYardStats": zod.record(zod.string(), zod.number().int().min(getStatTrackerShareResponseOneGameOpponentYardStatsMinOne)).optional(),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(getStatTrackerShareResponseOneGameEventsItemIdMax),
   "statId": zod.string().min(1).max(getStatTrackerShareResponseOneGameEventsItemStatIdMax),
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "playId": zod.string().min(1).max(getStatTrackerShareResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(getStatTrackerShareResponseOneGameEventsItemYardsMin).nullable()
 })).max(getStatTrackerShareResponseOneGameEventsMax)
@@ -2319,7 +2351,11 @@ export const updateStatTrackerShareBodyOneGameOpponentScoreMin = 0;
 
 export const updateStatTrackerShareBodyOneGameStatsMinOne = 0;
 
+export const updateStatTrackerShareBodyOneGameOpponentStatsMinOne = 0;
+
 export const updateStatTrackerShareBodyOneGameYardStatsMinOne = 0;
+
+export const updateStatTrackerShareBodyOneGameOpponentYardStatsMinOne = 0;
 
 export const updateStatTrackerShareBodyOneGameEventsItemIdMax = 160;
 
@@ -2348,15 +2384,19 @@ export const UpdateStatTrackerShareBody = zod.object({
   "soccerPeriodFormat": zod.enum(['halves', 'quarters']).optional(),
   "score": zod.number().int().min(updateStatTrackerShareBodyOneGameScoreMin),
   "opponentScore": zod.number().int().min(updateStatTrackerShareBodyOneGameOpponentScoreMin),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameStatsMinOne)),
+  "opponentStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameOpponentStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameYardStatsMinOne)),
+  "opponentYardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareBodyOneGameOpponentYardStatsMinOne)).optional(),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(updateStatTrackerShareBodyOneGameEventsItemIdMax),
   "statId": zod.string().min(1).max(updateStatTrackerShareBodyOneGameEventsItemStatIdMax),
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "playId": zod.string().min(1).max(updateStatTrackerShareBodyOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(updateStatTrackerShareBodyOneGameEventsItemYardsMin).nullable()
 })).max(updateStatTrackerShareBodyOneGameEventsMax)
@@ -2382,7 +2422,11 @@ export const updateStatTrackerShareResponseOneGameOpponentScoreMin = 0;
 
 export const updateStatTrackerShareResponseOneGameStatsMinOne = 0;
 
+export const updateStatTrackerShareResponseOneGameOpponentStatsMinOne = 0;
+
 export const updateStatTrackerShareResponseOneGameYardStatsMinOne = 0;
+
+export const updateStatTrackerShareResponseOneGameOpponentYardStatsMinOne = 0;
 
 export const updateStatTrackerShareResponseOneGameEventsItemIdMax = 160;
 
@@ -2413,15 +2457,19 @@ export const UpdateStatTrackerShareResponse = zod.object({
   "soccerPeriodFormat": zod.enum(['halves', 'quarters']).optional(),
   "score": zod.number().int().min(updateStatTrackerShareResponseOneGameScoreMin),
   "opponentScore": zod.number().int().min(updateStatTrackerShareResponseOneGameOpponentScoreMin),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "stats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameStatsMinOne)),
+  "opponentStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameOpponentStatsMinOne)).optional(),
   "trackYards": zod.boolean(),
   "yardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameYardStatsMinOne)),
+  "opponentYardStats": zod.record(zod.string(), zod.number().int().min(updateStatTrackerShareResponseOneGameOpponentYardStatsMinOne)).optional(),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(updateStatTrackerShareResponseOneGameEventsItemIdMax),
   "statId": zod.string().min(1).max(updateStatTrackerShareResponseOneGameEventsItemStatIdMax),
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "possessionSide": zod.enum(['athlete', 'opponent']).optional(),
   "playId": zod.string().min(1).max(updateStatTrackerShareResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(updateStatTrackerShareResponseOneGameEventsItemYardsMin).nullable()
 })).max(updateStatTrackerShareResponseOneGameEventsMax)

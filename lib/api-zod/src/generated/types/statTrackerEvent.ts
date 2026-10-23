@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { StatTrackerEventAttribution } from './statTrackerEventAttribution';
+import type { StatTrackerEventPossessionSide } from './statTrackerEventPossessionSide';
 
 export interface StatTrackerEvent {
   /**
@@ -22,6 +23,7 @@ export interface StatTrackerEvent {
   /** @minimum 1 */
   period: number;
   attribution?: StatTrackerEventAttribution;
+  possessionSide?: StatTrackerEventPossessionSide;
   /**
      * @minLength 1
      * @maxLength 160

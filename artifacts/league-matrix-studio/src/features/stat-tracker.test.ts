@@ -52,6 +52,7 @@ import {
   saveStoredTrackerFavorites,
   seasonTotals,
   seasonYardTotals,
+  setFootballPossessionSide,
   syncTrackerDataToCloud,
   trackerPayload,
   trackerSaveStatusMessage,
@@ -70,7 +71,7 @@ import {
   subscribeToTrackerOnlineRetry,
 } from './stat-tracker-page';
 import { GameReportView } from './stat-tracker-game-report';
-import { copyStatTrackerShareUrl } from './stat-tracker-share';
+import { copyStatTrackerShareUrl, toStatTrackerShareInput } from './stat-tracker-share';
 import { readScheduleDraft, scheduleStorageKey, type ScheduleDraft } from './schedule-draft';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -1447,6 +1448,94 @@ test('football athlete targets keep attribution working while yardage controls a
   assert.equal(changedGame.stats['rush-yard'], 1);
   assert.deepEqual(changedGame.yardStats, {});
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-rush-yard' }).length, 0);
+});
+
+test('football possession routes stats, points, and saved shares to the selected side', () => {
+  let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = setFootballPossessionSide(game, 'opponent');
+  game = addStatEvent(game, 'touchdown', new Date('2026-09-17T12:01:00Z'));
+
+  assert.equal(game.possessionSide, 'opponent');
+  assert.equal(game.stats.touchdown, undefined, 'opponent stats do not inflate athlete-team totals');
+  assert.equal(game.opponentStats?.touchdown, 1);
+  assert.equal(game.score, 0);
+  assert.equal(game.opponentScore, 6, 'scoring stats update the selected side of the scoreboard');
+  assert.equal(game.events[0]?.possessionSide, 'opponent');
+  assert.deepEqual(countStatEventsByAttribution(game, 'touchdown'), { team: 0, athlete: 0 });
+  assert.equal(updateStatEventAttribution(game, game.events[0]!.id, 'athlete'), game,
+    'opponent stats cannot be reassigned to the athlete');
+
+  const saved = normalizeTrackerData({ version: 1, games: [game] }).games[0]!;
+  assert.equal(saved.opponentStats?.touchdown, 1);
+  assert.equal(saved.opponentScore, 6);
+  assert.equal(saved.events[0]?.possessionSide, 'opponent');
+
+  const share = toStatTrackerShareInput(game, 'Jordan', 'Falcons');
+  assert.equal(share.game.possessionSide, 'opponent');
+  assert.equal(share.game.opponentStats?.touchdown, 1);
+  assert.equal(share.game.events[0]?.possessionSide, 'opponent');
+
+  const undone = undoStatEvent(game, game.events[0]!.id);
+  assert.equal(undone.opponentStats?.touchdown, undefined);
+  assert.equal(undone.opponentScore, 0);
+  assert.equal(undone.score, 0);
+});
+
+test('football possession toggle is centered below the scoreboard and redirects stat taps', () => {
+  const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('football');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = (currentGame: typeof game) => createElement(LiveTrackerGame, {
+    currentGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats,
+    showAllStats: true,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame(game));
+  });
+  const selector = renderer.root.findByProps({ 'data-testid': 'football-possession-selector' });
+  const scoreboard = renderer.root.findByProps({ 'data-testid': 'live-tracker-scoreboard' });
+  assert.equal(selector.parent, scoreboard);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'football-possession-athlete' }).props['aria-pressed'], true);
+  act(() => renderer.root.findByProps({ 'data-testid': 'football-possession-opponent' }).props.onClick());
+  assert.equal(changedGame.possessionSide, 'opponent');
+  act(() => renderer.update(renderGame(changedGame)));
+
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'football-possession-opponent' }).props['aria-pressed'], true);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'athlete-stat-target-touchdown' }).length, 0);
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-touchdown' }).props.onClick());
+  assert.equal(changedGame.opponentStats?.touchdown, 1);
+  assert.equal(changedGame.stats.touchdown, undefined);
+  assert.equal(changedGame.opponentScore, 6);
+  assert.equal(changedGame.score, 0);
+});
+
+test('football yard totals remain separate by possession side', () => {
+  let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:01:00Z'), 8);
+  const athleteEventId = game.events[0]!.id;
+  game = setFootballPossessionSide(game, 'opponent');
+  game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:02:00Z'), 12);
+  const opponentEventId = game.events[1]!.id;
+  assert.equal(game.yardStats?.['pass-yard'], 8);
+  assert.equal(game.opponentYardStats?.['pass-yard'], 12);
+  game = updateStatEventYards(game, athleteEventId, 13);
+  assert.equal(game.events.find((event) => event.id === athleteEventId)?.yards, 13);
+  assert.equal(game.events.find((event) => event.id === opponentEventId)?.yards, 12);
+  assert.equal(game.yardStats?.['pass-yard'], 13);
+  assert.equal(game.opponentYardStats?.['pass-yard'], 12);
 });
 
 test('restored football yard values stay saved but hidden while yardage tracking is paused', () => {

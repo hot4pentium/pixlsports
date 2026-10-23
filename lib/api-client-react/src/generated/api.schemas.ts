@@ -902,6 +902,14 @@ export const StatTrackerEventAttribution = {
   athlete: 'athlete',
 } as const;
 
+export type StatTrackerEventPossessionSide = typeof StatTrackerEventPossessionSide[keyof typeof StatTrackerEventPossessionSide];
+
+
+export const StatTrackerEventPossessionSide = {
+  athlete: 'athlete',
+  opponent: 'opponent',
+} as const;
+
 export interface StatTrackerEvent {
   /**
      * @minLength 1
@@ -917,6 +925,7 @@ export interface StatTrackerEvent {
   /** @minimum 1 */
   period: number;
   attribution?: StatTrackerEventAttribution;
+  possessionSide?: StatTrackerEventPossessionSide;
   /**
      * @minLength 1
      * @maxLength 160
@@ -959,9 +968,21 @@ export const StatTrackerGameSnapshotSoccerPeriodFormat = {
   quarters: 'quarters',
 } as const;
 
+export type StatTrackerGameSnapshotPossessionSide = typeof StatTrackerGameSnapshotPossessionSide[keyof typeof StatTrackerGameSnapshotPossessionSide];
+
+
+export const StatTrackerGameSnapshotPossessionSide = {
+  athlete: 'athlete',
+  opponent: 'opponent',
+} as const;
+
 export type StatTrackerGameSnapshotStats = {[key: string]: number};
 
+export type StatTrackerGameSnapshotOpponentStats = {[key: string]: number};
+
 export type StatTrackerGameSnapshotYardStats = {[key: string]: number};
+
+export type StatTrackerGameSnapshotOpponentYardStats = {[key: string]: number};
 
 export interface StatTrackerGameSnapshot {
   /**
@@ -982,9 +1003,12 @@ export interface StatTrackerGameSnapshot {
   score: number;
   /** @minimum 0 */
   opponentScore: number;
+  possessionSide?: StatTrackerGameSnapshotPossessionSide;
   stats: StatTrackerGameSnapshotStats;
+  opponentStats?: StatTrackerGameSnapshotOpponentStats;
   trackYards: boolean;
   yardStats: StatTrackerGameSnapshotYardStats;
+  opponentYardStats?: StatTrackerGameSnapshotOpponentYardStats;
   /** @maxItems 10 */
   events: StatTrackerEvent[];
 }

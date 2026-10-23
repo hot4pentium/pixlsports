@@ -79,6 +79,7 @@ import {
   updateStatEventYards,
   undoStatEvent,
   resumeGame,
+  setFootballPossessionSide,
   buildGameReport,
   type GameSession,
   type GameOutcome,
@@ -695,8 +696,10 @@ type LiveTrackerGameProps = {
 
 function latestYardEventIds(game: GameSession) {
   if (!isYardageTrackingAvailable(game.sport) || game.trackYards !== true) return {};
+  const selectedSide = game.possessionSide ?? 'athlete';
   return game.events.reduce<Record<string, string>>((eventIds, event) => {
-    if (getFootballYardMetricId(event.statId)) {
+    if (getFootballYardMetricId(event.statId)
+      && (event.possessionSide ?? 'athlete') === selectedSide) {
       return { [event.statId]: event.id };
     }
     return eventIds;
@@ -788,9 +791,12 @@ export function LiveTrackerGame({
   };
   const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
   const yardTrackingEnabled = isYardageTrackingAvailable(currentGame.sport) && currentGame.trackYards === true;
+  const opponentHasPossession = currentGame.sport === 'football' && currentGame.possessionSide === 'opponent';
   const halftimePauseAvailable = currentGame.sport === 'basketball'
     || currentGame.sport === 'football'
     || currentGame.sport === 'soccer';
+  const totalRecordedStatEvents = Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)
+    + Object.values(currentGame.opponentStats ?? {}).reduce((sum, count) => sum + count, 0);
 
   useEffect(() => {
     currentGameRef.current = currentGame;
@@ -837,7 +843,7 @@ export function LiveTrackerGame({
     setActiveYardEventIds(latestYardEventIds(currentGame));
     setBaseballHitAttribution(null);
     setBaseballPitchAttribution(null);
-  }, [currentGame.id]);
+  }, [currentGame.id, currentGame.possessionSide]);
 
   const updateYardValue = (statId: string, value: number) => {
     const eventId = activeYardEventIds[statId];
@@ -881,7 +887,9 @@ export function LiveTrackerGame({
       return;
     }
     const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
-    const nextGame = addStatEvent(currentGameRef.current, item.id, new Date(), 0, attribution);
+    const game = currentGameRef.current;
+    const possessionSide = game.sport === 'football' ? game.possessionSide ?? 'athlete' : 'athlete';
+    const nextGame = addStatEvent(game, item.id, new Date(), 0, attribution, undefined, possessionSide);
     updateCurrentGame(nextGame);
     if (yardMetricId && nextGame.events.length > currentGame.events.length) {
       const eventId = nextGame.events.at(-1)?.id;
@@ -1006,6 +1014,40 @@ export function LiveTrackerGame({
               </div>
             ))}
           </div>
+          {currentGame.sport === 'football' && (
+            <div className="mt-3 flex justify-center" data-testid="football-possession-selector">
+              <div className="grid justify-items-center gap-1.5">
+                <span id={`football-possession-label-${currentGame.id}`} className="text-[9px] font-black uppercase tracking-[.16em] text-white/60">Possession</span>
+                <div
+                  role="group"
+                  aria-labelledby={`football-possession-label-${currentGame.id}`}
+                  className="grid grid-cols-2 border border-white/20 bg-white/5 p-1"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={!opponentHasPossession}
+                    disabled={currentGame.status === 'final'}
+                    onClick={() => updateCurrentGame((game) => setFootballPossessionSide(game, 'athlete'))}
+                    data-testid="football-possession-athlete"
+                    className={`min-h-10 px-4 text-[10px] font-black uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${!opponentHasPossession ? 'bg-primary text-primary-foreground' : 'text-white/75 hover:bg-white/10'}`}
+                  >
+                    Athlete Team
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={opponentHasPossession}
+                    disabled={currentGame.status === 'final'}
+                    onClick={() => updateCurrentGame((game) => setFootballPossessionSide(game, 'opponent'))}
+                    data-testid="football-possession-opponent"
+                    className={`min-h-10 px-4 text-[10px] font-black uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${opponentHasPossession ? 'bg-primary text-primary-foreground' : 'text-white/75 hover:bg-white/10'}`}
+                  >
+                    Opponent
+                  </button>
+                </div>
+                <span className="text-[9px] font-medium text-white/55">New football stats apply to the selected side.</span>
+              </div>
+            </div>
+          )}
           <div className="mt-2 flex items-center justify-between gap-4 sm:mt-4">
             <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-widest text-white/45">Manual score adjustment</span>
             <span className="shrink-0 text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{phaseLabel} {currentGame.period}</span>
@@ -1063,7 +1105,7 @@ export function LiveTrackerGame({
         </div>
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-accent">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
+        <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-accent">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{opponentHasPossession ? currentGame.opponent || 'Opponent' : teamName || 'Athlete Team'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{totalRecordedStatEvents} plays / {currentGame.score} team pts</strong></span></div>
         {currentGame.status === 'paused' && (
           <div role="status" className="mb-5 border border-primary/40 bg-primary/10 p-4 text-sm" data-testid="notice-live-tracker-paused">
             <p className="font-bold">{currentGame.pauseReason === 'halftime' ? 'Halftime break. Resume when play restarts.' : 'Game paused. Resume to record stats.'}</p>
@@ -1104,14 +1146,21 @@ export function LiveTrackerGame({
           {group.stats.map((item) => {
             const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
             const yardTotal = yardMetricId ? currentGame.yardStats?.[yardMetricId] ?? 0 : 0;
-            const yardSummary = currentGame.sport === 'football' && item.id === 'rush-yard'
-              ? `${yardTotal}`
-              : `${yardTotal} yds`;
+            const opponentYardTotal = yardMetricId ? currentGame.opponentYardStats?.[yardMetricId] ?? 0 : 0;
             const statCount = currentGame.sport === 'baseball' && item.id === 'hit'
                 ? (currentGame.stats.hit ?? 0) + baseballHitChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
                 : currentGame.sport === 'baseball' && item.id === 'pitch'
                   ? (currentGame.stats.pitch ?? 0) + baseballPitchChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
                   : currentGame.stats[item.id] ?? 0;
+            const opponentStatCount = currentGame.sport === 'football' ? currentGame.opponentStats?.[item.id] ?? 0 : 0;
+            const selectedStatCount = opponentHasPossession ? opponentStatCount : statCount;
+            const selectedYardTotal = opponentHasPossession ? opponentYardTotal : yardTotal;
+            const yardSummary = currentGame.sport === 'football' && item.id === 'rush-yard'
+              ? `${selectedYardTotal}`
+              : `${selectedYardTotal} yds`;
+            const selectedStatTarget = opponentHasPossession
+              ? currentGame.opponent || 'opponent'
+              : teamName || 'team';
             const activeYardEventId = yardMetricId ? activeYardEventIds[item.id] : undefined;
             const activeYardEvent = activeYardEventId
               ? currentGame.events.find((event) => event.id === activeYardEventId)
@@ -1133,14 +1182,18 @@ export function LiveTrackerGame({
             return (
               <div key={item.id} data-testid={`live-stat-card-${item.id}`} data-athlete-assigned={athleteAssigned ? 'true' : 'false'} className="relative min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
                 <div className="flex min-w-0 gap-2">
-                <button type="button" disabled={currentGame.status !== 'live'} data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item, 'team')} aria-label={`Record ${item.label} for ${teamName || 'team'}`} aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined} aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? Boolean(choicesAttribution) : undefined} className="group block min-h-[84px] min-w-0 flex-1 overflow-hidden text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed">
+                <button type="button" disabled={currentGame.status !== 'live'} data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item, 'team')} aria-label={`Record ${item.label} for ${selectedStatTarget}`} aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined} aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? Boolean(choicesAttribution) : undefined} className="group block min-h-[84px] min-w-0 flex-1 overflow-hidden text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed">
                   <span data-testid={`stat-title-${item.id}`} className="block min-w-0 truncate text-xs font-bold uppercase tracking-wide text-muted-foreground group-hover:text-primary-ink sm:text-sm">{item.label}</span>
                   <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
                   <span data-testid={`stat-count-${item.id}`} className="mt-1 block truncate text-xs font-bold text-primary-ink">
-                    {statCount}
+                    {selectedStatCount}
                     {item.points ? ` · +${item.points}` : yardMetricId ? ` · ${yardSummary}` : ' · tracked'}
                   </span>
-                  <span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Team {attributedCounts.team} · {athleteTargetName} {attributedCounts.athlete}</span>
+                  <span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {opponentHasPossession
+                      ? `Opponent ${opponentStatCount} · Team ${attributedCounts.team} · ${athleteTargetName} ${attributedCounts.athlete}`
+                      : `Team ${attributedCounts.team} · ${athleteTargetName} ${attributedCounts.athlete}${currentGame.sport === 'football' ? ` · Opp ${opponentStatCount}` : ''}`}
+                  </span>
                 </button>
                 <div className="flex shrink-0 flex-col gap-1">
                 <button
@@ -1156,7 +1209,7 @@ export function LiveTrackerGame({
                 >
                   <Star className={`h-4 w-4 ${favoriteStatIdSet.has(item.id) ? 'fill-current' : ''}`} aria-hidden="true" />
                 </button>
-                <button
+                {!opponentHasPossession && <button
                   type="button"
                   disabled={currentGame.status !== 'live'}
                   onClick={() => recordStat(item, 'athlete')}
@@ -1183,7 +1236,7 @@ export function LiveTrackerGame({
                       </span>
                     )
                     : <span aria-hidden="true" className="truncate">{athleteInitials}</span>}
-                </button>
+                </button>}
                 </div>
                 </div>
                 {athleteAssigned && <span id={athleteAssignmentDescriptionId} className="sr-only">{athleteTargetName} is assigned to this stat.</span>}
@@ -1343,16 +1396,17 @@ export function LiveTrackerGame({
           {currentGame.events.slice(-5).reverse().map((event) => {
             const yardMetricId = isYardageTrackingAvailable(currentGame.sport) ? getFootballYardMetricId(event.statId) : null;
             const isSelectedYardEvent = activeYardEventIds[event.statId] === event.id;
+            const opponentPlay = currentGame.sport === 'football' && event.possessionSide === 'opponent';
             const nextAttribution: StatAttribution = event.attribution === 'athlete' ? 'team' : 'athlete';
             const nextAttributionLabel = nextAttribution === 'athlete' ? athleteTargetName : (teamName || 'team');
             return (
               <div key={event.id} className={`border-b pb-2 text-sm ${isSelectedYardEvent ? 'border-primary/60 bg-primary/5 px-2 pt-2' : 'border-border/60'}`} data-testid={`recent-activity-${event.id}`}>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}{yardMetricId ? ` · ${event.yards ?? 0} yds` : ''} <span className="text-xs font-bold uppercase text-primary-ink">· {event.attribution === 'athlete' ? athleteTargetName : 'Team'}</span></span>
+                  <span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}{yardMetricId ? ` · ${event.yards ?? 0} yds` : ''} <span className="text-xs font-bold uppercase text-primary-ink">· {opponentPlay ? currentGame.opponent || 'Opponent' : event.attribution === 'athlete' ? athleteTargetName : 'Team'}</span></span>
                   <span className="shrink-0 text-xs text-muted-foreground">{phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button
+                  {!opponentPlay && <button
                     type="button"
                     onClick={() => updateCurrentGame((game) => updateStatEventAttribution(game, event.id, nextAttribution))}
                     aria-label={`Change ${eventLabel(event.statId)} attribution to ${nextAttributionLabel}`}
@@ -1360,7 +1414,7 @@ export function LiveTrackerGame({
                     className="inline-flex min-h-11 items-center border border-border px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink hover:border-primary hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                   >
                     Move to {nextAttribution === 'athlete' ? athleteTargetName : 'team'}
-                  </button>
+                  </button>}
                   {yardMetricId && yardTrackingEnabled && (
                     <button
                       type="button"

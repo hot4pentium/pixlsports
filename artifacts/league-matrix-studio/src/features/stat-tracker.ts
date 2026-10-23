@@ -25,6 +25,7 @@ export type SportRule = {
 };
 
 export type StatAttribution = 'team' | 'athlete';
+export type FootballPossessionSide = 'athlete' | 'opponent';
 
 export type StatEvent = {
   id: string;
@@ -32,6 +33,7 @@ export type StatEvent = {
   createdAt: string;
   period: number;
   attribution: StatAttribution;
+  possessionSide?: FootballPossessionSide;
   playId?: string;
   yards?: number;
 };
@@ -83,8 +85,11 @@ export type GameSession = {
   outcome?: GameOutcome;
   notes: string;
   stats: Record<string, number>;
+  possessionSide?: FootballPossessionSide;
+  opponentStats?: Record<string, number>;
   trackYards?: boolean;
   yardStats?: YardStats;
+  opponentYardStats?: YardStats;
   events: StatEvent[];
   startedAt: string;
   endedAt?: string;
@@ -370,6 +375,9 @@ function normalizeGameSession(game: GameSession): GameSession {
     sourceEventId: _untrustedSourceEventId,
     finalCorrection: _untrustedCorrection,
     pauseReason: _untrustedPauseReason,
+    possessionSide: _untrustedPossessionSide,
+    opponentStats: _untrustedOpponentStats,
+    opponentYardStats: _untrustedOpponentYardStats,
     ...rest
   } = game;
   const finalCorrection = normalizeFinalCorrection(game.finalCorrection, game.sport, game.stats);
@@ -384,18 +392,29 @@ function normalizeGameSession(game: GameSession): GameSession {
       || game.soccerPeriodFormat === 'quarters'
       || game.soccerPeriodFormat === null
     ) ? { soccerPeriodFormat: game.soccerPeriodFormat } : {}),
+    ...(game.sport === 'football' ? {
+      possessionSide: game.possessionSide === 'opponent' ? 'opponent' as const : 'athlete' as const,
+      opponentStats: normalizeYardStats(game.opponentStats),
+      opponentYardStats: normalizeYardStats(game.opponentYardStats),
+    } : {}),
     trackYards: game.sport === 'football' && game.trackYards === true,
     yardStats: normalizeYardStats(game.yardStats),
     ...(finalCorrection ? { finalCorrection } : {}),
     events: Array.isArray(game.events)
-      ? game.events.map((event) => ({
-        ...event,
-        attribution: event.attribution === 'athlete' ? 'athlete' : 'team',
-        ...(typeof event.playId === 'string' && event.playId.length > 0 ? { playId: event.playId } : {}),
-        ...(typeof event.yards === 'number' && Number.isFinite(event.yards)
-          ? { yards: Math.max(0, Math.floor(event.yards)) }
-          : {}),
-      }))
+      ? game.events.map((event) => {
+        const { possessionSide: _untrustedEventPossessionSide, ...eventRest } = event;
+        return {
+          ...eventRest,
+          attribution: event.attribution === 'athlete' ? 'athlete' : 'team',
+          ...(game.sport === 'football' ? {
+            possessionSide: event.possessionSide === 'opponent' ? 'opponent' as const : 'athlete' as const,
+          } : {}),
+          ...(typeof event.playId === 'string' && event.playId.length > 0 ? { playId: event.playId } : {}),
+          ...(typeof event.yards === 'number' && Number.isFinite(event.yards)
+            ? { yards: Math.max(0, Math.floor(event.yards)) }
+            : {}),
+        };
+      })
       : [],
   };
 }
@@ -600,6 +619,11 @@ export function createGameSession(
     score: 0,
     opponentScore: 0,
     scoreRecorded: false,
+    ...(sport === 'football' ? {
+      possessionSide: 'athlete' as const,
+      opponentStats: {},
+      opponentYardStats: {},
+    } : {}),
     notes: input.notes?.trim() ?? '',
     stats: {},
     trackYards: sport === 'football',
@@ -621,6 +645,14 @@ export function adjustScore(
     : { ...game, opponentScore: nextScore, scoreRecorded: true };
 }
 
+export function setFootballPossessionSide(
+  game: GameSession,
+  possessionSide: FootballPossessionSide,
+): GameSession {
+  if (game.sport !== 'football' || game.status === 'final' || game.possessionSide === possessionSide) return game;
+  return { ...game, possessionSide };
+}
+
 export function addStatEvent(
   game: GameSession,
   statId: string,
@@ -628,6 +660,7 @@ export function addStatEvent(
   yards = 0,
   attribution: StatAttribution = 'team',
   playId?: string,
+  possessionSide: FootballPossessionSide = game.possessionSide ?? 'athlete',
 ): GameSession {
   const definition = getSportRule(game.sport).stats.find((item) => item.id === statId);
   if (!definition || game.status !== 'live') return game;
@@ -637,25 +670,36 @@ export function addStatEvent(
   const eventYards = yardMetricId
     ? Math.max(0, Math.floor(Number.isFinite(yards) ? yards : 0))
     : 0;
+  const eventPossessionSide: FootballPossessionSide = game.sport === 'football' && possessionSide === 'opponent'
+    ? 'opponent'
+    : 'athlete';
+  const isOpponentPlay = game.sport === 'football' && eventPossessionSide === 'opponent';
   const event: StatEvent = {
     id: `tracker-event-${now.getTime()}-${game.events.length}`,
     statId,
     createdAt: now.toISOString(),
     period: game.period,
     attribution,
+    ...(game.sport === 'football' ? { possessionSide: eventPossessionSide } : {}),
     ...(playId ? { playId } : {}),
     ...(eventYards > 0 ? { yards: eventYards } : {}),
   };
   const yardStats = { ...(game.yardStats ?? {}) };
+  const opponentYardStats = { ...(game.opponentYardStats ?? {}) };
   if (yardMetricId && eventYards > 0) {
-    yardStats[yardMetricId] = (yardStats[yardMetricId] ?? 0) + eventYards;
+    const targetYardStats = isOpponentPlay ? opponentYardStats : yardStats;
+    targetYardStats[yardMetricId] = (targetYardStats[yardMetricId] ?? 0) + eventYards;
   }
+  const opponentStats = { ...(game.opponentStats ?? {}) };
+  if (isOpponentPlay) opponentStats[statId] = (opponentStats[statId] ?? 0) + 1;
   return {
     ...game,
-    stats: { ...game.stats, [statId]: (game.stats[statId] ?? 0) + 1 },
+    stats: isOpponentPlay ? game.stats : { ...game.stats, [statId]: (game.stats[statId] ?? 0) + 1 },
+    ...(game.sport === 'football' ? { opponentStats, opponentYardStats, possessionSide: eventPossessionSide } : {}),
     yardStats,
-    score: game.score + definition.points,
-    scoreRecorded: attribution === 'team' && definition.points > 0 ? true : game.scoreRecorded,
+    score: isOpponentPlay ? game.score : game.score + definition.points,
+    opponentScore: isOpponentPlay ? game.opponentScore + definition.points : game.opponentScore,
+    scoreRecorded: ((attribution === 'team' || isOpponentPlay) && definition.points > 0) ? true : game.scoreRecorded,
     events: [...game.events, event],
   };
 }
@@ -665,7 +709,7 @@ export function addAthleteStatEvent(
   statId: string,
   now = new Date(),
 ): GameSession {
-  const withEvent = addStatEvent(game, statId, now, 0, 'athlete');
+  const withEvent = addStatEvent(game, statId, now, 0, 'athlete', undefined, 'athlete');
   return withEvent === game ? game : { ...withEvent, score: game.score, scoreRecorded: game.scoreRecorded };
 }
 
@@ -721,11 +765,12 @@ export function addFootballPassReception(
   now = new Date(),
   yards = 0,
   attribution: StatAttribution = 'team',
+  possessionSide: FootballPossessionSide = game.possessionSide ?? 'athlete',
 ): GameSession {
   if (game.sport !== 'football') return game;
   const playId = `tracker-play-${now.getTime()}-${game.events.length}`;
-  const withPass = addStatEvent(game, 'pass-yard', now, yards, attribution, playId);
-  return addStatEvent(withPass, 'reception', now, yards, attribution, playId);
+  const withPass = addStatEvent(game, 'pass-yard', now, yards, attribution, playId, possessionSide);
+  return addStatEvent(withPass, 'reception', now, yards, attribution, playId, possessionSide);
 }
 
 export function countStatEventsByAttribution(
@@ -745,6 +790,7 @@ export function countStatEventsByAttribution(
     return { team: total - athlete, athlete };
   }
   return game.events.reduce<Record<StatAttribution, number>>((counts, event) => {
+    if (event.possessionSide === 'opponent') return counts;
     if (ids.has(event.statId)) counts[event.attribution === 'athlete' ? 'athlete' : 'team'] += 1;
     return counts;
   }, { team: 0, athlete: 0 });
@@ -757,7 +803,11 @@ export function updateStatEventAttribution(
 ): GameSession {
   if (game.status !== 'live') return game;
   const eventIndex = game.events.findIndex((event) => event.id === eventId);
-  if (eventIndex < 0 || game.events[eventIndex]?.attribution === attribution) return game;
+  if (
+    eventIndex < 0
+    || game.events[eventIndex]?.possessionSide === 'opponent'
+    || game.events[eventIndex]?.attribution === attribution
+  ) return game;
 
   return {
     ...game,
@@ -794,20 +844,24 @@ export function updateStatEventYards(
     delete nextEvent.yards;
     return nextEvent;
   });
-  const yardStats = { ...(game.yardStats ?? {}) };
+  const targetYardStats = event.possessionSide === 'opponent'
+    ? { ...(game.opponentYardStats ?? {}) }
+    : { ...(game.yardStats ?? {}) };
   affectedMetricIds.forEach((metricId) => {
     const nextTotal = events.reduce((total, item) => (
-      getFootballYardMetricId(item.statId) === metricId
+      item.possessionSide === event.possessionSide && getFootballYardMetricId(item.statId) === metricId
         ? total + (item.yards ?? 0)
         : total
     ), 0);
-    if (nextTotal === 0) delete yardStats[metricId];
-    else yardStats[metricId] = nextTotal;
+    if (nextTotal === 0) delete targetYardStats[metricId];
+    else targetYardStats[metricId] = nextTotal;
   });
 
   return {
     ...game,
-    yardStats,
+    ...(event.possessionSide === 'opponent'
+      ? { opponentYardStats: targetYardStats }
+      : { yardStats: targetYardStats }),
     events,
   };
 }
@@ -820,30 +874,45 @@ export function undoStatEvent(game: GameSession, eventId: string): GameSession {
     : [event];
   const removedEventIds = new Set(removedEvents.map((item) => item.id));
   const stats = { ...game.stats };
-  const yardMetricTotals = new Map<FootballYardMetricId, number>();
+  const opponentStats = { ...(game.opponentStats ?? {}) };
+  const teamYardMetricTotals = new Map<FootballYardMetricId, number>();
+  const opponentYardMetricTotals = new Map<FootballYardMetricId, number>();
   let scoreDelta = 0;
+  let opponentScoreDelta = 0;
   removedEvents.forEach((removedEvent) => {
-    const nextCount = Math.max(0, (stats[removedEvent.statId] ?? 0) - 1);
-    if (nextCount === 0) delete stats[removedEvent.statId];
-    else stats[removedEvent.statId] = nextCount;
+    const isOpponentPlay = game.sport === 'football' && removedEvent.possessionSide === 'opponent';
+    const targetStats = isOpponentPlay ? opponentStats : stats;
+    const nextCount = Math.max(0, (targetStats[removedEvent.statId] ?? 0) - 1);
+    if (nextCount === 0) delete targetStats[removedEvent.statId];
+    else targetStats[removedEvent.statId] = nextCount;
     const definition = getSportRule(game.sport).stats.find((item) => item.id === removedEvent.statId);
-    scoreDelta += definition?.points ?? 0;
+    if (isOpponentPlay) opponentScoreDelta += definition?.points ?? 0;
+    else scoreDelta += definition?.points ?? 0;
     const yardMetricId = game.sport === 'football' ? getFootballYardMetricId(removedEvent.statId) : null;
     if (yardMetricId && removedEvent.yards) {
-      yardMetricTotals.set(yardMetricId, (yardMetricTotals.get(yardMetricId) ?? 0) + removedEvent.yards);
+      const totals = isOpponentPlay ? opponentYardMetricTotals : teamYardMetricTotals;
+      totals.set(yardMetricId, (totals.get(yardMetricId) ?? 0) + removedEvent.yards);
     }
   });
   const yardStats = { ...(game.yardStats ?? {}) };
-  yardMetricTotals.forEach((removedYards, yardMetricId) => {
+  teamYardMetricTotals.forEach((removedYards, yardMetricId) => {
     const nextYards = Math.max(0, (yardStats[yardMetricId] ?? 0) - removedYards);
     if (nextYards === 0) delete yardStats[yardMetricId];
     else yardStats[yardMetricId] = nextYards;
   });
+  const opponentYardStats = { ...(game.opponentYardStats ?? {}) };
+  opponentYardMetricTotals.forEach((removedYards, yardMetricId) => {
+    const nextYards = Math.max(0, (opponentYardStats[yardMetricId] ?? 0) - removedYards);
+    if (nextYards === 0) delete opponentYardStats[yardMetricId];
+    else opponentYardStats[yardMetricId] = nextYards;
+  });
   return {
     ...game,
     stats,
+    ...(game.sport === 'football' ? { opponentStats, opponentYardStats } : {}),
     yardStats,
     score: Math.max(0, game.score - scoreDelta),
+    opponentScore: Math.max(0, game.opponentScore - opponentScoreDelta),
     events: game.events.filter((item) => !removedEventIds.has(item.id)),
   };
 }
