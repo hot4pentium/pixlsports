@@ -5400,7 +5400,8 @@ test('the authenticated Supporter Hub restores the upcoming Event Card after rel
   }
 });
 
-test('an open Event Card updates its suggested action as the game changes stages', { concurrency: false }, async () => {
+for (const openPanel of ['prep', 'details'] as const) {
+test(`an open Event Card updates its suggested action as the game changes stages with ${openPanel} open`, { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-event-card-suggested-action');
   const accountId = 'supporter-game-record-user';
@@ -5457,7 +5458,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     );
     page = await openPage(
       connection,
-      `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-game-record`,
+      `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-game-record${openPanel === 'details' ? '&supporter-event-details-draft' : ''}`,
     );
     const wait = (expression: string) =>
       waitFor(connection!, page!.sessionId, expression, Boolean, 30_000);
@@ -5525,13 +5526,13 @@ test('an open Event Card updates its suggested action as the game changes stages
       `document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.trim() ?? ''`,
       page!.sessionId,
     );
-    const assertOpenPrepAnnouncement = async () => {
+    const assertOpenPanelAnnouncement = async () => {
       assert.deepEqual(await connection!.evaluate(`(() => {
         const dialog = document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]');
         const region = dialog?.querySelector('[data-testid="status-game-on-recommendation"]');
         const front = dialog?.querySelector('.game-on-collection__flip-front');
         const back = dialog?.querySelector('.game-on-collection__flip-back');
-        const prep = dialog?.querySelector('[data-testid="panel-inline-prep-draft:${eventId}"]');
+        const panel = dialog?.querySelector('[data-testid="panel-inline-${openPanel === 'details' ? 'calendar' : 'prep'}-draft:${eventId}"]');
         return {
           regionCount: document.querySelectorAll('[data-testid="status-game-on-recommendation"]').length,
           sameRegion: region === window.__recommendationRegion,
@@ -5540,8 +5541,8 @@ test('an open Event Card updates its suggested action as the game changes stages
           exposed: Boolean(region && !region.closest('[inert], [aria-hidden="true"], [hidden]')),
           frontInactive: Boolean(front?.inert && front.getAttribute('aria-hidden') === 'true'),
           backActive: Boolean(back && !back.inert && back.getAttribute('aria-hidden') === 'false'),
-          prepOpen: Boolean(prep?.getClientRects().length),
-          focusPreserved: document.activeElement === window.__activePrepControl && Boolean(prep?.contains(document.activeElement)),
+          panelOpen: Boolean(panel?.getClientRects().length),
+          focusPreserved: document.activeElement === window.__activeRecommendationControl && Boolean(panel?.contains(document.activeElement)),
         };
       })()`, page!.sessionId), {
         regionCount: 1,
@@ -5551,18 +5552,69 @@ test('an open Event Card updates its suggested action as the game changes stages
         exposed: true,
         frontInactive: true,
         backActive: true,
-        prepOpen: true,
+        panelOpen: true,
         focusPreserved: true,
-      }, 'the same polite region must stay outside inactive faces while focus remains in the active Prep panel');
+      }, `the same polite region must stay outside inactive faces while the exact ${openPanel} input keeps focus`);
+      if (openPanel === 'details') {
+        assert.deepEqual(await connection!.evaluate(`(() => {
+          const input = document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="input-inline-location"]');
+          return {
+            sameInput: input === window.__activeRecommendationControl,
+            draft: input?.value,
+            savedLocation: window.__getSupporterDashboardEvents().find(event => event.id === ${JSON.stringify(eventId)})?.location,
+            savedCards: localStorage.getItem('pixlsports-game-on-cards:${accountId}'),
+            saveRequests: window.__eventDetailsSaveRequests,
+            calendarSaves: window.__eventDetailsCalendarSaves,
+          };
+        })()`, page!.sessionId), {
+          sameInput: true,
+          draft: 'Unsaved courtside entrance',
+          savedLocation: 'Northside Gym',
+          savedCards: await connection!.evaluate('window.__eventDetailsSavedCardsBefore', page!.sessionId),
+          saveRequests: [],
+          calendarSaves: [],
+        }, 'status updates must preserve the location draft without saving it to the event, card storage, or API');
+      }
     };
     assert.equal(await readAnnouncement(), '', 'opening an upcoming card must not announce its initial recommendation');
-    await connection.evaluate(`document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="button-open-card-prep-draft:${eventId}"]').click()`, page.sessionId);
-    await wait(`document.activeElement?.matches('[data-testid="panel-inline-prep-draft:${eventId}"] .game-on-prep__title')`);
+    await connection.evaluate(`document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="${openPanel === 'details' ? 'button-edit-event-arrow' : 'button-open-card-prep'}-draft:${eventId}"]').click()`, page.sessionId);
+    await wait(openPanel === 'details'
+      ? `Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="input-inline-location"]')?.getClientRects().length)`
+      : `document.activeElement?.matches('[data-testid="panel-inline-prep-draft:${eventId}"] .game-on-prep__title')`);
+    if (openPanel === 'details') {
+      await connection.evaluate(`(() => {
+        window.__eventDetailsSaveRequests = [];
+        window.__eventDetailsCalendarSaves = [];
+        window.__eventDetailsSavedCardsBefore = localStorage.getItem('pixlsports-game-on-cards:${accountId}');
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => {
+          const url = new URL(input instanceof Request ? input.url : String(input), window.location.href);
+          const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+          if (!['GET', 'HEAD', 'OPTIONS'].includes(method)
+            && /\\/api\\/(schedule-shares|game-on-cards)(\\/|$)/.test(url.pathname)) {
+            window.__eventDetailsSaveRequests.push({ path: url.pathname, method });
+          }
+          return originalFetch(input, init);
+        };
+      })()`, page.sessionId);
+      const inputSelector = `[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="input-inline-location"]`;
+      await connection.evaluate(`document.querySelector(${JSON.stringify(inputSelector)}).focus()`, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'rawKeyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2,
+      }, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2,
+      }, page.sessionId);
+      await connection.send('Input.insertText', { text: 'Unsaved courtside entrance' }, page.sessionId);
+      await wait(`document.querySelector(${JSON.stringify(inputSelector)})?.value === 'Unsaved courtside entrance'`);
+    }
     assert.deepEqual(await connection.evaluate(`(() => {
       const region = document.querySelector('[data-testid="status-game-on-recommendation"]');
       window.__recommendationRegion = region;
-      window.__activePrepControl = document.querySelector('[data-testid="panel-inline-prep-draft:${eventId}"] [data-testid="input-card-prep-title-${eventId}"]');
-      window.__activePrepControl.focus();
+      window.__activeRecommendationControl = document.querySelector(${JSON.stringify(openPanel === 'details'
+        ? `[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="input-inline-location"]`
+        : `[data-testid="panel-inline-prep-draft:${eventId}"] [data-testid="input-card-prep-title-${eventId}"]`)});
+      window.__activeRecommendationControl.focus();
       window.__recommendationChanges = [];
       window.__recommendationObserver = new MutationObserver(() => {
         window.__recommendationChanges.push(region.textContent.trim());
@@ -5570,8 +5622,8 @@ test('an open Event Card updates its suggested action as the game changes stages
       window.__recommendationObserver.observe(region, { childList: true, subtree: true, characterData: true });
       return [region.getAttribute('role'), region.getAttribute('aria-live'), region.getAttribute('aria-atomic')];
     })()`, page.sessionId), ['status', 'polite', 'true']);
-    await assertOpenPrepAnnouncement();
-    assert.equal(await readAnnouncement(), '', 'opening Prep must not announce an unchanged recommendation');
+    await assertOpenPanelAnnouncement();
+    assert.equal(await readAnnouncement(), '', `opening ${openPanel} must not announce an unchanged recommendation`);
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
       id: ${JSON.stringify(eventId)},
       type: 'game',
@@ -5587,10 +5639,16 @@ test('an open Event Card updates its suggested action as the game changes stages
     await assertNotSuggestedInAccessibleName(`button-open-card-prep-draft:${eventId}`);
     await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Live. Suggested next: Stat Tracker.')`);
     assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.');
-    await assertOpenPrepAnnouncement();
+    await assertOpenPanelAnnouncement();
     assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
       'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
-    ], 'the Live transition must update the existing region exactly once while Prep is open');
+    ], `the Live transition must update the existing region exactly once while ${openPanel} is open`);
+    await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
+    await connection.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page.sessionId);
+    assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
+      'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
+    ], 'an unchanged Live recommendation must not announce again or reset the draft');
+    await assertOpenPanelAnnouncement();
     const { node: announcementNode } = await connection.send<{ node: { backendNodeId: number } }>(
       'DOM.describeNode',
       { objectId: (await connection.send<{ result: { objectId: string } }>('Runtime.evaluate', {
@@ -5628,7 +5686,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'complete'`);
     await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
     await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Complete. Suggested next: Stat Tracker.')`);
-    await assertOpenPrepAnnouncement();
+    await assertOpenPanelAnnouncement();
 
     const trackerHistory = {
       version: 1,
@@ -5657,7 +5715,7 @@ test('an open Event Card updates its suggested action as the game changes stages
       ?.getAttribute('data-suggested-next') === 'true')`);
     await assertSingleSuggestion(`link-view-card-stats-draft:${eventId}`);
     await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('Suggested next: View stats.')`);
-    await assertOpenPrepAnnouncement();
+    await assertOpenPanelAnnouncement();
     assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
       'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
       'Event Card vs Rivals is now Complete. Suggested next: Stat Tracker.',
@@ -5669,7 +5727,7 @@ test('an open Event Card updates its suggested action as the game changes stages
       'an unrelated render must not clear or repeat the announcement');
     assert.equal(await connection.evaluate<number>('window.__recommendationChanges.length', page.sessionId), 3,
       'an unchanged recommendation must not mutate the live region');
-    await assertOpenPrepAnnouncement();
+    await assertOpenPanelAnnouncement();
     await connection.evaluate('window.__recommendationObserver.disconnect()', page.sessionId);
     await connection.evaluate(`document.querySelector('[aria-label="Close Event Card"]').click()`, page.sessionId);
     await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]')`);
@@ -5724,6 +5782,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     release();
   }
 });
+}
 
 test('mobile event guidance prioritizes live games and always offers a next action', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
@@ -7157,6 +7216,13 @@ export function mount() {
           nextGameIsUpcoming: true,
           scheduleSource: 'custom',
           connectionLabel: 'Northside · 2026',
+          onSaveCalendarEvent: window.location.search.includes('supporter-event-details-draft')
+            ? async (savedEvent) => {
+              window.__eventDetailsCalendarSaves.push(savedEvent);
+              dashboardEvents = dashboardEvents.map((event) => event.id === savedEvent.id ? savedEvent : event);
+              renderDashboard();
+            }
+            : undefined,
           onCompleteScheduledGame: async (eventId, completedAt) => {
             const scheduledGame = dashboardEvents.find((event) => event.id === eventId && event.type === 'game');
             if (!scheduledGame) throw new Error('The scheduled game is no longer available.');
