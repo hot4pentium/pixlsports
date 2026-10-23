@@ -133,6 +133,7 @@ window.fetch = async (input,init) => {
     if(url.includes('/api/athlete-invites/')&&url.includes('/editor-access')){
       if(init?.method==='POST'){
         const body=JSON.parse(init.body);window.__invitationPayloads.push(body);
+        if(state.inviteError)return new Response(JSON.stringify({error:state.inviteError}),{status:state.inviteErrorStatus||409,headers:{'Content-Type':'application/json'}});
         state.inviteStatus='pending';state.inviteEmail=body.emailAddress;
         return new Response(JSON.stringify({emailAddress:state.inviteEmail,projectId:null,status:state.inviteStatus,updatedAt:new Date().toISOString()}),{status:201,headers:{'Content-Type':'application/json'}});
       }
@@ -801,6 +802,18 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     assert.equal(await browser.evaluate(`window.__requests.some(url=>url.endsWith('/api/projects'))`), false, 'sending this invitation does not depend on a project list');
     await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] input[type="email"]').focus()`);
     await browser.send('Input.insertText', { text: 'athlete@example.com' });
+    for (const [status, message] of [
+      [409, 'That email already has a Pixl Sports sign-in. Use a separate athlete email.'],
+      [409, 'That email already has a Pixl Sports sign-in or invitation.'],
+      [503, 'The athlete email could not be checked. Try again.'],
+    ] as const) {
+      await browser.evaluate(`window.__update({inviteError:${JSON.stringify(message)},inviteErrorStatus:${status}})`);
+      await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] button[type="submit"]').click()`);
+      await browser.wait(`document.querySelector('[role="status"]')?.textContent===${JSON.stringify(message)}`);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] input[type="email"]').value`), 'athlete@example.com', 'failed invitations preserve the email for correction');
+      await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"] button[type="submit"]').disabled===false`);
+    }
+    await browser.evaluate(`window.__update({inviteError:null})`);
     await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] button[type="submit"]').click()`);
     await browser.wait(`document.querySelector('[role="status"]')?.textContent.includes('Invitation sent')`);
     const invitationPayload = await browser.evaluate(`window.__invitationPayloads.at(-1)`);

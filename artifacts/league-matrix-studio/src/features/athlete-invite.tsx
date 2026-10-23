@@ -31,6 +31,7 @@ import {
 import QRCode from 'qrcode';
 import { Link } from 'wouter';
 import { athleteFanCardUrl } from './athlete-fan-card-url';
+import { athleteInvitationErrorMessage } from './athlete-invitation-error';
 import {
   getListAthleteInvitesQueryKey,
   getGetAthleteInviteQueryKey,
@@ -442,12 +443,18 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
         inviteToken,
         data: { emailAddress: emailAddress.trim() },
       });
-      await refreshInvitation();
       setMessage(response.status === 'active'
         ? 'Access restored. The athlete can sign in and edit this card.'
         : 'Invitation sent. The athlete can edit the linked HYPE Card and add a favorite-moment note after signing in.');
-    } catch {
-      setMessage('The invitation could not be sent. Check the email and try again.');
+      try {
+        await refreshInvitation();
+      } catch {
+        setMessage(response.status === 'active'
+          ? 'Access restored, but its latest status could not be loaded. Refresh this page.'
+          : 'Invitation sent, but its latest status could not be loaded. Refresh this page before sending another invitation.');
+      }
+    } catch (error) {
+      setMessage(athleteInvitationErrorMessage(error));
     }
   };
   const revoke = async () => {
@@ -493,7 +500,7 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       ) : (
         <div className="mt-5">
           <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            New invitations connect to the HYPE Card already shown in the Showcase. The athlete can edit its design and add one short favorite-moment note; page settings and sharing stay with you.
+            New invitations connect to the HYPE Card already shown in the Showcase. Use a separate athlete email that does not already have a Pixl Sports sign-in. The athlete can edit its design and add one short favorite-moment note; page settings and sharing stay with you.
           </p>
           {invitationQuery.isError && (
             <p className="mb-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2 text-sm" role="alert">
