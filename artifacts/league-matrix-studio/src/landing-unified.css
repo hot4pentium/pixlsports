@@ -87,7 +87,16 @@
 .new-landing .step-card .step-top { display: flex; align-items: start; justify-content: space-between; }
 .new-landing .step-card .step-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 8px; background: #dcebed; color: #235b70; }
 .new-landing .step-card:last-child .step-icon { background: var(--pixl-lime); color: var(--pixl-navy); }
-.new-landing .step-card .step-number { color: #a6b6bb; font: 700 18px "Barlow Condensed", sans-serif; }
+.new-landing .step-card .step-number { display: grid; width: 52px; height: 52px; flex: 0 0 52px; place-items: center; border: 2px solid var(--pixl-navy); border-radius: 50%; background: var(--pixl-lime); box-shadow: 0 0 0 4px #c9f45a42; color: var(--pixl-navy); font: 800 21px/1 "Barlow Condensed", sans-serif; }
+.new-landing .week-grid--visible .step-card .step-number { animation: step-number-grow .58s cubic-bezier(.2,.8,.3,1.25) both; }
+.new-landing .week-grid--visible .step-card:nth-child(2) .step-number { animation-delay: 120ms; }
+.new-landing .week-grid--visible .step-card:nth-child(3) .step-number { animation-delay: 240ms; }
+.new-landing .week-grid--visible .step-card:nth-child(4) .step-number { animation-delay: 360ms; }
+@keyframes step-number-grow {
+  from { opacity: 0; transform: scale(.4); }
+  72% { opacity: 1; transform: scale(1.12); }
+  to { opacity: 1; transform: scale(1); }
+}
 .new-landing .step-card h3 { font-size: 31px; margin-top: 40px; }
 .new-landing .step-card p { margin-top: 7px; color: #5c6f75; font-size: 12px; line-height: 1.65; max-width: 210px; }
 .new-landing .step-card--demo { display: flex; width: 100%; flex-direction: column; align-items: flex-start; text-align: left; color: inherit; cursor: pointer; }
@@ -245,4 +254,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .new-landing *, .new-landing *::before, .new-landing *::after {scroll-behavior:auto !important;animation-duration:.01ms !important;transition-duration:.01ms !important;}
+  .new-landing .step-card .step-number { animation: none !important; opacity: 1 !important; transform: none !important; }
 }

@@ -72,6 +72,19 @@ test('hero message omits the numbered athlete-card label', () => {
   assert.match(source, /Every player has a story worth sharing\./);
 });
 
+test('week step numbers use circular badges and a one-time staggered reveal', () => {
+  assert.match(source, /IntersectionObserver/);
+  assert.match(source, /observer\.unobserve\(section\)/);
+  assert.match(source, /week-grid--visible/);
+  assert.match(source, /data-testid=\{`landing-step-number-\$\{number\}`\}/);
+  assert.match(styles, /\.step-card \.step-number \{[^}]*width: 52px; height: 52px;[^}]*border-radius: 50%;[^}]*background: var\(--pixl-lime\)/);
+  assert.match(styles, /\.week-grid--visible \.step-card:nth-child\(2\) \.step-number \{ animation-delay: 120ms; \}/);
+  assert.match(styles, /\.week-grid--visible \.step-card:nth-child\(3\) \.step-number \{ animation-delay: 240ms; \}/);
+  assert.match(styles, /\.week-grid--visible \.step-card:nth-child\(4\) \.step-number \{ animation-delay: 360ms; \}/);
+  assert.match(styles, /@keyframes step-number-grow/);
+  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*\.step-card \.step-number \{ animation: none !important; opacity: 1 !important/);
+});
+
 test('landing Hype Card artwork shows the current sides without video references', () => {
   assert.match(source, /className="landing-hype-card-tabs"/);
   for (const side of ['Card front', 'Stats', 'Events']) {

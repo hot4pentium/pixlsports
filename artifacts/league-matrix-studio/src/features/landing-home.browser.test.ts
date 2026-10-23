@@ -338,6 +338,112 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
   }
 });
 
+test('step badges show a staggered circle reveal and respect reduced motion', async () => {
+  const port = await freePort();
+  const debugPort = await freePort();
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-step-badges-browser-'));
+  const server = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+    cwd: appDirectory,
+    env: { ...process.env, PORT: String(port), BASE_PATH: '/', VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const serverMonitor = monitorProcess(server, 'Vite');
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: BrowserPage | undefined;
+  try {
+    await waitForUrl(`http://127.0.0.1:${port}/`, 30_000, serverMonitor);
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then(res => res.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+    const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
+    page = { targetId: target.targetId, sessionId: attached.sessionId };
+    connection.registerTarget(page.targetId, page.sessionId);
+    await connection.send('Page.enable', {}, page.sessionId);
+    await connection.send('Runtime.enable', {}, page.sessionId);
+
+    for (const view of [
+      { width: 393, reducedMotion: false },
+      { width: 1440, reducedMotion: false },
+      { width: 393, reducedMotion: true },
+    ]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', {
+        width: view.width, height: 900, deviceScaleFactor: 1, mobile: view.width < 600,
+      }, page.sessionId);
+      await connection.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'prefers-reduced-motion', value: view.reducedMotion ? 'reduce' : 'no-preference' }],
+      }, page.sessionId);
+      await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/` }, page.sessionId);
+      await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=text-landing-headline]"))', Boolean);
+      await new Promise(resolveDelay => setTimeout(resolveDelay, 150));
+      await connection.evaluate(`document.querySelector("[data-testid=landing-week-grid]").scrollIntoView({ block: "center" })`, page.sessionId);
+      await waitFor(
+        connection,
+        page.sessionId,
+        'document.querySelector("[data-testid=landing-week-grid]")?.classList.contains("week-grid--visible")',
+        Boolean,
+      );
+
+      const badges = await connection.evaluate<Array<{
+        text: string; width: number; height: number; radius: string; animation: string; delay: string; opacity: string;
+      }>>(`(() => [...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(node => {
+        const style = getComputedStyle(node);
+        return {
+          text: node.textContent?.trim() || '',
+          width: node.offsetWidth,
+          height: node.offsetHeight,
+          radius: style.borderRadius,
+          animation: style.animationName,
+          delay: style.animationDelay,
+          opacity: style.opacity,
+        };
+      }))()`, page.sessionId);
+      assert.deepEqual(badges.map(badge => badge.text), ['01', '02', '03', '04']);
+      for (const badge of badges) {
+        assert.ok(Math.abs(badge.width - 52) < 1 && Math.abs(badge.height - 52) < 1, `badge should be a 52px circle at ${view.width}px: ${JSON.stringify(badge)}`);
+        assert.equal(badge.radius, '50%');
+        if (view.reducedMotion) {
+          assert.equal(badge.animation, 'none');
+          assert.equal(badge.opacity, '1');
+        } else {
+          assert.equal(badge.animation, 'step-number-grow');
+        }
+      }
+
+      if (!view.reducedMotion) {
+        const delays = badges.map(badge => parseFloat(badge.delay) * (badge.delay.endsWith('ms') ? 1 : 1000));
+        assert.deepEqual(delays, [0, 120, 240, 360]);
+        await waitFor(connection, page.sessionId, `(() => [...document.querySelectorAll('[data-testid^="landing-step-number-"]')].every(node => {
+          const animation = node.getAnimations()[0];
+          return animation && animation.playState === 'finished';
+        }))()`, Boolean);
+        const startTimes = await connection.evaluate<number[]>(`[...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(node => node.getAnimations()[0]?.startTime ?? -1)`, page.sessionId);
+        await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
+        await connection.evaluate('document.querySelector("[data-testid=landing-week-grid]").scrollIntoView({ block: "center" })', page.sessionId);
+        const startTimesAfterReturn = await connection.evaluate<number[]>(`[...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(node => node.getAnimations()[0]?.startTime ?? -1)`, page.sessionId);
+        assert.deepEqual(startTimesAfterReturn, startTimes, 'the grow cascade should not replay when scrolling back');
+      }
+    }
+  } finally {
+    if (connection) {
+      if (page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+      connection.close();
+    }
+    if (browser && browserMonitor && !browserMonitor.hasExited()) browser.kill('SIGTERM');
+    if (browserMonitor) await browserMonitor.waitForExit();
+    if (!serverMonitor.hasExited()) server.kill('SIGTERM');
+    await serverMonitor.waitForExit();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
 
 test('Help contact actions remain visible without overflow on phone and desktop widths', async () => {
   const port = await freePort();

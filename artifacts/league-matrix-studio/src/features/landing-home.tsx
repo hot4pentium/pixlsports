@@ -1,7 +1,7 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
@@ -87,7 +87,7 @@ function DemoStepCard({ step: { number, title, description, icon: Icon }, onOpen
 }) {
   return (
     <button type="button" className="step-card step-card--demo" onClick={onOpen} aria-label={`Try ${title}: ${description}`} data-testid={`button-landing-${title.toLowerCase()}-try`}>
-      <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{number}</span></div>
+      <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number" aria-hidden="true" data-testid={`landing-step-number-${number}`}>{number}</span></div>
       <h3 className="display">{title}</h3><p>{description}</p>
       <span className="step-demo-launch" aria-hidden="true">Try {title} <ArrowRight size={14} /></span>
     </button>
@@ -140,6 +140,26 @@ export function PublicLandingPage() {
   const { isSignedIn } = useUser();
   const destination = isSignedIn ? '/studio' : '/sign-up';
   const [activeDemo, setActiveDemo] = useState<'01' | '02' | '03' | '04' | null>(null);
+  const [weekStepsVisible, setWeekStepsVisible] = useState(false);
+  const weekGridRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const grid = weekGridRef.current;
+    if (!grid) return;
+    if (!('IntersectionObserver' in window)) {
+      setWeekStepsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      setWeekStepsVisible(true);
+      observer.unobserve(grid);
+    }, { threshold: 0.12 });
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="new-landing">
       <LandingNav isSignedIn={Boolean(isSignedIn)} />
@@ -177,7 +197,7 @@ export function PublicLandingPage() {
               <div><span className="micro">A simpler game week</span><h2 className="display" id="week-heading">One week.<br />Everything in motion.</h2></div>
               <p>PIXL gives you a clear next step, from putting a game on the calendar to sharing the moments afterward.</p>
             </div>
-            <div className="week-grid">
+            <div ref={weekGridRef} className={`week-grid${weekStepsVisible ? ' week-grid--visible' : ''}`} data-testid="landing-week-grid">
               {steps.map(step => <DemoStepCard key={step.number} step={step} onOpen={() => setActiveDemo(step.number as '01' | '02' | '03' | '04')} />)}
             </div>
             {activeDemo && <LandingToolDemo step={activeDemo} open destination={destination} onOpenChange={open => { if (!open) setActiveDemo(null); }} />}
