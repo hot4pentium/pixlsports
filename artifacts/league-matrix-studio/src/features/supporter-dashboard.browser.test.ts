@@ -9814,7 +9814,7 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
   }
 });
 
-test('a signed-in Stat Tracker game stays saved when leaving to the dashboard and reopening', { concurrency: false }, async () => {
+test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('signed-in-stat-tracker-resume-test');
   let devServer: ChildProcess | undefined;
@@ -9957,32 +9957,79 @@ test('a signed-in Stat Tracker game stays saved when leaving to the dashboard an
       'the active session is saved under the signed-in account rather than the unscoped legacy key',
     );
 
-    await click('button-leave-game-open');
+    await click('button-back-to-game-day-hub');
+    await waitFor(connection, session,
+      'Boolean(document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]"))',
+      Boolean,
+    );
+    await click('button-pause-and-leave-game');
     await waitFor(connection, session, 'location.pathname === "/studio"', Boolean);
     await waitFor(connection, session,
       'Boolean(document.querySelector("[data-testid=\\"link-desktop-independent-stats\\"]"))', Boolean);
-    assert.deepEqual(
-      await connection.evaluate(
-        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
-      ),
-      activeGameBeforeLeaving,
-      'Leave game open returns to the dashboard without clearing or changing the account-scoped session',
-    );
+    const pausedGameAfterLeaving = await connection.evaluate<{
+      status: string;
+      opponent: string;
+      stats: Record<string, number>;
+      events: unknown[];
+    }>(`JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session);
+    assert.equal(pausedGameAfterLeaving.status, 'paused',
+      'the real signed-in exit handler must pause the account-scoped game before navigating to the hub');
+    assert.equal(pausedGameAfterLeaving.opponent, activeGameBeforeLeaving.opponent);
+    assert.deepEqual(pausedGameAfterLeaving.stats, activeGameBeforeLeaving.stats);
+    assert.deepEqual(pausedGameAfterLeaving.events, activeGameBeforeLeaving.events);
+    assert.equal(pausedGameAfterLeaving.events.length, 2,
+      'pausing the game must keep every recorded event');
 
     await openStatTrackerFromDashboard();
     await waitFor(connection, session,
       'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null'
-        + ' && document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "live"'
+        + ' && document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "paused"'
         + ' && document.querySelector("[data-testid=\\"live-tracker-matchup\\"]")?.textContent.includes("Tigers") === true'
-        + ' && document.querySelector("[data-testid=\\"stat-count-three-point\\"]")?.textContent.trim().startsWith("2")',
+        + ' && document.querySelector("[data-testid=\\"stat-count-three-point\\"]")?.textContent.trim().startsWith("2")'
+        + ' && document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null',
       Boolean,
     );
     assert.deepEqual(
       await connection.evaluate(
         `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
       ),
-      activeGameBeforeLeaving,
-      'reopening Stat Tracker restores the saved opponent, live status, and recorded stats',
+      pausedGameAfterLeaving,
+      'reopening Stat Tracker restores the same paused game and its recorded events',
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"]")?.matches(":disabled") === true',
+        session,
+      ),
+      true,
+      'the restored paused game must block stat taps until resumed',
+    );
+    await click('athlete-stat-target-three-point');
+    assert.deepEqual(
+      await connection.evaluate(
+        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
+      ),
+      pausedGameAfterLeaving,
+      'attempting a stat tap while paused must not change the saved game or its events',
+    );
+    await click('button-resume-live-stats');
+    await waitFor(connection, session,
+      'document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "live"'
+        + ' && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"]")?.matches(":enabled") === true',
+      Boolean,
+    );
+    await click('athlete-stat-target-three-point');
+    await waitFor(connection, session,
+      `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.events?.length === 3`,
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<number>(
+        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.stats?.["three-point"]`,
+        session,
+      ),
+      3,
+      'resuming the restored game should allow new stat taps',
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
