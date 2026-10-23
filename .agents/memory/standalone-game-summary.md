@@ -14,3 +14,9 @@ The mobile space beside the HYPE Card must always provide guidance. A live event
 **Why:** The user said, “This space needs to always provide guidance to the user,” then corrected the tracker fallback: “If there is no event card, then obviously there is no game to track.”
 
 **How to apply:** Use Event Cards as the authority for this panel. Preserve live-card priority and the upcoming badge, but make the no-card state an unambiguous invitation to create a card first.
+
+The message-board action should be titled for the current step, not “Open Event Card,” while still opening the Event Card displayed on that board.
+
+**Why:** The user explicitly requested step-specific link titles and the proper event destination.
+
+**How to apply:** Keep the label and destination tied to the same guidance event, not an independently remembered selection. Reopening through the board must open the card rather than toggle it closed.

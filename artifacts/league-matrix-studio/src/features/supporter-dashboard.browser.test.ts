@@ -5331,7 +5331,11 @@ test('the authenticated Supporter Hub restores the upcoming Event Card after rel
       };
       localStorage.setItem(
         \`pixlsports-game-on-cards:\${userId}\`,
-        JSON.stringify([savedCard]),
+        JSON.stringify([{
+          ...savedCard,
+          shareToken: 'later-reload-card',
+          event: { ...savedCard.event, id: 'later-reload-event', date: '2999-02-01', opponent: 'Later Bears' },
+        }, savedCard]),
       );
     })()`, page.sessionId);
 
@@ -5349,8 +5353,17 @@ test('the authenticated Supporter Hub restores the upcoming Event Card after rel
     assert.match(board, /The Northside Comets Select Travel Club vs Night Owls/);
     assert.match(board, /Jan 2, 2999 · 8:30 PM/);
     assert.doesNotMatch(board, /Game-day prep|Game day is coming up/);
-    assert.match(board, /Open Event Card/);
+    assert.match(board, /Get ready/);
+    assert.doesNotMatch(board, /Open Event Card/);
+    assert.doesNotMatch(board, /Later Bears/);
 
+    await connection.evaluate(
+      'document.querySelector(\'[data-testid="upcoming-event-badge"] [data-testid="button-guidance-event-card"]\')?.click()',
+      page.sessionId,
+    );
+    await wait(`Boolean(document.querySelector(
+      '[data-testid="dialog-game-on-card-share:standalone-reload-card"]'
+    ))`);
     await connection.evaluate(
       'document.querySelector(\'[data-testid="upcoming-event-badge"] [data-testid="button-guidance-event-card"]\')?.click()',
       page.sessionId,
@@ -5695,6 +5708,7 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     ])`);
     await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='live'`);
     assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Live Hawks/);
+    assert.equal(await evaluate<string>(`document.querySelector('[data-testid="button-guidance-event-card"]').textContent.trim()`), 'Capture the game');
     assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Future Owls|No upcoming/);
     await evaluate(`document.querySelector('[data-testid="button-guidance-event-card"]').click()`);
     await wait(`!!document.querySelector('[data-testid="card-game-on-draft:guidance-live"] input')`);
@@ -5917,7 +5931,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
             && actionRect.width > 0 && actionRect.height >= 44
             && actionRect.left >= eventCard.left && actionRect.right <= eventCard.right
             && actionRect.top >= eventCard.top && actionRect.bottom <= eventCard.bottom
-            && action.textContent?.includes('Open Event Card');
+            && action.textContent?.includes('Get ready');
           const cardWidthMatches = Math.abs(eventCard.width-c.width)<1;
           const cardHeightMatches = Math.abs(eventCard.height-c.height)<1;
           const cardTopMatches = Math.abs(eventCard.top-c.top)<1;

@@ -965,11 +965,20 @@ export function SupporterDashboardView({
   );
   const guidanceEventCard = liveEventCard ?? nextUpcomingEvent;
   const hasLiveGuidance = Boolean(liveEventCard);
+  const guidanceStepLabel = stageCopy[hasLiveGuidance ? 'live' : 'upcoming'].label;
   const openGuidanceEventCard = () => {
     if (!guidanceEventCard) return;
-    selectCard(guidanceEventCard.id);
+    // Open the displayed event explicitly; the collection's toggle handler can close
+    // an already-selected card or refuse a different event while a draft is open.
+    setNewCardDraft((previous) => previous?.editing ? { ...previous, editing: false } : previous);
+    setCardSelection((previous) => ({
+      kind: guidanceEventCard.id.startsWith('share:') ? 'share' : 'event',
+      id: guidanceEventCard.id,
+      nonce: (previous?.nonce ?? 0) + 1,
+    }));
     window.requestAnimationFrame(() => {
-      document.querySelector(`[data-testid="card-game-on-${CSS.escape(guidanceEventCard.id)}"]`)
+      Array.from(document.querySelectorAll<HTMLElement>(`[data-testid="card-game-on-${CSS.escape(guidanceEventCard.id)}"]`))
+        .find((card) => card.getClientRects().length > 0)
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   };
@@ -1080,6 +1089,7 @@ export function SupporterDashboardView({
               formatDateDisplay(guidanceEventCard.date),
               formatTimeDisplay(guidanceEventCard.time),
             ].filter(Boolean).join(' · ')}
+            actionLabel={guidanceStepLabel}
             onOpen={openGuidanceEventCard}
           />
         )}
@@ -1095,8 +1105,8 @@ export function SupporterDashboardView({
               : 'Keep tracking your athlete’s moments. Open the game to update stats and the score.'
             : 'Start by creating an Event Card for your athlete’s next game or practice. Your game-day guidance will appear here.'}</p>
           {guidanceEventCard ? (
-            <button type="button" onClick={openGuidanceEventCard} data-testid="button-guidance-event-card">
-              {hasLiveGuidance ? 'Open live Event Card' : 'Open Event Card'} <ArrowRight size={14} aria-hidden="true" />
+            <button type="button" onClick={openGuidanceEventCard} data-testid="button-guidance-event-card" aria-label={`${guidanceStepLabel}: open Event Card for ${getUpcomingEventCardTitle(guidanceEventCard, profile.teamName)}`}>
+              {guidanceStepLabel} <ArrowRight size={14} aria-hidden="true" />
             </button>
           ) : (
             <button type="button" onClick={openCardWorkspace} data-testid="button-guidance-create-event">Create Event Card <ArrowRight size={14} aria-hidden="true" /></button>
