@@ -5686,6 +5686,103 @@ test(`an open Event Card updates its suggested action as the game changes stages
       'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
     ], 'an unchanged Live recommendation must not announce again or reset the draft');
     await assertOpenPanelAnnouncement();
+    const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.';
+    assert.equal(await readAnnouncement(), liveAnnouncement,
+      'the open Live Event Card should have announced its stage before the full-dialog round trip');
+    await connection.evaluate(`(() => {
+      window.__previousRecommendationRegion = window.__recommendationRegion;
+      window.__recommendationObserver.disconnect();
+      window.__reopenedRecommendationMessages = [];
+      const statusSelector = '[data-testid="status-game-on-recommendation"]';
+      const inspect = (node, regions) => {
+        if (!(node instanceof Element)) return;
+        if (node.matches(statusSelector)) regions.add(node);
+        const closest = node.closest(statusSelector);
+        if (closest) regions.add(closest);
+        node.querySelectorAll(statusSelector).forEach((region) => regions.add(region));
+      };
+      window.__reopenedRecommendationObserver = new MutationObserver((records) => {
+        const regions = new Set();
+        for (const record of records) {
+          if (record.type === 'characterData') inspect(record.target.parentElement, regions);
+          for (const node of record.addedNodes) inspect(node, regions);
+        }
+        for (const region of regions) {
+          const message = region.textContent.trim();
+          if (message) window.__reopenedRecommendationMessages.push(message);
+        }
+      });
+      window.__reopenedRecommendationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+    })()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[aria-label="Close Event Card"]')?.click()`, page.sessionId);
+    await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]')`);
+    await wait(`Boolean(document.querySelector('[data-testid="button-open-game-on-card-draft:${eventId}"]'))`);
+    await connection.evaluate(`document.querySelector('[data-testid="button-open-game-on-card-draft:${eventId}"]')?.click()`, page.sessionId);
+    await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]'))`);
+    await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'live'`);
+    await connection.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page.sessionId);
+    assert.deepEqual(await connection.evaluate(`(() => ({
+      status: document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status,
+      reopenedAnnouncement: document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.trim() ?? '',
+      priorAnnouncement: window.__previousRecommendationRegion?.textContent.trim() ?? '',
+      priorRegionDetached: !document.contains(window.__previousRecommendationRegion),
+      replayedMessages: window.__reopenedRecommendationMessages,
+      changesBeforeClose: window.__recommendationChanges,
+    }))()`, page.sessionId), {
+      status: 'live',
+      reopenedAnnouncement: '',
+      priorAnnouncement: liveAnnouncement,
+      priorRegionDetached: true,
+      replayedMessages: [],
+      changesBeforeClose: [liveAnnouncement],
+    }, 'the previous live-region text must stay unchanged, and the reopened dialog must not replay it');
+
+    const reopenedDialogSelector = `[data-testid="dialog-game-on-card-draft:${eventId}"]`;
+    await connection.evaluate(`document.querySelector('${reopenedDialogSelector} [data-testid="${openPanel === 'details' ? `button-edit-event-arrow-draft:${eventId}` : `button-open-card-prep-draft:${eventId}`}"]')?.click()`, page.sessionId);
+    await wait(openPanel === 'details'
+      ? `Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="input-inline-location"]')?.getClientRects().length)`
+      : `document.activeElement?.matches('[data-testid="panel-inline-prep-draft:${eventId}"] .game-on-prep__title')`);
+    if (openPanel === 'details') {
+      const inputSelector = `${reopenedDialogSelector} [data-testid="input-inline-location"]`;
+      await connection.evaluate(`document.querySelector(${JSON.stringify(inputSelector)}).focus()`, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'rawKeyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2,
+      }, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2,
+      }, page.sessionId);
+      await connection.send('Input.insertText', { text: 'Unsaved courtside entrance' }, page.sessionId);
+      await wait(`document.querySelector(${JSON.stringify(inputSelector)})?.value === 'Unsaved courtside entrance'`);
+    }
+    await connection.evaluate(`(() => {
+      const dialog = document.querySelector(${JSON.stringify(reopenedDialogSelector)});
+      const region = dialog?.querySelector('[data-testid="status-game-on-recommendation"]');
+      window.__recommendationDialog = dialog;
+      window.__recommendationRegion = region;
+      window.__activeRecommendationControl = ${openPanel === 'details'
+        ? `document.querySelector(${JSON.stringify(`${reopenedDialogSelector} [data-testid="input-inline-location"]`)})`
+        : `document.querySelector(${JSON.stringify(`[data-testid="panel-inline-prep-draft:${eventId}"] [data-testid="input-card-prep-title-${eventId}"]`)})`};
+      window.__activeRecommendationControl?.focus();
+      window.__recommendationObserver = new MutationObserver((records) => {
+        for (const record of records) {
+          const touchesRegion = region.contains(record.target)
+            || [...record.addedNodes, ...record.removedNodes].some(node =>
+              node.contains(region)
+              || (node instanceof Element && (
+                node.matches('[data-testid="status-game-on-recommendation"]')
+                || node.querySelector('[data-testid="status-game-on-recommendation"]')
+              )));
+          if (touchesRegion) window.__recommendationChanges.push(region.textContent.trim());
+        }
+      });
+      window.__recommendationObserver.observe(dialog, { childList: true, subtree: true, characterData: true });
+      window.__reopenedRecommendationObserver.disconnect();
+    })()`, page.sessionId);
+    await assertOpenPanelAnnouncement();
+    assert.equal(await readAnnouncement(), '',
+      'opening the same panel after reopening the full dialog must not restore or replay the old announcement');
+    assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [liveAnnouncement],
+      'the original Live announcement must remain a single announcement across the dialog round trip');
     if (openPanel === 'prep') {
       const dialogSelector = `[data-testid="dialog-game-on-card-draft:${eventId}"]`;
       const assertPrepFlip = async (
@@ -5739,7 +5836,7 @@ test(`an open Event Card updates its suggested action as the game changes stages
       await wait(`document.activeElement?.matches('${dialogSelector} [data-testid="button-open-card-prep-draft:${eventId}"]')`);
       const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.';
       const liveChanges = [liveAnnouncement];
-      await assertPrepFlip(false, liveAnnouncement, liveChanges, `button-open-stat-tracker-draft:${eventId}`);
+      await assertPrepFlip(false, '', liveChanges, `button-open-stat-tracker-draft:${eventId}`);
       await connection.evaluate(`window.__setSupporterDashboardEvents([{
         id: ${JSON.stringify(eventId)},
         type: 'game',
@@ -5808,7 +5905,7 @@ test(`an open Event Card updates its suggested action as the game changes stages
           sameDialog: true,
           sameRegion: true,
           regionCount: 1,
-          text: liveAnnouncement,
+          text: '',
           changes: liveChanges,
           exposed: true,
           frontActive: !editorOpen,
@@ -5817,8 +5914,8 @@ test(`an open Event Card updates its suggested action as the game changes stages
           panelVisible: editorOpen,
           focusCorrect: true,
         }, `the Details ${editorOpen ? 'reopening' : 'closing'} flip must keep the Live announcement mounted and focus the visible face`);
-        assert.equal(await readAnnouncement(), liveAnnouncement,
-          `closing or reopening Details must not clear or replay the Live announcement`);
+        assert.equal(await readAnnouncement(), '',
+          `closing or reopening Details must not replay the prior Live announcement`);
         assert.deepEqual(await connection!.evaluate(`(() => ({
           draft: document.querySelector(${JSON.stringify(locationSelector)})?.value,
           savedLocation: window.__getSupporterDashboardEvents().find(event => event.id === ${JSON.stringify(eventId)})?.location,
