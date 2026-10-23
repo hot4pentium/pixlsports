@@ -96,7 +96,10 @@ function isCardEvent(event: GameOnDashboardEvent | undefined): event is GameOnDa
 
 function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice' }, athleteName: string, now: Date, shareToken?: string): GameOnDashboardEntry {
   const stage = event.date
-    ? getSupporterGameStage(event, now, { includePregameCaptureWindow: false })
+    ? getSupporterGameStage(event, now, {
+      includePregameCaptureWindow: false,
+      maxLiveDurationMs: 2 * 60 * 60 * 1000,
+    })
     : 'upcoming';
   const startingSoon = event.date && isSupporterGameInPregameCaptureWindow(event, now);
   return {

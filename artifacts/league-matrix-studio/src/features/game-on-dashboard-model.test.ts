@@ -8,6 +8,33 @@ const event = (id: string, type: GameOnDashboardEvent['type'], date: string): Ga
   id, type, date, time: '10:00', location: 'North Field', opponent: 'Ravens', status: 'upcoming',
 });
 
+test('Event Cards expire two hours after kickoff in the saved time zone, regardless of stale status', () => {
+  for (const type of ['game', 'practice'] as const) {
+    for (const status of ['upcoming', 'live'] as const) {
+      const scheduled = {
+        ...event('morning-event', type, '2026-10-24'),
+        time: '09:00',
+        timezone: 'America/New_York',
+        status,
+      };
+      const share = { shareToken: 'morning-card', title: 'Morning event', createdAt: '2026-10-23T12:00:00Z', events: [scheduled] };
+      const at = (time: string) => buildGameOnDashboardEntries([], [share], 'Alex', new Date(time));
+      assert.equal(at('2026-10-24T12:59:59Z')[0].status, status === 'live' ? 'Live' : type === 'game' ? 'Starting Soon' : 'Published');
+      assert.equal(at('2026-10-24T13:00:00Z')[0].status, 'Live');
+      assert.equal(at('2026-10-24T14:59:59Z')[0].status, 'Live');
+      const passed = at('2026-10-24T15:00:00Z');
+      assert.equal(passed[0].status, 'Complete', `${type}/${status} expires at 11 AM Eastern`);
+      assert.equal(getFeaturedGameOnCardId(passed, new Date('2026-10-24T15:00:00Z')), undefined);
+      assert.equal(getNextGameOnDashboardEntry(passed, new Date('2026-10-24T15:00:00Z')), undefined);
+      if (type === 'game') assert.equal(getSuggestedGameOnAction(passed[0]), 'tracker', 'never recommend Prep for a passed game');
+      const withFuture = buildGameOnDashboardEntries([
+        { ...scheduled, id: 'future-event', date: '2026-10-25', status: 'upcoming' },
+      ], [share], 'Alex', new Date('2026-10-24T15:00:00Z'));
+      assert.equal(getFeaturedGameOnCardId(withFuture, new Date('2026-10-24T15:00:00Z')), 'draft:future-event');
+    }
+  }
+});
+
 test('suggested Event Card actions follow game stage and never send practices to Stat Tracker', () => {
   assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Draft' }), 'prep');
   assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Starting Soon' }), 'prep');
@@ -214,7 +241,7 @@ test('independent game and practice shares appear without a calendar', () => {
 });
 
 test('a standalone badge reflects its locally ended tracker after reopening', () => {
-  const game = event('standalone-game', 'game', '2026-09-24');
+  const game = { ...event('standalone-game', 'game', '2026-09-24'), time: '11:00' };
   const share = { shareToken: 'game-share', title: 'Game', createdAt: now.toISOString(), events: [game] };
   const cards = buildGameOnDashboardEntries([], [share], 'Alex', now, [
     { date: game.date, opponent: 'ravens' },

@@ -351,7 +351,7 @@ function parseSupporterEventTime(value: string): { hour: number; minute: number 
 export function getSupporterGameStage(
   game: Pick<SupporterGameLike, 'date' | 'time' | 'status' | 'type' | 'timezone'>,
   now = new Date(),
-  options: { includePregameCaptureWindow?: boolean } = {},
+  options: { includePregameCaptureWindow?: boolean; maxLiveDurationMs?: number } = {},
 ): SupporterGameStage {
   if (game.status === 'final') return 'completed';
 
@@ -365,19 +365,29 @@ export function getSupporterGameStage(
     ?? game.date;
   // A saved status must not keep a previous day's event in the upcoming queue.
   if (eventDateKey < todayKey) return 'completed';
-  if (game.status === 'live') return 'live';
+  const eventTime = parseSupporterEventTime(game.time);
+  const start = eventTime ? getSupporterEventStart(game.date, eventTime, game.timezone) : null;
+  // Event Cards can opt into a bounded window even when their saved status
+  // still says Live. Tracker callers retain their existing explicit-live rule.
+  if (game.status === 'live') {
+    if (start && options.maxLiveDurationMs !== undefined
+      && now.getTime() - start.getTime() >= options.maxLiveDurationMs) return 'completed';
+    return 'live';
+  }
   if (eventDateKey > todayKey) return 'upcoming';
 
-  const eventTime = parseSupporterEventTime(game.time);
   const isGame = game.type === 'game' || !game.type;
   if (!eventTime) return isGame && options.includePregameCaptureWindow !== false ? 'live' : 'upcoming';
-  const start = getSupporterEventStart(game.date, eventTime, game.timezone);
   if (!start) return 'upcoming';
   const captureStart = isGame && options.includePregameCaptureWindow !== false
     ? start.getTime() - 60 * 60 * 1000
     : start.getTime();
   if (captureStart > now.getTime()) return 'upcoming';
-  return now.getTime() - start.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
+  const elapsed = now.getTime() - start.getTime();
+  const isWithinLiveWindow = options.maxLiveDurationMs === undefined
+    ? elapsed <= 3 * 60 * 60 * 1000
+    : elapsed < options.maxLiveDurationMs;
+  return isWithinLiveWindow ? 'live' : 'completed';
 }
 
 export function isSupporterGameInPregameCaptureWindow(

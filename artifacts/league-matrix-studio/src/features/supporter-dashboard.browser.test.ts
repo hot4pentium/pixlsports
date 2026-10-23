@@ -5825,7 +5825,7 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     assert.equal(await evaluate(`document.querySelector('[data-testid="link-guidance-tracker"]')`), null, 'no tracker action without an Event Card');
     assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /open tracker|open the tracker|continue tracking|already underway/i);
     await evaluate(`window.__setSupporterDashboardEvents([
-      {id:'guidance-live',type:'game',date:new Date().toISOString().slice(0,10),time:'00:00',timezone:'UTC',opponent:'Live Hawks',location:'Field 1',status:'live'},
+      {id:'guidance-live',type:'game',date:new Date().toISOString().slice(0,10),time:new Date().toISOString().slice(11,16),timezone:'UTC',opponent:'Live Hawks',location:'Field 1',status:'live'},
       {id:'guidance-future',type:'game',date:new Date(Date.now()+86400000*3).toISOString().slice(0,10),time:'18:00',timezone:'UTC',opponent:'Future Owls',location:'Field 2',status:'upcoming'}
     ])`);
     await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='live'`);
@@ -5836,6 +5836,17 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     await wait(`!!document.querySelector('[data-testid="card-game-on-draft:guidance-live"] input')`);
     await evaluate(`document.querySelector('[aria-label="Close Event Card"]').click()`);
     await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:guidance-live"]')`);
+    await evaluate(`(() => {
+      const start = new Date(Date.now() - 121 * 60 * 1000).toISOString();
+      window.__setSupporterDashboardEvents([
+        {id:'guidance-passed',type:'game',date:start.slice(0,10),time:start.slice(11,16),timezone:'UTC',opponent:'Past Bears',location:'Field 1',status:'live'}
+      ]);
+    })()`);
+    await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
+    assert.match(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Create Event Card/);
+    assert.equal(await evaluate(`document.querySelector('[data-testid="button-guidance-event-card"]')`), null);
+    await wait(`document.querySelector('[data-testid="status-game-on-card-draft:guidance-passed"]')?.dataset.status==='complete'`);
+    assert.equal(await evaluate(`document.querySelector('[data-testid="button-open-card-prep-draft:guidance-passed"]')?.getAttribute('data-suggested-next') === 'true'`), false);
     for (const width of [320, 390, 568]) {
       await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
       assert.equal(await evaluate(`(() => {
