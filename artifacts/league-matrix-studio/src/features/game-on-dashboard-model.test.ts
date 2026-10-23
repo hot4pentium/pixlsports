@@ -100,7 +100,7 @@ test('cards follow calendar order, including completed dates, and meetings are e
   ], [], 'Alex', now);
 
   assert.deepEqual(cards.map((card) => card.eventId), ['past', 'next-day', 'next-week']);
-  assert.equal(cards[0].status, 'Sharing');
+  assert.equal(cards[0].status, 'Complete');
   assert.equal(cards[1].status, 'Draft');
   assert.equal(cards[1].opponent, '');
 });
@@ -286,7 +286,7 @@ test('a standalone badge reflects its locally ended tracker after reopening', ()
   const cards = buildGameOnDashboardEntries([], [share], 'Alex', now, [
     { date: game.date, opponent: 'ravens' },
   ]);
-  assert.equal(cards[0].status, 'Complete');
+  assert.equal(cards[0].status, 'Sharing');
   assert.equal(buildGameOnDashboardEntries([game], [share], 'Alex', now, [
     { date: game.date, opponent: 'Ravens' },
   ])[0].status, 'Sharing', 'Calendar-linked cards must use the current post-start Event Card phase');

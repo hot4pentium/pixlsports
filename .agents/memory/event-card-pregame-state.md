@@ -14,3 +14,15 @@ Event Cards stop being active two hours after their scheduled start in the saved
 **Why:** The user reported a passed 9 AM production event still recommending Prep and explicitly requested the create-event guidance after two hours when no future card exists.
 
 **How to apply:** Bound Event Card display and guidance without automatically finalizing tracker data or changing the tracker's independent capture rules. Keep passed cards available for review.
+
+For games, highlight Stat Tracker starting one hour before kickoff and through the first hour after it starts; highlight Share from +1 hour until +2 hours. At +2 hours, advance to the next upcoming Event Card and highlight Prep, or show Create Event Card if none remains.
+
+**Why:** The user requested this timed Event Card action rhythm to make the next useful action clear at each game stage.
+
+**How to apply:** Derive the phase from scheduled date, time, and saved time zone, not persisted event status or a saved completion timestamp. Keep practice preparation separate, and do not create a Share highlight when the card has no Share action.
+
+Use the saturated blue action fill only for the currently recommended action. A permanently blue Prep button reads as highlighted even when Stat Tracker or Share is recommended.
+
+**Why:** The user reported that the blue default Prep button looked selected after the game-time recommendation had moved to Stat Tracker.
+
+**How to apply:** Keep non-recommended Prep visually neutral; retain the blue fill and NEXT marker only while Prep is the suggested action.

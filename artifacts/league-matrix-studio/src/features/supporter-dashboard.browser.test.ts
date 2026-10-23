@@ -5486,6 +5486,23 @@ test(`an open Event Card updates its suggested action as the game changes stages
       `document.querySelector('[data-testid="${testId}"]')?.getAttribute('aria-label') ?? null`,
       page!.sessionId,
     );
+    const getActionVisualState = (testId: string) => connection!.evaluate<{
+      background: string;
+      className: string;
+      suggested: string | null;
+      expanded: string | null;
+    } | null>(
+      `(() => {
+        const action = document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="${testId}"]');
+        return action ? {
+          background: getComputedStyle(action).backgroundColor,
+          className: action.className,
+          suggested: action.getAttribute('data-suggested-next'),
+          expanded: action.getAttribute('aria-expanded'),
+        } : null;
+      })()`,
+      page!.sessionId,
+    );
     const assertSingleSuggestion = async (expectedTestId: string) => {
       assert.deepEqual(await getSuggestedActions(), [expectedTestId]);
       assert.match(await getActionAccessibleName(expectedTestId) ?? '', /suggested next/i);
@@ -5521,6 +5538,8 @@ test(`an open Event Card updates its suggested action as the game changes stages
 
     await assertActionGroup('Game Event Card actions', eventId);
     await assertSingleSuggestion(`button-open-card-prep-draft:${eventId}`);
+    assert.equal((await getActionVisualState(`button-open-card-prep-draft:${eventId}`))?.background, 'rgb(40, 120, 245)',
+      'Prep uses the blue fill when it is the recommended next action');
     await assertNotSuggestedInAccessibleName(`button-open-stat-tracker-draft:${eventId}`);
     const readAnnouncement = () => connection!.evaluate<string>(
       `document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.trim() ?? ''`,
@@ -5647,6 +5666,14 @@ test(`an open Event Card updates its suggested action as the game changes stages
     await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'live'`);
     await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
     await assertNotSuggestedInAccessibleName(`button-open-card-prep-draft:${eventId}`);
+    await connection.evaluate('new Promise(resolve => setTimeout(resolve, 250))', page.sessionId);
+    const prepVisualState = await getActionVisualState(`button-open-card-prep-draft:${eventId}`);
+    assert.equal(prepVisualState?.suggested, null,
+      `Prep must not retain the suggested marker after the handoff; got ${JSON.stringify(prepVisualState)}`);
+    assert.doesNotMatch(prepVisualState?.className ?? '', /game-on-collection__action--suggested/,
+      `Prep must not retain its suggested styling after the handoff; got ${JSON.stringify(prepVisualState)}`);
+    assert.notEqual(prepVisualState?.background, 'rgb(40, 120, 245)',
+      `Prep must no longer use the bright blue suggested-action fill; got ${JSON.stringify(prepVisualState)}`);
     await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Live. Suggested next: Stat Tracker.')`);
     assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.');
     await assertOpenPanelAnnouncement();

@@ -965,7 +965,7 @@ export function SupporterDashboardView({
   );
   const guidanceEventCard = liveEventCard ?? nextUpcomingEvent;
   const hasLiveGuidance = Boolean(liveEventCard);
-  const guidanceStepLabel = liveEventCard?.status === 'Sharing'
+  const guidanceStepLabel = liveEventCard?.status === 'Sharing' && Boolean(liveEventCard.shareToken)
     ? 'Share'
     : stageCopy[hasLiveGuidance ? 'live' : 'upcoming'].label;
   const openGuidanceEventCard = () => {
