@@ -147,7 +147,7 @@ export function PublicLandingPage() {
   useEffect(() => {
     const grid = weekGridRef.current;
     if (!grid) return;
-    if (!('IntersectionObserver' in window)) {
+    if (typeof window.IntersectionObserver !== 'function') {
       setWeekStepsVisible(true);
       return;
     }

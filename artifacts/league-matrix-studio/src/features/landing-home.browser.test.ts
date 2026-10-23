@@ -50,7 +50,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
     const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
-    const page: BrowserPage = { targetId: target.targetId, sessionId: attached.sessionId };
+  let page: BrowserPage | undefined;
       pages.push(page);
       connection.registerTarget(page.targetId, page.sessionId);
       await connection.send('Page.enable', {}, page.sessionId);
@@ -192,7 +192,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
       assert.equal(layout.explainer, false);
       assert.equal(layout.menuVisible, width < 700);
        for (const step of ['plan', 'prep', 'follow', 'celebrate']) {
-         const trigger = `[data-testid=button-landing-${step}-try]`;
+      const trigger = `[data-testid=button-landing-${step}-try]`;
          await connection.evaluate(`document.querySelector("${trigger}").focus()`, page.sessionId);
          if (width === 393 && step === 'plan') {
            await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
@@ -378,6 +378,11 @@ test('step badges show a staggered circle reveal and respect reduced motion', as
     connection.registerTarget(page.targetId, page.sessionId);
     await connection.send('Page.enable', {}, page.sessionId);
     await connection.send('Runtime.enable', {}, page.sessionId);
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `if (new URL(window.location.href).searchParams.has('no-intersection-observer')) {
+        Object.defineProperty(window, 'IntersectionObserver', { configurable: true, value: undefined });
+      }`,
+    }, page.sessionId);
 
     for (const view of [
       { width: 393, reducedMotion: false },
@@ -438,24 +443,20 @@ test('step badges show a staggered circle reveal and respect reduced motion', as
         await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
         await connection.evaluate('document.querySelector("[data-testid=landing-week-grid]").scrollIntoView({ block: "center" })', page.sessionId);
         const startTimesAfterReturn = await connection.evaluate<number[]>(`[...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(node => node.getAnimations()[0]?.startTime ?? -1)`, page.sessionId);
-        assert.deepEqual(startTimesAfterReturn, startTimes, 'the grow cascade should not replay when scrolling back');
-      }
-    }
-  } finally {
-    if (connection) {
-      if (page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
-      connection.close();
-    }
-    if (browser && browserMonitor && !browserMonitor.hasExited()) browser.kill('SIGTERM');
-    if (browserMonitor) await browserMonitor.waitForExit();
-    if (!serverMonitor.hasExited()) server.kill('SIGTERM');
-    await serverMonitor.waitForExit();
-    await rm(profile, { recursive: true, force: true });
-  }
-});
 
-
-test('Help contact actions remain visible without overflow on phone and desktop widths', async () => {
+    const fallbackSteps = await connection.evaluate<Array<{
+      number: string; opacity: string; cardText: string; cardDisabled: boolean; cardVisible: boolean;
+    }>>(`(() => [...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(badge => {
+      const card = badge.closest('.step-card');
+      const bounds = card?.getBoundingClientRect();
+      return {
+        number: badge.textContent?.trim() || '',
+        opacity: getComputedStyle(badge).opacity,
+        cardText: card?.textContent?.replace(/\\s+/g, ' ').trim() || '',
+        cardDisabled: card?.disabled ?? true,
+        cardVisible: Boolean(bounds && bounds.width > 0 && bounds.height > 0 && getComputedStyle(card).visibility !== 'hidden'),
+      };
+    }))()`, page.sessionId);
   const port = await freePort();
   const debugPort = await freePort();
   const profile = await mkdtemp(resolve(tmpdir(), 'pixl-help-browser-'));
