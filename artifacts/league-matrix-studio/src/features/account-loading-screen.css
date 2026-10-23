@@ -14,6 +14,17 @@
   align-items: center;
   gap: 18px;
   text-align: center;
+  /* Fast starts keep a consistent background without flashing a loading panel. */
+  animation: account-loading-reveal 160ms ease-out 450ms backwards;
+}
+
+.account-loading-screen[data-error="true"] .account-loading-content {
+  animation: none;
+}
+
+@keyframes account-loading-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .account-loading-logo {
@@ -123,6 +134,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .account-loading-content {
+    animation: account-loading-reveal 0s linear 450ms backwards;
+  }
+
   .account-loading-logo,
   .account-loading-progress {
     animation: none;

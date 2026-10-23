@@ -1777,7 +1777,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
 function ProtectedEditor({ kind, children }: { kind: ToolKind; children: ReactNode }) {
   const { user, isLoaded, isSignedIn } = useUser();
   if (!isLoaded) {
-    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>;
+    return <RouteLoadingState />;
   }
   if (!isSignedIn) {
     const redirectUrl = `${window.location.pathname}${window.location.search}`;
@@ -3805,7 +3805,7 @@ function StudioPortal() {
       user={user}
       isLoaded={isLoaded}
       isSignedIn={Boolean(isSignedIn)}
-      loading={<div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>}
+      loading={<RouteLoadingState />}
       signedOut={<Redirect to="/sign-in" />}
       supporter={<SupporterStudio />}
     />
@@ -4210,14 +4210,7 @@ function ClerkProviderWithRoutes() {
 }
 
 function RouteLoadingState() {
-  return (
-    <div
-      className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground"
-      role="status"
-    >
-      Loading your studio…
-    </div>
-  );
+  return <AccountLoadingScreen />;
 }
 
 export default function App() {

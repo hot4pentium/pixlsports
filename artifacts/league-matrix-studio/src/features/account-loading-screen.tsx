@@ -19,7 +19,7 @@ export function AccountLoadingScreen({ onRetry, error = false }: { onRetry?: () 
   }, []);
 
   return (
-    <div className="account-loading-screen" role={error ? 'alert' : 'status'} aria-live="polite">
+    <div className="account-loading-screen" data-error={error || !online ? 'true' : undefined} role={error ? 'alert' : 'status'} aria-live="polite">
       <div className="account-loading-content">
         <span className="account-loading-logo" aria-label="Pixl Sports">
           PIXL <span>SPORTS</span>
