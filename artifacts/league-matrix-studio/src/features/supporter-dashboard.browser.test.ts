@@ -9825,8 +9825,10 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
   }
 });
 
-for (const halftime of [false, true]) {
-test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game survives a Game Day Hub round trip`, { concurrency: false }, async () => {
+for (const scenario of ['paused-hub', 'halftime-hub', 'paused-refresh'] as const) {
+  const halftime = scenario === 'halftime-hub';
+  const refresh = scenario === 'paused-refresh';
+test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game survives ${refresh ? 'a browser refresh' : 'a Game Day Hub round trip'}`, { concurrency: false }, async () => {
   const statId = halftime ? 'goal' : 'three-point';
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('signed-in-stat-tracker-resume-test');
@@ -9988,17 +9990,25 @@ test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game s
         Boolean,
       );
     }
-    await click('button-back-to-game-day-hub');
-    if (!halftime) {
+    if (refresh) {
+      await click('button-toggle-live-game-pause');
       await waitFor(connection, session,
-        'Boolean(document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]"))',
+        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.status === "paused"`,
         Boolean,
       );
-      await click('button-pause-and-leave-game');
+    } else {
+      await click('button-back-to-game-day-hub');
+      if (!halftime) {
+        await waitFor(connection, session,
+          'Boolean(document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]"))',
+          Boolean,
+        );
+        await click('button-pause-and-leave-game');
+      }
+      await waitFor(connection, session, 'location.pathname === "/studio"', Boolean);
+      await waitFor(connection, session,
+        'Boolean(document.querySelector("[data-testid=\\"link-desktop-independent-stats\\"]"))', Boolean);
     }
-    await waitFor(connection, session, 'location.pathname === "/studio"', Boolean);
-    await waitFor(connection, session,
-      'Boolean(document.querySelector("[data-testid=\\"link-desktop-independent-stats\\"]"))', Boolean);
     const pausedGameAfterLeaving = await connection.evaluate<{
       status: string;
       pauseReason?: string;
@@ -10007,7 +10017,7 @@ test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game s
       events: unknown[];
     }>(`JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session);
     assert.equal(pausedGameAfterLeaving.status, 'paused',
-      'the account-scoped game must be paused when returning to the hub');
+      'the account-scoped game must be paused before restoring the tracker');
     assert.equal(pausedGameAfterLeaving.pauseReason, halftime ? 'halftime' : undefined);
     assert.equal(pausedGameAfterLeaving.opponent, activeGameBeforeLeaving.opponent);
     assert.deepEqual(pausedGameAfterLeaving.stats, activeGameBeforeLeaving.stats);
@@ -10015,7 +10025,24 @@ test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game s
     assert.equal(pausedGameAfterLeaving.events.length, 2,
       'pausing the game must keep every recorded event');
 
-    await openStatTrackerFromDashboard();
+    if (refresh) {
+      // Keep the generated signed-in fixture on a full reload, rather than
+      // falling through to Vite's production SPA shell at /studio/stat-tracker.
+      await navigatePage(connection, page, `${signedInDashboardUrl}&route=stat-tracker`);
+      await waitFor(connection, session,
+        'document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "paused"',
+        Boolean,
+      );
+      await connection.evaluate('window.__pausedTrackerDocument = true', session);
+      await reloadPage(connection, page);
+      assert.equal(
+        await connection.evaluate('window.__pausedTrackerDocument === undefined', session),
+        true,
+        'refresh must replace the document, not merely remount the tracker',
+      );
+    } else {
+      await openStatTrackerFromDashboard();
+    }
     await waitFor(connection, session,
       'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null'
         + ` && document.querySelector('[data-testid="live-tracker-game-state"]')?.textContent.trim() === "${halftime ? 'halftime' : 'paused'}"`
@@ -10036,7 +10063,7 @@ test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game s
         `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
       ),
       pausedGameAfterLeaving,
-      'reopening Stat Tracker restores the same paused game and its recorded events',
+      'restoring Stat Tracker keeps the exact account-scoped paused game and its recorded events',
     );
     assert.equal(
       await connection.evaluate<boolean>(
@@ -10067,6 +10094,12 @@ test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game s
       `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.events?.length === 3`,
       Boolean,
     );
+    const resumedGame = await connection.evaluate<{ id: string; status: string; events: unknown[] }>(
+      `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
+    );
+    assert.equal(resumedGame.status, 'live');
+    assert.deepEqual(resumedGame.events.slice(0, 2), pausedGameAfterLeaving.events,
+      'resuming must append a new event without changing either restored event');
     assert.equal(
       await connection.evaluate<number>(
         `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.stats?.["${statId}"]`,
