@@ -9615,6 +9615,195 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     for (const secret of [privateNote, privateItem]) {
       assert.ok(!(await selected()).includes(secret), 'private checklist content must not reach the HYPE Card manager');
     }
+
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('a signed-in Stat Tracker game stays saved when leaving to the dashboard and reopening', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('signed-in-stat-tracker-resume-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  let tempDirectory: string | undefined;
+
+  try {
+    const probe = createServer();
+    const { port: vitePort } = await listen(probe);
+    await new Promise<void>((done) => probe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(vitePort), BASE_PATH: '/', REPL_ID: '' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-signed-in-stat-tracker-resume-'));
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const { webSocketDebuggerUrl } = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const fixtureUrl = `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`;
+    const signedInDashboardUrl = `${fixtureUrl}?workspace-journey&viewer=workspace-journey`;
+    page = await openPage(connection, signedInDashboardUrl);
+    const session = page.sessionId;
+    const click = async (testId: string) => {
+      const found = await connection!.evaluate<boolean>(
+        `Boolean(document.querySelector('[data-testid="${testId}"]'))`, session,
+      );
+      assert.ok(found, `expected ${testId} to be available before clicking`);
+      await connection!.evaluate(
+        `document.querySelector('[data-testid="${testId}"]').click()`, session,
+      );
+    };
+    const openStatTrackerFromDashboard = async () => {
+      const openedCard = await connection!.evaluate<boolean>(`(() => {
+        const card = Array.from(document.querySelectorAll('.game-on-collection__grid .game-on-collection__card'))
+          .find((item) => item.querySelector('[data-prep-href*="resume-game"]'));
+        if (!card?.querySelector('.game-on-collection__summary')) return false;
+        card.querySelector('.game-on-collection__summary').click();
+        return true;
+      })()`, session);
+      assert.equal(openedCard, true, 'the scheduled game card opens from the dashboard');
+      await waitFor(connection!, session,
+        'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
+      await waitFor(connection!, session,
+        'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]\'))',
+        Boolean,
+      );
+      await connection!.evaluate(
+        `document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`,
+        session,
+      );
+      await waitFor(connection!, session, 'location.pathname === "/studio/stat-tracker"', Boolean);
+    };
+
+    const schedule = {
+      version: 1,
+      teamName: 'Northside Comets',
+      season: '2026',
+      template: 0,
+      events: [{
+        id: 'resume-game',
+        type: 'game',
+        status: 'upcoming',
+        date: '2099-10-13',
+        time: '18:30',
+        location: 'Away Gym',
+        opponent: 'Tigers',
+        snacks: '',
+        drinks: '',
+        notes: '',
+      }],
+    };
+    await connection.evaluate(
+      `localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`,
+      session,
+    );
+    await navigatePage(connection, page, signedInDashboardUrl);
+    await waitFor(connection, session,
+      'Boolean(document.querySelector("[data-testid=\\"link-desktop-independent-stats\\"]"))', Boolean);
+    await openStatTrackerFromDashboard();
+    await waitFor(connection, session,
+      'Boolean(document.querySelector("[data-testid=\\"stat-tracker-setup\\"]"))'
+        + ' && Boolean(document.querySelector("[data-testid=\\"button-use-upcoming-game\\"]"))',
+      Boolean,
+    );
+    await click('button-use-upcoming-game');
+    await click('button-confirm-start-game');
+    await waitFor(connection, session,
+      'Boolean(document.querySelector("[data-testid=\\"live-tracker-layout\\"]"))'
+        + ' && document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "live"',
+      Boolean,
+    );
+
+    for (const expectedCount of [1, 2]) {
+      await click('athlete-stat-target-three-point');
+      await waitFor(connection, session,
+        `document.querySelector("[data-testid=\\"stat-count-three-point\\"]")?.textContent.trim().startsWith("${expectedCount}")`,
+        Boolean,
+      );
+    }
+
+    const accountActiveGameKey = 'leaguematrix-stat-tracker-active-game:workspace-journey';
+    await waitFor(connection, session,
+      `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.stats?.["three-point"] === 2`,
+      Boolean,
+    );
+    const activeGameBeforeLeaving = await connection.evaluate<{
+      status: string;
+      opponent: string;
+      stats: Record<string, number>;
+      events: unknown[];
+    }>(`JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session);
+    assert.equal(activeGameBeforeLeaving.status, 'live');
+    assert.equal(activeGameBeforeLeaving.opponent, 'Tigers');
+    assert.equal(activeGameBeforeLeaving.stats['three-point'], 2);
+    assert.equal(activeGameBeforeLeaving.events.length, 2);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'localStorage.getItem("leaguematrix-stat-tracker-active-game") !== null', session,
+      ),
+      false,
+      'the active session is saved under the signed-in account rather than the unscoped legacy key',
+    );
+
+    await click('button-leave-game-open');
+    await waitFor(connection, session, 'location.pathname === "/studio"', Boolean);
+    await waitFor(connection, session,
+      'Boolean(document.querySelector("[data-testid=\\"link-desktop-independent-stats\\"]"))', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(
+        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
+      ),
+      activeGameBeforeLeaving,
+      'Leave game open returns to the dashboard without clearing or changing the account-scoped session',
+    );
+
+    await openStatTrackerFromDashboard();
+    await waitFor(connection, session,
+      'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null'
+        + ' && document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "live"'
+        + ' && document.querySelector("[data-testid=\\"live-tracker-matchup\\"]")?.textContent.includes("Tigers") === true'
+        + ' && document.querySelector("[data-testid=\\"stat-count-three-point\\"]")?.textContent.trim().startsWith("2")',
+      Boolean,
+    );
+    assert.deepEqual(
+      await connection.evaluate(
+        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
+      ),
+      activeGameBeforeLeaving,
+      'reopening Stat Tracker restores the saved opponent, live status, and recorded stats',
+    );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
