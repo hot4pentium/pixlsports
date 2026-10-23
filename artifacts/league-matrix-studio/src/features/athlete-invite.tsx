@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Link } from 'wouter';
+import { athleteFanCardUrl } from './athlete-fan-card-url';
 import {
   getListAthleteInvitesQueryKey,
   getGetAthleteInviteQueryKey,
@@ -101,10 +102,7 @@ function inputDate(value: string) {
 }
 
 function inviteUrl(token: string) {
-  const origin = ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
-    ? 'https://pixlsports.com'
-    : window.location.origin;
-  return `${origin}${basePath}/fan/${encodeURIComponent(token)}`;
+  return athleteFanCardUrl(token);
 }
 
 function fanCardUrl(token: string) {

@@ -10,6 +10,7 @@ import { shareGameOnCardPublicLink } from './game-on-card-links';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { getSuggestedGameOnAction } from './game-on-dashboard-model';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
+import { EventCardLiveTaps } from './event-card-live-taps';
 import type { Sport } from './stat-tracker';
 import './game-on-dashboard-collection.css';
 
@@ -452,6 +453,18 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                 <ArrowLeft size={15} aria-hidden="true" /> Back to badge
               </button>
               <Link href={buildWorkspaceToolHref('stats', eventContext)} className="game-on-quick-tracker__primary">Open stat tracker</Link>
+              <EventCardLiveTaps
+                key={`${statTrackerUserId ?? 'anonymous'}:${eventId}`}
+                userId={statTrackerUserId}
+                sport={statTrackerSport ?? null}
+                athleteName={statTrackerAthleteName || card.athleteName}
+                teamName={statTrackerTeamName ?? ''}
+                eventId={eventId}
+                date={card.date}
+                time={card.time}
+                location={card.location}
+                opponent={card.opponent}
+              />
             </>
           )}
         </div>

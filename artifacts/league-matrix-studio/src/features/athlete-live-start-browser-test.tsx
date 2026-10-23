@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Router } from 'wouter';
 import { LivingAthleteCardPage } from './living-athlete-card';
+import { EventCardLiveTaps } from './event-card-live-taps';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { StatTrackerPage } from './stat-tracker-page';
 import { currentAccountId } from './account-lifecycle-browser-auth';
@@ -15,8 +16,9 @@ const page = query.get('page') ?? 'tracker';
 const inviteToken = 'browser-live-athlete';
 const trackerPath = '/studio/stat-tracker';
 const inlinePath = '/browser/inline-tracker';
+const liveTapsPath = '/browser/event-card-live-taps';
 const fanPath = `/fan/${inviteToken}`;
-const path = page === 'fan' ? fanPath : page === 'inline' ? inlinePath : trackerPath;
+const path = page === 'fan' ? fanPath : page === 'inline' ? inlinePath : page === 'live-taps' ? liveTapsPath : trackerPath;
 
 if (page === 'tracker') {
   localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
@@ -42,6 +44,10 @@ if (page === 'tracker') {
   localStorage.setItem(scheduleLegacyDefaultsMigrationKey, '1');
 } else if (page === 'inline') {
   localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
+} else if (page === 'live-taps') {
+  localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
+  localStorage.removeItem('leaguematrix-live-taps-only:workspace-journey:scheduled-live-taps-game');
+  localStorage.removeItem('pixlSports:liveTaps:browser-live-athlete');
 }
 
 window.history.replaceState({}, '', `${path}${window.location.search}${window.location.hash}`);
@@ -77,6 +83,20 @@ function InlineTrackerRoute() {
   });
 }
 
+function LiveTapsOnlyRoute() {
+  return createElement(EventCardLiveTaps, {
+    userId: currentAccountId(),
+    sport: 'basketball',
+    athleteName: 'Alexandria Montgomery-Williams',
+    teamName: 'Northside Comets',
+    eventId: 'scheduled-live-taps-game',
+    date: '2026-10-14',
+    time: '18:00',
+    location: 'Away Gym',
+    opponent: 'Tigers',
+  });
+}
+
 function FanCardRoute({ params }: { params: { inviteToken?: string } }) {
   return createElement(LivingAthleteCardPage, { params });
 }
@@ -90,6 +110,7 @@ root.render(createElement(QueryClientProvider, { client: queryClient },
   createElement(Router, null,
     createElement(Route, { path: trackerPath }, createElement(StatTrackerPage)),
     createElement(Route, { path: inlinePath }, createElement(InlineTrackerRoute)),
+    createElement(Route, { path: liveTapsPath }, createElement(LiveTapsOnlyRoute)),
     createElement(Route, { path: '/fan/:inviteToken', component: FanCardRoute }),
   ),
 ));

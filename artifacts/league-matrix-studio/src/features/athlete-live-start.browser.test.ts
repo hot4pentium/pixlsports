@@ -54,11 +54,19 @@ type FixtureState = {
   taps: Array<{ gameId: string; cheerKey: string }>;
 };
 
+type FixtureAccessLink = {
+  id: string;
+  inviteToken: string;
+  accessToken: string;
+  createdAt: string;
+  revoked: boolean;
+};
+
 function json(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'content-type,x-test-user',
-    'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Content-Type': 'application/json',
   });
   response.end(JSON.stringify(body));
@@ -72,12 +80,13 @@ async function readJson(request: IncomingMessage): Promise<Record<string, any>> 
 
 function makeFixtureServer() {
   const state: FixtureState = { shares: [], activeShareToken: null, taps: [] };
+  const accessLinks: FixtureAccessLink[] = [];
   const server = createServer(async (request, response) => {
     if (request.method === 'OPTIONS') {
       response.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'content-type,x-test-user',
-        'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
       });
       response.end();
       return;
@@ -91,6 +100,10 @@ function makeFixtureServer() {
 
       if (path === '/__fixture/state' && method === 'GET') {
         json(response, 200, state);
+        return;
+      }
+      if (path === '/__fixture/access-links' && method === 'GET') {
+        json(response, 200, accessLinks.filter((link) => !link.revoked).map(({ id, createdAt }) => ({ id, createdAt })));
         return;
       }
       if (path === '/api/account/access' && method === 'GET') {
@@ -190,6 +203,45 @@ function makeFixtureServer() {
           sport: 'basketball',
           paused: false,
         }] : []);
+        return;
+      }
+      const accessLinksMatch = path.match(/^\/api\/athlete-invites\/([^/]+)\/live-taps\/access-links(?:\/([^/]+))?$/);
+      if (accessLinksMatch && method === 'GET') {
+        json(response, 200, isOwner
+          ? accessLinks.filter((link) => link.inviteToken === accessLinksMatch[1] && !link.revoked)
+            .map(({ id, createdAt }) => ({ id, createdAt }))
+          : []);
+        return;
+      }
+      if (accessLinksMatch && method === 'POST') {
+        if (!isOwner) {
+          json(response, 401, { error: 'Sign in required' });
+          return;
+        }
+        const created: FixtureAccessLink = {
+          id: `00000000-0000-4000-8000-${String(accessLinks.length + 1).padStart(12, '0')}`,
+          inviteToken: accessLinksMatch[1]!,
+          accessToken: familyQrToken,
+          createdAt: new Date().toISOString(),
+          revoked: false,
+        };
+        accessLinks.push(created);
+        json(response, 201, { id: created.id, accessToken: created.accessToken, createdAt: created.createdAt });
+        return;
+      }
+      if (accessLinksMatch && method === 'DELETE') {
+        if (!isOwner) {
+          json(response, 401, { error: 'Sign in required' });
+          return;
+        }
+        const access = accessLinks.find((link) => link.id === accessLinksMatch[2] && link.inviteToken === accessLinksMatch[1]);
+        if (!access) {
+          json(response, 404, { error: 'Family QR access not found' });
+          return;
+        }
+        access.revoked = true;
+        response.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        response.end();
         return;
       }
       const startMatch = path.match(/^\/api\/athlete-invites\/([^/]+)\/live$/);
@@ -369,13 +421,13 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
 
-    const appUrl = (page: 'tracker' | 'inline' | 'fan', options: { owner?: boolean; family?: boolean } = {}) => {
+    const appUrl = (page: 'tracker' | 'inline' | 'fan' | 'live-taps', options: { owner?: boolean; family?: boolean } = {}) => {
       const params = new URLSearchParams({ api: apiOrigin, page });
       if (options.owner) params.set('viewer', ownerId);
       return `${viteOrigin}/athlete-live-start-browser-test.html?${params}${options.family ? `#live-taps=${familyQrToken}` : ''}`;
     };
     const open = async (
-      page: 'tracker' | 'inline' | 'fan',
+      page: 'tracker' | 'inline' | 'fan' | 'live-taps',
       options: { owner?: boolean; family?: boolean } = {},
     ) => {
       const browserPage = await openPage(connection!, appUrl(page, options), { viewport: { width: 1365, height: 940 } });
@@ -570,6 +622,61 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await click(inlineFinalCard, 'button-living-card-live-taps');
     await waitUi(inlineFinalCard, `Boolean(document.querySelector('[data-testid="live-taps-not-active"]'))`);
     await close(inlineFinalCard);
+
+    const liveTapsOnly = await open('live-taps', { owner: true });
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="button-start-live-taps-only"]'))`);
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="event-card-live-taps"]')?.querySelector('[data-testid^="button-tap-stat-"]') === null`,
+      liveTapsOnly,
+    ), true, 'the Live Taps-only card must not render stat-entry controls');
+    await click(liveTapsOnly, 'button-start-live-taps-only');
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="status-live-taps-only"]')?.textContent?.includes('Game Day Live is on')`);
+    let liveTapsOnlyState = await fixtureState();
+    assert.equal(liveTapsOnlyState.shares.length, 3);
+    const liveTapsOnlyShare = liveTapsOnlyState.shares.find((share) => share.shareToken === liveTapsOnlyState.activeShareToken);
+    assert.ok(liveTapsOnlyShare, 'Live Taps-only creates and activates a Game Day Live share');
+    assert.equal(liveTapsOnlyShare.game.score, 0);
+    assert.equal(liveTapsOnlyShare.game.opponentScore, 0);
+    assert.ok(Object.values(liveTapsOnlyShare.game.stats).every((value) => value === 0));
+    assert.equal(liveTapsOnlyShare.game.events.length, 0);
+    assert.equal(await connection.evaluate(
+      `localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey')`,
+      liveTapsOnly,
+    ), null, 'Live Taps-only must not create a Stat Tracker game in local storage');
+    await click(liveTapsOnly, 'button-create-event-card-live-tap-qr');
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="img-event-card-live-taps-qr"]')?.src.startsWith('data:image/png;base64,'))`);
+    const activeAccessLinks = await fetch(`${apiOrigin}/__fixture/access-links`)
+      .then((response) => response.json() as Promise<Array<{ id: string; createdAt: string }>>);
+    assert.equal(activeAccessLinks.length, 1, 'the Event Card creates private, revocable family QR access');
+    const liveTapsStorage = await connection.evaluate<string>('JSON.stringify(Object.entries(localStorage))', liveTapsOnly);
+    assert.doesNotMatch(liveTapsStorage, new RegExp(familyQrToken), 'raw family QR tokens are not persisted in local storage');
+
+    const liveTapsFamilyCard = await open('fan', { family: true });
+    await waitUi(liveTapsFamilyCard, `Boolean(document.querySelector('[data-testid="button-living-card-live-taps"]'))`);
+    await click(liveTapsFamilyCard, 'button-living-card-live-taps');
+    await waitUi(liveTapsFamilyCard, `document.querySelector('[data-testid="button-live-tap-bucket"]')?.disabled === false`);
+    await click(liveTapsFamilyCard, 'button-live-tap-bucket');
+    await waitUi(liveTapsFamilyCard, `document.querySelector('[data-testid="text-live-tap-total"]')?.textContent === '1'`);
+    assert.equal((await fixtureState()).taps.length, 3, 'a family QR can send a cheer during the Live Taps-only session');
+    await close(liveTapsFamilyCard);
+
+    await click(liveTapsOnly, `button-revoke-event-card-live-tap-qr-${activeAccessLinks[0]!.id}`);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('revoked')`);
+    assert.equal((await fetch(`${apiOrigin}/__fixture/access-links`).then((response) => response.json() as Promise<unknown[]>)).length, 0,
+      'the Event Card can revoke family QR access');
+    await click(liveTapsOnly, 'button-end-live-taps-only');
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('Game Day Live ended')`);
+    liveTapsOnlyState = await fixtureState();
+    assert.equal(liveTapsOnlyState.activeShareToken, null, 'ending Live Taps-only closes the live family cheer session');
+    const endedLiveTapsOnlyShare = liveTapsOnlyState.shares.find((share) => share.shareToken === liveTapsOnlyShare?.shareToken);
+    assert.equal(endedLiveTapsOnlyShare?.game.status, 'final');
+    assert.equal(endedLiveTapsOnlyShare?.game.score, 0);
+    assert.equal(endedLiveTapsOnlyShare?.game.events.length, 0);
+    assert.equal(await connection.evaluate(
+      `localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey')`,
+      liveTapsOnly,
+    ), null, 'ending Live Taps-only leaves no Stat Tracker game behind');
+    await close(liveTapsOnly);
   } finally {
     if (connection) {
       for (const page of pages) {
