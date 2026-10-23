@@ -1,4 +1,8 @@
-import { getSupporterGameStage, isSupporterGameInPregameCaptureWindow } from './supporter-dashboard-model';
+import {
+  getSupporterEventElapsedTimeMs,
+  getSupporterGameStage,
+  isSupporterGameInPregameCaptureWindow,
+} from './supporter-dashboard-model';
 
 export type GameOnDashboardEvent = {
   id: string;
@@ -31,18 +35,20 @@ export type GameOnDashboardEntry = {
   time: string;
   timezone?: string;
   location: string;
-  status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Complete';
+  status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Sharing' | 'Complete';
   isPublished: boolean;
 };
 
-export type GameOnSuggestedAction = 'prep' | 'tracker' | 'stats';
+export type GameOnSuggestedAction = 'prep' | 'tracker' | 'share' | 'stats' | 'none';
 
 export function getSuggestedGameOnAction(
-  card: Pick<GameOnDashboardEntry, 'type' | 'status'> & { recordedGameId?: string },
+  card: Pick<GameOnDashboardEntry, 'type' | 'status'> & { recordedGameId?: string; shareToken?: string },
 ): GameOnSuggestedAction {
+  if (card.status === 'Complete') return 'none';
   if (card.type === 'practice') return 'prep';
+  if (card.status === 'Sharing') return card.shareToken ? 'share' : 'none';
+  if (card.status === 'Starting Soon' || card.status === 'Live') return 'tracker';
   if (card.recordedGameId) return 'stats';
-  if (card.status === 'Live' || card.status === 'Complete') return 'tracker';
   return 'prep';
 }
 
@@ -68,8 +74,8 @@ export function getFeaturedGameOnCardId(
     time: card.time,
     timezone: card.timezone,
     type: card.type,
-    status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
-  }, now);
+    status: card.status === 'Complete' ? 'final' : card.status === 'Live' || card.status === 'Sharing' ? 'live' : 'upcoming',
+  }, now, { maxLiveDurationMs: 2 * 60 * 60 * 1000 });
   return dated.find((card) => stage(card) === 'live')?.id
     ?? dated.find((card) => stage(card) === 'upcoming')?.id;
 }
@@ -84,8 +90,8 @@ export function getNextGameOnDashboardEntry(
     time: card.time,
     timezone: card.timezone,
     type: card.type,
-    status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
-  }, now);
+    status: card.status === 'Complete' ? 'final' : card.status === 'Live' || card.status === 'Sharing' ? 'live' : 'upcoming',
+  }, now, { maxLiveDurationMs: 2 * 60 * 60 * 1000 });
   return games.find((card) => stage(card) === 'live')
     ?? games.find((card) => stage(card) === 'upcoming');
 }
@@ -95,6 +101,11 @@ function isCardEvent(event: GameOnDashboardEvent | undefined): event is GameOnDa
 }
 
 function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice' }, athleteName: string, now: Date, shareToken?: string): GameOnDashboardEntry {
+  const elapsed = getSupporterEventElapsedTimeMs(event, now);
+  const sharingWindow = event.type === 'game'
+    && elapsed !== null
+    && elapsed >= 60 * 60 * 1000
+    && elapsed < 2 * 60 * 60 * 1000;
   const stage = event.date
     ? getSupporterGameStage(event, now, {
       includePregameCaptureWindow: false,
@@ -114,7 +125,9 @@ function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice'
     time: event.time,
     ...(event.timezone ? { timezone: event.timezone } : {}),
     location: event.location,
-    status: stage === 'completed'
+    status: sharingWindow
+      ? 'Sharing'
+      : stage === 'completed'
       ? 'Complete'
       : stage === 'live'
         ? 'Live'
@@ -141,7 +154,7 @@ export function buildGameOnDashboardEntries(
       const card = entryForEvent(scheduled ?? sharedEvent, athleteName, now, share.shareToken);
       // An independent card has no Calendar status. Its inline tracker persists
       // locally, so reflect an ended game when the saved card is reopened.
-      if (!scheduled && sharedEvent.type === 'game' && completedLocalGames.some((game) => (
+      if (!scheduled && card.status !== 'Sharing' && sharedEvent.type === 'game' && completedLocalGames.some((game) => (
         game.date === sharedEvent.date
         && game.opponent.trim().toLowerCase() === (sharedEvent.opponent ?? '').trim().toLowerCase()
       ))) card.status = 'Complete';

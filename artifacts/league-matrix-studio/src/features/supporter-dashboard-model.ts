@@ -390,6 +390,16 @@ export function getSupporterGameStage(
   return isWithinLiveWindow ? 'live' : 'completed';
 }
 
+export function getSupporterEventElapsedTimeMs(
+  game: Pick<SupporterGameLike, 'date' | 'time' | 'timezone'>,
+  now = new Date(),
+): number | null {
+  const eventTime = parseSupporterEventTime(game.time);
+  if (!eventTime) return null;
+  const start = getSupporterEventStart(game.date, eventTime, game.timezone);
+  return start ? now.getTime() - start.getTime() : null;
+}
+
 export function isSupporterGameInPregameCaptureWindow(
   game: Pick<SupporterGameLike, 'date' | 'time' | 'status' | 'type' | 'timezone'>,
   now = new Date(),

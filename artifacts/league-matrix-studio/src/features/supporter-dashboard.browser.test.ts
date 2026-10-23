@@ -5684,8 +5684,8 @@ test(`an open Event Card updates its suggested action as the game changes stages
       status: 'final',
     }])`, page.sessionId);
     await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'complete'`);
-    await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
-    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Complete. Suggested next: Stat Tracker.')`);
+    assert.deepEqual(await getSuggestedActions(), [], 'a completed card must not retain a suggested game-day action');
+    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Complete. Suggested next: No suggested action.')`);
     await assertOpenPanelAnnouncement();
 
     const trackerHistory = {
@@ -5711,21 +5711,18 @@ test(`an open Event Card updates its suggested action as the game changes stages
       localStorage.setItem(${JSON.stringify(historyKey)}, ${JSON.stringify(JSON.stringify(trackerHistory))});
       window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents());
     })()`, page.sessionId);
-    await wait(`Boolean(document.querySelector('[data-testid="link-view-card-stats-draft:${eventId}"]')
-      ?.getAttribute('data-suggested-next') === 'true')`);
-    await assertSingleSuggestion(`link-view-card-stats-draft:${eventId}`);
-    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('Suggested next: View stats.')`);
+    await wait(`Boolean(document.querySelector('[data-testid="link-view-card-stats-draft:${eventId}"]'))`);
+    assert.deepEqual(await getSuggestedActions(), [], 'a past game may retain its stats link without suggesting it over the current journey');
     await assertOpenPanelAnnouncement();
     assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
       'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
-      'Event Card vs Rivals is now Complete. Suggested next: Stat Tracker.',
-      'Event Card vs Rivals is now Complete. Suggested next: View stats.',
+      'Event Card vs Rivals is now Complete. Suggested next: No suggested action.',
     ], 'each stage or action change must update the mounted live region exactly once');
     await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
     await connection.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page.sessionId);
-    assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Complete. Suggested next: View stats.',
+    assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Complete. Suggested next: No suggested action.',
       'an unrelated render must not clear or repeat the announcement');
-    assert.equal(await connection.evaluate<number>('window.__recommendationChanges.length', page.sessionId), 3,
+    assert.equal(await connection.evaluate<number>('window.__recommendationChanges.length', page.sessionId), 2,
       'an unchanged recommendation must not mutate the live region');
     await assertOpenPanelAnnouncement();
     await connection.evaluate('window.__recommendationObserver.disconnect()', page.sessionId);

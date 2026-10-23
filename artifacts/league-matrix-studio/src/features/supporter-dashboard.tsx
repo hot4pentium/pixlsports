@@ -945,7 +945,7 @@ export function SupporterDashboardView({
     if (!card.date.trim()) return false;
     const status = card.status === 'Complete'
       ? 'final'
-      : card.status === 'Live'
+      : card.status === 'Live' || card.status === 'Sharing'
         ? 'live'
         : 'upcoming';
     return getSupporterGameStage({
@@ -954,18 +954,20 @@ export function SupporterDashboardView({
       timezone: card.timezone,
       type: card.type,
       status,
-    }, currentTime, { includePregameCaptureWindow: false }) === 'upcoming';
+    }, currentTime, { includePregameCaptureWindow: false, maxLiveDurationMs: 2 * 60 * 60 * 1000 }) === 'upcoming';
   }));
   const nextUpcomingEvent = upcomingEventCards[0] ?? null;
   const liveEventCard = sortGameOnCardsByDate(dashboardCards).find((card) =>
     card.date.trim() && getSupporterGameStage({
       date: card.date, time: card.time, timezone: card.timezone, type: card.type,
-      status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
-    }, currentTime, { includePregameCaptureWindow: false }) === 'live',
+      status: card.status === 'Complete' ? 'final' : card.status === 'Live' || card.status === 'Sharing' ? 'live' : 'upcoming',
+    }, currentTime, { includePregameCaptureWindow: false, maxLiveDurationMs: 2 * 60 * 60 * 1000 }) === 'live',
   );
   const guidanceEventCard = liveEventCard ?? nextUpcomingEvent;
   const hasLiveGuidance = Boolean(liveEventCard);
-  const guidanceStepLabel = stageCopy[hasLiveGuidance ? 'live' : 'upcoming'].label;
+  const guidanceStepLabel = liveEventCard?.status === 'Sharing'
+    ? 'Share'
+    : stageCopy[hasLiveGuidance ? 'live' : 'upcoming'].label;
   const openGuidanceEventCard = () => {
     if (!guidanceEventCard) return;
     // Open the displayed event explicitly; the collection's toggle handler can close

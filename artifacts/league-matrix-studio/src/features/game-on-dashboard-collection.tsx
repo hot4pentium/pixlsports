@@ -23,8 +23,9 @@ export type DashboardGameOnCard = {
   opponent: string;
   date: string;
   time: string;
+  timezone?: string;
   location: string;
-  status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Complete';
+  status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Sharing' | 'Complete';
   isPublished: boolean;
   isUnsavedDraft?: boolean;
   recordedGameId?: string;
@@ -153,10 +154,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     type: card.type,
     status: getCardStatus(card),
     recordedGameId: card.recordedGameId,
+    shareToken: card.shareToken,
   });
   const isFeatured = card.id === featuredCardId;
-  const isUpNext = isFeatured && card.status !== 'Live';
-  const isActive = isFeatured && card.status === 'Live';
+  const isUpNext = isFeatured && card.status !== 'Live' && card.status !== 'Sharing';
+  const isActive = isFeatured && (card.status === 'Live' || card.status === 'Sharing');
   const isStartingSoon = isFeatured && card.status === 'Starting Soon';
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
   const calendarEventId = card.eventId;
@@ -187,7 +189,10 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
       return;
     }
     if (previous.status === statusLabel && previous.action === suggestedAction) return;
-    const actionLabel = suggestedAction === 'prep' ? 'Prep' : suggestedAction === 'stats' ? 'View stats' : 'Stat Tracker';
+    const actionLabel = suggestedAction === 'prep' ? 'Prep'
+      : suggestedAction === 'stats' ? 'View stats'
+        : suggestedAction === 'share' ? 'Share'
+          : suggestedAction === 'none' ? 'No suggested action' : 'Stat Tracker';
     setRecommendationAnnouncement(`Event Card ${title} is now ${statusLabel}. Suggested next: ${actionLabel}.`);
   }, [isDialogCard, selected, visible, card.isUnsavedDraft, recommendationIdentity, statusLabel, suggestedAction, title]);
   const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
@@ -222,7 +227,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
       layout={!isDialogCard && !reduceMotion}
       layoutId={isDialogCard || reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
       transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
-      className={`game-on-collection__card${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${isActive ? ' game-on-collection__card--active' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
+      className={`game-on-collection__card${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' || card.status === 'Sharing' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${isActive ? ' game-on-collection__card--active' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
       hidden={!visible}
       data-testid={`card-game-on-${card.id}`}
       data-layout-id={card.layoutId ?? card.id}
@@ -363,13 +368,15 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                 {card.shareToken && (
                   <button
                     type="button"
-                    className="game-on-collection__action--share"
+                  className={`game-on-collection__action--share${suggestedAction === 'share' ? ' game-on-collection__action--suggested' : ''}`}
                     onClick={() => void shareEventCard()}
-                    aria-label={`Share ${card.athleteName}'s Event Card`}
+                  aria-label={`Share ${card.athleteName}'s Event Card${suggestedAction === 'share' ? '. Suggested next.' : ''}`}
                     data-testid={`button-share-game-on-card-${card.id}`}
+                  data-suggested-next={suggestedAction === 'share' ? 'true' : undefined}
                   >
                     <Share2 size={15} aria-hidden="true" />
                     <span>Share</span>
+                  {suggestedAction === 'share' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                   </button>
                 )}
                 {shareLinkNotice && (

@@ -21,12 +21,13 @@ test('Event Cards expire two hours after kickoff in the saved time zone, regardl
       const at = (time: string) => buildGameOnDashboardEntries([], [share], 'Alex', new Date(time));
       assert.equal(at('2026-10-24T12:59:59Z')[0].status, status === 'live' ? 'Live' : type === 'game' ? 'Starting Soon' : 'Published');
       assert.equal(at('2026-10-24T13:00:00Z')[0].status, 'Live');
-      assert.equal(at('2026-10-24T14:59:59Z')[0].status, 'Live');
+      assert.equal(at('2026-10-24T14:00:00Z')[0].status, type === 'game' ? 'Sharing' : 'Live');
+      assert.equal(at('2026-10-24T14:59:59Z')[0].status, type === 'game' ? 'Sharing' : 'Live');
       const passed = at('2026-10-24T15:00:00Z');
       assert.equal(passed[0].status, 'Complete', `${type}/${status} expires at 11 AM Eastern`);
       assert.equal(getFeaturedGameOnCardId(passed, new Date('2026-10-24T15:00:00Z')), undefined);
       assert.equal(getNextGameOnDashboardEntry(passed, new Date('2026-10-24T15:00:00Z')), undefined);
-      if (type === 'game') assert.equal(getSuggestedGameOnAction(passed[0]), 'tracker', 'never recommend Prep for a passed game');
+      if (type === 'game') assert.equal(getSuggestedGameOnAction(passed[0]), 'none', 'do not leave a passed game action highlighted');
       const withFuture = buildGameOnDashboardEntries([
         { ...scheduled, id: 'future-event', date: '2026-10-25', status: 'upcoming' },
       ], [share], 'Alex', new Date('2026-10-24T15:00:00Z'));
@@ -35,20 +36,59 @@ test('Event Cards expire two hours after kickoff in the saved time zone, regardl
   }
 });
 
-test('suggested Event Card actions follow game stage and never send practices to Stat Tracker', () => {
+test('suggested Event Card actions follow the preparation, capture, share, and completed stages', () => {
   assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Draft' }), 'prep');
-  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Starting Soon' }), 'prep');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Starting Soon' }), 'tracker');
   assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Live' }), 'tracker');
-  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Complete' }), 'tracker');
-  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Complete', recordedGameId: 'saved-game' }), 'stats');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Sharing', shareToken: 'published' }), 'share');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Sharing' }), 'none', 'do not suggest an unavailable Share action');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Complete' }), 'none');
+  assert.equal(getSuggestedGameOnAction({ type: 'game', status: 'Complete', recordedGameId: 'saved-game' }), 'none');
 
-  for (const status of ['Draft', 'Published', 'Starting Soon', 'Live', 'Complete'] as const) {
+  for (const status of ['Draft', 'Published', 'Starting Soon', 'Live', 'Sharing', 'Complete'] as const) {
     assert.equal(
       getSuggestedGameOnAction({ type: 'practice', status }),
-      'prep',
-      `${status} practices should suggest Prep rather than Stat Tracker`,
+      status === 'Complete' ? 'none' : 'prep',
+      `${status} practices should not be routed to game-only actions`,
     );
   }
+});
+
+test('Event Card recommendations advance on schedule boundaries and then choose the next card', () => {
+  const scheduled = {
+    ...event('timed-game', 'game', '2026-10-24'),
+    time: '09:00',
+    timezone: 'America/New_York',
+  };
+  const share = { shareToken: 'timed-share', title: 'Morning game', createdAt: '2026-10-23T12:00:00Z', events: [scheduled] };
+  const entriesAt = (instant: string, events: GameOnDashboardEvent[] = []) =>
+    buildGameOnDashboardEntries(events, [share], 'Alex', new Date(instant));
+  const cases = [
+    ['2026-10-24T11:59:59Z', 'Published', 'prep'],
+    ['2026-10-24T12:00:00Z', 'Starting Soon', 'tracker'],
+    ['2026-10-24T12:59:59Z', 'Starting Soon', 'tracker'],
+    ['2026-10-24T13:00:00Z', 'Live', 'tracker'],
+    ['2026-10-24T13:59:59Z', 'Live', 'tracker'],
+    ['2026-10-24T14:00:00Z', 'Sharing', 'share'],
+    ['2026-10-24T14:59:59Z', 'Sharing', 'share'],
+    ['2026-10-24T15:00:00Z', 'Complete', 'none'],
+  ] as const;
+
+  for (const [instant, status, action] of cases) {
+    const entries = entriesAt(instant);
+    assert.equal(entries[0].status, status, `card status at ${instant}`);
+    assert.equal(getSuggestedGameOnAction(entries[0]), action, `highlight at ${instant}`);
+  }
+
+  const afterTwoHours = new Date('2026-10-24T15:00:00Z');
+  const withoutNext = entriesAt(afterTwoHours.toISOString());
+  assert.equal(getFeaturedGameOnCardId(withoutNext, afterTwoHours), undefined);
+  assert.equal(getNextGameOnDashboardEntry(withoutNext, afterTwoHours), undefined);
+  const withNext = entriesAt(afterTwoHours.toISOString(), [
+    { ...scheduled, id: 'next-game', date: '2026-10-25', status: 'upcoming' },
+  ]);
+  assert.equal(getFeaturedGameOnCardId(withNext, afterTwoHours), 'draft:next-game');
+  assert.equal(getSuggestedGameOnAction(withNext.find((card) => card.id === 'draft:next-game')!), 'prep');
 });
 
 test('cards follow calendar order, including completed dates, and meetings are excluded', () => {
@@ -60,7 +100,7 @@ test('cards follow calendar order, including completed dates, and meetings are e
   ], [], 'Alex', now);
 
   assert.deepEqual(cards.map((card) => card.eventId), ['past', 'next-day', 'next-week']);
-  assert.equal(cards[0].status, 'Complete');
+  assert.equal(cards[0].status, 'Sharing');
   assert.equal(cards[1].status, 'Draft');
   assert.equal(cards[1].opponent, '');
 });
@@ -191,7 +231,7 @@ test('Event Card badges use the earlier occurrence of a repeated fall clock-chan
   assert.equal(statusAt('2026-11-01T04:30:00Z'), 'Starting Soon');
   assert.equal(statusAt('2026-11-01T05:29:59Z'), 'Starting Soon');
   assert.equal(statusAt('2026-11-01T05:30:00Z'), 'Live');
-  assert.equal(statusAt('2026-11-01T06:30:00Z'), 'Live', 'the repeated 1:30 AM does not restart the card');
+  assert.equal(statusAt('2026-11-01T06:30:00Z'), 'Sharing', 'the repeated 1:30 AM does not restart the event phase clock');
 });
 
 test('a finalized card is not announced as an upcoming game', () => {
@@ -249,7 +289,7 @@ test('a standalone badge reflects its locally ended tracker after reopening', ()
   assert.equal(cards[0].status, 'Complete');
   assert.equal(buildGameOnDashboardEntries([game], [share], 'Alex', now, [
     { date: game.date, opponent: 'Ravens' },
-  ])[0].status, 'Live', 'Calendar-linked cards must use the saved Calendar status');
+  ])[0].status, 'Sharing', 'Calendar-linked cards must use the current post-start Event Card phase');
 });
 
 test('multi-event and meeting shares are not repurposed as Game On cards', () => {
