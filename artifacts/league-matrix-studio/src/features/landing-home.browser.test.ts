@@ -84,13 +84,15 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
        assert.deepEqual(startupBlockedFrames, [], `the root route showed an account or route splash at ${width}px`);
       await connection.evaluate('document.fonts.ready', page.sessionId);
        await waitFor(connection, page.sessionId, 'document.querySelector(".landing-athlete-render")?.naturalWidth === 1228', Boolean);
-      const heroCopy = await connection.evaluate<{ headline: string; obsoleteLabel: boolean; photoCaption: boolean; heroCardLabel: boolean }>(`(() => ({
+       const heroCopy = await connection.evaluate<{ headline: string; description: string; obsoleteLabel: boolean; photoCaption: boolean; heroCardLabel: boolean }>(`(() => ({
         headline: document.querySelector('[data-testid="text-landing-headline"]')?.innerText || '',
+         description: document.querySelector('.hero-description')?.innerText || '',
         obsoleteLabel: document.body.innerText.includes('For the people in their corner'),
         photoCaption: Boolean(document.querySelector('.photo-caption')),
         heroCardLabel: document.body.innerText.includes('PIXL athlete card / 07'),
       }))()`, page.sessionId);
       assert.equal(heroCopy.headline.replace(/\s+/g, ' ').trim(), 'ALL IN, ALL SEASON.');
+       assert.match(heroCopy.description, /season hub for youth-sports families.*plan games and practices.*track stats.*HYPE Card/i);
       assert.equal(heroCopy.obsoleteLabel, false);
       assert.equal(heroCopy.photoCaption, false);
       assert.equal(heroCopy.heroCardLabel, false);

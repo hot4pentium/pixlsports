@@ -10,6 +10,7 @@ const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
 test('landing shows the dashboard in mobile and landscape with fictional examples', () => {
   assert.match(source, /data-testid="text-landing-headline">ALL IN,<br \/><em>ALL SEASON\.<\/em><\/h1>/);
+  assert.match(source, /One season hub for youth-sports families\. Plan games and practices, get ready for game day, track stats, and share your athlete’s HYPE Card\./);
   assert.doesNotMatch(source, /For the people in their corner|Your front<br \/>row\./);
   for (const capability of [
     'One link for the season',

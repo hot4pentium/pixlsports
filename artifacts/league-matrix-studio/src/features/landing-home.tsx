@@ -148,7 +148,7 @@ export function PublicLandingPage() {
           <div className="container hero-inner">
             <div className="hero-copy">
               <h1 id="landing-headline" className="display" data-testid="text-landing-headline">ALL IN,<br /><em>ALL SEASON.</em></h1>
-              <p className="hero-description">Plan the week, follow the game, and celebrate the athlete you love—all in one place built for families and supporters.</p>
+              <p className="hero-description">One season hub for youth-sports families. Plan games and practices, get ready for game day, track stats, and share your athlete’s HYPE Card.</p>
               <div className="hero-buttons">
                 <Link href={destination} className="pill pill-lime" data-testid="link-hero-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
                 <a href="#how-it-works" className="pill pill-ghost" data-testid="link-hero-see-week">See how it works <ArrowRight size={16} aria-hidden="true" /></a>
