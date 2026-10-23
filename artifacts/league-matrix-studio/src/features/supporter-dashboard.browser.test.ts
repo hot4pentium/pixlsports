@@ -5481,7 +5481,31 @@ test('an open Event Card updates its suggested action as the game changes stages
       assert.ok(accessibleName, `expected ${testId} to have an accessible name`);
       assert.doesNotMatch(accessibleName, /suggested next/i);
     };
+    const assertActionGroup = async (name: string, cardId: string) => {
+      const tree = await connection!.send<{
+        nodes: Array<{
+          ignored?: boolean;
+          role?: { value?: string };
+          name?: { value?: string };
+          backendDOMNodeId?: number;
+        }>;
+      }>('Accessibility.getFullAXTree', {}, page!.sessionId);
+      const groups = tree.nodes.filter((node) =>
+        !node.ignored && node.role?.value === 'group' && node.name?.value === name,
+      );
+      assert.equal(groups.length, 1, `the opened card must expose one named ${name} group`);
+      const { node } = await connection!.send<{ node: { backendNodeId: number } }>(
+        'DOM.describeNode',
+        { objectId: (await connection!.send<{ result: { objectId: string } }>('Runtime.evaluate', {
+          expression: `document.querySelector('[data-testid="dialog-game-on-card-draft:${cardId}"] .game-on-collection__actions')`,
+        }, page!.sessionId)).result.objectId },
+        page!.sessionId,
+      );
+      assert.equal(groups[0].backendDOMNodeId, node.backendNodeId,
+        'the accessible group must be the opened Event Card action container');
+    };
 
+    await assertActionGroup('Game Event Card actions', eventId);
     await assertSingleSuggestion(`button-open-card-prep-draft:${eventId}`);
     await assertNotSuggestedInAccessibleName(`button-open-stat-tracker-draft:${eventId}`);
     const readAnnouncement = () => connection!.evaluate<string>(
@@ -5590,6 +5614,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     await wait(`Boolean(document.querySelector('[data-testid="button-open-game-on-card-draft:${practiceId}"]'))`);
     await connection.evaluate(`document.querySelector('[data-testid="button-open-game-on-card-draft:${practiceId}"]')?.click()`, page.sessionId);
     await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${practiceId}"]'))`);
+    await assertActionGroup('Practice Event Card actions', practiceId);
     assert.deepEqual(await getSuggestedActions(practiceId), [`button-open-card-prep-draft:${practiceId}`]);
     assert.equal(await readAnnouncement(), '', 'opening a different card must not announce an initial recommendation');
     assert.match(await getActionAccessibleName(`button-open-card-prep-draft:${practiceId}`) ?? '', /suggested next/i);

@@ -303,7 +303,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
             </button>
           )}
           </div>
-          <div className={`game-on-collection__actions${practice ? ' game-on-collection__actions--practice' : ''}`} aria-label={`${practice ? 'Practice' : 'Game'} badge actions`} hidden={!selected}>
+          <div className={`game-on-collection__actions${practice ? ' game-on-collection__actions--practice' : ''}`} role="group" aria-label={`${practice ? 'Practice' : 'Game'} Event Card actions`} hidden={!selected}>
             {card.isUnsavedDraft && (
               <button
                 type="button"
