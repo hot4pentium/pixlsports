@@ -27,7 +27,7 @@ async function freePort() {
 test('landing layout, links, and mobile menu work across phone, tablet, and desktop widths', async () => {
   const port = await freePort();
   const debugPort = await freePort();
-  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-landing-browser-'));
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-help-browser-'));
   const server = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
     cwd: appDirectory,
     env: { ...process.env, PORT: String(port), BASE_PATH: '/', VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k' },
@@ -48,10 +48,9 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then(res => res.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
-    for (const width of [320, 393, 768, 900, 1440]) {
-      const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
-      const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
-      const page = { targetId: target.targetId, sessionId: attached.sessionId };
+    const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+    const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
+  let page: BrowserPage | undefined;
       pages.push(page);
       connection.registerTarget(page.targetId, page.sessionId);
       await connection.send('Page.enable', {}, page.sessionId);
@@ -118,12 +117,21 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
       await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number; hypeCardBeforeOffline: boolean;
+        heroSports: string[]; heroSportsFit: boolean;
         cardSides: string[];
         cardTabLayout: { text: string; labelFitsTab: boolean; tabInsideCard: boolean }[];
         cta: string; help: string; support: string; privacy: string; explainer: boolean; menuVisible: boolean;
       }>(`(() => ({
         doc: document.documentElement.scrollWidth, body: document.body.scrollWidth,
         heroImage: document.querySelector('.hero-image-frame img')?.complete && document.querySelector('.hero-image-frame img')?.naturalWidth > 0,
+        heroSports: [...(document.querySelector('[data-testid="hero-supported-sports"]')?.querySelectorAll('li') ?? [])].map(item => item.textContent?.trim() || ''),
+        heroSportsFit: (() => {
+          const frame = document.querySelector('.hero-image-frame')?.getBoundingClientRect();
+          const sports = document.querySelector('[data-testid="hero-supported-sports"]')?.getBoundingClientRect();
+          return Boolean(frame && sports
+            && sports.left >= frame.left - 1 && sports.right <= frame.right + 1
+            && sports.top >= frame.top - 1 && sports.bottom <= frame.bottom + 1);
+        })(),
         fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 1228,
         cardSides: [...document.querySelectorAll('.landing-hype-card-tab > span')].map(label => label.textContent?.replace(/\\s+/g, ' ').trim() || ''),
         cardTabLayout: (() => {
@@ -161,6 +169,8 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
       }))()`, page.sessionId);
       assert.ok(layout.doc <= width && layout.body <= width, `horizontal overflow at ${width}px: ${JSON.stringify(layout)}`);
       assert.equal(layout.heroImage, true);
+      assert.deepEqual(layout.heroSports, ['Football', 'Soccer', 'Basketball', 'Baseball', 'Softball', 'Volleyball']);
+      assert.equal(layout.heroSportsFit, true, `supported sports should stay inside the hero photo at ${width}px`);
       assert.equal(layout.fanCardImage, true, `Hype Card artwork should load at ${width}px: ${JSON.stringify(layout)}`);
       assert.deepEqual(layout.cardSides, ['Card front', 'Stats', 'Events']);
       assert.deepEqual(
@@ -322,7 +332,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
         assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-mobile-menu]").getAttribute("aria-expanded")', page.sessionId), 'false');
       }
     }
-    const page = pages[0];
+  let page: BrowserPage | undefined;
     await connection.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, page.sessionId);
     assert.equal(await connection.evaluate('getComputedStyle(document.querySelector(".step-card")).transitionDuration', page.sessionId), '1e-05s');
   } finally {
@@ -341,7 +351,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
 test('step badges show a staggered circle reveal and respect reduced motion', async () => {
   const port = await freePort();
   const debugPort = await freePort();
-  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-step-badges-browser-'));
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-help-browser-'));
   const server = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
     cwd: appDirectory,
     env: { ...process.env, PORT: String(port), BASE_PATH: '/', VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k' },

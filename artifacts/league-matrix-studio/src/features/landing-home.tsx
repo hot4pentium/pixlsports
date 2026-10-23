@@ -2,11 +2,11 @@ import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
 import { LandingToolDemo } from './landing-tool-demo';
+import youthSoccerHero from '@/assets/landing-candid-athlete.jpg';
 
 function Brand() {
   return <span className="brand" aria-label="Pixl Sports">PIXL<span>SPORTS</span></span>;
@@ -58,6 +58,7 @@ const steps = [
   { number: '04', title: 'Celebrate', description: 'Turn the best moments into something worth sharing.', icon: Heart },
 ];
 
+const heroSports = ['Football', 'Soccer', 'Basketball', 'Baseball', 'Softball', 'Volleyball'];
 const landingCapabilityHighlights = [
   {
     name: 'One link for the season',
@@ -176,7 +177,13 @@ export function PublicLandingPage() {
             </div>
             <div className="hero-visual">
               <div className="hero-image-frame">
-                <img src={youthFootballHero} alt="Black youth football player smiling on the field while carrying a helmet" width="1024" height="1024" fetchPriority="high" decoding="async" />
+                <img src={youthSoccerHero} alt="Youth soccer player smiling while running on a field" width="1024" height="1024" fetchPriority="high" decoding="async" />
+                <div className="hero-sports" role="group" aria-label="Sports PIXL supports" data-testid="hero-supported-sports">
+                  <span className="hero-sports-label">One season. Every sport.</span>
+                  <ul>
+                    {heroSports.map(sport => <li key={sport} data-testid={`hero-supported-sport-${sport.toLowerCase()}`}>{sport}</li>)}
+                  </ul>
+                </div>
               </div>
               <div className="hero-message">
                 <strong>Every player has a story worth sharing.</strong>

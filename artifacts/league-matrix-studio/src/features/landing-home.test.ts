@@ -62,9 +62,15 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   assert.doesNotMatch(source, /Hero athlete photo|Replace with a real PIXL|screenshot containing|\.pdf['"]|ADD PLAYER MEDIA/);
 });
 
-test('hero photo has no text overlay and keeps its descriptive alt text', () => {
+test('hero photo presents multiple supported sports with an accessible label', () => {
   assert.doesNotMatch(source, /photo-caption|The moments that make a season/);
-  assert.match(source, /alt="Black youth football player smiling on the field while carrying a helmet"/);
+  assert.match(source, /alt="Youth soccer player smiling while running on a field"/);
+  assert.match(source, /role="group" aria-label="Sports PIXL supports" data-testid="hero-supported-sports"/);
+  for (const sport of ['Football', 'Soccer', 'Basketball', 'Baseball', 'Softball', 'Volleyball']) {
+    assert.ok(source.includes(`data-testid={\`hero-supported-sport-\${sport.toLowerCase()}\`}>{sport}</li>`), `landing hero should include ${sport}`);
+  }
+  assert.match(styles, /hero-sports \{[^}]*position: absolute/);
+  assert.match(styles, /hero-sports ul \{[^}]*flex-wrap: wrap/);
 });
 
 test('hero message omits the numbered athlete-card label', () => {
