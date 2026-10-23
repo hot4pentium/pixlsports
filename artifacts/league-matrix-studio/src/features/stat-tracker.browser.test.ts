@@ -1168,12 +1168,25 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
       true,
     );
 
+    await connection.evaluate(`(() => {
+      const key = 'stat-tracker-browser-history';
+      const history = JSON.parse(localStorage.getItem(key) || '{}');
+      history.games[0].opponent = 'The Northside International Championship All-Stars';
+      localStorage.setItem(key, JSON.stringify(history));
+    })()`, page.sessionId);
     await reloadPage(connection, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"live-tracker-layout\\"]"))', page.sessionId),
       false,
     );
+    await connection.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 }, page.sessionId);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 320,
+      height: 720,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
     await connection.evaluate('document.querySelector("[data-testid^=\\"history-card-\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-report-overlay\\"]") !== null', Boolean);
     assert.equal(
@@ -1194,8 +1207,80 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
       ),
       true,
     );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("#game-report-title")?.textContent.includes("The Northside International Championship All-Stars")',
+        page.sessionId,
+      ),
+      true,
+      'the report should render the long opponent name in its heading',
+    );
+    const assertReportNavigationFits = async () => {
+      const navigation = await connection!.evaluate<{
+        viewportWidth: number;
+        documentWidth: number;
+        dashboard: { left: number; right: number; width: number; height: number; centerReceivesTap: boolean };
+        tracker: { left: number; right: number; width: number; height: number; centerReceivesTap: boolean };
+      }>(`(() => {
+        const bounds = (testId) => {
+          const element = document.querySelector('[data-testid="' + testId + '"]');
+          if (!(element instanceof HTMLElement)) throw new Error('Missing Game Report navigation: ' + testId);
+          const rect = element.getBoundingClientRect();
+          const x = Math.round(rect.left + rect.width / 2);
+          const y = Math.round(rect.top + rect.height / 2);
+          return {
+            left: rect.left,
+            right: rect.right,
+            width: rect.width,
+            height: rect.height,
+            centerReceivesTap: element.contains(document.elementFromPoint(x, y)),
+          };
+        };
+        return {
+          viewportWidth: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          dashboard: bounds('link-game-report-dashboard'),
+          tracker: bounds('game-report-close'),
+        };
+      })()`, page!.sessionId);
+      for (const [label, target] of [['Dashboard', navigation.dashboard], ['Back to Tracker', navigation.tracker]] as const) {
+        assert.ok(target.width > 0 && target.height >= 44, `${label} must have a visible phone-sized tap target`);
+        assert.ok(target.left >= 0 && target.right <= navigation.viewportWidth, `${label} must stay within the phone viewport`);
+        assert.equal(target.centerReceivesTap, true, `${label} must receive a tap at its center`);
+      }
+      assert.equal(navigation.documentWidth <= navigation.viewportWidth, true, 'Game Report navigation must not cause horizontal page overflow');
+    };
+    await assertReportNavigationFits();
 
-    await connection.evaluate('window.location.search = "?saveFeedback=1"', page.sessionId);
+    const tapReportNavigation = async (testId: string) => {
+      const target = await connection!.evaluate<{ x: number; y: number }>(`(() => {
+        const element = document.querySelector('[data-testid="${testId}"]');
+        if (!(element instanceof HTMLElement)) throw new Error('Missing Game Report action: ${testId}');
+        const rect = element.getBoundingClientRect();
+        return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+      })()`, page!.sessionId);
+      await connection!.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: target.x, y: target.y }],
+      }, page!.sessionId);
+      await connection!.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, page!.sessionId);
+    };
+    await tapReportNavigation('game-report-close');
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-report-overlay\\"]") === null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', page.sessionId),
+      true,
+      'Back to Tracker should return to the tracker history',
+    );
+
+    await connection.evaluate('document.querySelector("[data-testid^=\\"history-card-\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-report-overlay\\"]") !== null', Boolean);
+    await assertReportNavigationFits();
+    await tapReportNavigation('link-game-report-dashboard');
+    await waitFor(connection, page.sessionId, 'window.location.pathname === "/studio"', Boolean);
+    await assertReportNavigationFits();
+
+    await connection.evaluate('window.location.href = "/stat-tracker-test.html?saveFeedback=1"', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"save-outcome-success\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]") === null', page.sessionId),
