@@ -5616,10 +5616,20 @@ test(`an open Event Card updates its suggested action as the game changes stages
         : `[data-testid="panel-inline-prep-draft:${eventId}"] [data-testid="input-card-prep-title-${eventId}"]`)});
       window.__activeRecommendationControl.focus();
       window.__recommendationChanges = [];
-      window.__recommendationObserver = new MutationObserver(() => {
-        window.__recommendationChanges.push(region.textContent.trim());
+      window.__recommendationDialog = region.closest('[role="dialog"]');
+      window.__recommendationObserver = new MutationObserver((records) => {
+        for (const record of records) {
+          const touchesRegion = region.contains(record.target)
+            || [...record.addedNodes, ...record.removedNodes].some(node =>
+              node.contains(region)
+              || (node instanceof Element && (
+                node.matches('[data-testid="status-game-on-recommendation"]')
+                || node.querySelector('[data-testid="status-game-on-recommendation"]')
+              )));
+          if (touchesRegion) window.__recommendationChanges.push(region.textContent.trim());
+        }
       });
-      window.__recommendationObserver.observe(region, { childList: true, subtree: true, characterData: true });
+      window.__recommendationObserver.observe(window.__recommendationDialog, { childList: true, subtree: true, characterData: true });
       return [region.getAttribute('role'), region.getAttribute('aria-live'), region.getAttribute('aria-atomic')];
     })()`, page.sessionId), ['status', 'polite', 'true']);
     await assertOpenPanelAnnouncement();
@@ -5649,6 +5659,58 @@ test(`an open Event Card updates its suggested action as the game changes stages
       'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
     ], 'an unchanged Live recommendation must not announce again or reset the draft');
     await assertOpenPanelAnnouncement();
+    if (openPanel === 'prep') {
+      const dialogSelector = `[data-testid="dialog-game-on-card-draft:${eventId}"]`;
+      const assertPrepFlip = async (prepOpen: boolean) => {
+        await connection!.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page!.sessionId);
+        await wait(`Array.from(document.querySelector(${JSON.stringify(dialogSelector)})
+          ?.querySelector('.game-on-collection__flip-inner')?.getAnimations() ?? [])
+          .every(animation => animation.playState !== 'running')`);
+        assert.deepEqual(await connection!.evaluate(`(() => {
+          const dialog = document.querySelector(${JSON.stringify(dialogSelector)});
+          const region = dialog?.querySelector('[data-testid="status-game-on-recommendation"]');
+          const front = dialog?.querySelector('.game-on-collection__flip-front');
+          const back = dialog?.querySelector('.game-on-collection__flip-back');
+          const trigger = dialog?.querySelector('[data-testid="button-open-card-prep-draft:${eventId}"]');
+          const panel = dialog?.querySelector('[data-testid="panel-inline-prep-draft:${eventId}"]');
+          return {
+            sameDialog: dialog === window.__recommendationDialog,
+            sameRegion: region === window.__recommendationRegion,
+            regionCount: document.querySelectorAll('[data-testid="status-game-on-recommendation"]').length,
+            text: region?.textContent.trim(),
+            changes: window.__recommendationChanges,
+            exposed: Boolean(region && !region.closest('[inert], [aria-hidden="true"], [hidden]')),
+            frontActive: Boolean(front && !front.inert && front.getAttribute('aria-hidden') === 'false'),
+            backActive: Boolean(back && !back.inert && back.getAttribute('aria-hidden') === 'false'),
+            focusCorrect: ${prepOpen
+              ? "Boolean(panel?.contains(document.activeElement) && document.activeElement?.matches('.game-on-prep__title'))"
+              : "Boolean(trigger?.getClientRects().length && document.activeElement === trigger && !trigger.closest('[inert], [aria-hidden=\"true\"], [hidden]'))"},
+          };
+        })()`, page!.sessionId), {
+          sameDialog: true,
+          sameRegion: true,
+          regionCount: 1,
+          text: 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
+          changes: ['Event Card vs Rivals is now Live. Suggested next: Stat Tracker.'],
+          exposed: true,
+          frontActive: !prepOpen,
+          backActive: prepOpen,
+          focusCorrect: true,
+        }, `the Prep ${prepOpen ? 'reopening' : 'closing'} flip must preserve the announcement without mutations and move focus to the visible face`);
+      };
+      await connection.evaluate(`document.querySelector('${dialogSelector} [data-testid="button-close-card-prep-${eventId}"]').click()`, page.sessionId);
+      await wait(`document.activeElement?.matches('${dialogSelector} [data-testid="button-open-card-prep-draft:${eventId}"]')`);
+      await assertPrepFlip(false);
+      await connection.evaluate(`document.querySelector('${dialogSelector} [data-testid="button-open-card-prep-draft:${eventId}"]').click()`, page.sessionId);
+      await wait(`document.activeElement?.matches('${dialogSelector} [data-testid="panel-inline-prep-draft:${eventId}"] .game-on-prep__title')`);
+      await assertPrepFlip(true);
+      // Later stage changes should preserve the reopened panel's focused input.
+      await connection.evaluate(`(() => {
+        window.__activeRecommendationControl = document.querySelector('${dialogSelector} [data-testid="input-card-prep-title-${eventId}"]');
+        window.__activeRecommendationControl.focus();
+      })()`, page.sessionId);
+      await assertOpenPanelAnnouncement();
+    }
     const { node: announcementNode } = await connection.send<{ node: { backendNodeId: number } }>(
       'DOM.describeNode',
       { objectId: (await connection.send<{ result: { objectId: string } }>('Runtime.evaluate', {
