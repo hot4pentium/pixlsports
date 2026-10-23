@@ -1021,7 +1021,12 @@ export function LiveTrackerGame({
           <div role="status" className="mb-5 border border-primary/40 bg-primary/10 p-4 text-sm" data-testid="notice-live-tracker-paused">
             <p className="font-bold">Game paused. Resume to record stats.</p>
             <p className="mt-1 text-muted-foreground">Stat taps are not recorded while paused. Your existing stats are kept.</p>
-            <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: 'live' }))} className="mt-3 min-h-11 border border-primary px-4 font-bold text-primary-ink" data-testid="button-resume-live-stats">Resume tracking</button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: 'live' }))} className="min-h-11 border border-primary px-4 font-bold text-primary-ink" data-testid="button-resume-live-stats">Resume tracking</button>
+              <button type="button" onClick={onLeaveGame} className="inline-flex min-h-11 items-center gap-2 border border-border px-4 font-bold text-foreground hover:border-primary" data-testid="button-leave-paused-game-open">
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Game Day Hub · Leave game open
+              </button>
+            </div>
           </div>
         )}
         {isYardageTrackingAvailable(currentGame.sport) && (

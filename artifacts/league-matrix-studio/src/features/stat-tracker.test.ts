@@ -845,6 +845,55 @@ test('back-to-back live stat taps preserve both events from one render', () => {
   assert.equal(changedGame.score, 6);
 });
 
+test('football First Down and Sack are featured stats, and paused games can return to the hub without ending', () => {
+  const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('football');
+  let changedGame = game;
+  let leaveGameOpen = false;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = () => createElement(LiveTrackerGame, {
+    currentGame: changedGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => !item.liveHidden && item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => { leaveGameOpen = true; },
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame());
+  });
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-card-first-down' }).findByProps({ 'data-testid': 'stat-title-first-down' }).children.join(''), 'First Down');
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'live-stat-card-sack' }).findByProps({ 'data-testid': 'stat-title-sack' }).children.join(''), 'Sack');
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'live-stat-first-down' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'live-stat-sack' }).props.onClick();
+  });
+  assert.deepEqual(changedGame.events.map((event) => event.statId), ['first-down', 'sack']);
+  assert.deepEqual(changedGame.stats, { 'first-down': 1, sack: 1 });
+  assert.equal(changedGame.score, 0);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-toggle-live-game-pause' }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(changedGame.status, 'paused');
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-leave-paused-game-open' }).props.onClick();
+  });
+  assert.equal(leaveGameOpen, true);
+  assert.equal(changedGame.status, 'paused');
+  assert.equal(changedGame.endedAt, undefined);
+});
+
 test('team card and athlete avatar taps preserve separate attribution during rapid play', () => {
   const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('basketball');

@@ -724,13 +724,15 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await reloadPage(connection, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-count-corner-kick\\"]")?.textContent.trim().startsWith("2")', Boolean);
     assert.equal(await connection.evaluate<number>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).score', page.sessionId), 0);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-toggle-live-game-pause\\"]").click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-leave-paused-game-open\\"]") !== null', Boolean);
     const activeGameBeforeLeaving = await connection.evaluate('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game"))', page.sessionId);
-    await connection.evaluate('document.querySelector("[data-testid=\\"button-leave-game-open\\"]").click()', page.sessionId);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-leave-paused-game-open\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"tracker-returned-to-dashboard\\"]") !== null', Boolean);
     assert.deepEqual(
       await connection.evaluate('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game"))', page.sessionId),
       activeGameBeforeLeaving,
-      'leaving the tracker must not clear or alter the active game saved on this device',
+      'returning to the dashboard from a paused game must not clear or alter the active game saved on this device',
     );
     await reloadPage(connection, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
@@ -837,7 +839,7 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        '["touchdown", "tackle"].every((id) => document.querySelector(`[data-testid="live-stat-${id}"]`) !== null)',
+        '["touchdown", "tackle", "first-down", "sack"].every((id) => document.querySelector(`[data-testid="live-stat-${id}"]`) !== null)',
         page.sessionId,
       ),
       true,
@@ -915,6 +917,16 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
       await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"live-stat-card-interception\\"]")?.textContent.includes("Team 1") && document.querySelector("[data-testid=\\"live-stat-card-interception\\"]")?.dataset.athleteAssigned === "true"', page.sessionId),
       true,
     );
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-first-down\\"]")?.click(); document.querySelector("[data-testid=\\"athlete-stat-target-sack\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null")?.stats?.["first-down"] === 1 && JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null")?.stats?.sack === 1', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '(() => { const game = JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null"); return game.events.filter((event) => event.statId === "first-down").length === 1 && game.events.find((event) => event.statId === "first-down")?.attribution === "team" && game.events.filter((event) => event.statId === "sack").length === 1 && game.events.find((event) => event.statId === "sack")?.attribution === "athlete" && game.score === 0; })()',
+        page.sessionId,
+      ),
+      true,
+      'First Down and Sack should record as distinct, zero-point football events',
+    );
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click(); document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1") && document.querySelector("[data-testid=\\"live-stat-card-tackle\\"]")?.textContent.includes("1")', Boolean);
     assert.equal(
@@ -950,7 +962,7 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        '["pass-yard", "reception", "rush-yard", "interception", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
+        '["pass-yard", "reception", "rush-yard", "interception", "touchdown", "tackle", "first-down", "sack"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
         page.sessionId,
       ),
       true,
@@ -967,7 +979,7 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        '(() => { const game = JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null"); return game?.stats?.["pass-yard"] === 3 && game?.stats?.reception === 3 && game?.stats?.["rush-yard"] === 1 && game?.stats?.interception === 2 && game.events.every((event) => event.yards == null) && Object.keys(game.yardStats || {}).length === 0; })()',
+        '(() => { const game = JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null"); return game?.stats?.["pass-yard"] === 3 && game?.stats?.reception === 3 && game?.stats?.["rush-yard"] === 1 && game?.stats?.interception === 2 && game?.stats?.["first-down"] === 1 && game?.stats?.sack === 1 && game.events.every((event) => event.yards == null) && Object.keys(game.yardStats || {}).length === 0; })()',
         page.sessionId,
       ),
       true,
@@ -1044,7 +1056,7 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid^=\\"history-card-\\"]")?.textContent || ""', page.sessionId),
-      'vs Northside 11 plays',
+      'vs Northside 13 plays',
     );
     assert.equal(
       await connection.evaluate<boolean>(

@@ -469,7 +469,8 @@ export const sportRules: Record<Sport, SportRule> = {
       stat('interception', 'Interception', 'INT', 0),
       stat('tackle', 'Tackle', 'TACKLE', 0),
       stat('reception', 'Reception', 'REC', 0),
-      stat('sack', 'Sack', 'SACK', 0, false),
+      stat('first-down', 'First Down', '1ST DOWN', 0),
+      stat('sack', 'Sack', 'SACK', 0),
     ],
   },
   baseball: {
