@@ -5525,11 +5525,44 @@ test('an open Event Card updates its suggested action as the game changes stages
       `document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.trim() ?? ''`,
       page!.sessionId,
     );
+    const assertOpenPrepAnnouncement = async () => {
+      assert.deepEqual(await connection!.evaluate(`(() => {
+        const dialog = document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]');
+        const region = dialog?.querySelector('[data-testid="status-game-on-recommendation"]');
+        const front = dialog?.querySelector('.game-on-collection__flip-front');
+        const back = dialog?.querySelector('.game-on-collection__flip-back');
+        const prep = dialog?.querySelector('[data-testid="panel-inline-prep-draft:${eventId}"]');
+        return {
+          regionCount: document.querySelectorAll('[data-testid="status-game-on-recommendation"]').length,
+          sameRegion: region === window.__recommendationRegion,
+          liveAttributes: [region?.getAttribute('role'), region?.getAttribute('aria-live'), region?.getAttribute('aria-atomic')],
+          outsideFaces: Boolean(region && !region.closest('.game-on-collection__flip-front, .game-on-collection__flip-back')),
+          exposed: Boolean(region && !region.closest('[inert], [aria-hidden="true"], [hidden]')),
+          frontInactive: Boolean(front?.inert && front.getAttribute('aria-hidden') === 'true'),
+          backActive: Boolean(back && !back.inert && back.getAttribute('aria-hidden') === 'false'),
+          prepOpen: Boolean(prep?.getClientRects().length),
+          focusPreserved: document.activeElement === window.__activePrepControl && Boolean(prep?.contains(document.activeElement)),
+        };
+      })()`, page!.sessionId), {
+        regionCount: 1,
+        sameRegion: true,
+        liveAttributes: ['status', 'polite', 'true'],
+        outsideFaces: true,
+        exposed: true,
+        frontInactive: true,
+        backActive: true,
+        prepOpen: true,
+        focusPreserved: true,
+      }, 'the same polite region must stay outside inactive faces while focus remains in the active Prep panel');
+    };
     assert.equal(await readAnnouncement(), '', 'opening an upcoming card must not announce its initial recommendation');
+    await connection.evaluate(`document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"] [data-testid="button-open-card-prep-draft:${eventId}"]').click()`, page.sessionId);
+    await wait(`document.activeElement?.matches('[data-testid="panel-inline-prep-draft:${eventId}"] .game-on-prep__title')`);
     assert.deepEqual(await connection.evaluate(`(() => {
       const region = document.querySelector('[data-testid="status-game-on-recommendation"]');
-      const close = document.querySelector('[aria-label="Close Event Card"]');
-      close.focus();
+      window.__recommendationRegion = region;
+      window.__activePrepControl = document.querySelector('[data-testid="panel-inline-prep-draft:${eventId}"] [data-testid="input-card-prep-title-${eventId}"]');
+      window.__activePrepControl.focus();
       window.__recommendationChanges = [];
       window.__recommendationObserver = new MutationObserver(() => {
         window.__recommendationChanges.push(region.textContent.trim());
@@ -5537,6 +5570,8 @@ test('an open Event Card updates its suggested action as the game changes stages
       window.__recommendationObserver.observe(region, { childList: true, subtree: true, characterData: true });
       return [region.getAttribute('role'), region.getAttribute('aria-live'), region.getAttribute('aria-atomic')];
     })()`, page.sessionId), ['status', 'polite', 'true']);
+    await assertOpenPrepAnnouncement();
+    assert.equal(await readAnnouncement(), '', 'opening Prep must not announce an unchanged recommendation');
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
       id: ${JSON.stringify(eventId)},
       type: 'game',
@@ -5552,8 +5587,33 @@ test('an open Event Card updates its suggested action as the game changes stages
     await assertNotSuggestedInAccessibleName(`button-open-card-prep-draft:${eventId}`);
     await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Live. Suggested next: Stat Tracker.')`);
     assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.');
-    assert.equal(await connection.evaluate(`document.activeElement?.getAttribute('aria-label')`, page.sessionId), 'Close Event Card',
-      'a recommendation update must not move focus');
+    await assertOpenPrepAnnouncement();
+    assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
+      'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
+    ], 'the Live transition must update the existing region exactly once while Prep is open');
+    const { node: announcementNode } = await connection.send<{ node: { backendNodeId: number } }>(
+      'DOM.describeNode',
+      { objectId: (await connection.send<{ result: { objectId: string } }>('Runtime.evaluate', {
+        expression: 'window.__recommendationRegion',
+      }, page.sessionId)).result.objectId },
+      page.sessionId,
+    );
+    const announcementTree = await connection.send<{
+      nodes: Array<{
+        backendDOMNodeId?: number;
+        ignored?: boolean;
+        role?: { value?: string };
+        properties?: Array<{ name: string; value: { value?: unknown } }>;
+      }>;
+    }>('Accessibility.getFullAXTree', {}, page.sessionId);
+    const accessibleAnnouncement = announcementTree.nodes.find((node) =>
+      node.backendDOMNodeId === announcementNode.backendNodeId,
+    );
+    assert.ok(accessibleAnnouncement && !accessibleAnnouncement.ignored,
+      'the live region must remain in the accessibility tree while the card front is inert');
+    assert.equal(accessibleAnnouncement.role?.value, 'status');
+    assert.equal(accessibleAnnouncement.properties?.find((property) => property.name === 'live')?.value.value, 'polite');
+    assert.equal(accessibleAnnouncement.properties?.find((property) => property.name === 'atomic')?.value.value, true);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
       id: ${JSON.stringify(eventId)},
@@ -5568,6 +5628,7 @@ test('an open Event Card updates its suggested action as the game changes stages
     await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'complete'`);
     await assertSingleSuggestion(`button-open-stat-tracker-draft:${eventId}`);
     await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Complete. Suggested next: Stat Tracker.')`);
+    await assertOpenPrepAnnouncement();
 
     const trackerHistory = {
       version: 1,
@@ -5596,6 +5657,7 @@ test('an open Event Card updates its suggested action as the game changes stages
       ?.getAttribute('data-suggested-next') === 'true')`);
     await assertSingleSuggestion(`link-view-card-stats-draft:${eventId}`);
     await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('Suggested next: View stats.')`);
+    await assertOpenPrepAnnouncement();
     assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
       'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
       'Event Card vs Rivals is now Complete. Suggested next: Stat Tracker.',
@@ -5607,6 +5669,7 @@ test('an open Event Card updates its suggested action as the game changes stages
       'an unrelated render must not clear or repeat the announcement');
     assert.equal(await connection.evaluate<number>('window.__recommendationChanges.length', page.sessionId), 3,
       'an unchanged recommendation must not mutate the live region');
+    await assertOpenPrepAnnouncement();
     await connection.evaluate('window.__recommendationObserver.disconnect()', page.sessionId);
     await connection.evaluate(`document.querySelector('[aria-label="Close Event Card"]').click()`, page.sessionId);
     await wait(`!document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]')`);
