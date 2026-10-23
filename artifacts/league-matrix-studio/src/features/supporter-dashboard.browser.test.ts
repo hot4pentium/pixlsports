@@ -6901,7 +6901,7 @@ const profile = {
   position: 'Guard',
   relationship: 'Parent',
   accessMode: 'full',
-  sport: 'basketball',
+  sport: new URLSearchParams(window.location.search).has('workspace-soccer') ? 'soccer' : 'basketball',
 };
 
 let dashboardEvents = [{
@@ -9814,7 +9814,9 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
   }
 });
 
-test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', { concurrency: false }, async () => {
+for (const halftime of [false, true]) {
+test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game survives a Game Day Hub round trip`, { concurrency: false }, async () => {
+  const statId = halftime ? 'goal' : 'three-point';
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('signed-in-stat-tracker-resume-test');
   let devServer: ChildProcess | undefined;
@@ -9853,7 +9855,7 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
     const fixtureUrl = `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`;
-    const signedInDashboardUrl = `${fixtureUrl}?workspace-journey&viewer=workspace-journey`;
+    const signedInDashboardUrl = `${fixtureUrl}?workspace-journey&viewer=workspace-journey${halftime ? '&workspace-soccer' : ''}`;
     page = await openPage(connection, signedInDashboardUrl);
     const session = page.sessionId;
     const click = async (testId: string) => {
@@ -9919,6 +9921,11 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
       Boolean,
     );
     await click('button-use-upcoming-game');
+    if (halftime) {
+      await waitFor(connection, session,
+        'Boolean(document.querySelector("[data-testid=\\"button-soccer-period-halves\\"]"))', Boolean);
+      await click('button-soccer-period-halves');
+    }
     await click('button-confirm-start-game');
     await waitFor(connection, session,
       'Boolean(document.querySelector("[data-testid=\\"live-tracker-layout\\"]"))'
@@ -9927,27 +9934,29 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
     );
 
     for (const expectedCount of [1, 2]) {
-      await click('athlete-stat-target-three-point');
+      await click(`athlete-stat-target-${statId}`);
       await waitFor(connection, session,
-        `document.querySelector("[data-testid=\\"stat-count-three-point\\"]")?.textContent.trim().startsWith("${expectedCount}")`,
+        `document.querySelector('[data-testid="stat-count-${statId}"]')?.textContent.trim().startsWith("${expectedCount}")`,
         Boolean,
       );
     }
 
     const accountActiveGameKey = 'leaguematrix-stat-tracker-active-game:workspace-journey';
     await waitFor(connection, session,
-      `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.stats?.["three-point"] === 2`,
+      `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.stats?.["${statId}"] === 2`,
       Boolean,
     );
     const activeGameBeforeLeaving = await connection.evaluate<{
+      sport: string;
       status: string;
       opponent: string;
       stats: Record<string, number>;
       events: unknown[];
     }>(`JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session);
     assert.equal(activeGameBeforeLeaving.status, 'live');
+    assert.equal(activeGameBeforeLeaving.sport, halftime ? 'soccer' : 'basketball');
     assert.equal(activeGameBeforeLeaving.opponent, 'Tigers');
-    assert.equal(activeGameBeforeLeaving.stats['three-point'], 2);
+    assert.equal(activeGameBeforeLeaving.stats[statId], 2);
     assert.equal(activeGameBeforeLeaving.events.length, 2);
     assert.equal(
       await connection.evaluate<boolean>(
@@ -9957,23 +9966,38 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
       'the active session is saved under the signed-in account rather than the unscoped legacy key',
     );
 
+    if (halftime) {
+      await click('button-pause-game-for-halftime');
+      await waitFor(connection, session,
+        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.pauseReason === "halftime"`,
+        Boolean,
+      );
+      await waitFor(connection, session,
+        'document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "halftime"',
+        Boolean,
+      );
+    }
     await click('button-back-to-game-day-hub');
-    await waitFor(connection, session,
-      'Boolean(document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]"))',
-      Boolean,
-    );
-    await click('button-pause-and-leave-game');
+    if (!halftime) {
+      await waitFor(connection, session,
+        'Boolean(document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]"))',
+        Boolean,
+      );
+      await click('button-pause-and-leave-game');
+    }
     await waitFor(connection, session, 'location.pathname === "/studio"', Boolean);
     await waitFor(connection, session,
       'Boolean(document.querySelector("[data-testid=\\"link-desktop-independent-stats\\"]"))', Boolean);
     const pausedGameAfterLeaving = await connection.evaluate<{
       status: string;
+      pauseReason?: string;
       opponent: string;
       stats: Record<string, number>;
       events: unknown[];
     }>(`JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session);
     assert.equal(pausedGameAfterLeaving.status, 'paused',
-      'the real signed-in exit handler must pause the account-scoped game before navigating to the hub');
+      'the account-scoped game must be paused when returning to the hub');
+    assert.equal(pausedGameAfterLeaving.pauseReason, halftime ? 'halftime' : undefined);
     assert.equal(pausedGameAfterLeaving.opponent, activeGameBeforeLeaving.opponent);
     assert.deepEqual(pausedGameAfterLeaving.stats, activeGameBeforeLeaving.stats);
     assert.deepEqual(pausedGameAfterLeaving.events, activeGameBeforeLeaving.events);
@@ -9983,11 +10007,18 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
     await openStatTrackerFromDashboard();
     await waitFor(connection, session,
       'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null'
-        + ' && document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "paused"'
+        + ` && document.querySelector('[data-testid="live-tracker-game-state"]')?.textContent.trim() === "${halftime ? 'halftime' : 'paused'}"`
         + ' && document.querySelector("[data-testid=\\"live-tracker-matchup\\"]")?.textContent.includes("Tigers") === true'
-        + ' && document.querySelector("[data-testid=\\"stat-count-three-point\\"]")?.textContent.trim().startsWith("2")'
+        + ` && document.querySelector('[data-testid="stat-count-${statId}"]')?.textContent.trim().startsWith("2")`
         + ' && document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null',
       Boolean,
+    );
+    assert.match(
+      await connection.evaluate<string>(
+        'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]").textContent', session,
+      ),
+      halftime ? /Halftime break\. Resume when play restarts\./ : /Game paused\. Resume to record stats\./,
+      'the restored pause notice must explain the original pause reason',
     );
     assert.deepEqual(
       await connection.evaluate(
@@ -9998,13 +10029,13 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        'document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"]")?.matches(":disabled") === true',
+        `document.querySelector('[data-testid="athlete-stat-target-${statId}"]')?.matches(":disabled") === true`,
         session,
       ),
       true,
       'the restored paused game must block stat taps until resumed',
     );
-    await click('athlete-stat-target-three-point');
+    await click(`athlete-stat-target-${statId}`);
     assert.deepEqual(
       await connection.evaluate(
         `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")`, session,
@@ -10015,17 +10046,19 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
     await click('button-resume-live-stats');
     await waitFor(connection, session,
       'document.querySelector("[data-testid=\\"live-tracker-game-state\\"]")?.textContent.trim() === "live"'
-        + ' && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"]")?.matches(":enabled") === true',
+        + ` && document.querySelector('[data-testid="athlete-stat-target-${statId}"]')?.matches(":enabled") === true`
+        + ' && document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") === null'
+        + ` && JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.pauseReason === undefined`,
       Boolean,
     );
-    await click('athlete-stat-target-three-point');
+    await click(`athlete-stat-target-${statId}`);
     await waitFor(connection, session,
       `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.events?.length === 3`,
       Boolean,
     );
     assert.equal(
       await connection.evaluate<number>(
-        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.stats?.["three-point"]`,
+        `JSON.parse(localStorage.getItem("${accountActiveGameKey}") || "null")?.stats?.["${statId}"]`,
         session,
       ),
       3,
@@ -10048,6 +10081,7 @@ test('a signed-in paused Stat Tracker game survives a Game Day Hub round trip', 
     releaseBrowserTestLock();
   }
 });
+}
 
 test('deleting selected games and practices falls back across Calendar and workspace tools', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();

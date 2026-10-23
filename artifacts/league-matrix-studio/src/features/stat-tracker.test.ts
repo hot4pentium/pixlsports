@@ -1538,6 +1538,53 @@ test('football yard totals remain separate by possession side', () => {
   assert.equal(game.opponentYardStats?.['pass-yard'], 12);
 });
 
+test('football hidden yard controls preserve totals across possession changes', () => {
+  let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:01:00Z'), 8);
+  const athleteEventId = game.events[0]!.id;
+  game = setFootballPossessionSide(game, 'opponent');
+  game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:02:00Z'), 12);
+  const opponentEventId = game.events[1]!.id;
+  assert.equal(game.yardStats?.['pass-yard'], 8);
+  assert.equal(game.opponentYardStats?.['pass-yard'], 12);
+
+  const rule = getSportRule('football');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = (currentGame: typeof game) => createElement(LiveTrackerGame, {
+    currentGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats,
+    showAllStats: true,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame(game));
+  });
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-yard' }).length, 0);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'football-possession-athlete' }).props.onClick());
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'input-yard-pass-yard' }).length, 0);
+  assert.equal(changedGame.yardStats?.['pass-yard'], 8);
+  assert.equal(changedGame.opponentYardStats?.['pass-yard'], 12);
+
+  changedGame = updateStatEventYards(changedGame, athleteEventId, 13);
+  assert.equal(changedGame.events.find((event) => event.id === athleteEventId)?.yards, 13);
+  assert.equal(changedGame.events.find((event) => event.id === opponentEventId)?.yards, 12);
+  assert.equal(changedGame.yardStats?.['pass-yard'], 13);
+  assert.equal(changedGame.opponentYardStats?.['pass-yard'], 12);
+});
+
 test('restored football yard values stay saved but hidden while yardage tracking is paused', () => {
   let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:01:00Z'), 5);

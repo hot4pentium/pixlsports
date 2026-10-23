@@ -45,6 +45,7 @@ function harnessSource() {
 import { createElement, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Router } from 'wouter';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   LiveTrackerGame,
   StatTrackerSaveRecoveryAlert,
@@ -539,8 +540,19 @@ function CompletionHarness() {
 export function mount() {
   const root = createRoot(document.getElementById('test-root'));
   const search = new URLSearchParams(window.location.search);
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (search.has('inlineFootball') || search.has('inlineSportChoice')) {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const path = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, location.href).pathname;
+      if ((!init?.method || init.method === 'GET') && ['/api/athlete-invites', '/api/stat-tracker-shares'].includes(path)) {
+        return Promise.resolve(new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } }));
+      }
+      return originalFetch(input, init);
+    };
+  }
   if (search.get('inlineFootball') === '1') {
-    root.render(createElement(Router, null,
+    root.render(createElement(QueryClientProvider, { client: queryClient }, createElement(Router, null,
       createElement(GameOnInlineStatTracker, {
         userId: 'inline-football-user',
         sport: 'football',
@@ -552,11 +564,11 @@ export function mount() {
         location: 'Northside Field',
         opponent: 'Northside',
       }),
-    ));
+    )));
     return;
   }
   if (search.get('inlineSportChoice') === '1') {
-    root.render(createElement(Router, null,
+    root.render(createElement(QueryClientProvider, { client: queryClient }, createElement(Router, null,
       createElement(GameOnInlineStatTracker, {
         userId: 'inline-sport-choice-user',
         sport: null,
@@ -568,7 +580,7 @@ export function mount() {
         location: 'Northside Gym',
         opponent: 'Northside',
       }),
-    ));
+    )));
     return;
   }
   root.render(createElement(TrackerHarness));
@@ -1568,6 +1580,19 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
       'the inline football tracker should show combined PASS/REC, short RUSH, and INT cards',
     );
 
+    // Restore the account-scoped game after Opponent was selected in the full tracker.
+    await connection.evaluate(`(() => {
+      const key = 'leaguematrix-stat-tracker-active-game:inline-football-user';
+      const game = JSON.parse(localStorage.getItem(key));
+      game.possessionSide = 'opponent';
+      game.opponentScore = 7;
+      localStorage.setItem(key, JSON.stringify(game));
+    })()`, page.sessionId);
+    await reloadPage(connection, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'document.querySelector("[data-testid=\\"button-tap-stat-inline-football-game-pass-reception-athlete\\"]") !== null',
+      Boolean,
+    );
     await connection.evaluate('document.querySelector("[data-testid=\\"button-tap-stat-inline-football-game-pass-reception-athlete\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, '(() => { const game = JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user") || "null"); return game?.stats?.["pass-yard"] === 1 && game?.stats?.reception === 1; })()', Boolean);
     assert.equal(
@@ -1588,6 +1613,47 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
       true,
       'undo should remove both persisted stats from the paired inline play',
     );
+    for (const [index, attribution] of ['team', 'athlete'].entries()) {
+      for (const statId of ['pass-reception', 'touchdown']) {
+        await connection.evaluate(`(() => {
+          const key = 'leaguematrix-stat-tracker-active-game:inline-football-user';
+          const game = JSON.parse(localStorage.getItem(key));
+          game.possessionSide = 'opponent';
+          localStorage.setItem(key, JSON.stringify(game));
+        })()`, page.sessionId);
+        await reloadPage(connection, page.sessionId);
+        await waitFor(connection, page.sessionId,
+          `document.querySelector('[data-testid="button-tap-stat-inline-football-game-${statId}-${attribution}"]') !== null`,
+          Boolean,
+        );
+        await connection.evaluate(
+          `document.querySelector('[data-testid="button-tap-stat-inline-football-game-${statId}-${attribution}"]')?.click()`,
+          page.sessionId,
+        );
+        await waitFor(connection, page.sessionId,
+          `JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user"))?.stats?.["${statId === 'pass-reception' ? 'pass-yard' : statId}"] === ${index + 1}`,
+          Boolean,
+        );
+      }
+      const restored = await connection.evaluate<{
+        possessionSide: string;
+        stats: Record<string, number>;
+        opponentStats: Record<string, number>;
+        score: number;
+        opponentScore: number;
+        events: { statId: string; attribution: string; possessionSide: string }[];
+      }>('JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user"))', page.sessionId);
+      assert.equal(restored.possessionSide, 'athlete', 'inline taps explicitly select the athlete team');
+      assert.equal(restored.score, (index + 1) * 6, 'labeled inline touchdowns score for the athlete team');
+      assert.equal(restored.opponentScore, 7, 'inline athlete/team taps must not change the opponent score');
+      assert.deepEqual(restored.opponentStats ?? {}, {});
+      assert.equal(restored.stats.reception, index + 1);
+      assert.deepEqual(restored.events.slice(-3).map((event) => ({
+        statId: event.statId, attribution: event.attribution, possessionSide: event.possessionSide,
+      })), ['pass-yard', 'reception', 'touchdown'].map((statId) => ({
+        statId, attribution, possessionSide: 'athlete',
+      })), 'both inline buttons must record ordinary and paired stats on the side their labels promise');
+    }
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

@@ -669,8 +669,8 @@ export function GameOnInlineStatTracker({
                     type="button"
                     disabled={game.status !== 'live'}
                     onClick={() => updateGame((current) => isPassReception
-                      ? addFootballPassReception(current, new Date(), 0, 'team')
-                      : addStatEvent(current, item.id, new Date(), 0, 'team'))}
+                      ? addFootballPassReception(current, new Date(), 0, 'team', 'athlete')
+                      : addStatEvent(current, item.id, new Date(), 0, 'team', undefined, 'athlete'))}
                     aria-label={`Record ${item.label} for ${teamName || 'team'}`}
                     data-testid={`button-tap-stat-${eventId}-${item.id}-team`}
                   >
@@ -682,8 +682,8 @@ export function GameOnInlineStatTracker({
                     type="button"
                     disabled={game.status !== 'live'}
                     onClick={() => updateGame((current) => isPassReception
-                      ? addFootballPassReception(current, new Date(), 0, 'athlete')
-                      : addStatEvent(current, item.id, new Date(), 0, 'athlete'))}
+                      ? addFootballPassReception(current, new Date(), 0, 'athlete', 'athlete')
+                      : addStatEvent(current, item.id, new Date(), 0, 'athlete', undefined, 'athlete'))}
                     aria-label={`Record ${item.label} for ${athleteName || 'athlete'}`}
                     data-testid={`button-tap-stat-${eventId}-${item.id}-athlete`}
                     className="game-on-quick-tracker__athlete-tap"
