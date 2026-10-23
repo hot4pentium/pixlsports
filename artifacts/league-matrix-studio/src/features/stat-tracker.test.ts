@@ -22,6 +22,8 @@ import {
   createAthleteResultGame,
   createGameSession,
   endGame,
+  pauseGame,
+  resumeGame,
   getGameOutcome,
   getGamePhaseLabel,
   getPreferredTrackerSport,
@@ -889,6 +891,77 @@ test('football First Down and Sack are featured stats, and pausing preserves the
   assert.equal(changedGame.status, 'paused');
   assert.equal(changedGame.status, 'paused');
   assert.equal(changedGame.endedAt, undefined);
+});
+
+test('halftime pause is labeled, survives active-game reload, and clears on resume or final save', () => {
+  const game = createGameSession('soccer', {
+    opponent: 'Northside',
+    soccerPeriodFormat: 'halves',
+  }, new Date('2026-09-17T12:00:00Z'));
+  const halftimeGame = pauseGame(game, 'halftime');
+  assert.equal(halftimeGame.status, 'paused');
+  assert.equal(halftimeGame.pauseReason, 'halftime');
+  assert.equal(halftimeGame.period, game.period);
+
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  };
+  saveStoredActiveGame(storage, 'halftime-test-account', halftimeGame);
+  const restored = readStoredActiveGame(storage, 'halftime-test-account');
+  assert.equal(restored?.status, 'paused');
+  assert.equal(restored?.pauseReason, 'halftime');
+
+  const resumed = resumeGame(restored!);
+  assert.equal(resumed.status, 'live');
+  assert.equal(resumed.pauseReason, undefined);
+  assert.equal(endGame(halftimeGame, new Date('2026-09-17T13:00:00Z')).pauseReason, undefined);
+
+  let changedGame = game;
+  const rule = getSportRule('soccer');
+  const renderGame = () => createElement(LiveTrackerGame, {
+    currentGame: changedGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+  let renderer!: ReturnType<typeof create>;
+  act(() => {
+    renderer = create(renderGame());
+  });
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'button-pause-game-for-halftime' }).props['aria-label'], 'Pause game for halftime');
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-pause-game-for-halftime' }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(changedGame.pauseReason, 'halftime');
+  assert.equal(
+    renderer.root.findByProps({ 'data-testid': 'live-tracker-game-state' }).children
+      .filter((child) => typeof child === 'string')
+      .join(''),
+    'halftime',
+  );
+  assert.match(
+    renderer.root.findByProps({ 'data-testid': 'notice-live-tracker-paused' }).findAllByType('p')[0].children.join(''),
+    /Halftime break/,
+  );
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-toggle-live-game-pause' }).props.onClick();
+    renderer.update(renderGame());
+  });
+  assert.equal(changedGame.status, 'live');
+  assert.equal(changedGame.pauseReason, undefined);
 });
 
 test('the tracker hub button sits at the top and routes through its shared back handler', () => {

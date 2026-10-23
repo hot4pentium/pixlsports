@@ -60,6 +60,7 @@ import {
   mergeTrackerData,
   normalizeTrackerData,
   reconcileTrackerDataForSync,
+  pauseGame,
   readStoredActiveGame,
   readStoredTrackerConflict,
   readStoredTrackerSyncFailure,
@@ -77,6 +78,7 @@ import {
   updateStatEventAttribution,
   updateStatEventYards,
   undoStatEvent,
+  resumeGame,
   buildGameReport,
   type GameSession,
   type GameOutcome,
@@ -786,6 +788,9 @@ export function LiveTrackerGame({
   };
   const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
   const yardTrackingEnabled = isYardageTrackingAvailable(currentGame.sport) && currentGame.trackYards === true;
+  const halftimePauseAvailable = currentGame.sport === 'basketball'
+    || currentGame.sport === 'football'
+    || currentGame.sport === 'soccer';
 
   useEffect(() => {
     currentGameRef.current = currentGame;
@@ -983,7 +988,7 @@ export function LiveTrackerGame({
     <section data-testid="live-tracker-layout" className="grid min-w-0 w-full max-w-full gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
         <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 border-t-2 border-t-accent bg-[#0B1F3A] p-3 text-white clip-angled-sm sm:p-6" aria-live="polite">
-          <div className="flex min-w-0 items-center justify-between gap-3 pr-24 sm:pr-52"><span data-testid="live-tracker-game-state" className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className={`h-2 w-2 bg-current ${currentGame.status === 'live' ? 'animate-pulse' : ''}`} />{currentGame.status}</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
+          <div className="flex min-w-0 items-center justify-between gap-3 pr-24 sm:pr-52"><span data-testid="live-tracker-game-state" className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className={`h-2 w-2 bg-current ${currentGame.status === 'live' ? 'animate-pulse' : ''}`} />{currentGame.pauseReason === 'halftime' ? 'halftime' : currentGame.status}</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
           <p data-testid="live-tracker-sport" className="mt-2 truncate text-xs font-bold uppercase tracking-widest text-white/70">{rule.label}</p>
           <p data-testid="live-tracker-matchup" className="mt-3 min-w-0 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
           <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
@@ -1006,7 +1011,18 @@ export function LiveTrackerGame({
             <span className="shrink-0 text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{phaseLabel} {currentGame.period}</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 sm:mt-7">
-            <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: game.status === 'paused' ? 'live' : 'paused' }))} data-testid="button-toggle-live-game-pause" className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
+            <button type="button" onClick={() => updateCurrentGame((game) => game.status === 'paused' ? resumeGame(game) : pauseGame(game))} data-testid="button-toggle-live-game-pause" className="min-h-11 border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
+            {halftimePauseAvailable && currentGame.status === 'live' && (
+              <button
+                type="button"
+                onClick={() => updateCurrentGame((game) => pauseGame(game, 'halftime'))}
+                aria-label="Pause game for halftime"
+                data-testid="button-pause-game-for-halftime"
+                className="min-h-11 border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-primary hover:border-primary hover:bg-primary/10 sm:px-4 sm:py-3"
+              >
+                Halftime
+              </button>
+            )}
             <button type="button" onClick={() => updateCurrentGame(advanceGamePeriod)} aria-label={`Advance to ${phaseLabel} ${currentGame.period + 1}`} data-testid="button-advance-game-period" className="min-h-11 border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">Next {phaseLabel}</button>
           </div>
           <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 sm:right-5 sm:top-5" data-testid="live-tracker-capture-controls">
@@ -1050,9 +1066,9 @@ export function LiveTrackerGame({
         <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-accent">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
         {currentGame.status === 'paused' && (
           <div role="status" className="mb-5 border border-primary/40 bg-primary/10 p-4 text-sm" data-testid="notice-live-tracker-paused">
-            <p className="font-bold">Game paused. Resume to record stats.</p>
+            <p className="font-bold">{currentGame.pauseReason === 'halftime' ? 'Halftime break. Resume when play restarts.' : 'Game paused. Resume to record stats.'}</p>
             <p className="mt-1 text-muted-foreground">Stat taps are not recorded while paused. Your existing stats are kept.</p>
-            <button type="button" onClick={() => updateCurrentGame((game) => ({ ...game, status: 'live' }))} className="mt-3 min-h-11 border border-primary px-4 font-bold text-primary-ink" data-testid="button-resume-live-stats">Resume tracking</button>
+            <button type="button" onClick={() => updateCurrentGame(resumeGame(currentGame))} className="mt-3 min-h-11 border border-primary px-4 font-bold text-primary-ink" data-testid="button-resume-live-stats">Resume tracking</button>
           </div>
         )}
         {isYardageTrackingAvailable(currentGame.sport) && (
@@ -2022,7 +2038,7 @@ export function StatTrackerPage() {
       setLocation('/studio');
       return;
     }
-    const pausedGame = { ...currentGame, status: 'paused' as const };
+    const pausedGame = pauseGame(currentGame);
     if (accountId && storageAccountId === accountId) {
       saveStoredActiveGame(window.localStorage, accountId, pausedGame);
     }

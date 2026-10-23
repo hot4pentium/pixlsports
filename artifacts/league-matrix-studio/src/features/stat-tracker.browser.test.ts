@@ -743,16 +743,22 @@ async function runTrackerBrowserChecks(soccerOnly = false) {
     await connection.evaluate('document.querySelector("[data-testid=\\"button-keep-tracking\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-live-game-leave-choice\\"]") === null', Boolean);
     assert.equal(await connection.evaluate<string>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).status', page.sessionId), 'live');
-    await connection.evaluate('document.querySelector("[data-testid=\\"button-toggle-live-game-pause\\"]").click()', page.sessionId);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-pause-game-for-halftime\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<string>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).pauseReason', page.sessionId), 'halftime');
+    assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"live-tracker-game-state\\"]").textContent', page.sessionId), /halftime/i);
+    assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]").textContent', page.sessionId), /Halftime break/);
     assert.equal(await connection.evaluate<boolean>(`['live-stat-shot-on-target', 'athlete-stat-target-shot-on-target', 'score-adjust-athlete-increase'].every(id => document.querySelector('[data-testid="' + id + '"]').matches(':disabled'))`, page.sessionId), true);
     assert.equal(await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"toggle-stat-favorite-shot-on-target\\"]")?.matches(":enabled")', page.sessionId), true);
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]").click()', page.sessionId);
     assert.equal(await connection.evaluate<number>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).events.length', page.sessionId), 3);
     await reloadPage(connection, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<string>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).pauseReason', page.sessionId), 'halftime');
+    assert.match(await connection.evaluate<string>('document.querySelector("[data-testid=\\"notice-live-tracker-paused\\"]").textContent', page.sessionId), /Halftime break/);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-resume-live-stats\\"]").click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-shot-on-target\\"]")?.matches(":enabled")', Boolean);
+    assert.equal(await connection.evaluate<string | null>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game")).pauseReason || null', page.sessionId), null);
     assert.equal(
       await connection.evaluate<boolean>(`document.querySelector('[data-testid="toggle-stat-favorite-shot-on-target"]')?.getAttribute('aria-pressed') === 'true' &&
         document.querySelector('[data-testid="live-stat-group-favorites"] [data-testid="live-stat-card-shot-on-target"]') !== null`, page.sessionId),

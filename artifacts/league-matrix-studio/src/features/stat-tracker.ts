@@ -72,6 +72,7 @@ export type GameSession = {
   sourceEventId?: string;
   sport: Sport;
   status: GameStatus;
+  pauseReason?: 'halftime';
   date: string;
   opponent: string;
   period: number;
@@ -364,10 +365,17 @@ function normalizeYardStats(value: unknown): YardStats {
 }
 
 function normalizeGameSession(game: GameSession): GameSession {
-  const { soccerPeriodFormat: _untrustedFormat, sourceEventId: _untrustedSourceEventId, finalCorrection: _untrustedCorrection, ...rest } = game;
+  const {
+    soccerPeriodFormat: _untrustedFormat,
+    sourceEventId: _untrustedSourceEventId,
+    finalCorrection: _untrustedCorrection,
+    pauseReason: _untrustedPauseReason,
+    ...rest
+  } = game;
   const finalCorrection = normalizeFinalCorrection(game.finalCorrection, game.sport, game.stats);
   return {
     ...rest,
+    ...(game.status === 'paused' && game.pauseReason === 'halftime' ? { pauseReason: 'halftime' as const } : {}),
     ...(typeof game.sourceEventId === 'string' && game.sourceEventId.trim()
       ? { sourceEventId: game.sourceEventId }
       : {}),
@@ -851,7 +859,24 @@ export function endGame(
   scoreRecorded = game.scoreRecorded ?? false,
 ): GameSession {
   if (game.status === 'final') return game;
-  return { ...game, status: 'final', scoreRecorded, endedAt: now.toISOString() };
+  const { pauseReason: _pauseReason, ...gameWithoutPauseReason } = game;
+  return { ...gameWithoutPauseReason, status: 'final', scoreRecorded, endedAt: now.toISOString() };
+}
+
+export function pauseGame(game: GameSession, reason?: GameSession['pauseReason']): GameSession {
+  if (game.status === 'paused' || game.status === 'final') return game;
+  const { pauseReason: _pauseReason, ...gameWithoutPauseReason } = game;
+  return {
+    ...gameWithoutPauseReason,
+    status: 'paused',
+    ...(reason ? { pauseReason: reason } : {}),
+  };
+}
+
+export function resumeGame(game: GameSession): GameSession {
+  if (game.status !== 'paused') return game;
+  const { pauseReason: _pauseReason, ...gameWithoutPauseReason } = game;
+  return { ...gameWithoutPauseReason, status: 'live' };
 }
 
 export function applyFinalGameCorrection(
