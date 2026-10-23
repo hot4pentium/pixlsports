@@ -445,7 +445,7 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       });
       setMessage(response.status === 'active'
         ? 'Access restored. The athlete can sign in and edit this card.'
-        : 'Invitation sent. The athlete can edit the linked HYPE Card and add a favorite-moment note after signing in.');
+        : 'Invitation sent. The recipient can sign in using the invited email and follow the email instructions to access this HYPE Card.');
       try {
         await refreshInvitation();
       } catch {
@@ -500,7 +500,7 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       ) : (
         <div className="mt-5">
           <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            New invitations connect to the HYPE Card already shown in the Showcase. Use a separate athlete email that does not already have a Pixl Sports sign-in. The athlete can edit its design and add one short favorite-moment note; page settings and sharing stay with you.
+            New invitations connect to the HYPE Card already shown in the Showcase. You can invite a new or existing Pixl Sports account. Existing accounts must accept the invitation and keep their own account permissions. The recipient can edit this card’s design and add one short favorite-moment note; page settings and sharing stay with you.
           </p>
           {invitationQuery.isError && (
             <p className="mb-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2 text-sm" role="alert">

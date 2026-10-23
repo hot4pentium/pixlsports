@@ -3285,6 +3285,12 @@ export const RevokeAthleteInviteEditorAccessResponse = zod.void()
 
 
 /**
+ * @summary Accept a card-specific invitation without changing the existing account
+ */
+export const AcceptAthleteEditorAccessResponse = zod.void()
+
+
+/**
  * @summary Claim and load the signed-in athlete's limited editor access
  */
 export const getAthleteEditorAccessResponseFavoriteMomentMax = 160;
@@ -3292,6 +3298,8 @@ export const getAthleteEditorAccessResponseFavoriteMomentMax = 160;
 
 
 export const GetAthleteEditorAccessResponse = zod.object({
+  "status": zod.enum(['pending', 'active']).optional(),
+  "existingAccount": zod.boolean().optional(),
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
   "teamName": zod.string(),

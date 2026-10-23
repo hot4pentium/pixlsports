@@ -143,7 +143,11 @@ window.fetch = async (input,init) => {
       const body=JSON.parse(init.body);window.__appearanceSaves.push(body);
       return new Response(JSON.stringify({cardAppearance:body}),{status:200,headers:{'Content-Type':'application/json'}});
     }
-    if(url.endsWith('/api/athlete-editor/access'))return new Response(JSON.stringify({inviteToken:card.inviteToken,athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,sport:card.sport,jerseyNumber:'17',position:'',projectId:null,favoriteMoment:state.favoriteMoment}),{status:200,headers:{'Content-Type':'application/json'}});
+    if(url.endsWith('/api/athlete-editor/access/accept')&&init?.method==='POST'){
+      if(state.rejectAcceptance)return new Response(JSON.stringify({error:'Invitation revoked'}),{status:403,headers:{'Content-Type':'application/json'}});
+      state.editorAccessStatus='active';return new Response(null,{status:204});
+    }
+    if(url.endsWith('/api/athlete-editor/access'))return new Response(JSON.stringify({inviteToken:card.inviteToken,athleteName:card.athleteName,teamName:card.teamName,seasonName:card.seasonName,sport:card.sport,jerseyNumber:'17',position:'',projectId:null,favoriteMoment:state.favoriteMoment,status:state.editorAccessStatus||'active',existingAccount:state.existingAccount||false}),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/api/athlete-editor/card/favorite-moment')&&init?.method==='PATCH'){
       const body=JSON.parse(init.body);window.__momentSaves.push(body);state.favoriteMoment=body.favoriteMoment.trim()||null;
       return new Response(JSON.stringify({favoriteMoment:state.favoriteMoment}),{status:200,headers:{'Content-Type':'application/json'}});
@@ -230,6 +234,18 @@ test('Showcase keeps the HYPE Card central and the athlete moment parent-control
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?mode=athlete-home` });
     await browser.wait(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`);
+    await browser.evaluate(`window.__update({editorAccessStatus:'pending',existingAccount:true})`);
+    await browser.wait(`document.querySelector('[data-testid="card-editor-acceptance"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`), null, 'an existing account cannot edit before accepting');
+    await browser.evaluate(`window.__update({rejectAcceptance:true})`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-accept-card-invitation"]').click()`);
+    await browser.wait(`document.querySelector('[role="alert"]')?.textContent.includes('could not be accepted')`);
+    await browser.evaluate(`window.__update({rejectAcceptance:false})`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-accept-card-invitation"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('a[href="${base}/card-editor/design"]'))`), 'accepted accounts open the scoped design route rather than their owner Showcase');
+    assert.ok(await browser.evaluate(`document.body.textContent.includes('Back to my account')`));
+    await browser.evaluate(`window.__update({existingAccount:false})`);
     const note = 'x'.repeat(161);
     await browser.evaluate(`document.querySelector('[data-testid="input-athlete-favorite-moment"]').focus()`);
     await browser.send('Input.insertText', { text: note });

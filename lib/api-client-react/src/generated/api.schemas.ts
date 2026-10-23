@@ -1530,6 +1530,14 @@ export interface AthleteEditorInvitation {
   updatedAt: string | null;
 }
 
+export type AthleteEditorAccessStatus = typeof AthleteEditorAccessStatus[keyof typeof AthleteEditorAccessStatus];
+
+
+export const AthleteEditorAccessStatus = {
+  pending: 'pending',
+  active: 'active',
+} as const;
+
 export type AthleteEditorAccessSport = typeof AthleteEditorAccessSport[keyof typeof AthleteEditorAccessSport];
 
 
@@ -1542,6 +1550,8 @@ export const AthleteEditorAccessSport = {
 } as const;
 
 export interface AthleteEditorAccess {
+  status?: AthleteEditorAccessStatus;
+  existingAccount?: boolean;
   inviteToken: string;
   athleteName: string;
   teamName: string;

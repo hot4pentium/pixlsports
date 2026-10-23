@@ -4372,6 +4372,80 @@ export const useRevokeAthleteInviteEditorAccess = <TError = ErrorType<Unauthoriz
       return useMutation(getRevokeAthleteInviteEditorAccessMutationOptions(options));
     }
 
+export const getAcceptAthleteEditorAccessUrl = () => {
+
+
+
+
+  return `/api/athlete-editor/access/accept`
+}
+
+/**
+ * @summary Accept a card-specific invitation without changing the existing account
+ */
+export const acceptAthleteEditorAccess = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getAcceptAthleteEditorAccessUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcceptAthleteEditorAccessMutationKey = () => ['acceptAthleteEditorAccess'] as const;
+
+export const getAcceptAthleteEditorAccessMutationOptions = <TError = ErrorType<UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptAthleteEditorAccess>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptAthleteEditorAccess>>, TError,void, TContext> => {
+
+const mutationKey = getAcceptAthleteEditorAccessMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptAthleteEditorAccess>>, void> = () => {
+
+
+          return  acceptAthleteEditorAccess(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptAthleteEditorAccessMutationResult = NonNullable<Awaited<ReturnType<typeof acceptAthleteEditorAccess>>>
+
+    export type AcceptAthleteEditorAccessMutationError = ErrorType<UnauthorizedResponse | Error>
+
+
+    /**
+ * @summary Accept a card-specific invitation without changing the existing account
+ */
+export const useAcceptAthleteEditorAccess = <TError = ErrorType<UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptAthleteEditorAccess>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptAthleteEditorAccess>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAcceptAthleteEditorAccessMutationOptions(options));
+    }
+
 export const getGetAthleteEditorAccessUrl = () => {
 
 

@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AthleteEditorAccessSport } from './athleteEditorAccessSport';
+import type { AthleteEditorAccessStatus } from './athleteEditorAccessStatus';
 
 export interface AthleteEditorAccess {
+  status?: AthleteEditorAccessStatus;
+  existingAccount?: boolean;
   inviteToken: string;
   athleteName: string;
   teamName: string;

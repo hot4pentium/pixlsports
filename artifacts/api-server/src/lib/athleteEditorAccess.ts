@@ -32,7 +32,8 @@ export async function getLatestAthleteEditorAccessForInvite(inviteId: string): P
 }
 
 export async function isAthleteEditorInvitationIdentity(userId: string): Promise<boolean> {
-  if (await getAthleteEditorAccessForUser(userId)) return true;
+  const access = await getAthleteEditorAccessForUser(userId);
+  if (access && !access.existingAccount) return true;
   const user = await createAthleteEditorClerkClient().users.getUser(userId);
   const metadata = user.publicMetadata as Record<string, unknown> | null;
   const accessId = metadata?.[ATHLETE_EDITOR_METADATA_KEY];

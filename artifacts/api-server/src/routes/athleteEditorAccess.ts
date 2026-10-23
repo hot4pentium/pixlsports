@@ -27,8 +27,16 @@ import {
   getLatestAthleteEditorAccessForInvite,
 } from "../lib/athleteEditorAccess";
 import { markAccountProvisioned } from "../lib/accountProvisioning";
+import { getAccountLifecycleSnapshot } from "../lib/accountLifecycle";
+import { sendExistingAccountCardInvitation } from "../lib/athleteEditorInvitationEmail";
 
+export function createAthleteEditorAccessRouter(dependencies: {
+  createClerk?: typeof createAthleteEditorClerkClient;
+  sendInvitation?: typeof sendExistingAccountCardInvitation;
+} = {}) {
 const router: IRouter = Router();
+const createClerk = dependencies.createClerk ?? createAthleteEditorClerkClient;
+const sendInvitation = dependencies.sendInvitation ?? sendExistingAccountCardInvitation;
 
 function verifiedEmailMatches(user: {
   emailAddresses?: Array<{
@@ -155,9 +163,10 @@ router.post("/athlete-invites/:inviteToken/editor-access", requireAuth, async (r
   }
 
   const emailAddress = parsed.data.emailAddress.trim().toLowerCase();
-  const clerk = createAthleteEditorClerkClient();
+  const clerk = createClerk();
   const previousAccess = await getLatestAthleteEditorAccessForInvite(invite.id);
   if (previousAccess?.status === "revoked"
+    && !previousAccess.existingAccount
     && previousAccess.athleteClerkUserId
     && previousAccess.athleteEmail === emailAddress) {
     try {
@@ -199,7 +208,77 @@ router.post("/athlete-invites/:inviteToken/editor-access", requireAuth, async (r
   try {
     const existingUsers = await clerk.users.getUserList({ emailAddress: [emailAddress], limit: 1 });
     if (existingUsers.data.length) {
-      res.status(409).json({ error: "That email already has a Pixl Sports sign-in. Use a separate athlete email." });
+      const recipient = existingUsers.data[0];
+      if (recipient.id === ownerClerkUserId) {
+        res.status(409).json({ error: "You already own this HYPE Card and can edit it without an invitation." });
+        return;
+      }
+      if (typeof (recipient.publicMetadata as Record<string, unknown>)[ATHLETE_EDITOR_METADATA_KEY] === "string") {
+        res.status(409).json({ error: "This athlete-only sign-in is already reserved for a HYPE Card. Use its original invitation." });
+        return;
+      }
+      if (!verifiedEmailMatches(recipient, emailAddress)) {
+        res.status(409).json({ error: "Ask the recipient to verify this email in their Pixl Sports account before inviting them." });
+        return;
+      }
+      if (projectId) {
+        res.status(400).json({ error: "Invite existing accounts to the Showcase HYPE Card, not a legacy project." });
+        return;
+      }
+      const linkedAccess = await getAthleteEditorAccessForUser(recipient.id);
+      if (linkedAccess && !(linkedAccess.id === previousAccess?.id
+        && linkedAccess.existingAccount && linkedAccess.status === "revoked")) {
+        res.status(409).json({ error: "This account is already linked to another HYPE Card invitation." });
+        return;
+      }
+      let pending: typeof athleteEditorAccessTable.$inferSelect | undefined;
+      try {
+        if (linkedAccess) {
+          [pending] = await db.update(athleteEditorAccessTable)
+            .set({ status: "pending", invitationDelivered: false, updatedAt: new Date() })
+            .where(and(eq(athleteEditorAccessTable.id, linkedAccess.id), eq(athleteEditorAccessTable.status, "revoked")))
+            .returning();
+        } else {
+          [pending] = await db.insert(athleteEditorAccessTable).values({
+            ownerClerkUserId, athleteInviteId: invite.id, projectId: null,
+            athleteEmail: emailAddress, athleteClerkUserId: recipient.id,
+            existingAccount: true, invitationDelivered: false, status: "pending",
+          }).returning();
+        }
+        if (!pending) {
+          res.status(409).json({ error: "Invitation status changed. Refresh and try again." });
+          return;
+        }
+        await sendInvitation({
+          emailAddress, athleteName: invite.athleteName, accessId: pending.id,
+          revision: pending.updatedAt.getTime().toString(),
+          // The published custom domain is verified through deployment configuration.
+          origin: process.env.NODE_ENV === "production"
+            ? "https://pixlsports.com" : (req.get("origin") ?? `${req.protocol}://${req.get("host")}`),
+        });
+        const [delivered] = await db.update(athleteEditorAccessTable)
+          .set({ invitationDelivered: true, updatedAt: new Date() })
+          .where(and(eq(athleteEditorAccessTable.id, pending.id), eq(athleteEditorAccessTable.status, "pending")))
+          .returning();
+        if (!delivered) {
+          res.status(409).json({ error: "The invitation was revoked while its email was sending." });
+          return;
+        }
+        pending = delivered;
+      } catch (error) {
+        if (pending) {
+          await db.update(athleteEditorAccessTable).set({ status: "revoked", updatedAt: new Date() })
+            .where(and(eq(athleteEditorAccessTable.id, pending.id), eq(athleteEditorAccessTable.status, "pending")));
+        }
+        if (isUniqueConflict(error)) {
+          res.status(409).json({ error: "This HYPE Card or account already has an invitation." });
+          return;
+        }
+        req.log.error({ err: error }, "Unable to email existing-account card invitation");
+        res.status(502).json({ error: "The invitation email could not be sent. Try again." });
+        return;
+      }
+      res.status(201).json(CreateAthleteInviteEditorAccessResponse.parse(invitationResponse(pending)));
       return;
     }
   } catch (error) {
@@ -281,7 +360,7 @@ router.delete("/athlete-invites/:inviteToken/editor-access", requireAuth, async 
   }
   if (access.status === "pending" && access.clerkInvitationId) {
     try {
-      await createAthleteEditorClerkClient().invitations.revokeInvitation(access.clerkInvitationId);
+      await createClerk().invitations.revokeInvitation(access.clerkInvitationId);
     } catch (error) {
       req.log.warn({ err: error }, "Clerk invitation could not be revoked; database access will still be blocked");
     }
@@ -292,9 +371,37 @@ router.delete("/athlete-invites/:inviteToken/editor-access", requireAuth, async 
   res.sendStatus(204);
 });
 
+router.post("/athlete-editor/access/accept", requireProjectEditorAuth, async (req, res): Promise<void> => {
+  const userId = getRequiredClerkUserId(res);
+  const access = await getAthleteEditorAccessForUser(userId);
+  if (!access?.existingAccount || !access.invitationDelivered || !["pending", "active"].includes(access.status)) {
+    res.status(403).json({ error: "No active invitation is available for this account." });
+    return;
+  }
+  const user = await createClerk().users.getUser(userId);
+  if (!verifiedEmailMatches(user, access.athleteEmail)) {
+    res.status(403).json({ error: "Sign in with the invitation's verified email to accept it." });
+    return;
+  }
+  const [accepted] = await db.update(athleteEditorAccessTable)
+    .set({ status: "active", updatedAt: new Date() })
+    .where(and(
+      eq(athleteEditorAccessTable.id, access.id),
+      eq(athleteEditorAccessTable.athleteClerkUserId, userId),
+      eq(athleteEditorAccessTable.existingAccount, true),
+      eq(athleteEditorAccessTable.invitationDelivered, true),
+      inArray(athleteEditorAccessTable.status, ["pending", "active"]),
+    )).returning({ id: athleteEditorAccessTable.id });
+  if (!accepted) {
+    res.status(403).json({ error: "The invitation is no longer active." });
+    return;
+  }
+  res.sendStatus(204);
+});
+
 router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, res): Promise<void> => {
   const athleteClerkUserId = getRequiredClerkUserId(res);
-  const clerk = createAthleteEditorClerkClient();
+  const clerk = createClerk();
   let user: Awaited<ReturnType<typeof clerk.users.getUser>>;
   try {
     user = await clerk.users.getUser(athleteClerkUserId);
@@ -339,8 +446,8 @@ router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, r
     access = claimed ?? await getAthleteEditorAccessForUser(athleteClerkUserId);
   }
 
-  if (!access || access.status !== "active"
-    || metadataAccessId !== access.id
+  if (!access || !access.invitationDelivered || !(access.status === "active" || (access.existingAccount && access.status === "pending"))
+    || (!access.existingAccount && metadataAccessId !== access.id)
     || !verifiedEmailMatches(user, access.athleteEmail)) {
     res.status(403).json({ error: "Athlete editor access is no longer active." });
     return;
@@ -369,12 +476,20 @@ router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, r
     return;
   }
 
+  if (access.existingAccount) {
+    const lifecycle = await getAccountLifecycleSnapshot(athleteClerkUserId);
+    if (lifecycle.identityBlocked || lifecycle.adminSuspended || lifecycle.status !== "active") {
+      res.status(403).json({ error: "Restore your Pixl Sports account before using card editing access." });
+      return;
+    }
+  } else {
   await db.insert(accountAccessTable).values({
     ownerClerkUserId: athleteClerkUserId,
     role: "fan",
     accessMode: "full",
   }).onConflictDoNothing({ target: accountAccessTable.ownerClerkUserId });
   await markAccountProvisioned(athleteClerkUserId);
+  }
 
   const projectRecord = projectData && typeof projectData === "object"
     ? projectData as Record<string, unknown>
@@ -383,6 +498,8 @@ router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, r
     ? invite.cardAppearance
     : {};
   res.json(GetAthleteEditorAccessResponse.parse({
+    status: access.status,
+    existingAccount: access.existingAccount,
     inviteToken: invite.publicToken,
     athleteName: invite.athleteName,
     teamName: invite.teamName,
@@ -399,7 +516,7 @@ router.get("/athlete-editor/access", requireAuthenticatedIdentity, async (req, r
   }));
 });
 
-router.patch("/athlete-editor/card/favorite-moment", requireAuthenticatedIdentity, async (req, res): Promise<void> => {
+router.patch("/athlete-editor/card/favorite-moment", requireProjectEditorAuth, async (req, res): Promise<void> => {
   const parsed = UpdateAthleteEditorFavoriteMomentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Enter a favorite moment of 160 characters or fewer." });
@@ -503,4 +620,7 @@ router.patch("/athlete-editor/card/appearance", requireProjectEditorAuth, async 
   res.json(UpdateAthleteEditorCardAppearanceResponse.parse({ cardAppearance: updated.cardAppearance }));
 });
 
-export default router;
+return router;
+}
+
+export default createAthleteEditorAccessRouter();

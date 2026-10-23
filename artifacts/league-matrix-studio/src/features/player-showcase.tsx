@@ -1,5 +1,5 @@
 import { ArrowRight, Check, Copy, ExternalLink, ShieldCheck, Zap } from 'lucide-react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import {
   getListAthleteInvitesQueryKey,
   useListAthleteInvites,
   useGetAthleteEditorAccess,
+  useAcceptAthleteEditorAccess,
   getGetAthleteEditorAccessQueryKey,
   getGetAthleteFanCardQueryKey,
   useGetAthleteFanCard,
@@ -223,17 +224,44 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
 }
 
 export function AthleteShowcaseHome() {
+  const acceptInvitation = useAcceptAthleteEditorAccess();
+  const [acceptError, setAcceptError] = useState('');
   const accessQuery = useGetAthleteEditorAccess({
     query: {
       queryKey: getGetAthleteEditorAccessQueryKey(),
       refetchOnMount: 'always',
       staleTime: 0,
       retry: false,
+      refetchInterval: 30_000,
     },
   });
   const access = accessQuery.data;
   if (accessQuery.isLoading) {
     return <AthleteStudioShell><main className="grid min-h-[70dvh] place-items-center px-5"><div className="w-full max-w-xl space-y-4"><div className="h-4 w-28 animate-pulse bg-primary/20" /><div className="h-14 w-3/4 animate-pulse bg-muted" /><div className="h-36 animate-pulse bg-muted" /></div></main></AthleteStudioShell>;
+  }
+  if (!accessQuery.isError && access?.status === 'pending') {
+    return (
+      <AthleteStudioShell><main className="mx-auto w-full max-w-3xl px-5 py-12">
+        <section className="border border-border bg-card p-7" data-testid="card-editor-acceptance">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">HYPE Card invitation</p>
+          <h1 className="mt-4 font-display text-4xl uppercase">Edit {access.athleteName}’s HYPE Card</h1>
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Accept to edit this card’s design and favorite-moment note. Your existing account and permissions will stay unchanged. The owner keeps control of publishing, privacy, sharing, and account settings.</p>
+          <button type="button" disabled={acceptInvitation.isPending} onClick={async () => {
+            setAcceptError('');
+            try {
+              await acceptInvitation.mutateAsync();
+              await accessQuery.refetch();
+            } catch {
+              setAcceptError('The invitation could not be accepted. It may have been revoked. Refresh and try again.');
+            }
+          }} className="mt-6 min-h-11 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-accept-card-invitation">
+            {acceptInvitation.isPending ? 'Accepting…' : 'Accept invitation'}
+          </button>
+          {acceptError && <p role="alert" className="mt-4 text-sm">{acceptError}</p>}
+          <Link href="/studio" className="ml-5 inline-flex min-h-11 items-center text-sm underline">Back to my account</Link>
+        </section>
+      </main></AthleteStudioShell>
+    );
   }
   if (accessQuery.isError || !access) {
     return (
@@ -254,7 +282,8 @@ export function AthleteShowcaseHome() {
   } as SupporterProfile;
   return (
     <AthleteStudioShell><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8" data-testid="athlete-showcase-home">
-      <AthleteShowcaseBody profile={profile} projectId={access.projectId} inviteToken={access.inviteToken} />
+      <AthleteShowcaseBody profile={profile} projectId={access.projectId} inviteToken={access.inviteToken} existingAccount={access.existingAccount} />
+      {access.existingAccount && <Link href="/studio" className="mt-4 inline-flex min-h-11 items-center text-sm font-bold underline">Back to my account</Link>}
       <AthleteFavoriteMomentEditor inviteToken={access.inviteToken} initialValue={access.favoriteMoment} />
       <section className="mt-4 border border-border bg-primary/5 p-5 sm:p-7">
         <ShieldCheck className="h-5 w-5 text-primary" />
@@ -265,10 +294,11 @@ export function AthleteShowcaseHome() {
   );
 }
 
-function AthleteShowcaseBody({ profile, projectId, inviteToken }: {
+function AthleteShowcaseBody({ profile, projectId, inviteToken, existingAccount = false }: {
   profile: SupporterProfile;
   projectId: string | null;
   inviteToken: string;
+  existingAccount?: boolean;
 }) {
   const cardQuery = useGetAthleteFanCard(inviteToken, {
     query: {
@@ -285,7 +315,9 @@ function AthleteShowcaseBody({ profile, projectId, inviteToken }: {
       : cardQuery.isError || !linkedCard ? 'unavailable' : 'ready';
   const cardEditHref = projectId
     ? `/studio/player-showcase/hype-card/${encodeURIComponent(projectId)}`
-    : '/studio/player-showcase/hype-card';
+    : existingAccount
+      ? '/card-editor/design'
+      : '/studio/player-showcase/hype-card';
   return (
     <PlayerShowcaseContent
       profile={profile}
@@ -375,6 +407,7 @@ export function AthleteFanCardAppearancePage() {
   if (accessQuery.isError || !access) {
     return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">This invite is unavailable.</h1><p className="mt-3 text-sm text-muted-foreground">Ask your parent or guardian to confirm your athlete design access.</p></section></main></AthleteStudioShell>;
   }
+  if (access.status === 'pending') return <AthleteShowcaseHome />;
   if (access.projectId) {
     return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7"><h1 className="font-display text-4xl uppercase">This card uses a legacy editor.</h1><p className="mt-3 text-sm text-muted-foreground">Open the linked HYPE Card from your Showcase home.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Showcase</Link></section></main></AthleteStudioShell>;
   }
@@ -382,7 +415,7 @@ export function AthleteFanCardAppearancePage() {
     return <AthleteStudioShell><main className="grid min-h-[70dvh] place-items-center px-5"><div className="h-40 w-full max-w-2xl animate-pulse bg-muted" /></main></AthleteStudioShell>;
   }
   if (cardQuery.isError || !cardQuery.data || cardQuery.data.inviteToken !== access.inviteToken) {
-    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">HYPE Card unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Your parent may have paused the public card. Ask them to resume it before editing.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Showcase</Link></section></main></AthleteStudioShell>;
+    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">HYPE Card unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Your parent may have paused the public card. Ask them to resume it before editing.</p><Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Showcase</Link></section></main></AthleteStudioShell>;
   }
   const profile = {
     athleteName: access.athleteName,
@@ -392,7 +425,7 @@ export function AthleteFanCardAppearancePage() {
   return (
     <AthleteStudioShell>
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8">
-        <Link href="/studio/player-showcase" className="mb-5 inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary">Back to Showcase</Link>
+        <Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mb-5 inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary">Back to Showcase</Link>
         <h1 className="mb-6 font-display text-4xl uppercase">Edit your HYPE Card design</h1>
         <FanCardAppearanceManager invite={cardQuery.data} profile={profile} athleteEditor />
       </main>
@@ -400,14 +433,29 @@ export function AthleteFanCardAppearancePage() {
   );
 }
 
+export function ExistingAccountCardEditorPage({ design = false }: { design?: boolean }) {
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return <main className="p-8" role="status">Loading invitation…</main>;
+  if (!isSignedIn) {
+    const redirect = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/card-editor`;
+    return <main className="mx-auto max-w-2xl px-5 py-16">
+      <h1 className="font-display text-4xl uppercase">Your HYPE Card invitation</h1>
+      <p className="mt-4 text-sm text-muted-foreground">Sign in with the verified email address that received the invitation. Only that account can accept it.</p>
+      <Link href={`/sign-in?redirect_url=${encodeURIComponent(redirect)}`} className="mt-6 inline-flex min-h-11 items-center bg-primary px-5 text-sm font-bold text-primary-foreground">Sign in to review invitation</Link>
+    </main>;
+  }
+  return design ? <AthleteFanCardAppearancePage /> : <AthleteShowcaseHome />;
+}
+
 export function AthleteStudioShell({ children }: { children: ReactNode }) {
   const { signOut } = useClerk();
+  const [location] = useLocation();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   return (
     <div className="noise min-h-dvh bg-background text-foreground">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-5 sm:px-8">
-          <Link href="/studio/player-showcase" className="inline-flex items-center" aria-label="Athlete showcase home">
+          <Link href={location.startsWith('/card-editor') ? '/card-editor' : '/studio/player-showcase'} className="inline-flex items-center" aria-label="Athlete showcase home">
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-10 w-auto max-w-[160px] object-contain" />
           </Link>
           <button type="button" onClick={() => void signOut({ redirectUrl: basePath || '/' })} className="min-h-10 border border-border px-4 text-[10px] font-bold uppercase tracking-widest hover:border-primary hover:text-primary">Sign out</button>

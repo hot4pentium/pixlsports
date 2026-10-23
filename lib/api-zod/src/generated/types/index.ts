@@ -45,6 +45,7 @@ export * from './adminSupportEmailReplyRejectionList';
 export * from './adminSupportTicketList';
 export * from './athleteEditorAccess';
 export * from './athleteEditorAccessSport';
+export * from './athleteEditorAccessStatus';
 export * from './athleteEditorCardAppearance';
 export * from './athleteEditorInvitation';
 export * from './athleteEditorInvitationInput';

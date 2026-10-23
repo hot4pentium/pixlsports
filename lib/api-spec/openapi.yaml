@@ -1140,6 +1140,22 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-editor/access/accept:
+    post:
+      operationId: acceptAthleteEditorAccess
+      tags: [athlete-editor]
+      summary: Accept a card-specific invitation without changing the existing account
+      responses:
+        "204":
+          description: Invitation accepted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: No matching verified invitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /athlete-editor/access:
     get:
       operationId: getAthleteEditorAccess
@@ -4207,6 +4223,8 @@ components:
       type: object
       required: [inviteToken, athleteName, teamName, seasonName, sport, jerseyNumber, position, projectId, favoriteMoment]
       properties:
+        status: { type: string, enum: [pending, active] }
+        existingAccount: { type: boolean }
         inviteToken: { type: string }
         athleteName: { type: string }
         teamName: { type: string }

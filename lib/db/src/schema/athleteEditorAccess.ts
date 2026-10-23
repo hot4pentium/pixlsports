@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const athleteEditorAccessTable = pgTable("athlete_editor_access", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -9,6 +9,8 @@ export const athleteEditorAccessTable = pgTable("athlete_editor_access", {
   athleteEmail: text("athlete_email").notNull(),
   clerkInvitationId: text("clerk_invitation_id"),
   athleteClerkUserId: text("athlete_clerk_user_id"),
+  existingAccount: boolean("existing_account").notNull().default(false),
+  invitationDelivered: boolean("invitation_delivered").notNull().default(true),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

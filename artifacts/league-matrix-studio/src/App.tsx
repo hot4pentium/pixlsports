@@ -250,6 +250,9 @@ const AthleteShowcaseHome = lazy(() =>
 const AthleteFanCardAppearancePage = lazy(() =>
   import('@/features/player-showcase').then(({ AthleteFanCardAppearancePage }) => ({ default: AthleteFanCardAppearancePage })),
 );
+const ExistingAccountCardEditorPage = lazy(() =>
+  import('@/features/player-showcase').then(({ ExistingAccountCardEditorPage }) => ({ default: ExistingAccountCardEditorPage })),
+);
 const SupporterProfileView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterProfileView }) => ({ default: SupporterProfileView })),
 );
@@ -4175,6 +4178,8 @@ function ClerkProviderWithRoutes() {
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
+              <Route path="/card-editor/design"><ExistingAccountCardEditorPage design /></Route>
+              <Route path="/card-editor"><ExistingAccountCardEditorPage /></Route>
               <Route path="/studio/player-showcase/hype-card" component={AthleteFanCardAppearancePage} />
               <Route path="/studio/player-showcase/hype-card/:id"><AthleteHypeCardEditorRoute /></Route>
               <Route path="/studio/player-showcase/gear"><Redirect to="/studio/player-showcase" /></Route>

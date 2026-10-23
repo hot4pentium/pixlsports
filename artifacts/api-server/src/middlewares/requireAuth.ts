@@ -40,7 +40,7 @@ function activeAccountGuard(allowAthleteEditor: boolean): RequestHandler {
   res.locals.clerkUserId = userId;
   try {
     const athleteEditorAccess = await getAthleteEditorAccessForUser(userId);
-    if (athleteEditorAccess) {
+    if (athleteEditorAccess && !athleteEditorAccess.existingAccount) {
       if (!allowAthleteEditor || athleteEditorAccess.status !== "active") {
         res.status(403).json({
           error: "This sign-in is limited to its linked HYPE Card and athlete kit.",
