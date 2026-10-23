@@ -180,20 +180,39 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
   const statusLabel = getCardStatus(card);
   const [recommendationAnnouncement, setRecommendationAnnouncement] = useState('');
   const recommendationIdentity = card.eventId ?? card.id;
-  const previousRecommendation = useRef({ identity: recommendationIdentity, status: statusLabel, action: suggestedAction });
+  const previousRecommendation = useRef({
+    identity: recommendationIdentity,
+    status: statusLabel,
+    action: suggestedAction,
+    title,
+    announced: false,
+  });
   useEffect(() => {
     const previous = previousRecommendation.current;
-    previousRecommendation.current = { identity: recommendationIdentity, status: statusLabel, action: suggestedAction };
+    previousRecommendation.current = {
+      identity: recommendationIdentity,
+      status: statusLabel,
+      action: suggestedAction,
+      title,
+      announced: previous.identity === recommendationIdentity && previous.announced,
+    };
     if (!isDialogCard || !selected || !visible || card.isUnsavedDraft || previous.identity !== recommendationIdentity) {
       setRecommendationAnnouncement('');
+      previousRecommendation.current.announced = false;
       return;
     }
-    if (previous.status === statusLabel && previous.action === suggestedAction) return;
     const actionLabel = suggestedAction === 'prep' ? 'Prep'
       : suggestedAction === 'stats' ? 'View stats'
         : suggestedAction === 'share' ? 'Share'
           : suggestedAction === 'none' ? 'No suggested action' : 'Stat Tracker';
+    if (previous.status === statusLabel && previous.action === suggestedAction) {
+      if (previous.title !== title && previous.announced) {
+        setRecommendationAnnouncement(`Event Card ${title} is now ${statusLabel}. Suggested next: ${actionLabel}.`);
+      }
+      return;
+    }
     setRecommendationAnnouncement(`Event Card ${title} is now ${statusLabel}. Suggested next: ${actionLabel}.`);
+    previousRecommendation.current.announced = true;
   }, [isDialogCard, selected, visible, card.isUnsavedDraft, recommendationIdentity, statusLabel, suggestedAction, title]);
   const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
   const shareEventCard = async () => {

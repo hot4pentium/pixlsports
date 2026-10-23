@@ -30,7 +30,7 @@ type Props = {
   onOpenPrep: (trigger: HTMLButtonElement) => void;
   onOpenTracker: (trigger: HTMLButtonElement) => void;
   onSaveCalendarEvent: (event: SupporterEvent) => Promise<void>;
-  onChanged: (selectedId?: string) => void;
+  onChanged: (selectedId?: string, notice?: string, preserveLiveCard?: boolean) => void;
 };
 
 function initialChecklist(userId: string, card: GameOnDashboardEntry): LocalGamedayChecklist {
@@ -117,7 +117,7 @@ export function GameOnInlineEditor({
         void invalidateHypeCardEvents(queryClient);
       }
       setNotice(token ? 'Event Card saved. Find it in your Hype Card’s Events section when Allow events is on.' : 'Calendar event saved.');
-      onChanged(token ? `share:${token}` : `draft:${card.eventId}`);
+      onChanged(token ? `share:${token}` : `draft:${card.eventId}`, undefined, scheduledEvent?.status === 'live');
     } catch (caught) {
       setError(calendarSaved
         ? 'Calendar saved, but the Event Card could not be saved. Try again.'

@@ -592,7 +592,7 @@ export function SupporterDashboardView({
       kind: id.startsWith('share:') ? 'share' : 'event', id, nonce: (previous?.nonce ?? 0) + 1,
     });
   };
-  const handleGameOnCardChanged = (selectedId?: string, notice?: string) => {
+  const handleGameOnCardChanged = (selectedId?: string, notice?: string, preserveLiveCard = false) => {
     if (notice) {
       setGameOnCardOutcome(notice);
       window.setTimeout(() => {
@@ -607,7 +607,7 @@ export function SupporterDashboardView({
       }
       setNewCardDraft(null);
     }
-    setCardSelection(null);
+    if (!preserveLiveCard) setCardSelection(null);
   };
   const saveDashboardChecklistProgress = async (checkedItemIds: DashboardChecklistItemId[]) => {
     if (!onSaveDashboardChecklistProgress) return;

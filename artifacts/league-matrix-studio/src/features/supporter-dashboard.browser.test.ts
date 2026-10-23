@@ -5401,7 +5401,10 @@ test('the authenticated Supporter Hub restores the upcoming Event Card after rel
 });
 
 for (const openPanel of ['prep', 'details'] as const) {
-test(`an open Event Card updates its suggested action as the game changes stages with ${openPanel} open`, { concurrency: false }, async () => {
+test(openPanel === 'details'
+  ? 'saving Live Event Card details updates announcement wording once'
+  : 'an open Event Card updates its suggested action as the game changes stages with prep open',
+{ concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-event-card-suggested-action');
   const accountId = 'supporter-game-record-user';
@@ -6053,6 +6056,86 @@ test(`an open Event Card updates its suggested action as the game changes stages
     await connection.evaluate(`document.querySelector('[data-testid="button-open-game-on-card-draft:${eventId}"]').click()`, page.sessionId);
     await wait(`Boolean(document.querySelector('[data-testid="dialog-game-on-card-draft:${eventId}"]'))`);
     assert.equal(await readAnnouncement(), '', 'reopening a completed card must not replay an old announcement');
+
+    if (openPanel === 'details') {
+      await connection.evaluate(`(() => {
+        window.__savedDetailsAnnouncementMessages = [];
+        const statusSelector = '[data-testid="status-game-on-recommendation"]';
+        const inspect = (node, regions) => {
+          if (!(node instanceof Element)) return;
+          const closest = node.closest(statusSelector);
+          if (closest) regions.add(closest);
+          if (node.matches(statusSelector)) regions.add(node);
+          node.querySelectorAll(statusSelector).forEach((region) => regions.add(region));
+        };
+        window.__savedDetailsAnnouncementObserver = new MutationObserver((records) => {
+          const regions = new Set();
+          for (const record of records) {
+            if (record.type === 'characterData') inspect(record.target.parentElement, regions);
+            else inspect(record.target, regions);
+            for (const node of record.addedNodes) inspect(node, regions);
+          }
+          for (const region of regions) {
+            const message = region.textContent.trim();
+            if (message) window.__savedDetailsAnnouncementMessages.push(message);
+          }
+        });
+        window.__savedDetailsAnnouncementObserver.observe(document.body, {
+          childList: true, subtree: true, characterData: true,
+        });
+      })()`, page.sessionId);
+      await connection.evaluate(`window.__setSupporterDashboardEvents(
+        window.__getSupporterDashboardEvents().map(event => event.id === ${JSON.stringify(eventId)}
+          ? { ...event, status: 'live' }
+          : event)
+      )`, page.sessionId);
+      await wait(`document.querySelector('[data-testid="status-game-on-card-draft:${eventId}"]')?.dataset.status === 'live'`);
+      await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('Event Card vs Rivals is now Live.')`);
+      const originalLiveAnnouncement = await readAnnouncement();
+      assert.match(originalLiveAnnouncement, /^Event Card vs Rivals is now Live\./);
+
+      const liveDialogSelector = `[data-testid="dialog-game-on-card-draft:${eventId}"]`;
+      await connection.evaluate(`document.querySelector('${liveDialogSelector} [data-testid="button-edit-event-arrow-draft:${eventId}"]')?.click()`, page.sessionId);
+      const liveOpponentSelector = `${liveDialogSelector} [data-testid="input-inline-opponent"]`;
+      await wait(`Boolean(document.querySelector(${JSON.stringify(liveOpponentSelector)})?.getClientRects().length)`);
+      await connection.evaluate(`document.querySelector(${JSON.stringify(liveOpponentSelector)}).focus()`, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'rawKeyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2,
+      }, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2,
+      }, page.sessionId);
+      await connection.send('Input.insertText', { text: 'Updated Rivals' }, page.sessionId);
+      await wait(`document.querySelector(${JSON.stringify(liveOpponentSelector)})?.value === 'Updated Rivals'`);
+      await connection.evaluate(`document.querySelector('${liveDialogSelector} [data-testid="button-save-inline-event"]')?.click()`, page.sessionId);
+      await wait(`window.__getSupporterDashboardEvents().find(event => event.id === ${JSON.stringify(eventId)})?.opponent === 'Updated Rivals'`);
+      const updatedLiveAnnouncement = originalLiveAnnouncement.replace('Event Card vs Rivals', 'Event Card vs Updated Rivals');
+      await wait(`window.__savedDetailsAnnouncementMessages.includes(${JSON.stringify(updatedLiveAnnouncement)})`);
+      await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.trim() === ${JSON.stringify(updatedLiveAnnouncement)}`);
+      assert.deepEqual(await connection.evaluate('window.__savedDetailsAnnouncementMessages', page.sessionId), [
+        originalLiveAnnouncement,
+        updatedLiveAnnouncement,
+      ], 'saving changed Live event wording must announce the old and updated wording once each');
+      assert.deepEqual(await connection.evaluate(`window.__eventDetailsCalendarSaves.map(event => ({
+        opponent: event.opponent,
+        status: event.status,
+      }))`, page.sessionId), [{
+        opponent: 'Updated Rivals',
+        status: 'live',
+      }], 'the revised wording must come from the saved Live event details');
+
+      await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
+      await connection.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page.sessionId);
+      assert.equal(await readAnnouncement(), updatedLiveAnnouncement,
+        'an unchanged render must keep the saved wording visible without replaying it');
+      assert.deepEqual(await connection.evaluate('window.__savedDetailsAnnouncementMessages', page.sessionId), [
+        originalLiveAnnouncement,
+        updatedLiveAnnouncement,
+      ], 'an unchanged render must not announce the saved wording again');
+      await connection.evaluate('window.__savedDetailsAnnouncementObserver.disconnect()', page.sessionId);
+      await connection.evaluate(`document.querySelector('[aria-label="Close Event Card"]')?.click()`, page.sessionId);
+      await wait(`!document.querySelector(${JSON.stringify(liveDialogSelector)})`);
+    }
 
     const practiceId = 'suggested-action-practice';
     await connection.evaluate(`window.__setSupporterDashboardEvents([{
