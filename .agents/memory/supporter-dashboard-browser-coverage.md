@@ -33,6 +33,12 @@ Card-flip focus must follow the committed visibility and inert state: focus a he
 
 **How to apply:** Scope focus movement to the open card and transfer it after each open or close state has rendered.
 
+For Event Card panel round trips, assert modal lifetime on the dialog wrapper, panel-open state on the card, and focus on the visible control for each face.
+
+**Why:** The dialog remains mounted while its card flips, and state attributes belong to the card rather than the modal wrapper; mixing those layers can make a valid close look like a failure or miss a focus regression.
+
+**How to apply:** After closing an editor, verify focus reaches the visible edit arrow; after reopening, verify the editor is visible and its heading receives focus before checking later draft focus.
+
 At extreme effective zoom widths, page-level horizontal overflow can come from fixed dashboard chrome rather than the Game On collection.
 
 **Why:** A narrow Chromium viewport exposed a fixed mobile navigation row wider than the viewport even when card content remained contained.

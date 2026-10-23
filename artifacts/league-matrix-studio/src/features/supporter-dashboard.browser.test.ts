@@ -5768,6 +5768,111 @@ test(`an open Event Card updates its suggested action as the game changes stages
         window.__activeRecommendationControl.focus();
       })()`, page.sessionId);
       await assertOpenPanelAnnouncement();
+    } else {
+      const dialogSelector = `[data-testid="dialog-game-on-card-draft:${eventId}"]`;
+      const locationSelector = `${dialogSelector} [data-testid="input-inline-location"]`;
+      const editArrowTestId = `button-edit-event-arrow-draft:${eventId}`;
+      const editArrowSelector = `${dialogSelector} [data-testid="${editArrowTestId}"]`;
+      const editorHeadingSelector = `${dialogSelector} [data-testid="game-on-inline-calendar-draft:${eventId}"] .game-on-inline__section h3`;
+      const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.';
+      const liveChanges = [liveAnnouncement];
+      const assertDetailsFlip = async (editorOpen: boolean) => {
+        await connection!.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page!.sessionId);
+        await wait(`Array.from(document.querySelector(${JSON.stringify(dialogSelector)})
+          ?.querySelector('.game-on-collection__flip-inner')?.getAnimations() ?? [])
+          .every(animation => animation.playState !== 'running')`);
+        assert.deepEqual(await connection!.evaluate(`(() => {
+          const dialog = document.querySelector(${JSON.stringify(dialogSelector)});
+          const region = dialog?.querySelector('[data-testid="status-game-on-recommendation"]');
+          const front = dialog?.querySelector('.game-on-collection__flip-front');
+          const back = dialog?.querySelector('.game-on-collection__flip-back');
+          const card = dialog?.querySelector('.game-on-collection__dialog-card');
+          const panel = dialog?.querySelector('[data-testid="panel-inline-calendar-draft:${eventId}"]');
+          const editArrow = dialog?.querySelector('[data-testid="button-edit-event-arrow-draft:${eventId}"]');
+          return {
+            sameDialog: dialog === window.__recommendationDialog,
+            sameRegion: region === window.__recommendationRegion,
+            regionCount: document.querySelectorAll('[data-testid="status-game-on-recommendation"]').length,
+            text: region?.textContent.trim(),
+            changes: window.__recommendationChanges,
+            exposed: Boolean(region && !region.closest('[inert], [aria-hidden="true"], [hidden]')),
+            frontActive: Boolean(front && !front.inert && front.getAttribute('aria-hidden') === 'false'),
+            backActive: Boolean(back && !back.inert && back.getAttribute('aria-hidden') === 'false'),
+            editorOpen: card?.getAttribute('data-calendar-open') === 'true',
+            panelVisible: Boolean(panel?.getClientRects().length),
+            focusCorrect: ${editorOpen
+              ? "Boolean(panel?.contains(document.activeElement) && document.activeElement?.matches('.game-on-inline__section h3'))"
+              : "Boolean(editArrow?.getClientRects().length && document.activeElement === editArrow && !editArrow.closest('[inert], [aria-hidden=\"true\"], [hidden]'))"},
+          };
+        })()`, page!.sessionId), {
+          sameDialog: true,
+          sameRegion: true,
+          regionCount: 1,
+          text: liveAnnouncement,
+          changes: liveChanges,
+          exposed: true,
+          frontActive: !editorOpen,
+          backActive: editorOpen,
+          editorOpen,
+          panelVisible: editorOpen,
+          focusCorrect: true,
+        }, `the Details ${editorOpen ? 'reopening' : 'closing'} flip must keep the Live announcement mounted and focus the visible face`);
+        assert.equal(await readAnnouncement(), liveAnnouncement,
+          `closing or reopening Details must not clear or replay the Live announcement`);
+        assert.deepEqual(await connection!.evaluate(`(() => ({
+          draft: document.querySelector(${JSON.stringify(locationSelector)})?.value,
+          savedLocation: window.__getSupporterDashboardEvents().find(event => event.id === ${JSON.stringify(eventId)})?.location,
+          savedCards: localStorage.getItem('pixlsports-game-on-cards:${accountId}'),
+          saveRequests: window.__eventDetailsSaveRequests,
+          calendarSaves: window.__eventDetailsCalendarSaves,
+        }))()`, page!.sessionId), {
+          draft: 'Unsaved courtside entrance',
+          savedLocation: 'Northside Gym',
+          savedCards: await connection!.evaluate('window.__eventDetailsSavedCardsBefore', page!.sessionId),
+          saveRequests: [],
+          calendarSaves: [],
+        }, 'the editor-only round trip must preserve the unsaved draft without saving or replacing event data');
+      };
+
+      await connection.evaluate(`(() => {
+        const dialog = document.querySelector(${JSON.stringify(dialogSelector)});
+        const closeButton = Array.from(dialog?.querySelectorAll('[data-testid^="button-close-calendar-editor-"]') ?? [])
+          .find((button) => button.getClientRects().length > 0);
+        if (!closeButton) throw new Error('The visible Back to Event Card control is unavailable');
+        closeButton.click();
+      })()`, page.sessionId);
+      await connection.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page.sessionId);
+      const closedDetailsState = await connection.evaluate<{
+        calendarOpen: string | null;
+        focusTestId: string | null;
+        editArrowVisible: boolean;
+      }>(`(() => {
+        const dialog = document.querySelector(${JSON.stringify(dialogSelector)});
+        const card = dialog?.querySelector('.game-on-collection__dialog-card');
+        const editArrow = dialog?.querySelector(${JSON.stringify(editArrowSelector)});
+        return {
+          calendarOpen: card?.getAttribute('data-calendar-open') ?? null,
+          focusTestId: document.activeElement?.getAttribute('data-testid') ?? null,
+          editArrowVisible: Boolean(editArrow?.getClientRects().length),
+        };
+      })()`, page.sessionId);
+      assert.equal(closedDetailsState.calendarOpen, 'false',
+        `closing Details should leave the Event Card open: ${JSON.stringify(closedDetailsState)}`);
+      assert.equal(closedDetailsState.editArrowVisible, true,
+        `the edit arrow should be visible after closing Details: ${JSON.stringify(closedDetailsState)}`);
+      assert.equal(closedDetailsState.focusTestId, editArrowTestId,
+        `closing Details should return focus to the visible edit arrow: ${JSON.stringify(closedDetailsState)}`);
+      await assertDetailsFlip(false);
+
+      await connection.evaluate(`document.querySelector('${dialogSelector} [data-testid="button-edit-event-arrow-draft:${eventId}"]')?.click()`, page.sessionId);
+      await wait(`document.querySelector(${JSON.stringify(`${dialogSelector} [data-testid="panel-inline-calendar-draft:${eventId}"]`)})?.getClientRects().length
+        && document.activeElement?.matches(${JSON.stringify(editorHeadingSelector)})`);
+      await assertDetailsFlip(true);
+      await connection.evaluate(`(() => {
+        window.__activeRecommendationControl = document.querySelector(${JSON.stringify(locationSelector)});
+        window.__activeRecommendationControl.focus();
+      })()`, page.sessionId);
+      await assertOpenPanelAnnouncement();
     }
     const { node: announcementNode } = await connection.send<{ node: { backendNodeId: number } }>(
       'DOM.describeNode',
