@@ -62,15 +62,20 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   assert.doesNotMatch(source, /Hero athlete photo|Replace with a real PIXL|screenshot containing|\.pdf['"]|ADD PLAYER MEDIA/);
 });
 
-test('hero photo presents multiple supported sports with an accessible label', () => {
+test('supported sports appear as plain text above the ribbon, not over the photo', () => {
   assert.doesNotMatch(source, /photo-caption|The moments that make a season/);
   assert.match(source, /alt="Youth soccer player smiling while running on a field"/);
-  assert.match(source, /role="group" aria-label="Sports PIXL supports" data-testid="hero-supported-sports"/);
+  assert.match(source, /<div className="supported-sports" role="group" aria-label="Sports PIXL supports" data-testid="hero-supported-sports">/);
+  assert.ok(source.indexOf('className="supported-sports"') < source.indexOf('className="week-ribbon"'), 'sports list should appear above the lime ribbon');
+  const imageFrame = source.indexOf('<div className="hero-image-frame">');
+  const imageFrameEnd = source.indexOf('</div>', imageFrame);
+  const sportsList = source.indexOf('data-testid="hero-supported-sports"');
+  assert.ok(imageFrame >= 0 && imageFrameEnd >= 0 && sportsList > imageFrameEnd, 'sports list should be outside the image frame');
   for (const sport of ['Football', 'Soccer', 'Basketball', 'Baseball', 'Softball', 'Volleyball']) {
-    assert.ok(source.includes(`data-testid={\`hero-supported-sport-\${sport.toLowerCase()}\`}>{sport}</li>`), `landing hero should include ${sport}`);
+    assert.ok(source.includes(`data-testid={\`hero-supported-sport-\${sport.toLowerCase()}\`}>{sport}</li>`), `landing page should list ${sport}`);
   }
-  assert.match(styles, /hero-sports \{[^}]*position: absolute/);
-  assert.match(styles, /hero-sports ul \{[^}]*flex-wrap: wrap/);
+  assert.match(styles, /supported-sports-list \{[^}]*display: flex; flex-wrap: wrap/);
+  assert.doesNotMatch(styles, /hero-sports/);
 });
 
 test('hero message omits the numbered athlete-card label', () => {

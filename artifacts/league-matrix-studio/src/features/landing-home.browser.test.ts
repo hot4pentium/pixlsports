@@ -50,7 +50,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
     const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
-  let page: BrowserPage | undefined;
+    const page: BrowserPage = { targetId: target.targetId, sessionId: attached.sessionId };
       pages.push(page);
       connection.registerTarget(page.targetId, page.sessionId);
       await connection.send('Page.enable', {}, page.sessionId);
@@ -73,6 +73,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
            document.addEventListener('DOMContentLoaded', recordBlockedFrame, { once: true });
          })();`,
        }, page.sessionId);
+    for (const width of [393, 768, 1440]) {
       await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 }, page.sessionId);
       await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/` }, page.sessionId);
       await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=text-landing-headline]"))', value => value === true);
@@ -117,7 +118,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
       await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number; hypeCardBeforeOffline: boolean;
-        heroSports: string[]; heroSportsFit: boolean;
+        heroSports: string[]; heroSportsAboveRibbon: boolean; heroSportsOffPhoto: boolean;
         cardSides: string[];
         cardTabLayout: { text: string; labelFitsTab: boolean; tabInsideCard: boolean }[];
         cta: string; help: string; support: string; privacy: string; explainer: boolean; menuVisible: boolean;
@@ -125,13 +126,12 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
         doc: document.documentElement.scrollWidth, body: document.body.scrollWidth,
         heroImage: document.querySelector('.hero-image-frame img')?.complete && document.querySelector('.hero-image-frame img')?.naturalWidth > 0,
         heroSports: [...(document.querySelector('[data-testid="hero-supported-sports"]')?.querySelectorAll('li') ?? [])].map(item => item.textContent?.trim() || ''),
-        heroSportsFit: (() => {
-          const frame = document.querySelector('.hero-image-frame')?.getBoundingClientRect();
+        heroSportsAboveRibbon: (() => {
           const sports = document.querySelector('[data-testid="hero-supported-sports"]')?.getBoundingClientRect();
-          return Boolean(frame && sports
-            && sports.left >= frame.left - 1 && sports.right <= frame.right + 1
-            && sports.top >= frame.top - 1 && sports.bottom <= frame.bottom + 1);
+          const ribbon = document.querySelector('.week-ribbon')?.getBoundingClientRect();
+          return Boolean(sports && ribbon && sports.bottom <= ribbon.top + 1);
         })(),
+        heroSportsOffPhoto: !document.querySelector('.hero-image-frame [data-testid="hero-supported-sports"]'),
         fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 1228,
         cardSides: [...document.querySelectorAll('.landing-hype-card-tab > span')].map(label => label.textContent?.replace(/\\s+/g, ' ').trim() || ''),
         cardTabLayout: (() => {
@@ -170,7 +170,8 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
       assert.ok(layout.doc <= width && layout.body <= width, `horizontal overflow at ${width}px: ${JSON.stringify(layout)}`);
       assert.equal(layout.heroImage, true);
       assert.deepEqual(layout.heroSports, ['Football', 'Soccer', 'Basketball', 'Baseball', 'Softball', 'Volleyball']);
-      assert.equal(layout.heroSportsFit, true, `supported sports should stay inside the hero photo at ${width}px`);
+      assert.equal(layout.heroSportsAboveRibbon, true, `supported sports should appear above the lime ribbon at ${width}px`);
+      assert.equal(layout.heroSportsOffPhoto, true, `supported sports should not cover the hero photo at ${width}px`);
       assert.equal(layout.fanCardImage, true, `Hype Card artwork should load at ${width}px: ${JSON.stringify(layout)}`);
       assert.deepEqual(layout.cardSides, ['Card front', 'Stats', 'Events']);
       assert.deepEqual(
@@ -332,7 +333,6 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
         assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-mobile-menu]").getAttribute("aria-expanded")', page.sessionId), 'false');
       }
     }
-  let page: BrowserPage | undefined;
     await connection.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, page.sessionId);
     assert.equal(await connection.evaluate('getComputedStyle(document.querySelector(".step-card")).transitionDuration', page.sessionId), '1e-05s');
   } finally {

@@ -178,12 +178,6 @@ export function PublicLandingPage() {
             <div className="hero-visual">
               <div className="hero-image-frame">
                 <img src={youthSoccerHero} alt="Youth soccer player smiling while running on a field" width="1024" height="1024" fetchPriority="high" decoding="async" />
-                <div className="hero-sports" role="group" aria-label="Sports PIXL supports" data-testid="hero-supported-sports">
-                  <span className="hero-sports-label">One season. Every sport.</span>
-                  <ul>
-                    {heroSports.map(sport => <li key={sport} data-testid={`hero-supported-sport-${sport.toLowerCase()}`}>{sport}</li>)}
-                  </ul>
-                </div>
               </div>
               <div className="hero-message">
                 <strong>Every player has a story worth sharing.</strong>
@@ -193,6 +187,12 @@ export function PublicLandingPage() {
             </div>
           </div>
         </section>
+
+        <div className="supported-sports" role="group" aria-label="Sports PIXL supports" data-testid="hero-supported-sports">
+          <ul className="container supported-sports-list">
+            {heroSports.map(sport => <li key={sport} data-testid={`hero-supported-sport-${sport.toLowerCase()}`}>{sport}</li>)}
+          </ul>
+        </div>
 
         <div className="week-ribbon" aria-label="Plan the week, show up ready, celebrate together">
           <div className="container ribbon-inner"><span>Plan the week</span><span className="ribbon-star" aria-hidden="true" /><span>Show up ready</span><span className="ribbon-star" aria-hidden="true" /><span>Celebrate together</span></div>
