@@ -172,10 +172,7 @@ struct ContentView: View {
 
             if isEditingLink {
                 TextField("https://pixlsports.com/fan/…", text: $draftAthletePageLink)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .textContentType(.URL)
+                    .athletePageURLInputModifiers()
                     .padding(15)
                     .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                     .overlay {
@@ -337,6 +334,20 @@ struct ContentView: View {
         savedAthletePageLink = value
         linkError = nil
         isEditingLink = false
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func athletePageURLInputModifiers() -> some View {
+#if os(iOS)
+        textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .keyboardType(.URL)
+            .textContentType(.URL)
+#else
+        self
+#endif
     }
 }
 
