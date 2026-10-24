@@ -123,3 +123,4 @@
 - [Installed offline priorities](installed-offline-priorities.md) — preload day-of tools; cache other tools on use rather than downloading every feature at installation.
 - [Fixed paired-card content](fixed-paired-card-content.md) — preserve equal 3:4 card sizing by keeping required text from flex-shrinking and reclaiming space inside the card.
 - [Tracker attribution boundaries](tracker-attribution-boundaries.md) — recipient scoreboards name the team; athlete snapshots and opponent possession stats stay distinct.
+- [Native iOS first flow](native-ios-first-flow.md) — start the SwiftUI companion with Supporter Home and the next event, alongside the existing PWA.
