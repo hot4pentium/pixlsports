@@ -593,21 +593,36 @@ export function SupporterDashboardView({
     });
   };
   const handleGameOnCardChanged = (selectedId?: string, notice?: string, preserveLiveCard = false) => {
+    const draftId = newCardDraft?.editing ? newCardDraft.id : null;
+    const creatingFromDraft = draftId !== null;
     if (notice) {
-      setGameOnCardOutcome(notice);
+      const outcome = creatingFromDraft
+        ? notice.replace(/^Event Card saved\./, 'Event Card created and opened.')
+        : notice;
+      setGameOnCardOutcome(outcome);
       window.setTimeout(() => {
-        setGameOnCardOutcome((current) => current === notice ? '' : current);
+        setGameOnCardOutcome((current) => current === outcome ? '' : current);
       }, 8000);
     }
     if (userId) setLocalGameOnCards(readSavedGameOnCards(userId));
     void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
-    if (newCardDraft?.editing) {
-      if (selectedId) {
-        setCardLayoutIds((previous) => ({ ...previous, [selectedId]: newCardDraft.id }));
+    if (creatingFromDraft) {
+      if (selectedId && draftId) {
+        setCardLayoutIds((previous) => ({ ...previous, [selectedId]: draftId }));
       }
       setNewCardDraft(null);
+      if (selectedId) {
+        setCardSelection((previous) => ({
+          kind: selectedId.startsWith('share:') ? 'share' : 'event',
+          id: selectedId,
+          nonce: (previous?.nonce ?? 0) + 1,
+        }));
+      } else {
+        setCardSelection(null);
+      }
+    } else if (!preserveLiveCard) {
+      setCardSelection(null);
     }
-    if (!preserveLiveCard) setCardSelection(null);
   };
   const saveDashboardChecklistProgress = async (checkedItemIds: DashboardChecklistItemId[]) => {
     if (!onSaveDashboardChecklistProgress) return;

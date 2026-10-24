@@ -4451,19 +4451,19 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
-      width: 1440,
-      height: 1000,
+      width: 390,
+      height: 844,
       deviceScaleFactor: 1,
-      mobile: false,
+      mobile: true,
     }, page.sessionId);
-    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('supporter-save-transition')`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"button-create-game-on-card\\"]")?.getClientRects().length > 0', Boolean);
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"panel-game-on-card-draft\\"]") !== null', Boolean);
+    await connection.evaluate(`window.__setSupporterDashboardEvents([]); window.__setSupporterDashboardTrackerUserId('supporter-save-transition')`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"button-guidance-create-event\\"]")?.getClientRects().length > 0', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-guidance-create-event"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"panel-game-on-card-draft\\"]") !== null', Boolean);
     const draftLayoutId = await connection.evaluate<string | null>(
-      'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]")?.getAttribute("data-layout-id") ?? null',
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"card-game-on-new-card-\\"]")?.getAttribute("data-layout-id") ?? null',
       page.sessionId,
     );
     assert.ok(draftLayoutId, 'the new draft tile should expose its stable layout identity');
@@ -4484,9 +4484,9 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-save-game-on-card\\"]")?.disabled === false', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-save-game-on-card"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'window.__gameOnCardMockSaveRequests === 1', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-share:mock-game-on-card-token\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"card-game-on-share:mock-game-on-card-token\\"]") !== null', Boolean);
     await waitFor(connection, page.sessionId, `(() => {
-      const card = document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="card-game-on-share:mock-game-on-card-token"]');
+      const card = document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="card-game-on-share:mock-game-on-card-token"]');
       if (!(card instanceof HTMLElement)) return false;
       const rect = card.getBoundingClientRect();
       return Math.abs(rect.width / rect.height - 1) < 0.05;
@@ -4496,8 +4496,10 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       savedCardCollapsed: boolean;
       savedCardSquare: boolean;
       editorClosed: boolean;
+      savedCardOpened: boolean;
+      creationAnnounced: boolean;
     }>(`(() => {
-      const card = document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="card-game-on-share:mock-game-on-card-token"]');
+      const card = document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="card-game-on-share:mock-game-on-card-token"]');
       if (!(card instanceof HTMLElement)) throw new Error('Saved Game On Card is missing');
       const rect = card.getBoundingClientRect();
       return {
@@ -4505,14 +4507,21 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         savedCardCollapsed: !card.classList.contains('game-on-collection__card--selected')
           && !card.classList.contains('game-on-collection__card--expanded'),
         savedCardSquare: Math.abs(rect.width / rect.height - 1) < 0.05,
-        editorClosed: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="panel-game-on-card-draft"]') === null,
+        editorClosed: document.querySelector('.supporter-dashboard-mobile-shell [data-testid="panel-game-on-card-draft"]') === null,
+        savedCardOpened: Boolean(document.querySelector('.supporter-dashboard-mobile-shell [data-testid="dialog-game-on-card-share:mock-game-on-card-token"]')),
+        creationAnnounced: document.querySelector('[data-testid="status-game-on-card-outcome"]')?.textContent?.trim()
+          .startsWith('Event Card created and opened.') ?? false,
       };
     })()`, page.sessionId), {
       layoutIdPreserved: true,
       savedCardCollapsed: true,
       savedCardSquare: true,
       editorClosed: true,
-    }, 'saving should animate the expanded draft back into its original grid slot');
+      savedCardOpened: true,
+      creationAnnounced: true,
+    }, 'saving from the Message Board should announce creation and open the new Event Card');
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="dialog-game-on-card-share:mock-game-on-card-token"] [aria-label="Close Event Card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, '!document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dialog-game-on-card-share:mock-game-on-card-token\\"]")', Boolean);
     await waitFor(connection, page.sessionId, `document.activeElement?.getAttribute('data-testid')?.startsWith('button-open-game-on-card-')
       && document.activeElement.closest('.game-on-collection__card')?.getAttribute('data-layout-id') === ${JSON.stringify(draftLayoutId)}`, Boolean);
 
@@ -6221,7 +6230,7 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, () => `${devMonitor?.diagnostics()}; ${browserMonitor?.diagnostics()}`);
-    page = await openPage(connection, `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?mobile-hype-pair`);
+    page = await openPage(connection, `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?mobile-hype-pair&game-on-card-save-transition`);
     const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
     const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean, 30_000);
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
@@ -6290,6 +6299,28 @@ test('mobile event guidance prioritizes live games and always offers a next acti
     await evaluate(`window.__setSupporterDashboardTrackerUserId('another-owner')`);
     await wait(`document.querySelector('[data-testid="mobile-event-guidance"]')?.dataset.state==='empty'`);
     assert.doesNotMatch(await evaluate<string>(`document.querySelector('[data-testid="mobile-event-guidance"]').textContent`), /Tracker Falcons/);
+    await evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`);
+    await wait(`!!document.querySelector('.supporter-dashboard-mobile-shell [data-testid="panel-game-on-card-draft"] [data-testid="input-game-on-date"]')`);
+    await evaluate(`(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      for (const [selector, value] of [
+        ['[data-testid="input-game-on-date"]', '2026-10-31'],
+        ['[data-testid="input-game-on-opponent"]', 'Message Board Falcons'],
+      ]) {
+        const input = document.querySelector(selector);
+        if (!(input instanceof HTMLInputElement)) throw new Error('Game On Card field missing: ' + selector);
+        setter?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    })()`);
+    await wait(`document.querySelector('[data-testid="button-save-game-on-card"]')?.disabled===false`);
+    await evaluate(`document.querySelector('[data-testid="button-save-game-on-card"]')?.click()`);
+    await wait(`window.__gameOnCardMockSaveRequests===1`);
+    await wait(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="dialog-game-on-card-share:mock-game-on-card-token"]')
+      && document.querySelector('[data-testid="status-game-on-card-outcome"]')?.textContent?.trim().startsWith('Event Card created and opened.')`);
+    assert.equal(await evaluate<string>(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="dialog-game-on-card-share:mock-game-on-card-token"] .game-on-collection__opponent')?.textContent?.trim() || ''`), 'Message Board Falcons',
+      'saving from the Message Board should open the newly created Event Card');
   } finally {
     if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
     connection?.close();
