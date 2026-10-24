@@ -50,8 +50,8 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
     const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
-  let page: BrowserPage | undefined;
-      pages.push(page);
+    const page: BrowserPage = { targetId: target.targetId, sessionId: attached.sessionId };
+    pages.push(page);
       connection.registerTarget(page.targetId, page.sessionId);
       await connection.send('Page.enable', {}, page.sessionId);
       await connection.send('Runtime.enable', {}, page.sessionId);
@@ -385,9 +385,10 @@ test('step badges show a staggered circle reveal and respect reduced motion', as
     }, page.sessionId);
 
     for (const view of [
-      { width: 393, reducedMotion: false },
-      { width: 1440, reducedMotion: false },
-      { width: 393, reducedMotion: true },
+      { width: 393, reducedMotion: false, noIntersectionObserver: false },
+      { width: 1440, reducedMotion: false, noIntersectionObserver: false },
+      { width: 393, reducedMotion: true, noIntersectionObserver: false },
+      { width: 393, reducedMotion: true, noIntersectionObserver: true },
     ]) {
       await connection.send('Emulation.setDeviceMetricsOverride', {
         width: view.width, height: 900, deviceScaleFactor: 1, mobile: view.width < 600,
@@ -395,10 +396,24 @@ test('step badges show a staggered circle reveal and respect reduced motion', as
       await connection.send('Emulation.setEmulatedMedia', {
         features: [{ name: 'prefers-reduced-motion', value: view.reducedMotion ? 'reduce' : 'no-preference' }],
       }, page.sessionId);
-      await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/` }, page.sessionId);
+      const query = view.noIntersectionObserver ? '?no-intersection-observer=1' : '';
+      await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/${query}` }, page.sessionId);
       await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=text-landing-headline]"))', Boolean);
-      await new Promise(resolveDelay => setTimeout(resolveDelay, 150));
-      await connection.evaluate(`document.querySelector("[data-testid=landing-week-grid]").scrollIntoView({ block: "center" })`, page.sessionId);
+      if (view.noIntersectionObserver) {
+        assert.equal(
+          await connection.evaluate('typeof window.IntersectionObserver', page.sessionId),
+          'undefined',
+          'the fallback scenario should run with IntersectionObserver unavailable',
+        );
+        assert.equal(
+          await connection.evaluate('window.matchMedia("(prefers-reduced-motion: reduce)").matches', page.sessionId),
+          true,
+          'the fallback scenario should run with reduced motion enabled',
+        );
+      } else {
+        await new Promise(resolveDelay => setTimeout(resolveDelay, 150));
+        await connection.evaluate(`document.querySelector("[data-testid=landing-week-grid]").scrollIntoView({ block: "center" })`, page.sessionId);
+      }
       await waitFor(
         connection,
         page.sessionId,
@@ -443,20 +458,72 @@ test('step badges show a staggered circle reveal and respect reduced motion', as
         await connection.evaluate('window.scrollTo(0, 0)', page.sessionId);
         await connection.evaluate('document.querySelector("[data-testid=landing-week-grid]").scrollIntoView({ block: "center" })', page.sessionId);
         const startTimesAfterReturn = await connection.evaluate<number[]>(`[...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(node => node.getAnimations()[0]?.startTime ?? -1)`, page.sessionId);
+        assert.deepEqual(startTimesAfterReturn, startTimes, 'the grow cascade should not replay when scrolling back');
+      }
 
-    const fallbackSteps = await connection.evaluate<Array<{
-      number: string; opacity: string; cardText: string; cardDisabled: boolean; cardVisible: boolean;
-    }>>(`(() => [...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(badge => {
-      const card = badge.closest('.step-card');
-      const bounds = card?.getBoundingClientRect();
-      return {
-        number: badge.textContent?.trim() || '',
-        opacity: getComputedStyle(badge).opacity,
-        cardText: card?.textContent?.replace(/\\s+/g, ' ').trim() || '',
-        cardDisabled: card?.disabled ?? true,
-        cardVisible: Boolean(bounds && bounds.width > 0 && bounds.height > 0 && getComputedStyle(card).visibility !== 'hidden'),
-      };
-    }))()`, page.sessionId);
+      if (view.noIntersectionObserver) {
+        assert.equal(
+          await connection.evaluate('window.scrollY', page.sessionId),
+          0,
+          'the no-IntersectionObserver fallback should reveal the week grid without scrolling it into view',
+        );
+        const fallbackSteps = await connection.evaluate<Array<{
+          number: string; opacity: string; visibility: string; animation: string;
+          cardDisabled: boolean; cardVisible: boolean; badgeFullyVisible: boolean;
+        }>>(`(() => [...document.querySelectorAll('[data-testid^="landing-step-number-"]')].map(badge => {
+          const card = badge.closest('.step-card');
+          const bounds = badge.getBoundingClientRect();
+          const cardBounds = card?.getBoundingClientRect();
+          const style = getComputedStyle(badge);
+          return {
+            number: badge.textContent?.trim() || '',
+            opacity: style.opacity,
+            visibility: style.visibility,
+            animation: style.animationName,
+            cardDisabled: card?.disabled ?? true,
+            cardVisible: Boolean(cardBounds && cardBounds.width > 0 && cardBounds.height > 0
+              && getComputedStyle(card).visibility === 'visible'),
+            badgeFullyVisible: bounds.width === 52 && bounds.height === 52
+              && style.opacity === '1' && style.visibility === 'visible',
+          };
+        }))()`, page.sessionId);
+        assert.deepEqual(fallbackSteps.map(step => step.number), ['01', '02', '03', '04']);
+        for (const step of fallbackSteps) {
+          assert.equal(step.opacity, '1', `${step.number} badge should be opaque immediately with reduced motion`);
+          assert.equal(step.visibility, 'visible', `${step.number} badge should be visible`);
+          assert.equal(step.animation, 'none', `${step.number} badge should not depend on an animation`);
+          assert.equal(step.badgeFullyVisible, true, `${step.number} badge should be fully visible without animation`);
+          assert.equal(step.cardDisabled, false, `${step.number} step card should remain enabled`);
+          assert.equal(step.cardVisible, true, `${step.number} step card should remain visible`);
+        }
+
+        for (const [index, step] of ['plan', 'prep', 'follow', 'celebrate'].entries()) {
+          await connection.evaluate(`document.querySelector('[data-testid="button-landing-${step}-try"]').click()`, page.sessionId);
+          await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=landing-tool-demo]"))', Boolean);
+          assert.equal(
+            await connection.evaluate('document.querySelector("[data-testid=landing-tool-demo]")?.getAttribute("role")', page.sessionId),
+            'dialog',
+            `${fallbackSteps[index]?.number} step should open its demo`,
+          );
+          await connection.evaluate('document.querySelector(".pixl-demo-close").click()', page.sessionId);
+          await waitFor(connection, page.sessionId, '!document.querySelector("[data-testid=landing-tool-demo]")', Boolean);
+        }
+      }
+    }
+  } finally {
+    if (connection) {
+      if (page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+      connection.close();
+    }
+    if (browser && browserMonitor && !browserMonitor.hasExited()) browser.kill('SIGTERM');
+    if (browserMonitor) await browserMonitor.waitForExit();
+    if (!serverMonitor.hasExited()) server.kill('SIGTERM');
+    await serverMonitor.waitForExit();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test('Help contact actions remain visible without overflow on phone and desktop widths', async () => {
   const port = await freePort();
   const debugPort = await freePort();
   const profile = await mkdtemp(resolve(tmpdir(), 'pixl-help-browser-'));
