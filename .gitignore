@@ -48,3 +48,6 @@ Thumbs.db
 .cache/
 .local/
 /generated-artifacts/
+
+# Xcode per-user settings
+**/xcuserdata/
