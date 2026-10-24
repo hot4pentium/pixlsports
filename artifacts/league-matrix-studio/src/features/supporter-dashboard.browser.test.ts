@@ -2554,6 +2554,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           titleVisible: boolean;
           detailsVisible: boolean;
           actionsVisible: boolean;
+          trackerNeutral: boolean;
           tileStayedCompact: boolean;
         }>(`(() => {
           const shell = document.querySelector('.supporter-dashboard-mobile-shell');
@@ -2567,6 +2568,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           const bounds = content.getBoundingClientRect();
           const tileBounds = tile.getBoundingClientRect();
           const visible = (selector) => Boolean(card.querySelector(selector)?.getClientRects().length);
+          const trackerAction = card.querySelector('.game-on-collection__action--tracker');
+          const trackerStyle = trackerAction ? getComputedStyle(trackerAction) : undefined;
           return {
             dialogContained: bounds.left >= -1 && bounds.right <= innerWidth + 1
               && content.scrollWidth <= content.clientWidth + 1,
@@ -2577,6 +2580,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
             detailsVisible: visible('.game-on-collection__card-content:not([hidden])')
               && visible('.game-on-collection__card-footer:not([hidden])'),
             actionsVisible: visible('.game-on-collection__actions:not([hidden]) button'),
+            trackerNeutral: trackerStyle?.backgroundColor === 'rgb(255, 255, 255)' && trackerStyle.boxShadow === 'none',
             tileStayedCompact: Math.abs(tileBounds.width / tileBounds.height - 1) < 0.05
               && !tile.classList.contains('game-on-collection__card--selected')
               && tile.querySelector('.game-on-collection__card-content')?.hidden === true
@@ -2590,6 +2594,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           titleVisible: true,
           detailsVisible: true,
           actionsVisible: true,
+          trackerNeutral: true,
           tileStayedCompact: true,
         }, `expanded completed card behavior at ${width}px`);
         await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);

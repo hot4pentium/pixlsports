@@ -14,3 +14,9 @@ The Supporter Hub Event Card uses its right arrow to enter event editing and a â
 **Why:** The user explicitly requested these dashboard controls to be simplified. This request concerns the opened dashboard Event Card, not the separate post-save confirmation.
 
 **How to apply:** Preserve the event's date, time, and location facts, retain Share and its clipboard fallback, and restore editor-return focus to the visible edit arrow.
+
+On completed Event Cards, keep Prep, Stat Tracker, and Share neutral by default; the completed status should not make an action look selected.
+
+**Why:** The user asked for neutral action choices when an event is finished.
+
+**How to apply:** Keep default action surfaces neutral across Event Card states. Preserve clear hover, focus, and explicitly opened-panel states.

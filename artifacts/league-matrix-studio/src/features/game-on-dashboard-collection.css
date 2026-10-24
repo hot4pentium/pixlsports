@@ -623,13 +623,13 @@
 .game-on-collection__actions .game-on-collection__action--prep.game-on-collection__action--suggested { border-color: #1d66ce; background: #2878f5; color: #fff; box-shadow: 0 3px 0 #164d9a; }
 .game-on-collection__actions .game-on-collection__action--prep.game-on-collection__action--suggested:hover { background: #1766e4; }
 .game-on-collection__actions .game-on-collection__action--prep.game-on-collection__action--suggested svg { color: #fff; }
-.game-on-collection__actions .game-on-collection__action--tracker { border-color: #8cb8e2; background: #e7f2ff; color: #14559e; box-shadow: 0 3px 0 #b5cfe8; }
+.game-on-collection__actions .game-on-collection__action--tracker { border-color: #c1d5e8; background: #fff; color: #17467b; box-shadow: none; }
 .game-on-collection__actions .game-on-collection__action--tracker:hover { background: #d2e8ff; }
 .game-on-collection__actions .game-on-collection__action--tracker svg { color: #2878f5; }
 .game-on-collection__actions .game-on-collection__action--tracker[aria-expanded="true"] { border-color: #17467b; background: #12355c; color: #fff; box-shadow: 0 3px 0 #071e38; }
 .game-on-collection__actions .game-on-collection__action--tracker[aria-expanded="true"]:hover { background: #1b4b7c; }
 .game-on-collection__actions .game-on-collection__action--tracker[aria-expanded="true"] svg { color: #9fceff; }
-.game-on-collection__actions .game-on-collection__action--share { border-color: #8cb8e2; background: #e7f2ff; color: #14559e; box-shadow: 0 3px 0 #b5cfe8; }
+.game-on-collection__actions .game-on-collection__action--share { border-color: #c1d5e8; background: #fff; color: #17467b; box-shadow: none; }
 .game-on-collection__actions .game-on-collection__action--share:hover { background: #d2e8ff; }
 .game-on-collection__actions :is(button, a).game-on-collection__action--suggested {
   position: relative;
