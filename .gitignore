@@ -19,6 +19,8 @@ node_modules
 *.launch
 .settings/
 *.sublime-workspace
+.DS_Store
+**/xcuserdata/
 
 # IDE - VSCode
 .vscode/*
