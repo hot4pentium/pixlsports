@@ -20,3 +20,9 @@ On completed Event Cards, keep Prep, Stat Tracker, and Share neutral by default;
 **Why:** The user asked for neutral action choices when an event is finished.
 
 **How to apply:** Keep default action surfaces neutral across Event Card states. Preserve clear hover, focus, and explicitly opened-panel states.
+
+After creating an Event Card from the Supporter Hub Message Board, open the saved card and announce that it was created.
+
+**Why:** The user said returning without seeing the card makes it unclear that creation succeeded.
+
+**How to apply:** After a successful new-card save, select the saved card in the collection and keep a clear creation message available to assistive technology.
