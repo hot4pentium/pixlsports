@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Router } from 'wouter';
+import { getListAthleteInvitesQueryKey } from '@workspace/api-client-react';
 import { LivingAthleteCardPage } from './living-athlete-card';
 import { EventCardLiveTaps } from './event-card-live-taps';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
@@ -103,6 +104,11 @@ function FanCardRoute({ params }: { params: { inviteToken?: string } }) {
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
+});
+Object.assign(window, {
+  __refreshLiveTapsInviteList: () => queryClient.invalidateQueries({
+    queryKey: [...getListAthleteInvitesQueryKey(), currentAccountId()],
+  }),
 });
 const root = createRoot(document.getElementById('test-root')!);
 

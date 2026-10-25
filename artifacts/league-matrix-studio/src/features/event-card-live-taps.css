@@ -172,6 +172,114 @@
   gap: 8px;
 }
 
+.event-card-live-taps__quick-tools {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+}
+
+.event-card-live-taps__owner-board,
+.event-card-live-taps__family-access {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #c4d8eb;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.event-card-live-taps__owner-board-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #2878f5;
+}
+
+.event-card-live-taps__owner-board h5 {
+  margin: 3px 0 0;
+  color: #102b4d;
+  font: 800 19px/.98 'Barlow Condensed', var(--app-font-serif), sans-serif;
+  text-transform: uppercase;
+}
+
+.event-card-live-taps__cheers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.event-card-live-taps__cheer {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid #c4d8eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #17395f;
+  cursor: pointer;
+  text-align: left;
+}
+
+.event-card-live-taps__cheer:hover:not(:disabled) {
+  border-color: #2878f5;
+  background: #eef6ff;
+}
+
+.event-card-live-taps__cheer:focus-visible,
+.event-card-live-taps__owner-retry:focus-visible {
+  outline: 3px solid #b24d16;
+  outline-offset: 2px;
+}
+
+.event-card-live-taps__cheer:disabled {
+  cursor: progress;
+  opacity: .65;
+}
+
+.event-card-live-taps__cheer-emoji {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.event-card-live-taps__cheer-label {
+  min-width: 0;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.event-card-live-taps__cheer-count {
+  display: grid;
+  min-width: 22px;
+  min-height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e7f1ff;
+  color: #17467b;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.event-card-live-taps__owner-retry {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #17467b;
+  cursor: pointer;
+  font: 800 10px 'DM Sans', var(--app-font-sans), sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .event-card-live-taps__security {
   display: inline-flex;
   align-items: center;
@@ -280,5 +388,12 @@
   .event-card-live-taps__qr {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (min-width: 740px) {
+  .event-card-live-taps__quick-tools {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    align-items: start;
   }
 }

@@ -82,6 +82,8 @@ function makeFixtureServer() {
   const state: FixtureState = { shares: [], activeShareToken: null, taps: [] };
   const historySaves = { beforeSave: async () => {} };
   const accessLinks: FixtureAccessLink[] = [];
+  let invitePaused = false;
+  let inviteMissing = false;
   const server = createServer(async (request, response) => {
     if (request.method === 'OPTIONS') {
       response.writeHead(204, {
@@ -105,6 +107,12 @@ function makeFixtureServer() {
       }
       if (path === '/__fixture/access-links' && method === 'GET') {
         json(response, 200, accessLinks.filter((link) => !link.revoked).map(({ id, createdAt }) => ({ id, createdAt })));
+        return;
+      }
+      if (path === '/__fixture/player-showcase' && method === 'POST') {
+        invitePaused = url.searchParams.get('paused') === 'true';
+        inviteMissing = url.searchParams.get('missing') === 'true';
+        json(response, 200, { paused: invitePaused, missing: inviteMissing });
         return;
       }
       if (path === '/api/account/access' && method === 'GET') {
@@ -198,12 +206,12 @@ function makeFixtureServer() {
         return;
       }
       if (path === '/api/athlete-invites' && method === 'GET') {
-        json(response, 200, isOwner ? [{
+        json(response, 200, isOwner && !inviteMissing ? [{
           inviteToken,
           athleteName: 'Alexandria Montgomery-Williams',
           teamName: 'Northside Comets',
           sport: 'basketball',
-          paused: false,
+          paused: invitePaused,
         }] : []);
         return;
       }
@@ -340,7 +348,7 @@ function makeFixtureServer() {
       if (tapMatch && method === 'POST') {
         const body = await readJson(request);
         const activeShare = state.shares.find((share) => share.shareToken === state.activeShareToken);
-        if (body.accessToken !== familyQrToken) {
+        if (!isOwner && body.accessToken !== familyQrToken) {
           json(response, 403, { error: 'Family QR access required' });
           return;
         }
@@ -632,6 +640,12 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await close(inlineFinalCard);
 
     const liveTapsOnly = await open('live-taps', { owner: true });
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, liveTapsOnly);
     await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="button-start-live-taps-only"]'))`);
     assert.equal(await connection.evaluate(
       `document.querySelector('[data-testid="event-card-live-taps"]')?.querySelector('[data-testid^="button-tap-stat-"]') === null`,
@@ -647,12 +661,43 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     assert.equal(liveTapsOnlyShare.game.opponentScore, 0);
     assert.ok(Object.values(liveTapsOnlyShare.game.stats).every((value) => value === 0));
     assert.equal(liveTapsOnlyShare.game.events.length, 0);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="button-owner-live-tap-bucket"]')?.disabled === false`);
+    await click(liveTapsOnly, 'button-owner-live-tap-bucket');
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="text-owner-live-tap-count-bucket"]')?.textContent === '1'`);
+    liveTapsOnlyState = await fixtureState();
+    assert.equal(liveTapsOnlyState.taps.length, 3, 'the owner can send a cheer directly without creating or scanning a QR');
+    assert.equal(liveTapsOnlyState.taps.at(-1)?.gameId, liveTapsOnlyShare.game.id);
+    assert.ok(Object.values(liveTapsOnlyShare.game.stats).every((value) => value === 0), 'an owner cheer does not write player stats');
     assert.equal(await connection.evaluate(
       `localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey')`,
       liveTapsOnly,
     ), null, 'Live Taps-only must not create a Stat Tracker game in local storage');
     await click(liveTapsOnly, 'button-create-event-card-live-tap-qr');
     await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="img-event-card-live-taps-qr"]')?.src.startsWith('data:image/png;base64,'))`);
+    const ownerLiveTapsLayout = await connection.evaluate<{
+      panelWidth: number;
+      panelScrollWidth: number;
+      cheerButtonHeight: number;
+      ownerBoardVisible: boolean;
+      familyQrVisible: boolean;
+    }>(`(() => {
+      const panel = document.querySelector('[data-testid="event-card-live-taps"]');
+      const cheerButton = panel?.querySelector('[data-testid="button-owner-live-tap-bucket"]');
+      const qr = panel?.querySelector('[data-testid="img-event-card-live-taps-qr"]');
+      if (!(panel instanceof HTMLElement) || !(cheerButton instanceof HTMLElement) || !(qr instanceof HTMLImageElement)) {
+        throw new Error('The owner cheer board or family QR is missing from the Event Card');
+      }
+      return {
+        panelWidth: panel.clientWidth,
+        panelScrollWidth: panel.scrollWidth,
+        cheerButtonHeight: cheerButton.getBoundingClientRect().height,
+        ownerBoardVisible: Boolean(cheerButton.getClientRects().length),
+        familyQrVisible: Boolean(qr.getClientRects().length),
+      };
+    })()`, liveTapsOnly);
+    assert.ok(ownerLiveTapsLayout.panelScrollWidth <= ownerLiveTapsLayout.panelWidth + 1, 'the quick-cheer controls and QR fit without horizontal scrolling on a phone');
+    assert.ok(ownerLiveTapsLayout.cheerButtonHeight >= 44, 'owner cheer buttons meet the phone touch-target minimum');
+    assert.equal(ownerLiveTapsLayout.ownerBoardVisible && ownerLiveTapsLayout.familyQrVisible, true, 'the owner can see both quick cheers and the family QR in the same Live Taps panel');
     const activeAccessLinks = await fetch(`${apiOrigin}/__fixture/access-links`)
       .then((response) => response.json() as Promise<Array<{ id: string; createdAt: string }>>);
     assert.equal(activeAccessLinks.length, 1, 'the Event Card creates private, revocable family QR access');
@@ -664,10 +709,31 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await click(liveTapsFamilyCard, 'button-living-card-live-taps');
     await waitUi(liveTapsFamilyCard, `document.querySelector('[data-testid="button-live-tap-bucket"]')?.disabled === false`);
     await click(liveTapsFamilyCard, 'button-live-tap-bucket');
-    await waitUi(liveTapsFamilyCard, `document.querySelector('[data-testid="text-live-tap-total"]')?.textContent === '1'`);
-    assert.equal((await fixtureState()).taps.length, 3, 'a family QR can send a cheer during the Live Taps-only session');
+    await waitUi(liveTapsFamilyCard, `document.querySelector('[data-testid="text-live-tap-total"]')?.textContent === '2'`);
+    assert.equal((await fixtureState()).taps.length, 4, 'owner and family cheers are both saved to the same active game tally');
+    await connection.send('Page.bringToFront', {}, liveTapsOnly);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="text-owner-live-tap-count-bucket"]')?.textContent === '2'`);
     await close(liveTapsFamilyCard);
 
+    await fetch(`${apiOrigin}/__fixture/player-showcase?paused=true`, { method: 'POST' });
+    await connection.evaluate('window.__refreshLiveTapsInviteList()', liveTapsOnly);
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="link-resume-live-taps-showcase"]'))`);
+    assert.match(await connection.evaluate(
+      `document.querySelector('[data-testid="link-resume-live-taps-showcase"]')?.textContent || ''`,
+      liveTapsOnly,
+    ), /Open Player Showcase to resume/, 'a paused Showcase gives the owner a direct recovery link');
+
+    await fetch(`${apiOrigin}/__fixture/player-showcase?paused=false&missing=true`, { method: 'POST' });
+    await connection.evaluate('window.__refreshLiveTapsInviteList()', liveTapsOnly);
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="link-recover-live-taps-showcase"]'))`);
+    assert.match(await connection.evaluate(
+      `document.querySelector('[data-testid="link-recover-live-taps-showcase"]')?.textContent || ''`,
+      liveTapsOnly,
+    ), /Open Player Showcase/, 'an unavailable Showcase has a direct recovery link');
+
+    await fetch(`${apiOrigin}/__fixture/player-showcase?paused=false&missing=false`, { method: 'POST' });
+    await connection.evaluate('window.__refreshLiveTapsInviteList()', liveTapsOnly);
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="button-revoke-event-card-live-tap-qr-00000000-0000-4000-8000-000000000001"]'))`);
     await click(liveTapsOnly, `button-revoke-event-card-live-tap-qr-${activeAccessLinks[0]!.id}`);
     await waitUi(liveTapsOnly, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('revoked')`);
     assert.equal((await fetch(`${apiOrigin}/__fixture/access-links`).then((response) => response.json() as Promise<unknown[]>)).length, 0,
