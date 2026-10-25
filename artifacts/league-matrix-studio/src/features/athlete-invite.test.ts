@@ -23,6 +23,14 @@ test('HYPE Card creation directs athlete photo uploads to its manager, not Athle
   assert.doesNotMatch(appSource, /useRequestSupporterPhotoUploadUrl|useSaveSupporterPhoto|useCachedSupporterPhoto/);
 });
 
+test('HYPE Card create button is inside its create section', () => {
+  assert.match(
+    source,
+    /data-testid="form-create-hype-card"[\s\S]*?data-testid="card-create-hype-page"[\s\S]*?data-testid="button-create-hype-card"[\s\S]*?Create HYPE Card[\s\S]*?<\/form>/,
+  );
+  assert.doesNotMatch(source, /className="mt-8 max-w-xl"/);
+});
+
 test('Player Showcase HYPE Card back actions return to the Dynamic Showcase carousel', () => {
   for (const testId of [
     'link-management-sign-in-athlete',

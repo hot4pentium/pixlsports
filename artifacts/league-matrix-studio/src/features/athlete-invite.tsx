@@ -383,25 +383,20 @@ export function AthleteInviteManager() {
               </div>
             </div>
           ) : (
-            <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
-              <h2 className="mt-2 font-display text-3xl uppercase">Create the HYPE Card</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one HYPE Card for the season. Existing invite links will open it too.</p>
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground" data-testid="first-card-photo-guidance">After creating your HYPE Card, open Manage HYPE Card to upload the athlete’s photo. Athlete Profile no longer has a separate photo upload.</p>
-            </div>
+            <form onSubmit={save} className="w-full" data-testid="form-create-hype-card">
+              <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
+                <h2 className="mt-2 font-display text-3xl uppercase">Create the HYPE Card</h2>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one HYPE Card for the season. Existing invite links will open it too.</p>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground" data-testid="first-card-photo-guidance">After creating your HYPE Card, open Manage HYPE Card to upload the athlete’s photo. Athlete Profile no longer has a separate photo upload.</p>
+                <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="mt-5 h-12 w-full max-w-xl rounded-none text-xs font-bold uppercase tracking-widest" data-testid="button-create-hype-card"><Check className="mr-2 h-4 w-4" />Create HYPE Card</Button>
+                {notice && <p role="status" className="mt-3 border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
+              </div>
+            </form>
           )}
         </section>
 
         <AthleteEditorInvitationPanel inviteToken={existing?.inviteToken ?? null} />
-
-        {!existing && (
-          <form onSubmit={save} className="mt-8 max-w-xl">
-            <aside className="space-y-5">
-              <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update athlete card' : 'Create athlete card'}</Button>
-              {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
-            </aside>
-          </form>
-        )}
       </main>
     </InviteShell>
   );
