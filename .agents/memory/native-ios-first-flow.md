@@ -3,10 +3,10 @@ name: Cross-platform account path
 description: The selected client and shared-auth direction for PIXL Sports.
 ---
 
-Target a native SwiftUI iPhone app for the App Store, keep the existing PWA for web and Android (packaged for Google Play as a Trusted Web Activity), and use one shared login across all three. Replit-managed Clerk supports the web app but not native ClerkKit/Native API; its accounts are not designed for direct export to another Clerk app. Existing records are keyed to Clerk user IDs, so a provider change requires an explicit identity/data transition plan.
+Target a native SwiftUI iPhone app for the App Store; keep the existing PWA and its Replit-managed Clerk sign-in for web and Android (the PWA can be packaged for Google Play as a Trusted Web Activity). The iOS app may use a separate native-capable identity provider, but it must securely link to the existing PIXL account/data. Replit-managed Clerk supports the web app but not native ClerkKit/Native API, and its accounts are not designed for direct export. Existing records are keyed to Clerk user IDs, so the API needs a verified identity-linking strategy.
 
-Do not link the native project to the personal generic “My Application” Clerk project without explicit confirmation that it is the chosen new shared provider. The SwiftUI prototype remains part of the product; the PWA is not replacing it.
+Do not replace PWA auth, migrate production accounts, or connect the SwiftUI project to the generic personal “My Application” Clerk project without explicit confirmation. The native SwiftUI prototype remains part of the product; the PWA is not replacing it.
 
-**Why:** the user chose native App Store delivery, keeping the PWA for Android/web, and one shared login, while accepting that an account transition must be planned.
+**Why:** the user chose to preserve the PWA sign-in and build a standalone native iOS app, with the native identity securely linked to existing account data.
 
-**How to apply:** plan a mobile-capable provider for both the PWA and native iOS client; establish how existing users reconnect their saved data before changing auth configuration or production accounts.
+**How to apply:** keep the PWA auth path intact; design native sign-in, Apple review compliance, and a one-time verified account-link flow before changing backend authorization or account data.
