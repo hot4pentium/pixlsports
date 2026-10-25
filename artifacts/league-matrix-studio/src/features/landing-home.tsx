@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload, Download, ShieldCheck, Smartphone, MoreVertical } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload, Download, Smartphone, MoreVertical } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
@@ -151,12 +151,6 @@ export function PublicLandingPage() {
     void handleInstall(deviceClass);
   };
 
-  const startInstall = () => {
-    document.getElementById('landing-install')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (installAction === 'installed') return;
-    requestInstall();
-  };
-
   useEffect(() => {
     const grid = weekGridRef.current;
     if (!grid) return;
@@ -186,15 +180,6 @@ export function PublicLandingPage() {
               <div className="hero-buttons">
                 <Link href={destination} className="pill pill-lime" data-testid="link-hero-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
                 <a href="#how-it-works" className="pill pill-ghost" data-testid="link-hero-see-week">See how it works <ArrowRight size={16} aria-hidden="true" /></a>
-                <button
-                  type="button"
-                  className="pill pill-ghost landing-install-button"
-                  onClick={startInstall}
-                  aria-controls="landing-install"
-                  data-testid="button-landing-install"
-                >
-                  <Download size={16} aria-hidden="true" /> Install as an app
-                </button>
               </div>
             </div>
             <div className="hero-visual">
@@ -215,58 +200,6 @@ export function PublicLandingPage() {
             {heroSports.map(sport => <li key={sport} data-testid={`hero-supported-sport-${sport.toLowerCase()}`}>{sport}</li>)}
           </ul>
         </div>
-
-        <section className="install-section" id="landing-install" aria-labelledby="landing-install-heading" data-testid="landing-install-panel">
-          <div className="container install-layout">
-            <div className="install-copy">
-              <span className="install-eyebrow"><span className="install-live-dot" aria-hidden="true" /> THE FUTURE OF WEB APPLICATIONS</span>
-              <h2 id="landing-install-heading" className="display">Make room<br />for <em>the good stuff.</em></h2>
-              <p className="install-lede">PIXL Sports is a Progressive Web App (PWA)—a website you can add to your Home Screen and open like an app. Load your game details and checklist while online; reopen them offline and track stats. Saved stats sync when you reconnect.</p>
-              <button type="button" className="install-action" onClick={requestInstall} data-testid="button-install-section">
-                <Download size={18} aria-hidden="true" /> {installAction === 'installed' ? 'PIXL is on your home screen' : 'Add PIXL to your home screen'} <ArrowUpRight size={17} aria-hidden="true" />
-              </button>
-              {showInstructions && <p className="install-action-hint" role="status">Use the quick steps below to finish adding PIXL on this device.</p>}
-              {installAction === 'installed' && <p className="install-action-hint" role="status" data-testid="landing-install-status">PIXL Sports is already installed on this device.</p>}
-              <div className="install-proof"><ShieldCheck size={17} aria-hidden="true" /><span>Install only from the official PIXL Sports website. No store download needed.</span></div>
-            </div>
-            <div className="install-visual" aria-hidden="true">
-              <div className="install-sideline install-sideline--one" />
-              <div className="install-sideline install-sideline--two" />
-              <div className="install-burst install-burst--one">PIXL<br />ON DECK</div>
-              <div className="install-phone">
-                <div className="install-phone-notch" />
-                <div className="install-phone-screen">
-                  <div className="install-phone-top"><span>PIXL SPORTS</span><span className="install-signal" /></div>
-                  <div className="install-phone-kicker">GAME DAY</div>
-                  <div className="install-phone-title">Let’s play.</div>
-                  <div className="install-mini-event"><span className="install-mini-ball"><Activity size={17} /></span><span><b>Saturday · 10:30 AM</b><small>Falcons vs. Comets</small></span></div>
-                  <div className="install-mini-footer"><span>PLAN</span><span>PREP</span><span>HYPE</span></div>
-                </div>
-              </div>
-              <div className="install-burst install-burst--two"><span>ONE TAP</span><ArrowRight size={19} /></div>
-            </div>
-          </div>
-          <div className="container install-steps-wrap">
-            <div className="install-steps-heading"><span className="micro">A quick pregame setup</span><span className="install-steps-rule" /></div>
-            <div className="install-steps">
-              <article className="install-step" data-testid="landing-install-iphone">
-                <div className="install-step-top"><span className="install-step-icon"><Smartphone size={18} aria-hidden="true" /></span><span className="install-step-number">01</span></div>
-                <h3 className="display">iPhone &amp; iPad</h3>
-                <p>Open this page in <strong>Safari</strong>. Tap <Share2 size={13} aria-label="Share" /> Share, then <strong>Add to Home Screen</strong>. Turn on <strong>Open as Web App</strong>, then tap Add.</p>
-              </article>
-              <article className="install-step" data-testid="landing-install-android">
-                <div className="install-step-top"><span className="install-step-icon"><MoreVertical size={18} aria-hidden="true" /></span><span className="install-step-number">02</span></div>
-                <h3 className="display">Android</h3>
-                <p>Tap your browser’s <strong>Install</strong> prompt, or open its menu and choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>.</p>
-              </article>
-              <div className="install-security" data-testid="landing-install-security">
-                <ShieldCheck size={20} aria-hidden="true" />
-                <div><strong>A clear note on safety</strong><p>PIXL is served over HTTPS and uses your browser’s and device’s security protections. This PWA installs from the website and does not go through App Store or Google Play review. Install only from the official PIXL Sports website.</p></div>
-              </div>
-            </div>
-            {isIOS && <p className="install-device-note" role="status">On iPhone or iPad? Open this page in Safari to add PIXL.</p>}
-          </div>
-        </section>
 
         <div className="week-ribbon" aria-label="Plan the week, show up ready, celebrate together">
           <div className="container ribbon-inner"><span>Plan the week</span><span className="ribbon-star" aria-hidden="true" /><span>Show up ready</span><span className="ribbon-star" aria-hidden="true" /><span>Celebrate together</span></div>
@@ -365,6 +298,53 @@ export function PublicLandingPage() {
                 ))}
               </ul>
             </div>
+          </div>
+        </section>
+
+        <section className="install-section" id="landing-install" aria-labelledby="landing-install-heading" data-testid="landing-install-panel">
+          <div className="container install-layout">
+            <div className="install-copy">
+              <span className="install-eyebrow"><span className="install-live-dot" aria-hidden="true" /> YOUR GAME WEEK, ONE TAP AWAY</span>
+              <h2 id="landing-install-heading" className="display">Your game week.<br /><em>One tap away.</em></h2>
+              <p className="install-lede">Keep your game week close. Open PIXL Sports in your browser, or add it to your Home Screen for quick access to your schedule, checklists, and athlete’s HYPE Card. That’s a Progressive Web App (PWA): use PIXL on the web, then add it to your Home Screen when you’re ready.</p>
+              <button type="button" className="install-action" onClick={requestInstall} data-testid="button-install-section">
+                <Download size={18} aria-hidden="true" /> {installAction === 'installed' ? 'PIXL is on your Home Screen' : 'Add PIXL to your Home Screen'} <ArrowUpRight size={17} aria-hidden="true" />
+              </button>
+              {showInstructions && <p className="install-action-hint" role="status">Use the quick steps below to finish adding PIXL on this device.</p>}
+              {installAction === 'installed' && <p className="install-action-hint" role="status" data-testid="landing-install-status">PIXL Sports is already installed on this device.</p>}
+            </div>
+            <div className="install-visual" aria-hidden="true">
+              <div className="install-sideline install-sideline--one" />
+              <div className="install-sideline install-sideline--two" />
+              <div className="install-burst install-burst--one">PIXL<br />ON DECK</div>
+              <div className="install-phone">
+                <div className="install-phone-notch" />
+                <div className="install-phone-screen">
+                  <div className="install-phone-top"><span>PIXL SPORTS</span><span className="install-signal" /></div>
+                  <div className="install-phone-kicker">GAME DAY</div>
+                  <div className="install-phone-title">Let’s play.</div>
+                  <div className="install-mini-event"><span className="install-mini-ball"><Activity size={17} /></span><span><b>Saturday · 10:30 AM</b><small>Falcons vs. Comets</small></span></div>
+                  <div className="install-mini-footer"><span>PLAN</span><span>PREP</span><span>HYPE</span></div>
+                </div>
+              </div>
+              <div className="install-burst install-burst--two"><span>ONE TAP</span><ArrowRight size={19} /></div>
+            </div>
+          </div>
+          <div className="container install-steps-wrap">
+            <div className="install-steps-heading"><span className="micro">Add it when you’re ready</span><span className="install-steps-rule" /></div>
+            <div className="install-steps">
+              <article className="install-step" data-testid="landing-install-iphone">
+                <div className="install-step-top"><span className="install-step-icon"><Smartphone size={18} aria-hidden="true" /></span><span className="install-step-number">01</span></div>
+                <h3 className="display">iPhone &amp; iPad</h3>
+                <p>Open this page in <strong>Safari</strong>. Tap <Share2 size={13} aria-label="Share" /> Share, then <strong>Add to Home Screen</strong>. Turn on <strong>Open as Web App</strong>, then tap Add.</p>
+              </article>
+              <article className="install-step" data-testid="landing-install-android">
+                <div className="install-step-top"><span className="install-step-icon"><MoreVertical size={18} aria-hidden="true" /></span><span className="install-step-number">02</span></div>
+                <h3 className="display">Android</h3>
+                <p>Tap your browser’s <strong>Install</strong> prompt, or open its menu and choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>.</p>
+              </article>
+            </div>
+            {isIOS && <p className="install-device-note" role="status">On iPhone or iPad? Open this page in Safari to add PIXL.</p>}
           </div>
         </section>
 

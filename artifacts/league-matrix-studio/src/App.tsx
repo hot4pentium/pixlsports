@@ -3292,6 +3292,14 @@ function Help() {
             <h2 className="font-display text-3xl uppercase tracking-wide">Where do I find game-day tools?</h2>
             <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Your studio keeps game-day cards, checklists, and stats together. Open a game card to access its available preparation and tracking actions.</p>
           </section>
+          <section>
+            <h2 className="font-display text-3xl uppercase tracking-wide">How do I add PIXL Sports to my phone?</h2>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">On iPhone or iPad, open PIXL in Safari, tap Share, choose Add to Home Screen, turn on Open as Web App, then tap Add. On Android, use your browser’s Install prompt or menu and choose Install app or Add to Home Screen.</p>
+          </section>
+          <section>
+            <h2 className="font-display text-3xl uppercase tracking-wide">How does installing PIXL from the web work?</h2>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">PIXL opens from its official website over HTTPS and uses your browser’s and device’s security protections. Adding it to your Home Screen installs from the website; it does not go through Apple App Store or Google Play review. As with any website, check that you’re on the official PIXL Sports address before installing.</p>
+          </section>
         </div>
         <SupportCenter />
       </main>

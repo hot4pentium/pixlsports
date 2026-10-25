@@ -116,22 +116,17 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
       }
       assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=landing-capability-highlights] li").length', page.sessionId), 4);
        if (width === 393) {
-         const installButtonFound = await connection.evaluate<boolean>(
-           `(() => {
-             const button = document.querySelector('[data-testid="button-landing-install"]');
+          const installButtonFound = await connection.evaluate<boolean>(
+            `(() => {
+              const button = document.querySelector('[data-testid="button-install-section"]');
              if (!(button instanceof HTMLButtonElement)) return false;
+              button.scrollIntoView({ block: 'center' });
              button.click();
              return true;
            })()`,
            page.sessionId,
          );
-         assert.equal(installButtonFound, true, 'landing should expose the app install action');
-          await waitFor(
-            connection,
-            page.sessionId,
-            'window.scrollY > 0',
-            value => value === true,
-          );
+          assert.equal(installButtonFound, true, 'landing should expose the secondary app install action after the product sections');
          await waitFor(
            connection,
            page.sessionId,
@@ -142,16 +137,26 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
            'document.querySelector("[data-testid=landing-install-panel]")?.innerText || ""',
            page.sessionId,
          );
-         assert.match(installCopy, /THE FUTURE OF WEB APPLICATIONS/);
+          assert.match(installCopy, /YOUR GAME WEEK, ONE TAP AWAY/);
+          assert.match(installCopy, /Keep your game week close/);
           assert.match(installCopy, /Progressive Web App \(PWA\)/);
-          assert.match(installCopy, /reopen them offline and track stats/);
+          assert.match(installCopy, /Add PIXL to your Home Screen/);
          assert.match(installCopy, /iPhone & iPad/);
          assert.match(installCopy, /Android/);
-         assert.match(installCopy, /HTTPS/);
-         assert.ok(
-           installCopy.replace(/\s+/g, ' ').includes('does not go through App Store or Google Play review'),
-           'the PWA copy should distinguish HTTPS delivery from app-store review',
-         );
+          assert.doesNotMatch(installCopy, /HTTPS|App Store|Google Play review|safety/i);
+          assert.equal(await connection.evaluate<boolean>(
+            `(() => {
+              const demo = document.querySelector('[data-testid="landing-week-grid"]');
+              const offline = document.querySelector('[data-testid="landing-offline-section"]');
+              const tools = document.querySelector('#tools');
+              const install = document.querySelector('#landing-install');
+              return Boolean(demo && offline && tools && install
+                && demo.compareDocumentPosition(offline) & Node.DOCUMENT_POSITION_FOLLOWING
+                && offline.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING
+                && tools.compareDocumentPosition(install) & Node.DOCUMENT_POSITION_FOLLOWING);
+            })()`,
+            page.sessionId,
+          ), true, 'visitors should see and try PIXL before the Home Screen install section');
        }
       await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
       const layout = await connection.evaluate<{

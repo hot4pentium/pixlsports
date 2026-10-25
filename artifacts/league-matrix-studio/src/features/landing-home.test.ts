@@ -79,21 +79,30 @@ test('supported sports appear as plain text above the ribbon, not over the photo
 });
 
 test('landing offers accurate iPhone and Android PWA install guidance', () => {
-  assert.match(source, /data-testid="button-landing-install"[\s\S]*Install as an app/);
+  assert.doesNotMatch(source, /data-testid="button-landing-install"/);
   assert.match(source, /useAppInstallPrompt\('landing'\)/);
-  assert.match(source, /THE FUTURE OF WEB APPLICATIONS/);
-  assert.match(source, /PIXL Sports is a Progressive Web App \(PWA\)/);
-  assert.match(source, /Load your game details and checklist while online; reopen them offline and track stats\. Saved stats sync when you reconnect\./);
+  assert.match(source, /YOUR GAME WEEK, ONE TAP AWAY/);
+  assert.match(source, /Keep your game week close\. Open PIXL Sports in your browser, or add it to your Home Screen for quick access to your schedule, checklists, and athlete’s HYPE Card\./);
+  assert.match(source, /Progressive Web App \(PWA\)/);
+  assert.match(source, /Add PIXL to your Home Screen/);
   assert.match(source, /iPhone &amp; iPad/);
   assert.match(source, /Open this page in <strong>Safari<\/strong>[\s\S]*Add to Home Screen[\s\S]*Open as Web App/);
   assert.match(source, /Android/);
-  assert.match(source, /served over HTTPS/);
-  assert.match(source, /does not go through App Store or Google Play\s+review/);
-  assert.doesNotMatch(source, /as safe as (?:the )?(?:App Store|Google Play)/i);
+  assert.doesNotMatch(source, /THE FUTURE OF WEB APPLICATIONS|landing-install-security|does not go through Apple App Store/);
+  assert.match(appSource, /How does installing PIXL from the web work\?/);
+  assert.match(appSource, /official website over HTTPS/);
+  assert.match(appSource, /does not go through Apple App Store or Google Play review/);
   assert.match(source, /className="install-section" id="landing-install"/);
   assert.match(source, /data-testid="button-install-section"/);
+  const demo = source.indexOf('steps.map(step => <DemoStepCard');
+  const offline = source.indexOf('data-testid="landing-offline-section"');
+  const tools = source.indexOf('className="tools-section"');
+  const install = source.indexOf('className="install-section"');
+  assert.ok(demo >= 0 && offline > demo && tools > offline && install > tools, 'show the product and let visitors try it before installation guidance');
   assert.match(styles, /\.install-section/);
   assert.match(styles, /\.install-phone/);
+  assert.match(styles, /\.install-action \{[^}]*border: 1px solid[^}]*background: #ffffff08/);
+  assert.doesNotMatch(styles, /install-security|install-proof/);
 });
 
 test('hero message omits the numbered athlete-card label', () => {

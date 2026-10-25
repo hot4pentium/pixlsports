@@ -7,6 +7,8 @@ The PWA install experience belongs in its own pronounced, graphics-led landing-p
 
 On first mention, spell out “Progressive Web App (PWA)” and explain it in plain language.
 
-**Why:** The user explicitly asked for the install-as-app call to action to have its own section, graphics, and excitement.
+Lead the install journey with PIXL’s useful features, let visitors understand and try the product first, then present Home Screen installation as a secondary action. Explain offline benefits separately and accurately. Keep security and app-store-review details in Help/FAQ or installation help, not as a prominent landing-page warning.
 
-**How to apply:** When revising landing-page install guidance, preserve the dedicated section and its visual prominence, and expand the acronym on first use.
+**Why:** The user wants the landing page to follow “understand PIXL → try it → add to the Home Screen” and avoid introducing safety concerns before visitors ask.
+
+**How to apply:** Preserve the dedicated graphics-led install section, but place it after product explanation and demos; use benefit-led copy, keep the install action visually secondary, and put precise install/safety help in FAQ.
