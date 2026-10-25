@@ -2,14 +2,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  offlineGameOnCardDraftsStorageKey,
+  readOfflineGameOnCardDrafts,
   gameOnCardStorageKey,
   gameOnCardStorageListKey,
   readSavedGameOnCards,
   readSavedGameOnCard,
+  removeOfflineGameOnCardDraft,
   removeSavedGameOnCard,
   revokeGameOnCardForScheduleEvent,
+  upsertOfflineGameOnCardDraft,
   upsertSavedGameOnCard,
   writeSavedGameOnCard,
+  type OfflineGameOnCardDraft,
   type SavedGameOnCard,
 } from './game-on-card-storage';
 
@@ -190,6 +195,43 @@ test('a saved event keeps its optional IANA timezone through local storage', () 
   upsertSavedGameOnCard('parent-user', card, storage);
 
   assert.equal(readSavedGameOnCards('parent-user', storage)[0]?.event.timezone, 'America/Los_Angeles');
+});
+
+test('offline Event Card drafts are account-scoped, upserted, validated, and removable', () => {
+  const storage = createStorage();
+  const draft: OfflineGameOnCardDraft = {
+    id: 'local-draft-1',
+    sourceEventId: 'new',
+    savedAt: '2026-10-25T12:00:00.000Z',
+    event: {
+      id: 'offline-game-1',
+      type: 'game',
+      date: '2026-11-13',
+      time: '18:30',
+      timezone: 'America/New_York',
+      location: 'North Field',
+      opponent: 'Falcons',
+      status: 'upcoming',
+    },
+  };
+  upsertOfflineGameOnCardDraft('parent-user', draft, storage);
+
+  assert.equal(offlineGameOnCardDraftsStorageKey('parent-user'), 'pixlsports-game-on-card-drafts:parent-user');
+  assert.deepEqual(readOfflineGameOnCardDrafts('parent-user', storage), [draft]);
+  assert.deepEqual(readOfflineGameOnCardDrafts('another-user', storage), []);
+
+  const replacement = { ...draft, event: { ...draft.event, opponent: 'Ravens' } };
+  upsertOfflineGameOnCardDraft('parent-user', replacement, storage);
+  storage.setItem(offlineGameOnCardDraftsStorageKey('parent-user'), JSON.stringify([
+    replacement,
+    { ...draft, id: 42 },
+    replacement,
+  ]));
+  assert.deepEqual(readOfflineGameOnCardDrafts('parent-user', storage), [replacement]);
+
+  assert.equal(removeOfflineGameOnCardDraft('parent-user', draft.id, storage), true);
+  assert.deepEqual(readOfflineGameOnCardDrafts('parent-user', storage), []);
+  assert.equal(removeOfflineGameOnCardDraft('parent-user', draft.id, storage), false);
 });
 
 test('deleting an event revokes every linked list card and preserves independent cards', async () => {

@@ -20,6 +20,7 @@ import {
   Sparkles,
   Trophy,
   RotateCw,
+  WifiOff,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { format, isValid, parseISO } from 'date-fns';
@@ -31,8 +32,11 @@ import { BackNavigationLink } from '@/components/back-navigation-link';
 import {
   readSavedGameOnCard,
   readSavedGameOnCards,
+  removeOfflineGameOnCardDraft,
   removeSavedGameOnCard,
+  upsertOfflineGameOnCardDraft,
   upsertSavedGameOnCard,
+  type OfflineGameOnCardDraft,
   type GameOnCardEvent as GameOnDraft,
   type SavedGameOnCard,
 } from './game-on-card-storage';
@@ -57,7 +61,10 @@ type GameOnCardPanelProps = {
   embedded?: boolean;
   initialDraft?: SupporterEvent;
   initialSourceEventId?: string;
+  offlineDraft?: OfflineGameOnCardDraft;
   onDraftChange?: (event: SupporterEvent, sourceEventId: string) => void;
+  onOfflineDraftSaved?: (draft: OfflineGameOnCardDraft) => void;
+  onOfflineDraftRemoved?: (draftId: string) => void;
   onChanged?: (selectedId?: string, notice?: string) => void;
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   existingCardTokensByEventId?: Record<string, string>;
@@ -139,7 +146,10 @@ export function GameOnCardPanel({
   embedded = false,
   initialDraft,
   initialSourceEventId,
+  offlineDraft,
   onDraftChange,
+  onOfflineDraftSaved,
+  onOfflineDraftRemoved,
   onChanged,
   onSaveCalendarEvent,
   existingCardTokensByEventId,
@@ -183,6 +193,18 @@ export function GameOnCardPanel({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => (
+    typeof navigator === 'undefined' || navigator.onLine !== false
+  ));
+  useEffect(() => {
+    const updateConnection = () => setIsOnline(navigator.onLine !== false);
+    window.addEventListener('online', updateConnection);
+    window.addEventListener('offline', updateConnection);
+    return () => {
+      window.removeEventListener('online', updateConnection);
+      window.removeEventListener('offline', updateConnection);
+    };
+  }, []);
   useEffect(() => {
     if (!userId) {
       setSaved(null);
@@ -278,12 +300,39 @@ export function GameOnCardPanel({
         time: draft.time.trim(),
         timezone: resolveGameOnTimeZone(draft.timezone),
       };
+      const existingToken = saved?.shareToken ?? (
+        sourceEventId !== 'new' ? existingCardTokensByEventId?.[event.id] : undefined
+      );
+      const connectionAvailable = isOnline && (
+        typeof navigator === 'undefined' || navigator.onLine !== false
+      );
+      const savePrivateDraft = () => {
+        const nextDraft: OfflineGameOnCardDraft = {
+          id: offlineDraft?.id ?? createEventId(),
+          sourceEventId,
+          savedAt: new Date().toISOString(),
+          event,
+        };
+        upsertOfflineGameOnCardDraft(userId, nextDraft);
+        setDraft(event);
+        setNotice('Saved on this device. This Event Card will stay private until you publish it online.');
+        onOfflineDraftSaved?.(nextDraft);
+        if (!offlineDraft) {
+          onChanged?.(`offline-draft:${nextDraft.id}`, 'Event Card saved privately on this device. Publish it when you are back online.');
+        }
+      };
+      if (!connectionAvailable) {
+        if (existingToken) {
+          throw new Error('Reconnect to update a published Event Card. Your changes are still in this editor.');
+        }
+        savePrivateDraft();
+        return;
+      }
       if (sourceEventId !== 'new' && scheduledEvents.some((scheduled) => scheduled.id === event.id)) {
         if (!onSaveCalendarEvent) throw new Error('Calendar editing is unavailable. Refresh and try again.');
         await onSaveCalendarEvent(event as SupporterEvent);
       }
       const data = buildShareData(event);
-      const existingToken = saved?.shareToken ?? (sourceEventId !== 'new' ? existingCardTokensByEventId?.[event.id] : undefined);
       const isCreating = !existingToken;
       const share = existingToken
         ? await updateShare.mutateAsync({ shareToken: existingToken, data })
@@ -295,6 +344,10 @@ export function GameOnCardPanel({
         savedAt: new Date().toISOString(),
       };
       saveCard(next);
+      if (offlineDraft) {
+        removeOfflineGameOnCardDraft(userId, offlineDraft.id);
+        onOfflineDraftRemoved?.(offlineDraft.id);
+      }
       setDraft(event);
       const copied = isCreating ? await copyGameOnCardPublicLink(share.shareToken) : false;
       const cardAvailability = 'Find it in your Hype Card’s Events section when Allow events is on.';
@@ -351,6 +404,7 @@ export function GameOnCardPanel({
     || (sourceEventId !== 'new' && existingCardTokensByEventId?.[draft.id]),
   );
   const canCreate = Boolean(draft.date && (isPractice || draft.opponent.trim())) && !busy;
+  const canSubmit = canCreate && (isOnline || !hasExistingShare);
   const workspaceEvent = {
     id: draft.id,
     type: draft.type ?? 'game',
@@ -516,6 +570,23 @@ export function GameOnCardPanel({
                   </button>
                 )}
               </div>
+              {(!isOnline || offlineDraft) && (
+                <div
+                  className="mb-4 flex items-start gap-2 rounded-[10px] border border-amber-300/30 bg-amber-300/10 px-3 py-3 text-xs font-semibold leading-relaxed text-amber-50"
+                  role="status"
+                  aria-live="polite"
+                  data-testid="game-on-card-offline-status"
+                >
+                  <WifiOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    {!isOnline
+                      ? offlineDraft
+                        ? 'You’re offline. This Event Card is saved privately on this device and will stay unpublished until you publish it online.'
+                        : 'You’re offline. Save this new Event Card privately on this device; it won’t be shared until you publish it online. Updates to published cards need a connection.'
+                      : 'This Event Card is saved on this device only. It is not public until you publish it.'}
+                  </span>
+                </div>
+              )}
                 <label className="mb-3 block">
                   <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Event type</span>
                   <select
@@ -622,12 +693,20 @@ export function GameOnCardPanel({
               <button
                 type="button"
                 onClick={() => void handleCreateOrUpdate()}
-                disabled={!canCreate}
+                disabled={!canSubmit}
                 className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-[#2474F5] px-4 py-4 text-sm font-bold tracking-wide text-white shadow-[0_10px_20px_rgba(40,120,245,.2)] transition-colors hover:bg-[#2474F5]/90 disabled:cursor-not-allowed disabled:opacity-50"
                 data-testid="button-save-game-on-card"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
-                {busy ? (hasExistingShare ? 'Updating…' : 'Creating…') : (hasExistingShare ? 'Update Event Card' : 'Create Event Card')}
+                {busy
+                  ? (offlineDraft && isOnline ? 'Publishing…' : hasExistingShare ? 'Updating…' : 'Creating…')
+                  : !isOnline && !hasExistingShare
+                    ? 'Save draft on this device'
+                    : offlineDraft && isOnline
+                      ? 'Publish Event Card'
+                      : !isOnline && hasExistingShare
+                        ? 'Reconnect to update'
+                        : hasExistingShare ? 'Update Event Card' : 'Create Event Card'}
                 {!busy && <ArrowRight className="h-4 w-4" />}
               </button>
             </div>

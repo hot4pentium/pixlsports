@@ -18,6 +18,7 @@ export type DashboardGameOnCard = {
   id: string;
   eventId?: string;
   shareToken?: string;
+  offlineDraftId?: string;
   layoutId?: string;
   type: 'game' | 'practice';
   athleteName: string;
@@ -29,6 +30,7 @@ export type DashboardGameOnCard = {
   status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Sharing' | 'Complete';
   isPublished: boolean;
   isUnsavedDraft?: boolean;
+  isOfflineDraft?: boolean;
   recordedGameId?: string;
   completedAt?: string;
 };
@@ -48,7 +50,7 @@ type GameOnDashboardCollectionProps = {
   onCreate: () => void;
   createDisabled?: boolean;
   onOpen: (id: string, trigger?: HTMLButtonElement) => void;
-  onCancelDraft?: () => void;
+  onCancelDraft?: (draftId: string) => void;
   onDeleteCard?: (card: DashboardGameOnCard) => Promise<GameOnCardDeleteResult>;
   selectedId?: string;
   isActiveShell?: boolean;
@@ -118,7 +120,7 @@ function displayTime(value: string) {
 function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected = false, isDialogCard = false, dialogId, visible, featuredCardId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
   card: DashboardGameOnCard;
   onOpen: (id: string, trigger: HTMLButtonElement) => void;
-  onCancelDraft?: () => void;
+  onCancelDraft?: (draftId: string) => void;
   selected: boolean;
   triggerSelected?: boolean;
   isDialogCard?: boolean;
@@ -293,6 +295,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                 {statusLabel}
               </span>
             </span>
+            {card.isOfflineDraft && (
+              <span className="block px-1 pb-1 text-left text-[9px] font-bold uppercase tracking-[.12em] text-amber-100/80">
+                Saved on this device · not published
+              </span>
+            )}
             <span className="game-on-collection__card-main">
               <span className="game-on-collection__date" aria-label={card.date || 'Date TBD'}>
                 <span className="game-on-collection__date-month">{date.month}</span>
@@ -333,12 +340,12 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
             {card.isUnsavedDraft && (
               <button
                 type="button"
-                onClick={onCancelDraft}
+                onClick={() => onCancelDraft?.(card.id)}
                 className="game-on-collection__cancel-draft"
-                aria-label="Cancel this unsaved Event Card"
+                aria-label={card.isOfflineDraft ? 'Delete this local Event Card draft' : 'Cancel this unsaved Event Card'}
                 data-testid={`button-cancel-game-on-draft-${card.id}`}
               >
-                <X size={15} aria-hidden="true" /> Cancel draft
+                <X size={15} aria-hidden="true" /> {card.isOfflineDraft ? 'Delete local draft' : 'Cancel draft'}
               </button>
             )}
             {!card.isUnsavedDraft && (

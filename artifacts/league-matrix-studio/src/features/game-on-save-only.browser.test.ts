@@ -43,6 +43,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GameOnCardPanel } from './src/features/game-on-card';
+import { readOfflineGameOnCardDrafts } from './src/features/game-on-card-storage';
 import { GameOnInlineEditor } from './src/features/game-on-inline-editor';
 import './src/index.css';
 import './src/features/game-on-dashboard-collection.css';
@@ -212,6 +213,24 @@ function Fixture({ mode }) {
         selectedCard={null}
         onChanged={changed}
         onSaveCalendarEvent={saveCalendar}
+      />
+    );
+  }
+
+  if (mode === 'offline-draft') {
+    const offlineDraft = readOfflineGameOnCardDrafts(ownerId)[0];
+    return (
+      <GameOnCardPanel
+        key={'offline-draft:' + (offlineDraft?.id ?? 'missing')}
+        profile={{ teamName: 'Tigers', athleteName: 'Alex Tiger' }}
+        userId={ownerId}
+        events={[]}
+        selectedCard={null}
+        startFresh
+        initialDraft={offlineDraft?.event}
+        initialSourceEventId={offlineDraft?.sourceEventId}
+        offlineDraft={offlineDraft}
+        onChanged={changed}
       />
     );
   }
@@ -501,6 +520,42 @@ test('Event Card browser regressions cover create/update labels, public links, c
       'document.querySelector(".game-on-inline__notice")?.textContent || ""',
       page.sessionId,
     ), /Calendar event saved/);
+
+    await connection.evaluate('window.__resetSaveOnlyFixture(); window.__showSaveOnlyMode("panel")', page.sessionId);
+    await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"button-save-game-on-card\\"]")', Boolean);
+    await connection.send('Network.enable', {}, page.sessionId);
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: true,
+      latency: 0,
+      downloadThroughput: 0,
+      uploadThroughput: 0,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'navigator.onLine === false', Boolean);
+    await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"game-on-card-offline-status\\"]")', Boolean);
+    await fillPanel('2026-11-16', 'Owls');
+    assert.match(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"game-on-card-offline-status\\"]")?.textContent || ""',
+      page.sessionId,
+    ), /Save this new Event Card privately on this device/i);
+    await click('[data-testid="button-save-game-on-card"]');
+    await waitFor(connection, page.sessionId, `JSON.parse(localStorage.getItem('pixlsports-game-on-card-drafts:${ownerId}') || '[]').length === 1`, Boolean);
+    assert.equal(await connection.evaluate<number>('window.__saveOnlyApi.calls.length', page.sessionId), 0, 'offline draft saving must not attempt to publish');
+    assert.deepEqual(await localCards(), [], 'offline saving must not create a public-card cache entry');
+
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 0,
+      downloadThroughput: 1_000_000,
+      uploadThroughput: 1_000_000,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'navigator.onLine === true', Boolean);
+    await connection.evaluate('window.__showSaveOnlyMode("offline-draft")', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-save-game-on-card\\"]")?.textContent.includes("Publish Event Card")', Boolean);
+    await click('[data-testid="button-save-game-on-card"]');
+    await waitFor(connection, page.sessionId, 'window.__saveOnlyApi.calls.some(call => call.method === "POST")', Boolean);
+    await waitFor(connection, page.sessionId, `JSON.parse(localStorage.getItem('pixlsports-game-on-card-drafts:${ownerId}') || '[]').length === 0`, Boolean);
+    assert.equal((await localCards()).length, 1, 'publishing online should create the normal saved-card cache entry');
+    assert.equal((await localCards())[0].event.opponent, 'Owls');
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

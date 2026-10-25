@@ -1401,7 +1401,7 @@ function SupporterStudio() {
       <main className="flex-1 bg-background">
         {(offline || (cachedDashboard && (accountAccessQuery.isError || cloudProjectsQuery.isError))) && (
           <div className="border-b border-amber-400/40 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-950" role="status" data-testid="offline-dashboard-status">
-            Offline mode — showing this device’s saved dashboard. Tracker, Calendar, and checklist work stays on this device until you reconnect. Sharing and uploads need a connection.
+            Offline mode — showing this device’s saved dashboard. Tracker, Calendar, checklist work, and new Event Card drafts can be saved on this device. Draft Event Cards stay private until you publish them online; public sharing and uploads need a connection.
           </div>
         )}
         <SupporterDashboardView

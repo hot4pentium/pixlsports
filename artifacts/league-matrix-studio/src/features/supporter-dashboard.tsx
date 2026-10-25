@@ -62,8 +62,16 @@ import {
   type GameOnCardRenderOptions,
   type DashboardGameOnCard,
 } from './game-on-dashboard-collection';
-import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, getRecentlyCompletedGameOnCard, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
-import { readSavedGameOnCards, removeSavedGameOnCard, type SavedGameOnCard } from './game-on-card-storage';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, getRecentlyCompletedGameOnCard, sortGameOnCardsByDate, type GameOnDashboardEntry, type OwnedGameOnShare } from './game-on-dashboard-model';
+import {
+  offlineGameOnCardDraftsStorageKey,
+  readOfflineGameOnCardDrafts,
+  readSavedGameOnCards,
+  removeOfflineGameOnCardDraft,
+  removeSavedGameOnCard,
+  type OfflineGameOnCardDraft,
+  type SavedGameOnCard,
+} from './game-on-card-storage';
 import { getBrowserTimeZone } from './game-on-timezone';
 import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
 import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
@@ -95,6 +103,11 @@ import './supporter-dashboard-pixl.css';
 import './supporter-game-on-summary.css';
 import './supporter-profile-wallet.css';
 import './supporter-dashboard-locker.css';
+
+type SupporterGameOnCollectionCard = GameOnDashboardEntry & Pick<
+  DashboardGameOnCard,
+  'layoutId' | 'offlineDraftId' | 'recordedGameId' | 'isUnsavedDraft' | 'isOfflineDraft'
+>;
 
 const SupporterStatTrends = lazy(() => import('./supporter-stat-trends'));
 
@@ -371,6 +384,9 @@ export function SupporterDashboardView({
     },
   });
   const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
+  const [localGameOnCardDrafts, setLocalGameOnCardDrafts] = useState<OfflineGameOnCardDraft[]>(
+    () => userId ? readOfflineGameOnCardDrafts(userId) : [],
+  );
   const [cardSelection, setCardSelection] = useState<{ kind: 'event' | 'share'; id: string; nonce: number } | null>(null);
   const [gameOnCardOutcome, setGameOnCardOutcome] = useState('');
   const [newCardDraft, setNewCardDraft] = useState<{
@@ -412,16 +428,26 @@ export function SupporterDashboardView({
     setNewCardDraft(null);
     setCardLayoutIds({});
     setLocalGameOnCards(userId ? readSavedGameOnCards(userId) : []);
+    setLocalGameOnCardDrafts(userId ? readOfflineGameOnCardDrafts(userId) : []);
     if (!userId) return;
     const syncCards = (event: StorageEvent) => {
       if (event.storageArea && event.storageArea !== window.localStorage) return;
-      if (event.key && event.key !== `pixlsports-game-on-card:${userId}` && event.key !== `pixlsports-game-on-cards:${userId}`) return;
+      if (
+        event.key
+        && event.key !== `pixlsports-game-on-card:${userId}`
+        && event.key !== `pixlsports-game-on-cards:${userId}`
+        && event.key !== offlineGameOnCardDraftsStorageKey(userId)
+      ) return;
       setLocalGameOnCards(readSavedGameOnCards(userId));
+      setLocalGameOnCardDrafts(readOfflineGameOnCardDrafts(userId));
       void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
     };
     window.addEventListener('storage', syncCards);
     return () => window.removeEventListener('storage', syncCards);
   }, [userId, queryClient]);
+  const refreshLocalGameOnCardDrafts = useCallback(() => {
+    setLocalGameOnCardDrafts(userId ? readOfflineGameOnCardDrafts(userId) : []);
+  }, [userId]);
   const selectionTouchedForUserRef = useRef<string | null>(null);
   const lastReconciledRemoteSelectionRef = useRef<{ userId: string; gameId: string | null } | null>(null);
   const [selectionSyncError, setSelectionSyncError] = useState(false);
@@ -511,7 +537,7 @@ export function SupporterDashboardView({
     recommendedGame,
     currentTime,
   );
-  const newDraftCollectionCard = newCardDraft ? {
+  const newDraftCollectionCard: SupporterGameOnCollectionCard | null = newCardDraft ? {
     id: newCardDraft.id,
     layoutId: newCardDraft.id,
     eventId: newCardDraft.event.id,
@@ -526,13 +552,37 @@ export function SupporterDashboardView({
     isPublished: false,
     isUnsavedDraft: true,
   } : null;
-  const replacedScheduleEventId = newCardDraft && newCardDraft.sourceEventId !== 'new'
-    ? newCardDraft?.sourceEventId
-    : undefined;
-  const collectionCards = sortGameOnCardsByDate([
+  const offlineDraftCollectionCards: SupporterGameOnCollectionCard[] = localGameOnCardDrafts.map((draft) => {
+    const id = `offline-draft:${draft.id}`;
+    return {
+      id,
+      offlineDraftId: draft.id,
+      layoutId: cardLayoutIds[id] ?? id,
+      eventId: draft.event.id,
+      type: draft.event.type === 'practice' ? 'practice' as const : 'game' as const,
+      athleteName: profile.athleteName || 'Your athlete',
+      opponent: draft.event.opponent,
+      date: draft.event.date,
+      time: draft.event.time,
+      timezone: draft.event.timezone,
+      location: draft.event.location,
+      status: 'Draft' as const,
+      isPublished: false,
+      isUnsavedDraft: true,
+      isOfflineDraft: true,
+    };
+  });
+  const replacedScheduleEventIds = new Set([
+    ...(newCardDraft && newCardDraft.sourceEventId !== 'new' ? [newCardDraft.sourceEventId] : []),
+    ...localGameOnCardDrafts
+      .filter((draft) => draft.sourceEventId !== 'new')
+      .map((draft) => draft.sourceEventId),
+  ]);
+  const collectionCards: SupporterGameOnCollectionCard[] = sortGameOnCardsByDate([
     ...dashboardCards
-      .filter((card) => !replacedScheduleEventId || card.eventId !== replacedScheduleEventId)
+      .filter((card) => !replacedScheduleEventIds.has(card.eventId))
        .map((card) => ({ ...card, layoutId: cardLayoutIds[card.id] ?? card.id, recordedGameId: recordedGameForCard(card)?.id })),
+    ...offlineDraftCollectionCards,
     ...(newDraftCollectionCard ? [newDraftCollectionCard] : []),
   ]);
   const featuredCardId = getFeaturedGameOnCardId(collectionCards, currentTime);
@@ -551,9 +601,20 @@ export function SupporterDashboardView({
       return { ...previous, event, sourceEventId };
     });
   }, []);
-  const cancelNewCardDraft = useCallback(() => {
-    setNewCardDraft(null);
-  }, []);
+  const cancelCardDraft = useCallback((draftId: string) => {
+    if (newCardDraft?.id === draftId) {
+      setNewCardDraft(null);
+      setCardSelection(null);
+      return;
+    }
+    const prefix = 'offline-draft:';
+    const offlineDraftId = draftId.startsWith(prefix) ? draftId.slice(prefix.length) : null;
+    if (userId && offlineDraftId) {
+      removeOfflineGameOnCardDraft(userId, offlineDraftId);
+      setLocalGameOnCardDrafts(readOfflineGameOnCardDrafts(userId));
+    }
+    setCardSelection(null);
+  }, [newCardDraft?.id, userId]);
   const openCardWorkspace = () => {
     if (newCardDraft) return;
     const nonce = ++nextNewCardNonce.current;
@@ -674,6 +735,28 @@ export function SupporterDashboardView({
     surface: 'mobile' | 'desktop',
     options: GameOnCardRenderOptions,
   ) => {
+    if (card.offlineDraftId) {
+      const offlineDraft = localGameOnCardDrafts.find((draft) => draft.id === card.offlineDraftId);
+      if (!offlineDraft) return null;
+      if ((surface === 'desktop') !== isDesktopDashboard) return null;
+      return <GameOnCardPanel
+        key={`offline-draft:${offlineDraft.id}`}
+        profile={profile}
+        userId={userId}
+        events={events}
+        selectedCard={null}
+        startFresh
+        embedded
+        initialDraft={offlineDraft.event as SupporterEvent}
+        initialSourceEventId={offlineDraft.sourceEventId}
+        offlineDraft={offlineDraft}
+        onOfflineDraftSaved={refreshLocalGameOnCardDrafts}
+        onOfflineDraftRemoved={refreshLocalGameOnCardDrafts}
+        onSaveCalendarEvent={onSaveCalendarEvent}
+        existingCardTokensByEventId={Object.fromEntries(dashboardCards.filter((entry) => entry.shareToken).map((entry) => [entry.eventId, entry.shareToken!]))}
+        onChanged={handleGameOnCardChanged}
+      />;
+    }
     if (newCardDraft?.editing && card.id === newCardDraft.id) {
       if ((surface === 'desktop') !== isDesktopDashboard) return null;
       return <GameOnCardPanel
@@ -1326,7 +1409,7 @@ export function SupporterDashboardView({
             onCreate={openCardWorkspace}
             createDisabled={Boolean(newCardDraft)}
             onOpen={selectCard}
-            onCancelDraft={cancelNewCardDraft}
+            onCancelDraft={cancelCardDraft}
             onDeleteCard={deleteGameOnCard}
             selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
             isActiveShell={!isDesktopDashboard}
@@ -1493,7 +1576,7 @@ export function SupporterDashboardView({
           onCreate={openCardWorkspace}
           createDisabled={Boolean(newCardDraft)}
           onOpen={selectCard}
-          onCancelDraft={cancelNewCardDraft}
+          onCancelDraft={cancelCardDraft}
           onDeleteCard={deleteGameOnCard}
           selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
           isActiveShell={isDesktopDashboard}

@@ -330,7 +330,7 @@ export function PublicLandingPage() {
                 </li>
               </ul>
               <p className="offline-install-note"><strong>Before game day:</strong> On iPhone, tap Share, then Add to Home Screen. On Android, open your browser menu and choose Install app or Add to Home screen. Open PIXL online and load each game and checklist you’ll need. This will give you the full benefit of PIXL Sports, with offline content saved on this device.</p>
-              <p className="offline-connection-note">Creating or updating Event Card shares, receiving new replies, and sending alerts still need a connection.</p>
+              <p className="offline-connection-note">New Event Card drafts stay private on this device until published online. Updating public cards, receiving new replies, and sending alerts still need a connection.</p>
             </div>
           </div>
         </section>

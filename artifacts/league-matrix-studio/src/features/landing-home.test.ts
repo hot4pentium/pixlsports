@@ -44,7 +44,7 @@ test('landing shows the dashboard in mobile and landscape with fictional example
     'On iPhone, tap Share, then Add to Home Screen.',
     'On Android, open your browser menu and choose Install app or Add to Home screen.',
     'Open PIXL online and load each game and checklist you’ll need.',
-    'Creating or updating Event Card shares, receiving new replies, and sending alerts still need a connection.',
+    'New Event Card drafts stay private on this device until published online. Updating public cards, receiving new replies, and sending alerts still need a connection.',
   ]) assert.ok(source.includes(message), `offline section should explain ${message}`);
   assert.match(styles, /offline-grid \{[^}]*grid-template-columns/);
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]*offline-grid \{grid-template-columns:1fr/);

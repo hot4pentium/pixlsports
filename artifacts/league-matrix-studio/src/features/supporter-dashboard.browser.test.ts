@@ -3560,6 +3560,58 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       page.sessionId,
     ), 0, 'cancelling should discard the unsaved draft');
 
+    await connection.send('Network.enable', {}, page.sessionId);
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: true,
+      latency: 0,
+      downloadThroughput: 0,
+      uploadThroughput: 0,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'navigator.onLine === false', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"game-on-card-offline-status\\"]")', Boolean);
+    await connection.evaluate(`(() => {
+      const setValue = (selector, value) => {
+        const input = document.querySelector(selector);
+        if (!(input instanceof HTMLInputElement)) throw new Error('Event Card field missing: ' + selector);
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      setValue('[data-testid="input-game-on-date"]', '2026-09-22');
+      setValue('[data-testid="input-game-on-opponent"]', 'Offline Falcons');
+    })()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="button-save-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const key = Object.keys(localStorage).find((item) => item.startsWith('pixlsports-game-on-card-drafts:'));
+      const drafts = key ? JSON.parse(localStorage.getItem(key) || '[]') : [];
+      return drafts.length === 1 && drafts[0].event.opponent === 'Offline Falcons';
+    })()`, Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-offline-draft:\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate(
+      'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-offline-draft:\\"]")?.textContent?.includes("Saved on this device · not published")',
+      page.sessionId,
+    ), true, 'the offline draft should appear in the Event Card collection as private and unpublished');
+    assert.match(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"game-on-card-offline-status\\"]")?.textContent || ""',
+      page.sessionId,
+    ), /You’re offline/i);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-cancel-game-on-draft-offline-draft:"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const key = Object.keys(localStorage).find((item) => item.startsWith('pixlsports-game-on-card-drafts:'));
+      return !key || JSON.parse(localStorage.getItem(key) || '[]').length === 0;
+    })()`, Boolean);
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 0,
+      downloadThroughput: 1_000_000,
+      uploadThroughput: 1_000_000,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'navigator.onLine === true', Boolean);
+
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,

@@ -17,6 +17,13 @@ export type SavedGameOnCard = {
   savedAt: string;
 };
 
+export type OfflineGameOnCardDraft = {
+  id: string;
+  sourceEventId: string;
+  savedAt: string;
+  event: GameOnCardEvent & { calendarProjectId?: string };
+};
+
 type StorageReader = Pick<Storage, 'getItem'>;
 type StorageWriter = Pick<Storage, 'setItem'>;
 type StorageRemover = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -28,6 +35,10 @@ export function gameOnCardStorageKey(userId: string) {
 
 export function gameOnCardStorageListKey(userId: string) {
   return `pixlsports-game-on-cards:${userId}`;
+}
+
+export function offlineGameOnCardDraftsStorageKey(userId: string) {
+  return `pixlsports-game-on-card-drafts:${userId}`;
 }
 
 function browserStorage(): Storage | undefined {
@@ -75,6 +86,99 @@ function validatedSavedGameOnCard(value: unknown): SavedGameOnCard | null {
       status: parsed.event.status ?? 'upcoming',
     },
   };
+}
+
+function validatedOfflineGameOnCardDraft(value: unknown): OfflineGameOnCardDraft | null {
+  if (!value || typeof value !== 'object') return null;
+  const parsed = value as Partial<OfflineGameOnCardDraft>;
+  const event = parsed.event;
+  if (
+    typeof parsed.id !== 'string'
+    || !parsed.id
+    || typeof parsed.sourceEventId !== 'string'
+    || typeof parsed.savedAt !== 'string'
+    || !event
+    || typeof event.id !== 'string'
+    || typeof event.date !== 'string'
+    || typeof event.time !== 'string'
+    || typeof event.location !== 'string'
+    || typeof event.opponent !== 'string'
+  ) return null;
+  if (
+    event.status !== undefined
+    && event.status !== 'upcoming'
+    && event.status !== 'live'
+    && event.status !== 'final'
+  ) return null;
+  if (event.type !== undefined && event.type !== 'game' && event.type !== 'practice') return null;
+  if (event.calendarProjectId !== undefined && typeof event.calendarProjectId !== 'string') return null;
+
+  return {
+    id: parsed.id,
+    sourceEventId: parsed.sourceEventId,
+    savedAt: parsed.savedAt,
+    event: {
+      id: event.id,
+      ...(event.type ? { type: event.type } : {}),
+      ...(event.calendarProjectId ? { calendarProjectId: event.calendarProjectId } : {}),
+      date: event.date,
+      time: event.time,
+      ...(typeof event.timezone === 'string' ? { timezone: event.timezone } : {}),
+      location: event.location,
+      opponent: event.opponent,
+      status: event.status ?? 'upcoming',
+    },
+  };
+}
+
+export function readOfflineGameOnCardDrafts(
+  userId: string,
+  storage: StorageReader | undefined = browserStorage(),
+): OfflineGameOnCardDraft[] {
+  if (!storage) return [];
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(offlineGameOnCardDraftsStorageKey(userId)) ?? 'null');
+    if (!Array.isArray(parsed)) return [];
+    const seenIds = new Set<string>();
+    return parsed.reduce<OfflineGameOnCardDraft[]>((drafts, record) => {
+      const draft = validatedOfflineGameOnCardDraft(record);
+      if (draft && !seenIds.has(draft.id)) {
+        drafts.push(draft);
+        seenIds.add(draft.id);
+      }
+      return drafts;
+    }, []);
+  } catch {
+    return [];
+  }
+}
+
+export function upsertOfflineGameOnCardDraft(
+  userId: string,
+  draft: OfflineGameOnCardDraft,
+  storage: GameOnCardStorage | undefined = browserStorage(),
+) {
+  if (!storage) throw new Error('Event Card draft storage is unavailable.');
+  const drafts = readOfflineGameOnCardDrafts(userId, storage);
+  const existingIndex = drafts.findIndex((item) => item.id === draft.id);
+  if (existingIndex === -1) drafts.push(draft);
+  else drafts[existingIndex] = draft;
+  storage.setItem(offlineGameOnCardDraftsStorageKey(userId), JSON.stringify(drafts));
+}
+
+export function removeOfflineGameOnCardDraft(
+  userId: string,
+  draftId: string,
+  storage: GameOnCardStorage | undefined = browserStorage(),
+) {
+  if (!storage) return false;
+  const drafts = readOfflineGameOnCardDrafts(userId, storage);
+  const remaining = drafts.filter((draft) => draft.id !== draftId);
+  if (remaining.length === drafts.length) return false;
+  const key = offlineGameOnCardDraftsStorageKey(userId);
+  if (remaining.length) storage.setItem(key, JSON.stringify(remaining));
+  else storage.removeItem(key);
+  return true;
 }
 
 export function readSavedGameOnCard(
