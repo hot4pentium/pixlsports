@@ -394,7 +394,11 @@ test('end-game choices distinguish an unentered score, a real 0–0, and a confl
   const outcomePicker = renderer.root.findByProps({ 'data-testid': 'game-outcome-picker' });
   assert.match(outcomePicker.props.className, /bg-\[#102B4D\]/);
   assert.match(outcomePicker.findByType('legend').props.className, /text-white/);
-  assert.match(renderer.root.findByProps({ 'data-testid': 'button-game-outcome-win' }).props.className, /aria-pressed:bg-\[#174E9C\].*aria-pressed:text-white/);
+  const resultButton = renderer.root.findByProps({ 'data-testid': 'button-game-outcome-win' });
+  assert.match(resultButton.props.className, /bg-\[#173A60\].*text-white/);
+  assert.match(resultButton.props.className, /border-\[#9BB9D7\]/);
+  assert.match(resultButton.props.className, /aria-pressed:bg-\[#1F70D8\].*aria-pressed:text-white/);
+  assert.match(resultButton.props.className, /disabled:opacity-100.*disabled:\[-webkit-text-fill-color:#F8FAFC\]/);
   assert.match(outcomePicker.findAllByType('button').at(-1)!.props.className, /text-white/);
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'tracker-score-result-warning' }).length, 0);
 

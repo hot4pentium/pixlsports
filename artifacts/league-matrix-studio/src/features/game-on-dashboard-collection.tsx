@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link } from 'wouter';
 import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Share2, Swords, Trash2, X } from 'lucide-react';
@@ -239,7 +239,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
         ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-prep__title')
         : panel === 'calendar'
           ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-inline__section h3')
-          : backFaceRef.current?.querySelector<HTMLElement>('.game-on-quick-tracker__title');
+          : backFaceRef.current?.querySelector<HTMLElement>('.game-on-collection__tracker-mode-heading h3');
       if (heading?.getClientRects().length) heading.focus();
     }
     previousPanel.current = panel;
@@ -462,7 +462,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
               </button>
               <div className="game-on-collection__tracker-mode-heading">
                 <p className="game-on-collection__tracker-mode-eyebrow">Game day mode</p>
-                <h3 data-testid={`heading-event-card-game-day-mode-${eventId}`}>Choose how to follow this game</h3>
+                <h3 tabIndex={-1} data-testid={`heading-event-card-game-day-mode-${eventId}`}>Choose how to follow this game</h3>
                 <p>Track player stats, or use Live Taps for family cheers without recording stats.</p>
               </div>
               <section className="game-on-collection__tracker-stat-option" aria-labelledby={`tracker-stat-option-title-${eventId}`} data-testid="event-card-stat-tracker-option">
@@ -517,7 +517,6 @@ export function GameOnDashboardCollection({
   statTrackerTeamName,
   onCompleteScheduledGame,
 }: GameOnDashboardCollectionProps) {
-  const [, setLocation] = useLocation();
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
   const [deleteAnnouncement, setDeleteAnnouncement] = useState('');
@@ -608,20 +607,6 @@ export function GameOnDashboardCollection({
   }, [openPanel, selectedId]);
 
   const openCardPanel = (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => {
-    if (panel === 'tracker') {
-      const card = cards.find((candidate) => candidate.id === id);
-      if (!card || card.type === 'practice') return;
-      setOpenPanel(null);
-      setLocation(buildWorkspaceToolHref('stats', {
-        id: card.eventId ?? card.id.replace(/^(?:share|draft):/, ''),
-        type: card.type,
-        date: card.date,
-        time: card.time,
-        location: card.location,
-        opponent: card.opponent,
-      }));
-      return;
-    }
     const frontAction = trigger.closest('.game-on-collection__flip-back')
       ?.closest('.game-on-collection__card')
       ?.querySelector<HTMLButtonElement>(panel === 'calendar'

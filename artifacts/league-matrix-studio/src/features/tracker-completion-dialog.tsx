@@ -29,7 +29,7 @@ export function GameOutcomePicker({
             aria-pressed={value === result}
             onClick={() => onChange(result)}
             data-testid={`button-game-outcome-${result}`}
-            className="min-h-11 border border-[#7189A2] bg-[#0B1F3A] px-2 py-2 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-[#55A4FF] aria-pressed:border-[#55A4FF] aria-pressed:bg-[#174E9C] aria-pressed:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#55A4FF] disabled:cursor-not-allowed disabled:opacity-80"
+            className="min-h-11 border border-[#9BB9D7] bg-[#173A60] px-2 py-2 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-[#55A4FF] aria-pressed:border-[#55A4FF] aria-pressed:bg-[#1F70D8] aria-pressed:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#55A4FF] disabled:cursor-not-allowed disabled:opacity-100 disabled:[-webkit-text-fill-color:#F8FAFC]"
           >
             {outcomeLabels[result]}
           </button>

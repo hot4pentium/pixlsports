@@ -3,6 +3,22 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const styles = readFileSync(new URL('./game-on-dashboard-collection.css', import.meta.url), 'utf8');
+const component = readFileSync(new URL('./game-on-dashboard-collection.tsx', import.meta.url), 'utf8');
+
+test('Event Card Stat Tracker opens the game-day choice before either path', () => {
+  const handlerStart = component.indexOf('const openCardPanel =');
+  const handlerEnd = component.indexOf('const openCollectionCard =', handlerStart);
+  const handler = component.slice(handlerStart, handlerEnd);
+
+  assert.match(handler, /setOpenPanel\(\{ cardId: id, panel \}\)/);
+  assert.doesNotMatch(handler, /setLocation|buildWorkspaceToolHref\(['"]stats/);
+  assert.match(component, /Choose how to follow this game/);
+  assert.match(component, /tracker-mode-heading h3/);
+  assert.match(component, /<h3 tabIndex=\{-1\} data-testid=\{`heading-event-card-game-day-mode-/);
+  assert.match(component, /Full Stat Tracker/);
+  assert.match(component, /without recording stats/);
+  assert.match(component, /<EventCardLiveTaps/);
+});
 
 test('unselected Stat Tracker and Share actions stay neutral while an open tracker remains distinct', () => {
   for (const action of ['tracker', 'share']) {

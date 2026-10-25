@@ -1962,6 +1962,8 @@ test('Game On card stays compact and opens cleanly across phone widths', { concu
     await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"] .game-on-collection__summary')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]'))`, Boolean);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]').click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid^=\\"heading-event-card-game-day-mode-\\"]"))', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="link-open-stat-tracker-draft:game-1"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'window.location.pathname === "/studio/stat-tracker"', Boolean);
     assert.equal(await connection.evaluate<string>('new URLSearchParams(location.search).get("eventId")', page.sessionId), 'game-1');
     assert.equal(await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]"))', page.sessionId), false);
@@ -9855,12 +9857,12 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     })()`, session);
     await waitFor(connection, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
     await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`, session);
-    await waitFor(connection, session, 'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-card-stats-"][href*="game-selected"]\'))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"][href*="game-selected"]\'))', Boolean);
     const statsHref = await connection.evaluate<string>(
-      'document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-card-stats-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
+      'document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
     );
     assert.match(statsHref, /eventId=game-selected/);
-    await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="link-card-stats-"][href*="game-selected"]')?.click()`, session);
+    await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"][href*="game-selected"]')?.click()`, session);
     await waitFor(
       connection,
       session,
@@ -9993,6 +9995,14 @@ test(`a signed-in ${halftime ? 'soccer halftime' : 'paused'} Stat Tracker game s
       );
       await connection!.evaluate(
         `document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`,
+        session,
+      );
+      await waitFor(connection!, session,
+        'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"]\'))',
+        Boolean,
+      );
+      await connection!.evaluate(
+        `document.querySelector('.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"]')?.click()`,
         session,
       );
       await waitFor(connection!, session, 'location.pathname === "/studio/stat-tracker"', Boolean);
@@ -10277,11 +10287,11 @@ test('deleting selected games and practices falls back across Calendar and works
       })()`, session);
       await waitFor(connection!, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
       await connection!.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`, session);
-      await waitFor(connection!, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-stats-"]\'))', Boolean);
+      await waitFor(connection!, session, 'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"]\'))', Boolean);
       return connection!.evaluate<Record<string, string>>(`(() => {
         const calendar = document.querySelector('.game-on-collection__dialog-card [data-testid^="button-edit-event-arrow-"]');
         const prep = document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"]');
-        const stats = document.querySelector('[data-testid^="link-card-stats-"]');
+        const stats = document.querySelector('.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"]');
         return {
           calendarAction: calendar?.getAttribute('aria-label') || '',
           prep: prep?.getAttribute('data-prep-href') || '',
