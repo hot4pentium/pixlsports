@@ -9,6 +9,9 @@ import type { StatTrackerShareInput } from './statTrackerShareInput';
 
 export type StatTrackerShare = StatTrackerShareInput & ({
   shareToken: string;
+  /** @maxLength 160 */
+  sourceEventId?: string;
+  liveTapsOnly?: boolean;
   /** @minimum 1 */
   revision: number;
   createdAt: Date;

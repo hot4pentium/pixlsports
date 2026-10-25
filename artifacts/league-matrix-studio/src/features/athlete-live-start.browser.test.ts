@@ -51,6 +51,8 @@ const expectedLiveTapCheers = {
 
 type GameSnapshot = {
   id: string;
+  sourceEventId?: string;
+  liveTapsOnly?: boolean;
   sport: string;
   status: string;
   date: string;
@@ -66,6 +68,8 @@ type GameSnapshot = {
 
 type TrackerShare = {
   shareToken: string;
+  sourceEventId?: string;
+  liveTapsOnly?: boolean;
   revision: number;
   athleteName: string;
   teamName: string;
@@ -213,9 +217,17 @@ function makeFixtureServer() {
           return;
         }
         const body = await readJson(request);
+        const game = { ...body.game };
+        const sourceEventId = game.sourceEventId;
+        const liveTapsOnly = game.liveTapsOnly;
+        delete game.sourceEventId;
+        delete game.liveTapsOnly;
         const now = new Date().toISOString();
         const share: TrackerShare = {
           ...body,
+          game,
+          ...(typeof sourceEventId === 'string' ? { sourceEventId } : {}),
+          ...(liveTapsOnly === true ? { liveTapsOnly: true } : {}),
           shareToken: `00000000-0000-4000-8000-${String(state.shares.length + 1).padStart(12, '0')}`,
           revision: 1,
           createdAt: now,
@@ -239,6 +251,11 @@ function makeFixtureServer() {
           return;
         }
         const body = await readJson(request);
+        const game = { ...body.game };
+        const sourceEventId = game.sourceEventId;
+        const liveTapsOnly = game.liveTapsOnly;
+        delete game.sourceEventId;
+        delete game.liveTapsOnly;
         if (body.expectedRevision !== share.revision) {
           json(response, 409, { error: 'The share has changed', current: share });
           return;
@@ -246,7 +263,9 @@ function makeFixtureServer() {
         Object.assign(share, {
           athleteName: body.athleteName,
           teamName: body.teamName,
-          game: body.game,
+          game,
+          sourceEventId,
+          liveTapsOnly,
           revision: share.revision + 1,
           updatedAt: new Date().toISOString(),
         });
@@ -263,6 +282,7 @@ function makeFixtureServer() {
           teamName: 'Northside Comets',
           sport: inviteSport,
           paused: invitePaused,
+          liveTrackerShareToken: state.activeShareToken,
         }] : []);
         return;
       }
@@ -729,10 +749,20 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     const liveTapsStorage = await connection.evaluate<string>('JSON.stringify(Object.entries(localStorage))', liveTapsOnly);
     assert.doesNotMatch(liveTapsStorage, new RegExp(familyQrToken), 'raw family QR tokens are not persisted in local storage');
 
+    await connection.evaluate(
+      `for (const key of Object.keys(localStorage)) if (key.startsWith('leaguematrix-live-taps-only:')) localStorage.removeItem(key)`,
+      liveTapsOnly,
+    );
     await connection.send('Page.navigate', { url: 'about:blank' }, liveTapsOnly);
     await connection.send('Page.navigate', { url: appUrl('live-taps', { owner: true }) }, liveTapsOnly);
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="button-recover-live-taps"]'))`);
+    await click(liveTapsOnly, 'button-recover-live-taps');
     await waitUi(liveTapsOnly, `document.querySelector('[data-testid="status-live-taps-only"]')?.textContent?.includes('Game Day Live is on')`);
     await waitUi(liveTapsOnly, `document.querySelector('[data-testid="text-event-card-live-taps-active-qr-note"]')?.textContent?.includes('1 active family QR code remains valid when you leave this Event Card')`);
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="text-owner-live-tap-count-bucket"]')?.textContent === '1'`,
+      liveTapsOnly,
+    ), true, 'recovery keeps the cheer history attached to the active game');
     assert.equal(await connection.evaluate(
       `document.querySelector('[data-testid="img-event-card-live-taps-qr"]') === null`,
       liveTapsOnly,

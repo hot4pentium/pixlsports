@@ -72,6 +72,7 @@ export function getGameOutcome(game: GameSession): GameOutcome | null {
 export type GameSession = {
   id: string;
   sourceEventId?: string;
+  liveTapsOnly?: boolean;
   sport: Sport;
   status: GameStatus;
   pauseReason?: 'halftime';

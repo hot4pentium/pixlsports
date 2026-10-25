@@ -41,6 +41,8 @@ export function toStatTrackerShareInput(
     teamName,
     game: {
       id: game.id,
+      ...(game.sourceEventId ? { sourceEventId: game.sourceEventId } : {}),
+      ...(game.liveTapsOnly ? { liveTapsOnly: true } : {}),
       sport: game.sport,
       status: game.status,
       date: game.date,

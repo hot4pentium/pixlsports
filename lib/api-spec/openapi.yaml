@@ -3941,6 +3941,8 @@ components:
       required: [id, sport, status, date, opponent, period, score, opponentScore, stats, trackYards, yardStats, events]
       properties:
         id: { type: string, minLength: 1, maxLength: 160 }
+        sourceEventId: { type: string, maxLength: 160 }
+        liveTapsOnly: { type: boolean }
         sport:
           type: string
           enum: [baseball, basketball, football, soccer, softball, volleyball]
@@ -4016,6 +4018,8 @@ components:
           required: [shareToken, revision, createdAt, updatedAt, expiresAt, canManage]
           properties:
             shareToken: { type: string, format: uuid }
+            sourceEventId: { type: string, maxLength: 160 }
+            liveTapsOnly: { type: boolean }
             revision: { type: integer, minimum: 1 }
             createdAt: { type: string, format: date-time }
             updatedAt: { type: string, format: date-time }

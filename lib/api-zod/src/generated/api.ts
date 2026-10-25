@@ -2175,6 +2175,8 @@ export const listStatTrackerSharesResponseOneTeamNameMax = 160;
 
 export const listStatTrackerSharesResponseOneGameIdMax = 160;
 
+export const listStatTrackerSharesResponseOneGameSourceEventIdMax = 160;
+
 export const listStatTrackerSharesResponseOneGameDateMax = 30;
 
 export const listStatTrackerSharesResponseOneGameOpponentMax = 240;
@@ -2207,6 +2209,8 @@ export const listStatTrackerSharesResponseOneGameEventsItemYardsMin = 0;
 
 export const listStatTrackerSharesResponseOneGameEventsMax = 10;
 
+export const listStatTrackerSharesResponseTwoSourceEventIdMax = 160;
+
 
 export const listStatTrackerSharesResponseTwoPublicFanCardPathMax = 512;
 
@@ -2217,6 +2221,8 @@ export const ListStatTrackerSharesResponseItem = zod.object({
   "teamName": zod.string().max(listStatTrackerSharesResponseOneTeamNameMax),
   "game": zod.object({
   "id": zod.string().min(1).max(listStatTrackerSharesResponseOneGameIdMax),
+  "sourceEventId": zod.string().max(listStatTrackerSharesResponseOneGameSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "status": zod.enum(['setup', 'live', 'paused', 'final']),
   "date": zod.string().max(listStatTrackerSharesResponseOneGameDateMax),
@@ -2246,6 +2252,8 @@ export const ListStatTrackerSharesResponseItem = zod.object({
 })
 }).and(zod.object({
   "shareToken": zod.string().uuid(),
+  "sourceEventId": zod.string().max(listStatTrackerSharesResponseTwoSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -2264,6 +2272,8 @@ export const createStatTrackerShareBodyAthleteNameMax = 160;
 export const createStatTrackerShareBodyTeamNameMax = 160;
 
 export const createStatTrackerShareBodyGameIdMax = 160;
+
+export const createStatTrackerShareBodyGameSourceEventIdMax = 160;
 
 export const createStatTrackerShareBodyGameDateMax = 30;
 
@@ -2304,6 +2314,8 @@ export const CreateStatTrackerShareBody = zod.object({
   "teamName": zod.string().max(createStatTrackerShareBodyTeamNameMax),
   "game": zod.object({
   "id": zod.string().min(1).max(createStatTrackerShareBodyGameIdMax),
+  "sourceEventId": zod.string().max(createStatTrackerShareBodyGameSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "status": zod.enum(['setup', 'live', 'paused', 'final']),
   "date": zod.string().max(createStatTrackerShareBodyGameDateMax),
@@ -2339,6 +2351,8 @@ export const createStatTrackerShareResponseOneTeamNameMax = 160;
 
 export const createStatTrackerShareResponseOneGameIdMax = 160;
 
+export const createStatTrackerShareResponseOneGameSourceEventIdMax = 160;
+
 export const createStatTrackerShareResponseOneGameDateMax = 30;
 
 export const createStatTrackerShareResponseOneGameOpponentMax = 240;
@@ -2371,6 +2385,8 @@ export const createStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const createStatTrackerShareResponseOneGameEventsMax = 10;
 
+export const createStatTrackerShareResponseTwoSourceEventIdMax = 160;
+
 
 export const createStatTrackerShareResponseTwoPublicFanCardPathMax = 512;
 
@@ -2381,6 +2397,8 @@ export const CreateStatTrackerShareResponse = zod.object({
   "teamName": zod.string().max(createStatTrackerShareResponseOneTeamNameMax),
   "game": zod.object({
   "id": zod.string().min(1).max(createStatTrackerShareResponseOneGameIdMax),
+  "sourceEventId": zod.string().max(createStatTrackerShareResponseOneGameSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "status": zod.enum(['setup', 'live', 'paused', 'final']),
   "date": zod.string().max(createStatTrackerShareResponseOneGameDateMax),
@@ -2410,6 +2428,8 @@ export const CreateStatTrackerShareResponse = zod.object({
 })
 }).and(zod.object({
   "shareToken": zod.string().uuid(),
+  "sourceEventId": zod.string().max(createStatTrackerShareResponseTwoSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -2431,6 +2451,8 @@ export const getStatTrackerShareResponseOneAthleteNameMax = 160;
 export const getStatTrackerShareResponseOneTeamNameMax = 160;
 
 export const getStatTrackerShareResponseOneGameIdMax = 160;
+
+export const getStatTrackerShareResponseOneGameSourceEventIdMax = 160;
 
 export const getStatTrackerShareResponseOneGameDateMax = 30;
 
@@ -2464,6 +2486,8 @@ export const getStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const getStatTrackerShareResponseOneGameEventsMax = 10;
 
+export const getStatTrackerShareResponseTwoSourceEventIdMax = 160;
+
 
 export const getStatTrackerShareResponseTwoPublicFanCardPathMax = 512;
 
@@ -2474,6 +2498,8 @@ export const GetStatTrackerShareResponse = zod.object({
   "teamName": zod.string().max(getStatTrackerShareResponseOneTeamNameMax),
   "game": zod.object({
   "id": zod.string().min(1).max(getStatTrackerShareResponseOneGameIdMax),
+  "sourceEventId": zod.string().max(getStatTrackerShareResponseOneGameSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "status": zod.enum(['setup', 'live', 'paused', 'final']),
   "date": zod.string().max(getStatTrackerShareResponseOneGameDateMax),
@@ -2503,6 +2529,8 @@ export const GetStatTrackerShareResponse = zod.object({
 })
 }).and(zod.object({
   "shareToken": zod.string().uuid(),
+  "sourceEventId": zod.string().max(getStatTrackerShareResponseTwoSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -2524,6 +2552,8 @@ export const updateStatTrackerShareBodyOneAthleteNameMax = 160;
 export const updateStatTrackerShareBodyOneTeamNameMax = 160;
 
 export const updateStatTrackerShareBodyOneGameIdMax = 160;
+
+export const updateStatTrackerShareBodyOneGameSourceEventIdMax = 160;
 
 export const updateStatTrackerShareBodyOneGameDateMax = 30;
 
@@ -2565,6 +2595,8 @@ export const UpdateStatTrackerShareBody = zod.object({
   "teamName": zod.string().max(updateStatTrackerShareBodyOneTeamNameMax),
   "game": zod.object({
   "id": zod.string().min(1).max(updateStatTrackerShareBodyOneGameIdMax),
+  "sourceEventId": zod.string().max(updateStatTrackerShareBodyOneGameSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "status": zod.enum(['setup', 'live', 'paused', 'final']),
   "date": zod.string().max(updateStatTrackerShareBodyOneGameDateMax),
@@ -2602,6 +2634,8 @@ export const updateStatTrackerShareResponseOneTeamNameMax = 160;
 
 export const updateStatTrackerShareResponseOneGameIdMax = 160;
 
+export const updateStatTrackerShareResponseOneGameSourceEventIdMax = 160;
+
 export const updateStatTrackerShareResponseOneGameDateMax = 30;
 
 export const updateStatTrackerShareResponseOneGameOpponentMax = 240;
@@ -2634,6 +2668,8 @@ export const updateStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const updateStatTrackerShareResponseOneGameEventsMax = 10;
 
+export const updateStatTrackerShareResponseTwoSourceEventIdMax = 160;
+
 
 export const updateStatTrackerShareResponseTwoPublicFanCardPathMax = 512;
 
@@ -2644,6 +2680,8 @@ export const UpdateStatTrackerShareResponse = zod.object({
   "teamName": zod.string().max(updateStatTrackerShareResponseOneTeamNameMax),
   "game": zod.object({
   "id": zod.string().min(1).max(updateStatTrackerShareResponseOneGameIdMax),
+  "sourceEventId": zod.string().max(updateStatTrackerShareResponseOneGameSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "status": zod.enum(['setup', 'live', 'paused', 'final']),
   "date": zod.string().max(updateStatTrackerShareResponseOneGameDateMax),
@@ -2673,6 +2711,8 @@ export const UpdateStatTrackerShareResponse = zod.object({
 })
 }).and(zod.object({
   "shareToken": zod.string().uuid(),
+  "sourceEventId": zod.string().max(updateStatTrackerShareResponseTwoSourceEventIdMax).optional(),
+  "liveTapsOnly": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),

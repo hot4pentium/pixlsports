@@ -15,6 +15,12 @@ For write access, the owner creates revocable family QR codes for in-person scan
 
 **How to apply:** Keep QR authorization independent of public-card loading, and preserve old tap rows when access is revoked or a live share ends.
 
+Owner recovery must use authenticated, owner-only session metadata. Do not expose Event Card recovery identifiers through public share responses or HYPE Card links.
+
+**Why:** Owners need a device-independent way to return to an active session, but public sharing must remain view-only.
+
+**How to apply:** Keep recovery metadata on owner-authenticated share responses and remove it from public game snapshots.
+
 Every supported sport also includes the shared cheers “Thumbs Up,” “Way to Go!” and “Big Play,” alongside its sport-specific options.
 
 **Why:** The user explicitly requested these three buttons on all Live Taps.

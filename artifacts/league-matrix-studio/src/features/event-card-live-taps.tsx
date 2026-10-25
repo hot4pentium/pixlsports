@@ -46,6 +46,44 @@ type SavedLiveTapsSession = {
   live: boolean;
 };
 
+function restoreLiveTapsGame(share: StatTrackerShare): GameSession | null {
+  const snapshot = share.game;
+  if (
+    share.liveTapsOnly !== true
+    || !share.sourceEventId
+    || snapshot.status !== 'live'
+    || snapshot.score !== 0
+    || snapshot.opponentScore !== 0
+    || snapshot.trackYards
+    || snapshot.events.length > 0
+    || Object.values(snapshot.stats).some((count) => count !== 0)
+    || Object.values(snapshot.yardStats).some((count) => count !== 0)
+  ) {
+    return null;
+  }
+  const game = createGameSession(snapshot.sport, {
+    date: snapshot.date,
+    opponent: snapshot.opponent,
+    sourceEventId: share.sourceEventId,
+    ...(snapshot.sport === 'soccer' && snapshot.soccerPeriodFormat
+      ? { soccerPeriodFormat: snapshot.soccerPeriodFormat }
+      : {}),
+  });
+  return {
+    ...game,
+    id: snapshot.id,
+    status: 'live',
+    period: snapshot.period,
+    score: 0,
+    opponentScore: 0,
+    stats: { ...snapshot.stats },
+    trackYards: false,
+    yardStats: { ...snapshot.yardStats },
+    events: [],
+    liveTapsOnly: true,
+  };
+}
+
 type EventCardLiveTapsProps = {
   userId?: string | null;
   sport: Sport | null;
@@ -167,9 +205,10 @@ export function EventCardLiveTaps({
   });
   const trackerShareQuery = useListStatTrackerShares({
     query: {
-      enabled: Boolean(userId && session),
+      enabled: Boolean(userId),
       queryKey: [...getListStatTrackerSharesQueryKey(), userId],
       staleTime: 0,
+      refetchOnWindowFocus: true,
     },
   });
   const createTrackerShare = useCreateStatTrackerShare();
@@ -184,6 +223,17 @@ export function EventCardLiveTaps({
   const currentShare = shareFromCreate?.shareToken === session?.shareToken
     ? shareFromList ?? shareFromCreate
     : shareFromList;
+  const recoverableSession = useMemo(() => {
+    if (session || !sport || !inviteLinksQuery.data || !trackerShareQuery.data) return null;
+    for (const invite of inviteLinksQuery.data) {
+      if (invite.sport !== sport || !invite.liveTrackerShareToken) continue;
+      const share = trackerShareQuery.data.find((candidate) => candidate.shareToken === invite.liveTrackerShareToken);
+      if (share?.sourceEventId !== eventId) continue;
+      const game = restoreLiveTapsGame(share);
+      if (game) return { invite, share, game };
+    }
+    return null;
+  }, [eventId, inviteLinksQuery.data, session, sport, trackerShareQuery.data]);
   const liveTapSummary = liveTapSummaryQuery.data?.liveTaps;
   const hasCurrentLiveTapSummary = Boolean(
     session?.live
@@ -249,12 +299,15 @@ export function EventCardLiveTaps({
           return;
         }
         const invite = selectedInvite!;
-        const game = createGameSession(invite.sport, {
-          date: date || new Date().toISOString().slice(0, 10),
-          opponent: opponent.trim(),
-          sourceEventId: eventId,
-          ...(invite.sport === 'soccer' ? { soccerPeriodFormat: soccerPeriodFormat! } : {}),
-        });
+        const game = {
+          ...createGameSession(invite.sport, {
+            date: date || new Date().toISOString().slice(0, 10),
+            opponent: opponent.trim(),
+            sourceEventId: eventId,
+            ...(invite.sport === 'soccer' ? { soccerPeriodFormat: soccerPeriodFormat! } : {}),
+          }),
+          liveTapsOnly: true,
+        };
         const createdShare = await createTrackerShare.mutateAsync({
           data: toStatTrackerShareInput(game, athleteName, teamName),
         });
@@ -287,6 +340,20 @@ export function EventCardLiveTaps({
     } finally {
       setBusy(false);
     }
+  };
+
+  const recoverLiveTaps = () => {
+    if (!recoverableSession || !userId) return;
+    setError('');
+    setNotice('Active Live Taps reopened. Existing family QR codes and cheers are still available.');
+    persistSession({
+      version: 1,
+      eventId,
+      inviteToken: recoverableSession.invite.inviteToken,
+      shareToken: recoverableSession.share.shareToken,
+      game: recoverableSession.game,
+      live: true,
+    });
   };
 
   const createFamilyQr = async () => {
@@ -442,6 +509,40 @@ export function EventCardLiveTaps({
         </div>
       ) : !session ? (
         <div className="event-card-live-taps__setup">
+          {trackerShareQuery.isFetching && (
+            <p className="event-card-live-taps__message" role="status">Checking for an active Live Taps game…</p>
+          )}
+          {trackerShareQuery.isError && (
+            <div className="event-card-live-taps__message event-card-live-taps__message--error" role="alert">
+              <p>Your active Live Taps games could not be checked.</p>
+              <button
+                type="button"
+                className="event-card-live-taps__owner-retry"
+                onClick={() => void trackerShareQuery.refetch()}
+                data-testid="button-retry-live-taps-recovery"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+          {recoverableSession && (
+            <div className="event-card-live-taps__message" data-testid="live-taps-recovery">
+              <p>
+                Active Game Day Live found for {recoverableSession.invite.athleteName}
+                {recoverableSession.game.opponent ? ` · vs ${recoverableSession.game.opponent}` : ''}.
+                Reopen it to manage family QR access and keep the cheer tally.
+              </p>
+              <button
+                type="button"
+                className="event-card-live-taps__primary"
+                onClick={recoverLiveTaps}
+                disabled={trackerShareQuery.isFetching}
+                data-testid="button-recover-live-taps"
+              >
+                Reopen active Live Taps
+              </button>
+            </div>
+          )}
           {availableInvites.length > 1 && (
             <label className="event-card-live-taps__label">
               Player Showcase
@@ -464,7 +565,7 @@ export function EventCardLiveTaps({
             type="button"
             className="event-card-live-taps__primary"
             onClick={() => void startLiveTaps()}
-            disabled={busy || (selectedInvite?.sport === 'soccer' && !soccerPeriodFormat)}
+            disabled={busy || trackerShareQuery.isFetching || trackerShareQuery.isError || (selectedInvite?.sport === 'soccer' && !soccerPeriodFormat)}
             data-testid="button-start-live-taps-only"
           >
             <Radio size={16} aria-hidden="true" /> {busy ? 'Starting…' : 'Start Live Taps only'}

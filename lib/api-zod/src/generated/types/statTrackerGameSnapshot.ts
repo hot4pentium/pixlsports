@@ -23,6 +23,9 @@ export interface StatTrackerGameSnapshot {
      * @maxLength 160
      */
   id: string;
+  /** @maxLength 160 */
+  sourceEventId?: string;
+  liveTapsOnly?: boolean;
   sport: StatTrackerGameSnapshotSport;
   status: StatTrackerGameSnapshotStatus;
   /** @maxLength 30 */

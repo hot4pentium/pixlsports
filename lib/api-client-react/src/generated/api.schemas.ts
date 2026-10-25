@@ -1055,6 +1055,9 @@ export interface StatTrackerGameSnapshot {
      * @maxLength 160
      */
   id: string;
+  /** @maxLength 160 */
+  sourceEventId?: string;
+  liveTapsOnly?: boolean;
   sport: StatTrackerGameSnapshotSport;
   status: StatTrackerGameSnapshotStatus;
   /** @maxLength 30 */
@@ -1095,6 +1098,9 @@ export type StatTrackerShareUpdate = StatTrackerShareInput & {
 
 export type StatTrackerShare = StatTrackerShareInput & ({
   shareToken: string;
+  /** @maxLength 160 */
+  sourceEventId?: string;
+  liveTapsOnly?: boolean;
   /** @minimum 1 */
   revision: number;
   createdAt: string;

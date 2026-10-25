@@ -64,9 +64,10 @@ function publicResponse(
   publicFanCardPath: string | null = null,
 ) {
   const storedGame = share.game as Record<string, unknown>;
-  const storedEvents = Array.isArray(storedGame.events) ? storedGame.events : [];
+  const { sourceEventId, liveTapsOnly, ...publicStoredGame } = storedGame;
+  const storedEvents = Array.isArray(publicStoredGame.events) ? publicStoredGame.events : [];
   const game = {
-    ...storedGame,
+    ...publicStoredGame,
     events: getPublicEvents(storedEvents).map((event) => {
       const item = event as Record<string, unknown>;
       return {
@@ -93,6 +94,8 @@ function publicResponse(
     updatedAt: share.updatedAt,
     expiresAt: share.expiresAt,
     canManage,
+    ...(canManage && typeof sourceEventId === "string" ? { sourceEventId } : {}),
+    ...(canManage && liveTapsOnly === true ? { liveTapsOnly: true } : {}),
     publicFanCardPath,
   });
 }

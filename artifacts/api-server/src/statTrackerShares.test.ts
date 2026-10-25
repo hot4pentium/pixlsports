@@ -117,7 +117,13 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     const input = CreateStatTrackerShareBody.parse({
       athleteName: "Maya",
       teamName: "Falcons",
-      game: { ...game, athleteStats: { tackle: 4 }, athleteYardStats: {} },
+      game: {
+        ...game,
+        sourceEventId: "event-live-taps",
+        liveTapsOnly: true,
+        athleteStats: { tackle: 4 },
+        athleteYardStats: {},
+      },
     });
     const created = await requestJson(
       baseUrl,
@@ -130,7 +136,20 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     assert.match(created.shareToken, /^[0-9a-f-]{36}$/);
     assert.equal(created.revision, 1);
     assert.equal(created.canManage, true);
+    assert.equal(created.sourceEventId, "event-live-taps");
+    assert.equal(created.liveTapsOnly, true);
     assert.ok(created.expiresAt.getTime() > Date.now());
+
+    const ownerList = await requestJson(
+      baseUrl,
+      "GET",
+      "/api/stat-tracker-shares",
+      ownerId,
+      undefined,
+      ListStatTrackerSharesResponse.parse,
+    );
+    assert.equal(ownerList[0]?.sourceEventId, "event-live-taps");
+    assert.equal(ownerList[0]?.liveTapsOnly, true);
 
     const publicView = await requestJson(
       baseUrl,
@@ -141,6 +160,8 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
       CreateStatTrackerShareResponse.parse,
     );
     assert.equal(publicView.canManage, false);
+    assert.equal(publicView.sourceEventId, undefined, "Event Card recovery details are owner-only");
+    assert.equal(publicView.liveTapsOnly, undefined, "Live Taps recovery details are owner-only");
     assert.equal(publicView.game.events.length, 2);
     assert.equal(publicView.game.events[0]?.attribution, "team");
     assert.equal(publicView.game.events[1]?.attribution, "athlete");
@@ -148,6 +169,8 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     assert.equal(publicView.publicFanCardPath, null, "live scoreboards do not offer the follow link");
     assert.equal((publicView as unknown as Record<string, unknown>).ownerClerkUserId, undefined);
     assert.equal((publicView.game as unknown as Record<string, unknown>).notes, undefined);
+    assert.equal((publicView.game as unknown as Record<string, unknown>).sourceEventId, undefined);
+    assert.equal((publicView.game as unknown as Record<string, unknown>).liveTapsOnly, undefined);
     const boundaryEvents = [
       { id: "boundary-pass", statId: "pass-yard", playId: "boundary-play", createdAt: "2026-09-20T18:00:00.000Z", period: 2, attribution: "team", yards: 18 },
       { id: "boundary-reception", statId: "reception", playId: "boundary-play", createdAt: "2026-09-20T18:00:00.000Z", period: 2, attribution: "team", yards: 18 },
