@@ -1,12 +1,12 @@
 ---
-name: iPhone account path
-description: The current decision for preserving PIXL Sports accounts on iPhone.
+name: Cross-platform account path
+description: The selected client and shared-auth direction for PIXL Sports.
 ---
 
-Use the existing PIXL Sports PWA on iPhone to preserve the Replit-managed Clerk accounts and current sign-in/onboarding. Do not link the SwiftUI prototype to a separate Clerk app such as a generic personal app. Replit-managed Clerk supports the web app, not native ClerkKit, Native API, or native Sign in with Apple.
+Target a native SwiftUI iPhone app for the App Store, keep the existing PWA for web and Android (packaged for Google Play as a Trusted Web Activity), and use one shared login across all three. Replit-managed Clerk supports the web app but not native ClerkKit/Native API; its accounts are not designed for direct export to another Clerk app. Existing records are keyed to Clerk user IDs, so a provider change requires an explicit identity/data transition plan.
 
-The native SwiftUI prototype was initially aimed at Supporter Home and the next event, but native authentication is paused until the user explicitly chooses an auth migration. The current PWA is not being replaced or recreated.
+Do not link the native project to the personal generic “My Application” Clerk project without explicit confirmation that it is the chosen new shared provider. The SwiftUI prototype remains part of the product; the PWA is not replacing it.
 
-**Why:** the user chose to keep existing accounts and use the PWA on iPhone rather than create a separate native sign-in system.
+**Why:** the user chose native App Store delivery, keeping the PWA for Android/web, and one shared login, while accepting that an account transition must be planned.
 
-**How to apply:** improve or guide use of the existing iPhone PWA for now. Revisit native SwiftUI sign-in only after choosing a mobile-capable auth provider and an account-migration path.
+**How to apply:** plan a mobile-capable provider for both the PWA and native iOS client; establish how existing users reconnect their saved data before changing auth configuration or production accounts.
