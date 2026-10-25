@@ -6,6 +6,11 @@
 	objectVersion = 90;
 	objects = {
 
+/* Begin PBXBuildFile section */
+A10000000000000000000001 /* ClerkKit in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000001 /* ClerkKit */; };
+A10000000000000000000002 /* ClerkKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000002 /* ClerkKitUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* PIXL Sports.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PIXL Sports.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -22,6 +27,8 @@
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+A10000000000000000000001 /* ClerkKit in Frameworks */,
+A10000000000000000000002 /* ClerkKitUI in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -60,6 +67,10 @@
 				000000000000000000000010 /* PIXL Sports */,
 			);
 			name = "PIXL Sports";
+packageProductDependencies = (
+A20000000000000000000001 /* ClerkKit */,
+A20000000000000000000002 /* ClerkKitUI */,
+);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* PIXL Sports.app */;
 			productType = "com.apple.product-type.application";
@@ -89,6 +100,9 @@
 			mainGroup = 000000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 90;
+packageReferences = (
+A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */,
+);
 			productRefGroup = 000000000000000000000020 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -113,6 +127,30 @@
 			);
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */ = {
+isa = XCRemoteSwiftPackageReference;
+repositoryURL = "https://github.com/clerk/clerk-ios";
+requirement = {
+kind = upToNextMajorVersion;
+minimumVersion = 1.6.1;
+};
+};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+A20000000000000000000001 /* ClerkKit */ = {
+isa = XCSwiftPackageProductDependency;
+package = A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */;
+productName = ClerkKit;
+};
+A20000000000000000000002 /* ClerkKitUI */ = {
+isa = XCSwiftPackageProductDependency;
+package = A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */;
+productName = ClerkKitUI;
+};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		000000000000000011000000 /* Debug configuration for PBXProject "PIXL Sports" */ = {
