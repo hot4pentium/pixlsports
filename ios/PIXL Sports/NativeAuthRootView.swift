@@ -9,6 +9,7 @@ struct NativeAuthRootView: View {
     @State private var loadingTimedOut = false
     @State private var retrying = false
     @State private var startupError: String?
+    @State private var showingAccountLink = false
 
     var body: some View {
 #if os(iOS) || os(macOS)
@@ -22,18 +23,28 @@ struct NativeAuthRootView: View {
                         .id(clerk.user?.id)
                         .toolbar {
                             ToolbarItem(placement: .automatic) {
+                                Button {
+                                    showingAccountLink = true
+                                } label: {
+                                    Label("PIXL connection", systemImage: "link")
+                                }
+                            }
+                            ToolbarItem(placement: .automatic) {
                                 UserButton()
                                     .accessibilityLabel("Manage iPhone account")
                             }
                         }
                         .safeAreaInset(edge: .bottom, spacing: 0) {
-                            Text("Public athlete-page view. Linking an existing PIXL account is not available yet.")
+                            Text("Home uses your saved public athlete-page link. Manage your PIXL web connection with the link button above.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(12)
                                 .frame(maxWidth: .infinity)
                                 .background(.regularMaterial)
+                        }
+                        .sheet(isPresented: $showingAccountLink) {
+                            NativeAccountLinkView().id(clerk.user?.id)
                         }
                 }
             } else {
@@ -44,7 +55,7 @@ struct NativeAuthRootView: View {
                             .tracking(2)
                         Text("Sign in to the iPhone app")
                             .font(.title2.bold())
-                        Text("Your iPhone sign-in is separate from your existing PIXL web account for now.")
+                        Text("Sign in here, then securely connect your existing PIXL web account from the link button on home.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)

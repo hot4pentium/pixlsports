@@ -98,6 +98,11 @@ import type {
   MeetingWorkspace,
   MeetingWorkspaceConflict,
   MeetingWorkspaceUpdate,
+  NativeLinkChallengeInput,
+  NativeLinkCodeInput,
+  NativeLinkDecisionInput,
+  NativeLinkProofInput,
+  NativeLinkState,
   NotFoundResponse,
   NotificationConfig,
   NotificationDisplayReceiptInput,
@@ -177,6 +182,776 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/native/link`
+}
+
+export const getNativeAccountLink = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+  return customFetch<NativeLinkState>(getGetNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeAccountLinkQueryKey = () => {
+    return [
+    `/api/native/link`
+    ] as const;
+    }
+
+
+export const getGetNativeAccountLinkQueryOptions = <TData = Awaited<ReturnType<typeof getNativeAccountLink>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeAccountLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeAccountLinkQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeAccountLink>>> = ({ signal }) => getNativeAccountLink({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeAccountLink>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeAccountLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeAccountLink>>>
+export type GetNativeAccountLinkQueryError = ErrorType<unknown>
+
+
+
+export function useGetNativeAccountLink<TData = Awaited<ReturnType<typeof getNativeAccountLink>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeAccountLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeAccountLinkQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDisconnectNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/native/link`
+}
+
+export const disconnectNativeAccountLink = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+  return customFetch<NativeLinkState>(getDisconnectNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectNativeAccountLinkMutationKey = () => ['disconnectNativeAccountLink'] as const;
+
+export const getDisconnectNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectNativeAccountLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectNativeAccountLink>>, TError,void, TContext> => {
+
+const mutationKey = getDisconnectNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectNativeAccountLink>>, void> = () => {
+
+
+          return  disconnectNativeAccountLink(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectNativeAccountLink>>>
+
+    export type DisconnectNativeAccountLinkMutationError = ErrorType<unknown>
+
+
+    export const useDisconnectNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectNativeAccountLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectNativeAccountLink>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectNativeAccountLinkMutationOptions(options));
+    }
+
+export const getBeginNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/native/link/requests`
+}
+
+export const beginNativeAccountLink = async (nativeLinkChallengeInput: NativeLinkChallengeInput, options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeLinkState>(getBeginNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeLinkChallengeInput)
+  }
+);}
+
+
+
+
+
+export const getBeginNativeAccountLinkMutationKey = () => ['beginNativeAccountLink'] as const;
+
+export const getBeginNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof beginNativeAccountLink>>, TError,BeginNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof beginNativeAccountLink>>, TError,BeginNativeAccountLinkMutationVariables, TContext> => {
+
+const mutationKey = getBeginNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof beginNativeAccountLink>>, BeginNativeAccountLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  beginNativeAccountLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BeginNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof beginNativeAccountLink>>>
+    export type BeginNativeAccountLinkMutationBody = BodyType<NativeLinkChallengeInput>
+    export type BeginNativeAccountLinkMutationError = ErrorType<unknown>
+    export type BeginNativeAccountLinkMutationVariables = {data: BodyType<NativeLinkChallengeInput>}
+
+    export const useBeginNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof beginNativeAccountLink>>, TError,BeginNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof beginNativeAccountLink>>,
+        TError,
+        BeginNativeAccountLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBeginNativeAccountLinkMutationOptions(options));
+    }
+
+export const getPollNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/native/link/requests/status`
+}
+
+export const pollNativeAccountLink = async (nativeLinkProofInput: NativeLinkProofInput, options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeLinkState>(getPollNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeLinkProofInput)
+  }
+);}
+
+
+
+
+
+export const getPollNativeAccountLinkMutationKey = () => ['pollNativeAccountLink'] as const;
+
+export const getPollNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pollNativeAccountLink>>, TError,PollNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pollNativeAccountLink>>, TError,PollNativeAccountLinkMutationVariables, TContext> => {
+
+const mutationKey = getPollNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pollNativeAccountLink>>, PollNativeAccountLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  pollNativeAccountLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PollNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof pollNativeAccountLink>>>
+    export type PollNativeAccountLinkMutationBody = BodyType<NativeLinkProofInput>
+    export type PollNativeAccountLinkMutationError = ErrorType<unknown>
+    export type PollNativeAccountLinkMutationVariables = {data: BodyType<NativeLinkProofInput>}
+
+    export const usePollNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pollNativeAccountLink>>, TError,PollNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pollNativeAccountLink>>,
+        TError,
+        PollNativeAccountLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPollNativeAccountLinkMutationOptions(options));
+    }
+
+export const getCompleteNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/native/link/requests/complete`
+}
+
+export const completeNativeAccountLink = async (nativeLinkProofInput: NativeLinkProofInput, options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeLinkState>(getCompleteNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeLinkProofInput)
+  }
+);}
+
+
+
+
+
+export const getCompleteNativeAccountLinkMutationKey = () => ['completeNativeAccountLink'] as const;
+
+export const getCompleteNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeNativeAccountLink>>, TError,CompleteNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeNativeAccountLink>>, TError,CompleteNativeAccountLinkMutationVariables, TContext> => {
+
+const mutationKey = getCompleteNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeNativeAccountLink>>, CompleteNativeAccountLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  completeNativeAccountLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof completeNativeAccountLink>>>
+    export type CompleteNativeAccountLinkMutationBody = BodyType<NativeLinkProofInput>
+    export type CompleteNativeAccountLinkMutationError = ErrorType<unknown>
+    export type CompleteNativeAccountLinkMutationVariables = {data: BodyType<NativeLinkProofInput>}
+
+    export const useCompleteNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeNativeAccountLink>>, TError,CompleteNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeNativeAccountLink>>,
+        TError,
+        CompleteNativeAccountLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteNativeAccountLinkMutationOptions(options));
+    }
+
+export const getCancelNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/native/link/requests/cancel`
+}
+
+export const cancelNativeAccountLink = async (nativeLinkProofInput: NativeLinkProofInput, options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeLinkState>(getCancelNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeLinkProofInput)
+  }
+);}
+
+
+
+
+
+export const getCancelNativeAccountLinkMutationKey = () => ['cancelNativeAccountLink'] as const;
+
+export const getCancelNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelNativeAccountLink>>, TError,CancelNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelNativeAccountLink>>, TError,CancelNativeAccountLinkMutationVariables, TContext> => {
+
+const mutationKey = getCancelNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelNativeAccountLink>>, CancelNativeAccountLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  cancelNativeAccountLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof cancelNativeAccountLink>>>
+    export type CancelNativeAccountLinkMutationBody = BodyType<NativeLinkProofInput>
+    export type CancelNativeAccountLinkMutationError = ErrorType<unknown>
+    export type CancelNativeAccountLinkMutationVariables = {data: BodyType<NativeLinkProofInput>}
+
+    export const useCancelNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelNativeAccountLink>>, TError,CancelNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelNativeAccountLink>>,
+        TError,
+        CancelNativeAccountLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelNativeAccountLinkMutationOptions(options));
+    }
+
+export const getGetWebNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/account/native-link`
+}
+
+export const getWebNativeAccountLink = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+  return customFetch<NativeLinkState>(getGetWebNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWebNativeAccountLinkQueryKey = () => {
+    return [
+    `/api/account/native-link`
+    ] as const;
+    }
+
+
+export const getGetWebNativeAccountLinkQueryOptions = <TData = Awaited<ReturnType<typeof getWebNativeAccountLink>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWebNativeAccountLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWebNativeAccountLinkQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWebNativeAccountLink>>> = ({ signal }) => getWebNativeAccountLink({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWebNativeAccountLink>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWebNativeAccountLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getWebNativeAccountLink>>>
+export type GetWebNativeAccountLinkQueryError = ErrorType<unknown>
+
+
+
+export function useGetWebNativeAccountLink<TData = Awaited<ReturnType<typeof getWebNativeAccountLink>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWebNativeAccountLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWebNativeAccountLinkQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDisconnectWebNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/account/native-link`
+}
+
+export const disconnectWebNativeAccountLink = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+  return customFetch<NativeLinkState>(getDisconnectWebNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectWebNativeAccountLinkMutationKey = () => ['disconnectWebNativeAccountLink'] as const;
+
+export const getDisconnectWebNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectWebNativeAccountLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectWebNativeAccountLink>>, TError,void, TContext> => {
+
+const mutationKey = getDisconnectWebNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectWebNativeAccountLink>>, void> = () => {
+
+
+          return  disconnectWebNativeAccountLink(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectWebNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectWebNativeAccountLink>>>
+
+    export type DisconnectWebNativeAccountLinkMutationError = ErrorType<unknown>
+
+
+    export const useDisconnectWebNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectWebNativeAccountLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectWebNativeAccountLink>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectWebNativeAccountLinkMutationOptions(options));
+    }
+
+export const getPreviewWebNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/account/native-link/preview`
+}
+
+export const previewWebNativeAccountLink = async (nativeLinkCodeInput: NativeLinkCodeInput, options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeLinkState>(getPreviewWebNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeLinkCodeInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewWebNativeAccountLinkMutationKey = () => ['previewWebNativeAccountLink'] as const;
+
+export const getPreviewWebNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewWebNativeAccountLink>>, TError,PreviewWebNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewWebNativeAccountLink>>, TError,PreviewWebNativeAccountLinkMutationVariables, TContext> => {
+
+const mutationKey = getPreviewWebNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewWebNativeAccountLink>>, PreviewWebNativeAccountLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewWebNativeAccountLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewWebNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof previewWebNativeAccountLink>>>
+    export type PreviewWebNativeAccountLinkMutationBody = BodyType<NativeLinkCodeInput>
+    export type PreviewWebNativeAccountLinkMutationError = ErrorType<unknown>
+    export type PreviewWebNativeAccountLinkMutationVariables = {data: BodyType<NativeLinkCodeInput>}
+
+    export const usePreviewWebNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewWebNativeAccountLink>>, TError,PreviewWebNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewWebNativeAccountLink>>,
+        TError,
+        PreviewWebNativeAccountLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewWebNativeAccountLinkMutationOptions(options));
+    }
+
+export const getDecideWebNativeAccountLinkUrl = () => {
+
+
+
+
+  return `/api/account/native-link/decision`
+}
+
+export const decideWebNativeAccountLink = async (nativeLinkDecisionInput: NativeLinkDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<NativeLinkState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeLinkState>(getDecideWebNativeAccountLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeLinkDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideWebNativeAccountLinkMutationKey = () => ['decideWebNativeAccountLink'] as const;
+
+export const getDecideWebNativeAccountLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideWebNativeAccountLink>>, TError,DecideWebNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideWebNativeAccountLink>>, TError,DecideWebNativeAccountLinkMutationVariables, TContext> => {
+
+const mutationKey = getDecideWebNativeAccountLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideWebNativeAccountLink>>, DecideWebNativeAccountLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  decideWebNativeAccountLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideWebNativeAccountLinkMutationResult = NonNullable<Awaited<ReturnType<typeof decideWebNativeAccountLink>>>
+    export type DecideWebNativeAccountLinkMutationBody = BodyType<NativeLinkDecisionInput>
+    export type DecideWebNativeAccountLinkMutationError = ErrorType<unknown>
+    export type DecideWebNativeAccountLinkMutationVariables = {data: BodyType<NativeLinkDecisionInput>}
+
+    export const useDecideWebNativeAccountLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideWebNativeAccountLink>>, TError,DecideWebNativeAccountLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideWebNativeAccountLink>>,
+        TError,
+        DecideWebNativeAccountLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideWebNativeAccountLinkMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 

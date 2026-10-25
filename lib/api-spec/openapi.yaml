@@ -41,6 +41,124 @@ tags:
   - name: notifications
     description: Authenticated browser push notifications
 paths:
+  /native/link:
+    get:
+      operationId: getNativeAccountLink
+      responses:
+        "200":
+          description: Verified native account link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+    delete:
+      operationId: disconnectNativeAccountLink
+      responses:
+        "200":
+          description: Disconnected without deleting either account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+  /native/link/requests:
+    post:
+      operationId: beginNativeAccountLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeLinkChallengeInput" }
+      responses:
+        "200":
+          description: Ten-minute device-bound attempt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+  /native/link/requests/status:
+    post:
+      operationId: pollNativeAccountLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeLinkProofInput" }
+      responses:
+        "200":
+          description: Approval state; device confirmation is still required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+  /native/link/requests/complete:
+    post:
+      operationId: completeNativeAccountLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeLinkProofInput" }
+      responses:
+        "200":
+          description: Device confirmed the approved web account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+  /native/link/requests/cancel:
+    post:
+      operationId: cancelNativeAccountLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeLinkProofInput" }
+      responses:
+        "200":
+          description: Cancelled attempt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+  /account/native-link:
+    get:
+      operationId: getWebNativeAccountLink
+      responses:
+        "200":
+          description: Current web account's native connection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+    delete:
+      operationId: disconnectWebNativeAccountLink
+      responses:
+        "200":
+          description: Disconnected without deleting either account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+  /account/native-link/preview:
+    post:
+      operationId: previewWebNativeAccountLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeLinkCodeInput" }
+      responses:
+        "200":
+          description: Review the code entered from the iPhone
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
+  /account/native-link/decision:
+    post:
+      operationId: decideWebNativeAccountLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeLinkDecisionInput" }
+      responses:
+        "200":
+          description: Approved or denied; approval alone never creates a link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeLinkState" }
   /healthz:
     get:
       operationId: healthCheck
@@ -3206,6 +3324,46 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
+    NativeLinkChallengeInput:
+      type: object
+      additionalProperties: false
+      required: [codeChallenge]
+      properties:
+        codeChallenge: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+    NativeLinkProofInput:
+      type: object
+      additionalProperties: false
+      required: [requestId, codeVerifier]
+      properties:
+        requestId: { type: string, format: uuid }
+        codeVerifier: { type: string, pattern: '^[A-Za-z0-9_-]{43,128}$' }
+    NativeLinkCodeInput:
+      type: object
+      additionalProperties: false
+      required: [userCode]
+      properties:
+        userCode: { type: string, minLength: 8, maxLength: 16 }
+    NativeLinkDecisionInput:
+      type: object
+      additionalProperties: false
+      required: [requestId, userCode, decision]
+      properties:
+        requestId: { type: string, format: uuid }
+        userCode: { type: string, minLength: 8, maxLength: 16 }
+        decision: { type: string, enum: [approve, deny] }
+    NativeLinkState:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [unlinked, linked, pending, approved, denied, expired, cancelled, completed]
+        requestId: { type: string, format: uuid }
+        userCode: { type: string }
+        expiresAt: { type: string, format: date-time }
+        verificationUrl: { type: string }
+        linkId: { type: string, format: uuid }
+        accountLabel: { type: string }
     SupportDiagnostics:
       type: object
       additionalProperties: false

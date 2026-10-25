@@ -21,6 +21,8 @@ import {
   hypeCardSharesTable,
   hypeCardShareUploadClaimsTable,
   meetingWorkspacesTable,
+  nativeAccountLinksTable,
+  nativeLinkRequestsTable,
   plannerNotificationPreferencesTable,
   plannerOwnerEventAlertClaimsTable,
   projectMediaTable,
@@ -245,6 +247,8 @@ async function purgeAccount(
         completedAt: new Date(),
       }).where(eq(adminActionAuditTable.id, account.adminDeletionActionId));
     }
+    await tx.delete(nativeLinkRequestsTable).where(eq(nativeLinkRequestsTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(nativeAccountLinksTable).where(eq(nativeAccountLinksTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(accountAccessTable).where(eq(accountAccessTable.id, account.id));
   });
 }

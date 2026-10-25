@@ -5,6 +5,67 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface NativeLinkChallengeInput {
+  /** @pattern ^[A-Za-z0-9_-]{43}$ */
+  codeChallenge: string;
+}
+
+export interface NativeLinkProofInput {
+  requestId: string;
+  /** @pattern ^[A-Za-z0-9_-]{43,128}$ */
+  codeVerifier: string;
+}
+
+export interface NativeLinkCodeInput {
+  /**
+     * @minLength 8
+     * @maxLength 16
+     */
+  userCode: string;
+}
+
+export type NativeLinkDecisionInputDecision = typeof NativeLinkDecisionInputDecision[keyof typeof NativeLinkDecisionInputDecision];
+
+
+export const NativeLinkDecisionInputDecision = {
+  approve: 'approve',
+  deny: 'deny',
+} as const;
+
+export interface NativeLinkDecisionInput {
+  requestId: string;
+  /**
+     * @minLength 8
+     * @maxLength 16
+     */
+  userCode: string;
+  decision: NativeLinkDecisionInputDecision;
+}
+
+export type NativeLinkStateStatus = typeof NativeLinkStateStatus[keyof typeof NativeLinkStateStatus];
+
+
+export const NativeLinkStateStatus = {
+  unlinked: 'unlinked',
+  linked: 'linked',
+  pending: 'pending',
+  approved: 'approved',
+  denied: 'denied',
+  expired: 'expired',
+  cancelled: 'cancelled',
+  completed: 'completed',
+} as const;
+
+export interface NativeLinkState {
+  status: NativeLinkStateStatus;
+  requestId?: string;
+  userCode?: string;
+  expiresAt?: string;
+  verificationUrl?: string;
+  linkId?: string;
+  accountLabel?: string;
+}
+
 export type SupportDiagnosticsConnection = typeof SupportDiagnosticsConnection[keyof typeof SupportDiagnosticsConnection];
 
 

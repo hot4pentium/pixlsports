@@ -10,6 +10,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { nativeAccountLinkRouter } from "./routes/nativeAccountLink";
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -42,6 +43,9 @@ app.use(express.json({
   },
 }));
 app.use(express.urlencoded({ extended: true }));
+
+// External iOS identity verification is isolated from PWA cookie/session auth.
+app.use("/api/native", nativeAccountLinkRouter);
 
 app.use(
   clerkMiddleware((req) => ({

@@ -8,6 +8,167 @@
 import * as zod from 'zod';
 
 
+export const GetNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const DisconnectNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const beginNativeAccountLinkBodyCodeChallengeRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+
+export const BeginNativeAccountLinkBody = zod.object({
+  "codeChallenge": zod.string().regex(beginNativeAccountLinkBodyCodeChallengeRegExp)
+})
+
+export const BeginNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const pollNativeAccountLinkBodyCodeVerifierRegExp = new RegExp('^[A-Za-z0-9_-]{43,128}$');
+
+
+export const PollNativeAccountLinkBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "codeVerifier": zod.string().regex(pollNativeAccountLinkBodyCodeVerifierRegExp)
+})
+
+export const PollNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const completeNativeAccountLinkBodyCodeVerifierRegExp = new RegExp('^[A-Za-z0-9_-]{43,128}$');
+
+
+export const CompleteNativeAccountLinkBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "codeVerifier": zod.string().regex(completeNativeAccountLinkBodyCodeVerifierRegExp)
+})
+
+export const CompleteNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const cancelNativeAccountLinkBodyCodeVerifierRegExp = new RegExp('^[A-Za-z0-9_-]{43,128}$');
+
+
+export const CancelNativeAccountLinkBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "codeVerifier": zod.string().regex(cancelNativeAccountLinkBodyCodeVerifierRegExp)
+})
+
+export const CancelNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const GetWebNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const DisconnectWebNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const previewWebNativeAccountLinkBodyUserCodeMin = 8;
+export const previewWebNativeAccountLinkBodyUserCodeMax = 16;
+
+
+
+export const PreviewWebNativeAccountLinkBody = zod.object({
+  "userCode": zod.string().min(previewWebNativeAccountLinkBodyUserCodeMin).max(previewWebNativeAccountLinkBodyUserCodeMax)
+})
+
+export const PreviewWebNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
+export const decideWebNativeAccountLinkBodyUserCodeMin = 8;
+export const decideWebNativeAccountLinkBodyUserCodeMax = 16;
+
+
+
+export const DecideWebNativeAccountLinkBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "userCode": zod.string().min(decideWebNativeAccountLinkBodyUserCodeMin).max(decideWebNativeAccountLinkBodyUserCodeMax),
+  "decision": zod.enum(['approve', 'deny'])
+})
+
+export const DecideWebNativeAccountLinkResponse = zod.object({
+  "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
+  "requestId": zod.string().uuid().optional(),
+  "userCode": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "verificationUrl": zod.string().optional(),
+  "linkId": zod.string().uuid().optional(),
+  "accountLabel": zod.string().optional()
+})
+
+
 /**
  * Returns server health status
  * @summary Health check

@@ -23,10 +23,12 @@ import internalJobsRouter from "./internalJobs";
 import memberAdminRouter from "./memberAdmin";
 import supportTicketsRouter from "./supportTickets";
 import supportTicketEmailRepliesRouter from "./supportTicketEmailReplies";
+import { webNativeAccountLinkRouter } from "./nativeAccountLink";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(webNativeAccountLinkRouter);
 router.use(soccerGearRouter);
 router.use(sportGearRouter);
 router.use(accountLifecycleRouter);

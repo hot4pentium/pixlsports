@@ -53,12 +53,38 @@ The app does not supply either Apple capability with a guessed team/prefix/domai
 - Supporter Home still uses a **public athlete-page link saved on the device**.
   The link is device-managed, not proof of private account ownership.
 
-## Not connected yet
+## Securely connect an existing PIXL account
 
-Existing PIXL PWA account/data linking and native private API authorization are
-not implemented. A matching email address is **not** proof that two accounts
-should be joined. Future linking must verify both identities and retain the
-PWA's existing account/data keys. No backend authentication is changed here.
+The link button on native home starts a ten-minute, device-bound request. Sign in
+to the existing PIXL web account at `/connect/iphone`, manually enter the code
+from the app, review that account, and explicitly approve it. Return to the
+iPhone, check the approving account label, and confirm. Approval alone never
+creates a link. Both sides offer disconnect; neither account or its saved data
+is deleted. Web users can also withdraw an approval before iPhone confirmation.
+
+- The API's **NATIVE_IOS_CLERK_ISSUER** must be the exact HTTPS issuer/Frontend API
+  origin of the dedicated external iOS Clerk instance. Development and production
+  instances need separately configured issuers. This is not a secret key; the API
+  downloads public signing keys only from this pinned origin.
+- **NATIVE_LINK_WEB_ORIGIN** optionally pins the HTTPS web approval origin. By
+  default, development uses Replit's runtime preview domain and production uses
+  the verified published origin `https://pixlsports.com`. No trailing slash/path.
+- Native requests default to `https://pixlsports.com`. For development testing,
+  optionally add a String **AccountLinkAPIOrigin** to the local `ClerkConfig.plist`
+  with the HTTPS preview origin, without a path. Keep the existing publishable
+  key. Codes and bearer tokens are never added to browser URLs.
+- Apply the additive DB schema changes and publish the API/web changes before
+  testing against the published site. No deployment is performed by adding code.
+
+Missing issuer configuration fails closed with a setup error. Never trust the
+issuer in an incoming JWT, match accounts by email, or replace the managed PWA
+keys. Existing account IDs/data ownership remain unchanged.
+
+**Not connected yet:** the native home still reads its device-saved public
+athlete-page link. This change creates the verified identity mapping; private
+native athlete/schedule APIs and their home-screen integration are a separate
+step. Every future private native read must resolve the mapping and recheck
+current account lifecycle/editor restrictions, not treat a cached link as access.
 
 ## Mac verification
 
@@ -84,6 +110,11 @@ After syncing code and configuring the publishable key:
 6. Disable networking before cold launch, wait for the retry state, restore
    networking, and retry. Clerk itself may be able to restore cached state.
 7. Test Sign in with Apple separately after provider/capability configuration.
+8. Tap the link button, approve a code on the web, and verify nothing connects
+   until the iPhone explicitly confirms the displayed web account.
+9. Disconnect from each side; relaunch and verify the removed link stays removed.
+   Also test denial, expiration, web approval withdrawal, offline retry,
+   backgrounding during approval, and switching native accounts mid-flow.
 
 References:
 - https://clerk.com/docs/ios/getting-started/quickstart?manual=1

@@ -253,6 +253,7 @@ const AthleteFanCardAppearancePage = lazy(() =>
 const ExistingAccountCardEditorPage = lazy(() =>
   import('@/features/player-showcase').then(({ ExistingAccountCardEditorPage }) => ({ default: ExistingAccountCardEditorPage })),
 );
+const NativeAccountLinkPage = lazy(() => import('@/pages/NativeAccountLinkPage'));
 const SupporterProfileView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterProfileView }) => ({ default: SupporterProfileView })),
 );
@@ -1567,6 +1568,7 @@ function SupporterProfilePage() {
                   </div>
                 </dl>
                 {lifecycleError && <button type="button" onClick={() => void refetchLifecycle()} className="mt-4 text-sm font-bold text-primary underline">Retry account information</button>}
+                <Link href="/connect/iphone" className="mt-5 inline-flex min-h-11 items-center font-bold text-primary underline" data-testid="link-manage-iphone">Connect or manage your iPhone app</Link>
               </section>
               <section className="supporter-profile-danger mt-6 border-l-4 border-destructive bg-destructive/5 p-5 sm:p-6" aria-labelledby="account-danger-heading" data-testid="account-danger-zone">
                 <p className="text-xs font-bold uppercase tracking-widest text-destructive">Account access</p>
@@ -3950,7 +3952,10 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
   const queryClient = useQueryClient();
-  const bypassLifecycle = shouldBypassAccountLifecycle(location, isLoaded, Boolean(isSignedIn));
+  // Revocation stays available to locked accounts; approval remains guarded
+  // server-side and requires an active, unrestricted owner.
+  const bypassLifecycle = location === '/connect/iphone'
+    || shouldBypassAccountLifecycle(location, isLoaded, Boolean(isSignedIn));
   const cachedDashboard = user?.id
     ? readOfflineDashboardSnapshot(window.localStorage, user.id)
     : null;
@@ -4041,6 +4046,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
 function SupporterSetupGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
+  if (location === '/connect/iphone') return <>{children}</>;
 
   const retiredGearPath = [
     '/studio/player-showcase/gear',
@@ -4161,6 +4167,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/" component={HomeRedirect} />
               <Route path="/season-pass-preview" component={SeasonPassPreview} />
               <Route path="/auth" component={AuthChoicePage} />
+              <Route path="/connect/iphone" component={NativeAccountLinkPage} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/studio/setup" component={RoleSelectionPage} />
