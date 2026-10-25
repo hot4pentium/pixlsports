@@ -26,7 +26,7 @@ packages = ["freetype", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf
 [userenv]
 
 [userenv.shared]
-VAPID_SUBJECT = "https://league-matrix-creative-studio.replit.app"
+VAPID_SUBJECT = "https://pixlsports.com/help"
 
 [userenv.production]
 PIXL_INITIAL_ADMIN_EMAIL = "hot4pentium@gmail.com"
