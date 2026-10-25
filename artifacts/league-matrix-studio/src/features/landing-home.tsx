@@ -1,13 +1,16 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload, Download, Smartphone, MoreVertical } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
-import { LandingToolDemo } from './landing-tool-demo';
 import youthSoccerHero from '@/assets/landing-candid-athlete.jpg';
 import { useAppInstallPrompt } from './app-install-prompt';
+
+const LandingToolDemo = lazy(() => import('./landing-tool-demo').then(
+  ({ LandingToolDemo }) => ({ default: LandingToolDemo }),
+));
 
 function Brand() {
   return <span className="brand" aria-label="Pixl Sports">PIXL<span>SPORTS</span></span>;
@@ -214,7 +217,7 @@ export function PublicLandingPage() {
             <div ref={weekGridRef} className={`week-grid${weekStepsVisible ? ' week-grid--visible' : ''}`} data-testid="landing-week-grid">
               {steps.map(step => <DemoStepCard key={step.number} step={step} onOpen={() => setActiveDemo(step.number as '01' | '02' | '03' | '04')} />)}
             </div>
-            {activeDemo && <LandingToolDemo step={activeDemo} open destination={destination} onOpenChange={open => { if (!open) setActiveDemo(null); }} />}
+            {activeDemo && <Suspense fallback={<p role="status">Loading demo…</p>}><LandingToolDemo step={activeDemo} open destination={destination} onOpenChange={open => { if (!open) setActiveDemo(null); }} /></Suspense>}
           </div>
         </section>
 

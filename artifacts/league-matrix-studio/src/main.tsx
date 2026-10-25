@@ -1,7 +1,8 @@
 import { createRoot } from 'react-dom/client';
 
-import App from './App';
+import App from './app-entry';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { afterPageLoad } from '@/features/after-page-load';
 
 import './index.css';
 import './features/tracker-completion-dialog.css';
@@ -45,7 +46,7 @@ async function clearDevelopmentServiceWorker() {
 function registerProgressiveWebApp() {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
 
-  window.addEventListener('load', () => {
+  afterPageLoad(document, window, () => {
     const basePath = import.meta.env.BASE_URL;
     navigator.serviceWorker.register(`${basePath}sw.js`, {
       scope: basePath,
@@ -53,7 +54,7 @@ function registerProgressiveWebApp() {
     }).catch((error) => {
       console.warn('Pixl Sports offline shell could not be registered.', error);
     });
-  }, { once: true });
+  });
 }
 
 void clearDevelopmentServiceWorker().catch((error) => {

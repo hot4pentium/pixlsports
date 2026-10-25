@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 
-import App from '@/App';
+import App from '@/app-entry';
 import { defaultProject, saveHypeCardProject } from './hype-card-types';
 import { currentAccountId } from './account-lifecycle-browser-auth';
 

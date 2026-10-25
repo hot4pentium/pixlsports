@@ -8,6 +8,7 @@ import {
 } from './auth-entry-routing';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const entrySource = readFileSync(new URL('../app-entry.tsx', import.meta.url), 'utf8');
 const landingSource = readFileSync(new URL('./landing-home.tsx', import.meta.url), 'utf8');
 const bootShellSource = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 
@@ -43,9 +44,11 @@ test('only signed-out or unresolved home visits bypass account lifecycle checks'
 test('the app bypasses lifecycle checks on public home visits and opens the studio for signed-in users', () => {
   assert.match(appSource, /shouldBypassAccountLifecycle\(location, isLoaded, Boolean\(isSignedIn\)\)/);
   assert.match(appSource, /location === '\/' && canShowInitialAccountSetup\(user\)/);
-  assert.match(appSource, /const homeEntryState = getHomeEntryState\(isLoaded, Boolean\(isSignedIn\)\)/);
-  assert.match(appSource, /if \(homeEntryState === 'dashboard'\) return <Redirect to="\/studio" \/>;/);
-  assert.match(appSource, /return <PublicLandingPage \/>;/);
+  assert.match(entrySource, /getHomeEntryState\(isLoaded, Boolean\(isSignedIn\)\) === 'dashboard'/);
+  assert.match(entrySource, /<Redirect to="\/studio" \/>/);
+  assert.match(entrySource, /: <PublicLandingPage \/>/);
+  assert.match(entrySource, /const ApplicationRoutes = lazy\(\(\) => import\('\.\/App'\)\)/);
+  assert.match(entrySource, /<Route path="\/" component=\{HomeEntry\} \/>/);
 });
 
 test('generic account entry points show the choice before Google sign-in', () => {

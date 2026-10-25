@@ -177,7 +177,9 @@ test('mobile navigation and accessibility basics are built in', () => {
 
 test('week steps open temporary demos and Celebrate has the photo-first Hype Card sides', () => {
   assert.match(source, /steps\.map\(step => <DemoStepCard/);
-  assert.match(source, /activeDemo && <LandingToolDemo/);
+  assert.match(source, /const LandingToolDemo = lazy\(\(\) => import\('\.\/landing-tool-demo'\)/);
+  assert.match(source, /activeDemo && <Suspense/);
+  assert.match(source, /<LandingToolDemo step=\{activeDemo\}/);
   assert.match(demoSource, /<LivingAthleteCardFront/);
   for (const side of ['front', 'stats', 'events']) {
     assert.match(demoSource, new RegExp(`id: '${side}'`));

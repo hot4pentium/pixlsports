@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createReadStream } from 'node:fs';
-import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -161,6 +161,39 @@ test('installed production shell starts, navigates warm, and reopens offline on 
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
 
+    // Exercise the production landing before installation can prefetch Studio.
+    for (const viewport of [phoneViewport, { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false }]) {
+      const landingPage = await openPage(connection, 'about:blank', { viewport });
+      pages.push(landingPage);
+      await connection.send('Network.enable', {}, landingPage.sessionId);
+      await connection.send('Network.setBlockedURLs', { urls: ['*/sw.js'] }, landingPage.sessionId);
+      await connection.send('Network.emulateNetworkConditions', {
+        offline: false, latency: 100, downloadThroughput: 200_000, uploadThroughput: 100_000,
+      }, landingPage.sessionId);
+      await connection.send('Emulation.setCPUThrottlingRate', { rate: 4 }, landingPage.sessionId);
+      await connection.send('Page.navigate', { url: `${productionServer.address}/` }, landingPage.sessionId);
+      await waitFor(connection, landingPage.sessionId,
+        'Boolean(document.querySelector("[data-testid=text-landing-headline]"))', Boolean, 30_000);
+      if (viewport.mobile) {
+        await connection.evaluate('document.querySelector("[data-testid=button-landing-mobile-menu]").click()', landingPage.sessionId);
+        await waitFor(connection, landingPage.sessionId,
+          'Boolean(document.querySelector("#landing-mobile-menu"))', Boolean);
+      } else {
+        await connection.evaluate('document.querySelector("[data-testid=link-landing-how-it-works]").click()', landingPage.sessionId);
+        await waitFor(connection, landingPage.sessionId, 'location.hash', value => value === '#how-it-works');
+      }
+      const startup = await connection.evaluate<{ elapsedMs: number; scripts: string[] }>(`({
+        elapsedMs: Math.round(performance.now()),
+        scripts: performance.getEntriesByType('resource')
+          .map(resource => new URL(resource.name).pathname).filter(path => path.endsWith('.js'))
+      })`, landingPage.sessionId);
+      assert.ok(!startup.scripts.some(path => /\/(?:App|landing-tool-demo|hype-card|stat-tracker-page)-/.test(path)),
+        `Landing must handle its first interaction without Studio/demo scripts: ${JSON.stringify(startup)}`);
+      console.log('Throttled production landing startup', JSON.stringify({ viewport, ...startup }));
+      await connection.send('Target.closeTarget', { targetId: landingPage.targetId });
+      pages.pop();
+    }
+
     const coldPage = await openPage(connection, coldStartUrl, { viewport: phoneViewport });
     pages.push(coldPage);
     const firstShell = await waitFor<{
@@ -192,7 +225,7 @@ test('installed production shell starts, navigates warm, and reopens offline on 
     await waitFor(
       connection,
       coldPage.sessionId,
-      'navigator.serviceWorker?.ready.then((registration) => Boolean(registration.active))',
+      'navigator.serviceWorker?.getRegistrations().then(registrations => registrations.some(registration => Boolean(registration.active)))',
       Boolean,
       30_000,
     );
@@ -325,6 +358,19 @@ test('installed production shell starts, navigates warm, and reopens offline on 
       15_000,
     );
     assert.equal(offlineWorkerControl, true, 'The offline shell should be served within the installed worker scope');
+    const manifest = JSON.parse(await readFile(resolve(productionDirectory, '.vite/manifest.json'), 'utf8')) as Record<string, { name?: string; file: string }>;
+    const routeEntry = Object.values(manifest).find(entry => entry.name === 'App');
+    assert.ok(routeEntry, 'Expected the lazy application route entry in the production manifest');
+    const routeAvailableOffline = await withinTimeout(
+      connection.evaluate<boolean>(
+        // Shared chunks expose Rollup-renamed exports rather than a literal default.
+        `import(${JSON.stringify(`${productionServer.address}/${routeEntry.file}`)}).then(module => Object.keys(module).length > 0)`,
+        offlinePage.sessionId,
+      ),
+      15_000,
+      'loading the lazy application route shell and its dependencies offline',
+    );
+    assert.equal(routeAvailableOffline, true, 'Lazy application routes must remain importable offline');
 
     console.log('Installed app startup timing', JSON.stringify({
       viewport: firstShell.viewport,

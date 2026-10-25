@@ -135,6 +135,7 @@ function offlineShellPrecache(): Plugin {
 
   type ManifestEntry = {
     file: string;
+    name?: string;
     imports?: string[];
     dynamicImports?: string[];
     css?: string[];
@@ -198,6 +199,13 @@ function offlineShellPrecache(): Plugin {
       }
 
       for (const entryId of requiredCoreEntries) includeEntry(entryId, true);
+      // Rollup may key shared dynamic entries by their emitted chunk, not source.
+      // Keep the lazy route shell available before any installed offline launch.
+      const routeEntry = Object.entries(manifest).find(([id, entry]) => (
+        id === 'src/App.tsx' || entry.name === 'App'
+      ));
+      if (!routeEntry) throw new Error('Required offline application route shell is missing.');
+      includeEntry(routeEntry[0], true);
       for (const entryId of manifest['index.html'].dynamicImports ?? []) {
         includeEntry(entryId, true);
       }
@@ -250,6 +258,49 @@ function offlineShellPrecache(): Plugin {
   };
 }
 
+function landingStartupGuard(): Plugin {
+  return {
+    name: 'landing-startup-guard',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      const bootstrap = Object.values(bundle).find(output => (
+        output.type === 'chunk' && Object.keys(output.modules).some(id => (
+          id.endsWith('/src/main.tsx')
+        ))
+      ));
+      if (!bootstrap || bootstrap.type !== 'chunk') {
+        throw new Error('Landing startup check could not find the React bootstrap.');
+      }
+      const visited = new Set<string>();
+      const forbidden = [
+        '/src/App.tsx',
+        '/src/features/landing-tool-demo.tsx',
+        '/src/features/admin-console.tsx',
+        '/src/features/meeting-capture.tsx',
+        '/src/features/hype-card.tsx',
+        '/src/features/stat-tracker-page.tsx',
+      ];
+      let totalBytes = 0;
+      function visit(file: string) {
+        if (visited.has(file)) return;
+        visited.add(file);
+        const chunk = bundle[file];
+        if (!chunk || chunk.type !== 'chunk') return;
+        const leakedModule = Object.keys(chunk.modules).find(id => forbidden.some(suffix => id.endsWith(suffix)));
+        if (leakedModule) throw new Error(`Studio/demo code leaked into public startup: ${leakedModule}`);
+        totalBytes += Buffer.byteLength(chunk.code);
+        chunk.imports.forEach(visit);
+      }
+      visit(bootstrap.fileName);
+      // Cover the entire synchronous startup graph, not just a renamed entry chunk.
+      if (totalBytes > 450 * 1024) {
+        throw new Error(`Public landing startup JavaScript is ${totalBytes} bytes; budget is 450 KiB.`);
+      }
+      console.info(`[landing-startup-guard] ${visited.size} chunks, ${totalBytes} bytes of startup JavaScript; Studio and demos remain lazy.`);
+    },
+  };
+}
+
 if (!basePath) {
   throw new Error(
     'BASE_PATH environment variable is required but was not provided.',
@@ -264,6 +315,7 @@ export default defineConfig({
     runtimeErrorOverlay(),
     previewStartupDiagnostics(),
     dashboardHeroAssetGuard(),
+    landingStartupGuard(),
     offlineShellPrecache(),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined

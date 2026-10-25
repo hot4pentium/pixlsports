@@ -47,11 +47,11 @@ import {
   Download, Star, Link2, UserRoundPlus
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter, Redirect } from 'wouter';
-import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
+import { useQuery } from '@tanstack/react-query';
+import { Link, Route, Switch, useLocation, useParams, Redirect } from 'wouter';
+import { SignIn, SignUp, useClerk, useUser } from '@clerk/react';
+import { clerkAppearance } from './clerk-appearance';
+import { ClerkQueryClientCacheInvalidator, queryClient } from './app-session';
 import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type {
@@ -60,7 +60,6 @@ import type {
 } from '@/features/supporter-dashboard';
 import {
   buildAuthEntryHref,
-  getHomeEntryState,
   shouldBypassAccountLifecycle,
 } from '@/features/auth-entry-routing';
 import { navigateToGameOnSection } from '@/features/game-on-navigation';
@@ -119,7 +118,6 @@ import {
   readOfflineDashboardSnapshot,
   updateOfflineDashboardSnapshot,
 } from '@/features/offline-dashboard-cache';
-import { clearCachedSupporterPhotoForAccount } from '@/features/supporter-photo-cache';
 import {
   buildWorkspaceToolHref,
   readWorkspaceEventContext,
@@ -153,7 +151,6 @@ import {
 } from '@/features/gameday-checklist';
 import { readChecklistForEvent, useChecklistSave, type ChecklistSyncStatus } from '@/features/use-checklist-save';
 import MeetingCapture from '@/features/meeting-capture';
-import { PublicLandingPage } from '@/features/landing-home';
 import { SupportCenter } from '@/features/support-center';
 import { SupporterToolsGuidePage } from '@/features/supporter-tools-guide';
 import heroBanner from '@/assets/hero-banner.webp';
@@ -258,8 +255,6 @@ const SupporterProfileView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterProfileView }) => ({ default: SupporterProfileView })),
 );
 
- const queryClient = new QueryClient();
-
  type CloudProjectPayload = Record<string, unknown>;
 
 function isCloudToolProject(value: unknown, tool: 'schedule'): value is CloudProjectPayload {
@@ -272,22 +267,6 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const appOrigin = ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
   ? 'https://pixlsports.com'
   : window.location.origin;
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-
-if (!clerkPubKey) {
-  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
-}
-
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
-}
-
 const toolData: Record<ToolKind, {
   slug: string;
   label: string;
@@ -3416,55 +3395,6 @@ function NotFound() {
 }
 
 
-const clerkAppearance = {
-  theme: shadcn,
-  cssLayerName: "clerk",
-  options: {
-    logoPlacement: "inside" as const,
-    logoLinkUrl: basePath || "/",
-    logoImageUrl: `${appOrigin}${basePath}/pixlsports-logo.png`,
-  },
-  variables: {
-    colorPrimary: "#55A4FF",
-    colorForeground: "#F3F6FA",
-    colorMutedForeground: "#B9CADC",
-    colorDanger: "hsl(0 84% 60%)",
-    colorBackground: "#102B4D",
-    colorInput: "#0B1F3A",
-    colorInputForeground: "#F3F6FA",
-    colorNeutral: "#91ACC3",
-    fontFamily: "'DM Sans', sans-serif",
-    borderRadius: "0.375rem",
-  },
-  elements: {
-    rootBox: "w-full flex justify-center",
-    cardBox: "bg-[#102B4D] w-[440px] max-w-full overflow-hidden rounded-xl border border-[#55A4FF]/30 shadow-[0_24px_80px_rgba(0,8,25,.38)]",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "font-display text-3xl uppercase tracking-wide text-white",
-    headerSubtitle: "text-sm font-medium text-[#B9CADC]",
-    socialButtonsBlockButtonText: "text-xs font-bold uppercase tracking-wider text-white",
-    formFieldLabel: "text-xs font-bold uppercase tracking-wider text-[#E0EDFA]",
-    footerActionLink: "text-[#73B5FF] font-bold hover:underline",
-    footerActionText: "text-sm font-medium text-[#B9CADC]",
-    dividerText: "text-xs font-bold uppercase tracking-widest text-[#B9CADC]",
-    identityPreviewEditButton: "text-[#73B5FF]",
-    formFieldSuccessText: "text-[#73B5FF] text-xs",
-    alertText: "text-sm font-medium",
-    logoBox: "mb-3",
-    logoImage: "h-10 max-w-[134px] object-contain",
-    socialButtonsBlockButton: "h-12 rounded-md border border-[#91ACC3]/40 bg-white/5 hover:bg-white/10 transition-colors text-white",
-    formButtonPrimary: "h-12 rounded-md font-bold bg-[#55A4FF] !text-[#0B1F3A] hover:!bg-[#82BDFF] transition-colors",
-    formFieldInput: "h-12 rounded-md border border-[#91ACC3]/40 bg-[#0B1F3A] text-white font-medium focus:border-[#55A4FF] focus:ring-1 focus:ring-[#55A4FF] transition-all",
-    footerAction: "mt-4",
-    dividerLine: "bg-white/20",
-    alert: "rounded-md border border-destructive/30 bg-destructive/10 text-white",
-    otpCodeFieldInput: "rounded-md border border-[#91ACC3]/40 bg-[#0B1F3A] text-white focus:border-[#55A4FF]",
-    formFieldRow: "mb-3",
-    main: "p-6 sm:p-8",
-  },
-};
-
 const authFormAppearance = {
   ...clerkAppearance,
   variables: {
@@ -4098,80 +4028,21 @@ function isAthleteEditorAccount(user: unknown): boolean {
   );
 }
 
-function HomeRedirect() {
-  const { isLoaded, isSignedIn } = useUser();
-  const homeEntryState = getHomeEntryState(isLoaded, Boolean(isSignedIn));
-  if (homeEntryState === 'dashboard') return <Redirect to="/studio" />;
-  return <PublicLandingPage />;
-}
-
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const queryClient = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
-        queryClient.clear();
-        if (prevUserIdRef.current) {
-          clearPrivateOfflineAccountData(window.localStorage, prevUserIdRef.current);
-          void clearCachedSupporterPhotoForAccount(prevUserIdRef.current);
-        }
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, queryClient]);
-
-  return null;
-}
-
 export { SupporterProfilePage, AccountLifecycleGate, ClerkQueryClientCacheInvalidator, queryClient };
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
+function ApplicationRoutes() {
   useEffect(() => {
     clearRetiredStandaloneScheduleStorage(window.localStorage);
   }, []);
 
   return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: {
-          start: {
-            title: "WELCOME BACK",
-            subtitle: "Sign in to continue your athlete’s season",
-          },
-        },
-        signUp: {
-          start: {
-            title: "JOIN PIXL SPORTS",
-            subtitle: "Create an account to start your athlete’s season",
-          },
-        },
-      }}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
+    <>
         <TooltipProvider>
           <AccountLifecycleGate>
             <ErrorBoundary resetKey={useLocation()[0]}>
               <Suspense fallback={<RouteLoadingState />}>
                 <SupporterSetupGate>
                 <Switch>
-              <Route path="/" component={HomeRedirect} />
               <Route path="/season-pass-preview" component={SeasonPassPreview} />
               <Route path="/auth" component={AuthChoicePage} />
               <Route path="/connect/iphone" component={NativeAccountLinkPage} />
@@ -4218,8 +4089,8 @@ function ClerkProviderWithRoutes() {
             </ErrorBoundary>
           </AccountLifecycleGate>
         </TooltipProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+      <Toaster />
+    </>
   );
 }
 
@@ -4227,11 +4098,4 @@ function RouteLoadingState() {
   return <AccountLoadingScreen />;
 }
 
-export default function App() {
-  return (
-    <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
-      <Toaster />
-    </WouterRouter>
-  );
-}
+export default ApplicationRoutes;

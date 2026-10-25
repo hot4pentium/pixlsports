@@ -16,7 +16,7 @@ test('the HTML entrypoint loads the app through the artifact base path', async (
 test('the offline shell rotates caches for new builds and removes superseded versions', async () => {
   const serviceWorker = await readFile(resolve(artifactDirectory, 'public/sw.js'), 'utf8');
 
-  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v14`;/);
+  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v16`;/);
   assert.match(
     serviceWorker,
     /migrateShellCache\(oldCacheName\)[\s\S]*await caches\.delete\(oldCacheName\)/,
