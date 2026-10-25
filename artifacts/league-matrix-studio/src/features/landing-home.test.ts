@@ -78,6 +78,19 @@ test('supported sports appear as plain text above the ribbon, not over the photo
   assert.doesNotMatch(styles, /hero-sports/);
 });
 
+test('landing offers accurate iPhone and Android PWA install guidance', () => {
+  assert.match(source, /data-testid="button-landing-install"[\s\S]*Install as an app/);
+  assert.match(source, /useAppInstallPrompt\('landing'\)/);
+  assert.match(source, /THE FUTURE OF WEB APPLICATIONS/);
+  assert.match(source, /iPhone &amp; iPad/);
+  assert.match(source, /In Safari, tap Share → Add to Home Screen, turn on Open as Web App, then tap Add\./);
+  assert.match(source, /Android/);
+  assert.match(source, /served over HTTPS/);
+  assert.match(source, /does not go through App Store or Google Play\s+review/);
+  assert.doesNotMatch(source, /as safe as (?:the )?(?:App Store|Google Play)/i);
+  assert.match(styles, /landing-install-panel/);
+});
+
 test('hero message omits the numbered athlete-card label', () => {
   assert.doesNotMatch(source, /PIXL athlete card \/ 07/);
   assert.match(source, /Every player has a story worth sharing\./);

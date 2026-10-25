@@ -115,6 +115,36 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
         assert.ok(capabilityHighlightsText.toUpperCase().includes(capability.toUpperCase()), `${capability} should be explained at ${width}px`);
       }
       assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=landing-capability-highlights] li").length', page.sessionId), 4);
+       if (width === 393) {
+         const installButtonFound = await connection.evaluate<boolean>(
+           `(() => {
+             const button = document.querySelector('[data-testid="button-landing-install"]');
+             if (!(button instanceof HTMLButtonElement)) return false;
+             button.click();
+             return true;
+           })()`,
+           page.sessionId,
+         );
+         assert.equal(installButtonFound, true, 'landing should expose the app install action');
+         await waitFor(
+           connection,
+           page.sessionId,
+           'Boolean(document.querySelector("[data-testid=landing-install-panel]"))',
+           value => value === true,
+         );
+         const installCopy = await connection.evaluate<string>(
+           'document.querySelector("[data-testid=landing-install-panel]")?.innerText || ""',
+           page.sessionId,
+         );
+         assert.match(installCopy, /THE FUTURE OF WEB APPLICATIONS/);
+         assert.match(installCopy, /iPhone & iPad/);
+         assert.match(installCopy, /Android/);
+         assert.match(installCopy, /HTTPS/);
+         assert.ok(
+           installCopy.replace(/\s+/g, ' ').includes('does not go through App Store or Google Play review'),
+           'the PWA copy should distinguish HTTPS delivery from app-store review',
+         );
+       }
       await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number; hypeCardBeforeOffline: boolean;

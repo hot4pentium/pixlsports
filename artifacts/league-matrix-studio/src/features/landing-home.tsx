@@ -1,12 +1,13 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload, Download, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
 import { LandingToolDemo } from './landing-tool-demo';
 import youthSoccerHero from '@/assets/landing-candid-athlete.jpg';
+import { useAppInstallPrompt } from './app-install-prompt';
 
 function Brand() {
   return <span className="brand" aria-label="Pixl Sports">PIXL<span>SPORTS</span></span>;
@@ -141,8 +142,17 @@ export function PublicLandingPage() {
   const { isSignedIn } = useUser();
   const destination = isSignedIn ? '/studio' : '/sign-up';
   const [activeDemo, setActiveDemo] = useState<'01' | '02' | '03' | '04' | null>(null);
+  const [installOptionsOpen, setInstallOptionsOpen] = useState(false);
   const [weekStepsVisible, setWeekStepsVisible] = useState(false);
   const weekGridRef = useRef<HTMLDivElement | null>(null);
+  const { action: installAction, handleInstall } = useAppInstallPrompt('landing');
+
+  const toggleInstallOptions = () => {
+    setInstallOptionsOpen((open) => !open);
+    if (installAction === 'installed') return;
+    const deviceClass = window.matchMedia('(max-width: 700px)').matches ? 'mobile' : 'desktop';
+    void handleInstall(deviceClass);
+  };
 
   useEffect(() => {
     const grid = weekGridRef.current;
@@ -173,7 +183,57 @@ export function PublicLandingPage() {
               <div className="hero-buttons">
                 <Link href={destination} className="pill pill-lime" data-testid="link-hero-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
                 <a href="#how-it-works" className="pill pill-ghost" data-testid="link-hero-see-week">See how it works <ArrowRight size={16} aria-hidden="true" /></a>
+                <button
+                  type="button"
+                  className="pill pill-ghost landing-install-button"
+                  onClick={toggleInstallOptions}
+                  aria-expanded={installOptionsOpen}
+                  aria-controls="landing-install-options"
+                  data-testid="button-landing-install"
+                >
+                  <Download size={16} aria-hidden="true" /> Install as an app
+                </button>
               </div>
+              {installOptionsOpen && (
+                <aside
+                  className="landing-install-panel"
+                  id="landing-install-options"
+                  aria-labelledby="landing-install-heading"
+                  data-testid="landing-install-panel"
+                >
+                  <div className="landing-install-intro">
+                    <span className="micro">THE FUTURE OF WEB APPLICATIONS</span>
+                    <h2 id="landing-install-heading" className="display">PIXL, right on your home screen.</h2>
+                    <p>
+                      Add PIXL Sports directly from this website—no App Store or Google Play download required.
+                      Open it from your home screen, and keep key game-day tools close when service drops.
+                    </p>
+                  </div>
+                  <div className="landing-install-options">
+                    <section data-testid="landing-install-iphone">
+                      <strong>iPhone &amp; iPad</strong>
+                      <p>In Safari, tap Share → Add to Home Screen, turn on Open as Web App, then tap Add.</p>
+                    </section>
+                    <section data-testid="landing-install-android">
+                      <strong>Android</strong>
+                      <p>Tap your browser’s Install prompt, or choose Install app / Add to Home Screen from its menu.</p>
+                    </section>
+                  </div>
+                  <p className="landing-install-security" data-testid="landing-install-security">
+                    <ShieldCheck size={16} aria-hidden="true" />
+                    <span>
+                      PIXL is served over HTTPS and uses your browser’s and device’s security protections.
+                      Because this PWA installs from the website, it does not go through App Store or Google Play
+                      review. Install only from the official PIXL Sports website.
+                    </span>
+                  </p>
+                  {installAction === 'installed' && (
+                    <p className="landing-install-status" role="status" data-testid="landing-install-status">
+                      PIXL Sports is already installed on this device.
+                    </p>
+                  )}
+                </aside>
+              )}
             </div>
             <div className="hero-visual">
               <div className="hero-image-frame">

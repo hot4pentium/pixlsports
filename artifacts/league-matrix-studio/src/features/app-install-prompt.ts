@@ -9,7 +9,7 @@ import { trackEvent } from '../lib/analytics';
 
 type InstallDeviceClass = 'mobile' | 'desktop';
 type InstallMethod = 'native_prompt' | 'fallback_instructions' | 'unknown';
-type InstallSurface = 'dashboard' | 'shared_schedule';
+type InstallSurface = 'dashboard' | 'shared_schedule' | 'landing';
 
 export type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
