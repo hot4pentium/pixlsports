@@ -9,6 +9,7 @@ import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { StatTrackerPage } from './stat-tracker-page';
 import { currentAccountId } from './account-lifecycle-browser-auth';
 import { scheduleLegacyDefaultsMigrationKey, scheduleStorageKey } from './schedule-draft';
+import type { Sport } from './stat-tracker';
 import '../index.css';
 
 const query = new URLSearchParams(window.location.search);
@@ -18,6 +19,7 @@ const inviteToken = 'browser-live-athlete';
 const trackerPath = '/studio/stat-tracker';
 const inlinePath = '/browser/inline-tracker';
 const liveTapsPath = '/browser/event-card-live-taps';
+const liveTapsSport = (query.get('sport') ?? 'basketball') as Sport;
 const fanPath = `/fan/${inviteToken}`;
 const path = page === 'fan' ? fanPath : page === 'inline' ? inlinePath : page === 'live-taps' ? liveTapsPath : trackerPath;
 
@@ -86,10 +88,10 @@ function InlineTrackerRoute() {
 function LiveTapsOnlyRoute() {
   return createElement(EventCardLiveTaps, {
     userId: currentAccountId(),
-    sport: 'basketball',
+    sport: liveTapsSport,
     athleteName: 'Alexandria Montgomery-Williams',
     teamName: 'Northside Comets',
-    eventId: 'scheduled-live-taps-game',
+    eventId: `scheduled-live-taps-game-${liveTapsSport}`,
     date: '2026-10-14',
     time: '18:00',
     location: 'Away Gym',

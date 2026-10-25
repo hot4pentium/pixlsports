@@ -44,6 +44,27 @@ test("every supported sport offers the three shared Live Taps cheers", () => {
   }
 });
 
+test("every supported sport has the expected allowed Live Taps choices", () => {
+  const expectedBySport = {
+    baseball: ["thumbs-up", "way-to-go", "big-play", "hit", "home-run", "strikeout", "great-catch", "lets-go"],
+    softball: ["thumbs-up", "way-to-go", "big-play", "big-hit", "home-run", "strikeout", "great-catch", "lets-go"],
+    basketball: ["thumbs-up", "way-to-go", "big-play", "bucket", "three", "and-one", "big-stop", "lets-go"],
+    football: ["thumbs-up", "way-to-go", "big-play", "touchdown", "big-catch", "big-stop", "sack", "lets-go"],
+    soccer: ["thumbs-up", "way-to-go", "big-play", "goal", "assist", "great-save", "big-stop", "lets-go"],
+    volleyball: ["thumbs-up", "way-to-go", "big-play", "ace", "kill", "block", "big-dig", "lets-go"],
+  } as const;
+  for (const [sport, expectedKeys] of Object.entries(expectedBySport)) {
+    const presets = getLiveTapCheerPresets(sport);
+    assert.deepEqual(
+      presets.map(({ key }) => key),
+      expectedKeys,
+      `${sport} exposes only its expected cheer keys in the expected order`,
+    );
+    assert.ok(presets.every(({ label, emoji }) => label.length > 0 && emoji.length > 0),
+      `${sport} choices have a visible label and emoji`);
+  }
+});
+
 function dateKey(offsetDays: number) {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + offsetDays);

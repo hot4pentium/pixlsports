@@ -22,6 +22,33 @@ const inviteToken = 'browser-live-athlete';
 const familyQrToken = 'browserFamilyAccessToken_0123456789abcdefghijklmnop';
 const replacementFamilyQrToken = `${familyQrToken}_replacement`;
 
+const expectedLiveTapCheers = {
+  baseball: [
+    ['thumbs-up', 'Thumbs Up'], ['way-to-go', 'Way to Go!'], ['big-play', 'Big Play'],
+    ['hit', 'Big hit'], ['home-run', 'Home run'], ['strikeout', 'Strikeout'], ['great-catch', 'Great catch'], ['lets-go', "Let's go"],
+  ],
+  softball: [
+    ['thumbs-up', 'Thumbs Up'], ['way-to-go', 'Way to Go!'], ['big-play', 'Big Play'],
+    ['big-hit', 'Big hit'], ['home-run', 'Home run'], ['strikeout', 'Strikeout'], ['great-catch', 'Great catch'], ['lets-go', "Let's go"],
+  ],
+  basketball: [
+    ['thumbs-up', 'Thumbs Up'], ['way-to-go', 'Way to Go!'], ['big-play', 'Big Play'],
+    ['bucket', 'Bucket'], ['three', 'Three!'], ['and-one', 'And one'], ['big-stop', 'Big stop'], ['lets-go', "Let's go"],
+  ],
+  football: [
+    ['thumbs-up', 'Thumbs Up'], ['way-to-go', 'Way to Go!'], ['big-play', 'Big Play'],
+    ['touchdown', 'Touchdown'], ['big-catch', 'Big catch'], ['big-stop', 'Big stop'], ['sack', 'Sack'], ['lets-go', "Let's go"],
+  ],
+  soccer: [
+    ['thumbs-up', 'Thumbs Up'], ['way-to-go', 'Way to Go!'], ['big-play', 'Big Play'],
+    ['goal', 'Goal'], ['assist', 'Assist'], ['great-save', 'Great save'], ['big-stop', 'Big stop'], ['lets-go', "Let's go"],
+  ],
+  volleyball: [
+    ['thumbs-up', 'Thumbs Up'], ['way-to-go', 'Way to Go!'], ['big-play', 'Big Play'],
+    ['ace', 'Ace'], ['kill', 'Kill'], ['block', 'Block'], ['big-dig', 'Big dig'], ['lets-go', "Let's go"],
+  ],
+} as const;
+
 type GameSnapshot = {
   id: string;
   sport: string;
@@ -83,8 +110,21 @@ function makeFixtureServer() {
   const state: FixtureState = { shares: [], activeShareToken: null, taps: [] };
   const historySaves = { beforeSave: async () => {} };
   const accessLinks: FixtureAccessLink[] = [];
+  let inviteSport: keyof typeof expectedLiveTapCheers = 'basketball';
   let invitePaused = false;
   let inviteMissing = false;
+  const liveTapsSummary = (activeShare: TrackerShare | undefined) => ({
+    active: Boolean(activeShare),
+    gameId: activeShare?.game.id ?? null,
+    cheers: expectedLiveTapCheers[inviteSport].map(([key, label]) => ({
+      key,
+      label,
+      emoji: '👏',
+      count: activeShare
+        ? state.taps.filter((tap) => tap.gameId === activeShare.game.id && tap.cheerKey === key).length
+        : 0,
+    })),
+  });
   const server = createServer(async (request, response) => {
     if (request.method === 'OPTIONS') {
       response.writeHead(204, {
@@ -114,6 +154,16 @@ function makeFixtureServer() {
         invitePaused = url.searchParams.get('paused') === 'true';
         inviteMissing = url.searchParams.get('missing') === 'true';
         json(response, 200, { paused: invitePaused, missing: inviteMissing });
+        return;
+      }
+      if (path === '/__fixture/sport' && method === 'POST') {
+        const body = await readJson(request);
+        if (!Object.prototype.hasOwnProperty.call(expectedLiveTapCheers, body.sport)) {
+          json(response, 400, { error: 'Unsupported fixture sport' });
+          return;
+        }
+        inviteSport = body.sport as keyof typeof expectedLiveTapCheers;
+        json(response, 200, { sport: inviteSport });
         return;
       }
       if (path === '/api/account/access' && method === 'GET') {
@@ -211,7 +261,7 @@ function makeFixtureServer() {
           inviteToken,
           athleteName: 'Alexandria Montgomery-Williams',
           teamName: 'Northside Comets',
-          sport: 'basketball',
+          sport: inviteSport,
           paused: invitePaused,
         }] : []);
         return;
@@ -288,7 +338,7 @@ function makeFixtureServer() {
           seasonName: 'Fall 2026',
           seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
           timezone: 'America/Los_Angeles',
-          sport: 'basketball',
+          sport: inviteSport,
           photoUrl: null,
           hypeCard: null,
           videos: [],
@@ -328,18 +378,7 @@ function makeFixtureServer() {
             athleteName: activeShare.athleteName,
             teamName: activeShare.teamName,
           } : null,
-          liveTaps: {
-            active: Boolean(activeShare),
-            gameId: activeShare?.game.id ?? null,
-            cheers: [{
-              key: 'bucket',
-              label: 'Let’s go!',
-              emoji: '👏',
-              count: activeShare
-                ? state.taps.filter((tap) => tap.gameId === activeShare.game.id && tap.cheerKey === 'bucket').length
-                : 0,
-            }],
-          },
+          liveTaps: liveTapsSummary(activeShare),
           updatedAt: new Date().toISOString(),
         };
         json(response, 200, invite);
@@ -361,17 +400,12 @@ function makeFixtureServer() {
           json(response, 409, { error: 'Game Day Live is not active' });
           return;
         }
+        if (!expectedLiveTapCheers[inviteSport].some(([key]) => key === body.cheerKey)) {
+          json(response, 400, { error: 'Choose one of the available cheers for this sport.' });
+          return;
+        }
         state.taps.push({ gameId: activeShare.game.id, cheerKey: body.cheerKey });
-        json(response, 201, {
-          active: true,
-          gameId: activeShare.game.id,
-          cheers: [{
-            key: 'bucket',
-            label: 'Let’s go!',
-            emoji: '👏',
-            count: state.taps.filter((tap) => tap.gameId === activeShare.game.id && tap.cheerKey === 'bucket').length,
-          }],
-        });
+        json(response, 201, liveTapsSummary(activeShare));
         return;
       }
 
@@ -437,15 +471,20 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
 
-    const appUrl = (page: 'tracker' | 'inline' | 'fan' | 'live-taps', options: { owner?: boolean; family?: boolean | string } = {}) => {
+    const appUrl = (page: 'tracker' | 'inline' | 'fan' | 'live-taps', options: {
+      owner?: boolean;
+      family?: boolean | string;
+      sport?: keyof typeof expectedLiveTapCheers;
+    } = {}) => {
       const params = new URLSearchParams({ api: apiOrigin, page });
       if (options.owner) params.set('viewer', ownerId);
+      if (options.sport) params.set('sport', options.sport);
       const token = typeof options.family === 'string' ? options.family : familyQrToken;
       return `${viteOrigin}/athlete-live-start-browser-test.html?${params}${options.family ? `#live-taps=${token}` : ''}`;
     };
     const open = async (
       page: 'tracker' | 'inline' | 'fan' | 'live-taps',
-      options: { owner?: boolean; family?: boolean | string } = {},
+      options: { owner?: boolean; family?: boolean | string; sport?: keyof typeof expectedLiveTapCheers } = {},
     ) => {
       const browserPage = await openPage(connection!, appUrl(page, options), { viewport: { width: 1365, height: 940 } });
       pages.push(browserPage);
@@ -792,6 +831,100 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       liveTapsOnly,
     ), null, 'ending Live Taps-only leaves no Stat Tracker game behind');
     await close(liveTapsOnly);
+
+    for (const [sport, expectedCheers] of Object.entries(expectedLiveTapCheers) as Array<
+      [keyof typeof expectedLiveTapCheers, typeof expectedLiveTapCheers[keyof typeof expectedLiveTapCheers]]
+    >) {
+      const selectedSport = await fetch(`${apiOrigin}/__fixture/sport`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sport }),
+      });
+      assert.equal(selectedSport.status, 200, `${sport} fixture is available`);
+      const sportOwner = await open('live-taps', { owner: true, sport });
+      await connection.send('Emulation.setDeviceMetricsOverride', {
+        width: 390,
+        height: 844,
+        deviceScaleFactor: 1,
+        mobile: true,
+      }, sportOwner);
+      await waitUi(sportOwner, `Boolean(document.querySelector('[data-testid="button-start-live-taps-only"]'))`);
+      if (sport === 'soccer') {
+        await click(sportOwner, 'button-soccer-period-halves');
+        await waitUi(sportOwner, `document.querySelector('[data-testid="button-soccer-period-halves"]')?.getAttribute('aria-pressed') === 'true'`);
+      }
+      await click(sportOwner, 'button-start-live-taps-only');
+      await waitUi(sportOwner, `document.querySelector('[data-testid="status-live-taps-only"]')?.textContent?.includes('Game Day Live is on')`);
+
+      const expectedUiCheers = expectedCheers.map(([key, label]) => [key, label, '0']);
+      const initialUiCheers = await connection.evaluate<string[][]>(`(() => {
+        const board = document.querySelector('[data-testid="owner-live-taps-controls"]');
+        if (!board) throw new Error('The owner quick-cheer board did not load');
+        return Array.from(board.querySelectorAll('button')).map((button) => [
+          button.getAttribute('data-testid')?.replace('button-owner-live-tap-', '') ?? '',
+          button.querySelector('.event-card-live-taps__cheer-label')?.textContent?.trim() ?? '',
+          button.querySelector('.event-card-live-taps__cheer-count')?.textContent?.trim() ?? '',
+        ]);
+      })()`, sportOwner);
+      assert.deepEqual(initialUiCheers, expectedUiCheers, `${sport} displays exactly its allowed cheers with zero counts`);
+
+      const sportLayout = await connection.evaluate<{
+        pageWidth: number;
+        documentWidth: number;
+        boardWidth: number;
+        boardScrollWidth: number;
+        buttons: Array<{ height: number; labelFontSize: number; label: string }>;
+      }>(`(() => {
+        const board = document.querySelector('[data-testid="owner-live-taps-controls"]');
+        if (!(board instanceof HTMLElement)) throw new Error('The owner quick-cheer board is missing');
+        return {
+          pageWidth: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          boardWidth: board.clientWidth,
+          boardScrollWidth: board.scrollWidth,
+          buttons: Array.from(board.querySelectorAll('button')).map((button) => {
+            const label = button.querySelector('.event-card-live-taps__cheer-label');
+            return {
+              height: button.getBoundingClientRect().height,
+              labelFontSize: label ? Number.parseFloat(getComputedStyle(label).fontSize) : 0,
+              label: label?.textContent?.trim() ?? '',
+            };
+          }),
+        };
+      })()`, sportOwner);
+      assert.ok(sportLayout.documentWidth <= sportLayout.pageWidth + 1, `${sport} controls do not cause horizontal page scrolling at phone width`);
+      assert.ok(sportLayout.boardScrollWidth <= sportLayout.boardWidth + 1, `${sport} quick-cheer board fits its phone-width container`);
+      assert.ok(sportLayout.buttons.every(({ height }) => height >= 44), `${sport} buttons meet the phone touch-target minimum`);
+      assert.ok(sportLayout.buttons.every(({ labelFontSize }) => labelFontSize >= 11), `${sport} cheer labels remain readable at phone width`);
+
+      const sportState = await fixtureState();
+      const sportShare = sportState.shares.find((share) => share.shareToken === sportState.activeShareToken);
+      assert.ok(sportShare, `${sport} starts a Live Taps session`);
+      assert.equal(sportShare.game.sport, sport);
+      for (const [cheerKey] of expectedCheers) {
+        const testId = `button-owner-live-tap-${cheerKey}`;
+        await click(sportOwner, testId);
+        await waitUi(sportOwner, `document.querySelector('[data-testid="text-owner-live-tap-count-${cheerKey}"]')?.textContent === '1'`);
+      }
+
+      const completedSportState = await fixtureState();
+      const completedSportShare = completedSportState.shares.find((share) => share.shareToken === sportShare.shareToken);
+      assert.deepEqual(
+        completedSportState.taps.filter((tap) => tap.gameId === sportShare.game.id).map((tap) => tap.cheerKey),
+        expectedCheers.map(([key]) => key),
+        `${sport} owner buttons send only the displayed allowed cheer keys`,
+      );
+      assert.ok(
+        completedSportShare && Object.values(completedSportShare.game.stats).every((value) => value === 0)
+          && completedSportShare.game.score === 0
+          && completedSportShare.game.opponentScore === 0
+          && completedSportShare.game.events.length === 0,
+        `${sport} owner cheers do not alter player stats, scores, or game events`,
+      );
+      await click(sportOwner, 'button-end-live-taps-only');
+      await waitUi(sportOwner, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('Game Day Live ended')`);
+      await close(sportOwner);
+    }
   } finally {
     releaseHistorySave();
     if (connection) {
