@@ -460,7 +460,25 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
               <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-stat-tracker-${card.id}`}>
                 <ArrowLeft size={15} aria-hidden="true" /> Back to badge
               </button>
-              <Link href={buildWorkspaceToolHref('stats', eventContext)} className="game-on-quick-tracker__primary">Open stat tracker</Link>
+              <div className="game-on-collection__tracker-mode-heading">
+                <p className="game-on-collection__tracker-mode-eyebrow">Game day mode</p>
+                <h3 data-testid={`heading-event-card-game-day-mode-${eventId}`}>Choose how to follow this game</h3>
+                <p>Track player stats, or use Live Taps for family cheers without recording stats.</p>
+              </div>
+              <section className="game-on-collection__tracker-stat-option" aria-labelledby={`tracker-stat-option-title-${eventId}`} data-testid="event-card-stat-tracker-option">
+                <div>
+                  <p className="game-on-collection__tracker-option-eyebrow">Track stats</p>
+                  <h4 id={`tracker-stat-option-title-${eventId}`}>Full Stat Tracker</h4>
+                  <p>Log game plays and stats for the season.</p>
+                </div>
+                <Link
+                  href={buildWorkspaceToolHref('stats', eventContext)}
+                  className="game-on-collection__tracker-stat-link"
+                  data-testid={`link-open-stat-tracker-${card.id}`}
+                >
+                  Open Stat Tracker
+                </Link>
+              </section>
               <EventCardLiveTaps
                 key={`${statTrackerUserId ?? 'anonymous'}:${eventId}`}
                 userId={statTrackerUserId}

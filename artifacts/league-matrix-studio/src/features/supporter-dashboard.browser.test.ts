@@ -2770,6 +2770,14 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         .some((heading) => heading.getClientRects().length > 0)`,
       page.sessionId,
     ), true, 'choosing Stat Tracker should flip the expanded card to its panel');
+    assert.equal(await connection.evaluate(
+      `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__flip-back'))
+        .some((panel) => panel.getClientRects().length > 0
+          && panel.querySelector('[data-testid^="heading-event-card-game-day-mode-"]')?.textContent?.trim() === 'Choose how to follow this game'
+          && panel.querySelector('[data-testid="event-card-stat-tracker-option"]')
+          && panel.querySelector('.event-card-live-taps h4')?.textContent?.trim() === 'Live Taps only')`,
+      page.sessionId,
+    ), true, 'the Event Card Stat Tracker panel should clearly offer stats and Live Taps as separate choices');
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-close-stat-tracker-"]'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))

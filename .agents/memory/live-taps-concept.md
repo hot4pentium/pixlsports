@@ -20,3 +20,9 @@ Every supported sport also includes the shared cheers “Thumbs Up,” “Way to
 **Why:** The user explicitly requested these three buttons on all Live Taps.
 
 **How to apply:** Keep them in the server-defined cheer presets so display, tally, and API validation stay consistent for every supported sport.
+
+When a supporter opens Stat Tracker from an Event Card, present separate paths for full stat tracking and Live Taps only, clearly stating that Live Taps does not record player stats.
+
+**Why:** The user wants a clear no-stats choice at the Event Card's Stat Tracker button for days when supporters prefer cheers over tracking.
+
+**How to apply:** Keep both choices tied to the same event. Live Taps continues to use private, revocable family QR access and must not write cheers into official stats.

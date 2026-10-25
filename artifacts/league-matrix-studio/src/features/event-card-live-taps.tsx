@@ -357,7 +357,7 @@ export function EventCardLiveTaps({
         <span className="event-card-live-taps__icon" aria-hidden="true"><Radio size={17} /></span>
         <div>
           <p className="event-card-live-taps__eyebrow">A simpler game-day option</p>
-          <h3 id={`event-card-live-taps-title-${eventId}`}>Live Taps only</h3>
+          <h4 id={`event-card-live-taps-title-${eventId}`}>Live Taps only</h4>
         </div>
       </div>
       <p className="event-card-live-taps__intro">

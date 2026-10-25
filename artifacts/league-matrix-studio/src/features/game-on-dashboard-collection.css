@@ -314,6 +314,73 @@
   text-transform: uppercase;
   cursor: pointer;
 }
+.game-on-collection__tracker-mode-heading {
+  display: grid;
+  gap: 4px;
+  color: #102b4d;
+}
+.game-on-collection__tracker-mode-eyebrow,
+.game-on-collection__tracker-option-eyebrow {
+  margin: 0;
+  color: #1769c2;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+.game-on-collection__tracker-mode-heading h3 {
+  margin: 0;
+  color: #102b4d;
+  font: 800 22px/.98 'Barlow Condensed', var(--app-font-serif), sans-serif;
+  text-transform: uppercase;
+}
+.game-on-collection__tracker-mode-heading > p:last-child,
+.game-on-collection__tracker-stat-option > div > p:last-child {
+  margin: 0;
+  color: #506782;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.game-on-collection__tracker-stat-option {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #c4d8eb;
+  border-top: 3px solid #17467b;
+  border-radius: 7px;
+  background: #fff;
+  color: #102b4d;
+}
+.game-on-collection__tracker-stat-option h4 {
+  margin: 3px 0 5px;
+  color: #102b4d;
+  font: 800 20px/.98 'Barlow Condensed', var(--app-font-serif), sans-serif;
+  text-transform: uppercase;
+}
+.game-on-collection__tracker-stat-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #17467b;
+  border-radius: 4px;
+  padding: 10px 13px;
+  background: #17467b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.game-on-collection__tracker-stat-link:hover { background: #0d315b; }
+.game-on-collection__tracker-stat-link:focus-visible {
+  outline: 3px solid #b24d16;
+  outline-offset: 2px;
+}
 .game-on-prep { display: flex; flex-direction: column; gap: 12px; min-width: 0; color: #102b4d; }
 .game-on-prep__heading { border-bottom: 1px solid rgba(16, 43, 77, .15); padding-bottom: 10px; }
 .game-on-prep__eyebrow {

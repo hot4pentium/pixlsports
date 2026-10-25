@@ -37,7 +37,7 @@
   text-transform: uppercase;
 }
 
-.event-card-live-taps h3 {
+.event-card-live-taps h4 {
   margin: 3px 0 0;
   color: #102b4d;
   font: 800 22px/.98 'Barlow Condensed', var(--app-font-serif), sans-serif;
