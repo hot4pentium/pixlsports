@@ -1,10 +1,9 @@
 export type AuthEntryIntent = 'sign-in' | 'sign-up';
 
-export type HomeEntryState = 'loading' | 'dashboard' | 'landing';
+export type HomeEntryState = 'dashboard' | 'landing';
 
 export function getHomeEntryState(isLoaded: boolean, isSignedIn: boolean): HomeEntryState {
-  if (!isLoaded) return 'loading';
-  return isSignedIn ? 'dashboard' : 'landing';
+  return isLoaded && isSignedIn ? 'dashboard' : 'landing';
 }
 
 export function shouldBypassAccountLifecycle(

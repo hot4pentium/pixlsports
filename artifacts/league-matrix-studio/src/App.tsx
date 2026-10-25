@@ -4101,7 +4101,6 @@ function isAthleteEditorAccount(user: unknown): boolean {
 function HomeRedirect() {
   const { isLoaded, isSignedIn } = useUser();
   const homeEntryState = getHomeEntryState(isLoaded, Boolean(isSignedIn));
-  if (homeEntryState === 'loading') return <AccountLoadingScreen />;
   if (homeEntryState === 'dashboard') return <Redirect to="/studio" />;
   return <PublicLandingPage />;
 }

@@ -39,6 +39,163 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" sizes="192x192" href="%BASE_URL%pwa-icon-192.png" />
+    <style>
+      #app-boot-fallback {
+        box-sizing: border-box;
+        min-height: 100vh;
+        min-height: 100svh;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse at 82% 42%, rgba(40, 99, 151, .52), transparent 48%),
+          linear-gradient(135deg, #071a2b 0%, #0c2944 55%, #0a1c30 100%);
+        color: #f4f7fb;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #app-boot-fallback *,
+      #app-boot-fallback *::before,
+      #app-boot-fallback *::after { box-sizing: border-box; }
+      .boot-header {
+        min-height: 76px;
+        padding: 0 clamp(20px, 5vw, 64px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(218, 233, 248, .12);
+      }
+      .boot-brand {
+        color: #f4f7fb;
+        font-family: Impact, "Arial Narrow", sans-serif;
+        font-size: 22px;
+        letter-spacing: .06em;
+        text-decoration: none;
+      }
+      .boot-brand span {
+        display: block;
+        margin-top: -2px;
+        color: #b8c8d6;
+        font: 700 9px/1 ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: .48em;
+      }
+      .boot-login {
+        color: #d4e0e8;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .boot-main {
+        width: min(100%, 1320px);
+        min-height: min(76vh, 760px);
+        margin: 0 auto;
+        padding: clamp(42px, 8vw, 98px) clamp(20px, 5vw, 64px);
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+        align-items: center;
+        gap: clamp(30px, 6vw, 84px);
+      }
+      .boot-eyebrow {
+        margin: 0 0 22px;
+        color: #d5ff62;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .22em;
+      }
+      .boot-title {
+        margin: 0;
+        font-family: Impact, "Arial Narrow", sans-serif;
+        font-size: clamp(58px, 8.3vw, 112px);
+        font-weight: 900;
+        letter-spacing: -.025em;
+        line-height: .88;
+      }
+      .boot-title em { color: #d5ff62; font-style: normal; white-space: nowrap; }
+      .boot-description {
+        max-width: 560px;
+        margin: 24px 0 0;
+        color: #d1dce6;
+        font-size: clamp(15px, 1.6vw, 19px);
+        line-height: 1.7;
+      }
+      .boot-actions {
+        margin-top: 30px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 18px 24px;
+      }
+      .boot-cta {
+        min-height: 48px;
+        padding: 0 22px;
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        border-radius: 999px;
+        background: #d5ff62;
+        color: #102018;
+        font-size: 14px;
+        font-weight: 850;
+        text-decoration: none;
+      }
+      .boot-message {
+        margin: 0;
+        color: #aebfd0;
+        font-size: 12px;
+      }
+      .boot-feature {
+        min-height: 300px;
+        padding: clamp(24px, 4vw, 42px);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        border: 1px solid rgba(207, 225, 240, .2);
+        border-radius: 28px;
+        background: linear-gradient(145deg, rgba(36, 83, 128, .72), rgba(10, 31, 53, .8));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .22);
+      }
+      .boot-feature-label {
+        color: #c3d4e2;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .2em;
+      }
+      .boot-feature strong {
+        max-width: 340px;
+        font-family: Impact, "Arial Narrow", sans-serif;
+        font-size: clamp(30px, 4vw, 48px);
+        font-weight: 800;
+        line-height: 1.02;
+      }
+      .boot-feature-note {
+        color: #d5ff62;
+        font-size: 12px;
+        font-weight: 750;
+        letter-spacing: .07em;
+      }
+      .boot-retry {
+        margin: 0 0 24px clamp(20px, 5vw, 64px);
+        border: 0;
+        border-radius: 999px;
+        background: #d5ff62;
+        color: #102018;
+        padding: 12px 18px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      @media (max-width: 850px) {
+        .boot-header { min-height: 66px; }
+        .boot-main {
+          min-height: 0;
+          padding-top: 54px;
+          padding-bottom: 32px;
+          grid-template-columns: 1fr;
+          gap: 34px;
+        }
+        .boot-eyebrow { margin-bottom: 18px; font-size: 10px; }
+        .boot-title { font-size: clamp(36px, 11vw, 54px); }
+        .boot-description { margin-top: 20px; font-size: 15px; }
+        .boot-feature { min-height: 210px; border-radius: 22px; }
+        .boot-feature strong { max-width: 300px; font-size: 38px; }
+      }
+    </style>
     <script>
       (() => {
         if (window.location.hostname === 'www.pixlsports.com') {
@@ -51,13 +208,28 @@
   </head>
   <body>
     <div id="root">
-      <div id="app-boot-fallback" role="status" style="box-sizing:border-box;min-height:100vh;display:grid;place-items:center;padding:24px;background:#111317;color:#f5f7f4;font-family:Arial,sans-serif;text-align:center">
-        <div style="max-width:420px">
-          <div style="margin:0 auto 16px;width:14px;height:14px;border-radius:50%;background:#00e86b;box-shadow:0 0 24px #00e86b"></div>
-          <strong style="display:block;font-size:20px;letter-spacing:.08em;text-transform:uppercase">Loading Pixl Sports</strong>
-          <p id="app-boot-message" style="margin:10px 0 0;color:#aeb5b0;font-size:14px;line-height:1.5">Connecting to the creative studio…</p>
-          <button id="app-boot-retry" type="button" hidden style="margin-top:20px;border:0;background:#00e86b;color:#07110b;padding:12px 18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer">Reconnect preview</button>
-        </div>
+      <div id="app-boot-fallback" aria-busy="true">
+        <header class="boot-header">
+          <a class="boot-brand" href="%BASE_URL%" aria-label="Pixl Sports home">PIXL<span>SPORTS</span></a>
+          <a class="boot-login" href="%BASE_URL%auth">Sign up / sign in</a>
+        </header>
+        <main class="boot-main">
+          <section>
+            <p class="boot-eyebrow">YOUR GAME WEEK. ONE TAP AWAY.</p>
+            <h1 class="boot-title">ALL IN,<br /><em>ALL SEASON.</em></h1>
+            <p class="boot-description">One season hub for youth-sports families. Plan games and practices, get ready for game day, track stats, and share your athlete’s HYPE Card.</p>
+            <div class="boot-actions">
+              <a class="boot-cta" href="%BASE_URL%sign-up">Get started <span aria-hidden="true">↗</span></a>
+              <p id="app-boot-message" class="boot-message" role="status">Preparing the landing page…</p>
+            </div>
+          </section>
+          <aside class="boot-feature" aria-hidden="true">
+            <span class="boot-feature-label">PIXL SPORTS · FOR THE WHOLE SEASON</span>
+            <strong>Every player has a story worth sharing.</strong>
+            <span class="boot-feature-note">PLAN THE WEEK · SHOW UP READY · CELEBRATE</span>
+          </aside>
+        </main>
+        <button id="app-boot-retry" class="boot-retry" type="button" hidden>Try again</button>
       </div>
     </div>
     <script>
@@ -86,7 +258,7 @@
           if (booted || !fallback || !message || !retry) return;
           message.textContent = '%MODE%' === 'development'
             ? `The app could not start (${phase}). ${failure || 'Startup files have not finished loading.'}`
-            : 'The preview did not finish connecting. Reconnect the preview and try again.';
+            : 'The page did not finish loading. Refresh to try again.';
           retry.hidden = false;
           reportFailure();
         };
@@ -148,7 +320,9 @@
         }, { once: true });
         const slowTimeout = window.setTimeout(() => {
           if (booted || !message || !retry) return;
-          message.textContent = 'The dev site is taking longer to load. You can keep waiting or reconnect.';
+          message.textContent = '%MODE%' === 'development'
+            ? 'The dev site is taking longer to load. You can keep waiting or reconnect.'
+            : 'The landing page is taking longer than expected. You can keep waiting or refresh.';
           retry.hidden = false;
         }, 7000);
         const timeout = window.setTimeout(showRetry, 30000);
