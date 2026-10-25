@@ -7,6 +7,6 @@ Target a native SwiftUI iPhone app for the App Store; keep the existing PWA and 
 
 Do not replace PWA auth, migrate production accounts, or connect the SwiftUI project to the generic personal “My Application” Clerk project. The user chose a new dedicated iOS Clerk app instead. The native SwiftUI prototype remains part of the product; the PWA is not replacing it.
 
-**Why:** the user chose to preserve the PWA sign-in and build a standalone native iOS app, with the native identity securely linked to existing account data.
+**Why:** the user chose to preserve the PWA sign-in and build a standalone native iOS app, with the native identity securely linked to existing account data. The user confirmed the dedicated native Clerk/prebuilt UI approach works with Google sign-in; keep this approach rather than replacing the PWA's auth.
 
 **How to apply:** keep the PWA auth path intact; design native sign-in, Apple review compliance, and a one-time verified account-link flow before changing backend authorization or account data.
