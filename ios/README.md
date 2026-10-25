@@ -69,10 +69,12 @@ is deleted. Web users can also withdraw an approval before iPhone confirmation.
 - **NATIVE_LINK_WEB_ORIGIN** optionally pins the HTTPS web approval origin. By
   default, development uses Replit's runtime preview domain and production uses
   the verified published origin `https://pixlsports.com`. No trailing slash/path.
-- Native requests default to `https://pixlsports.com`. For development testing,
-  optionally add a String **AccountLinkAPIOrigin** to the local `ClerkConfig.plist`
-  with the HTTPS preview origin, without a path. Keep the existing publishable
-  key. Codes and bearer tokens are never added to browser URLs.
+- Debug builds require a String **AccountLinkAPIOrigin** in the local
+  `ClerkConfig.plist`, containing the HTTPS preview origin without a path.
+  They never silently fall back to the published website. Release builds
+  default to `https://pixlsports.com` when this setting is absent.
+  Keep the existing publishable key. Codes and bearer tokens are never added
+  to browser URLs.
 - Apply the additive DB schema changes and publish the API/web changes before
   testing against the published site. No deployment is performed by adding code.
 
@@ -90,6 +92,20 @@ current account lifecycle/editor restrictions, not treat a cached link as access
 
 This repository is edited on Linux, without Xcode or an iOS simulator. Build,
 signing, and rendered native UI must be verified on the Mac.
+
+Debug connection screens show **Development API — installed app**, read from the
+bundled plist rather than the Xcode editor. Connection failures include the HTTP
+status and safe destination details, without tokens, keys, or raw response bodies.
+When a connection fails, use those details to distinguish missing bundled config,
+an old published endpoint, a blocked redirect, and an actual authentication error.
+
+The endpoint configuration/diagnostic checks also run without Clerk or networking:
+
+```sh
+swiftc -parse-as-library "ios/PIXL Sports/NativeAccountLinkEndpoint.swift" \
+  ios/Tests/NativeAccountLinkEndpointChecks.swift -o /tmp/pixl-link-endpoint-checks
+/tmp/pixl-link-endpoint-checks
+```
 
 The Foundation-only configuration checks do not require Clerk or network access:
 

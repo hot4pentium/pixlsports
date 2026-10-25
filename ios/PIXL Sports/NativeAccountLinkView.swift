@@ -19,6 +19,20 @@ struct NativeAccountLinkView: View {
                     Text("The home screen still uses your saved public athlete-page link. Connecting accounts does not change that link.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+#if DEBUG
+                Section("Development API — installed app") {
+                    if let origin = try? NativeAccountLinkClient.apiOrigin() {
+                        Text(origin.absoluteString)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                    } else {
+                        Text("No valid development API address is bundled in this build.")
+                            .font(.footnote)
+                    }
+                    Text("Read from this installed app’s ClerkConfig.plist. No sign-in keys are shown.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+#endif
                 if let error = model.error {
                     Section {
                         Text(error).foregroundStyle(.red).accessibilityLabel("Error: \(error)")

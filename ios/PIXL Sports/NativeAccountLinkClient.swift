@@ -43,30 +43,15 @@ final class NativeAccountLinkClient {
     }
 
     static func apiOrigin(bundle: Bundle = .main) throws -> URL {
-        var origin = "https://pixlsports.com"
-        if let file = bundle.url(forResource: "ClerkConfig", withExtension: "plist"),
-           let data = try? Data(contentsOf: file),
-           let values = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-           let configured = values["AccountLinkAPIOrigin"] as? String, !configured.isEmpty {
-            origin = configured
-        }
-        guard let components = URLComponents(string: origin),
-              components.scheme == "https", components.host != nil,
-              components.user == nil, components.password == nil,
-              components.query == nil, components.fragment == nil,
-              components.port == nil || components.port == 443,
-              components.path.isEmpty || components.path == "/",
-              let url = components.url else {
-            throw NativeAccountLinkError.message("AccountLinkAPIOrigin must be an HTTPS website origin without a path.")
-        }
-        return url
+        try NativeAccountLinkEndpoint.load(bundle: bundle)
     }
 
     func request(_ endpoint: String = "", method: String = "GET", body: [String: String]? = nil, clerk: Clerk) async throws -> NativeAccountLinkState {
+        // Validate the installed app's destination before requesting a token.
+        let origin = try Self.apiOrigin()
         guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
             throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
         }
-        let origin = try Self.apiOrigin()
         let url = origin.appendingPathComponent("api/native/link" + endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -84,8 +69,19 @@ final class NativeAccountLinkClient {
         guard response.statusCode == 200 else {
             struct Failure: Decodable { let error: String }
             let message = (try? JSONDecoder().decode(Failure.self, from: data))?.error
-            throw NativeAccountLinkError.message(message ?? "Account linking is unavailable. Check the API setup and try again.")
+            let detail = message.map { "\($0) (HTTP \(response.statusCode))" }
+                ?? NativeAccountLinkEndpoint.responseFailure(
+                    status: response.statusCode,
+                    contentType: response.value(forHTTPHeaderField: "Content-Type"),
+                    origin: origin
+                )
+            // Never show raw response bodies, redirect locations, or tokens.
+            throw NativeAccountLinkError.message(detail)
         }
-        return try JSONDecoder().decode(NativeAccountLinkState.self, from: data)
+        do {
+            return try JSONDecoder().decode(NativeAccountLinkState.self, from: data)
+        } catch {
+            throw NativeAccountLinkError.message("The server at \(origin.host ?? "the configured address") returned unreadable account-link data (HTTP 200).")
+        }
     }
 }
