@@ -28,6 +28,7 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   }
   assert.doesNotMatch(source, /name: 'Schedule Maker'|name: 'Gameday Checklist'|name: 'Stat Tracker'/);
   assert.match(source, /data-testid="landing-capability-highlights"/);
+  assert.match(source, /An interactive HYPE Card lets fans explore season stats and event details, see public Fan Shoutouts, and send their own\./);
   for (const section of ['hero', 'week-ribbon', 'week-section', 'offline-section', 'athlete-section', 'tools-section', 'closing', 'site-footer']) {
     assert.match(source, new RegExp(`className="${section}"`));
   }
