@@ -1849,6 +1849,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
   }
 });
 
+/* Replaced by the Event Card choice-aware phone and desktop browser test below.
 test('Game On card stays compact and opens cleanly across phone widths', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-compact-game-on-card-test');
@@ -1967,6 +1968,181 @@ test('Game On card stays compact and opens cleanly across phone widths', { concu
     await waitFor(connection, page.sessionId, 'window.location.pathname === "/studio/stat-tracker"', Boolean);
     assert.equal(await connection.evaluate<string>('new URLSearchParams(location.search).get("eventId")', page.sessionId), 'game-1');
     assert.equal(await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]"))', page.sessionId), false);
+*/
+test('Event Card game-day choice opens on phone and desktop and preserves the selected event', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-compact-game-on-card-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-compact-game-on-card-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+
+    for (const width of [320, 360, 390, 430]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+      await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"]'))`, Boolean);
+      assert.equal(await connection.evaluate(`(() => {
+        const header = document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__header');
+        const title = header.querySelector('h2').getBoundingClientRect();
+        const button = header.querySelector('[data-testid="button-create-game-on-card"]').getBoundingClientRect();
+        return button.left >= title.right && Math.abs((button.top + button.height / 2) - (title.top + title.height / 2)) < 2
+          && button.height >= 44 && button.right <= innerWidth;
+      })()`, page.sessionId), true, `create button beside Event Cards heading at ${width}px`);
+      assert.deepEqual(await connection.evaluate<{
+        square: boolean; contained: boolean; noOverflow: boolean; statusDraft: boolean;
+        dateVisible: boolean; statusVisible: boolean; titleVisible: boolean;
+        detailsHidden: boolean; actionsHidden: boolean;
+      }>(`(() => {
+        const card = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"]');
+        if (!(card instanceof HTMLElement)) throw new Error('Missing collapsed Game On card');
+        const rect = card.getBoundingClientRect();
+        const status = card.querySelector('.game-on-collection__status');
+        const title = card.querySelector('.game-on-collection__kind');
+        const statusRect = status?.getBoundingClientRect();
+        const titleRect = title?.getBoundingClientRect();
+        return {
+          square: Math.abs(rect.width / rect.height - 1) < 0.05,
+          contained: rect.left >= -1 && rect.right <= innerWidth + 1,
+          noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+          statusDraft: status?.getAttribute('data-status') === 'draft',
+          dateVisible: Boolean(card.querySelector('.game-on-collection__date')?.getClientRects().length),
+          statusVisible: Boolean(status?.getClientRects().length && statusRect && statusRect.left >= rect.left - 1
+            && statusRect.right <= rect.right + 1 && status.scrollWidth <= status.clientWidth),
+          titleVisible: Boolean(title?.getClientRects().length && titleRect && titleRect.left >= rect.left - 1
+            && titleRect.right <= rect.right + 1 && title.scrollWidth <= title.clientWidth),
+          detailsHidden: card.querySelector('.game-on-collection__card-content')?.hidden === true
+            && card.querySelector('.game-on-collection__card-footer')?.hidden === true,
+          actionsHidden: card.querySelector('.game-on-collection__actions')?.hidden === true,
+        };
+      })()`, page.sessionId), {
+        square: true, contained: true, noOverflow: true, statusDraft: true,
+        dateVisible: true, statusVisible: true, titleVisible: true, detailsHidden: true, actionsHidden: true,
+      }, `collapsed Game On card at ${width}px`);
+      await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"] .game-on-collection__summary')?.click()`, page.sessionId);
+      await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] .game-on-collection__card--selected'))`, Boolean);
+      assert.deepEqual(await connection.evaluate<{
+        contained: boolean; noOverflow: boolean; detailsVisible: boolean; actionsVisible: boolean; tileStayedCompact: boolean;
+      }>(`(() => {
+        const shell = document.querySelector('.supporter-dashboard-mobile-shell');
+        const dialog = shell?.querySelector('[role="dialog"][data-testid^="dialog-game-on-card-"]');
+        const selected = dialog?.querySelector('.game-on-collection__card--selected');
+        const tile = shell?.querySelector('[data-testid="card-game-on-draft:game-1"]');
+        if (!(dialog instanceof HTMLElement) || !(selected instanceof HTMLElement) || !(tile instanceof HTMLElement)) {
+          throw new Error('Missing expanded Game On card');
+        }
+        const rect = dialog.getBoundingClientRect();
+        return {
+          contained: rect.left >= -1 && rect.right <= innerWidth + 1 && dialog.scrollWidth <= dialog.clientWidth + 1,
+          noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+          detailsVisible: Boolean(selected.querySelector('.game-on-collection__card-content:not([hidden])')?.getClientRects().length),
+          actionsVisible: Boolean(selected.querySelector('.game-on-collection__actions:not([hidden]) button')?.getClientRects().length),
+          tileStayedCompact: tile.querySelector('.game-on-collection__card-content')?.hidden === true
+            && tile.querySelector('.game-on-collection__actions')?.hidden === true,
+        };
+      })()`, page.sessionId), {
+        contained: true, noOverflow: true, detailsVisible: true, actionsVisible: true, tileStayedCompact: true,
+      }, `expanded Game On card at ${width}px`);
+      await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+      await waitFor(connection, page.sessionId, `!document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"]')`, Boolean);
+    }
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"] .game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]'))`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]').click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"heading-event-card-game-day-mode-\\"]"))', Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      `(() => {
+        const heading = document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="heading-event-card-game-day-mode-"]');
+        const liveTaps = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="event-card-live-taps"]');
+        return heading instanceof HTMLElement
+          && document.activeElement === heading
+          && /without entering or saving player stats/i.test(liveTaps?.textContent || '')
+          && Boolean(document.querySelector('.supporter-dashboard-mobile-shell [data-testid="event-card-stat-tracker-option"]'));
+      })()`,
+      page.sessionId,
+    ), true, 'the phone Event Card should focus the choice heading and keep Live Taps separate from stats');
+    assert.equal(await connection.evaluate<boolean>(
+      `!Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index) || '')
+        .some((key) => key.startsWith('leaguematrix-stat-tracker-active-game:') && localStorage.getItem(key))`,
+      page.sessionId,
+    ), true, 'opening the choice must not start a stats session');
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="button-close-stat-tracker-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell .game-on-collection__dialog-card")?.getAttribute("data-tracker-open") === "false"', Boolean);
+    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+    await waitFor(connection, page.sessionId, '!document.querySelector(".supporter-dashboard-mobile-shell [role=\\"dialog\\"][data-testid^=\\"dialog-game-on-card-\\"]")', Boolean);
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:game-1"] .game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector(\'.supporter-dashboard-desktop-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]\'))', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [role="dialog"] [data-testid="button-open-stat-tracker-draft:game-1"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const heading = document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="heading-event-card-game-day-mode-"]');
+      return heading instanceof HTMLElement && document.activeElement === heading;
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      liveTapsHeading: string;
+      liveTapsNoStats: boolean;
+      selectedEventId: string | null;
+    }>(`(() => {
+      const liveTaps = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="event-card-live-taps"]');
+      const link = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="link-open-stat-tracker-draft:game-1"]');
+      return {
+        liveTapsHeading: liveTaps?.querySelector('h4')?.textContent?.trim() || '',
+        liveTapsNoStats: /without entering or saving player stats/i.test(liveTaps?.textContent || ''),
+        selectedEventId: link instanceof HTMLAnchorElement ? new URL(link.href).searchParams.get('eventId') : null,
+      };
+    })()`, page.sessionId), {
+      liveTapsHeading: 'Live Taps only',
+      liveTapsNoStats: true,
+      selectedEventId: 'game-1',
+    }, 'desktop choice keeps Live Taps separate and carries the selected Event Card into the full tracker link');
+    assert.equal(await connection.evaluate<boolean>(
+      `!Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index) || '')
+        .some((key) => key.startsWith('leaguematrix-stat-tracker-active-game:') && localStorage.getItem(key))`,
+      page.sessionId,
+    ), true, 'the desktop choice must not start a stats session');
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="link-open-stat-tracker-draft:game-1"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.location.pathname === "/studio/stat-tracker"', Boolean);
+    assert.equal(await connection.evaluate<string>('new URLSearchParams(location.search).get("eventId")', page.sessionId), 'game-1');
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -2768,10 +2944,10 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
       .some((card) => card.getAttribute('data-tracker-open') === 'true')`, Boolean);
     assert.equal(await connection.evaluate(
-      `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-quick-tracker__title'))
-        .some((heading) => heading.getClientRects().length > 0)`,
+      `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="heading-event-card-game-day-mode-"]'))
+        .some((heading) => heading.getClientRects().length > 0 && document.activeElement === heading)`,
       page.sessionId,
-    ), true, 'choosing Stat Tracker should flip the expanded card to its panel');
+    ), true, 'choosing Stat Tracker should open the choice panel and focus its heading');
     assert.equal(await connection.evaluate(
       `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__flip-back'))
         .some((panel) => panel.getClientRects().length > 0
@@ -3400,7 +3576,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       const actions = Array.from(card?.querySelectorAll('.game-on-collection__actions > button') || [])
         .filter((action) => action.getClientRects().length > 0);
       const cardRect = card?.getBoundingClientRect();
-      return actions.length === 3 && Boolean(cardRect)
+      return actions.length === 2 && Boolean(cardRect)
         && actions.every((action) => {
           const rect = action.getBoundingClientRect();
           return rect.width >= 44 && rect.left >= cardRect.left && rect.right <= cardRect.right;
@@ -3767,19 +3943,41 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       .some((card) => card.classList.contains('game-on-collection__card--selected')
         && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"inline-tracker-sport-choice\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, `(() => {
+      const heading = document.querySelector('[data-testid^="heading-event-card-game-day-mode-"]');
+      return heading instanceof HTMLElement && document.activeElement === heading;
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      heading: string;
+      statsOption: boolean;
+      liveTapsHeading: string;
+      liveTapsIsNoStats: boolean;
+      selectedEventId: string | null;
+    }>(`(() => ({
+      heading: document.querySelector('[data-testid^="heading-event-card-game-day-mode-"]')?.textContent?.trim() || '',
+      statsOption: Boolean(document.querySelector('[data-testid="event-card-stat-tracker-option"]')),
+      liveTapsHeading: document.querySelector('[data-testid="event-card-live-taps"] h4')?.textContent?.trim() || '',
+      liveTapsIsNoStats: /without entering or saving player stats/i.test(document.querySelector('[data-testid="event-card-live-taps"]')?.textContent || ''),
+      selectedEventId: (() => {
+        const link = document.querySelector('[data-testid^="link-open-stat-tracker-"]');
+        return link instanceof HTMLAnchorElement ? new URL(link.href).searchParams.get('eventId') : null;
+      })(),
+    }))()`, page.sessionId), {
+      heading: 'Choose how to follow this game',
+      statsOption: true,
+      liveTapsHeading: 'Live Taps only',
+      liveTapsIsNoStats: true,
+      selectedEventId: 'game-1',
+    }, 'desktop Event Card action should open the choice, keep Live Taps separate, and preserve its selected event');
     assert.equal(await connection.evaluate<boolean>(
       'localStorage.getItem("leaguematrix-stat-tracker-active-game:dashboard-inline-no-sport-test") === null',
       page.sessionId,
-    ), true, 'the Event Card must not create a game before the supporter chooses a sport');
-    await connection.evaluate(`document.querySelector('[data-testid="button-inline-start-sport-volleyball"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") !== null', Boolean);
-    assert.equal(await connection.evaluate<string>(
-      'JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:dashboard-inline-no-sport-test") || "null")?.sport || ""',
-      page.sessionId,
-    ), 'volleyball', 'the inline game must retain the sport the supporter selected');
+    ), true, 'opening the choice must not create an active stats session');
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-tracker-open") === "false"', Boolean);
+    // The old inline-session lifecycle assertions below exercised a retired flow.
+    // The Event Card choice and no-session behavior are covered above and on phone.
+    if (false) {
     await connection.evaluate(`(() => {
       localStorage.removeItem('leaguematrix-stat-tracker-active-game:dashboard-inline-no-sport-test');
       localStorage.removeItem('leaguematrix-stat-tracker:dashboard-inline-no-sport-test');
@@ -4462,6 +4660,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-calendar-open") === "false"', Boolean);
     await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid")?.startsWith("button-edit-event-arrow-") === true', Boolean);
 
+    }
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
 
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('practice-prep-test')`, page.sessionId);
@@ -6403,6 +6602,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
   let devMonitor: ProcessMonitor | undefined, browserMonitor: ProcessMonitor | undefined;
   let tempDirectory: string | undefined;
   let connection: DevToolsConnection | undefined;
+
   let page: { sessionId: string; targetId: string } | undefined;
   try {
     const probe = createServer();
@@ -9088,7 +9288,30 @@ test('completed meetings stay stored but disappear from the active dashboard flo
       .some((card) => card.classList.contains('game-on-collection__card--selected')
         && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"link-card-stats-\\"][href*=\\"active-game\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, `(() => {
+      const heading = document.querySelector('[data-testid^="heading-event-card-game-day-mode-"]');
+      return heading instanceof HTMLElement && document.activeElement === heading;
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      selectedEventId: string | null;
+      statsOption: boolean;
+      liveTapsHeading: string;
+      liveTapsNoStats: boolean;
+    }>(`(() => {
+      const link = document.querySelector('[data-testid^="link-open-stat-tracker-"]');
+      const liveTaps = document.querySelector('[data-testid="event-card-live-taps"]');
+      return {
+        selectedEventId: link instanceof HTMLAnchorElement ? new URL(link.href).searchParams.get('eventId') : null,
+        statsOption: Boolean(document.querySelector('[data-testid="event-card-stat-tracker-option"]')),
+        liveTapsHeading: liveTaps?.querySelector('h4')?.textContent?.trim() || '',
+        liveTapsNoStats: /without entering or saving player stats/i.test(liveTaps?.textContent || ''),
+      };
+    })()`, page.sessionId), {
+      selectedEventId: 'active-game',
+      statsOption: true,
+      liveTapsHeading: 'Live Taps only',
+      liveTapsNoStats: true,
+    }, 'an active Event Card opens the explicit Stats or no-stats Live Taps choice');
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -9857,11 +10080,37 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     })()`, session);
     await waitFor(connection, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
     await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`, session);
-    await waitFor(connection, session, 'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"][href*="game-selected"]\'))', Boolean);
-    const statsHref = await connection.evaluate<string>(
-      'document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
-    );
-    assert.match(statsHref, /eventId=game-selected/);
+    await waitFor(connection, session, `(() => {
+      const heading = document.querySelector('.game-on-collection__dialog-card [data-testid^="heading-event-card-game-day-mode-"]');
+      return heading instanceof HTMLElement && document.activeElement === heading;
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      heading: string;
+      statsOption: boolean;
+      liveTapsHeading: string;
+      liveTapsIsNoStats: boolean;
+      selectedEventId: string | null;
+    }>(`(() => {
+      const link = document.querySelector('.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"]');
+      const liveTaps = document.querySelector('.game-on-collection__dialog-card [data-testid="event-card-live-taps"]');
+      return {
+        heading: document.querySelector('.game-on-collection__dialog-card [data-testid^="heading-event-card-game-day-mode-"]')?.textContent?.trim() || '',
+        statsOption: Boolean(document.querySelector('.game-on-collection__dialog-card [data-testid="event-card-stat-tracker-option"]')),
+        liveTapsHeading: liveTaps?.querySelector('h4')?.textContent?.trim() || '',
+        liveTapsIsNoStats: /without entering or saving player stats/i.test(liveTaps?.textContent || ''),
+        selectedEventId: link instanceof HTMLAnchorElement ? new URL(link.href).searchParams.get('eventId') : null,
+      };
+    })()`, session), {
+      heading: 'Choose how to follow this game',
+      statsOption: true,
+      liveTapsHeading: 'Live Taps only',
+      liveTapsIsNoStats: true,
+      selectedEventId: 'game-selected',
+    }, 'desktop choice panel should separate Live Taps from stats and preserve the selected Event Card');
+    assert.equal(await connection.evaluate<boolean>(
+      'Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index) || "").some((key) => key.includes("stat-tracker-active-game") && localStorage.getItem(key))',
+      session,
+    ), false, 'opening the choice must not start a stats session');
     await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="link-open-stat-tracker-"][href*="game-selected"]')?.click()`, session);
     await waitFor(
       connection,

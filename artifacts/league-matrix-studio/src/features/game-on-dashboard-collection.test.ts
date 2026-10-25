@@ -16,8 +16,10 @@ test('Event Card Stat Tracker opens the game-day choice before either path', () 
   assert.match(component, /tracker-mode-heading h3/);
   assert.match(component, /<h3 tabIndex=\{-1\} data-testid=\{`heading-event-card-game-day-mode-/);
   assert.match(component, /Full Stat Tracker/);
+  assert.match(component, /data-testid=\{`link-open-stat-tracker-\$\{card\.id\}`\}/);
   assert.match(component, /without recording stats/);
-  assert.match(component, /<EventCardLiveTaps/);
+  assert.match(component, /<EventCardLiveTaps[\s\S]*?eventId=\{eventId\}/);
+  assert.doesNotMatch(handler, /createGameSession|localStorage|startLiveTaps/);
 });
 
 test('unselected Stat Tracker and Share actions stay neutral while an open tracker remains distinct', () => {
