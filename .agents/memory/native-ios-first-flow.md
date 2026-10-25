@@ -1,12 +1,12 @@
 ---
-name: Native iOS first flow
-description: The selected first experience for the PIXL Sports native SwiftUI companion.
+name: iPhone account path
+description: The current decision for preserving PIXL Sports accounts on iPhone.
 ---
 
-The native iOS companion should use the existing PIXL account, then show onboarding for first-time supporters before opening Supporter Home and the next event. Returning supporters should sign in and go directly to Home. Do not treat the public athlete-page link screen as the permanent app entry flow.
+Use the existing PIXL Sports PWA on iPhone to preserve the Replit-managed Clerk accounts and current sign-in/onboarding. Do not link the SwiftUI prototype to a separate Clerk app such as a generic personal app. Replit-managed Clerk supports the web app, not native ClerkKit, Native API, or native Sign in with Apple.
 
-The user chose Clerk's native sign-in/sign-up UI and Sign in with Apple, and approved enabling Clerk's Native API for the iPhone app. The Clerk setup still requires running the official setup flow on the user's Mac with Xcode.
+The native SwiftUI prototype was initially aimed at Supporter Home and the next event, but native authentication is paused until the user explicitly chooses an auth migration. The current PWA is not being replaced or recreated.
 
-**Why:** the user chose Supporter Home and next event as the first native app flow, and clarified that the iPhone app should have account sign-in and first-time onboarding rather than a website-style landing page.
+**Why:** the user chose to keep existing accounts and use the PWA on iPhone rather than create a separate native sign-in system.
 
-**How to apply:** reuse the existing account and supporter setup; keep the PWA separate, and send returning users to the event-focused home screen after authentication.
+**How to apply:** improve or guide use of the existing iPhone PWA for now. Revisit native SwiftUI sign-in only after choosing a mobile-capable auth provider and an account-migration path.
