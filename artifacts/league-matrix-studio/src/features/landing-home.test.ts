@@ -83,12 +83,15 @@ test('landing offers accurate iPhone and Android PWA install guidance', () => {
   assert.match(source, /useAppInstallPrompt\('landing'\)/);
   assert.match(source, /THE FUTURE OF WEB APPLICATIONS/);
   assert.match(source, /iPhone &amp; iPad/);
-  assert.match(source, /In Safari, tap Share → Add to Home Screen, turn on Open as Web App, then tap Add\./);
+  assert.match(source, /Open this page in <strong>Safari<\/strong>[\s\S]*Add to Home Screen[\s\S]*Open as Web App/);
   assert.match(source, /Android/);
   assert.match(source, /served over HTTPS/);
   assert.match(source, /does not go through App Store or Google Play\s+review/);
   assert.doesNotMatch(source, /as safe as (?:the )?(?:App Store|Google Play)/i);
-  assert.match(styles, /landing-install-panel/);
+  assert.match(source, /className="install-section" id="landing-install"/);
+  assert.match(source, /data-testid="button-install-section"/);
+  assert.match(styles, /\.install-section/);
+  assert.match(styles, /\.install-phone/);
 });
 
 test('hero message omits the numbered athlete-card label', () => {

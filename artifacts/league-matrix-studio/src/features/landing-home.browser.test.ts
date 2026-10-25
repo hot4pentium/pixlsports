@@ -126,10 +126,16 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
            page.sessionId,
          );
          assert.equal(installButtonFound, true, 'landing should expose the app install action');
+          await waitFor(
+            connection,
+            page.sessionId,
+            'window.scrollY > 0',
+            value => value === true,
+          );
          await waitFor(
            connection,
            page.sessionId,
-           'Boolean(document.querySelector("[data-testid=landing-install-panel]"))',
+            'Boolean(document.querySelector(".install-action-hint[role=status]"))',
            value => value === true,
          );
          const installCopy = await connection.evaluate<string>(

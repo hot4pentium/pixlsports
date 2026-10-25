@@ -125,3 +125,4 @@
 - [Tracker attribution boundaries](tracker-attribution-boundaries.md) — recipient scoreboards name the team; athlete snapshots and opponent possession stats stay distinct.
 - [Cross-platform account path](native-ios-first-flow.md) — keep PWA sign-in for web/Android; build native iOS sign-in with a secure link to existing account data.
 - [Native supporter event source](native-supporter-event-source.md) — the first iPhone screen uses a saved public athlete-page link; private account schedules need native auth.
+- [Landing install section](landing-install-section.md) — keep PWA install guidance in its own prominent, energetic, graphics-led section.
