@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import test from "node:test";
 import express from "express";
 import { eq } from "drizzle-orm";
@@ -7,6 +7,7 @@ import {
   accountAccessTable,
   athleteInvitesTable,
   athleteInviteHypesTable,
+  athleteInviteLiveTapAccessLinksTable,
   athleteInviteLiveTapsTable,
   cloudProjectsTable,
   db,
@@ -876,17 +877,55 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.equal(fanWithTap.liveTaps.gameId, liveSession.gameId);
     assert.equal(fanWithTap.liveTaps.cheers.find((cheer) => cheer.key === "bucket")?.count, 9);
 
+    const replacementLinkResponse = await fetch(accessLinksUrl, {
+      method: "POST",
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(replacementLinkResponse.status, 201);
+    const replacementLink = CreateAthleteInviteLiveTapAccessLinkResponse.parse(await replacementLinkResponse.json());
+    assert.notEqual(replacementLink.accessToken, familyLink.accessToken);
+    const linksAfterReplacement = await fetch(accessLinksUrl, { headers: { "x-test-user": ownerId } })
+      .then((response) => response.json() as Promise<Array<{ id: string }>>);
+    assert.deepEqual(linksAfterReplacement.map(({ id }) => id).sort(), [familyLink.id, replacementLink.id].sort(),
+      "creating a fresh QR does not deactivate an earlier family link");
+    const storedAccessLinks = await db.select({
+      id: athleteInviteLiveTapAccessLinksTable.id,
+      tokenHash: athleteInviteLiveTapAccessLinksTable.tokenHash,
+    }).from(athleteInviteLiveTapAccessLinksTable).where(eq(athleteInviteLiveTapAccessLinksTable.inviteId, inviteRow.id));
+    assert.deepEqual(
+      storedAccessLinks.map(({ id, tokenHash }) => ({
+        id,
+        tokenHash,
+      })).sort((left, right) => left.id.localeCompare(right.id)),
+      [
+        { id: familyLink.id, tokenHash: createHash("sha256").update(familyLink.accessToken).digest("hex") },
+        { id: replacementLink.id, tokenHash: createHash("sha256").update(replacementLink.accessToken).digest("hex") },
+      ].sort((left, right) => left.id.localeCompare(right.id)),
+      "the database stores only SHA-256 hashes of Family QR tokens",
+    );
+
     const revokedLink = await fetch(`${accessLinksUrl}/${familyLink.id}`, {
       method: "DELETE",
       headers: { "x-test-user": ownerId },
     });
     assert.equal(revokedLink.status, 204);
-    assert.deepEqual(await (await fetch(accessLinksUrl, { headers: { "x-test-user": ownerId } })).json(), []);
+    assert.deepEqual(
+      await (await fetch(accessLinksUrl, { headers: { "x-test-user": ownerId } })).json(),
+      [{ id: replacementLink.id, createdAt: replacementLink.createdAt.toISOString() }],
+      "revoking one QR leaves the replacement active",
+    );
     assert.equal((await fetch(tapUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ cheerKey: "bucket", accessToken: familyLink.accessToken }),
     })).status, 403);
+    const replacementTap = await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "bucket", accessToken: replacementLink.accessToken }),
+    });
+    assert.equal(replacementTap.status, 201, "the replacement QR remains usable after revoking an older code");
+    assert.equal(SendAthleteLiveTapResponse.parse(await replacementTap.json()).cheers.find((cheer) => cheer.key === "bucket")?.count, 10);
 
     const livePublicResponse = await fetch(publicUrl);
     assert.equal(livePublicResponse.status, 200);
@@ -934,7 +973,7 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       cheerKey: athleteInviteLiveTapsTable.cheerKey,
     }).from(athleteInviteLiveTapsTable).where(eq(athleteInviteLiveTapsTable.inviteId, inviteRow.id));
     assert.deepEqual(savedTaps.sort((left, right) => `${left.gameId}:${left.cheerKey}`.localeCompare(`${right.gameId}:${right.cheerKey}`)), [
-      ...Array.from({ length: 9 }, () => ({ gameId: liveSession.gameId, cheerKey: "bucket" })),
+      ...Array.from({ length: 10 }, () => ({ gameId: liveSession.gameId, cheerKey: "bucket" })),
       { gameId: liveSession.gameId, cheerKey: "thumbs-up" },
       { gameId: liveSession.gameId, cheerKey: "way-to-go" },
       { gameId: liveSession.gameId, cheerKey: "big-play" },

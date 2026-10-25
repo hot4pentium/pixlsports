@@ -20,3 +20,9 @@ Direct fixture navigation is not guaranteed to fix every blank reload. A dashboa
 **Why:** Repeating a browser check against an empty fixture can consume time without telling us whether the app's selection logic is wrong.
 
 **How to apply:** After a few different reload approaches leave the fixture blank, stop retrying that browser path. Keep the failed coverage out of the passing suite and verify the pure selection logic separately; only claim browser coverage after the fixture visibly mounts again.
+
+When a browser-test harness clears a persisted key on every page load, it prevents testing reload recovery. Keep test initialization separate from remount behavior: clear state once for a fresh test profile, then navigate away and back in the same browser context without deleting the state under test.
+
+**Why:** A Live Taps owner flow appeared unrecoverable after navigation because the fixture itself deleted the saved session on every load; opening a separate target also used a fresh browser context.
+
+**How to apply:** Before treating missing UI after reload as a product bug, inspect fixture startup and browser-context reuse. Preserve the relevant key during reloads, and use the same target when testing origin-local storage.

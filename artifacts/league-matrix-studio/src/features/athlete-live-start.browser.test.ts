@@ -20,6 +20,7 @@ const chromiumPath = process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium';
 const ownerId = 'workspace-journey';
 const inviteToken = 'browser-live-athlete';
 const familyQrToken = 'browserFamilyAccessToken_0123456789abcdefghijklmnop';
+const replacementFamilyQrToken = `${familyQrToken}_replacement`;
 
 type GameSnapshot = {
   id: string;
@@ -231,7 +232,7 @@ function makeFixtureServer() {
         const created: FixtureAccessLink = {
           id: `00000000-0000-4000-8000-${String(accessLinks.length + 1).padStart(12, '0')}`,
           inviteToken: accessLinksMatch[1]!,
-          accessToken: familyQrToken,
+          accessToken: accessLinks.length ? replacementFamilyQrToken : familyQrToken,
           createdAt: new Date().toISOString(),
           revoked: false,
         };
@@ -348,7 +349,11 @@ function makeFixtureServer() {
       if (tapMatch && method === 'POST') {
         const body = await readJson(request);
         const activeShare = state.shares.find((share) => share.shareToken === state.activeShareToken);
-        if (!isOwner && body.accessToken !== familyQrToken) {
+        const validAccessLink = accessLinks.some((link) => (
+          link.inviteToken === tapMatch[1] && link.accessToken === body.accessToken && !link.revoked
+        ));
+        const legacyFixtureFamilyToken = accessLinks.length === 0 && body.accessToken === familyQrToken;
+        if (!isOwner && !validAccessLink && !legacyFixtureFamilyToken) {
           json(response, 403, { error: 'Family QR access required' });
           return;
         }
@@ -432,14 +437,15 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
 
-    const appUrl = (page: 'tracker' | 'inline' | 'fan' | 'live-taps', options: { owner?: boolean; family?: boolean } = {}) => {
+    const appUrl = (page: 'tracker' | 'inline' | 'fan' | 'live-taps', options: { owner?: boolean; family?: boolean | string } = {}) => {
       const params = new URLSearchParams({ api: apiOrigin, page });
       if (options.owner) params.set('viewer', ownerId);
-      return `${viteOrigin}/athlete-live-start-browser-test.html?${params}${options.family ? `#live-taps=${familyQrToken}` : ''}`;
+      const token = typeof options.family === 'string' ? options.family : familyQrToken;
+      return `${viteOrigin}/athlete-live-start-browser-test.html?${params}${options.family ? `#live-taps=${token}` : ''}`;
     };
     const open = async (
       page: 'tracker' | 'inline' | 'fan' | 'live-taps',
-      options: { owner?: boolean; family?: boolean } = {},
+      options: { owner?: boolean; family?: boolean | string } = {},
     ) => {
       const browserPage = await openPage(connection!, appUrl(page, options), { viewport: { width: 1365, height: 940 } });
       pages.push(browserPage);
@@ -674,6 +680,31 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     ), null, 'Live Taps-only must not create a Stat Tracker game in local storage');
     await click(liveTapsOnly, 'button-create-event-card-live-tap-qr');
     await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="img-event-card-live-taps-qr"]')?.src.startsWith('data:image/png;base64,'))`);
+    const originalQrDataUrl = await connection.evaluate<string>(
+      `document.querySelector('[data-testid="img-event-card-live-taps-qr"]')?.src || ''`,
+      liveTapsOnly,
+    );
+    const originalAccessLinks = await fetch(`${apiOrigin}/__fixture/access-links`)
+      .then((response) => response.json() as Promise<Array<{ id: string; createdAt: string }>>);
+    assert.equal(originalAccessLinks.length, 1, 'the Event Card creates private, revocable family QR access');
+    const liveTapsStorage = await connection.evaluate<string>('JSON.stringify(Object.entries(localStorage))', liveTapsOnly);
+    assert.doesNotMatch(liveTapsStorage, new RegExp(familyQrToken), 'raw family QR tokens are not persisted in local storage');
+
+    await connection.send('Page.navigate', { url: 'about:blank' }, liveTapsOnly);
+    await connection.send('Page.navigate', { url: appUrl('live-taps', { owner: true }) }, liveTapsOnly);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="status-live-taps-only"]')?.textContent?.includes('Game Day Live is on')`);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="text-event-card-live-taps-active-qr-note"]')?.textContent?.includes('1 active family QR code remains valid when you leave this Event Card')`);
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="img-event-card-live-taps-qr"]') === null`,
+      liveTapsOnly,
+    ), true, 'reopening does not restore or expose the one-time raw token');
+    await click(liveTapsOnly, 'button-create-event-card-live-tap-qr');
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="img-event-card-live-taps-qr"]')?.src.startsWith('data:image/png;base64,') && document.querySelector('[data-testid="img-event-card-live-taps-qr"]')?.src !== ${JSON.stringify(originalQrDataUrl)})`);
+    await waitUi(liveTapsOnly, `document.querySelectorAll('[data-testid^="button-revoke-event-card-live-tap-qr-"]').length === 2`);
+    const replacementLinks = await fetch(`${apiOrigin}/__fixture/access-links`)
+      .then((response) => response.json() as Promise<Array<{ id: string; createdAt: string }>>);
+    assert.equal(replacementLinks.length, 2, 'creating a replacement leaves the earlier QR active');
+
     const ownerLiveTapsLayout = await connection.evaluate<{
       panelWidth: number;
       panelScrollWidth: number;
@@ -698,12 +729,6 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     assert.ok(ownerLiveTapsLayout.panelScrollWidth <= ownerLiveTapsLayout.panelWidth + 1, 'the quick-cheer controls and QR fit without horizontal scrolling on a phone');
     assert.ok(ownerLiveTapsLayout.cheerButtonHeight >= 44, 'owner cheer buttons meet the phone touch-target minimum');
     assert.equal(ownerLiveTapsLayout.ownerBoardVisible && ownerLiveTapsLayout.familyQrVisible, true, 'the owner can see both quick cheers and the family QR in the same Live Taps panel');
-    const activeAccessLinks = await fetch(`${apiOrigin}/__fixture/access-links`)
-      .then((response) => response.json() as Promise<Array<{ id: string; createdAt: string }>>);
-    assert.equal(activeAccessLinks.length, 1, 'the Event Card creates private, revocable family QR access');
-    const liveTapsStorage = await connection.evaluate<string>('JSON.stringify(Object.entries(localStorage))', liveTapsOnly);
-    assert.doesNotMatch(liveTapsStorage, new RegExp(familyQrToken), 'raw family QR tokens are not persisted in local storage');
-
     const liveTapsFamilyCard = await open('fan', { family: true });
     await waitUi(liveTapsFamilyCard, `Boolean(document.querySelector('[data-testid="button-living-card-live-taps"]'))`);
     await click(liveTapsFamilyCard, 'button-living-card-live-taps');
@@ -734,10 +759,26 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     await fetch(`${apiOrigin}/__fixture/player-showcase?paused=false&missing=false`, { method: 'POST' });
     await connection.evaluate('window.__refreshLiveTapsInviteList()', liveTapsOnly);
     await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="button-revoke-event-card-live-tap-qr-00000000-0000-4000-8000-000000000001"]'))`);
-    await click(liveTapsOnly, `button-revoke-event-card-live-tap-qr-${activeAccessLinks[0]!.id}`);
+    await click(liveTapsOnly, `button-revoke-event-card-live-tap-qr-${originalAccessLinks[0]!.id}`);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('revoked')`);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="text-event-card-live-taps-active-qr-note"]')?.textContent?.includes('1 active family QR code remains')`);
+    const linksAfterRevocation = await fetch(`${apiOrigin}/__fixture/access-links`)
+      .then((response) => response.json() as Promise<Array<{ id: string; createdAt: string }>>);
+    assert.deepEqual(linksAfterRevocation.map(({ id }) => id), [replacementLinks[1]!.id],
+      'revoking an older QR leaves the replacement active');
+
+    const replacementFamilyCard = await open('fan', { family: replacementFamilyQrToken });
+    await waitUi(replacementFamilyCard, `Boolean(document.querySelector('[data-testid="button-living-card-live-taps"]'))`);
+    await click(replacementFamilyCard, 'button-living-card-live-taps');
+    await waitUi(replacementFamilyCard, `document.querySelector('[data-testid="button-live-tap-bucket"]')?.disabled === false`);
+    await click(replacementFamilyCard, 'button-live-tap-bucket');
+    await waitUi(replacementFamilyCard, `document.querySelector('[data-testid="text-live-tap-total"]')?.textContent === '3'`);
+    assert.equal((await fixtureState()).taps.length, 5, 'the replacement QR can still add cheers after the older QR is revoked');
+    await close(replacementFamilyCard);
+    await click(liveTapsOnly, `button-revoke-event-card-live-tap-qr-${replacementLinks[1]!.id}`);
     await waitUi(liveTapsOnly, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('revoked')`);
     assert.equal((await fetch(`${apiOrigin}/__fixture/access-links`).then((response) => response.json() as Promise<unknown[]>)).length, 0,
-      'the Event Card can revoke family QR access');
+      'each family QR can be revoked independently');
     await click(liveTapsOnly, 'button-end-live-taps-only');
     await waitUi(liveTapsOnly, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('Game Day Live ended')`);
     liveTapsOnlyState = await fixtureState();

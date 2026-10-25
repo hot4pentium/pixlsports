@@ -577,21 +577,26 @@ export function EventCardLiveTaps({
                   ) : liveTapAccessLinks.isError ? (
                     <p className="event-card-live-taps__message event-card-live-taps__message--error" role="alert">Active family QR codes could not be loaded.</p>
                   ) : liveTapAccessLinks.data?.length ? (
-                    <ul className="event-card-live-taps__access-list" data-testid="event-card-live-taps-access-list">
-                      {liveTapAccessLinks.data.map((access) => (
-                        <li key={access.id}>
-                          <span>Family QR · {new Date(access.createdAt).toLocaleDateString()}</span>
-                          <button
-                            type="button"
-                            onClick={() => void revokeFamilyQr(access.id)}
-                            disabled={revokeLiveTapAccessLink.isPending}
-                            data-testid={`button-revoke-event-card-live-tap-qr-${access.id}`}
-                          >
-                            Revoke
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      <p className="event-card-live-taps__message" role="status" data-testid="text-event-card-live-taps-active-qr-note">
+                        {liveTapAccessLinks.data.length} active family QR {liveTapAccessLinks.data.length === 1 ? 'code remains' : 'codes remain'} valid when you leave this Event Card. Creating a new QR does not deactivate older codes. Use Revoke beside any code you no longer want to work.
+                      </p>
+                      <ul className="event-card-live-taps__access-list" data-testid="event-card-live-taps-access-list">
+                        {liveTapAccessLinks.data.map((access) => (
+                          <li key={access.id}>
+                            <span>Family QR · {new Date(access.createdAt).toLocaleDateString()}</span>
+                            <button
+                              type="button"
+                              onClick={() => void revokeFamilyQr(access.id)}
+                              disabled={revokeLiveTapAccessLink.isPending}
+                              data-testid={`button-revoke-event-card-live-tap-qr-${access.id}`}
+                            >
+                              Revoke
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   ) : (
                     <p className="event-card-live-taps__message">No family QR codes yet. Create one to let someone at the game send cheers.</p>
                   )}

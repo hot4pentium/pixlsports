@@ -47,7 +47,6 @@ if (page === 'tracker') {
   localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
 } else if (page === 'live-taps') {
   localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
-  localStorage.removeItem('leaguematrix-live-taps-only:workspace-journey:scheduled-live-taps-game');
   localStorage.removeItem('pixlSports:liveTaps:browser-live-athlete');
 }
 
