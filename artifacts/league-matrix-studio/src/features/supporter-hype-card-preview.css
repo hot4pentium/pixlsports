@@ -92,6 +92,17 @@
   font-size: 11px;
   font-weight: 800;
 }
+.supporter-hype-preview__state--empty {
+  gap: 16px;
+}
+.supporter-hype-preview__state--empty > p {
+  font-size: clamp(15px, 1.55vw, 20px);
+  line-height: 1.4;
+}
+.supporter-hype-preview__state--empty > a {
+  gap: 8px;
+  font-size: clamp(15px, 1.35vw, 18px);
+}
 .supporter-hype-preview__reconnect-options {
   display: flex;
   width: 100%;

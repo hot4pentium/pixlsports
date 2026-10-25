@@ -176,13 +176,13 @@ window.fetch = async (input,init) => {
 };
 Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{if(state.denyCopy)throw new Error('Denied');window.__copied=value;}}});
 function render() {
-  const ownerCard = {...card,paused:state.paused,showHypeCard:state.showHypeCard};
+  const ownerCard = state.mode==='hype-preview-empty' ? undefined : {...card,paused:state.paused,showHypeCard:state.showHypeCard};
   const gear = state.gearStatus==='ready' ? {athleteName:card.athleteName,loadout:{...loadout,...state.patch},unlockedGear:state.unlocked,progress:{activeWeeks:1,eventCardsCreated:1,trackerGamesCompleted:0,hypeCardShared:false}} : null;
   const profile = {athleteName:card.athleteName,teamName:card.teamName,seasonName:state.profileSeason??card.seasonName,jerseyNumber:'17',sport:state.sport,displayName:'Parent',position:'',relationship:'parent',accessMode:'full'};
    const props = {card:ownerCard,cardHref:'/fan/'+card.inviteToken,cardStatus:state.cardStatus,gear,gearStatus:state.gearStatus};
    const linkedCard = {...card,inviteToken:card.inviteToken,hypesEnabled:true,timezone:null,seasonEndsAt:'',photoUrl:null,cutoutUrl:null,hypeCard:null,videos:[],stats:null,scheduleEvents:[],replies:[],liveScoreboard:null,liveTaps:{active:false,taps:[]},updatedAt:''};
   root.render(<QueryClientProvider client={client}><Router base="${base}">
-        {state.mode==='athlete-home' ? <AthleteShowcaseHome/> : state.mode==='appearance-editor' ? <FanCardAppearanceManager invite={{...card,photoUrl:null,cardAppearance:{design:'velocity',borderColor:'#123456',accentColor:'#ABCDEF',accentLinked:false,athleteX:0.1,athleteY:0.05,athleteScale:1,jerseyNumber:'17',position:'Striker'}}} profile={{athleteName:card.athleteName,jerseyNumber:'17',position:'Striker'}} athleteEditor/> : state.mode==='invitation-panel' ? <AthleteEditorInvitationPanel inviteToken="fixture-athlete-editor-invitation-token"/> : state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : state.mode==='hype-preview' ? <div><SupporterHypeCardPreview placement="mobile" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/><SupporterHypeCardPreview placement="desktop" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/></div> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
+        {state.mode==='athlete-home' ? <AthleteShowcaseHome/> : state.mode==='appearance-editor' ? <FanCardAppearanceManager invite={{...card,photoUrl:null,cardAppearance:{design:'velocity',borderColor:'#123456',accentColor:'#ABCDEF',accentLinked:false,athleteX:0.1,athleteY:0.05,athleteScale:1,jerseyNumber:'17',position:'Striker'}}} profile={{athleteName:card.athleteName,jerseyNumber:'17',position:'Striker'}} athleteEditor/> : state.mode==='invitation-panel' ? <AthleteEditorInvitationPanel inviteToken="fixture-athlete-editor-invitation-token"/> : state.mode==='sport-editor' ? <SportGearBuilderPage key={state.accountId+state.sport+state.athleteRestricted} accountId={state.accountId} sport={state.sport} athleteName={card.athleteName} jerseyNumber="17" athleteRestricted={state.athleteRestricted}/> : state.mode==='shared' ? <SharedLockerPage params={{inviteToken:card.inviteToken}}/> : state.mode==='public-showcase' ? <PublicPlayerShowcasePage params={{inviteToken:card.inviteToken}}/> : state.mode==='showcase' ? <PlayerShowcaseContent profile={profile} linkedCard={linkedCard} cardStatus={state.showHypeCard&&!state.paused?state.cardStatus:'not-shared'} cardEditHref={'/player/'+card.inviteToken+'/manage#design'} cardPublicHref={'/fan/'+card.inviteToken}/> : state.mode==='owner-showcase' ? <PlayerShowcasePage profile={profile} userId={state.accountId}/> : state.mode==='hype-preview'||state.mode==='hype-preview-empty' ? <div><SupporterHypeCardPreview placement="mobile" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/><SupporterHypeCardPreview placement="desktop" card={ownerCard} targetAthleteName={card.athleteName} targetTeamName={card.teamName} href={'/fan/'+card.inviteToken} loading={false} failed={false} onRetry={()=>{}}/></div> : <AthleteLocker placement="mobile" athleteName={card.athleteName} teamName={card.teamName} jerseyNumber="17" sport={state.sport} {...props}/>}
   </Router></QueryClientProvider>);
 }
 window.__update = async patch => {Object.assign(state,patch);render();await client.invalidateQueries();};
@@ -272,6 +272,40 @@ test('Showcase keeps the HYPE Card central and the athlete moment parent-control
     await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"]')`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-public-showcase-url"]'))`), 'the parent share control remains available');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), 'athlete invitation management remains available');
+
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await browser.evaluate(`window.__update({mode:'hype-preview-empty'})`);
+    await browser.wait(`document.querySelector('[data-testid="mobile-saved-hype-card"] .supporter-hype-preview__state--empty')`);
+    const mobileTypography = await browser.evaluate(`(() => {
+      const preview = document.querySelector('[data-testid="mobile-saved-hype-card"]');
+      const message = preview?.querySelector('.supporter-hype-preview__state--empty > p');
+      const action = preview?.querySelector('.supporter-hype-preview__state--empty > a');
+      return {
+        message: message ? Number.parseFloat(getComputedStyle(message).fontSize) : 0,
+        action: action ? Number.parseFloat(getComputedStyle(action).fontSize) : 0,
+        text: message?.textContent?.trim(),
+        actionText: action?.textContent?.trim(),
+        noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth,
+      };
+    })()`);
+    assert.equal(mobileTypography.message, 15, 'the empty-card message should use the larger mobile type size');
+    assert.equal(mobileTypography.action, 15, 'the setup action should be easier to read on a phone');
+    assert.match(mobileTypography.text, /Your athlete’s card belongs here/);
+    assert.match(mobileTypography.actionText, /Set up card/);
+    assert.equal(mobileTypography.noHorizontalOverflow, true, 'larger copy should not introduce horizontal scrolling on phones');
+
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    const desktopTypography = await browser.evaluate(`(() => {
+      const preview = document.querySelector('[data-testid="desktop-saved-hype-card"]');
+      const message = preview?.querySelector('.supporter-hype-preview__state--empty > p');
+      const action = preview?.querySelector('.supporter-hype-preview__state--empty > a');
+      return {
+        message: message ? Number.parseFloat(getComputedStyle(message).fontSize) : 0,
+        action: action ? Number.parseFloat(getComputedStyle(action).fontSize) : 0,
+      };
+    })()`);
+    assert.equal(desktopTypography.message, 20, 'the desktop bulletin-board message should use the larger type size');
+    assert.equal(desktopTypography.action, 18, 'the desktop setup action should use the larger type size');
   } finally {
     browser?.close();
     await stop(chromium);

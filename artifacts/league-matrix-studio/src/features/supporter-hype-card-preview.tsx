@@ -144,7 +144,7 @@ export function SupporterHypeCardPreview({
             <button type="button" onClick={onRetry}>Try again</button>
           </div>
         ) : !card || unavailable ? (
-          <div className="supporter-hype-preview__state">
+          <div className="supporter-hype-preview__state supporter-hype-preview__state--empty">
             <p>
               {card?.paused
                 ? 'Your card is paused.'
@@ -174,7 +174,7 @@ export function SupporterHypeCardPreview({
                 {reconnectError && <p role="alert">{reconnectError}</p>}
               </div>
             )}
-            <Link href="/studio/athlete-page">{card ? 'Manage card' : 'Set up card'}<ArrowUpRight size={14} aria-hidden="true" /></Link>
+            <Link href="/studio/athlete-page">{card ? 'Manage card' : 'Set up card'}<ArrowUpRight size={18} aria-hidden="true" /></Link>
           </div>
         ) : (
           <div className="supporter-hype-preview__card-wrap">
