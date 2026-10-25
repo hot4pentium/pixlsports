@@ -47,7 +47,7 @@ function createTestServer(
       (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
     },
   }));
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
     const auth = () => ({ userId: null, tokenType: "session_token" });
     (auth as any)[Symbol.for("@clerk/express.auth")] = true;
     (req as any).auth = auth;
@@ -105,6 +105,7 @@ async function deleteRejections(emailIds: string[]) {
       .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, emailProviderId));
   }
 }
+
 function createWebhookPayload(emailId: string) {
   return JSON.stringify({
     type: "email.received",
@@ -128,6 +129,22 @@ function signWebhook(secret: string, body: string) {
   };
 }
 
+async function postWebhook(
+  server: ReturnType<typeof createTestServer>,
+  secret: string,
+  emailId: string,
+  headers?: Record<string, string>,
+) {
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const body = createWebhookPayload(emailId);
+  return fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
+    method: "POST",
+    headers: headers ?? signWebhook(secret, body),
+    body,
+  });
+}
+
 test("signed customer replies are imported once into the matching ticket thread", async () => {
   const secret = `whsec_${randomBytes(32).toString("base64")}`;
   const { ticket, accessToken } = await createTicket();
@@ -139,80 +156,43 @@ test("signed customer replies are imported once into the matching ticket thread"
   });
   const server = createTestServer(secret, async (requestedId) => ({
     id: requestedId,
+    message_id: `<reply-${requestedId}@example.com>`,
     from: replyEmail,
     to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
-    text: "",
+    text: "Thanks, I can reproduce this on my phone.",
     authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-  }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
-    },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
-    },
-  });
+  }));
 
   try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const headers = signWebhook(secret, body);
-    const post = () => fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers,
-      body,
-    });
-
-    const first = await post();
+    const first = await postWebhook(server, secret, emailId);
     assert.equal(first.status, 200);
-    assert.deepEqual(lookedUpMessageIds, [notificationMessageId.slice(1, -1).toLowerCase()]);
     assert.deepEqual(await first.json(), { ok: true, imported: true });
-    const duplicate = await post();
+    const duplicate = await postWebhook(server, secret, emailId);
     assert.equal(duplicate.status, 200);
     assert.deepEqual(await duplicate.json(), { ok: true, imported: false });
 
-  const messages = new Map<string, unknown>([
-    [emailIds[0], {
-      id: emailIds[0],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A subject and reference are not enough.",
-      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-    }],
-    [emailIds[1], {
-      id: emailIds[1],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A forged sender should not be imported.",
-      headers: { "in-reply-to": notificationMessageId },
-      authentication: { spf: "fail", dkim: "fail", dmarc: "fail" },
-    }],
-  ]);
-
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
-
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
+    const messages = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
     assert.equal(messages.length, 1);
     assert.equal(messages[0].senderRole, "member");
     assert.equal(messages[0].senderClerkUserId, null);
     assert.equal(messages[0].body, "Thanks, I can reproduce this on my phone.");
     assert.equal(messages[0].emailProviderMessageId, emailId);
-    assert.equal(messages[0].emailMessageId, `reply-${emailId}@example.com`.toLowerCase());
+    assert.equal(messages[0].emailMessageId, `reply-${emailId}@example.com`);
 
-    const storedTicket = await db.select().from(supportTicketsTable)
-      .where(eq(supportTicketsTable.id, ticket.id));
-    assert.equal(storedTicket[0].status, "active");
-
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const detailResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/support/tickets/${ticket.id}`,
+      { headers: { "x-support-ticket-token": accessToken } },
+    );
+    assert.equal(detailResponse.status, 200);
     const detail = await detailResponse.json() as {
-      messages: Array<{ id: string; attachments: Array<Record<string, unknown>> }>;
+      status: string;
+      messages: Array<{ body: string; senderRole: string }>;
     };
-    assert.equal(detail.status, 200);
-    const publicTicket = await detail.json() as { messages: Array<{ body: string; senderRole: string }> };
-    assert.deepEqual(publicTicket.messages.map(({ body: messageBody, senderRole }) => ({ body: messageBody, senderRole })), [
+    assert.equal(detail.status, "active");
+    assert.deepEqual(detail.messages.map(({ body, senderRole }) => ({ body, senderRole })), [
       { body: "Thanks, I can reproduce this on my phone.", senderRole: "member" },
     ]);
   } finally {
@@ -247,145 +227,68 @@ test("email replies are ignored when the ticket token or sender does not match",
       authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
     }],
   ]);
-  const server = createTestServer(secret, async (requestedId) => ({
-    id: requestedId,
-    from: replyEmail,
-    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
-    text: "",
-    authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-  }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
-    },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
-    },
-  });
+  const server = createTestServer(secret, async (requestedId) => emails.get(requestedId));
 
   try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers: signWebhook(secret, body),
-      body,
-    });
+    for (const emailId of emailIds) {
+      const response = await postWebhook(server, secret, emailId);
       assert.equal(response.status, 200);
       assert.deepEqual(await response.json(), { ok: true, ignored: true });
     }
+    const imported = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
+    assert.equal(imported.length, 0);
 
-  const messages = new Map<string, unknown>([
-    [emailIds[0], {
-      id: emailIds[0],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A subject and reference are not enough.",
-      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-    }],
-    [emailIds[1], {
-      id: emailIds[1],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A forged sender should not be imported.",
-      headers: { "in-reply-to": notificationMessageId },
-      authentication: { spf: "fail", dkim: "fail", dmarc: "fail" },
-    }],
-  ]);
-
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
-
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
-    assert.equal(messages.length, 1);
-    assert.equal(messages[0].body, "Here is the information you asked for.");
-    assert.equal(messages[0].emailProviderMessageId, inboundEmailId);
-    assert.equal(messages[0].emailMessageId, `legacy-reply-${inboundEmailId}@example.com`.toLowerCase());
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const review = await fetch(`http://127.0.0.1:${address.port}/api/admin/support/email-rejections`);
+    assert.equal(review.status, 200);
+    const reviewBody = await review.json() as { items: Array<Record<string, unknown>> };
+    const requestedIds = new Set<string>(emailIds);
+    const reviewed = reviewBody.items.filter((item) => requestedIds.has(String(item.emailProviderId)));
+    assert.equal(reviewed.length, emailIds.length);
   } finally {
     await closeServer(server);
+    await deleteRejections(emailIds);
     await deleteTicket(ticket.id);
   }
 });
 
-test("legacy thread evidence matching multiple tickets is rejected as ambiguous", async () => {
+test("legacy sent-email evidence matches a ticket when no reply token is present", async () => {
   const secret = `whsec_${randomBytes(32).toString("base64")}`;
   const { ticket } = await createTicket();
   const inboundEmailId = randomUUID();
   const notificationMessageId = `<old-${randomUUID()}@pixlsports.com>`;
-  const sentNotification = {
-    message_id: notificationMessageId,
-    from: "Pixl Sports Support <support@pixlsports.com>",
-    to: [replyEmail],
-    reply_to: [legacySupportAddress],
-    subject: `Update on Pixl Sports support ticket ${ticket.reference}`,
-  };
   let lookedUpMessageIds: string[] = [];
   const server = createTestServer(secret, async (requestedId) => ({
     id: requestedId,
+    message_id: `<legacy-reply-${requestedId}@example.com>`,
     from: replyEmail,
-    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
-    text: "",
+    to: [legacySupportAddress],
+    headers: { "in-reply-to": notificationMessageId },
+    text: "Here is the information you asked for.",
     authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-  }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
-    },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
-    },
+  }), undefined, async (messageIds) => {
+    lookedUpMessageIds = messageIds;
+    return [{
+      message_id: notificationMessageId,
+      from: "Pixl Sports Support <support@pixlsports.com>",
+      to: [replyEmail],
+      reply_to: [legacySupportAddress],
+      subject: `Update on Pixl Sports support ticket ${ticket.reference}`,
+    }];
   });
 
   try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const headers = signWebhook(secret, body);
-    const post = () => fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers,
-      body,
-    });
-
-    const first = await post();
-    assert.equal(first.status, 200);
+    const response = await postWebhook(server, secret, inboundEmailId);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, imported: true });
     assert.deepEqual(lookedUpMessageIds, [notificationMessageId.slice(1, -1).toLowerCase()]);
-    assert.deepEqual(await first.json(), { ok: true, imported: true });
-    const duplicate = await post();
-    assert.equal(duplicate.status, 200);
-    assert.deepEqual(await duplicate.json(), { ok: true, imported: false });
-
-  const messages = new Map<string, unknown>([
-    [emailIds[0], {
-      id: emailIds[0],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A subject and reference are not enough.",
-      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-    }],
-    [emailIds[1], {
-      id: emailIds[1],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A forged sender should not be imported.",
-      headers: { "in-reply-to": notificationMessageId },
-      authentication: { spf: "fail", dkim: "fail", dmarc: "fail" },
-    }],
-  ]);
-
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
-
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
-    assert.equal(messages.length, 1);
-    assert.equal(messages[0].body, "Here is the information you asked for.");
-    assert.equal(messages[0].emailProviderMessageId, inboundEmailId);
-    assert.equal(messages[0].emailMessageId, `legacy-reply-${inboundEmailId}@example.com`.toLowerCase());
+    const [message] = await db.select().from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
+    assert.equal(message.body, "Here is the information you asked for.");
+    assert.equal(message.emailProviderMessageId, inboundEmailId);
+    assert.equal(message.emailMessageId, `legacy-reply-${inboundEmailId}@example.com`);
   } finally {
     await closeServer(server);
     await deleteTicket(ticket.id);
@@ -394,148 +297,63 @@ test("legacy thread evidence matching multiple tickets is rejected as ambiguous"
 
 test("legacy thread evidence matching multiple tickets is rejected as ambiguous", async () => {
   const secret = `whsec_${randomBytes(32).toString("base64")}`;
-  const [firstTicket, secondTicket] = await Promise.all([createTicket(), createTicket()]);
+  const [first, second] = await Promise.all([createTicket(), createTicket()]);
   const inboundEmailId = randomUUID();
   const firstMessageId = `<legacy-first-${randomUUID()}@pixlsports.com>`;
   const secondMessageId = `<legacy-second-${randomUUID()}@pixlsports.com>`;
   const server = createTestServer(secret, async (requestedId) => ({
     id: requestedId,
     from: replyEmail,
-    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
-    text: "",
+    to: [legacySupportAddress],
+    headers: { references: `${firstMessageId} ${secondMessageId}` },
+    text: "This reply is ambiguous.",
     authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-  }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
+  }), undefined, async () => [
+    {
+      message_id: firstMessageId,
+      from: "Pixl Sports Support <support@pixlsports.com>",
+      to: [replyEmail],
+      reply_to: [legacySupportAddress],
+      subject: `Update on Pixl Sports support ticket ${first.ticket.reference}`,
     },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
+    {
+      message_id: secondMessageId,
+      from: "Pixl Sports Support <support@pixlsports.com>",
+      to: [replyEmail],
+      reply_to: [legacySupportAddress],
+      subject: `Update on Pixl Sports support ticket ${second.ticket.reference}`,
     },
-  });
-
-  try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers: signWebhook(secret, body),
-      body,
-    });
-      assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), { ok: true, ignored: true });
-    }
-
-    assert.equal(lookupCount, 0);
-    const imported = await db.select().from(supportTicketMessagesTable)
-      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
-    assert.equal(imported.length, 0);
-  } finally {
-    await closeServer(server);
-    await deleteTicket(ticket.id);
-  }
-});
-
-test("unsigned webhook requests are rejected before the email body is fetched", async () => {
-  const secret = `whsec_${randomBytes(32).toString("base64")}`;
-  const { ticket } = await createTicket();
-  const notificationMessageId = `<old-${randomUUID()}@pixlsports.com>`;
-  const emailIds = [randomUUID(), randomUUID()];
-  const messages = new Map<string, unknown>([
-    [emailIds[0], {
-      id: emailIds[0],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A subject and reference are not enough.",
-      authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-    }],
-    [emailIds[1], {
-      id: emailIds[1],
-      from: replyEmail,
-      to: [legacySupportAddress],
-      text: "A forged sender should not be imported.",
-      headers: { "in-reply-to": notificationMessageId },
-      authentication: { spf: "fail", dkim: "fail", dmarc: "fail" },
-    }],
   ]);
 
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
-
-    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
-      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
-  let lookupCount = 0;
-  const server = createTestServer(secret, async (requestedId) => ({
-    id: requestedId,
-    from: replyEmail,
-    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
-    text: "",
-    authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-  }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
-    },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
-    },
-  });
-
   try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers: signWebhook(secret, body),
-      body,
-    });
-      assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), { ok: true, ignored: true });
-    }
-
-    assert.equal(lookupCount, 0);
+    const response = await postWebhook(server, secret, inboundEmailId);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, ignored: true });
     const imported = await db.select().from(supportTicketMessagesTable)
-      .where(eq(supportTicketMessagesTable.ticketId, ticket.id));
+      .where(eq(supportTicketMessagesTable.ticketId, first.ticket.id));
     assert.equal(imported.length, 0);
+    const rejections = await db.select().from(supportTicketEmailReplyRejectionsTable)
+      .where(eq(supportTicketEmailReplyRejectionsTable.emailProviderId, inboundEmailId));
+    assert.equal(rejections[0]?.reason, "ambiguous_reply_address");
   } finally {
     await closeServer(server);
-    await deleteTicket(ticket.id);
+    await deleteRejections([inboundEmailId]);
+    await deleteTicket(first.ticket.id);
+    await deleteTicket(second.ticket.id);
   }
 });
 
 test("unsigned webhook requests are rejected before the email body is fetched", async () => {
   const secret = `whsec_${randomBytes(32).toString("base64")}`;
+  const emailId = randomUUID();
   let fetchCount = 0;
-  const server = createTestServer(secret, async (requestedId) => ({
-    id: requestedId,
-    from: replyEmail,
-    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
-    text: "",
-    authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-  }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
-    },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
-    },
+  const server = createTestServer(secret, async () => {
+    fetchCount += 1;
+    return {};
   });
 
   try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers: signWebhook(secret, body),
-      body,
-    });
+    const response = await postWebhook(server, secret, emailId, { "content-type": "application/json" });
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), { error: "Invalid Resend webhook signature." });
     assert.equal(fetchCount, 0);
@@ -556,32 +374,25 @@ test("HTML-only inbound email is converted to bounded plain text", () => {
 });
 
 test("admin email replies use a unique reply address that is stored only as a hash", async () => {
+  const secret = `whsec_${randomBytes(32).toString("base64")}`;
   const { ticket } = await createTicket();
   let delivered: { reference: string; replyEmail: string; body: string; replyTo?: string } | undefined;
-  const server = createTestServer(secret, async (requestedId) => ({
-    id: requestedId,
-    from: replyEmail,
-    to: [buildSupportTicketReplyAddress(replyToken, replyDomain)],
-    text: "",
-    authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
-  }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
+  const server = createTestServer(
+    secret,
+    async () => ({}),
+    async (message) => {
+      delivered = message;
+      return { messageId: `<sent-${ticket.id}@pixlsports.com>` };
     },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
-    },
-  });
+  );
 
   try {
     const address = server.address();
     assert.ok(address && typeof address === "object");
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/admin/support/tickets/${ticket.id}/replies`, {
       method: "POST",
-      headers: signWebhook(secret, body),
-      body,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ body: "We can help with that." }),
     });
     assert.equal(response.status, 201);
     assert.ok(delivered?.replyTo);
@@ -611,10 +422,6 @@ test("supported reply attachments are stored privately and exposed only through 
   const emailId = randomUUID();
   const attachmentId = randomUUID();
   const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01]);
-  await db.insert(supportTicketEmailReplyTokensTable).values({
-    ticketId: ticket.id,
-    tokenHash: hashSupportTicketReplyToken(replyToken),
-  });
   const metadata = {
     id: attachmentId,
     filename: "../family-photo.png",
@@ -622,6 +429,11 @@ test("supported reply attachments are stored privately and exposed only through 
     size: png.length,
     download_url: "https://inbound-cdn.resend.com/signed-file",
   };
+  await db.insert(supportTicketEmailReplyTokensTable).values({
+    ticketId: ticket.id,
+    tokenHash: hashSupportTicketReplyToken(replyToken),
+  });
+  const objectPath = `/objects/support-ticket-attachments/${randomUUID()}`;
   const server = createTestServer(secret, async (requestedId) => ({
     id: requestedId,
     from: replyEmail,
@@ -629,16 +441,10 @@ test("supported reply attachments are stored privately and exposed only through 
     text: "",
     authentication: { spf: "pass", dkim: "pass", dmarc: "pass" },
   }), undefined, undefined, {
-    listAttachments: async () => ({ items: attachmentMetadata, hasMore: true }),
-    downloadAttachment: async (_requestedEmailId, attachmentId) => {
-      assert.equal(attachmentId, attachmentMetadata[2].id);
-      throw new Error("temporary download failure");
-    },
-    saveAttachment: async () => {
-      throw new Error("Rejected files must not be stored");
-    },
+    listAttachments: async () => ({ items: [metadata], hasMore: false }),
+    downloadAttachment: async () => png,
+    saveAttachment: async () => objectPath,
   });
-
   const getMetadata = t.mock.method(ObjectStorageService.prototype, "getObjectEntityMetadata", async () => ({
     size: png.length,
     contentType: "image/png",
@@ -651,14 +457,7 @@ test("supported reply attachments are stored privately and exposed only through 
   );
 
   try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const webhookResponse = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers: signWebhook(secret, body),
-      body,
-    });
+    const webhookResponse = await postWebhook(server, secret, emailId);
     assert.equal(webhookResponse.status, 200);
     assert.deepEqual(await webhookResponse.json(), { ok: true, imported: true });
 
@@ -667,8 +466,10 @@ test("supported reply attachments are stored privately and exposed only through 
     assert.equal(rows.length, 1);
     assert.equal(rows[0].status, "available");
     assert.equal(rows[0].filename, "_family-photo.png");
-    assert.equal(rows[0].objectPath?.startsWith("/objects/support-ticket-attachments/"), true);
+    assert.equal(rows[0].objectPath, objectPath);
 
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
     const detailResponse = await fetch(
       `http://127.0.0.1:${address.port}/api/support/tickets/${ticket.id}`,
       { headers: { "x-support-ticket-token": accessToken } },
@@ -767,14 +568,7 @@ test("unsupported, oversized, unavailable, and excess attachments do not block a
   });
 
   try {
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-    const body = createWebhookPayload(emailId);
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/support/tickets/email-replies/resend`, {
-      method: "POST",
-      headers: signWebhook(secret, body),
-      body,
-    });
+    const response = await postWebhook(server, secret, emailId);
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { ok: true, imported: true });
     const [message] = await db.select().from(supportTicketMessagesTable)
@@ -797,15 +591,3 @@ test("unsupported, oversized, unavailable, and excess attachments do not block a
     await deleteTicket(ticket.id);
   }
 });
-
-    const reviewed = reviewBody.items.filter((item) =>
-      requestedIds.has(String(item.emailProviderId))
-    );
-
-    const reviewBody = await review.json() as { items: Array<Record<string, unknown>> };
-
-    const requestedIds = new Set<string>(emailIds);
-
-    const byProviderId = new Map(rejections.map((record) => [record.emailProviderId, record]));
-
-    const review = await fetch(`http://127.0.0.1:${address.port}/api/admin/support/email-rejections`);
