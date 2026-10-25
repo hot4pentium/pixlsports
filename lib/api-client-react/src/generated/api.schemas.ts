@@ -1101,6 +1101,7 @@ export type StatTrackerShare = StatTrackerShareInput & ({
   /** @maxLength 160 */
   sourceEventId?: string;
   liveTapsOnly?: boolean;
+  liveTapsEnded?: boolean;
   /** @minimum 1 */
   revision: number;
   createdAt: string;
@@ -1797,6 +1798,7 @@ export interface AthleteInviteLiveTaps {
   /** @nullable */
   gameId: string | null;
   cheers: AthleteInviteLiveTapCheer[];
+  seasonCheers: AthleteInviteLiveTapCheer[];
 }
 
 export interface AthleteInviteLiveTapAccessLink {

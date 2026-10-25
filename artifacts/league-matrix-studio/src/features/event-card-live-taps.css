@@ -362,6 +362,56 @@
   text-transform: uppercase;
 }
 
+.event-card-live-taps__end-cancel {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #9bb6d4;
+  background: #f5f8fc;
+  color: #16395d;
+  font: 800 12px/1.2 inherit;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.event-card-live-taps__season-record {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid rgba(97, 153, 209, .5);
+  background: rgba(9, 29, 52, .45);
+}
+
+.event-card-live-taps__season-record > span:first-child {
+  color: #a9c8e7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.event-card-live-taps__season-record ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-card-live-taps__season-record li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e5f1fc;
+  font-size: 12px;
+}
+
+.event-card-live-taps__season-record li strong {
+  margin-left: auto;
+  color: #fff;
+}
+
 .event-card-live-taps__end:disabled {
   cursor: not-allowed;
   opacity: .55;

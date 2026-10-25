@@ -43,7 +43,7 @@ test('first-card creation directs photo uploads to Manage HYPE Card and does not
         latestHypeCard: null, latestVideo: null, videos: [], liveGame: null,
         hypeCard: null, replies: [], scheduleEvents: [], liveScoreboard: null,
         updatedAt: new Date().toISOString(),
-        liveTrackerShareToken: null, liveTaps: { active: false, gameId: null, cheers: [] }, };
+        liveTrackerShareToken: null, liveTaps: { active: false, gameId: null, cheers: [], seasonCheers: [] }, };
       json(201, card);
     } else if (path === '/api/athlete-invites') json(200, card ? [card] : []);
     else if (path.endsWith('/fan')) json(200, card);

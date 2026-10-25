@@ -4020,6 +4020,7 @@ components:
             shareToken: { type: string, format: uuid }
             sourceEventId: { type: string, maxLength: 160 }
             liveTapsOnly: { type: boolean }
+            liveTapsEnded: { type: boolean }
             revision: { type: integer, minimum: 1 }
             createdAt: { type: string, format: date-time }
             updatedAt: { type: string, format: date-time }
@@ -4496,11 +4497,15 @@ components:
         count: { type: integer, minimum: 0 }
     AthleteInviteLiveTaps:
       type: object
-      required: [active, gameId, cheers]
+      required: [active, gameId, cheers, seasonCheers]
       properties:
         active: { type: boolean }
         gameId: { type: ["string", "null"] }
         cheers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteLiveTapCheer"
+        seasonCheers:
           type: array
           items:
             $ref: "#/components/schemas/AthleteInviteLiveTapCheer"

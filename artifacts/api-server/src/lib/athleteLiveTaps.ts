@@ -65,27 +65,35 @@ export function isLiveTapCheerForSport(sport: string, cheerKey: string) {
 
 export async function getAthleteLiveTapsSummary(inviteId: string, sport: string, gameId: string | null) {
   const presets = getLiveTapCheerPresets(sport);
-  if (!gameId) {
-    return {
-      active: false,
-      gameId: null,
-      cheers: presets.map((cheer) => ({ ...cheer, count: 0 })),
-    };
-  }
-  const rows = await db.select({
-    cheerKey: athleteInviteLiveTapsTable.cheerKey,
-    total: count(),
-  }).from(athleteInviteLiveTapsTable).where(and(
-    eq(athleteInviteLiveTapsTable.inviteId, inviteId),
-    eq(athleteInviteLiveTapsTable.gameId, gameId),
-  )).groupBy(athleteInviteLiveTapsTable.cheerKey);
-  const totals = new Map(rows.map((row) => [row.cheerKey, row.total]));
+  const [seasonRows, gameRows] = await Promise.all([
+    db.select({
+      cheerKey: athleteInviteLiveTapsTable.cheerKey,
+      total: count(),
+    }).from(athleteInviteLiveTapsTable).where(
+      eq(athleteInviteLiveTapsTable.inviteId, inviteId),
+    ).groupBy(athleteInviteLiveTapsTable.cheerKey),
+    gameId
+      ? db.select({
+        cheerKey: athleteInviteLiveTapsTable.cheerKey,
+        total: count(),
+      }).from(athleteInviteLiveTapsTable).where(and(
+        eq(athleteInviteLiveTapsTable.inviteId, inviteId),
+        eq(athleteInviteLiveTapsTable.gameId, gameId),
+      )).groupBy(athleteInviteLiveTapsTable.cheerKey)
+      : Promise.resolve([]),
+  ]);
+  const seasonTotals = new Map(seasonRows.map((row) => [row.cheerKey, row.total]));
+  const gameTotals = new Map(gameRows.map((row) => [row.cheerKey, row.total]));
   return {
-    active: true,
+    active: Boolean(gameId),
     gameId,
     cheers: presets.map((cheer) => ({
       ...cheer,
-      count: totals.get(cheer.key) ?? 0,
+      count: gameTotals.get(cheer.key) ?? 0,
+    })),
+    seasonCheers: presets.map((cheer) => ({
+      ...cheer,
+      count: seasonTotals.get(cheer.key) ?? 0,
     })),
   };
 }

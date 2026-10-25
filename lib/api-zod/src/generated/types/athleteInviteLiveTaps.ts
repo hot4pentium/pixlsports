@@ -12,4 +12,5 @@ export interface AthleteInviteLiveTaps {
   /** @nullable */
   gameId: string | null;
   cheers: AthleteInviteLiveTapCheer[];
+  seasonCheers: AthleteInviteLiveTapCheer[];
 }

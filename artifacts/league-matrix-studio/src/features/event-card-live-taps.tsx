@@ -14,7 +14,7 @@ import {
   useRevokeAthleteInviteLiveTapAccessLink,
   useSendAthleteLiveTap,
   useStartAthleteInviteLive,
-  useUpdateStatTrackerShare,
+  useStopAthleteInviteLive,
   type PublicAthleteFanCard,
   type StatTrackerShare,
 } from '@workspace/api-client-react';
@@ -22,10 +22,18 @@ import QRCode from 'qrcode';
 import { Link } from 'wouter';
 import { QrCode, Radio, ShieldCheck, SquareStop } from 'lucide-react';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   createGameSession,
-  endGame,
   getSportRule,
   readStoredActiveGame,
+  saveStoredActiveGame,
   sports,
   type GameSession,
   type SoccerPeriodFormat,
@@ -160,6 +168,8 @@ export function EventCardLiveTaps({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [endConfirmationOpen, setEndConfirmationOpen] = useState(false);
+  const [trackerHandoffConflict, setTrackerHandoffConflict] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [qrAccessId, setQrAccessId] = useState('');
   const [pendingCheerKeys, setPendingCheerKeys] = useState<Set<string>>(() => new Set());
@@ -196,7 +206,7 @@ export function EventCardLiveTaps({
   });
   const liveTapSummaryQuery = useGetAthleteFanCard(liveTapInvite?.inviteToken ?? '', {
     query: {
-      enabled: Boolean(session?.live && liveTapInvite?.inviteToken),
+      enabled: Boolean(liveTapInvite?.inviteToken),
       queryKey: getGetAthleteFanCardQueryKey(liveTapInvite?.inviteToken ?? ''),
       refetchOnWindowFocus: true,
       refetchInterval: session?.live ? 5_000 : false,
@@ -213,7 +223,7 @@ export function EventCardLiveTaps({
   });
   const createTrackerShare = useCreateStatTrackerShare();
   const startAthleteLive = useStartAthleteInviteLive();
-  const updateTrackerShare = useUpdateStatTrackerShare();
+  const stopAthleteLive = useStopAthleteInviteLive();
   const createLiveTapAccessLink = useCreateAthleteInviteLiveTapAccessLink();
   const revokeLiveTapAccessLink = useRevokeAthleteInviteLiveTapAccessLink();
   const sendLiveTap = useSendAthleteLiveTap();
@@ -223,6 +233,10 @@ export function EventCardLiveTaps({
   const currentShare = shareFromCreate?.shareToken === session?.shareToken
     ? shareFromList ?? shareFromCreate
     : shareFromList;
+  const endedShare = useMemo(
+    () => trackerShareQuery.data?.find((share) => share.sourceEventId === eventId && share.liveTapsEnded === true) ?? null,
+    [eventId, trackerShareQuery.data],
+  );
   const recoverableSession = useMemo(() => {
     if (session || !sport || !inviteLinksQuery.data || !trackerShareQuery.data) return null;
     for (const invite of inviteLinksQuery.data) {
@@ -449,31 +463,42 @@ export function EventCardLiveTaps({
     setNotice('');
     setBusy(true);
     try {
-      let share = currentShare;
-      if (!share) {
-        const refreshed = await trackerShareQuery.refetch();
-        share = refreshed.data?.find((candidate) => candidate.shareToken === session.shareToken) ?? null;
+      await stopAthleteLive.mutateAsync({ inviteToken: session.inviteToken });
+      let canResumeThisGame = false;
+      try {
+        const activeTrackerGame = userId ? readStoredActiveGame(window.localStorage, userId) : null;
+        canResumeThisGame = !activeTrackerGame
+          || activeTrackerGame.status === 'final'
+          || activeTrackerGame.id === session.game.id;
+        if (userId && canResumeThisGame) {
+          saveStoredActiveGame(window.localStorage, userId, {
+            ...session.game,
+            liveTapsOnly: false,
+          });
+        }
+      } catch {
+        canResumeThisGame = false;
       }
-      if (!share) throw new Error('The Live Taps game could not be found. Refresh and try again.');
-      await updateTrackerShare.mutateAsync({
-        shareToken: session.shareToken,
-        data: {
-          ...toStatTrackerShareInput(endGame(session.game), athleteName, teamName),
-          expectedRevision: share.revision,
-        },
-      });
+      setTrackerHandoffConflict(!canResumeThisGame);
       try {
         window.localStorage.removeItem(sessionStorageKey(userId!, eventId));
       } catch {
-        // The final server status will clear a stale local session on the next open.
+        // The server marker will hide Live Taps and the saved share can restore the game.
       }
+      setSelectedInviteToken(session.inviteToken);
       setSession(null);
       setShareFromCreate(null);
       setQrDataUrl('');
       setQrAccessId('');
-      setNotice('Game Day Live ended. Family QR access remains active until you revoke it.');
-      await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
-      await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+      setEndConfirmationOpen(false);
+      setNotice(canResumeThisGame
+        ? 'Live Taps ended. The game is still open in Stat Tracker, and the season cheer record is on the HYPE Card.'
+        : 'Live Taps ended. Your other Stat Tracker game was left untouched; finish it before resuming this Event Card’s game.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(session.inviteToken) }),
+      ]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : getApiError(caught, 'Game Day Live could not be ended. Try again.'));
     } finally {
@@ -491,7 +516,9 @@ export function EventCardLiveTaps({
         </div>
       </div>
       <p className="event-card-live-taps__intro">
-        Start a game-day cheer space without entering or saving player stats. Show the private QR to family at the game.
+        {endedShare
+          ? 'Live Taps have ended for this game. Your season cheer record remains available.'
+          : 'Start a game-day cheer space without entering or saving player stats. Show the private QR to family at the game.'}
       </p>
 
       {!userId ? (
@@ -502,6 +529,40 @@ export function EventCardLiveTaps({
         <p className="event-card-live-taps__message event-card-live-taps__message--error" role="alert">
           Your Player Showcase could not be checked. Refresh the Event Card and try again.
         </p>
+      ) : !session && endedShare ? (
+        <div className="event-card-live-taps__message" data-testid="live-taps-ended">
+          <strong>Live Taps ended for this game.</strong>
+          <p>
+            The game is still available in Stat Tracker. Season-long cheers are saved here and shown on the HYPE Card.
+          </p>
+          {trackerHandoffConflict && (
+            <p role="status">Another Stat Tracker game was already open, so it was left unchanged. Finish it before resuming this one.</p>
+          )}
+          <div className="event-card-live-taps__season-record" data-testid="event-card-live-taps-season-record">
+            <span>Season cheer record</span>
+            {liveTapSummaryQuery.isLoading ? (
+              <span role="status">Loading…</span>
+            ) : liveTapSummaryQuery.isError ? (
+              <button type="button" className="event-card-live-taps__owner-retry" onClick={() => void liveTapSummaryQuery.refetch()}>
+                Refresh season record
+              </button>
+            ) : (
+              <ul>
+                {(liveTapSummaryQuery.data?.liveTaps.seasonCheers ?? []).map((cheer) => (
+                  <li key={cheer.key}>
+                    <span aria-hidden="true">{cheer.emoji}</span> {cheer.label}
+                    <strong>{cheer.count}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {selectedInvite && (
+            <Link href={`/fan/${encodeURIComponent(selectedInvite.inviteToken)}?side=live-taps`} className="event-card-live-taps__secondary">
+              View the HYPE Card cheer record
+            </Link>
+          )}
+        </div>
       ) : !session && !availableInvites.length ? (
         <div className="event-card-live-taps__message">
           <p>Create or resume a Player Showcase before starting Game Day Live.</p>
@@ -719,21 +780,56 @@ export function EventCardLiveTaps({
           <button
             type="button"
             className="event-card-live-taps__end"
-            onClick={() => void endLiveTaps()}
+            onClick={() => setEndConfirmationOpen(true)}
             disabled={busy || !currentShare}
             data-testid="button-end-live-taps-only"
           >
-            <SquareStop size={15} aria-hidden="true" /> {busy ? 'Ending…' : 'End Live Taps'}
+            <SquareStop size={15} aria-hidden="true" /> End Live Taps
           </button>
           <p className="event-card-live-taps__small">
-            Ending the session closes cheers for this game. Family QR codes remain active for future Game Day Live sessions until revoked.
+            Ending Live Taps closes cheers for this game without ending Stat Tracker. Family QR codes will not add cheers until a future Game Day Live session.
           </p>
         </div>
       )}
 
+      <Dialog open={endConfirmationOpen} onOpenChange={(open) => {
+        if (!busy) setEndConfirmationOpen(open);
+      }}>
+        <DialogContent role="alertdialog" data-testid="dialog-confirm-end-live-taps">
+          <DialogHeader>
+            <DialogTitle>End Live Taps for this game?</DialogTitle>
+            <DialogDescription>
+              This stops new cheers for this Event Card, but does not end the game. You can continue recording stats in Stat Tracker. Saved cheers stay in the season record and on the HYPE Card.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              className="event-card-live-taps__end-cancel"
+              onClick={() => setEndConfirmationOpen(false)}
+              disabled={busy}
+              data-testid="button-cancel-end-live-taps"
+            >
+              Keep Live Taps
+            </button>
+            <button
+              type="button"
+              className="event-card-live-taps__end"
+              onClick={() => void endLiveTaps()}
+              disabled={busy}
+              data-testid="button-confirm-end-live-taps"
+            >
+              <SquareStop size={15} aria-hidden="true" /> {busy ? 'Ending…' : 'End Live Taps'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {error && <p className="event-card-live-taps__message event-card-live-taps__message--error" role="alert" data-testid="error-event-card-live-taps">{error}</p>}
       {notice && <p className="event-card-live-taps__message" role="status" aria-live="polite" data-testid="notice-event-card-live-taps">{notice}</p>}
-      <Link href={trackerHref} className="event-card-live-taps__full-tracker">Want stats too? Open Stat Tracker</Link>
+      <Link href={trackerHref} className="event-card-live-taps__full-tracker" data-testid="link-event-card-stat-tracker">
+        Want stats too? Open Stat Tracker
+      </Link>
     </section>
   );
 }

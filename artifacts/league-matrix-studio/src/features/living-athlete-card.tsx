@@ -683,34 +683,47 @@ export function LivingAthleteCardPage({
                     <p className="living-card-alt-subtitle">
                       {invite.liveTaps.active
                         ? `Cheer for ${displayAthleteName} during Game Day Live.`
-                        : 'The tally opens when the card owner starts Game Day Live.'}
+                        : 'Season-long cheers stay here after each game. New cheers open when the card owner starts Game Day Live.'}
                     </p>
                     <section className="living-card-live-taps" aria-labelledby="living-card-live-taps-title">
                       <div className="living-card-live-taps-heading">
                         <div>
-                          <p className="living-card-overline">Current game</p>
-                          <h3 id="living-card-live-taps-title">{invite.liveTaps.active ? 'Family cheer tally' : 'Waiting for Game Day Live'}</h3>
+                          <p className="living-card-overline">{invite.liveTaps.active ? 'Current game' : 'Season record'}</p>
+                          <h3 id="living-card-live-taps-title">{invite.liveTaps.active ? 'Family cheer tally' : 'Cheers this season'}</h3>
                         </div>
                         <strong data-testid="text-live-tap-total">
-                          {invite.liveTaps.cheers.reduce((total, cheer) => total + cheer.count, 0)}
+                          {invite.liveTaps.active
+                            ? invite.liveTaps.cheers.reduce((total, cheer) => total + cheer.count, 0)
+                            : invite.liveTaps.seasonCheers.reduce((total, cheer) => total + cheer.count, 0)}
                         </strong>
                       </div>
-                      <ul className="living-card-live-tap-list" aria-label="Sport-specific cheers">
-                        {invite.liveTaps.cheers.map((cheer) => (
-                          <li key={cheer.key}>
+                      {invite.liveTaps.active && (
+                        <p className="living-card-live-tap-season-total" data-testid="text-live-tap-season-total">
+                          Season record: {invite.liveTaps.seasonCheers.reduce((total, cheer) => total + cheer.count, 0)} cheers
+                        </p>
+                      )}
+                      <ul className="living-card-live-tap-list" aria-label={invite.liveTaps.active ? 'Current game cheers with season totals' : 'Season-long sport-specific cheers'}>
+                        {invite.liveTaps.cheers.map((cheer) => {
+                          const seasonCount = invite.liveTaps.seasonCheers.find((item) => item.key === cheer.key)?.count ?? 0;
+                          return (
+                            <li key={cheer.key}>
                             <button
                               type="button"
                               onClick={() => void submitLiveTap(cheer.key)}
                               disabled={!invite.liveTaps.active || (!ownerInvite && !liveTapAccessToken) || sendLiveTap.isPending}
-                              aria-label={`${cheer.label}, ${cheer.count} taps`}
+                              aria-label={`${cheer.label}, ${invite.liveTaps.active ? `${cheer.count} current game taps, ${seasonCount} season taps` : `${seasonCount} season taps`}`}
                               data-testid={`button-live-tap-${cheer.key}`}
                             >
                               <span aria-hidden="true">{cheer.emoji}</span>
                               <span>{cheer.label}</span>
-                              <strong data-testid={`text-live-tap-count-${cheer.key}`}>{cheer.count}</strong>
+                              <span className="living-card-live-tap-count">
+                                <strong data-testid={`text-live-tap-count-${cheer.key}`}>{invite.liveTaps.active ? cheer.count : seasonCount}</strong>
+                                {invite.liveTaps.active && <small>{seasonCount} season</small>}
+                              </span>
                             </button>
-                          </li>
-                        ))}
+                            </li>
+                          );
+                        })}
                       </ul>
                       {!invite.liveTaps.active ? (
                         <p className="living-card-live-tap-note" data-testid="live-taps-not-active">

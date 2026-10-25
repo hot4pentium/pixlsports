@@ -59,6 +59,7 @@ import {
   isYardageTrackingAvailable,
   mergeTrackerData,
   normalizeTrackerData,
+  normalizeGameSession,
   reconcileTrackerDataForSync,
   pauseGame,
   readStoredActiveGame,
@@ -1770,6 +1771,40 @@ export function StatTrackerPage() {
     setRequiresSportSelection(!resolvedSport);
     setStorageAccountId(accountId);
   }, [accountId]);
+
+  useEffect(() => {
+    if (
+      !accountId
+      || storageAccountId !== accountId
+      || !selectedScheduleEventId
+      || currentGame
+      || !trackerSharesQuery.isSuccess
+    ) return;
+    const endedShare = trackerShares?.find((share) => (
+      share.sourceEventId === selectedScheduleEventId
+      && share.liveTapsEnded === true
+      && share.game.status === 'live'
+    ));
+    if (!endedShare) return;
+    const baseGame = createGameSession(endedShare.game.sport, {
+      date: endedShare.game.date,
+      opponent: endedShare.game.opponent,
+      sourceEventId: endedShare.sourceEventId,
+    });
+    setCurrentGame(normalizeGameSession({
+      ...baseGame,
+      ...endedShare.game,
+      sourceEventId: endedShare.sourceEventId,
+      liveTapsOnly: false,
+    } as unknown as GameSession));
+  }, [
+    accountId,
+    currentGame,
+    selectedScheduleEventId,
+    storageAccountId,
+    trackerShares,
+    trackerSharesQuery.isSuccess,
+  ]);
 
   useEffect(() => {
     if (!accountId || storageAccountId !== accountId) {

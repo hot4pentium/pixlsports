@@ -70,6 +70,7 @@ type TrackerShare = {
   shareToken: string;
   sourceEventId?: string;
   liveTapsOnly?: boolean;
+  liveTapsEnded?: boolean;
   revision: number;
   athleteName: string;
   teamName: string;
@@ -127,6 +128,12 @@ function makeFixtureServer() {
       count: activeShare
         ? state.taps.filter((tap) => tap.gameId === activeShare.game.id && tap.cheerKey === key).length
         : 0,
+    })),
+    seasonCheers: expectedLiveTapCheers[inviteSport].map(([key, label]) => ({
+      key,
+      label,
+      emoji: '👏',
+      count: state.taps.filter((tap) => tap.cheerKey === key).length,
     })),
   });
   const server = createServer(async (request, response) => {
@@ -254,6 +261,7 @@ function makeFixtureServer() {
         const game = { ...body.game };
         const sourceEventId = game.sourceEventId;
         const liveTapsOnly = game.liveTapsOnly;
+        const liveTapsEnded = share.liveTapsEnded;
         delete game.sourceEventId;
         delete game.liveTapsOnly;
         if (body.expectedRevision !== share.revision) {
@@ -266,6 +274,7 @@ function makeFixtureServer() {
           game,
           sourceEventId,
           liveTapsOnly,
+          ...(liveTapsEnded ? { liveTapsEnded: true } : {}),
           revision: share.revision + 1,
           updatedAt: new Date().toISOString(),
         });
@@ -343,6 +352,25 @@ function makeFixtureServer() {
           gameId: share.game.id,
           expiresAt: share.expiresAt,
         });
+        return;
+      }
+      if (startMatch && method === 'DELETE') {
+        if (!isOwner) {
+          json(response, 401, { error: 'Sign in required' });
+          return;
+        }
+        const share = state.shares.find((candidate) => candidate.shareToken === state.activeShareToken);
+        if (share?.liveTapsOnly) {
+          share.liveTapsOnly = false;
+          share.liveTapsEnded = true;
+          share.revision += 1;
+          share.updatedAt = new Date().toISOString();
+        } else if (share) {
+          state.shares = state.shares.filter((candidate) => candidate.shareToken !== share.shareToken);
+        }
+        state.activeShareToken = null;
+        response.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        response.end();
         return;
       }
       const fanMatch = path.match(/^\/api\/athlete-invites\/([^/]+)\/fan$/);
@@ -849,18 +877,46 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     assert.equal((await fetch(`${apiOrigin}/__fixture/access-links`).then((response) => response.json() as Promise<unknown[]>)).length, 0,
       'each family QR can be revoked independently');
     await click(liveTapsOnly, 'button-end-live-taps-only');
-    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('Game Day Live ended')`);
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="dialog-confirm-end-live-taps"]'))`);
+    await click(liveTapsOnly, 'button-cancel-end-live-taps');
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="dialog-confirm-end-live-taps"]') === null`);
+    assert.equal((await fixtureState()).activeShareToken, liveTapsOnlyShare.shareToken,
+      'canceling confirmation leaves Live Taps active');
+    await click(liveTapsOnly, 'button-end-live-taps-only');
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="dialog-confirm-end-live-taps"]'))`);
+    await click(liveTapsOnly, 'button-confirm-end-live-taps');
+    await waitUi(liveTapsOnly, `Boolean(document.querySelector('[data-testid="live-taps-ended"]'))`);
+    await waitUi(liveTapsOnly, `document.querySelector('[data-testid="event-card-live-taps-season-record"]')?.textContent?.includes('5')`);
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="button-start-live-taps-only"]') === null && Boolean(document.querySelector('[data-testid="link-event-card-stat-tracker"]'))`,
+      liveTapsOnly,
+    ), true, 'ending hides Live Taps for this Event Card and keeps Stat Tracker available');
     liveTapsOnlyState = await fixtureState();
     assert.equal(liveTapsOnlyState.activeShareToken, null, 'ending Live Taps-only closes the live family cheer session');
     const endedLiveTapsOnlyShare = liveTapsOnlyState.shares.find((share) => share.shareToken === liveTapsOnlyShare?.shareToken);
-    assert.equal(endedLiveTapsOnlyShare?.game.status, 'final');
+    assert.equal(endedLiveTapsOnlyShare?.game.status, 'live', 'ending Live Taps does not finalize the game');
+    assert.equal(endedLiveTapsOnlyShare?.liveTapsEnded, true);
+    assert.equal(endedLiveTapsOnlyShare?.liveTapsOnly, false);
     assert.equal(endedLiveTapsOnlyShare?.game.score, 0);
     assert.equal(endedLiveTapsOnlyShare?.game.events.length, 0);
-    assert.equal(await connection.evaluate(
-      `localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey')`,
+    const handedOffGame = await connection.evaluate<{ id: string; status: string } | null>(
+      `JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey') || 'null')`,
       liveTapsOnly,
-    ), null, 'ending Live Taps-only leaves no Stat Tracker game behind');
+    );
+    assert.equal(handedOffGame?.id, liveTapsOnlyShare.game.id,
+      'ending Live Taps hands this same game to Stat Tracker');
+    assert.equal(handedOffGame?.status, 'live', 'the game remains open for stats');
     await close(liveTapsOnly);
+
+    const seasonRecordCard = await open('fan');
+    await waitUi(seasonRecordCard, `Boolean(document.querySelector('[data-testid="button-living-card-live-taps"]'))`);
+    await click(seasonRecordCard, 'button-living-card-live-taps');
+    await waitUi(seasonRecordCard, `document.querySelector('[data-testid="text-live-tap-total"]')?.textContent === '5'`);
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="button-live-tap-bucket"]')?.disabled === true`,
+      seasonRecordCard,
+    ), true, 'the HYPE Card keeps the season record visible while cheers are inactive');
+    await close(seasonRecordCard);
 
     for (const [sport, expectedCheers] of Object.entries(expectedLiveTapCheers) as Array<
       [keyof typeof expectedLiveTapCheers, typeof expectedLiveTapCheers[keyof typeof expectedLiveTapCheers]]
@@ -952,6 +1008,8 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
         `${sport} owner cheers do not alter player stats, scores, or game events`,
       );
       await click(sportOwner, 'button-end-live-taps-only');
+      await waitUi(sportOwner, `Boolean(document.querySelector('[data-testid="dialog-confirm-end-live-taps"]'))`);
+      await click(sportOwner, 'button-confirm-end-live-taps');
       await waitUi(sportOwner, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('Game Day Live ended')`);
       await close(sportOwner);
     }

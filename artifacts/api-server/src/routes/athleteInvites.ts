@@ -921,24 +921,44 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuth, async (req, res
     return;
   }
   const ownerClerkUserId = getRequiredClerkUserId(res);
-  const [invite] = await db.select().from(athleteInvitesTable).where(and(
-    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
-    eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
-  ));
-  if (!invite) {
+  const stopped = await db.transaction(async (tx) => {
+    const [invite] = await tx.select().from(athleteInvitesTable).where(and(
+      eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+      eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+    )).for("update");
+    if (!invite) return false;
+
+    if (invite.liveTrackerShareToken) {
+      const [share] = await tx.select().from(statTrackerSharesTable).where(and(
+        eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+        eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+      )).for("update");
+      const game = share?.game && typeof share.game === "object" && !Array.isArray(share.game)
+        ? share.game as Record<string, unknown>
+        : null;
+      if (share && game?.liveTapsOnly === true && game.status === "live") {
+        await tx.update(statTrackerSharesTable).set({
+          game: { ...game, liveTapsOnly: false, liveTapsEnded: true },
+          revision: sql`${statTrackerSharesTable.revision} + 1`,
+          updatedAt: new Date(),
+        }).where(eq(statTrackerSharesTable.id, share.id));
+      } else {
+        await tx.delete(statTrackerSharesTable).where(and(
+          eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+          eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+        ));
+      }
+    }
+    await tx.update(athleteInvitesTable).set({
+      liveTrackerShareToken: null,
+      updatedAt: new Date(),
+    }).where(eq(athleteInvitesTable.id, invite.id));
+    return true;
+  });
+  if (!stopped) {
     res.status(404).json({ error: "Athlete Hype Page not found" });
     return;
   }
-  if (invite.liveTrackerShareToken) {
-    await db.delete(statTrackerSharesTable).where(and(
-      eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
-      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
-    ));
-  }
-  await db.update(athleteInvitesTable).set({
-    liveTrackerShareToken: null,
-    updatedAt: new Date(),
-  }).where(eq(athleteInvitesTable.id, invite.id));
   res.status(204).send(StopAthleteInviteLiveResponse.parse(undefined));
 });
 

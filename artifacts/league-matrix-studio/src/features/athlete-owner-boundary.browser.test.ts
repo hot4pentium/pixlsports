@@ -177,6 +177,7 @@ test('player-page owner tools remain private across account changes and pause', 
         { key: 'way-to-go', label: 'Way to Go!', emoji: '🎉', count: 0 },
         { key: 'big-play', label: 'Big Play', emoji: '💥', count: 0 },
       ],
+      seasonCheers: [],
     },
     updatedAt: new Date().toISOString(),
   };
@@ -1052,6 +1053,7 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
         { key: 'way-to-go', label: 'Way to Go!', emoji: '🎉', count: 0 },
         { key: 'big-play', label: 'Big Play', emoji: '💥', count: 0 },
       ],
+      seasonCheers: [],
     },
     updatedAt: new Date().toISOString(),
   };

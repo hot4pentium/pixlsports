@@ -897,6 +897,8 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     const fanWithTap = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
     assert.equal(fanWithTap.liveTaps.gameId, liveSession.gameId);
     assert.equal(fanWithTap.liveTaps.cheers.find((cheer) => cheer.key === "bucket")?.count, 9);
+    assert.equal(fanWithTap.liveTaps.seasonCheers.find((cheer) => cheer.key === "bucket")?.count, 10,
+      "the HYPE Card includes cheers from earlier games in the season record");
 
     const replacementLinkResponse = await fetch(accessLinksUrl, {
       method: "POST",
@@ -989,6 +991,8 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.equal(stoppedPublic.stats?.stats.points, 18);
     assert.equal(stoppedPublic.liveTaps.active, false);
     assert.equal(stoppedPublic.liveTaps.gameId, null);
+    assert.equal(stoppedPublic.liveTaps.seasonCheers.find((cheer) => cheer.key === "bucket")?.count, 11,
+      "ending Game Day Live preserves the cumulative season cheer record");
     const savedTaps = await db.select({
       gameId: athleteInviteLiveTapsTable.gameId,
       cheerKey: athleteInviteLiveTapsTable.cheerKey,
@@ -1000,6 +1004,88 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       { gameId: liveSession.gameId, cheerKey: "big-play" },
       { gameId: "previous-game", cheerKey: "bucket" },
     ].sort((left, right) => `${left.gameId}:${left.cheerKey}`.localeCompare(`${right.gameId}:${right.cheerKey}`)));
+
+    const liveTapsOnlyGame = {
+      id: "live-taps-only-game",
+      sourceEventId: "scheduled-event-ended-live-taps",
+      liveTapsOnly: true,
+      sport: "basketball",
+      status: "live",
+      date: dateKey(0),
+      opponent: "Comets",
+      period: 1,
+      score: 0,
+      opponentScore: 0,
+      stats: { points: 0 },
+      trackYards: false,
+      yardStats: {},
+      events: [],
+    };
+    const [liveTapsOnlyShare] = await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId: ownerId,
+      gameId: liveTapsOnlyGame.id,
+      athleteName: "Jordan",
+      teamName: "City Hoops",
+      game: liveTapsOnlyGame,
+      expiresAt: new Date(Date.now() + 60_000),
+    }).returning();
+    await db.update(athleteInvitesTable).set({
+      liveTrackerShareToken: liveTapsOnlyShare.id,
+    }).where(eq(athleteInvitesTable.id, inviteRow.id));
+    const endedLiveTapsResponse = await fetch(liveUrl, {
+      method: "DELETE",
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(endedLiveTapsResponse.status, 204);
+    const [preservedLiveTapsShare] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, liveTapsOnlyShare.id));
+    assert.ok(preservedLiveTapsShare, "ending cheers preserves the editable game share");
+    assert.equal((preservedLiveTapsShare.game as Record<string, unknown>).status, "live");
+    assert.equal((preservedLiveTapsShare.game as Record<string, unknown>).liveTapsEnded, true);
+    assert.equal((preservedLiveTapsShare.game as Record<string, unknown>).liveTapsOnly, false);
+
+    const listedShares = await fetch(`${baseUrl}/api/stat-tracker-shares`, {
+      headers: { "x-test-user": ownerId },
+    }).then((response) => response.json() as Promise<Array<Record<string, any>>>);
+    const listedEndedShare = listedShares.find((share) => share.shareToken === liveTapsOnlyShare.id);
+    assert.equal(listedEndedShare?.liveTapsEnded, true);
+    assert.equal(listedEndedShare?.sourceEventId, "scheduled-event-ended-live-taps");
+    assert.equal(listedEndedShare?.liveTapsOnly, undefined);
+
+    const continueTracking = await fetch(`${baseUrl}/api/stat-tracker-shares/${liveTapsOnlyShare.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Hoops",
+        expectedRevision: 2,
+        game: {
+          ...liveTapsOnlyGame,
+          liveTapsOnly: false,
+          score: 2,
+          stats: { points: 2 },
+        },
+      }),
+    });
+    assert.equal(continueTracking.status, 200);
+    const continuedShare = await continueTracking.json() as Record<string, any>;
+    assert.equal(continuedShare.liveTapsEnded, true, "stat updates keep the ended Live Taps marker");
+    assert.equal(continuedShare.game.status, "live", "the game remains open for stat entry");
+    assert.equal(continuedShare.game.score, 2);
+    assert.equal(continuedShare.game.liveTapsEnded, undefined, "the ended marker stays owner-only metadata");
+
+    const publicContinuedShare = await fetch(`${baseUrl}/api/stat-tracker-shares/${liveTapsOnlyShare.id}`)
+      .then((response) => response.json() as Promise<Record<string, any>>);
+    assert.equal(publicContinuedShare.liveTapsEnded, undefined, "public tracker responses do not reveal the owner-only marker");
+    assert.equal(publicContinuedShare.game.liveTapsEnded, undefined);
+    assert.equal(publicContinuedShare.game.sourceEventId, undefined);
+
+    const tapAfterLiveTapsEnd = await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "bucket", accessToken: replacementLink.accessToken }),
+    });
+    assert.equal(tapAfterLiveTapsEnd.status, 409, "active family QR tokens stop accepting cheers after Live Taps ends");
 
     const attachedAgain = await fetch(liveUrl, {
       method: "POST",

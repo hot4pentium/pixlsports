@@ -2254,6 +2254,7 @@ export const ListStatTrackerSharesResponseItem = zod.object({
   "shareToken": zod.string().uuid(),
   "sourceEventId": zod.string().max(listStatTrackerSharesResponseTwoSourceEventIdMax).optional(),
   "liveTapsOnly": zod.boolean().optional(),
+  "liveTapsEnded": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -2430,6 +2431,7 @@ export const CreateStatTrackerShareResponse = zod.object({
   "shareToken": zod.string().uuid(),
   "sourceEventId": zod.string().max(createStatTrackerShareResponseTwoSourceEventIdMax).optional(),
   "liveTapsOnly": zod.boolean().optional(),
+  "liveTapsEnded": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -2531,6 +2533,7 @@ export const GetStatTrackerShareResponse = zod.object({
   "shareToken": zod.string().uuid(),
   "sourceEventId": zod.string().max(getStatTrackerShareResponseTwoSourceEventIdMax).optional(),
   "liveTapsOnly": zod.boolean().optional(),
+  "liveTapsEnded": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -2713,6 +2716,7 @@ export const UpdateStatTrackerShareResponse = zod.object({
   "shareToken": zod.string().uuid(),
   "sourceEventId": zod.string().max(updateStatTrackerShareResponseTwoSourceEventIdMax).optional(),
   "liveTapsOnly": zod.boolean().optional(),
+  "liveTapsEnded": zod.boolean().optional(),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -3121,6 +3125,8 @@ export const getAthleteInviteResponseRepliesItemMessageMax = 240;
 
 export const getAthleteInviteResponseLiveTapsCheersItemCountMin = 0;
 
+export const getAthleteInviteResponseLiveTapsSeasonCheersItemCountMin = 0;
+
 
 
 export const GetAthleteInviteResponse = zod.object({
@@ -3248,6 +3254,12 @@ export const GetAthleteInviteResponse = zod.object({
   "label": zod.string(),
   "emoji": zod.string(),
   "count": zod.number().int().min(getAthleteInviteResponseLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteInviteResponseLiveTapsSeasonCheersItemCountMin)
 }))
 }),
   "updatedAt": zod.coerce.date()
@@ -3823,6 +3835,8 @@ export const getAthleteFanCardResponseLiveScoreboardOneTeamNameMax = 160;
 
 export const getAthleteFanCardResponseLiveTapsCheersItemCountMin = 0;
 
+export const getAthleteFanCardResponseLiveTapsSeasonCheersItemCountMin = 0;
+
 
 
 export const GetAthleteFanCardResponse = zod.object({
@@ -3956,6 +3970,12 @@ export const GetAthleteFanCardResponse = zod.object({
   "label": zod.string(),
   "emoji": zod.string(),
   "count": zod.number().int().min(getAthleteFanCardResponseLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteFanCardResponseLiveTapsSeasonCheersItemCountMin)
 }))
 }),
   "updatedAt": zod.coerce.date()
@@ -4084,6 +4104,8 @@ export const SendAthleteLiveTapBody = zod.object({
 
 export const sendAthleteLiveTapResponseCheersItemCountMin = 0;
 
+export const sendAthleteLiveTapResponseSeasonCheersItemCountMin = 0;
+
 
 
 export const SendAthleteLiveTapResponse = zod.object({
@@ -4094,6 +4116,12 @@ export const SendAthleteLiveTapResponse = zod.object({
   "label": zod.string(),
   "emoji": zod.string(),
   "count": zod.number().int().min(sendAthleteLiveTapResponseCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(sendAthleteLiveTapResponseSeasonCheersItemCountMin)
 }))
 })
 

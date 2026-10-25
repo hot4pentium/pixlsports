@@ -370,7 +370,7 @@ function normalizeYardStats(value: unknown): YardStats {
   );
 }
 
-function normalizeGameSession(game: GameSession): GameSession {
+export function normalizeGameSession(game: GameSession): GameSession {
   const {
     soccerPeriodFormat: _untrustedFormat,
     sourceEventId: _untrustedSourceEventId,

@@ -64,7 +64,7 @@ function publicResponse(
   publicFanCardPath: string | null = null,
 ) {
   const storedGame = share.game as Record<string, unknown>;
-  const { sourceEventId, liveTapsOnly, ...publicStoredGame } = storedGame;
+  const { sourceEventId, liveTapsOnly, liveTapsEnded, ...publicStoredGame } = storedGame;
   const storedEvents = Array.isArray(publicStoredGame.events) ? publicStoredGame.events : [];
   const game = {
     ...publicStoredGame,
@@ -96,6 +96,7 @@ function publicResponse(
     canManage,
     ...(canManage && typeof sourceEventId === "string" ? { sourceEventId } : {}),
     ...(canManage && liveTapsOnly === true ? { liveTapsOnly: true } : {}),
+    ...(canManage && liveTapsEnded === true ? { liveTapsEnded: true } : {}),
     publicFanCardPath,
   });
 }
@@ -346,11 +347,18 @@ router.patch("/stat-tracker-shares/:shareToken", requireAuth, async (req, res): 
       });
       return;
     }
+    const currentGame = current.game && typeof current.game === "object" && !Array.isArray(current.game)
+      ? current.game as Record<string, unknown>
+      : {};
+    const nextGame = {
+      ...parsed.data.game,
+      ...(currentGame.liveTapsEnded === true ? { liveTapsEnded: true } : {}),
+    };
     const [updated] = await db.update(statTrackerSharesTable).set({
       gameId: parsed.data.game.id,
       athleteName: parsed.data.athleteName,
       teamName: parsed.data.teamName,
-      game: parsed.data.game,
+      game: nextGame,
       revision: sql`${statTrackerSharesTable.revision} + 1`,
       updatedAt: new Date(),
     }).where(and(
