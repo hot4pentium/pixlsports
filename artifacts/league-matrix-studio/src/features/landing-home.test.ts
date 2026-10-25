@@ -82,6 +82,8 @@ test('landing offers accurate iPhone and Android PWA install guidance', () => {
   assert.match(source, /data-testid="button-landing-install"[\s\S]*Install as an app/);
   assert.match(source, /useAppInstallPrompt\('landing'\)/);
   assert.match(source, /THE FUTURE OF WEB APPLICATIONS/);
+  assert.match(source, /PIXL Sports is a Progressive Web App \(PWA\)/);
+  assert.match(source, /Load your game details and checklist while online; reopen them offline and track stats\. Saved stats sync when you reconnect\./);
   assert.match(source, /iPhone &amp; iPad/);
   assert.match(source, /Open this page in <strong>Safari<\/strong>[\s\S]*Add to Home Screen[\s\S]*Open as Web App/);
   assert.match(source, /Android/);

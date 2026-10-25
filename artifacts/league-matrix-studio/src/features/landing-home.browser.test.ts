@@ -143,6 +143,8 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
            page.sessionId,
          );
          assert.match(installCopy, /THE FUTURE OF WEB APPLICATIONS/);
+          assert.match(installCopy, /Progressive Web App \(PWA\)/);
+          assert.match(installCopy, /reopen them offline and track stats/);
          assert.match(installCopy, /iPhone & iPad/);
          assert.match(installCopy, /Android/);
          assert.match(installCopy, /HTTPS/);

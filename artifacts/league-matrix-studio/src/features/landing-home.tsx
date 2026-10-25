@@ -221,7 +221,7 @@ export function PublicLandingPage() {
             <div className="install-copy">
               <span className="install-eyebrow"><span className="install-live-dot" aria-hidden="true" /> THE FUTURE OF WEB APPLICATIONS</span>
               <h2 id="landing-install-heading" className="display">Make room<br />for <em>the good stuff.</em></h2>
-              <p className="install-lede">Put the season one tap away. Add PIXL to your home screen, then bring the plan, the prep, and every little victory along for the ride.</p>
+              <p className="install-lede">PIXL Sports is a Progressive Web App (PWA)—a website you can add to your Home Screen and open like an app. Load your game details and checklist while online; reopen them offline and track stats. Saved stats sync when you reconnect.</p>
               <button type="button" className="install-action" onClick={requestInstall} data-testid="button-install-section">
                 <Download size={18} aria-hidden="true" /> {installAction === 'installed' ? 'PIXL is on your home screen' : 'Add PIXL to your home screen'} <ArrowUpRight size={17} aria-hidden="true" />
               </button>
