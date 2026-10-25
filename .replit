@@ -31,3 +31,6 @@ VAPID_SUBJECT = "https://league-matrix-creative-studio.replit.app"
 [userenv.production]
 PIXL_INITIAL_ADMIN_EMAIL = "hot4pentium@gmail.com"
 RESEND_INBOUND_DOMAIN = "rexuas.resend.app"
+
+[userenv.development]
+NATIVE_IOS_CLERK_ISSUER = "https://healthy-feline-9810.clerk.accounts.dev"
