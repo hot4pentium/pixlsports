@@ -15,6 +15,7 @@ import '../index.css';
 const query = new URLSearchParams(window.location.search);
 const apiOrigin = query.get('api') ?? '';
 const page = query.get('page') ?? 'tracker';
+const preserveTrackerStorage = query.get('preserveTrackerStorage') === '1';
 const inviteToken = 'browser-live-athlete';
 const trackerPath = '/studio/stat-tracker';
 const inlinePath = '/browser/inline-tracker';
@@ -24,8 +25,10 @@ const fanPath = `/fan/${inviteToken}`;
 const path = page === 'fan' ? fanPath : page === 'inline' ? inlinePath : page === 'live-taps' ? liveTapsPath : trackerPath;
 
 if (page === 'tracker') {
-  localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
-  localStorage.removeItem('leaguematrix-stat-tracker:workspace-journey');
+  if (!preserveTrackerStorage) {
+    localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
+    localStorage.removeItem('leaguematrix-stat-tracker:workspace-journey');
+  }
   localStorage.setItem(scheduleStorageKey, JSON.stringify({
     version: 1,
     teamName: 'Northside Comets',
@@ -48,7 +51,9 @@ if (page === 'tracker') {
 } else if (page === 'inline') {
   localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
 } else if (page === 'live-taps') {
-  localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
+  if (!preserveTrackerStorage) {
+    localStorage.removeItem('leaguematrix-stat-tracker-active-game:workspace-journey');
+  }
   localStorage.removeItem('pixlSports:liveTaps:browser-live-athlete');
 }
 

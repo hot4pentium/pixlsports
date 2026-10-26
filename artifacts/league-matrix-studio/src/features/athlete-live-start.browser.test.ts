@@ -494,6 +494,7 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
   let connection: DevToolsConnection | undefined;
   let tempDirectory: string | undefined;
   const pages: BrowserPage[] = [];
+  const browserContexts: string[] = [];
   let viteMonitor: ReturnType<typeof monitorProcess> | undefined;
   let browserMonitor: ReturnType<typeof monitorProcess> | undefined;
 
@@ -523,20 +524,41 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       owner?: boolean;
       family?: boolean | string;
       sport?: keyof typeof expectedLiveTapCheers;
+      eventId?: string;
+      preserveTrackerStorage?: boolean;
     } = {}) => {
       const params = new URLSearchParams({ api: apiOrigin, page });
       if (options.owner) params.set('viewer', ownerId);
       if (options.sport) params.set('sport', options.sport);
+      if (options.eventId) params.set('eventId', options.eventId);
+      if (options.preserveTrackerStorage) params.set('preserveTrackerStorage', '1');
       const token = typeof options.family === 'string' ? options.family : familyQrToken;
       return `${viteOrigin}/athlete-live-start-browser-test.html?${params}${options.family ? `#live-taps=${token}` : ''}`;
     };
     const open = async (
       page: 'tracker' | 'inline' | 'fan' | 'live-taps',
-      options: { owner?: boolean; family?: boolean | string; sport?: keyof typeof expectedLiveTapCheers } = {},
+      options: {
+        owner?: boolean;
+        family?: boolean | string;
+        sport?: keyof typeof expectedLiveTapCheers;
+        eventId?: string;
+        preserveTrackerStorage?: boolean;
+        browserContextId?: string;
+        beforeDocumentScript?: string;
+      } = {},
     ) => {
-      const browserPage = await openPage(connection!, appUrl(page, options), { viewport: { width: 1365, height: 940 } });
+      const browserPage = await openPage(connection!, appUrl(page, options), {
+        viewport: { width: 1365, height: 940 },
+        ...(options.browserContextId ? { browserContextId: options.browserContextId } : {}),
+        ...(options.beforeDocumentScript ? { beforeDocumentScript: options.beforeDocumentScript } : {}),
+      });
       pages.push(browserPage);
       return browserPage.sessionId;
+    };
+    const createBrowserContext = async () => {
+      const context = await connection!.send<{ browserContextId: string }>('Target.createBrowserContext', {});
+      browserContexts.push(context.browserContextId);
+      return context.browserContextId;
     };
     const fixtureState = () => fetch(`${apiOrigin}/__fixture/state`).then((response) => (
       response.json() as Promise<FixtureState>
@@ -908,6 +930,96 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     assert.equal(handedOffGame?.status, 'live', 'the game remains open for stats');
     await close(liveTapsOnly);
 
+    const secondDeviceContext = await createBrowserContext();
+    const secondDeviceCard = await open('live-taps', {
+      owner: true,
+      sport: 'basketball',
+      browserContextId: secondDeviceContext,
+    });
+    await waitUi(secondDeviceCard, `Boolean(document.querySelector('[data-testid="live-taps-ended"]'))`);
+    assert.equal(await connection.evaluate(
+      `document.querySelector('[data-testid="button-start-live-taps-only"]') === null && Boolean(document.querySelector('[data-testid="link-event-card-stat-tracker"]'))`,
+      secondDeviceCard,
+    ), true, 'a second device keeps Live Taps hidden and the Stat Tracker link available');
+    const secondDeviceTrackerHref = await connection.evaluate<string>(
+      `document.querySelector('[data-testid="link-event-card-stat-tracker"]')?.getAttribute('href') || ''`,
+      secondDeviceCard,
+    );
+    const secondDeviceTrackerUrl = new URL(secondDeviceTrackerHref, viteOrigin);
+    assert.equal(secondDeviceTrackerUrl.searchParams.get('eventId'), 'scheduled-live-taps-game-basketball',
+      'the Event Card sends the matching event identity to Stat Tracker');
+    assert.equal(await connection.evaluate(
+      `localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey')`,
+      secondDeviceCard,
+    ), null, 'the second device starts without a local active game');
+    await click(secondDeviceCard, 'link-event-card-stat-tracker');
+    await waitUi(secondDeviceCard, `document.querySelector('[data-testid="live-tracker-scoreboard"]')?.textContent?.includes('live')`);
+    const restoredSecondDeviceGame = await connection.evaluate<{ id: string; status: string; sourceEventId?: string } | null>(
+      `JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey') || 'null')`,
+      secondDeviceCard,
+    );
+    assert.equal(restoredSecondDeviceGame?.id, liveTapsOnlyShare.game.id,
+      'the Event Card restores its matching live game on the second device');
+    assert.equal(restoredSecondDeviceGame?.status, 'live');
+    assert.equal(restoredSecondDeviceGame?.sourceEventId, 'scheduled-live-taps-game-basketball');
+    assert.equal((await fixtureState()).activeShareToken, null,
+      'restoring the game does not re-enable Game Day Live or Live Taps');
+    await click(secondDeviceCard, 'live-stat-two-point');
+    await waitUi(secondDeviceCard, `document.querySelector('[data-testid="live-tracker-score-card-athlete"]')?.textContent?.includes('2')`);
+    const continuedOnSecondDevice = await (async () => {
+      const start = Date.now();
+      while (Date.now() - start < 20_000) {
+        const current = await fixtureState();
+        const share = current.shares.find((candidate) => candidate.shareToken === liveTapsOnlyShare.shareToken);
+        if (share?.game.stats['two-point'] === 1) return { current, share };
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 150));
+      }
+      const current = await fixtureState();
+      return {
+        current,
+        share: current.shares.find((candidate) => candidate.shareToken === liveTapsOnlyShare.shareToken),
+      };
+    })();
+    assert.equal(continuedOnSecondDevice.share?.game.stats['two-point'], 1,
+      'the restored game accepts and syncs Stat Tracker entries');
+    assert.equal(continuedOnSecondDevice.share?.liveTapsEnded, true,
+      'continuing stat tracking keeps Live Taps ended');
+    assert.equal(continuedOnSecondDevice.current.activeShareToken, null,
+      'stat tracking does not reactivate the ended public or cheer session');
+    assert.equal(continuedOnSecondDevice.current.shares.length, 3,
+      'restoring this game does not create a new Game Day Live session');
+    await close(secondDeviceCard);
+
+    const conflictContext = await createBrowserContext();
+    const conflictingGame = {
+      ...handedOffGame,
+      id: 'different-device-active-game',
+      status: 'paused',
+      sourceEventId: 'different-scheduled-event',
+      opponent: 'Different opponent',
+    };
+    const conflictSeedScript = `localStorage.setItem('leaguematrix-stat-tracker-active-game:workspace-journey', ${JSON.stringify(JSON.stringify(conflictingGame))});`;
+    const conflictTracker = await open('tracker', {
+      owner: true,
+      eventId: 'scheduled-live-taps-game-basketball',
+      preserveTrackerStorage: true,
+      browserContextId: conflictContext,
+      beforeDocumentScript: conflictSeedScript,
+    });
+    await waitUi(conflictTracker, `Boolean(document.querySelector('[data-testid="live-tracker-scoreboard"]'))`);
+    const preservedOtherGame = await connection.evaluate<{ id: string; status: string; sourceEventId?: string; opponent: string } | null>(
+      `JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:workspace-journey') || 'null')`,
+      conflictTracker,
+    );
+    assert.equal(preservedOtherGame?.id, 'different-device-active-game',
+      'a different already-open Stat Tracker game is not overwritten');
+    assert.equal(preservedOtherGame?.status, 'paused');
+    assert.equal(preservedOtherGame?.sourceEventId, 'different-scheduled-event');
+    assert.equal(preservedOtherGame?.opponent, 'Different opponent');
+    assert.equal((await fixtureState()).activeShareToken, null,
+      'protecting another open game does not enable Live Taps');
+    await close(conflictTracker);
+
     const seasonRecordCard = await open('fan');
     await waitUi(seasonRecordCard, `Boolean(document.querySelector('[data-testid="button-living-card-live-taps"]'))`);
     await click(seasonRecordCard, 'button-living-card-live-taps');
@@ -1020,6 +1132,9 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     if (connection) {
       for (const page of pages) {
         await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+      }
+      for (const browserContextId of browserContexts) {
+        await connection.send('Target.disposeBrowserContext', { browserContextId }).catch(() => undefined);
       }
       connection.close();
     }

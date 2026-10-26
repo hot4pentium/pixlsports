@@ -1704,8 +1704,10 @@ export function StatTrackerPage() {
       !accountId
       || !game
       || game.status !== 'live'
+      || !trackerSharesQuery.isSuccess
       || !athleteInvitesQuery.isSuccess
       || attemptedAthleteLiveGameId.current === game.id
+      || trackerShares?.some((share) => share.game.id === game.id)
     ) return;
     const invite = athleteInvitesQuery.data?.find((candidate) => (
       !candidate.paused && candidate.sport === game.sport
@@ -1740,6 +1742,8 @@ export function StatTrackerPage() {
     athleteInvitesQuery.isSuccess,
     currentGame?.id,
     currentGame?.status,
+    trackerShares,
+    trackerSharesQuery.isSuccess,
     athleteLiveRetry,
   ]);
 

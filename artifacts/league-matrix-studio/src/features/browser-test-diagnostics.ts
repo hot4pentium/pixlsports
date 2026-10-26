@@ -251,6 +251,8 @@ export async function openPage(
   url: string,
   options: {
     offline?: boolean;
+    browserContextId?: string;
+    beforeDocumentScript?: string;
     viewport?: {
       width: number;
       height: number;
@@ -259,7 +261,10 @@ export async function openPage(
     };
   } = {},
 ): Promise<BrowserPage> {
-  const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+  const target = await connection.send<{ targetId: string }>('Target.createTarget', {
+    url: 'about:blank',
+    ...(options.browserContextId ? { browserContextId: options.browserContextId } : {}),
+  });
   const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', {
     targetId: target.targetId,
     flatten: true,
@@ -267,6 +272,11 @@ export async function openPage(
   const { sessionId } = attached;
   await connection.send('Page.enable', {}, sessionId);
   await connection.send('Runtime.enable', {}, sessionId);
+  if (options.beforeDocumentScript) {
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: options.beforeDocumentScript,
+    }, sessionId);
+  }
   if (options.viewport) {
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: options.viewport.width,
