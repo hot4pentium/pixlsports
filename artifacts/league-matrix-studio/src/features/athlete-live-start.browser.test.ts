@@ -483,7 +483,7 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
   const apiPort = await availablePort();
   const vitePort = await availablePort();
   const debugPort = await availablePort();
-  const { server: apiServer, historySaves } = makeFixtureServer();
+  const { server: apiServer, historySaves, state } = makeFixtureServer();
   let releaseHistorySave = () => {};
   await new Promise<void>((done, reject) => {
     apiServer.once('error', reject);
@@ -921,6 +921,7 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
     for (const [sport, expectedCheers] of Object.entries(expectedLiveTapCheers) as Array<
       [keyof typeof expectedLiveTapCheers, typeof expectedLiveTapCheers[keyof typeof expectedLiveTapCheers]]
     >) {
+      state.shares = state.shares.filter((share) => !share.liveTapsEnded);
       const selectedSport = await fetch(`${apiOrigin}/__fixture/sport`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -941,6 +942,7 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       }
       await click(sportOwner, 'button-start-live-taps-only');
       await waitUi(sportOwner, `document.querySelector('[data-testid="status-live-taps-only"]')?.textContent?.includes('Game Day Live is on')`);
+      await waitUi(sportOwner, `Boolean(document.querySelector('[data-testid="owner-live-taps-controls"]'))`);
 
       const expectedUiCheers = expectedCheers.map(([key, label]) => [key, label, '0']);
       const initialUiCheers = await connection.evaluate<string[][]>(`(() => {
@@ -1010,7 +1012,7 @@ test('both owner Start game actions publish updated HYPE Card score; family taps
       await click(sportOwner, 'button-end-live-taps-only');
       await waitUi(sportOwner, `Boolean(document.querySelector('[data-testid="dialog-confirm-end-live-taps"]'))`);
       await click(sportOwner, 'button-confirm-end-live-taps');
-      await waitUi(sportOwner, `document.querySelector('[data-testid="notice-event-card-live-taps"]')?.textContent?.includes('Game Day Live ended')`);
+      await waitUi(sportOwner, `Boolean(document.querySelector('[data-testid="live-taps-ended"]'))`);
       await close(sportOwner);
     }
   } finally {
