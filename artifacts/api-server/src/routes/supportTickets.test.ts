@@ -13,7 +13,7 @@ import { createSupportTicketsRouter } from "./supportTickets";
 
 const ticketInput = {
   replyEmail: "ticket-reference-test@example.com",
-  issueId: "other",
+  issueId: "feedback",
   description: "Testing support ticket reference creation.",
   deviceType: "desktop",
   connectionType: "wifi",

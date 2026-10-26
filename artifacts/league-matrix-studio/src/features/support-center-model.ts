@@ -4,6 +4,7 @@ export const SUPPORT_ISSUES = [
   { id: 'schedule', label: 'Schedule or sync', steps: ['Run the quick checks, then refresh the schedule once.', 'Reopen the schedule and check whether your changes are still there.', 'If a change is waiting to save, keep the page open and do not clear browser data.'] },
   { id: 'game-day', label: 'Game-day tools', steps: ['Refresh the studio and open the game card again.', 'Check the card belongs to the event you intended.', 'Note what you tapped last before things went wrong.'] },
   { id: 'hype-card', label: 'HYPE Card or photo upload', steps: ['Check your connection and retry once the page finishes loading.', 'Confirm the file is a supported image or video type.', 'Tickets never include your photo or its filename.'] },
+  { id: 'feedback', label: 'Product feedback', steps: ['Share what you were trying to do.', 'Tell us what worked well or what could be clearer.', 'Do not include passwords or sign-in codes.'] },
   { id: 'other', label: 'Something else', steps: ['Try the quick checks below.', 'Say what you expected and what happened instead.', 'Add the device you were using.'] },
 ] as const;
 

@@ -46,6 +46,7 @@ import {
 } from './supporter-dashboard-model';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
+import { DashboardFeedbackBubble } from './support-center';
 import {
   SupporterDashboardChecklist,
   SupporterDashboardChecklistCompletionDialog,
@@ -1738,6 +1739,7 @@ export function SupporterDashboardView({
         saveStatus={justCompleted?.saveStatus}
         viewHref={justCompleted ? `/studio/season-stats?gameId=${encodeURIComponent(justCompleted.game.id)}` : undefined}
       />
+      <DashboardFeedbackBubble />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { CreateSupportTicketBody } from '../../../../lib/api-zod/src/generated/api';
 
 import {
   isValidSupportReplyEmail,
@@ -13,8 +14,19 @@ import {
 test('support issue choices cover every API category', () => {
   assert.deepEqual(
     SUPPORT_ISSUES.map((issue) => issue.id),
-    ['account', 'billing', 'schedule', 'game-day', 'hype-card', 'other'],
+    ['account', 'billing', 'schedule', 'game-day', 'hype-card', 'feedback', 'other'],
   );
+});
+
+test('product feedback uses the validated private support-ticket contract', () => {
+  const parsed = CreateSupportTicketBody.parse({
+    issueId: 'feedback',
+    description: 'The event card looks good on mobile.',
+    deviceType: 'mobile',
+    connectionType: 'unsure',
+    replyEmail: 'member@example.com',
+  });
+  assert.equal(parsed.issueId, 'feedback');
 });
 
 test('reply email validation accepts normal addresses and rejects invalid input', () => {

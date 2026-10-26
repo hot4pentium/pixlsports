@@ -82,9 +82,10 @@ test('new support tickets are easy to find after confirmation for members and gu
       };
     `);
     await writeFile(fixturePath, `<!doctype html>
-      <html><head><meta charset="utf-8"><title>Support ticket browser check</title></head>
+      <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Support ticket browser check</title></head>
       <body><div id="root"></div>
         <script type="module">
+          import '/src/index.css';
           import React from 'react';
           import { createRoot } from 'react-dom/client';
           import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -127,6 +128,7 @@ test('new support tickets are easy to find after confirmation for members and gu
             }
             if (url.pathname === '/api/support/tickets' && method === 'POST') {
               const submitted = JSON.parse(init.body);
+              localStorage.setItem('support-center-test-submission', JSON.stringify(submitted));
               const now = new Date().toISOString();
               const state = readServerState();
               state.ticket = {
@@ -181,11 +183,11 @@ test('new support tickets are easy to find after confirmation for members and gu
             });
           };
 
-          const { SupportCenter } = await import('/src/features/support-center.tsx');
+          const { SupportCenter, DashboardFeedbackBubble } = await import('/src/features/support-center.tsx');
           const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
           createRoot(document.getElementById('root')).render(
             React.createElement(QueryClientProvider, { client: queryClient },
-              React.createElement(SupportCenter),
+              React.createElement(params.get('feedback') === '1' ? DashboardFeedbackBubble : SupportCenter),
             ),
           );
         </script>
@@ -371,6 +373,60 @@ test('new support tickets are easy to find after confirmation for members and gu
       token: 'recovered-private-access-token-0123456789',
     }], 'verified access should be saved only in the new browser storage');
     assert.ok(recoveredState.ticketReadCount > 0, 'the recovered ticket should load with its replacement private key');
+
+    const feedbackPage = await openPage(connection, 'about:blank', {
+      viewport: { width: 390, height: 844, mobile: true },
+    });
+    pages.push(feedbackPage);
+    await connection.send('Page.navigate', {
+      url: `http://127.0.0.1:${port}/support-center-browser-fixture-${process.pid}.html?member=1&feedback=1`,
+    }, feedbackPage.sessionId);
+    await waitFor(connection, feedbackPage.sessionId,
+      'Boolean(document.querySelector("[data-testid=button-dashboard-feedback]"))', Boolean);
+    const feedbackButton = await connection.evaluate<{ right: number; bottom: number; width: number; height: number }>(`(() => {
+      const rect = document.querySelector("[data-testid=button-dashboard-feedback]").getBoundingClientRect();
+      return { right: rect.right, bottom: rect.bottom, width: innerWidth, height: innerHeight };
+    })()`, feedbackPage.sessionId);
+    assert.ok(Math.abs(feedbackButton.width - feedbackButton.right) <= 24
+      && Math.abs(feedbackButton.height - feedbackButton.bottom) <= 24,
+      `mobile feedback bubble should stay reachable at bottom-right: ${JSON.stringify(feedbackButton)}`);
+    await connection.evaluate(
+      'document.querySelector("[data-testid=button-dashboard-feedback]").click()',
+      feedbackPage.sessionId,
+    );
+    await waitFor(connection, feedbackPage.sessionId,
+      'Boolean(document.querySelector("[data-testid=dialog-dashboard-feedback]"))', Boolean);
+    await connection.evaluate(
+      'document.querySelector("[data-testid=textarea-dashboard-feedback]").focus()',
+      feedbackPage.sessionId,
+    );
+    await connection.send('Input.insertText', {
+      text: 'The game card was easy to find. Please make the next action clearer.',
+    }, feedbackPage.sessionId);
+    await connection.evaluate(
+      'document.querySelector("[data-testid=button-submit-dashboard-feedback]").click()',
+      feedbackPage.sessionId,
+    );
+    await waitFor(connection, feedbackPage.sessionId,
+      'Boolean(document.querySelector("[data-testid=text-feedback-reference]"))', Boolean);
+    const submittedFeedback = await connection.evaluate<{
+      issueId: string; description: string; replyEmail: string; deviceType: string; connectionType: string;
+    }>('JSON.parse(localStorage.getItem("support-center-test-submission"))', feedbackPage.sessionId);
+    assert.deepEqual(submittedFeedback, {
+      issueId: 'feedback',
+      description: 'The game card was easy to find. Please make the next action clearer.',
+      replyEmail: 'member@example.com',
+      deviceType: 'mobile',
+      connectionType: 'unsure',
+    }, 'feedback should use the private support inbox with correct account and device details');
+    assert.equal(
+      await connection.evaluate<string>(
+        'document.querySelector("[data-testid=text-feedback-reference]")?.textContent?.trim() || ""',
+        feedbackPage.sessionId,
+      ),
+      'PS-20261011-ABC123',
+      'successful feedback should show its saved ticket reference',
+    );
   } finally {
     for (const page of pages) {
       await connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

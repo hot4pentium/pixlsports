@@ -3377,7 +3377,7 @@ components:
       additionalProperties: false
       required: [issueId, description, deviceType, connectionType, replyEmail]
       properties:
-        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, other] }
+        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, feedback, other] }
         description: { type: string, minLength: 10, maxLength: 5000 }
         deviceType: { type: string, enum: [mobile, desktop, other, unsure] }
         connectionType: { type: string, enum: [wifi, mobile-data, other, unsure] }
@@ -3492,7 +3492,7 @@ components:
         id: { type: string, format: uuid }
         reference: { type: string, minLength: 6, maxLength: 40 }
         replyEmail: { type: string, format: email, maxLength: 320 }
-        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, other] }
+        issueId: { type: string, enum: [account, billing, schedule, game-day, hype-card, feedback, other] }
         description: { type: string }
         deviceType: { type: string, enum: [mobile, desktop, other, unsure] }
         connectionType: { type: string, enum: [wifi, mobile-data, other, unsure] }

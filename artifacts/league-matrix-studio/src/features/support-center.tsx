@@ -13,7 +13,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/react';
-import { AlertCircle, Check, ChevronDown, Inbox, KeyRound, LifeBuoy, Lock, Send, Wifi } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Inbox, KeyRound, LifeBuoy, Lock, MessageSquareText, Send, Wifi } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   Dialog,
@@ -70,6 +70,161 @@ function Segmented<T extends string>({ legend, name, options, value, onChange }:
         ))}
       </div>
     </fieldset>
+  );
+}
+
+export function DashboardFeedbackBubble() {
+  const { isSignedIn, user } = useUser();
+  const qc = useQueryClient();
+  const create = useCreateSupportTicket();
+  const [open, setOpen] = useState(false);
+  const [description, setDescription] = useState('');
+  const [replyEmail, setReplyEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [reference, setReference] = useState('');
+  const defaultEmail = user?.primaryEmailAddress?.verification?.status === 'verified'
+    ? user.primaryEmailAddress.emailAddress
+    : '';
+
+  useEffect(() => {
+    if (defaultEmail) setReplyEmail((current) => current || defaultEmail);
+  }, [defaultEmail]);
+
+  if (!isSignedIn) return null;
+
+  const cleanDescription = description.trim();
+  const validEmail = isValidSupportReplyEmail(replyEmail);
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitted(true);
+    setError('');
+    if (cleanDescription.length < 10 || !validEmail || create.isPending) return;
+    const data: SupportTicketInput = {
+      issueId: 'feedback',
+      description: cleanDescription,
+      deviceType: window.matchMedia('(max-width: 767px)').matches ? 'mobile' : 'desktop',
+      connectionType: 'unsure',
+      replyEmail: replyEmail.trim(),
+    };
+    create.mutate({ data }, {
+      onSuccess: ({ ticket }) => {
+        setReference(ticket.reference);
+        setDescription('');
+        setSubmitted(false);
+        qc.setQueryData<SupportTicket[]>(getListSupportTicketsQueryKey(), (old) => [
+          ticket,
+          ...(old ?? []).filter((existing) => existing.id !== ticket.id),
+        ]);
+      },
+      onError: () => setError('Feedback was not sent. Your message is still here; please try again.'),
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => { setError(''); setOpen(true); }}
+        className="fixed z-[45] inline-flex min-h-12 items-center gap-2 rounded-full border border-[#75aaff]/50 bg-[#0B1F3A] px-5 text-sm font-bold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-[#16365c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c3ff3c]"
+        style={{
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 1rem)',
+        }}
+        aria-haspopup="dialog"
+        data-testid="button-dashboard-feedback"
+      >
+        <MessageSquareText aria-hidden className="h-4 w-4 text-[#c3ff3c]" />
+        Feedback
+      </button>
+      <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setError(''); }}>
+        <DialogContent className="border-[#75aaff]/50 sm:max-w-md" data-testid="dialog-dashboard-feedback">
+          {reference ? (
+            <div className="space-y-4 pr-5">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 font-display text-3xl uppercase">
+                  <Check aria-hidden className="h-6 w-6 text-emerald-400" />
+                  Feedback received
+                </DialogTitle>
+                <DialogDescription className="text-left leading-relaxed">
+                  Your feedback is saved in the private PIXL Sports inbox. Only you and PIXL Sports administrators can read it.
+                </DialogDescription>
+              </DialogHeader>
+              <p className="border border-border bg-background/50 p-3 text-sm">
+                Reference: <span className="font-mono font-bold text-foreground" data-testid="text-feedback-reference">{reference}</span>
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center bg-primary px-4 text-sm font-bold text-primary-foreground"
+                onClick={() => { setReference(''); setSubmitted(false); setOpen(false); }}
+                data-testid="button-dashboard-feedback-done"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="pr-6 font-display text-3xl uppercase">Share feedback</DialogTitle>
+                <DialogDescription className="text-left leading-relaxed">
+                  Tell us what worked or what could be better. This goes to the private PIXL Sports support inbox. Don’t include passwords or sign-in codes.
+                </DialogDescription>
+              </DialogHeader>
+              <form className="space-y-4" onSubmit={submit}>
+                <div>
+                  <label className="mb-1 block text-sm font-bold" htmlFor="dashboard-feedback-description">Your feedback</label>
+                  <textarea
+                    id="dashboard-feedback-description"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    className={`${field} min-h-32 resize-y py-3`}
+                    maxLength={5000}
+                    minLength={10}
+                    required
+                    placeholder="What were you trying to do? What should we know?"
+                    aria-invalid={submitted && cleanDescription.length < 10}
+                    data-testid="textarea-dashboard-feedback"
+                  />
+                  {submitted && cleanDescription.length < 10 && (
+                    <p className="mt-1 text-xs font-semibold text-destructive" role="alert">Add at least 10 characters.</p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold" htmlFor="dashboard-feedback-email">Reply email</label>
+                  <input
+                    id="dashboard-feedback-email"
+                    type="email"
+                    autoComplete="email"
+                    maxLength={254}
+                    required
+                    value={replyEmail}
+                    onChange={(event) => setReplyEmail(event.target.value)}
+                    className={field}
+                    placeholder="you@example.com"
+                    aria-invalid={submitted && !validEmail}
+                    data-testid="input-dashboard-feedback-email"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Pre-filled from your verified account when available.</p>
+                  {submitted && !validEmail && <p className="mt-1 text-xs font-semibold text-destructive" role="alert">Enter a valid reply email.</p>}
+                </div>
+                {error && <p role="alert" className="text-sm font-semibold text-destructive" data-testid="error-dashboard-feedback">{error}</p>}
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={create.isPending || !cleanDescription || !replyEmail.trim()}
+                    className="inline-flex min-h-11 items-center gap-2 bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:brightness-110 disabled:opacity-50"
+                    data-testid="button-submit-dashboard-feedback"
+                  >
+                    <Send aria-hidden className="h-4 w-4" />
+                    {create.isPending ? 'Sending…' : 'Send feedback'}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

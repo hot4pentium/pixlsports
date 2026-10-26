@@ -15,5 +15,6 @@ export const SupportTicketIssueId = {
   schedule: 'schedule',
   'game-day': 'game-day',
   'hype-card': 'hype-card',
+  feedback: 'feedback',
   other: 'other',
 } as const;
