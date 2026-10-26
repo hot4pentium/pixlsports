@@ -142,10 +142,27 @@ test('the signed-in Hype Card editor supports Breakout controls across phone and
       30_000,
     );
     assert.equal(await connection.evaluate<string>('document.body.dataset.signedInFixture', session), 'true');
+    assert.equal(await connection.evaluate<number>(
+      `document.querySelectorAll('[aria-label="Hype Card walkthrough steps"] [role="tab"]').length`,
+      session,
+    ), 3, 'the owner walkthrough has Media, Design, and Review steps');
+    assert.equal(await connection.evaluate<boolean>(
+      `Boolean(document.querySelector('[data-testid="button-walkthrough-step-moment"]'))`,
+      session,
+    ), false, 'the custom moment step is removed');
     await connection.evaluate(
-      `document.querySelector('[role="tab"]:nth-child(3)')?.click()`,
+      `document.querySelector('[data-testid="button-walkthrough-step-design"]')?.click()`,
       session,
     );
+    await waitFor(connection, session, `Boolean(document.querySelector('[data-testid="frame-template-cycler"]')) && Boolean(document.querySelector('[data-testid="lower-third-template-cycler"]'))`, Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      `Boolean(document.querySelector('[data-testid="hype-card-appearance-controls"] [data-testid="card-design-picker-cards"]'))`,
+      session,
+    ), false, 'the editor uses arrow controls instead of the tall frame grid');
+    assert.equal(await connection.evaluate<boolean>(
+      `Boolean(document.querySelector('[data-testid="hype-card-appearance-controls"] [data-testid="lower-third-template-picker"]'))`,
+      session,
+    ), false, 'the editor uses arrow controls instead of the tall lower-third grid');
     await waitFor(connection, session, `Boolean(document.querySelector('[data-testid="panel-breakout-controls"]'))`, Boolean);
 
     const panelVisible = await connection.evaluate<boolean>(
@@ -373,7 +390,7 @@ test('the signed-in Hype Card editor supports Breakout controls across phone and
     });
     const videoSession = videoPage.sessionId;
     await waitFor(connection, videoSession, `location.pathname === '/studio/hype-card' && document.querySelector('h1')?.textContent?.includes('Hype Cards')`, Boolean, 30_000);
-    await connection.evaluate(`document.querySelector('[role="tab"]:nth-child(3)')?.click()`, videoSession);
+    await connection.evaluate(`document.querySelector('[data-testid="button-walkthrough-step-design"]')?.click()`, videoSession);
     await waitFor(connection, videoSession, `Boolean(document.querySelector('[data-testid="panel-breakout-controls"]'))`, Boolean);
     const videoState = await connection.evaluate<{
       message: string;

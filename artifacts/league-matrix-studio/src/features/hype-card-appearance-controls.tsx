@@ -155,7 +155,7 @@ function HexField({ value, label, disabled, onValid }: { value: string; label: s
 
 const slider = 'w-full accent-[#EF3996] min-h-11';
 
-export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Photo placement', showAthleteSize = true, showResetButton = true, onResetPlacement, designPickerClassName = '' }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void; designPickerClassName?: string }) {
+export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Photo placement', showAthleteSize = true, showResetButton = true, onResetPlacement }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set({ borderColor: c, accentColor: c, accentLinked: true });
   const swatches = (current: string, apply: (c: string) => void, label: string, trailingControl?: ReactNode) => (
@@ -183,9 +183,7 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
   const reset = defaultCardAppearance(appearance.design);
   return (
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
-      <HypeCardDesignPicker appearance={appearance} onChange={onChange} disabled={disabled} className={designPickerClassName} />
-      <>
-        <HypeCardLowerThirdPicker appearance={appearance} onChange={onChange} disabled={disabled} />
+      <HypeCardTemplateCyclers appearance={appearance} onChange={onChange} disabled={disabled} />
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
           {placementActions}
@@ -206,7 +204,6 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
           {swatches(appearance.borderColor, setBorder, 'Border color presets and custom color', colorRow(appearance.borderColor, setBorder, 'Border'))}
         </div>
         <button type="button" disabled={disabled} onClick={() => onChange({ ...reset, jerseyNumber: appearance.jerseyNumber, position: appearance.position })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-appearance">Reset appearance</button>
-      </>
     </div>
   );
 }

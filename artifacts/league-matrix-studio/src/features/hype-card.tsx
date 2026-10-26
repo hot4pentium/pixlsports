@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   Check, Download, Eye, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, MessageCircle, Move, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2, Link2Off, Clipboard, Trash2
+  LayoutGrid, MessageCircle, Move, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2, Link2Off, Clipboard, Trash2
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -485,7 +485,7 @@ function Section({
   children,
 }: {
   title: string;
-  icon: typeof Lightbulb;
+  icon: typeof ImagePlus;
   children: ReactNode;
 }) {
   return (
@@ -500,7 +500,6 @@ function Section({
 }
 
 const hypeWalkthroughSteps = [
-  { label: 'Moment', hint: 'Write your own moment' },
   { label: 'Media', hint: 'Add player media' },
   { label: 'Design', hint: 'Choose a card template, colors, and athlete placement' },
   { label: 'Review', hint: 'Preview and export' },
@@ -1109,7 +1108,7 @@ export function HypeCardEditor({
   athleteRestricted?: boolean;
   profileOverride?: ReturnType<typeof getUserProfile>;
 } = {}) {
-  const walkthroughSteps = athleteRestricted ? hypeWalkthroughSteps.slice(0, 3) : hypeWalkthroughSteps;
+  const walkthroughSteps = athleteRestricted ? hypeWalkthroughSteps.slice(0, 2) : hypeWalkthroughSteps;
   const params = useParams();
   const [, setLocation] = useLocation();
   const cloudProjectId = params.id;
@@ -1774,7 +1773,7 @@ export function HypeCardEditor({
     try {
       const created = await createProject.mutateAsync({
         data: {
-          name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
+          name: `${project.playerName || project.teamName || 'PIXL'} HYPE Card`,
            project: projectForCloudSave(project, Boolean(accountAccess?.paid), false),
           ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey } : {}),
         }
@@ -2825,8 +2824,8 @@ export function HypeCardEditor({
       const created = await createHypeShare.mutateAsync({
         data: {
           mediaName: shareMediaName.trim(),
-          title: `${project.playerName || project.teamName || 'Pixl Sports'} · ${project.headline}`,
-          slug: slugify(`${project.teamName}-${project.playerName}-${project.headline}`).slice(0, 80) || 'hype-card',
+          title: `${project.playerName || project.teamName || 'Pixl Sports'} · ${project.headline || 'HYPE Card'}`,
+          slug: slugify(`${project.teamName}-${project.playerName}-${project.headline || 'HYPE Card'}`).slice(0, 80) || 'hype-card',
           manifest: isStatsOnly
             ? { version: 1, shareKey, shareMode: 'stats' }
             : { version: 1, shareKey, project: shareManifestProject },
@@ -3181,6 +3180,7 @@ export function HypeCardEditor({
                     role="tab"
                     aria-selected={walkthroughStep === index}
                     onClick={() => setWalkthroughStep(index)}
+                    data-testid={`button-walkthrough-step-${step.label.toLowerCase()}`}
                     className={`shrink-0 border px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${walkthroughStep === index ? 'border-primary bg-primary text-primary-foreground' : index < walkthroughStep ? 'border-primary/40 bg-primary/5 text-primary' : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
                   >
                     {index + 1}. {step.label}
@@ -3192,19 +3192,7 @@ export function HypeCardEditor({
               </p>
             </div>
 
-            {walkthroughStep === 0 && <Section title="Moment" icon={Lightbulb}>
-              <div>
-                <HypeField
-                  label="Custom moment"
-                  value={project.headline}
-                  onChange={(value) => updateProject('headline', value)}
-                  placeholder="Big Play!"
-                />
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Type the moment you want on your card. For example: Big Play!</p>
-              </div>
-            </Section>}
-
-            {walkthroughStep === 1 && <Section title="Media" icon={ImagePlus}>
+            {walkthroughStep === 0 && <Section title="Media" icon={ImagePlus}>
               <div className="hidden sm:block">
                <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos and logos in cloud storage. Guest and unpaid saves keep design settings only. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo. Guest and unpaid cloud saves contain design settings only; {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
               {cloudProjectId && !project.mediaType && (
@@ -3388,7 +3376,7 @@ export function HypeCardEditor({
               </div>
             </Section>}
 
-            {walkthroughStep === 2 && <Section title="Design" icon={LayoutGrid}>
+            {walkthroughStep === 1 && <Section title="Design" icon={LayoutGrid}>
               <div className="space-y-7">
                 <div className="rounded-xl bg-[#10243D] p-4">
                   {project.cardAppearance.design !== 'classic' && <HypeCardRepositionPreview appearance={project.cardAppearance} moving={positioningPhoto} onChange={(appearance) => updateProject('cardAppearance', appearance)}>
@@ -3424,7 +3412,7 @@ export function HypeCardEditor({
               </div>
             </Section>}
 
-            {walkthroughStep === 3 && !athleteRestricted && (
+            {walkthroughStep === 2 && !athleteRestricted && (
               <section className="border-t border-border pt-6">
                 <div className="mb-5 flex items-center gap-2">
                   <Check className="h-5 w-5 text-primary" />
@@ -3432,7 +3420,6 @@ export function HypeCardEditor({
                 </div>
                 <div className="space-y-3">
                   {[
-                    ['Moment', project.headline || 'Not added'],
                     ['Player', project.playerName || 'Your player'],
                     ['Team', project.teamName || 'Your team'],
                     ['Output', 'Portrait card'],
@@ -3482,14 +3469,14 @@ export function HypeCardEditor({
           </div>
         </aside>
 
-        <main className={`${walkthroughStep === 1 ? 'hidden sm:block' : 'block'} h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8`}>
+        <main className={`${walkthroughStep === 0 ? 'hidden sm:block' : 'block'} h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8`}>
           <div className="mx-auto h-full max-w-[800px]">
             <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
           </div>
         </main>
       </div>
 
-      <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} />
+      <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline || `${project.playerName || 'HYPE Card'} preview`} />
 
       {!athleteRestricted && <Dialog open={shareDialogOpen} onOpenChange={(open) => {
         setShareDialogOpen(open);

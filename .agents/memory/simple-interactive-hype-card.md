@@ -9,6 +9,12 @@ Interactive athlete HYPE Cards use the full original photo in a 2:3 portrait fra
 
 **How to apply:** Keep the interactive front, owner preview, and JPG export consistent. Preserve horizontal and vertical photo adjustment. Legacy premium artwork and separately authored moment graphics are independent; do not delete their saved designs or expand this simplification into that separate editor. Owner-preview links must not discard an unsaved appearance draft.
 
+The HYPE Card walkthrough should not ask for a custom moment. Leave the headline blank for new cards, use a clear “HYPE Card” fallback in names, preserve saved legacy headline values, and keep separate media clip naming fields.
+
+**Why:** The user said a custom moment input is not needed for the HYPE Card.
+
+**How to apply:** Remove the custom-moment step from HYPE Card setup and review. Do not clear existing saved headline data or remove moment names used for separate media sharing.
+
 Keep the public HYPE Card free of the “Manage this athletic card” banner, including when the viewer owns the card. Keep the taller portrait frame on content sides as well as the front.
 
 **Why:** The user explicitly requested removing the management text and extending the card vertically so more content is visible.
