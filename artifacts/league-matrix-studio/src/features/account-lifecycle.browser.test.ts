@@ -60,6 +60,9 @@ test('signed-in account controls survive phone and desktop transitions against r
     const profile = async (viewer: string) => fetch(
       `${apiOrigin}/__fixture/profile?viewer=${encodeURIComponent(viewer)}`,
     ).then((response) => response.json() as Promise<{ unsafeMetadata: Record<string, unknown> }>);
+    const athleteInvites = async (viewer: string) => fetch(
+      `${apiOrigin}/__fixture/athlete-invites?viewer=${encodeURIComponent(viewer)}`,
+    ).then((response) => response.json() as Promise<Array<Record<string, unknown>>>);
 
     vite = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
       cwd: appDirectory,
@@ -207,6 +210,7 @@ test('signed-in account controls survive phone and desktop transitions against r
     const firstSaveOwner = 'first-save-supporter';
     const firstSaveCache = await open(firstSaveOwner, 390, 844, '/studio/setup');
     await waitVisible(firstSaveCache, 'button-save-profile');
+    await waitVisible(firstSaveCache, 'initial-hype-card-notice');
     await waitFor(connection, firstSaveCache, `(
       localStorage.getItem('pixl-sports:private-dashboard:v1:first-save-supporter') === null
       && localStorage.getItem('leaguematrix-stat-tracker:first-save-supporter') === null
@@ -266,6 +270,7 @@ test('signed-in account controls survive phone and desktop transitions against r
     ), 'soccer', 'a temporary save failure must not clear the selected sport');
     assert.equal((await state(firstSaveOwner)).status, 'not_provisioned');
     assert.equal((await state(firstSaveOwner)).provisionedMarker, false);
+    assert.deepEqual(await athleteInvites(firstSaveOwner), [], 'a failed account setup must not leave a half-created HYPE Card');
     assert.deepEqual(await connection.evaluate<{ dashboard: string | null; tracker: string | null }>(
       `({
         dashboard: localStorage.getItem('pixl-sports:private-dashboard:v1:first-save-supporter'),
@@ -286,6 +291,27 @@ test('signed-in account controls survive phone and desktop transitions against r
       "document.querySelector('[data-testid=\"studio-restored\"]')?.textContent.trim() || ''",
       firstSaveCache,
     ), 'Studio access restored');
+    const firstHypeCards = await athleteInvites(firstSaveOwner);
+    assert.equal(firstHypeCards.length, 1, 'new account setup should assign one starter HYPE Card');
+    assert.deepEqual({
+      athleteName: firstHypeCards[0].athleteName,
+      teamName: firstHypeCards[0].teamName,
+      seasonName: firstHypeCards[0].seasonName,
+      sport: firstHypeCards[0].sport,
+      trackerProjectId: firstHypeCards[0].trackerProjectId,
+      scheduleProjectId: firstHypeCards[0].scheduleProjectId,
+      showHypeCard: firstHypeCards[0].showHypeCard,
+      paused: firstHypeCards[0].paused,
+    }, {
+      athleteName: 'Alex Morgan',
+      teamName: 'Northside Comets',
+      seasonName: 'Fall 2026',
+      sport: 'soccer',
+      trackerProjectId: null,
+      scheduleProjectId: null,
+      showHypeCard: true,
+      paused: true,
+    }, 'the assigned card uses setup details and remains private until the owner chooses to share');
     const savedProfile = await profile(firstSaveOwner);
     assert.deepEqual({
       role: savedProfile.unsafeMetadata.role,
@@ -311,6 +337,7 @@ test('signed-in account controls survive phone and desktop transitions against r
     await waitVisible(firstSaveCache, 'studio-restored');
     assert.equal(await connection.evaluate<string>('location.pathname', firstSaveCache), '/studio',
       'the persisted supporter profile must send a refreshed setup visit back to the studio');
+    assert.equal((await athleteInvites(firstSaveOwner)).length, 1, 'returning to setup must not duplicate the assigned HYPE Card');
     assert.deepEqual(await state(firstSaveOwner), {
       status: 'active',
       pauseEndsAt: null,

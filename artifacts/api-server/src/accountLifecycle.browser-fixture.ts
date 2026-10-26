@@ -16,6 +16,7 @@ const users = new Set([owner, other, firstSaveOwner]);
 let failNextFirstSaveClerkRead = false;
 let firstSavePublicMetadata: Record<string, unknown> = {};
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
+let firstSaveAthleteInvites: Record<string, unknown>[] = [];
 const firstSaveClerk = {
   users: {
     async getUser(userId: string) {
@@ -89,6 +90,10 @@ async function main() {
     if (req.query.viewer !== firstSaveOwner) { res.status(400).end(); return; }
     res.json({ unsafeMetadata: firstSaveUnsafeMetadata });
   });
+  app.get("/__fixture/athlete-invites", (req, res) => {
+    if (req.query.viewer !== firstSaveOwner) { res.status(400).end(); return; }
+    res.json(firstSaveAthleteInvites);
+  });
   app.post("/__fixture/profile", (req, res) => {
     if (req.body?.viewer !== firstSaveOwner || typeof req.body?.unsafeMetadata !== "object" || !req.body.unsafeMetadata) {
       res.status(400).end();
@@ -140,6 +145,30 @@ async function main() {
     (req as typeof req & { auth: typeof auth; log: { error: () => void; warn: () => void } }).auth = auth;
     req.log = { error: () => {}, warn: () => {} } as unknown as typeof req.log;
     next();
+  });
+  app.use("/api", (req, res, next) => {
+    if (req.path !== "/athlete-invites") { next(); return; }
+    const isFirstSaveOwner = req.get("x-test-user") === firstSaveOwner;
+    if (req.method === "GET") {
+      res.json(isFirstSaveOwner ? firstSaveAthleteInvites : []);
+      return;
+    }
+    if (req.method !== "POST" || !isFirstSaveOwner) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    if (firstSaveAthleteInvites.length) {
+      res.status(409).json({ error: "This account already has an athlete invite." });
+      return;
+    }
+    const invite = {
+      ...(req.body as Record<string, unknown>),
+      inviteToken: randomUUID().replaceAll("-", ""),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    firstSaveAthleteInvites = [invite];
+    res.status(201).json(invite);
   });
   app.use("/api", createAccountAccessRouter(firstSaveProvisioning));
   app.use("/api", lifecycleRouter);
