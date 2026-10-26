@@ -113,17 +113,22 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
     await waitFor(connection, session, `Boolean(document.querySelector('[data-testid="frame-template-cycler"]'))`, Boolean);
 
     assert.equal(await connection.evaluate<number>(
-      `document.querySelectorAll('[data-testid="hype-card-main-preview"] [data-testid="hype-preview-canvas"]').length`,
+      `document.querySelectorAll('[data-testid="hype-preview-canvas"]').length`,
       session,
-    ), 1, 'the Design step shows one full card preview');
+    ), 1, 'the Design step shows exactly one full card preview');
     assert.equal(await connection.evaluate<boolean>(
-      `Boolean(document.querySelector('[data-testid="hype-card-appearance-controls"] [data-testid="hype-preview-canvas"]'))`,
+      `(() => {
+        const controls = document.querySelector('[data-testid="hype-card-appearance-controls"]');
+        const arrows = controls?.querySelector('[data-testid="hype-card-template-cyclers"]');
+        const preview = controls?.querySelector('[data-testid="hype-card-main-preview"]');
+        return Boolean(arrows && preview && arrows.nextElementSibling === preview);
+      })()`,
       session,
-    ), false, 'the Design controls do not contain a second card image');
+    ), true, 'the single live preview sits directly below the design arrows');
     assert.equal(await connection.evaluate<boolean>(
       `document.querySelector('[data-testid="hype-card-main-preview"]')?.getBoundingClientRect().width > 0`,
       session,
-    ), true, 'the main preview stays visible in the Design step');
+    ), true, 'the live preview stays visible in the Design step');
 
     const frameBefore = await connection.evaluate<string>(
       `document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent?.trim() || ''`,
@@ -198,7 +203,7 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
     }, session);
     await waitFor(connection, session, 'innerWidth', (width) => width === 390);
     assert.equal(await connection.evaluate<number>(
-      `document.querySelectorAll('[data-testid="hype-card-main-preview"] [data-testid="hype-preview-canvas"]').length`,
+      `document.querySelectorAll('[data-testid="hype-preview-canvas"]').length`,
       session,
     ), 1, 'the phone layout also keeps a single live card preview');
     const phoneFit = await connection.evaluate<{ viewport: number; page: number; previewWidth: number }>(`(() => ({

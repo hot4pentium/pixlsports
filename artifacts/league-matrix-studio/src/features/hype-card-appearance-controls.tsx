@@ -155,7 +155,7 @@ function HexField({ value, label, disabled, onValid }: { value: string; label: s
 
 const slider = 'w-full accent-[#EF3996] min-h-11';
 
-export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, placementLabel = 'Photo placement', showAthleteSize = true, showResetButton = true, onResetPlacement }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void }) {
+export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, previewContent, placementLabel = 'Photo placement', showAthleteSize = true, showResetButton = true, onResetPlacement }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; previewContent?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set({ borderColor: c, accentColor: c, accentLinked: true });
   const swatches = (current: string, apply: (c: string) => void, label: string, trailingControl?: ReactNode) => (
@@ -184,6 +184,7 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
   return (
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
       <HypeCardTemplateCyclers appearance={appearance} onChange={onChange} disabled={disabled} />
+      {previewContent}
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
           {placementActions}

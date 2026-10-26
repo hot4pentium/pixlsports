@@ -3172,8 +3172,10 @@ export function HypeCardEditor({
       )}
 
       <div className="flex flex-col sm:min-h-0 sm:flex-1 sm:flex-row">
-        <aside className="hype-walkthrough-panel w-full flex-shrink-0 border-r border-border bg-background sm:min-h-0 sm:w-[460px] sm:overflow-y-auto sm:overscroll-contain lg:w-[500px] xl:w-[520px]">
-          <div className="flex flex-col gap-6 p-5">
+        <aside className={`hype-walkthrough-panel w-full flex-shrink-0 border-r border-border bg-background sm:min-h-0 sm:overflow-y-auto sm:overscroll-contain ${
+          walkthroughStep === 1 ? 'sm:w-full sm:border-r-0' : 'sm:w-[460px] lg:w-[500px] xl:w-[520px]'
+        }`}>
+          <div className={`flex flex-col gap-6 p-5 ${walkthroughStep === 1 ? 'sm:mx-auto sm:w-full sm:max-w-5xl' : ''}`}>
             <div className="border-b border-border pb-5">
               <div className="mb-3 flex items-end justify-between gap-3">
                 <div>
@@ -3397,7 +3399,21 @@ export function HypeCardEditor({
                   <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} onChange={(cardAppearance) => setProject((current) => ({
                     ...current, cardAppearance, cardSport: current.cardSport || profile.sport || '',
                     jerseyNumber: cardAppearance.jerseyNumber, position: cardAppearance.position,
-                  }))} placementActions={<div>
+                  }))} previewContent={<div className="overflow-hidden rounded-xl border border-white/15 bg-[#0B1F3A] p-2" data-testid="hype-card-main-preview">
+                    <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-[#55A4FF]">Live HYPE Card preview</div>
+                    <div className="h-[58dvh] min-h-[360px] max-h-[560px] sm:h-[64dvh] sm:min-h-[400px]">
+                      <PreviewCanvas
+                        project={project}
+                        videoUrl={videoUrl}
+                        videoRef={videoRef}
+                        onRequestPlay={loadPreviewForPlay}
+                        photoPositioning={project.cardAppearance.design !== 'classic' ? {
+                          moving: positioningPhoto,
+                          onChange: (appearance) => updateProject('cardAppearance', appearance),
+                        } : undefined}
+                      />
+                    </div>
+                  </div>} placementActions={<div>
                     <button type="button" data-testid="button-position-photo" aria-pressed={positioningPhoto} onClick={() => setPositioningPhoto(value => !value)} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white">{positioningPhoto ? 'Done positioning' : 'Position photo'}</button>
                     <p className="mt-2 text-xs text-white/70">{positioningPhoto ? 'Drag the live preview or focus it and use the arrow keys. Turn positioning off before scrolling.' : 'Choose Position photo to adjust the athlete on the live preview.'}</p>
                   </div>} />
@@ -3481,20 +3497,16 @@ export function HypeCardEditor({
           </div>
         </aside>
 
-        <main className={`${walkthroughStep === 0 ? 'hidden sm:block' : 'block'} h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8`}>
+        {walkthroughStep !== 1 && <main className={`${walkthroughStep === 0 ? 'hidden sm:block' : 'block'} h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8`}>
           <div className="mx-auto h-full max-w-[800px]" data-testid="hype-card-main-preview">
             <PreviewCanvas
               project={project}
               videoUrl={videoUrl}
               videoRef={videoRef}
               onRequestPlay={loadPreviewForPlay}
-              photoPositioning={walkthroughStep === 1 && project.cardAppearance.design !== 'classic' ? {
-                moving: positioningPhoto,
-                onChange: (appearance) => updateProject('cardAppearance', appearance),
-              } : undefined}
             />
           </div>
-        </main>
+        </main>}
       </div>
 
       <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline || `${project.playerName || 'HYPE Card'} preview`} />
