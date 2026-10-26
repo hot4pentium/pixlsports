@@ -1793,12 +1793,18 @@ export interface AthleteInviteLiveTapCheer {
   count: number;
 }
 
+export type AthleteInviteLiveTapsArchivedSeasonsItem = {
+  seasonName: string;
+  cheers: AthleteInviteLiveTapCheer[];
+};
+
 export interface AthleteInviteLiveTaps {
   active: boolean;
   /** @nullable */
   gameId: string | null;
   cheers: AthleteInviteLiveTapCheer[];
   seasonCheers: AthleteInviteLiveTapCheer[];
+  archivedSeasons?: AthleteInviteLiveTapsArchivedSeasonsItem[];
 }
 
 export interface AthleteInviteLiveTapAccessLink {

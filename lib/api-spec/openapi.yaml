@@ -4509,6 +4509,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AthleteInviteLiveTapCheer"
+        archivedSeasons:
+          type: array
+          items:
+            type: object
+            required: [seasonName, cheers]
+            properties:
+              seasonName: { type: string }
+              cheers:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AthleteInviteLiveTapCheer"
     AthleteInviteLiveTapAccessLink:
       type: object
       required: [id, createdAt]

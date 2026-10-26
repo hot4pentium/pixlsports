@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import { and, count, eq, gt, isNull } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -151,6 +151,8 @@ router.post("/athlete-invites/:inviteToken/live-taps", async (req, res): Promise
       ownerClerkUserId: athleteInvitesTable.ownerClerkUserId,
       paused: athleteInvitesTable.paused,
       liveTrackerShareToken: athleteInvitesTable.liveTrackerShareToken,
+      seasonName: athleteInvitesTable.seasonName,
+      liveTapsSeasonId: athleteInvitesTable.liveTapsSeasonId,
     }).from(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id)).for("update");
     if (!currentInvite || currentInvite.paused) return "unavailable" as const;
 
@@ -188,13 +190,27 @@ router.post("/athlete-invites/:inviteToken/live-taps", async (req, res): Promise
       return "not-live" as const;
     }
 
+    const seasonId = currentInvite.liveTapsSeasonId ?? randomUUID();
+    if (!currentInvite.liveTapsSeasonId) {
+      await tx.update(athleteInvitesTable).set({ liveTapsSeasonId: seasonId })
+        .where(eq(athleteInvitesTable.id, currentInvite.id));
+      await tx.update(athleteInviteLiveTapsTable).set({
+        seasonId,
+        seasonName: currentInvite.seasonName,
+      }).where(and(
+        eq(athleteInviteLiveTapsTable.inviteId, currentInvite.id),
+        isNull(athleteInviteLiveTapsTable.seasonId),
+      ));
+    }
     await tx.insert(athleteInviteLiveTapsTable).values({
       inviteId: invite.id,
+      seasonId,
+      seasonName: currentInvite.seasonName,
       gameId: share.gameId,
       cheerKey: body.data.cheerKey,
       accessLinkId,
     });
-    return { gameId: share.gameId } as const;
+    return { gameId: share.gameId, seasonId } as const;
   });
 
   if (result === "unauthorized") {
@@ -214,7 +230,12 @@ router.post("/athlete-invites/:inviteToken/live-taps", async (req, res): Promise
     res.status(409).json({ error: "Live Taps are available only while Game Day Live is active." });
     return;
   }
-  const summary = await getAthleteLiveTapsSummary(invite.id, invite.sport, result.gameId);
+  const summary = await getAthleteLiveTapsSummary(
+    invite.id,
+    invite.sport,
+    result.gameId,
+    result.seasonId,
+  );
   res.status(201).json(SendAthleteLiveTapResponse.parse(summary));
 });
 

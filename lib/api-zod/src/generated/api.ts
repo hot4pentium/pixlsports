@@ -3127,6 +3127,8 @@ export const getAthleteInviteResponseLiveTapsCheersItemCountMin = 0;
 
 export const getAthleteInviteResponseLiveTapsSeasonCheersItemCountMin = 0;
 
+export const getAthleteInviteResponseLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
 
 
 export const GetAthleteInviteResponse = zod.object({
@@ -3260,7 +3262,16 @@ export const GetAthleteInviteResponse = zod.object({
   "label": zod.string(),
   "emoji": zod.string(),
   "count": zod.number().int().min(getAthleteInviteResponseLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteInviteResponseLiveTapsArchivedSeasonsItemCheersItemCountMin)
 }))
+})).optional()
 }),
   "updatedAt": zod.coerce.date()
 })
@@ -3837,6 +3848,8 @@ export const getAthleteFanCardResponseLiveTapsCheersItemCountMin = 0;
 
 export const getAthleteFanCardResponseLiveTapsSeasonCheersItemCountMin = 0;
 
+export const getAthleteFanCardResponseLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
 
 
 export const GetAthleteFanCardResponse = zod.object({
@@ -3976,7 +3989,16 @@ export const GetAthleteFanCardResponse = zod.object({
   "label": zod.string(),
   "emoji": zod.string(),
   "count": zod.number().int().min(getAthleteFanCardResponseLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteFanCardResponseLiveTapsArchivedSeasonsItemCheersItemCountMin)
 }))
+})).optional()
 }),
   "updatedAt": zod.coerce.date()
 })
@@ -4106,6 +4128,8 @@ export const sendAthleteLiveTapResponseCheersItemCountMin = 0;
 
 export const sendAthleteLiveTapResponseSeasonCheersItemCountMin = 0;
 
+export const sendAthleteLiveTapResponseArchivedSeasonsItemCheersItemCountMin = 0;
+
 
 
 export const SendAthleteLiveTapResponse = zod.object({
@@ -4122,7 +4146,16 @@ export const SendAthleteLiveTapResponse = zod.object({
   "label": zod.string(),
   "emoji": zod.string(),
   "count": zod.number().int().min(sendAthleteLiveTapResponseSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(sendAthleteLiveTapResponseArchivedSeasonsItemCheersItemCountMin)
 }))
+})).optional()
 })
 
 

@@ -886,11 +886,16 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     })));
     assert.ok(concurrentTaps.every((response) => response.status === 201));
 
-    const [inviteRow] = await db.select({ id: athleteInvitesTable.id }).from(athleteInvitesTable)
+    const [inviteRow] = await db.select({
+      id: athleteInvitesTable.id,
+      liveTapsSeasonId: athleteInvitesTable.liveTapsSeasonId,
+    }).from(athleteInvitesTable)
       .where(eq(athleteInvitesTable.publicToken, created.inviteToken));
     assert.ok(inviteRow);
     await db.insert(athleteInviteLiveTapsTable).values({
       inviteId: inviteRow.id,
+      seasonId: inviteRow.liveTapsSeasonId,
+      seasonName: "Fall 2026",
       gameId: "previous-game",
       cheerKey: "bucket",
     });
@@ -1004,6 +1009,43 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       { gameId: liveSession.gameId, cheerKey: "big-play" },
       { gameId: "previous-game", cheerKey: "bucket" },
     ].sort((left, right) => `${left.gameId}:${left.cheerKey}`.localeCompare(`${right.gameId}:${right.cheerKey}`)));
+
+    const newSeason = await fetch(publicUrl, {
+      method: "PATCH",
+      headers: { "x-test-user": ownerId, "content-type": "application/json" },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Hoops",
+        seasonName: "Spring 2027",
+        seasonEndsAt: new Date(Date.now() + 180 * 86_400_000).toISOString(),
+        sport: "basketball",
+        timezone: "America/Los_Angeles",
+        trackerProjectId: tracker.id,
+        scheduleProjectId: null,
+        showHypeCard: true,
+        showStats: true,
+        showSchedule: false,
+      }),
+    });
+    assert.equal(newSeason.status, 200);
+    const newSeasonPublic = GetAthleteInviteResponse.parse(await (await fetch(publicUrl)).json());
+    assert.equal(newSeasonPublic.seasonName, "Spring 2027");
+    assert.equal(newSeasonPublic.liveTaps.seasonCheers.find((cheer) => cheer.key === "bucket")?.count, 0,
+      "a new season begins with a fresh cheer total");
+    assert.deepEqual(
+      newSeasonPublic.liveTaps.archivedSeasons?.map((season) => ({
+        seasonName: season.seasonName,
+        bucket: season.cheers.find((cheer) => cheer.key === "bucket")?.count ?? 0,
+      })),
+      [{ seasonName: "Fall 2026", bucket: 11 }],
+      "the prior season's cheer record remains available on the HYPE Card",
+    );
+    const persistedSeasonTaps = await db.select({
+      seasonName: athleteInviteLiveTapsTable.seasonName,
+      gameId: athleteInviteLiveTapsTable.gameId,
+    }).from(athleteInviteLiveTapsTable).where(eq(athleteInviteLiveTapsTable.inviteId, inviteRow.id));
+    assert.ok(persistedSeasonTaps.every((tap) => tap.seasonName === "Fall 2026"),
+      "existing cheers keep their original season after rollover");
 
     const liveTapsOnlyGame = {
       id: "live-taps-only-game",

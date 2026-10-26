@@ -15,6 +15,12 @@ For write access, the owner creates revocable family QR codes for in-person scan
 
 **How to apply:** Keep QR authorization independent of public-card loading, and preserve old tap rows when access is revoked or a live share ends.
 
+Keep each cheer attached to a distinct season identity as well as its display name. When an owner changes the season, archive unassigned legacy taps under the previous season and start a new identity; do not use the season label alone as the grouping key because a label can be reused later.
+
+**Why:** A new season must start with a fresh total while prior HYPE Card records remain available, including when an athlete later reuses an earlier season label.
+
+**How to apply:** Store the season identity and name with each tap, filter current-game and season totals by that identity, and expose older season groups separately.
+
 Owner recovery must use authenticated, owner-only session metadata. Do not expose Event Card recovery identifiers through public share responses or HYPE Card links.
 
 **Why:** Owners need a device-independent way to return to an active session, but public sharing must remain view-only.

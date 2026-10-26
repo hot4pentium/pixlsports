@@ -736,6 +736,28 @@ export function LivingAthleteCardPage({
                       ) : (
                         <p className="living-card-live-tap-note">Every tap adds one cheer to this game. Cheers never change official stats.</p>
                       )}
+                      {(invite.liveTaps.archivedSeasons ?? []).length > 0 && (
+                        <details className="living-card-live-tap-archives" data-testid="live-tap-archives">
+                          <summary>Past seasons ({invite.liveTaps.archivedSeasons?.length})</summary>
+                          {invite.liveTaps.archivedSeasons?.map((season, index) => (
+                            <div className="living-card-live-tap-archive" key={`${season.seasonName}-${index}`}>
+                              <div className="living-card-live-tap-archive-heading">
+                                <strong>{season.seasonName}</strong>
+                                <span>{season.cheers.reduce((total, cheer) => total + cheer.count, 0)} cheers</span>
+                              </div>
+                              <ul aria-label={`${season.seasonName} cheers`}>
+                                {season.cheers.filter((cheer) => cheer.count > 0).map((cheer) => (
+                                  <li key={cheer.key}>
+                                    <span aria-hidden="true">{cheer.emoji}</span>
+                                    <span>{cheer.label}</span>
+                                    <strong>{cheer.count}</strong>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </details>
+                      )}
                       <p
                         className="living-card-live-tap-feedback"
                         role={liveTapFeedback.includes('could not') || liveTapFeedback.includes('revoked') || liveTapFeedback.includes('limit') ? 'alert' : 'status'}

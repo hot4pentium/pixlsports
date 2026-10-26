@@ -9,6 +9,7 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   athleteName: text("athlete_name").notNull(),
   teamName: text("team_name").notNull(),
   seasonName: text("season_name").notNull(),
+  liveTapsSeasonId: uuid("live_taps_season_id"),
   seasonEndsAt: timestamp("season_ends_at", { withTimezone: true }).notNull(),
   sport: text("sport").notNull(),
   timezone: text("timezone"),

@@ -79,6 +79,7 @@ export * from './athleteInviteLiveTapAccessLinkCreated';
 export * from './athleteInviteLiveTapCheer';
 export * from './athleteInviteLiveTapInput';
 export * from './athleteInviteLiveTaps';
+export * from './athleteInviteLiveTapsArchivedSeasonsItem';
 export * from './athleteInviteManifest';
 export * from './athleteInviteManifestDisplay';
 export * from './athleteInviteManifestIcon';

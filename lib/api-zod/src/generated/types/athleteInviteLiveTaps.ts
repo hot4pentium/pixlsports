@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AthleteInviteLiveTapCheer } from './athleteInviteLiveTapCheer';
+import type { AthleteInviteLiveTapsArchivedSeasonsItem } from './athleteInviteLiveTapsArchivedSeasonsItem';
 
 export interface AthleteInviteLiveTaps {
   active: boolean;
@@ -13,4 +14,5 @@ export interface AthleteInviteLiveTaps {
   gameId: string | null;
   cheers: AthleteInviteLiveTapCheer[];
   seasonCheers: AthleteInviteLiveTapCheer[];
+  archivedSeasons?: AthleteInviteLiveTapsArchivedSeasonsItem[];
 }

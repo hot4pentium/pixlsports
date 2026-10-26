@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import { and, count, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -36,6 +36,7 @@ import {
 import {
   athleteInvitesTable,
   athleteInviteHypesTable,
+  athleteInviteLiveTapsTable,
   cloudProjectsTable,
   db,
   hypeCardShareRepliesTable,
@@ -367,6 +368,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
     invite.id,
     invite.sport,
     liveGame && liveShare?.gameId ? liveShare.gameId : null,
+    invite.liveTapsSeasonId,
   );
 
   return {
@@ -487,6 +489,7 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
       athleteName: parsed.data.athleteName.trim(),
       teamName: parsed.data.teamName.trim(),
       seasonName: parsed.data.seasonName.trim(),
+      liveTapsSeasonId: randomUUID(),
       ownerClerkUserId,
       publicToken: randomBytes(24).toString("base64url"),
     }).returning();
@@ -742,26 +745,47 @@ router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pro
     res.status(400).json({ error: "Choose tracker and schedule projects owned by this account." });
     return;
   }
-  const [current] = await db.select({
-    liveTrackerShareToken: athleteInvitesTable.liveTrackerShareToken,
-  }).from(athleteInvitesTable).where(and(
-    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
-    eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
-  ));
-  const [updated] = await db.update(athleteInvitesTable).set({
-    ...parsed.data,
-    scheduleProjectId: null,
-    showSchedule: false,
-    ...(parsed.data.paused === undefined ? {} : { paused: parsed.data.paused }),
-    ...(parsed.data.paused === true ? { liveTrackerShareToken: null } : {}),
-    athleteName: parsed.data.athleteName.trim(),
-    teamName: parsed.data.teamName.trim(),
-    seasonName: parsed.data.seasonName.trim(),
-    updatedAt: new Date(),
-  }).where(and(
-    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
-    eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
-  )).returning();
+  const { current, updated } = await db.transaction(async (tx) => {
+    const [currentInvite] = await tx.select({
+      id: athleteInvitesTable.id,
+      seasonName: athleteInvitesTable.seasonName,
+      liveTapsSeasonId: athleteInvitesTable.liveTapsSeasonId,
+      liveTrackerShareToken: athleteInvitesTable.liveTrackerShareToken,
+    }).from(athleteInvitesTable).where(and(
+      eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+      eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+    )).for("update");
+    if (!currentInvite) return { current: null, updated: null };
+
+    const nextSeasonName = parsed.data.seasonName.trim();
+    const seasonChanged = currentInvite.seasonName !== nextSeasonName;
+    const currentSeasonId = currentInvite.liveTapsSeasonId ?? randomUUID();
+    const nextSeasonId = seasonChanged ? randomUUID() : currentSeasonId;
+    await tx.update(athleteInviteLiveTapsTable).set({
+      seasonId: currentSeasonId,
+      seasonName: currentInvite.seasonName,
+    }).where(and(
+      eq(athleteInviteLiveTapsTable.inviteId, currentInvite.id),
+      isNull(athleteInviteLiveTapsTable.seasonId),
+    ));
+
+    const [updatedInvite] = await tx.update(athleteInvitesTable).set({
+      ...parsed.data,
+      scheduleProjectId: null,
+      showSchedule: false,
+      ...(parsed.data.paused === undefined ? {} : { paused: parsed.data.paused }),
+      ...(parsed.data.paused === true ? { liveTrackerShareToken: null } : {}),
+      athleteName: parsed.data.athleteName.trim(),
+      teamName: parsed.data.teamName.trim(),
+      seasonName: nextSeasonName,
+      liveTapsSeasonId: nextSeasonId,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+      eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+    )).returning();
+    return { current: currentInvite, updated: updatedInvite ?? null };
+  });
   if (!updated) {
     res.status(404).json({ error: "Athlete invite not found" });
     return;
