@@ -34,8 +34,7 @@ test('supporter guide separates account tools from public-card actions', async (
     guide,
     /<Link href="\/studio" data-testid="link-supporter-guide-hub">[\s\S]*?<ArrowLeft size=\{16\} aria-hidden="true" \/>[\s\S]*?Back to dashboard[\s\S]*?<\/Link>/,
   );
-  assert.match(dashboard, /href="\/supporter-guide"[^>]*data-testid="link-mobile-supporter-guide"/);
-  assert.match(dashboard, /href="\/supporter-guide"[^>]*data-testid="link-desktop-supporter-guide"/);
+  assert.doesNotMatch(dashboard, /data-testid="link-(?:mobile|desktop)-supporter-guide"/);
   const printStyles = styles.slice(styles.indexOf('@media print'));
   assert.match(styles, /@page\s*\{\s*size:\s*letter portrait;/);
   assert.match(printStyles, /\.supporter-guide-actions\s*\{\s*display:\s*none;/);

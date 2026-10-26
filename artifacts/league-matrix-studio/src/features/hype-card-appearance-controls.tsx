@@ -157,7 +157,7 @@ function HexField({ value, label, disabled, onValid }: { value: string; label: s
 
 const slider = 'w-full accent-[#EF3996] min-h-11';
 
-export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, previewContent, placementLabel = 'Photo placement', showAthleteSize = true, showResetButton = true, onResetPlacement }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; previewContent?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void }) {
+export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, previewContent, placementLabel = 'Photo position', showAthleteSize = true, showResetButton = true, onResetPlacement }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; previewContent?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set({ borderColor: c, accentColor: c, accentLinked: true });
   const swatches = (current: string, apply: (c: string) => void, label: string, trailingControl?: ReactNode) => (
@@ -179,21 +179,23 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
   const range = (label: string, value: number, min: number, max: number, step: number, key: 'athleteScale' | 'athleteX' | 'athleteY', fmt: (v: number) => string) => (
     <label className="block text-xs font-bold uppercase tracking-widest text-white/80">
       <span className="flex justify-between"><span>{label}</span><span className="font-mono normal-case tracking-normal text-white/60">{fmt(value)}</span></span>
-      <input type="range" className={slider} min={min} max={max} step={step} value={value} disabled={disabled} onChange={(e) => set({ [key]: Number(e.target.value) })} />
+      <input type="range" className={slider} min={min} max={max} step={step} value={value} disabled={disabled} onChange={(e) => set({ [key]: Number(e.target.value) })} data-testid={`slider-card-${key}`} />
     </label>
   );
   const reset = defaultCardAppearance(appearance.design);
   return (
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
-      <HypeCardTemplateCyclers appearance={appearance} onChange={onChange} disabled={disabled} />
       {previewContent}
-        <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
-          {placementActions}
-          {showAthleteSize && range('Photo zoom', appearance.athleteScale, 1, 1.6, .01, 'athleteScale', (v) => `${Math.round(v * 100)}%`)}
-          {showResetButton && onResetPlacement && <button type="button" disabled={disabled} onClick={onResetPlacement} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset layer position</button>}
-          {showResetButton && !onResetPlacement && <button type="button" disabled={disabled} onClick={() => set({ athleteScale: 1, athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset placement</button>}
-        </div>
+      <HypeCardTemplateCyclers appearance={appearance} onChange={onChange} disabled={disabled} />
+      <div className="space-y-3" data-testid="hype-card-photo-position-controls">
+        <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
+        {placementActions}
+        {range('Horizontal', appearance.athleteX, -.25, .25, .01, 'athleteX', (v) => `${Math.round(v * 100)}%`)}
+        {range('Vertical', appearance.athleteY, -.18, .18, .01, 'athleteY', (v) => `${Math.round(v * 100)}%`)}
+        {showAthleteSize && range('Zoom', appearance.athleteScale, 1, 1.6, .01, 'athleteScale', (v) => `${Math.round(v * 100)}%`)}
+        {showResetButton && onResetPlacement && <button type="button" disabled={disabled} onClick={onResetPlacement} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset layer position</button>}
+        {showResetButton && !onResetPlacement && <button type="button" disabled={disabled} onClick={() => set({ athleteScale: 1, athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset position</button>}
+      </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-xs font-bold uppercase tracking-widest text-white/80">Jersey number
             <input value={appearance.jerseyNumber} maxLength={12} disabled={disabled} onChange={(e) => set({ jerseyNumber: e.target.value })} className="mt-1 h-11 w-full rounded border border-white/30 bg-white/10 px-3 text-sm normal-case tracking-normal text-white" data-testid="input-card-jersey" />

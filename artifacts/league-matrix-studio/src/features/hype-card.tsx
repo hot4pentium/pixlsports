@@ -67,6 +67,7 @@ import {
 import { HypeCardBreakoutControls, type BreakoutTransform } from './hype-card-breakout-controls';
 import { CardFinishOptions } from './hype-card-design-controls';
 import { HypeCardAppearanceControls } from './hype-card-appearance-controls';
+import { HypeCardPreviewNavigation } from './classic-hype-card-preview';
 import { HypeCardRepositionPreview } from './hype-card-reposition-preview';
 import { hasUsableTransparency } from './hype-card-breakout-validation';
 import { applyLatestLinkedStat } from './hype-card-stat-sync';
@@ -3413,6 +3414,7 @@ export function HypeCardEditor({
                         } : undefined}
                       />
                     </div>
+                    <HypeCardPreviewNavigation />
                   </div>} placementActions={<div>
                     <button type="button" data-testid="button-position-photo" aria-pressed={positioningPhoto} onClick={() => setPositioningPhoto(value => !value)} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white">{positioningPhoto ? 'Done positioning' : 'Position photo'}</button>
                     <p className="mt-2 text-xs text-white/70">{positioningPhoto ? 'Drag the live preview or focus it and use the arrow keys. Turn positioning off before scrolling.' : 'Choose Position photo to adjust the athlete on the live preview.'}</p>

@@ -20,7 +20,7 @@ import {
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
   ArrowLeft, ArrowRight, PenSquare, Loader2, AlertTriangle, X,
-  Menu, Bell, ShieldCheck, BookOpen
+  Menu, Bell, ShieldCheck
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -1435,10 +1435,6 @@ export function SupporterDashboardView({
                 <ArrowLeft size={16} aria-hidden="true" />
                 <span>View stats</span>
               </Link>
-              <Link href="/supporter-guide" className="combined-actions-card__stats-link" data-testid="link-mobile-supporter-guide">
-                <BookOpen size={16} aria-hidden="true" />
-                <span>Family guide</span>
-              </Link>
             </div>
           </section>
           {selectionSyncError && <p role="status" className="text-sm text-red-700" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
@@ -1538,10 +1534,6 @@ export function SupporterDashboardView({
               <Link href={dashboardStatsHref} className="combined-actions-card__stats-link" data-testid="link-desktop-independent-stats">
                 <ArrowLeft size={16} aria-hidden="true" />
                 <span>View stats</span>
-              </Link>
-              <Link href="/supporter-guide" className="combined-actions-card__stats-link" data-testid="link-desktop-supporter-guide">
-                <BookOpen size={16} aria-hidden="true" />
-                <span>Family guide</span>
               </Link>
             </div>
           </section>

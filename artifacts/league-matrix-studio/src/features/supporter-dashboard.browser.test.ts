@@ -5544,9 +5544,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         statsLabel: string;
         statsPath: string;
         statsEventId: string;
-        familyGuideVisible: boolean;
-        familyGuidePath: string;
-        guideAndStatsAreSpaced: boolean;
+        familyGuideRemoved: boolean;
         quickLinksFitWithinCard: boolean;
         hypeQuickLinkRemoved: boolean;
         actionsUseSingleStatsButton: boolean;
@@ -5554,13 +5552,10 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       }>(`(() => {
         const shell = document.querySelector('.supporter-dashboard-mobile-shell');
         const stats = shell?.querySelector('[data-testid="link-mobile-independent-stats"]');
-        const familyGuide = shell?.querySelector('[data-testid="link-mobile-supporter-guide"]');
         const group = shell?.querySelector('[data-testid="dashboard-primary-actions-mobile"]');
         const grid = group?.querySelector('[data-testid="dashboard-primary-actions-grid"]');
         const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
-        const familyGuideUrl = familyGuide instanceof HTMLAnchorElement ? new URL(familyGuide.href) : null;
         const statsRect = stats instanceof HTMLElement ? stats.getBoundingClientRect() : null;
-        const familyGuideRect = familyGuide instanceof HTMLElement ? familyGuide.getBoundingClientRect() : null;
         const gridRect = grid instanceof HTMLElement ? grid.getBoundingClientRect() : null;
         const statsStyle = stats instanceof HTMLElement ? getComputedStyle(stats) : null;
         const visible = (element) => element instanceof HTMLElement
@@ -5574,24 +5569,16 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
           statsLabel: stats?.textContent?.trim() || '',
           statsPath: statsUrl?.pathname || '',
           statsEventId: statsUrl?.searchParams.get('eventId') || '',
-          familyGuideVisible: visible(familyGuide),
-          familyGuidePath: familyGuideUrl?.pathname || '',
-          guideAndStatsAreSpaced: Boolean(statsRect && familyGuideRect && (
-            Math.abs(statsRect.top - familyGuideRect.top) < 1
-              ? familyGuideRect.left - statsRect.right
-              : familyGuideRect.top - statsRect.bottom
-          ) >= 7),
+          familyGuideRemoved: !shell?.querySelector('[data-testid="link-mobile-supporter-guide"]'),
           quickLinksFitWithinCard: Boolean(
-            grid instanceof HTMLElement && gridRect && statsRect && familyGuideRect
+            grid instanceof HTMLElement && gridRect && statsRect
             && statsRect.left >= gridRect.left - 1
-            && familyGuideRect.left >= gridRect.left - 1
             && statsRect.right <= gridRect.right + 1
-            && familyGuideRect.right <= gridRect.right + 1
             && grid.scrollWidth <= grid.clientWidth + 1,
           ),
           hypeQuickLinkRemoved: !shell?.querySelector('[data-testid="link-mobile-independent-hype"]'),
           actionsUseSingleStatsButton: Boolean(
-            group && grid && stats?.parentElement === grid && statsStyle?.display === 'flex'
+            group && grid && stats?.parentElement === grid && grid.children.length === 1 && statsStyle?.display === 'flex'
             && getComputedStyle(grid).display === 'flex' && statsRect && gridRect && statsRect.width < gridRect.width,
           ),
           statsMatchesReference: Boolean(
@@ -5610,9 +5597,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         statsLabel: 'View stats',
         statsPath: '/studio/season-stats',
         statsEventId: '',
-        familyGuideVisible: true,
-        familyGuidePath: '/supporter-guide',
-        guideAndStatsAreSpaced: true,
+        familyGuideRemoved: true,
         quickLinksFitWithinCard: true,
         hypeQuickLinkRemoved: true,
         actionsUseSingleStatsButton: true,
@@ -5716,8 +5701,9 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       statsLabel: string;
       statsPath: string;
       statsEventId: string;
+      familyGuideRemoved: boolean;
       hypeQuickLinkRemoved: boolean;
-      actionsUseTwoColumnQuickLinks: boolean;
+      actionsUseSingleStatsLink: boolean;
       statsMatchesReference: boolean;
     }>(`(() => {
       const mobile = document.querySelector('.supporter-dashboard-mobile-shell');
@@ -5751,7 +5737,6 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       const stats = shell?.querySelector('[data-testid="link-desktop-independent-stats"]');
       const group = shell?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
       const grid = group?.querySelector('[data-testid="dashboard-primary-actions-grid"]');
-      const familyGuide = group?.querySelector('[data-testid="link-desktop-supporter-guide"]');
       const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
       const statsRect = stats instanceof HTMLElement ? stats.getBoundingClientRect() : null;
       const gridRect = grid instanceof HTMLElement ? grid.getBoundingClientRect() : null;
@@ -5787,11 +5772,12 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         statsLabel: stats?.textContent?.trim() || '',
         statsPath: statsUrl?.pathname || '',
         statsEventId: statsUrl?.searchParams.get('eventId') || '',
+        familyGuideRemoved: !shell?.querySelector('[data-testid="link-desktop-supporter-guide"]'),
         hypeQuickLinkRemoved: !shell?.querySelector('[data-testid="link-desktop-independent-hype"]'),
-        actionsUseTwoColumnQuickLinks: Boolean(
-          group && grid && stats?.parentElement === grid && familyGuide?.parentElement === grid
+        actionsUseSingleStatsLink: Boolean(
+          group && grid && stats?.parentElement === grid && grid.children.length === 1
           && statsStyle?.display === 'flex' && getComputedStyle(grid).display === 'grid'
-          && statsRect && gridRect && statsRect.width < gridRect.width,
+            && statsRect && gridRect && Math.abs(statsRect.width - gridRect.width) <= 1,
         ),
         statsMatchesReference: Boolean(
           statsStyle && stats?.querySelector('svg')
@@ -5823,8 +5809,9 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       statsLabel: 'View stats',
       statsPath: '/studio/season-stats',
       statsEventId: '',
+      familyGuideRemoved: true,
       hypeQuickLinkRemoved: true,
-      actionsUseTwoColumnQuickLinks: true,
+      actionsUseSingleStatsLink: true,
       statsMatchesReference: true,
     });
     assert.equal(

@@ -116,15 +116,31 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       `document.querySelectorAll('[data-testid="hype-preview-canvas"]').length`,
       session,
     ), 1, 'the Design step shows exactly one full card preview');
-    assert.equal(await connection.evaluate<boolean>(
+    const designOrder = await connection.evaluate<boolean>(
       `(() => {
         const controls = document.querySelector('[data-testid="hype-card-appearance-controls"]');
-        const arrows = controls?.querySelector('[data-testid="hype-card-template-cyclers"]');
         const preview = controls?.querySelector('[data-testid="hype-card-main-preview"]');
-        return Boolean(arrows && preview && arrows.nextElementSibling === preview);
+        const navigation = preview?.querySelector('[data-testid="appearance-navigation-preview"]');
+        const canvas = preview?.querySelector('[data-testid="hype-preview-canvas"]');
+        const arrows = controls?.querySelector('[data-testid="hype-card-template-cyclers"]');
+        const photoControls = controls?.querySelector('[data-testid="hype-card-photo-position-controls"]');
+        const sides = Array.from(navigation?.children ?? []).map((item) => item.textContent?.trim());
+        return Boolean(
+          preview && controls?.firstElementChild === preview
+          && navigation?.parentElement === preview
+          && navigation.previousElementSibling?.contains(canvas)
+          && sides.join('|') === 'Replies|Stats|Taps|Events'
+          && preview.nextElementSibling === arrows
+          && arrows?.nextElementSibling === photoControls
+        );
       })()`,
       session,
-    ), true, 'the single live preview sits directly below the design arrows');
+    );
+    assert.equal(designOrder, true, 'the card, four-side strip, design arrows, and position controls appear in order');
+    assert.equal(await connection.evaluate<number>(
+      `document.querySelectorAll('[data-testid="slider-card-athleteX"], [data-testid="slider-card-athleteY"], [data-testid="slider-card-athleteScale"]').length`,
+      session,
+    ), 3, 'the photo controls include horizontal, vertical, and zoom sliders');
     assert.equal(await connection.evaluate<boolean>(
       `document.querySelector('[data-testid="hype-card-main-preview"]')?.getBoundingClientRect().width > 0`,
       session,
@@ -138,6 +154,24 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       `document.querySelectorAll('[data-testid="hype-preview-canvas"] img').length`,
       session,
     ), 0, 'the full-card template does not add the legacy inset image');
+
+    const horizontalBefore = await connection.evaluate<string>(
+      `document.querySelector('[data-testid="slider-card-athleteX"]')?.value || ''`,
+      session,
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="slider-card-athleteX"]')?.focus()`, session);
+    await connection.send('Input.dispatchKeyEvent', {
+      type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39,
+    }, session);
+    await connection.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39,
+    }, session);
+    await waitFor(
+      connection,
+      session,
+      `document.querySelector('[data-testid="slider-card-athleteX"]')?.value || ''`,
+      (value) => Number(value) !== Number(horizontalBefore),
+    );
 
     const frameBefore = await connection.evaluate<string>(
       `document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent?.trim() || ''`,
@@ -215,6 +249,18 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       `document.querySelectorAll('[data-testid="hype-preview-canvas"]').length`,
       session,
     ), 1, 'the phone layout also keeps a single live card preview');
+    assert.equal(await connection.evaluate<boolean>(
+      `(() => {
+        const controls = document.querySelector('[data-testid="hype-card-appearance-controls"]');
+        const preview = controls?.querySelector('[data-testid="hype-card-main-preview"]');
+        const navigation = preview?.querySelector('[data-testid="appearance-navigation-preview"]');
+        const arrows = controls?.querySelector('[data-testid="hype-card-template-cyclers"]');
+        const photoControls = controls?.querySelector('[data-testid="hype-card-photo-position-controls"]');
+        return Boolean(preview?.nextElementSibling === arrows && arrows?.nextElementSibling === photoControls
+          && navigation?.children.length === 4);
+      })()`,
+      session,
+    ), true, 'the phone layout retains the four controls before the arrows and photo sliders');
     const phoneFit = await connection.evaluate<{ viewport: number; page: number; previewWidth: number }>(`(() => ({
       viewport: document.documentElement.clientWidth,
       page: document.documentElement.scrollWidth,
