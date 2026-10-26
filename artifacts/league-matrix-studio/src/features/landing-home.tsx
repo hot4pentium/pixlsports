@@ -116,7 +116,6 @@ function AthletePreview() {
           <span className="landing-hype-card-tab"><CalendarDays size={10} /><span>Events</span></span>
         </div>
       </div>
-      <span className="showcase-note">Product preview · Hype Card</span>
     </div>
   );
 }
@@ -125,7 +124,6 @@ function DashboardPreview({ variant }: { variant: 'mobile' | 'landscape' }) {
   const mobile = variant === 'mobile';
   return (
     <div className="tool-preview">
-      <span className="preview-watermark">Product preview · Fictional dashboard</span>
       <div className={`dashboard-preview dashboard-preview--${variant}`}>
         <img
           src={mobile ? dashboardMobile : dashboardLandscape}

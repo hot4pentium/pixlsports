@@ -143,7 +143,6 @@
 .new-landing .landing-hype-card-tab + .landing-hype-card-tab { border-left: 1px solid #304b64; }
 .new-landing .landing-hype-card-tab svg { width: 9px; height: 9px; flex: none; }
 .new-landing .landing-hype-card-tab--active { color: #102338; background: #f1f4f2; }
-.new-landing .athlete-showcase .showcase-note {position:absolute;bottom:23px;left:25px;color:#d1e6e9;font-size:10px;letter-spacing:.1em;text-transform:uppercase;}
 .new-landing .athlete-copy h2 { max-width: 480px; }
 .new-landing .athlete-copy .hype-word { color: var(--pixl-lime); -webkit-text-stroke: 1px var(--pixl-navy); paint-order: stroke fill; }
 .new-landing .athlete-copy > p { max-width: 475px; color: #4d6470; font-size: 15px; line-height: 1.8; margin-top: 23px; }
@@ -159,7 +158,6 @@
 .new-landing .tool-preview { height:360px;display:grid;place-items:center;overflow:hidden;position:relative; }
 .new-landing .tool-card:first-child .tool-preview { background:radial-gradient(circle at 70% 10%,#81a9bf,#3c6e89 60%,#1e455f); }
 .new-landing .tool-card:last-child .tool-preview { background:radial-gradient(circle at 70% 10%,#8fb6c6,#4d829c 58%,#24536d); }
-.new-landing .preview-watermark { position:absolute;top:18px;left:20px;z-index:2;font-size:9px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:#173d4b; background:#f9fff2db;padding:7px 10px;border-radius:4px; }
 .new-landing .dashboard-preview {pointer-events:none;box-shadow:0 21px 38px #092b4269;overflow:hidden;}
 .new-landing .dashboard-preview img {display:block;width:100%;height:auto;}
 .new-landing .dashboard-preview--mobile {position:absolute;top:35px;left:50%;width:205px;padding:7px;background:#edf2f5;border-radius:18px;transform:translateX(-50%) rotate(-5deg);}

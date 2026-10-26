@@ -53,7 +53,7 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   for (const step of ['Plan', 'Prep', 'Follow', 'Celebrate']) {
     assert.match(source, new RegExp(`title: '${step}'`));
   }
-  assert.match(source, /Product preview · Fictional/);
+  assert.doesNotMatch(source, /Product preview/);
   assert.match(source, /DashboardPreview variant="mobile"/);
   assert.match(source, /DashboardPreview variant="landscape"/);
   assert.match(source, /Your athlete’s week/);
