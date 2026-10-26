@@ -97,6 +97,8 @@ export const HYPE_CARD_TEMPLATES: Array<{
   },
 ];
 
+export const HYPE_CARD_SELECTABLE_TEMPLATES = HYPE_CARD_TEMPLATES.filter((template) => template.id !== 'pixel-edge');
+
 const FRAME_LAYERS: Record<HypeCardTemplateId, string> = {
   velocity: `<path d="M34 7H866L893 34V1166L866 1193H34L7 1166V34Z" fill="none" stroke="#087DFF" stroke-width="12"/><path d="M12 34L34 12H205L130 87H12Z" fill="#061A38"/><path d="M160 12H205L130 87H85Z" fill="#00D9F5"/><path d="M688 1188H744L786 1146H730Z" fill="#00D9F5"/>`,
   wave: `<rect x="7" y="7" width="886" height="1186" rx="42" fill="none" stroke="#087DFF" stroke-width="12"/>`,
@@ -128,6 +130,7 @@ export type HypeCardTemplateArtworkInput = {
   athleteScale?: number;
   borderColor?: string;
   accentColor?: string;
+  brandLogoUrl?: string | null;
 };
 
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -211,12 +214,15 @@ export function buildHypeCardTemplateArtwork(
   const borderColor = isColor(input.borderColor) ? input.borderColor.toUpperCase() : frameTemplate.primaryColor;
   const accentColor = isColor(input.accentColor) ? input.accentColor.toUpperCase() : frameTemplate.secondaryColor;
   const clipId = `${prefix}-photo-clip`;
+  const cardClipId = `${prefix}-card-clip`;
+  const lowerThirdClipId = `${prefix}-lower-third-safe-clip`;
   const cx = Math.round(num(input.athleteX, 0, -.25, .25) * 900);
   const cy = Math.round(num(input.athleteY, 0, -.18, .18) * 1200);
   const scale = num(input.athleteScale, 1, 1, 1.6);
   const imageX = (900 - 900 * scale) / 2;
   const imageY = (1200 - 1200 * scale) / 2;
   const photoUrl = safeUrl(input.photoUrl);
+  const brandLogoUrl = safeUrl(input.brandLogoUrl);
   const athleteName = (input.athleteName || 'Athlete').trim().replace(/\s+/g, ' ');
   const fittedName = fitName(athleteName, 39, 590);
   const fittedPosition = textFit(input.position ?? '', 22, 590);
@@ -234,6 +240,10 @@ export function buildHypeCardTemplateArtwork(
     const y = fittedName.lines.length === 1 ? 1080 : 1040 + index * 40;
     return `<text x="65" y="${y}" fill="${nameTextColor}" font-family="Barlow Condensed,Impact,'Arial Narrow',sans-serif" font-size="${fittedName.size.toFixed(2)}" font-weight="800" ${fittedName.textLength} data-athlete-name-line="true" data-testid="svg-card-athlete-name">${esc(line)}</text>`;
   }).join('');
+  const brandLogo = brandLogoUrl
+    ? `<g data-card-layer="pixl-brand"><rect x="34" y="110" width="160" height="68" rx="10" fill="#FFFFFF" fill-opacity=".94"/><image href="${brandLogoUrl}" x="43" y="116" width="142" height="56" preserveAspectRatio="xMidYMid meet" data-testid="svg-card-logo"/></g>`
+    : '';
+  const watermark = `<text x="852" y="600" transform="rotate(90 852 600)" text-anchor="middle" fill="#FFFFFF" stroke="#061A38" stroke-opacity=".36" stroke-width="2" paint-order="stroke" font-family="Barlow Condensed,Impact,'Arial Narrow',sans-serif" font-size="36" font-weight="800" letter-spacing="2" opacity=".5" data-testid="text-hype-card-watermark">HYPE Card</text>`;
   const text = layer === 'bg' ? '' : `${nameText}${fittedPosition.text ? `<text x="65" y="1127" fill="${nameTextColor}" font-family="DM Sans,Arial,sans-serif" font-size="${fittedPosition.size.toFixed(2)}" font-weight="700" ${fittedPosition.textLength} data-testid="svg-card-position">${esc(fittedPosition.text)}</text>` : ''}${number ? `<text x="768" y="1110" text-anchor="middle" fill="${nameTextColor}" font-family="Anton,Impact,'Arial Narrow',sans-serif" font-size="62" font-weight="400" data-testid="svg-card-jersey-number">${esc(number)}</text>` : ''}`;
   const lower = layer === 'bg' ? '' : recolorLayer(LOWER_THIRD_LAYERS[lowerThirdTemplate.id], lowerThirdTemplate, borderColor, accentColor)
     .replace(/id="([^"]+)"/g, `id="${prefix}-$1"`)
@@ -242,8 +252,11 @@ export function buildHypeCardTemplateArtwork(
   const clipShape = frameTemplate.cornerStyle === 'rounded'
     ? '<rect x="0" y="0" width="900" height="1200" rx="54"/>'
     : '<path d="M36 0H864L900 36V1164L864 1200H36L0 1164V36Z"/>';
-  const defs = `<defs><clipPath id="${clipId}">${clipShape}</clipPath><linearGradient id="${prefix}-placeholder" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#254A6F"/><stop offset="1" stop-color="#071A30"/></linearGradient></defs>`;
+  const lowerThirdSafeClipShape = frameTemplate.cornerStyle === 'rounded'
+    ? '<rect x="28" y="28" width="844" height="1144" rx="48"/>'
+    : '<path d="M68 28H832L872 68V1132L832 1172H68L28 1132V68Z"/>';
+  const defs = `<defs><clipPath id="${clipId}">${clipShape}</clipPath><clipPath id="${cardClipId}">${clipShape}</clipPath><clipPath id="${lowerThirdClipId}">${lowerThirdSafeClipShape}</clipPath><linearGradient id="${prefix}-placeholder" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#254A6F"/><stop offset="1" stop-color="#071A30"/></linearGradient></defs>`;
   const bg = layer === 'fg' ? '' : photo;
-  const overlays = layer === 'bg' ? '' : `${lower}${text}${frame}`;
+  const overlays = layer === 'bg' ? '' : `<g clip-path="url(#${cardClipId})"><g clip-path="url(#${lowerThirdClipId})">${lower}</g>${text}${watermark}${brandLogo}${frame}</g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="900" height="1200" viewBox="0 0 900 1200" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(athleteName)} HYPE Card" data-frame-template="${frameTemplate.id}" data-lower-third-template="${lowerThirdTemplate.id}" data-layer="${layer}">${defs}${bg}${overlays}</svg>`;
 }

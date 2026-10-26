@@ -8,6 +8,7 @@ export const lowerThirdStyles: Array<{ id: LowerThirdStyle; label: string }> = [
 export type SimpleCardInput = {
   athleteName: string; teamName?: string | null; jerseyNumber?: string | null;
   position?: string | null; photoUrl?: string | null; logoUrl?: string | null;
+  brandLogoUrl?: string | null;
   lowerThirdStyle?: string | null; athleteX?: number; athleteY?: number;
   athleteScale?: number; design?: string; lowerThirdTemplate?: string;
   borderColor?: string; accentColor?: string;
@@ -45,6 +46,7 @@ export function buildSimpleHypeCardArtwork(input: SimpleCardInput, ns = 'sc'): s
       athleteScale: input.athleteScale,
       borderColor: input.borderColor,
       accentColor: input.accentColor,
+      brandLogoUrl: input.brandLogoUrl,
     }, 'all', ns);
   }
   const style = normalizeLowerThird(input.lowerThirdStyle);

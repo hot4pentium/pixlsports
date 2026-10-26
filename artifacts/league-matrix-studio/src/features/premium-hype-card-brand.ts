@@ -11,5 +11,6 @@ export function buildBrandedPremiumHypeCardArtwork(input: PremiumHypeCardInput, 
     logoUrl: input.logoUrl || brandLogo,
     logoMarkOnly: input.logoMarkOnly ?? !input.logoUrl,
     backgroundUrl: hypeCardBackgroundImage(input.appearance.background),
+    brandLogoUrl: brandLogo,
   }, layer, ns);
 }

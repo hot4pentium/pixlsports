@@ -13,6 +13,7 @@ export type PremiumHypeCardInput = {
   logoUrl?: string;
   logoMarkOnly?: boolean;
   backgroundUrl?: string;
+  brandLogoUrl?: string | null;
 };
 export type PremiumHypeCardLayer = 'all' | 'bg' | 'fg';
 
@@ -395,6 +396,7 @@ export function buildPremiumHypeCardArtwork(input: PremiumHypeCardInput, layer: 
       athleteScale: appearance.athleteScale,
       borderColor: appearance.borderColor,
       accentColor: appearance.accentColor,
+      brandLogoUrl: input.brandLogoUrl,
     }, layer, ns);
   }
   const design = appearance?.design === 'breakout' ? 'breakout' : 'gallery';

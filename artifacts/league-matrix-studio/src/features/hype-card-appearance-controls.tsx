@@ -1,7 +1,8 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { appearanceSwatches, defaultCardAppearance, normalizeCardAppearance, switchCardAppearanceDesign, type HypeCardAppearance, type HypeCardDesign } from './hype-card-appearance';
-import { buildHypeCardTemplateArtwork, HYPE_CARD_TEMPLATES, isHypeCardTemplate, type HypeCardTemplateId } from './hype-card-template-artwork';
+import { buildHypeCardTemplateArtwork, HYPE_CARD_SELECTABLE_TEMPLATES, HYPE_CARD_TEMPLATES, isHypeCardTemplate, type HypeCardTemplateId } from './hype-card-template-artwork';
+import { simpleCardLogoSrc } from './simple-hype-card-brand';
 
 function Thumb({ frame, lowerThird, border, accent }: { frame: HypeCardTemplateId; lowerThird: HypeCardTemplateId; border: string; accent: string }) {
   const uid = useId().replace(/[^A-Za-z0-9_-]/g, '');
@@ -14,6 +15,7 @@ function Thumb({ frame, lowerThird, border, accent }: { frame: HypeCardTemplateI
     position: 'Forward',
     borderColor: border,
     accentColor: accent,
+    brandLogoUrl: simpleCardLogoSrc,
   }, 'all', `template-thumb-${uid}`);
   return <span aria-hidden="true" className="block aspect-[3/4] w-full overflow-hidden rounded-md bg-[#071A30]" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
@@ -32,7 +34,7 @@ export function HypeCardDesignPicker({ appearance, onChange, disabled = false, v
     <fieldset className={className} disabled={disabled} data-testid={compact ? 'card-design-picker-compact' : 'card-design-picker-cards'}>
       <legend className={`${compact ? 'mb-2 text-[10px]' : 'mb-2 text-xs'} font-bold uppercase tracking-widest text-white/80`}>{compact ? 'Choose frame' : 'Frame template'}</legend>
       <div className={`grid grid-cols-2 gap-2 ${compact ? '' : 'lg:grid-cols-3'}`}>
-        {HYPE_CARD_TEMPLATES.map((design) => (
+        {HYPE_CARD_SELECTABLE_TEMPLATES.map((design) => (
           <button
             key={design.id}
             type="button"
@@ -62,7 +64,7 @@ export function HypeCardLowerThirdPicker({ appearance, onChange, disabled = fals
     <fieldset disabled={disabled} data-testid="lower-third-template-picker">
       <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Lower-third template</legend>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {HYPE_CARD_TEMPLATES.map((template) => (
+        {HYPE_CARD_SELECTABLE_TEMPLATES.map((template) => (
           <button key={template.id} type="button"
             aria-pressed={appearance.lowerThirdTemplate === template.id}
             onClick={() => onChange(normalizeCardAppearance({ ...appearance, lowerThirdTemplate: template.id }))}
@@ -78,9 +80,9 @@ export function HypeCardLowerThirdPicker({ appearance, onChange, disabled = fals
 }
 
 function adjacentTemplate(current: HypeCardTemplateId, direction: -1 | 1): HypeCardTemplateId {
-  const currentIndex = HYPE_CARD_TEMPLATES.findIndex((template) => template.id === current);
-  const index = currentIndex < 0 ? 0 : currentIndex;
-  return HYPE_CARD_TEMPLATES[(index + direction + HYPE_CARD_TEMPLATES.length) % HYPE_CARD_TEMPLATES.length].id;
+  const currentIndex = HYPE_CARD_SELECTABLE_TEMPLATES.findIndex((template) => template.id === current);
+  const index = currentIndex < 0 ? (direction === 1 ? -1 : 0) : currentIndex;
+  return HYPE_CARD_SELECTABLE_TEMPLATES[(index + direction + HYPE_CARD_SELECTABLE_TEMPLATES.length) % HYPE_CARD_SELECTABLE_TEMPLATES.length].id;
 }
 
 function TemplateCycler({ label, selectedName, testId, previousLabel, nextLabel, onPrevious, onNext, disabled }: {
