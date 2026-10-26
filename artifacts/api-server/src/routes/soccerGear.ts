@@ -23,6 +23,7 @@ router.use("/athlete-gear", (_req, res, next) => {
 });
 
 async function validLinkedKit(access: AthleteEditorAccess) {
+  if (access.projectId === null) return false;
   const [linked] = await db.select({ project: cloudProjectsTable.project })
     .from(athleteInvitesTable)
     .innerJoin(cloudProjectsTable, and(
@@ -61,6 +62,7 @@ router.put("/athlete-gear/soccer", requireProjectEditorAuth, async (req, res, ne
     const owner = access?.ownerClerkUserId ?? getRequiredClerkUserId(res);
     const result = await db.transaction(async (tx) => {
       if (access) {
+        if (access.projectId === null) return { error: "Athlete kit access is no longer active.", status: 403 };
         const [current] = await tx.select().from(athleteEditorAccessTable).where(and(
           eq(athleteEditorAccessTable.id, access.id),
           eq(athleteEditorAccessTable.status, "active"),

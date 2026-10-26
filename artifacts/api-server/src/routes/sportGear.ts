@@ -35,6 +35,7 @@ router.get("/athlete-gear/art/v1/:filename", async (req, res, next) => {
 });
 
 async function validLinkedKit(access: AthleteEditorAccess, sport: GearSport) {
+  if (access.projectId === null) return false;
   const [linked] = await db.select({ project: cloudProjectsTable.project }).from(athleteInvitesTable)
     .innerJoin(cloudProjectsTable, and(eq(cloudProjectsTable.id, access.projectId), eq(cloudProjectsTable.ownerClerkUserId, access.ownerClerkUserId)))
     .where(and(eq(athleteInvitesTable.id, access.athleteInviteId), eq(athleteInvitesTable.ownerClerkUserId, access.ownerClerkUserId), eq(athleteInvitesTable.sport, sport))).limit(1);
@@ -67,6 +68,7 @@ router.put("/athlete-gear/sports/:sport", requireProjectEditorAuth, async (req, 
     const result = await db.transaction(async (tx) => {
       let accessInviteId: string | undefined;
       if (access) {
+        if (access.projectId === null) return { error: "Athlete gear access is no longer active.", status: 403 };
         const [current] = await tx.select().from(athleteEditorAccessTable).where(and(
           eq(athleteEditorAccessTable.id, access.id), eq(athleteEditorAccessTable.status, "active"),
           eq(athleteEditorAccessTable.athleteClerkUserId, getRequiredClerkUserId(res)),

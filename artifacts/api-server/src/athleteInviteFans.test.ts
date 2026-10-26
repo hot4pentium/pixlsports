@@ -325,12 +325,12 @@ test("removed or paused athlete photos stop loading at their existing public URL
     cutoutObjectPath: cutoutPath,
   }).returning();
 
-  t.mock.method(ObjectStorageService.prototype, "getObjectEntityFile", async (objectPath) => {
+  t.mock.method(ObjectStorageService.prototype, "getObjectEntityFile", async (objectPath: string) => {
     const bytes = objects.get(objectPath);
     if (!bytes) throw new ObjectNotFoundError();
     return { download: async () => [bytes] } as never;
   });
-  t.mock.method(ObjectStorageService.prototype, "deleteObjectEntity", async (objectPath) => {
+  t.mock.method(ObjectStorageService.prototype, "deleteObjectEntity", async (objectPath: string) => {
     if (!objects.delete(objectPath)) throw new ObjectNotFoundError();
   });
 
@@ -478,23 +478,23 @@ test("confirming HYPE Card photo replacements retires only superseded images", a
     cutoutObjectPath: oldCutoutPath,
   }).returning();
 
-  t.mock.method(ObjectStorageService.prototype, "getObjectEntityFile", async (objectPath) => {
+  t.mock.method(ObjectStorageService.prototype, "getObjectEntityFile", async (objectPath: string) => {
     const bytes = objects.get(objectPath);
     if (!bytes) throw new ObjectNotFoundError();
     return { download: async () => [bytes] } as never;
   });
-  t.mock.method(ObjectStorageService.prototype, "getObjectEntityMetadata", async (objectPath) => {
+  t.mock.method(ObjectStorageService.prototype, "getObjectEntityMetadata", async (objectPath: string) => {
     const bytes = objects.get(objectPath);
     if (!bytes) throw new ObjectNotFoundError();
     return { size: bytes.byteLength, contentType: "image/webp" };
   });
-  t.mock.method(ObjectStorageService.prototype, "trySetObjectEntityAclPolicy", async (objectPath) => objectPath);
-  t.mock.method(ObjectStorageService.prototype, "savePrivateObjectEntity", async (contents) => {
+  t.mock.method(ObjectStorageService.prototype, "trySetObjectEntityAclPolicy", async (objectPath: string) => objectPath);
+  t.mock.method(ObjectStorageService.prototype, "savePrivateObjectEntity", async (contents: Buffer) => {
     nextSavedPath = `/objects/athlete-invite-photos/${randomUUID()}.webp`;
     objects.set(nextSavedPath, contents);
     return nextSavedPath;
   });
-  t.mock.method(ObjectStorageService.prototype, "deleteObjectEntity", async (objectPath) => {
+  t.mock.method(ObjectStorageService.prototype, "deleteObjectEntity", async (objectPath: string) => {
     if (!objects.delete(objectPath)) throw new ObjectNotFoundError();
   });
 
