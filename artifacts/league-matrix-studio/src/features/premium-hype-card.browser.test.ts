@@ -117,12 +117,18 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
         logoVisible: Boolean(logo),
         logoWidth: logo?.getAttribute('width'),
         watermarkText: watermark?.textContent,
+        watermarkX: watermark?.getAttribute('x'),
+        watermarkFontSize: watermark?.getAttribute('font-size'),
+        watermarkTransform: watermark?.getAttribute('transform'),
         watermarkOpacity: watermark?.getAttribute('opacity'),
       };
     })()`, session), {
       logoVisible: true,
       logoWidth: '142',
       watermarkText: 'HYPE Card',
+      watermarkX: '820',
+      watermarkFontSize: '72',
+      watermarkTransform: 'rotate(90 820 600)',
       watermarkOpacity: '.5',
     });
     const text = await connection.evaluate<string>('document.querySelector("[data-testid=classic-card-preview-surface]").textContent', session);

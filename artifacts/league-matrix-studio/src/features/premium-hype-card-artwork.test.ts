@@ -31,6 +31,8 @@ test('all six supplied templates render as 3:4 cards with editable athlete detai
     assert.match(svg, /data-testid="svg-card-logo"/);
     assert.match(svg, /data-testid="text-hype-card-watermark">HYPE Card<\/text>/);
     assert.match(svg, /opacity="\.5" data-testid="text-hype-card-watermark"/);
+    assert.match(svg, /x="820" y="600" transform="rotate\(90 820 600\)"/);
+    assert.match(svg, /font-size="72" font-weight="800" letter-spacing="2" opacity="\.5" data-testid="text-hype-card-watermark"/);
     assert.match(svg, new RegExp(`id="test-${template.id}-card-clip"`));
     assert.match(svg, new RegExp(`id="test-${template.id}-lower-third-safe-clip"`));
     assert.match(svg, new RegExp(`<g clip-path="url\\(#test-${template.id}-card-clip\\)"><g clip-path="url\\(#test-${template.id}-lower-third-safe-clip\\)">`));
