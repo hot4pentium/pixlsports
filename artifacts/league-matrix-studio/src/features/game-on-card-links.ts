@@ -23,9 +23,16 @@ export async function shareGameOnCardPublicLink(
   shareToken: string,
   title: string,
 ): Promise<'shared' | 'copied' | 'cancelled' | 'failed'> {
+  return sharePublicCardLink(gameOnCardPublicUrl(shareToken), title);
+}
+
+export async function sharePublicCardLink(
+  url: string,
+  title: string,
+): Promise<'shared' | 'copied' | 'cancelled' | 'failed'> {
   if (typeof navigator.share === 'function') {
     try {
-      await navigator.share({ title, url: gameOnCardPublicUrl(shareToken) });
+      await navigator.share({ title, url });
       return 'shared';
     } catch (error) {
       if (
@@ -39,5 +46,11 @@ export async function shareGameOnCardPublicLink(
     }
   }
 
-  return await copyGameOnCardPublicLink(shareToken) ? 'copied' : 'failed';
+  try {
+    if (!navigator.clipboard?.writeText) return 'failed';
+    await navigator.clipboard.writeText(url);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
 }

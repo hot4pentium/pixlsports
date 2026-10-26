@@ -6,7 +6,7 @@ import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, 
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { buildWorkspaceToolHref } from './workspace-context';
-import { shareGameOnCardPublicLink } from './game-on-card-links';
+import { shareGameOnCardPublicLink, sharePublicCardLink } from './game-on-card-links';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { getSuggestedGameOnAction } from './game-on-dashboard-model';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
@@ -46,6 +46,8 @@ export type GameOnCardRenderOptions = {
 };
 
 type GameOnDashboardCollectionProps = {
+  hypeCardShareToken?: string;
+  hypeCardManageHref?: string;
   cards: DashboardGameOnCard[];
   onCreate: () => void;
   createDisabled?: boolean;
@@ -117,7 +119,9 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected = false, isDialogCard = false, dialogId, visible, featuredCardId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
+function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, onCancelDraft, selected, triggerSelected = false, isDialogCard = false, dialogId, visible, featuredCardId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
+  hypeCardShareToken?: string;
+  hypeCardManageHref?: string;
   card: DashboardGameOnCard;
   onOpen: (id: string, trigger: HTMLButtonElement) => void;
   onCancelDraft?: (draftId: string) => void;
@@ -219,14 +223,19 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     previousRecommendation.current.announced = true;
   }, [isDialogCard, selected, visible, card.isUnsavedDraft, recommendationIdentity, statusLabel, suggestedAction, title]);
   const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
+  const shareHypeCard = statusLabel === 'Complete' || Boolean(card.recordedGameId || card.completedAt);
+  const shareLabel = shareHypeCard ? 'HYPE Card' : 'Event Card';
   const shareEventCard = async () => {
-    if (!card.shareToken) return;
+    if (shareHypeCard ? !hypeCardShareToken : !card.shareToken) return;
     setShareLinkNotice('');
-    const result = await shareGameOnCardPublicLink(card.shareToken, `${card.athleteName}'s Event Card`);
-    if (result === 'shared') setShareLinkNotice('Event Card shared.');
-    else if (result === 'copied') setShareLinkNotice('Event Card link copied.');
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const result = shareHypeCard
+      ? await sharePublicCardLink(`${window.location.origin}${basePath}/player/${encodeURIComponent(hypeCardShareToken!)}`, `${card.athleteName}'s HYPE Card`)
+      : await shareGameOnCardPublicLink(card.shareToken!, `${card.athleteName}'s Event Card`);
+    if (result === 'shared') setShareLinkNotice(`${shareLabel} shared.`);
+    else if (result === 'copied') setShareLinkNotice(`${shareLabel} link copied.`);
     else if (result === 'failed') {
-      setShareLinkNotice('Event Card link could not be shared or copied.');
+      setShareLinkNotice(`${shareLabel} link could not be shared or copied.`);
     }
   };
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
@@ -393,17 +402,27 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                         {suggestedAction === 'tracker' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                       </button>
                 )}
-                {card.shareToken && (
+                {shareHypeCard && !hypeCardShareToken ? (
+                  <Link
+                    href={hypeCardManageHref ?? '/studio/athlete-page'}
+                    className="game-on-collection__action--share"
+                    data-testid={`button-share-game-on-card-${card.id}`}
+                    aria-label="Set up HYPE Card sharing"
+                  >
+                    <Share2 size={15} aria-hidden="true" />
+                    <span>Set up HYPE Card sharing</span>
+                  </Link>
+                ) : (shareHypeCard ? hypeCardShareToken : card.shareToken) && (
                   <button
                     type="button"
                   className={`game-on-collection__action--share${suggestedAction === 'share' ? ' game-on-collection__action--suggested' : ''}`}
                     onClick={() => void shareEventCard()}
-                  aria-label={`Share ${card.athleteName}'s Event Card${suggestedAction === 'share' ? '. Suggested next.' : ''}`}
+                  aria-label={`Share ${card.athleteName}'s ${shareLabel}${suggestedAction === 'share' ? '. Suggested next.' : ''}`}
                     data-testid={`button-share-game-on-card-${card.id}`}
                   data-suggested-next={suggestedAction === 'share' ? 'true' : undefined}
                   >
                     <Share2 size={15} aria-hidden="true" />
-                    <span>Share</span>
+                    <span>{shareHypeCard ? 'Share HYPE Card' : 'Share'}</span>
                   {suggestedAction === 'share' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                   </button>
                 )}
@@ -501,6 +520,8 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
 
 export function GameOnDashboardCollection({
   cards,
+  hypeCardShareToken,
+  hypeCardManageHref,
   onCreate,
   createDisabled = false,
   onOpen,
@@ -760,6 +781,8 @@ export function GameOnDashboardCollection({
               {cards.map((card) => (
                 <CollectionCard
                   key={card.layoutId ?? card.id}
+                  hypeCardShareToken={hypeCardShareToken}
+                  hypeCardManageHref={hypeCardManageHref}
                   card={card}
                   onOpen={(id, trigger) => { setOpenPanel(null); openCollectionCard(id, trigger); }}
                   onCancelDraft={onCancelDraft}
@@ -819,6 +842,8 @@ export function GameOnDashboardCollection({
                 <div className="game-on-collection__dialog-card-wrap">
                   <CollectionCard
                     key={`dialog-${selectedCard.layoutId ?? selectedCard.id}`}
+                    hypeCardShareToken={hypeCardShareToken}
+                    hypeCardManageHref={hypeCardManageHref}
                     card={selectedCard}
                     onOpen={(id, trigger) => { setOpenPanel(null); openCollectionCard(id, trigger); }}
                     onCancelDraft={onCancelDraft}

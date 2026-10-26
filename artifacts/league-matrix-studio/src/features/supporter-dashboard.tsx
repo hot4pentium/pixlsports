@@ -1406,6 +1406,8 @@ export function SupporterDashboardView({
           <div id="event-cards-mobile" className="scroll-mt-20" />
           <GameOnDashboardCollection
             cards={collectionCards}
+            hypeCardShareToken={savedFanCard && !savedFanCard.paused && savedFanCard.showHypeCard && Date.parse(savedFanCard.seasonEndsAt) > currentTime.getTime() ? savedFanCard.inviteToken : undefined}
+            hypeCardManageHref={savedFanCard ? `/player/${savedFanCard.inviteToken}/manage` : '/studio/athlete-page'}
             onCreate={openCardWorkspace}
             createDisabled={Boolean(newCardDraft)}
             onOpen={selectCard}
@@ -1573,6 +1575,8 @@ export function SupporterDashboardView({
       <div id="event-cards-desktop" className="dashboard-event-cards-row scroll-mt-6">
         <GameOnDashboardCollection
           cards={collectionCards}
+          hypeCardShareToken={savedFanCard && !savedFanCard.paused && savedFanCard.showHypeCard && Date.parse(savedFanCard.seasonEndsAt) > currentTime.getTime() ? savedFanCard.inviteToken : undefined}
+          hypeCardManageHref={savedFanCard ? `/player/${savedFanCard.inviteToken}/manage` : '/studio/athlete-page'}
           onCreate={openCardWorkspace}
           createDisabled={Boolean(newCardDraft)}
           onOpen={selectCard}

@@ -5,6 +5,16 @@ import test from 'node:test';
 const styles = readFileSync(new URL('./game-on-dashboard-collection.css', import.meta.url), 'utf8');
 const component = readFileSync(new URL('./game-on-dashboard-collection.tsx', import.meta.url), 'utf8');
 
+test('completed events share the HYPE Card and private cards lead to owner setup', () => {
+  assert.match(component, /const shareHypeCard = statusLabel === 'Complete' \|\| Boolean\(card.recordedGameId \|\| card.completedAt\)/);
+  assert.match(component, /shareHypeCard \? !hypeCardShareToken : !card.shareToken/);
+  assert.match(component, /shareHypeCard && !hypeCardShareToken/);
+  assert.match(component, /href=\{hypeCardManageHref \?\? '\/studio\/athlete-page'\}/);
+  assert.match(component, /shareHypeCard \? 'Share HYPE Card' : 'Share'/);
+  const dashboard = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+  assert.match(dashboard, /!savedFanCard.paused && savedFanCard.showHypeCard && Date.parse\(savedFanCard.seasonEndsAt\) > currentTime.getTime\(\)/);
+});
+
 test('Event Card Stat Tracker opens the game-day choice before either path', () => {
   const handlerStart = component.indexOf('const openCardPanel =');
   const handlerEnd = component.indexOf('const openCollectionCard =', handlerStart);

@@ -129,3 +129,4 @@
 - [Landing install section](landing-install-section.md) — keep PWA install guidance in its own prominent, energetic, graphics-led section.
 - [Patch batch recovery](patch-batch-recovery.md) — after any failed multi-file patch, inspect every targeted file because partial application is possible.
 - [Starter HYPE Card setup](starter-hype-card-setup.md) — onboarding assigns an editable private starter; softball keeps its own sport.
+- [Completed Event sharing](completed-event-sharing.md) — finished Event Cards share the athlete’s HYPE Card, without automatically publishing private cards.
