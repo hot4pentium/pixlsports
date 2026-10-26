@@ -210,6 +210,14 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       `document.querySelectorAll('[data-testid="slider-card-athleteX"], [data-testid="slider-card-athleteY"], [data-testid="slider-card-athleteScale"]').length`,
       session,
     ), 3, 'the photo controls include horizontal, vertical, and zoom sliders');
+    assert.deepEqual(await connection.evaluate(
+      `Array.from(document.querySelectorAll('[data-testid^="slider-card-"]')).map(({dataset, min, max, step}) => [dataset.testid, min, max, step])`,
+      session,
+    ), [
+      ['slider-card-athleteX', '-0.25', '0.25', '0.01'],
+      ['slider-card-athleteY', '-0.18', '0.18', '0.01'],
+      ['slider-card-athleteScale', '1', '1.6', '0.01'],
+    ], 'the onboarding editor uses the shared horizontal, vertical, and zoom ranges');
     assert.equal(await connection.evaluate<boolean>(
       `document.querySelector('[data-testid="hype-card-main-preview"]')?.getBoundingClientRect().width > 0`,
       session,
@@ -240,6 +248,13 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       session,
       `document.querySelector('[data-testid="slider-card-athleteX"]')?.value || ''`,
       (value) => Number(value) !== Number(horizontalBefore),
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="button-reset-placement"]')?.click()`, session);
+    await waitFor(
+      connection,
+      session,
+      `(() => ['athleteX','athleteY','athleteScale'].map((key) => document.querySelector('[data-testid="slider-card-'+key+'"]')?.value).join('|'))()`,
+      (value) => value === '0|0|1',
     );
 
     const frameBefore = await connection.evaluate<string>(

@@ -157,6 +157,64 @@ function HexField({ value, label, disabled, onValid }: { value: string; label: s
 
 const slider = 'w-full accent-[#EF3996] min-h-11';
 
+const photoPositionReset = { athleteX: 0, athleteY: 0, athleteScale: 1 } as const;
+const photoPositionSliderRanges = [
+  { label: 'Horizontal', key: 'athleteX', testId: { card: 'athleteX', photo: 'x' }, min: -0.25, max: 0.25, step: 0.01 },
+  { label: 'Vertical', key: 'athleteY', testId: { card: 'athleteY', photo: 'y' }, min: -0.18, max: 0.18, step: 0.01 },
+  { label: 'Zoom', key: 'athleteScale', testId: { card: 'athleteScale', photo: 'zoom' }, min: 1, max: 1.6, step: 0.01 },
+] as const;
+
+export function HypeCardPhotoPositionSliders({ appearance, onChange, disabled = false, testIdPrefix, sliderClassName = slider, labelClassName, showValues = true, showZoom = true, resetTestId, resetLabel = 'Reset position', onReset }: {
+  appearance: HypeCardAppearance;
+  onChange: (patch: Partial<Pick<HypeCardAppearance, 'athleteX' | 'athleteY' | 'athleteScale'>>) => void;
+  disabled?: boolean;
+  testIdPrefix: 'card' | 'photo';
+  sliderClassName?: string;
+  labelClassName?: string;
+  showValues?: boolean;
+  showZoom?: boolean;
+  resetTestId?: string;
+  resetLabel?: string;
+  onReset?: () => void;
+}) {
+  return (
+    <>
+      {photoPositionSliderRanges.filter(({ key }) => showZoom || key !== 'athleteScale').map(({ label, key, testId, min, max, step }) => (
+        <label key={key} className={labelClassName ?? (showValues ? 'block text-xs font-bold uppercase tracking-widest text-white/80' : 'block text-xs text-white/80')}>
+          {showValues ? (
+            <span className="flex justify-between">
+              <span>{label}</span>
+              <span className="font-mono normal-case tracking-normal text-white/60">{`${Math.round(appearance[key] * 100)}%`}</span>
+            </span>
+          ) : label}
+          <input
+            type="range"
+            className={sliderClassName}
+            min={min}
+            max={max}
+            step={step}
+            value={appearance[key]}
+            disabled={disabled}
+            onChange={(event) => onChange({ [key]: Number(event.target.value) })}
+            data-testid={`slider-${testIdPrefix}-${testId[testIdPrefix]}`}
+          />
+        </label>
+      ))}
+      {resetTestId && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onReset ? onReset() : onChange(photoPositionReset)}
+          className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest"
+          data-testid={resetTestId}
+        >
+          {resetLabel}
+        </button>
+      )}
+    </>
+  );
+}
+
 export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions, previewContent, placementLabel = 'Photo position', showAthleteSize = true, showResetButton = true, onResetPlacement }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode; previewContent?: ReactNode; placementLabel?: string; showAthleteSize?: boolean; showResetButton?: boolean; onResetPlacement?: () => void }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set({ borderColor: c, accentColor: c, accentLinked: true });
@@ -176,12 +234,6 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
       <HexField value={current} label={label} disabled={disabled} onValid={apply} />
     </div>
   );
-  const range = (label: string, value: number, min: number, max: number, step: number, key: 'athleteScale' | 'athleteX' | 'athleteY', fmt: (v: number) => string) => (
-    <label className="block text-xs font-bold uppercase tracking-widest text-white/80">
-      <span className="flex justify-between"><span>{label}</span><span className="font-mono normal-case tracking-normal text-white/60">{fmt(value)}</span></span>
-      <input type="range" className={slider} min={min} max={max} step={step} value={value} disabled={disabled} onChange={(e) => set({ [key]: Number(e.target.value) })} data-testid={`slider-card-${key}`} />
-    </label>
-  );
   const reset = defaultCardAppearance(appearance.design);
   return (
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
@@ -190,11 +242,16 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
       <div className="space-y-3" data-testid="hype-card-photo-position-controls">
         <p className="text-xs font-bold uppercase tracking-widest text-white/80">{placementLabel}</p>
         {placementActions}
-        {range('Horizontal', appearance.athleteX, -.25, .25, .01, 'athleteX', (v) => `${Math.round(v * 100)}%`)}
-        {range('Vertical', appearance.athleteY, -.18, .18, .01, 'athleteY', (v) => `${Math.round(v * 100)}%`)}
-        {showAthleteSize && range('Zoom', appearance.athleteScale, 1, 1.6, .01, 'athleteScale', (v) => `${Math.round(v * 100)}%`)}
-        {showResetButton && onResetPlacement && <button type="button" disabled={disabled} onClick={onResetPlacement} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset layer position</button>}
-        {showResetButton && !onResetPlacement && <button type="button" disabled={disabled} onClick={() => set({ athleteScale: 1, athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset position</button>}
+        <HypeCardPhotoPositionSliders
+          appearance={appearance}
+          onChange={set}
+          disabled={disabled}
+          testIdPrefix="card"
+          showZoom={showAthleteSize}
+          resetTestId={showResetButton ? 'button-reset-placement' : undefined}
+          resetLabel={onResetPlacement ? 'Reset layer position' : 'Reset position'}
+          onReset={onResetPlacement}
+        />
       </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-xs font-bold uppercase tracking-widest text-white/80">Jersey number

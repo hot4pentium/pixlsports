@@ -13,7 +13,7 @@ import { simpleCardLogoSrc } from './simple-hype-card-brand';
 import { buildSimpleHypeCardArtwork, HYPE_TEMPLATE_CARD_H, HYPE_TEMPLATE_CARD_W } from './simple-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
-import { HypeCardDesignPicker, HypeCardLowerThirdPicker, HypeCardTemplateCyclers } from './hype-card-appearance-controls';
+import { HypeCardDesignPicker, HypeCardLowerThirdPicker, HypeCardPhotoPositionSliders, HypeCardTemplateCyclers } from './hype-card-appearance-controls';
 import antonFontUrl from '../assets/anton-regular.ttf?url';
 
 type Draft = HypeCardAppearance;
@@ -235,7 +235,6 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
     }
   };
 
-  const sliderCls = 'w-full accent-[#ff7849]';
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]" data-testid="fan-card-appearance-manager">
       <div className="min-w-0">
@@ -254,16 +253,15 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
         </div>
         <div className="space-y-3" data-testid="photo-position-controls">
           <p className="text-xs font-bold uppercase tracking-widest text-white/70">Photo position</p>
-          <label className="block text-xs text-white/80">Horizontal
-            <input type="range" min={-0.25} max={0.25} step={0.01} value={draft.athleteX} disabled={busy} onChange={(e) => edit({ athleteX: Number(e.target.value) })} className={sliderCls} data-testid="slider-photo-x" />
-          </label>
-          <label className="block text-xs text-white/80">Vertical
-            <input type="range" min={-0.18} max={0.18} step={0.01} value={draft.athleteY} disabled={busy} onChange={(e) => edit({ athleteY: Number(e.target.value) })} className={sliderCls} data-testid="slider-photo-y" />
-          </label>
-          <label className="block text-xs text-white/80">Zoom
-            <input type="range" min={1} max={1.6} step={0.01} value={draft.athleteScale} disabled={busy} onChange={(e) => edit({ athleteScale: Number(e.target.value) })} className={sliderCls} data-testid="slider-photo-zoom" />
-          </label>
-          <button type="button" disabled={busy} onClick={() => edit({ athleteX: 0, athleteY: 0, athleteScale: 1 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-photo-position">Reset position</button>
+          <HypeCardPhotoPositionSliders
+            appearance={currentAppearance}
+            onChange={edit}
+            disabled={busy}
+            testIdPrefix="photo"
+            sliderClassName="w-full accent-[#ff7849]"
+            showValues={false}
+            resetTestId="button-reset-photo-position"
+          />
         </div>
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || busy} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{busy ? 'Saving…' : 'Save design'}</button>

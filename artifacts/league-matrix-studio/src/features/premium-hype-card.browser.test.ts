@@ -74,7 +74,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
   const browser = spawn(process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium', [
     '--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu',
     `--remote-debugging-port=${port}`, `--user-data-dir=${directory}`, 'about:blank',
-  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  ], { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const monitor = monitorProcess(browser, 'simple card Chromium');
   let connection: DevToolsConnection | undefined;
   try {
@@ -84,6 +84,14 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     const page = await openPage(connection, 'http://localhost:80/simple-appearance-fixture.html', { viewport: { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false } });
     const session = page.sessionId;
     await waitFor(connection, session, '!!document.querySelector("[data-testid=fan-card-appearance-manager]")', Boolean, 30_000);
+    assert.deepEqual(await connection.evaluate(
+      `Array.from(document.querySelectorAll('[data-testid^="slider-photo-"]')).map(({dataset, min, max, step}) => [dataset.testid, min, max, step])`,
+      session,
+    ), [
+      ['slider-photo-x', '-0.25', '0.25', '0.01'],
+      ['slider-photo-y', '-0.18', '0.18', '0.01'],
+      ['slider-photo-zoom', '1', '1.6', '0.01'],
+    ], 'the Showcase editor uses the same horizontal, vertical, and zoom ranges as onboarding');
     assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=card-design-picker-cards] button").length', session), 5);
     assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=lower-third-template-picker] button").length', session), 5);
     assert.equal(await connection.evaluate(`document.querySelector('[data-testid="fan-card-appearance-manager"] [data-testid="input-jersey-number"]')`, session), null, 'jersey number is not editable in card design');
@@ -423,11 +431,18 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await connection.evaluate(`document.querySelector('[data-testid="select-first-athlete"]').click()`, session);
     await waitFor(connection, session, `document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent==='Varsity' && document.querySelector('[data-testid="button-save-appearance"]').matches(':disabled')`, Boolean, 5_000);
     assert.deepEqual(await connection.evaluate(editorSnapshot, session), cleanAfterRefresh, 'returning to the first athlete restores their saved design, not either unsaved or second-athlete design');
+    await connection.evaluate(`document.querySelector('[data-testid="button-reset-photo-position"]').click()`, session);
+    await waitFor(connection, session, `(() => ['x','y','zoom'].map((axis) => document.querySelector('[data-testid="slider-photo-'+axis+'"]')?.value).join('|'))()`, value => value === '0|0|1');
+    assert.equal(await connection.evaluate(`document.querySelector('[data-photo-placement]').getAttribute('transform')`, session), 'translate(0 0)', 'the Showcase reset returns photo position and zoom to the same defaults as onboarding');
   } finally {
     connection?.close();
-    browser.kill('SIGKILL');
+    try {
+      process.kill(-browser.pid, 'SIGKILL');
+    } catch {
+      browser.kill('SIGKILL');
+    }
     await monitor.waitForExit();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     if (!process.env.KEEP_HYPE_FIXTURE) await Promise.all([rm(html, { force: true }), rm(entry, { force: true })]);
   }
 });
