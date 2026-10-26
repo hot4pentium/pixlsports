@@ -69,7 +69,6 @@
 - [Hype Page media naming](hype-page-media-naming.md) — display names are separate metadata; public manifests must redact device filenames from video metadata.
 - [Legacy meeting records](meeting-workspace-sharing.md) — meetings leave the product flow; preserve existing records unless deletion is explicitly approved.
 - [Hosted clip audio policy](hosted-clip-audio-policy.md) — posting requires captured audio; local exports may remain silent with a warning.
-- [Week path video parity](week-path-video-parity.md) — edits to the animated artifact require refreshing the separate public landing clip and poster.
 - [First tracker project on Hype Pages](first-tracker-project-hype-pages.md) — pages created before the first tracker save need a safe same-owner project fallback.
 - [Workspace selection precedence](workspace-selection-precedence.md) — explicit Calendar choices override automatic tool recommendations; Hype prefill must wait independently for project loading.
 - [Game On Card badge reference](game-on-card-badge-reference.md) — the shared card should use the supplied white lanyard badge graphic, not an abstract dark panel.
