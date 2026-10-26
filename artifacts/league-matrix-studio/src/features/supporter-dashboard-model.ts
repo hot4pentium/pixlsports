@@ -197,6 +197,7 @@ export const supporterToolRoutes = {
   schedule: '/studio/schedule',
   statTracker: '/studio/stat-tracker',
   checklist: '/studio/checklist',
+  hypeCard: '/studio/hype-card',
   athletePage: '/studio/athlete-page',
   profile: '/studio/profile',
 } as const;

@@ -700,7 +700,7 @@ export function SupporterDashboardView({
     ? {
         userId,
         profileHref: supporterToolRoutes.profile,
-        hypeCardHref: fanCardHref,
+        hypeCardHref: supporterToolRoutes.hypeCard,
         checkedItemIds: dashboardChecklistCheckedItemIds,
         installAction,
         installInstructionsOpen: showInstallInstructions,

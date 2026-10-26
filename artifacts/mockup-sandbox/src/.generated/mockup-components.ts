@@ -24,6 +24,6 @@ export const modules: ModuleMap = {
   "./components/mockups/supporter-actions-redesign/Current.tsx": () => import("../components/mockups/supporter-actions-redesign/Current.tsx"),
   "./components/mockups/supporter-event-guidance/Current.tsx": () => import("../components/mockups/supporter-event-guidance/Current.tsx"),
   "./components/mockups/supporter-event-guidance/MessageBoard.tsx": () => import("../components/mockups/supporter-event-guidance/MessageBoard.tsx"),
-  "./components/mockups/breakout-card/current/features/living-athlete-card-front.tsx": () => import("../components/mockups/breakout-card/current/features/living-athlete-card-front.tsx"),
-  "./components/mockups/breakout-card/simplified/Simplified.tsx": () => import("../components/mockups/breakout-card/simplified/Simplified.tsx")
+  "./components/mockups/breakout-card/simplified/Simplified.tsx": () => import("../components/mockups/breakout-card/simplified/Simplified.tsx"),
+  "./components/mockups/breakout-card/current/features/living-athlete-card-front.tsx": () => import("../components/mockups/breakout-card/current/features/living-athlete-card-front.tsx")
 };

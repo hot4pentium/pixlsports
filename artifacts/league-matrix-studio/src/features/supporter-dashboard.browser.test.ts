@@ -619,6 +619,14 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       true,
       'Profile and Hype Card actions should link to their existing destinations',
     );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dashboard-checklist-action-hype-card\\"]")?.getAttribute("href")',
+        page.sessionId,
+      ),
+      '/studio/hype-card',
+      'the onboarding Hype Card action should open the owner card manager, not an unpublished public link',
+    );
     await connection.evaluate(
       'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.click()',
       page.sessionId,
@@ -927,6 +935,7 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
         step: string;
         visibleItems: number;
         actionVisible: boolean;
+        actionHref: string | null;
         previousDisabled: boolean;
         nextDisabled: boolean;
       }>(`(() => {
@@ -939,6 +948,7 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
           visibleItems: checklist ? Array.from(checklist.querySelectorAll('.supporter-dashboard-checklist__item'))
             .filter((candidate) => candidate.getClientRects().length > 0).length : 0,
           actionVisible: Boolean(action && action.getClientRects().length > 0),
+          actionHref: action instanceof HTMLAnchorElement ? action.getAttribute('href') : null,
           previousDisabled: Boolean(checklist?.querySelector('[data-testid="dashboard-checklist-previous-step"]')?.disabled),
           nextDisabled: Boolean(checklist?.querySelector('[data-testid="dashboard-checklist-next-step"]')?.disabled),
         };
@@ -948,6 +958,7 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
         step: `Step ${step + 1} of 5`,
         visibleItems: 1,
         actionVisible: true,
+        actionHref: step === 0 ? '/studio/profile' : step === 2 ? '/studio/hype-card' : null,
         previousDisabled: step === 0,
         nextDisabled: step === 4,
       }, `phone step ${step + 1} should show its own action and correct arrow states`);
