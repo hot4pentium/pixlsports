@@ -1205,7 +1205,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
           </div>
         </div>
       )}
-      <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''} ${isFanDashboard ? 'supporter-dashboard-page-background' : ''} ${isEditorPage ? 'studio-editor-page-background' : ''}`}>
+      <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''} ${isFanDashboard ? 'supporter-dashboard-page-background' : ''} ${isEditorPage ? 'studio-editor-page-background' : ''} ${isChecklistPage ? 'checklist-style-warm-paper' : ''}`}>
         {children}
       </div>
       <div className={isFanDashboard ? 'hidden lg:block' : undefined}>
@@ -3027,27 +3027,25 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   return (
     <StudioLayout>
       <main className="pixl-editor-main mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-3 sm:px-8 sm:py-8" data-testid="checklist-page">
-        <div className="pixl-editor-header mb-4 flex items-start justify-between gap-3 sm:mb-6 sm:items-end sm:gap-5">
-          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-            <BackNavigationLink
-              href={shared ? '/studio/checklist' : '/studio'}
-              label={shared ? 'Back to Checklist Setup' : 'Back to Studio'}
-              testId="button-back-checklist"
-              className="shrink-0"
-            />
-            <div className="min-w-0">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : eventCopy.hubLabel}</p>
-              <h1 className="mt-1 font-display text-4xl uppercase leading-[.88] tracking-tight sm:mt-2 sm:text-7xl">{eventCopy.heading.split(' ')[0]}<br /><span className="text-primary studio-textured-heading-accent">{eventCopy.heading.split(' ').slice(1).join(' ')}</span></h1>
-              <p className="mt-2 max-w-xl text-xs font-medium leading-relaxed text-muted-foreground sm:mt-4 sm:text-sm">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : eventCopy.description}</p>
+        <div data-testid="checklist-header" className="pixl-editor-header mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-4 sm:mb-6 sm:gap-x-5 lg:flex lg:items-end lg:justify-between">
+          <BackNavigationLink
+            href={shared ? '/studio/checklist' : '/studio'}
+            label={shared ? 'Back to Checklist Setup' : 'Back to Studio'}
+            testId="button-back-checklist"
+            className="col-span-2 w-fit lg:order-1 lg:shrink-0"
+          />
+          <div className="min-w-0 lg:order-2 lg:flex-1 lg:pl-4">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : eventCopy.hubLabel}</p>
+            <h1 data-testid="checklist-heading" className="mt-1 font-display text-4xl uppercase leading-[.9] tracking-tight md:mt-2 md:text-5xl lg:text-7xl">{eventCopy.heading.split(' ')[0]}<br /><span className="text-primary studio-textured-heading-accent">{eventCopy.heading.split(' ').slice(1).join(' ')}</span></h1>
+            <p className="mt-2 max-w-xl text-xs font-medium leading-relaxed text-muted-foreground sm:mt-4 sm:text-sm">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : eventCopy.description}</p>
             {shared && (
               <p className="mt-2 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:mt-3" role="status" data-testid="checklist-live-status">
                 <span className={`h-2 w-2 rounded-full ${liveStatus === 'connected' ? 'bg-primary' : 'bg-muted-foreground animate-pulse'}`} />
                 {liveStatus === 'connected' ? 'Live updates connected' : 'Reconnecting live updates…'}
               </p>
             )}
-            </div>
           </div>
-          <div className="shrink-0 border border-border bg-card px-3 py-2 text-right clip-angled-sm sm:px-4 sm:py-3">
+          <div data-testid="checklist-progress" className="col-start-2 row-start-2 shrink-0 border border-border bg-card px-3 py-2 text-right clip-angled-sm sm:px-4 sm:py-3 lg:order-3 lg:self-end">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Progress</p>
             <p className="mt-0.5 font-display text-2xl text-primary sm:mt-1 sm:text-3xl">{completed}/{checklist.items.length}</p>
           </div>
@@ -3111,7 +3109,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
                 <div>
                   <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Sparkles className="h-4 w-4" /> All tasks complete</p>
                   <h2 id="checklist-ready-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">{eventCopy.readyHeading}</h2>
-                  <p className="mt-2 max-w-xl text-sm font-medium text-white/65">
+                  <p className="mt-2 max-w-xl text-sm font-medium text-muted-foreground">
                     {eventCopy.readyDescription(displayedEvent?.opponent)}
                   </p>
                 </div>
@@ -3170,21 +3168,21 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><UsersRound className="h-4 w-4" /> Work together</p>
-            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can edit notes and checklist items. Changes save automatically and update for collaborators.' : 'Create one edit link for parents and helpers. After sharing, changes here also update that link automatically.'}</p>
+            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">{shared ? 'Everyone with this link can edit notes and checklist items. Changes save automatically and update for collaborators.' : 'Create one edit link for parents and helpers. After sharing, changes here also update that link automatically.'}</p>
             </div>
             {!shared && <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-checklist"><Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : checklist.shareToken ? 'Copy edit link' : 'Create edit link'}</button>}
           </div>
           {shareUrl && (
-            <div className="mt-5 border border-white/15 bg-white/5 p-3">
+            <div className="mt-5 border border-border bg-muted p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Collaborative edit link</p>
               <div className="mt-2 flex items-center gap-2">
-                <input readOnly value={shareUrl} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-white outline-none" aria-label="Collaborative checklist edit link" />
-                <button type="button" onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('EDIT LINK COPIED TO CLIPBOARD'); }} className="grid h-8 w-8 shrink-0 place-items-center border border-white/20 bg-white/10 text-white hover:bg-white/20" aria-label="Copy collaborative checklist edit link"><Clipboard className="h-4 w-4" /></button>
+                <input readOnly value={shareUrl} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-foreground outline-none" aria-label="Collaborative checklist edit link" />
+                <button type="button" onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('EDIT LINK COPIED TO CLIPBOARD'); }} className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-background text-foreground hover:bg-card" aria-label="Copy collaborative checklist edit link"><Clipboard className="h-4 w-4" /></button>
               </div>
               {canManageShare && (
                 <div className="mt-3 flex flex-wrap items-center gap-4">
-                  <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/55 hover:text-primary disabled:opacity-60"><RotateCcw className="h-3.5 w-3.5" /> {createShare.isPending ? 'Refreshing…' : 'Refresh link'}</button>
-                  <button type="button" onClick={() => { void revokeShare(); }} disabled={deleteShare.isPending} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/55 hover:text-primary disabled:opacity-60"><Link2Off className="h-3.5 w-3.5" /> {deleteShare.isPending ? 'Revoking…' : 'Revoke link'}</button>
+                  <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary disabled:opacity-60"><RotateCcw className="h-3.5 w-3.5" /> {createShare.isPending ? 'Refreshing…' : 'Refresh link'}</button>
+                  <button type="button" onClick={() => { void revokeShare(); }} disabled={deleteShare.isPending} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary disabled:opacity-60"><Link2Off className="h-3.5 w-3.5" /> {deleteShare.isPending ? 'Revoking…' : 'Revoke link'}</button>
                 </div>
               )}
             </div>

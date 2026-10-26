@@ -515,6 +515,74 @@
   }
 }
 
+.studio-editor-page-background.checklist-style-warm-paper {
+  color-scheme: light;
+  --background: 43 100% 96%;
+  --foreground: 213 44% 18%;
+  --card: 0 0% 100%;
+  --card-foreground: 213 44% 18%;
+  --card-border: 35 31% 79%;
+  --border: 35 31% 79%;
+  --input: 35 31% 79%;
+  --ring: 14 62% 47%;
+  --primary: 14 62% 47%;
+  --primary-ink: 14 62% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 207 32% 92%;
+  --secondary-foreground: 213 44% 18%;
+  --muted: 39 47% 91%;
+  --muted-foreground: 211 18% 39%;
+  --accent: 14 67% 45%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 66% 43%;
+  --destructive-foreground: 0 0% 100%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 213 44% 18%;
+  --popover-border: 35 31% 79%;
+  background: hsl(var(--background));
+}
+
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main {
+  color: hsl(var(--foreground));
+}
+
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-header {
+  border-color: #e4d6be;
+  background: linear-gradient(145deg, #fffdf8, #f7eddc);
+  color: #17324c;
+  box-shadow: 0 12px 28px rgb(23 50 76 / 0.1);
+}
+
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-header::before,
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > .grid > section::before,
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > .grid > aside::before,
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > section::before {
+  background: linear-gradient(90deg, #b84c33, #e7a56e, #b84c33);
+}
+
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-header h1,
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-header h2,
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-header .text-foreground {
+  color: #17324c !important;
+}
+
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > .grid > section,
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > .grid > aside,
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > section {
+  border-color: #e4d6be;
+  background: linear-gradient(145deg, #fffdf8, #ffffff);
+  color: #17324c;
+  box-shadow: 0 12px 26px rgb(23 50 76 / 0.08);
+}
+
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > .grid > aside {
+  background: linear-gradient(145deg, #f8f0e3, #fffdf8);
+}
+
+.studio-editor-page-background.checklist-style-warm-paper .pixl-editor-main > section + section {
+  border-color: #e4d6be;
+}
+
 .stat-tracker-editor-page .pixl-editor-tabs {
   border-color: rgb(16 43 77 / 0.18);
 }

@@ -400,18 +400,17 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       (body) => body.includes("SHARED WORKSPACE"),
       30_000,
     )));
-    for (const [page, eventType, selectorLabel, selectorAriaLabel, selectorPlaceholder] of [
-      [practice, "PRACTICE", "Checklist for practice", "Choose which practice this checklist is for", "Choose a practice"],
-      [meeting, "MEETING", "Checklist for meeting", "Choose which meeting this checklist is for", "Choose a meeting"],
+    for (const [page, eventType] of [
+      [practice, "PRACTICE"],
+      [meeting, "MEETING"],
     ] as const) {
       await waitFor(
         connection,
         page.sessionId,
-        "({ heading: document.querySelector('h1')?.textContent ?? '', label: document.querySelector('[data-testid=\"select-checklist-game\"]')?.getAttribute('aria-label') ?? '', placeholder: document.querySelector('[data-testid=\"select-checklist-game\"] option')?.textContent ?? '', body: document.body?.innerText ?? '' })",
-        ({ heading, label, placeholder, body }) => heading.replace(/\s/g, '').includes(`${eventType}CHECKLIST.`)
-          && body.toUpperCase().includes(selectorLabel.toUpperCase())
-          && label === selectorAriaLabel
-          && placeholder === selectorPlaceholder,
+        "({ heading: document.querySelector('[data-testid=\"checklist-heading\"]')?.textContent ?? '', summary: document.querySelector('[data-testid=\"checklist-selected-event-summary\"]')?.textContent ?? '', body: document.body?.innerText ?? '' })",
+        ({ heading, summary, body }) => heading.replace(/\s/g, '').includes(`${eventType}CHECKLIST.`)
+          && summary.trim().length > 0
+          && body.includes("EVENT CARD DETAILS"),
       );
     }
 
@@ -422,19 +421,41 @@ test("two checklist collaborators recover a stale revision and keep it after rel
         scrollWidth: number;
         viewportWidth: number;
         viewportHeight: number;
+        checklistBackground: string;
+        backBottom: number;
+        headingTop: number;
+        headingWidth: number;
+        headingRight: number;
+        progressLeft: number;
       }>(`(() => {
         const firstItem = document.querySelector('[data-testid="checklist-items"] [data-completed]');
+        const back = document.querySelector('[data-testid="button-back-checklist"]')?.getBoundingClientRect();
+        const heading = document.querySelector('[data-testid="checklist-heading"]')?.getBoundingClientRect();
+        const progress = document.querySelector('[data-testid="checklist-progress"]')?.getBoundingClientRect();
+        const checklistSurface = document.querySelector('.studio-editor-page-background');
         return {
           toolbarVisible: Boolean(document.querySelector('[data-testid="studio-tool-toolbar"]')),
           firstItemTop: firstItem?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
           scrollWidth: document.documentElement.scrollWidth,
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight,
+          checklistBackground: getComputedStyle(checklistSurface).getPropertyValue('--background').trim(),
+          backBottom: back?.bottom ?? Number.POSITIVE_INFINITY,
+          headingTop: heading?.top ?? Number.NEGATIVE_INFINITY,
+          headingWidth: heading?.width ?? 0,
+          headingRight: heading?.right ?? Number.POSITIVE_INFINITY,
+          progressLeft: progress?.left ?? Number.NEGATIVE_INFINITY,
         };
       })()`, sessionId);
       assert.equal(layout.toolbarVisible, false);
       assert.ok(layout.firstItemTop < layout.viewportHeight - 120, `First checklist item should be near the opening viewport: ${JSON.stringify(layout)}`);
       assert.ok(layout.scrollWidth <= layout.viewportWidth, `Checklist page should not overflow horizontally: ${JSON.stringify(layout)}`);
+      assert.equal(layout.checklistBackground, '43 100% 96%', 'Checklist pages should use the selected warm-paper palette.');
+      if (layout.viewportWidth < 768) {
+        assert.ok(layout.headingWidth > 170, `Checklist heading should have room to wrap naturally on phones: ${JSON.stringify(layout)}`);
+        assert.ok(layout.headingRight <= layout.progressLeft, `Checklist heading should not collide with the progress badge: ${JSON.stringify(layout)}`);
+        assert.ok(layout.headingTop >= layout.backBottom, `The back link should sit above the heading on phones: ${JSON.stringify(layout)}`);
+      }
     }
 
     await connection.evaluate(
@@ -508,19 +529,18 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       "Uncheck Pack the uniform and game shoes",
     );
 
-    for (const [page, eventType, selectorLabel, selectorAriaLabel, selectorPlaceholder] of [
-      [practice, "PRACTICE", "Checklist for practice", "Choose which practice this checklist is for", "Choose a practice"],
-      [meeting, "MEETING", "Checklist for meeting", "Choose which meeting this checklist is for", "Choose a meeting"],
+    for (const [page, eventType] of [
+      [practice, "PRACTICE"],
+      [meeting, "MEETING"],
     ] as const) {
       await connection.send("Page.reload", {}, page.sessionId);
       await waitFor(
         connection,
         page.sessionId,
-        "({ heading: document.querySelector('h1')?.textContent ?? '', label: document.querySelector('[data-testid=\"select-checklist-game\"]')?.getAttribute('aria-label') ?? '', placeholder: document.querySelector('[data-testid=\"select-checklist-game\"] option')?.textContent ?? '', body: document.body?.innerText ?? '' })",
-        ({ heading, label, placeholder, body }) => heading.replace(/\s/g, '').includes(`${eventType}CHECKLIST.`)
-          && body.toUpperCase().includes(selectorLabel.toUpperCase())
-          && label === selectorAriaLabel
-          && placeholder === selectorPlaceholder,
+        "({ heading: document.querySelector('[data-testid=\"checklist-heading\"]')?.textContent ?? '', summary: document.querySelector('[data-testid=\"checklist-selected-event-summary\"]')?.textContent ?? '', body: document.body?.innerText ?? '' })",
+        ({ heading, summary, body }) => heading.replace(/\s/g, '').includes(`${eventType}CHECKLIST.`)
+          && summary.trim().length > 0
+          && body.includes("EVENT CARD DETAILS"),
       );
     }
   } finally {
