@@ -173,6 +173,31 @@ test('signed-in account controls survive phone and desktop transitions against r
     };
     const waitVisible = (session: string, id: string) =>
       waitFor(connection!, session, visible(id), Boolean, 30_000);
+    const fillSetup = async (session: string, details: {
+      name: string; team: string; athlete: string; season: string; sport: string;
+    }) => {
+      await connection!.evaluate(`(() => {
+        const details = ${JSON.stringify(details)};
+        for (const field of ['name', 'team', 'athlete', 'season', 'sport']) {
+          const input = document.querySelector('[data-testid="' +
+            (field === 'sport' ? 'select' : 'input') + '-profile-' + field + '"]');
+          const prototype = field === 'sport' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+          Object.getOwnPropertyDescriptor(prototype, 'value').set.call(input, details[field]);
+          input.dispatchEvent(new Event(field === 'sport' ? 'change' : 'input', { bubbles: true }));
+        }
+      })()`, session);
+    };
+    const reloadSetup = async (session: string) => {
+      const loaded = connection!.waitForEvent('Page.loadEventFired', session);
+      await connection!.send('Page.navigate', { url: appUrl('first-save-supporter', '/studio/setup') }, session);
+      await loaded;
+      await waitVisible(session, 'button-save-profile');
+    };
+    const assertCardProfileIdentity = (card: Record<string, unknown>, metadata: Record<string, unknown>) => {
+      for (const field of ['athleteName', 'teamName', 'sport', 'seasonName']) {
+        assert.equal(metadata[field], card[field], `completed profile must use the owner card's ${field}`);
+      }
+    };
     const fit = async (session: string) => {
       const size = await connection!.evaluate<{ viewport: number; document: number }>(
         '({viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth})', session,
@@ -279,6 +304,26 @@ test('signed-in account controls survive phone and desktop transitions against r
       firstSaveCache,
     ), { dashboard: null, tracker: null });
 
+    await admin('fail-profile-once', {});
+    await click(firstSaveCache, 'button-save-profile');
+    await waitFor(connection, firstSaveCache,
+      "Boolean(document.querySelector('[role=\"alert\"]')?.textContent.includes('could not save your profile'))",
+      Boolean, 30_000);
+    const interruptedCards = await athleteInvites(firstSaveOwner);
+    assert.equal(interruptedCards.length, 1, 'profile failure after creation must retain the one owner card');
+    assert.equal(interruptedCards[0].paused, true, 'an interrupted starter must remain private');
+    assert.deepEqual((await profile(firstSaveOwner)).unsafeMetadata, {},
+      'the simulated interruption must happen before Clerk profile persistence');
+    assert.equal((await state(firstSaveOwner)).status, 'active', 'provisioning succeeded before the interruption');
+
+    await reloadSetup(firstSaveCache);
+    assert.match(await connection.evaluate<string>(
+      "document.querySelector('[data-testid=\"initial-hype-card-notice\"]').textContent", firstSaveCache,
+    ), /setup keeps that card/);
+    await fillSetup(firstSaveCache, {
+      name: 'Morgan Retried', team: 'Different Team', athlete: 'Different Athlete',
+      season: 'Spring 2027', sport: 'soccer',
+    });
     await click(firstSaveCache, 'button-save-profile');
     await waitFor(connection, firstSaveCache,
       "Boolean(document.querySelector('[data-testid=\"studio-restored\"]') || document.querySelector('[role=\"alert\"]'))",
@@ -302,6 +347,8 @@ test('signed-in account controls survive phone and desktop transitions against r
     ), 'Studio access restored');
     const firstHypeCards = await athleteInvites(firstSaveOwner);
     assert.equal(firstHypeCards.length, 1, 'new account setup should assign one starter HYPE Card');
+    assert.deepEqual(firstHypeCards, interruptedCards,
+      'retrying with changed details must reuse, not overwrite or replace, the existing owner card');
     assert.deepEqual({
       athleteName: firstHypeCards[0].athleteName,
       teamName: firstHypeCards[0].teamName,
@@ -331,7 +378,7 @@ test('signed-in account controls survive phone and desktop transitions against r
       seasonName: savedProfile.unsafeMetadata.seasonName,
     }, {
       role: 'fan',
-      displayName: 'Morgan Supporter',
+      displayName: 'Morgan Retried',
       teamName: 'Northside Comets',
       athleteName: 'Alex Morgan',
       sport: 'softball',
@@ -363,6 +410,87 @@ test('signed-in account controls survive phone and desktop transitions against r
       "document.querySelector('[data-testid=\"stat-tracker-sport-choice\"]') !== null",
       firstSaveCache,
     ), false, 'a saved signup sport should skip the tracker sport prompt');
+
+    // Two stale tabs both observe no card. The fixture blocks creation until both
+    // POSTs arrive, then enforces the same unique-owner conflict as the real API.
+    await admin('reset-setup', {});
+    const concurrentPhone = await open(firstSaveOwner, 390, 844, '/studio/setup');
+    const concurrentDesktop = await open(firstSaveOwner, 1280, 850, '/studio/setup');
+    await Promise.all([
+      waitVisible(concurrentPhone, 'button-save-profile'),
+      waitVisible(concurrentDesktop, 'button-save-profile'),
+    ]);
+    await fillSetup(concurrentPhone, {
+      name: 'Phone Supporter', team: 'Phone Comets', athlete: 'Phone Athlete',
+      season: 'Winter 2026', sport: 'softball',
+    });
+    await fillSetup(concurrentDesktop, {
+      name: 'Desktop Supporter', team: 'Desktop Falcons', athlete: 'Desktop Athlete',
+      season: 'Spring 2027', sport: 'soccer',
+    });
+    await admin('concurrent-creates', {});
+    await Promise.all([
+      click(concurrentPhone, 'button-save-profile'),
+      click(concurrentDesktop, 'button-save-profile'),
+    ]);
+    await Promise.all([
+      waitVisible(concurrentPhone, 'studio-restored'),
+      waitVisible(concurrentDesktop, 'studio-restored'),
+    ]);
+    const concurrentCards = await athleteInvites(firstSaveOwner);
+    assert.equal(concurrentCards.length, 1);
+    assert.equal(concurrentCards[0].paused, true);
+    assertCardProfileIdentity(concurrentCards[0], (await profile(firstSaveOwner)).unsafeMetadata);
+    assert.deepEqual(await fetch(`${apiOrigin}/__fixture/create-counts`).then(res => res.json()),
+      { createAttempts: 2, createConflicts: 1 }, 'the losing tab must recover the unique-owner 409');
+    for (const session of [concurrentPhone, concurrentDesktop]) {
+      const loaded = connection.waitForEvent('Page.loadEventFired', session);
+      await connection.send('Page.navigate', { url: appUrl(firstSaveOwner, '/studio/setup') }, session);
+      await loaded;
+      await waitVisible(session, 'studio-restored');
+    }
+    assert.deepEqual(await athleteInvites(firstSaveOwner), concurrentCards);
+
+    // Authored cards are not safe to identify by "looks like a starter". Preserve
+    // the entire existing record, including public state and custom appearance.
+    const authoredCard = {
+      ...concurrentCards[0],
+      athleteName: 'Authored Athlete', teamName: 'Authored Team', seasonName: 'Showcase Season',
+      sport: 'basketball', paused: false, showStats: false, showEvents: true,
+      cardAppearance: { theme: 'spotlight', headline: 'Keep my design' },
+    };
+    await admin('reset-setup', { invites: [authoredCard] });
+    const authoredSetup = await open(firstSaveOwner, 1280, 850, '/studio/setup');
+    await waitVisible(authoredSetup, 'button-save-profile');
+    await fillSetup(authoredSetup, {
+      name: 'Returning Supporter', team: 'New Team', athlete: 'New Athlete',
+      season: 'New Season', sport: 'softball',
+    });
+    await click(authoredSetup, 'button-save-profile');
+    await waitVisible(authoredSetup, 'studio-restored');
+    assert.deepEqual(await athleteInvites(firstSaveOwner), [authoredCard],
+      'setup must not alter an authored card, its sharing state, or its appearance');
+    assertCardProfileIdentity(authoredCard, (await profile(firstSaveOwner)).unsafeMetadata);
+    assert.deepEqual(await fetch(`${apiOrigin}/__fixture/create-counts`).then(res => res.json()),
+      { createAttempts: 0, createConflicts: 0 });
+
+    const edit = await connection.evaluate<{ status: number; card: Record<string, unknown> }>(`fetch(
+      '/api/athlete-invites/' + ${JSON.stringify(authoredCard.inviteToken)}, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(${JSON.stringify({
+          ...authoredCard, athleteName: 'Owner Edited Athlete',
+        })}),
+      }).then(async response => ({ status: response.status, card: await response.json() }))`, authoredSetup);
+    assert.equal(edit.status, 200, 'the reused card must remain editable by its owner');
+    assert.equal(edit.card.inviteToken, authoredCard.inviteToken);
+    assert.equal(edit.card.athleteName, 'Owner Edited Athlete');
+    assert.deepEqual(edit.card.cardAppearance, authoredCard.cardAppearance);
+    assert.equal((await athleteInvites(firstSaveOwner)).length, 1);
+    const deniedEdit = await fetch(`${apiOrigin}/api/athlete-invites/${authoredCard.inviteToken}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json', 'x-test-user': other },
+      body: JSON.stringify(authoredCard),
+    });
+    assert.equal(deniedEdit.status, 404, 'another account must not be able to edit the retained card');
 
     await admin('fail', { viewer: owner, method: 'GET', path: '/account/lifecycle' });
     const phone = await open(owner, 390, 844);

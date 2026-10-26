@@ -3610,12 +3610,15 @@ export function RoleSelectionPage() {
         if (ownedInvites.isError || !ownedInvites.data) {
           throw new Error('INITIAL_HYPE_CARD_SETUP_FAILED');
         }
+        // The unique owner card is the authority if setup was interrupted or another
+        // tab won creation. Never rewrite an existing (possibly authored) card.
+        let assignedCard = ownedInvites.data[0];
         if (ownedInvites.data.length === 0) {
           const now = new Date();
           const seasonEndYear = now.getMonth() > 6 ? now.getFullYear() + 1 : now.getFullYear();
           const seasonEndsAt = new Date(`${seasonEndYear}-12-31T23:59:59.999`).toISOString();
           try {
-            await createAthleteInvite.mutateAsync({
+            assignedCard = await createAthleteInvite.mutateAsync({
               data: {
                 athleteName: cleanAthleteName,
                 teamName: cleanTeam,
@@ -3639,26 +3642,28 @@ export function RoleSelectionPage() {
             if (recoveredInvites.isError || !recoveredInvites.data?.length) {
               throw new Error('INITIAL_HYPE_CARD_SETUP_FAILED');
             }
+            assignedCard = recoveredInvites.data[0];
           }
         }
-      }
-      await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
-      await user.update({
-        unsafeMetadata: {
-          ...(user.unsafeMetadata ?? {}),
-          role: 'fan',
-          accessMode: selectedAccessMode,
-          displayName: cleanName,
-          teamName: cleanTeam,
-          athleteName: cleanAthleteName,
-          sport,
-          seasonName: cleanSeasonName,
+        if (!assignedCard) throw new Error('INITIAL_HYPE_CARD_SETUP_FAILED');
+        await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+        await user.update({
+          unsafeMetadata: {
+            ...(user.unsafeMetadata ?? {}),
+            role: 'fan',
+            accessMode: selectedAccessMode,
+            displayName: cleanName,
+            teamName: assignedCard.teamName,
+            athleteName: assignedCard.athleteName,
+            sport: assignedCard.sport,
+            seasonName: assignedCard.seasonName,
             ...(dashboardChecklistStateAfterSetup(
-             user.unsafeMetadata,
-             Boolean(existingProfile.role && existingProfile.teamName && existingProfile.displayName),
+              user.unsafeMetadata,
+              Boolean(existingProfile.role && existingProfile.teamName && existingProfile.displayName),
             ) === 'pending' ? { dashboardTour: 'pending' } : {}),
-        },
-      });
+          },
+        });
+      }
       setLocation('/studio');
     } catch (saveError) {
       setSavingProfile(false);
@@ -3782,6 +3787,7 @@ export function RoleSelectionPage() {
               </div>
               <p className="mt-4 border border-border bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground" data-testid="initial-hype-card-notice">
                 Your setup includes a starter HYPE Card. A new card stays private until you edit it and choose to share it.
+                {' '}If your account already has a card, setup keeps that card’s athlete, team, sport, and season. You can edit those details after setup.
               </p>
               <button type="submit" disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">
                 {savingProfile ? 'Saving your dashboard…' : 'Build my dashboard'}

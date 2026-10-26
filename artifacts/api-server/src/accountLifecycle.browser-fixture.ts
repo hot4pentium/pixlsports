@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import { eq } from "drizzle-orm";
 import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
-import { CreateAthleteInviteBody } from "@workspace/api-zod";
+import { CreateAthleteInviteBody, UpdateAthleteInviteBody } from "@workspace/api-zod";
 import { createAccountAccessRouter } from "./routes/accountAccess";
 import lifecycleRouter from "./routes/accountLifecycle";
 import {
@@ -18,6 +18,11 @@ let failNextFirstSaveClerkRead = false;
 let firstSavePublicMetadata: Record<string, unknown> = {};
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
 let firstSaveAthleteInvites: Record<string, unknown>[] = [];
+let failNextProfileSave = false;
+let releaseCreate: (() => void) | undefined;
+let createBarrier: Promise<void> | undefined;
+let createAttempts = 0;
+let createConflicts = 0;
 const fixtureErrors: string[] = [];
 const firstSaveClerk = {
   users: {
@@ -77,7 +82,7 @@ async function main() {
   app.use(express.json());
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type,X-Test-User");
     if (req.method === "OPTIONS") { res.status(204).end(); return; }
     next();
@@ -97,9 +102,36 @@ async function main() {
     if (req.query.viewer !== firstSaveOwner) { res.status(400).end(); return; }
     res.json(firstSaveAthleteInvites);
   });
+  app.post("/__fixture/fail-profile-once", (_req, res) => {
+    failNextProfileSave = true;
+    res.status(204).end();
+  });
+  app.post("/__fixture/reset-setup", (req, res) => {
+    firstSaveUnsafeMetadata = {};
+    firstSaveAthleteInvites = req.body?.invites ?? [];
+    failNextProfileSave = false;
+    createAttempts = 0;
+    createConflicts = 0;
+    releaseCreate?.();
+    createBarrier = undefined;
+    releaseCreate = undefined;
+    res.status(204).end();
+  });
+  app.post("/__fixture/concurrent-creates", (_req, res) => {
+    createAttempts = 0;
+    createConflicts = 0;
+    createBarrier = new Promise<void>((resolve) => { releaseCreate = resolve; });
+    res.status(204).end();
+  });
+  app.get("/__fixture/create-counts", (_req, res) => res.json({ createAttempts, createConflicts }));
   app.post("/__fixture/profile", (req, res) => {
     if (req.body?.viewer !== firstSaveOwner || typeof req.body?.unsafeMetadata !== "object" || !req.body.unsafeMetadata) {
       res.status(400).end();
+      return;
+    }
+    if (failNextProfileSave) {
+      failNextProfileSave = false;
+      res.status(503).json({ error: "Simulated profile persistence failure after card creation" });
       return;
     }
     firstSaveUnsafeMetadata = { ...req.body.unsafeMetadata };
@@ -154,7 +186,23 @@ async function main() {
     } as unknown as typeof req.log;
     next();
   });
-  app.use("/api", (req, res, next) => {
+  app.use("/api", async (req, res, next) => {
+    const tokenMatch = /^\/athlete-invites\/([^/]+)$/.exec(req.path);
+    if (tokenMatch && req.method === "PATCH") {
+      const invite = firstSaveAthleteInvites.find((item) => item.inviteToken === tokenMatch[1]);
+      if (req.get("x-test-user") !== firstSaveOwner || !invite) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const parsed = UpdateAthleteInviteBody.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid HYPE Card update" });
+        return;
+      }
+      Object.assign(invite, parsed.data, { updatedAt: new Date().toISOString() });
+      res.json(invite);
+      return;
+    }
     if (req.path !== "/athlete-invites") { next(); return; }
     const isFirstSaveOwner = req.get("x-test-user") === firstSaveOwner;
     if (req.method === "GET") {
@@ -165,7 +213,18 @@ async function main() {
       res.status(404).json({ error: "Not found" });
       return;
     }
+    createAttempts++;
+    if (createBarrier) {
+      const barrier = createBarrier;
+      // Both tabs must have observed the empty owner list before either insert.
+      if (createAttempts === 2) {
+        releaseCreate?.();
+        createBarrier = undefined;
+      }
+      await barrier;
+    }
     if (firstSaveAthleteInvites.length) {
+      createConflicts++;
       res.status(409).json({ error: "This account already has an athlete invite." });
       return;
     }
