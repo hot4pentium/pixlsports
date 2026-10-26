@@ -27,22 +27,29 @@ export function HypeCardRepositionPreview({ appearance, onChange, children, movi
     onChange(next);
   };
   return (
-    <div>
-      <div className="mx-auto aspect-[3/4] w-full max-w-[320px]"
-        tabIndex={moving ? 0 : undefined} role={moving ? 'group' : undefined} aria-label={moving ? 'Position photo preview. Use arrow keys to move the photo.' : undefined}
-        onKeyDown={(event) => {
-          if (!moving) return;
-          const directions: Record<string, [number, number]> = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] };
-          const direction = directions[event.key];
-          if (!direction) return;
-          event.preventDefault();
-          onChange(normalizeCardAppearance({ ...appearance, athleteX: appearance.athleteX + direction[0], athleteY: appearance.athleteY + direction[1] }));
-        }}
-        style={{ touchAction: moving ? 'none' : 'auto', cursor: moving ? 'grab' : 'auto' }}
-        onPointerDown={onDown} onPointerMove={onMove}
-        onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
-        <div className="h-full w-full" style={{ pointerEvents: moving ? 'none' : 'auto' }}>{children}</div>
-      </div>
+    <div
+      className="h-full w-full"
+      tabIndex={moving ? 0 : undefined}
+      role={moving ? 'group' : undefined}
+      aria-label={moving ? 'Position photo preview. Use arrow keys to move the photo.' : undefined}
+      data-testid="hype-card-positioning-preview"
+      data-position-x={appearance.athleteX}
+      data-position-y={appearance.athleteY}
+      onKeyDown={(event) => {
+        if (!moving) return;
+        const directions: Record<string, [number, number]> = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] };
+        const direction = directions[event.key];
+        if (!direction) return;
+        event.preventDefault();
+        onChange(normalizeCardAppearance({ ...appearance, athleteX: appearance.athleteX + direction[0], athleteY: appearance.athleteY + direction[1] }));
+      }}
+      style={{ touchAction: moving ? 'none' : 'auto', cursor: moving ? 'grab' : 'auto' }}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={() => { drag.current = null; }}
+      onPointerCancel={() => { drag.current = null; }}
+    >
+      <div className="h-full w-full" style={{ pointerEvents: moving ? 'none' : 'auto' }}>{children}</div>
     </div>
   );
 }
