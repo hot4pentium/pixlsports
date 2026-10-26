@@ -104,6 +104,7 @@ const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',s
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = []; window.__momentSaves = [];
+window.__fixtureUser = null; window.__ownerInviteResponses = 0;
 window.__alertPreferences = {liveAlerts:false,eventAlerts:false,preEventAlerts:false,active:true};
 window.__followCreates = [];
 window.__permissionResult = 'granted';
@@ -152,7 +153,7 @@ window.fetch = async (input,init) => {
       const body=JSON.parse(init.body);window.__momentSaves.push(body);state.favoriteMoment=body.favoriteMoment.trim()||null;
       return new Response(JSON.stringify({favoriteMoment:state.favoriteMoment}),{status:200,headers:{'Content-Type':'application/json'}});
     }
-    if(url.endsWith('/api/athlete-invites'))return new Response(JSON.stringify(state.ownerInvites),{status:200,headers:{'Content-Type':'application/json'}});
+     if(url.endsWith('/api/athlete-invites')){window.__ownerInviteResponses++;const invites=state.mode!=='public-showcase'||window.__fixtureUser?.id==='fixture-account'?state.ownerInvites:[];return new Response(JSON.stringify(invites),{status:200,headers:{'Content-Type':'application/json'}});}
     if(url.endsWith('/api/projects'))return new Response(JSON.stringify([]),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/athlete-gear/sports')){
       if(init?.method==='PUT'){
@@ -213,7 +214,7 @@ test('Showcase keeps the HYPE Card central and the athlete moment parent-control
   try {
     await writeFile(sourcePath, harness());
     await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
-    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-public-identity',enforce:'pre',resolveId(id){if(id==='@clerk/react')return '\\0fixture-public-identity';},load(id){if(id==='\\0fixture-public-identity')return 'export function useUser(){return {user:null,isLoaded:true,isSignedIn:false}} export function useClerk(){return {signOut:async()=>{}}}';}},{name:'fixture-gear-art',configureServer(server){server.middlewares.use('/api/athlete-gear/art',(_request,response)=>{response.statusCode=200;response.setHeader('Content-Type','image/png');response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==','base64'));});}}]});`);
+    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-public-identity',enforce:'pre',resolveId(id){if(id==='@clerk/react')return '\\0fixture-public-identity';},load(id){if(id==='\\0fixture-public-identity')return 'export function useUser(){const user=window.__fixtureUser??null;return {user,isLoaded:true,isSignedIn:Boolean(user)}} export function useClerk(){return {signOut:async()=>{}}}';}},{name:'fixture-gear-art',configureServer(server){server.middlewares.use('/api/athlete-gear/art',(_request,response)=>{response.statusCode=200;response.setHeader('Content-Type','image/png');response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==','base64'));});}}]});`);
     vite = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
       cwd: appDirectory, env: { ...process.env, PORT: String(port), BASE_PATH: `${base}/` }, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -758,6 +759,17 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="image-showcase-football-jersey"]').style.getPropertyValue('--football-jersey-accent')`), '#D7EF80');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-football-helmet"]'))`), 'the owner showcase displays equipped football gear on its table');
      await browser.evaluate(`window.__update({mode:'public-showcase'})`);
+    await browser.wait(`document.querySelector('[data-testid="public-showcase-interactive-hype-card"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-owner-back-to-showcase"]')`), null, 'a public visitor does not see the owner return link');
+    await browser.evaluate(`window.__fixtureUser={id:'another-account'};window.__ownerInviteResponses=0;window.__update({mode:'public-showcase'})`);
+    await browser.wait(`window.__ownerInviteResponses>=1`);
+    await browser.wait(`document.querySelector('[data-testid="link-owner-back-to-showcase"]')===null`);
+    await browser.evaluate(`window.__fixtureUser={id:'fixture-account'};window.__ownerInviteResponses=0;window.__update({mode:'public-showcase'})`);
+    await browser.wait(`window.__ownerInviteResponses>=1`);
+    await browser.wait(`document.querySelector('[data-testid="link-owner-back-to-showcase"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-owner-back-to-showcase"]').getAttribute('href')`), `${base}/studio/player-showcase`, 'the card owner can return to the private Showcase home');
+    await browser.evaluate(`window.__fixtureUser=null;window.__update({mode:'public-showcase'})`);
+    await browser.wait(`document.querySelector('[data-testid="link-owner-back-to-showcase"]')===null`);
     await browser.wait(`document.querySelector('[data-testid="section-public-showcase-gear"]')`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="jersey-table-gear-football-helmet"]'))`), 'publicly shared equipped gear sits on the football jersey table');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-cleats"]').dataset.earned`), 'false');

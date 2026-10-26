@@ -1,8 +1,12 @@
 import {
+  getListAthleteInvitesQueryKey,
   getGetAthleteFanCardQueryKey,
+  useListAthleteInvites,
   useGetAthleteFanCard,
 } from '@workspace/api-client-react';
 import { ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { useUser } from '@clerk/react';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import { normalizeCardAppearance } from './hype-card-appearance';
 import { LivingAthleteCardPage } from './living-athlete-card';
 import './public-player-showcase.css';
@@ -13,6 +17,17 @@ export interface PublicPlayerShowcasePageProps {
 
 export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePageProps) {
   const inviteToken = params.inviteToken ?? '';
+  const { isSignedIn, user } = useUser();
+  const ownerInvitesQuery = useListAthleteInvites({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: [...getListAthleteInvitesQueryKey(), isSignedIn ? user?.id ?? null : null],
+      retry: false,
+    },
+  });
+  const isOwner = Boolean(
+    isSignedIn && ownerInvitesQuery.data?.some((ownedInvite) => ownedInvite.inviteToken === inviteToken),
+  );
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
     query: {
       enabled: !!inviteToken,
@@ -61,6 +76,16 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
         </div>
         <span className="public-showcase__safe-label"><ShieldCheck size={15} aria-hidden="true" /> Shared by family</span>
       </header>
+      {isOwner && (
+        <nav className="public-showcase__owner-nav" aria-label="Owner navigation">
+          <BackNavigationLink
+            href="/studio/player-showcase"
+            label="Back to my Showcase"
+            testId="link-owner-back-to-showcase"
+            variant="public"
+          />
+        </nav>
+      )}
 
       <section className="public-showcase__hero" aria-labelledby="public-showcase-title">
         <div className="public-showcase__hero-copy">

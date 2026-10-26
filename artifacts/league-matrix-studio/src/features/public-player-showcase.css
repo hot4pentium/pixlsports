@@ -36,6 +36,7 @@
 }
 .public-showcase__safe-label { display: inline-flex; align-items: center; gap: 8px; color: #b9c9dc; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .public-showcase__safe-label svg { color: var(--ps-lime); }
+.public-showcase__owner-nav { width: min(1280px, calc(100% - 56px)); margin: 0 auto; padding-top: 12px; }
 .public-showcase__hero {
   position: relative;
   display: grid;
