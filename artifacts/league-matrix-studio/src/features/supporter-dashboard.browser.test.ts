@@ -648,6 +648,10 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       Boolean,
     );
     await connection.evaluate(
+      'sessionStorage.setItem("pixlsports-supporter-dashboard-checklist-step", JSON.stringify({ userId: "supporter-checklist-skip", stepIndex: 2 }))',
+      page.sessionId,
+    );
+    await connection.evaluate(
       'document.querySelector("[data-testid=\\"dashboard-checklist-dismiss\\"]")?.click()',
       page.sessionId,
     );
@@ -672,6 +676,14 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       ),
       true,
       'dismissing the checklist must not show the completion celebration',
+    );
+    assert.equal(
+      await connection.evaluate(
+        'sessionStorage.getItem("pixlsports-supporter-dashboard-checklist-step")',
+        page.sessionId,
+      ),
+      null,
+      'dismissing the checklist should clear the remembered mobile step',
     );
 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=install`);
@@ -858,6 +870,30 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
         page.sessionId,
       );
     }
+    await connection.evaluate(
+      'window.__navigateSupporterDashboardAwayForFilterTest("Profile")',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-away-tool\\"]") !== null',
+      Boolean,
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"button-return-to-supporter-dashboard\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitForChecklist();
+    assert.deepEqual(
+      await connection.evaluate(`(() => ({
+        step: document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim(),
+        checkedProfile: document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.checked,
+        saveCount: window.__dashboardChecklistSaves?.length ?? 0,
+      }))()`, page.sessionId),
+      { step: 'Step 4 of 5', checkedProfile: true, saveCount: 1 },
+      'returning to the dashboard in the same session should restore the mobile step without changing checkbox progress',
+    );
     let eventCardActionFocused = false;
     for (let tabCount = 0; tabCount < 100; tabCount += 1) {
       await connection.send('Input.dispatchKeyEvent', {
@@ -1013,6 +1049,29 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       },
       'supporters should be able to continue and save checklist progress after closing the Event Card editor',
     );
+    await connection.evaluate(
+      'window.__setSupporterDashboardTrackerUserId("supporter-checklist-another-account")',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step 1 of 5"',
+      Boolean,
+    );
+    await connection.evaluate(
+      'window.__setSupporterDashboardTrackerUserId("supporter-checklist-create")',
+      page.sessionId,
+    );
+    await waitForChecklist();
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim()',
+        page.sessionId,
+      ),
+      'Step 1 of 5',
+      'switching accounts should clear the previously remembered checklist step',
+    );
 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=complete`);
     await waitForChecklist();
@@ -1051,6 +1110,14 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       page.sessionId,
       'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") !== null',
       Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'sessionStorage.getItem("pixlsports-supporter-dashboard-checklist-step")',
+        page.sessionId,
+      ),
+      null,
+      'finishing the checklist should clear the remembered mobile step',
     );
     await new Promise((resolve) => setTimeout(resolve, 900));
     const confettiPresentation = await connection.evaluate<{

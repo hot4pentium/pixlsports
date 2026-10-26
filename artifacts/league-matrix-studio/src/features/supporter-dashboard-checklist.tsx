@@ -23,6 +23,56 @@ import './tracker-completion-dialog.css';
 
 type InstallDeviceClass = 'mobile' | 'desktop';
 
+const CHECKLIST_STEP_SESSION_KEY = 'pixlsports-supporter-dashboard-checklist-step';
+
+function readRememberedChecklistStep(userId: string, deviceClass: InstallDeviceClass) {
+  if (typeof window === 'undefined') return 0;
+
+  try {
+    const raw = window.sessionStorage.getItem(CHECKLIST_STEP_SESSION_KEY);
+    if (!raw) return 0;
+
+    const remembered = JSON.parse(raw) as { userId?: unknown; stepIndex?: unknown };
+    if (remembered.userId !== userId) {
+      window.sessionStorage.removeItem(CHECKLIST_STEP_SESSION_KEY);
+      return 0;
+    }
+
+    if (deviceClass !== 'mobile' || !Number.isInteger(remembered.stepIndex)) return 0;
+    return Math.max(
+      0,
+      Math.min(SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1, remembered.stepIndex as number),
+    );
+  } catch {
+    return 0;
+  }
+}
+
+function rememberChecklistStep(userId: string, stepIndex: number) {
+  try {
+    window.sessionStorage.setItem(CHECKLIST_STEP_SESSION_KEY, JSON.stringify({ userId, stepIndex }));
+  } catch {
+    // The checklist remains usable when browser storage is unavailable.
+  }
+}
+
+function clearRememberedChecklistStep(userId: string) {
+  try {
+    const raw = window.sessionStorage.getItem(CHECKLIST_STEP_SESSION_KEY);
+    if (!raw) return;
+    const remembered = JSON.parse(raw) as { userId?: unknown };
+    if (remembered.userId === userId) {
+      window.sessionStorage.removeItem(CHECKLIST_STEP_SESSION_KEY);
+    }
+  } catch {
+    try {
+      window.sessionStorage.removeItem(CHECKLIST_STEP_SESSION_KEY);
+    } catch {
+      // Storage may be blocked by the browser.
+    }
+  }
+}
+
 export function SupporterDashboardChecklistCompletionDialog({
   open,
   onOpenChange,
@@ -120,7 +170,9 @@ export function SupporterDashboardChecklist({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [hidden, setHidden] = useState(false);
-  const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const [activeStepIndex, setActiveStepIndex] = useState(
+    () => readRememberedChecklistStep(userId, installDeviceClass),
+  );
 
   useEffect(() => {
     setChecked(normalizeDashboardChecklistItemIds(checkedItemIds));
@@ -129,8 +181,17 @@ export function SupporterDashboardChecklist({
   }, [userId, incomingCheckedKey]);
 
   useEffect(() => {
-    setActiveStepIndex(0);
-  }, [userId]);
+    setActiveStepIndex(readRememberedChecklistStep(userId, installDeviceClass));
+  }, [userId, installDeviceClass]);
+
+  const goToStep = (stepIndex: number) => {
+    const nextStepIndex = Math.max(
+      0,
+      Math.min(SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1, stepIndex),
+    );
+    setActiveStepIndex(nextStepIndex);
+    if (installDeviceClass === 'mobile') rememberChecklistStep(userId, nextStepIndex);
+  };
 
   const saveProgress = async (next: DashboardChecklistItemId[]) => {
     setPending(true);
@@ -138,7 +199,10 @@ export function SupporterDashboardChecklist({
     try {
       await onSaveProgress(next);
       setChecked(next);
-      if (isDashboardChecklistComplete(next)) setHidden(true);
+      if (isDashboardChecklistComplete(next)) {
+        clearRememberedChecklistStep(userId);
+        setHidden(true);
+      }
     } catch {
       setError('Your checklist progress could not be saved. Try again.');
     } finally {
@@ -158,6 +222,7 @@ export function SupporterDashboardChecklist({
     setError('');
     try {
       await onDismiss(checked);
+      clearRememberedChecklistStep(userId);
       setHidden(true);
     } catch {
       setError('The checklist could not be dismissed. Try again.');
@@ -219,7 +284,7 @@ export function SupporterDashboardChecklist({
         <button
           type="button"
           className="supporter-dashboard-checklist__step-button"
-          onClick={() => setActiveStepIndex((current) => Math.max(0, current - 1))}
+          onClick={() => goToStep(activeStepIndex - 1)}
           disabled={pending || activeStepIndex === 0}
           aria-label="Previous checklist step"
           data-testid="dashboard-checklist-previous-step"
@@ -237,7 +302,7 @@ export function SupporterDashboardChecklist({
         <button
           type="button"
           className="supporter-dashboard-checklist__step-button"
-          onClick={() => setActiveStepIndex((current) => Math.min(SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1, current + 1))}
+          onClick={() => goToStep(activeStepIndex + 1)}
           disabled={pending || activeStepIndex === SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1}
           aria-label="Next checklist step"
           data-testid="dashboard-checklist-next-step"
