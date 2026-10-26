@@ -773,6 +773,154 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       },
       'phone checklist should start with one visible step and working navigation',
     );
+    const keyboardTab = async (shift = false) => {
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Tab',
+        code: 'Tab',
+        windowsVirtualKeyCode: 9,
+        nativeVirtualKeyCode: 9,
+        ...(shift ? { modifiers: 8 } : {}),
+      }, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Tab',
+        code: 'Tab',
+        windowsVirtualKeyCode: 9,
+        nativeVirtualKeyCode: 9,
+        ...(shift ? { modifiers: 8 } : {}),
+      }, page.sessionId);
+    };
+    const keyboardActivate = async (key: string, code: string, keyCode: number) => {
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key,
+        code,
+        ...(key === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {}),
+        windowsVirtualKeyCode: keyCode,
+        nativeVirtualKeyCode: keyCode,
+      }, page.sessionId);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key,
+        code,
+        windowsVirtualKeyCode: keyCode,
+        nativeVirtualKeyCode: keyCode,
+      }, page.sessionId);
+    };
+    let checklistNextFocused = false;
+    for (let tabCount = 0; tabCount < 100; tabCount += 1) {
+      await keyboardTab();
+      checklistNextFocused = await connection.evaluate(
+        'document.activeElement === document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-next-step\\"]")',
+        page.sessionId,
+      );
+      if (checklistNextFocused) break;
+    }
+    assert.equal(checklistNextFocused, true, 'Tab should reach the enabled first-step Next button');
+    const assertKeyboardStep = async (step: number, focusedControl: 'previous' | 'next') => {
+      assert.deepEqual(
+        await connection.evaluate(`(() => {
+          const checklist = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="supporter-dashboard-checklist"]');
+          const focus = document.activeElement;
+          const control = checklist?.querySelector('[data-testid="dashboard-checklist-${focusedControl}-step"]');
+          return {
+            step: checklist?.querySelector('[data-testid="dashboard-checklist-step-indicator"]')?.textContent?.trim(),
+            liveAnnouncement: checklist?.querySelector('[data-testid="dashboard-checklist-step-indicator"]')?.getAttribute('aria-live'),
+            focusedControl: focus === control,
+            focusedControlEnabled: control instanceof HTMLButtonElement && !control.disabled,
+            previousDisabled: checklist?.querySelector('[data-testid="dashboard-checklist-previous-step"]')?.disabled,
+            nextDisabled: checklist?.querySelector('[data-testid="dashboard-checklist-next-step"]')?.disabled,
+          };
+        })()`, page.sessionId),
+        {
+          step: `Step ${step} of 5`,
+          liveAnnouncement: 'polite',
+          focusedControl: true,
+          focusedControlEnabled: true,
+          previousDisabled: step === 1,
+          nextDisabled: step === 5,
+        },
+        `keyboard navigation should announce step ${step}, retain focus on an enabled control, and disable only the boundary button`,
+      );
+    };
+    await keyboardActivate('Enter', 'Enter', 13);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step 2 of 5"',
+      Boolean,
+    );
+    await assertKeyboardStep(2, 'next');
+    await keyboardActivate(' ', 'Space', 32);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step 3 of 5"',
+      Boolean,
+    );
+    await assertKeyboardStep(3, 'next');
+    await keyboardTab(true);
+    assert.equal(
+      await connection.evaluate(
+        'document.activeElement === document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-previous-step\\"]")',
+        page.sessionId,
+      ),
+      true,
+      'Shift+Tab should focus Previous after Next',
+    );
+    await keyboardActivate('Enter', 'Enter', 13);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step 2 of 5"',
+      Boolean,
+    );
+    await assertKeyboardStep(2, 'previous');
+    await keyboardActivate(' ', 'Space', 32);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step 1 of 5"',
+      Boolean,
+    );
+    await assertKeyboardStep(1, 'next');
+    for (let step = 2; step <= 5; step += 1) {
+      await keyboardActivate('Enter', 'Enter', 13);
+      await waitFor(
+        connection,
+        page.sessionId,
+        `document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step ${step} of 5"`,
+        Boolean,
+      );
+      await assertKeyboardStep(step, step === 5 ? 'previous' : 'next');
+    }
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step 5 of 5"',
+        page.sessionId,
+      ),
+      true,
+      'keyboard navigation should stay on the last step when Next is disabled',
+    );
+    await keyboardActivate('Enter', 'Enter', 13);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step 4 of 5"',
+      Boolean,
+    );
+    await assertKeyboardStep(4, 'previous');
+    for (let step = 3; step >= 1; step -= 1) {
+      await keyboardActivate('Enter', 'Enter', 13);
+      await waitFor(
+        connection,
+        page.sessionId,
+        `document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step ${step} of 5"`,
+        Boolean,
+      );
+    }
+    await assertKeyboardStep(1, 'next');
     for (let step = 0; step < 5; step += 1) {
       const currentCard = await connection.evaluate<{
         title: string;

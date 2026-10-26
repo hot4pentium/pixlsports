@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Trophy, X } from 'lucide-react';
 import {
@@ -173,6 +173,9 @@ export function SupporterDashboardChecklist({
   const [activeStepIndex, setActiveStepIndex] = useState(
     () => readRememberedChecklistStep(userId, installDeviceClass),
   );
+  const previousStepButtonRef = useRef<HTMLButtonElement>(null);
+  const nextStepButtonRef = useRef<HTMLButtonElement>(null);
+  const pendingStepFocusRef = useRef<'previous' | 'next' | null>(null);
 
   useEffect(() => {
     setChecked(normalizeDashboardChecklistItemIds(checkedItemIds));
@@ -184,14 +187,34 @@ export function SupporterDashboardChecklist({
     setActiveStepIndex(readRememberedChecklistStep(userId, installDeviceClass));
   }, [userId, installDeviceClass]);
 
-  const goToStep = (stepIndex: number) => {
+  const goToStep = (stepIndex: number, activatedControl: 'previous' | 'next') => {
     const nextStepIndex = Math.max(
       0,
       Math.min(SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1, stepIndex),
     );
+    const activeButton = activatedControl === 'previous'
+      ? previousStepButtonRef.current
+      : nextStepButtonRef.current;
+    if (typeof document !== 'undefined' && document.activeElement === activeButton) {
+      if (nextStepIndex === 0 && activatedControl === 'previous') {
+        pendingStepFocusRef.current = 'next';
+      } else if (
+        nextStepIndex === SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1
+        && activatedControl === 'next'
+      ) {
+        pendingStepFocusRef.current = 'previous';
+      }
+    }
     setActiveStepIndex(nextStepIndex);
     if (installDeviceClass === 'mobile') rememberChecklistStep(userId, nextStepIndex);
   };
+
+  useLayoutEffect(() => {
+    const focusTarget = pendingStepFocusRef.current;
+    if (!focusTarget) return;
+    pendingStepFocusRef.current = null;
+    (focusTarget === 'previous' ? previousStepButtonRef.current : nextStepButtonRef.current)?.focus();
+  }, [activeStepIndex]);
 
   const saveProgress = async (next: DashboardChecklistItemId[]) => {
     setPending(true);
@@ -282,9 +305,10 @@ export function SupporterDashboardChecklist({
         data-testid="dashboard-checklist-step-navigation"
       >
         <button
+          ref={previousStepButtonRef}
           type="button"
           className="supporter-dashboard-checklist__step-button"
-          onClick={() => goToStep(activeStepIndex - 1)}
+          onClick={() => goToStep(activeStepIndex - 1, 'previous')}
           disabled={pending || activeStepIndex === 0}
           aria-label="Previous checklist step"
           data-testid="dashboard-checklist-previous-step"
@@ -300,9 +324,10 @@ export function SupporterDashboardChecklist({
           Step {activeStepIndex + 1} of {SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length}
         </span>
         <button
+          ref={nextStepButtonRef}
           type="button"
           className="supporter-dashboard-checklist__step-button"
-          onClick={() => goToStep(activeStepIndex + 1)}
+          onClick={() => goToStep(activeStepIndex + 1, 'next')}
           disabled={pending || activeStepIndex === SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1}
           aria-label="Next checklist step"
           data-testid="dashboard-checklist-next-step"
