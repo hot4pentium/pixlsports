@@ -67,7 +67,7 @@ import {
 import { HypeCardBreakoutControls, type BreakoutTransform } from './hype-card-breakout-controls';
 import { CardFinishOptions } from './hype-card-design-controls';
 import { HypeCardAppearanceControls } from './hype-card-appearance-controls';
-import { HypeCardPreviewNavigation } from './classic-hype-card-preview';
+import { HypeCardDraftSectionPreview, HypeCardPreviewNavigation, type HypeCardPreviewSide } from './classic-hype-card-preview';
 import { HypeCardRepositionPreview } from './hype-card-reposition-preview';
 import { hasUsableTransparency } from './hype-card-breakout-validation';
 import { applyLatestLinkedStat } from './hype-card-stat-sync';
@@ -1171,6 +1171,7 @@ export function HypeCardEditor({
   const [includeAudio, setIncludeAudio] = useState(true);
   const [imageFormat, setImageFormat] = useState<'png' | 'jpeg'>('png');
   const [walkthroughStep, setWalkthroughStep] = useState(0);
+  const [draftPreviewSide, setDraftPreviewSide] = useState<HypeCardPreviewSide | 'front'>('front');
   const [sharing, setSharing] = useState(false);
   const [shareProgress, setShareProgress] = useState(0);
   const [shareStage, setShareStage] = useState('');
@@ -3280,18 +3281,32 @@ export function HypeCardEditor({
                   }))} previewContent={<div className="overflow-hidden rounded-xl border border-white/15 bg-[#0B1F3A] p-2" data-testid="hype-card-main-preview">
                     <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-[#55A4FF]">Live HYPE Card preview</div>
                     <div className="h-[58dvh] min-h-[360px] max-h-[560px] sm:h-[64dvh] sm:min-h-[400px]">
-                      <PreviewCanvas
-                        project={project}
-                        videoUrl={videoUrl}
-                        videoRef={videoRef}
-                        onRequestPlay={loadPreviewForPlay}
-                        photoPositioning={project.cardAppearance.design !== 'classic' ? {
-                          moving: positioningPhoto,
-                          onChange: (appearance) => updateProject('cardAppearance', appearance),
-                        } : undefined}
-                      />
+                      {draftPreviewSide === 'front' ? (
+                        <PreviewCanvas
+                          project={project}
+                          videoUrl={videoUrl}
+                          videoRef={videoRef}
+                          onRequestPlay={loadPreviewForPlay}
+                          photoPositioning={project.cardAppearance.design !== 'classic' ? {
+                            moving: positioningPhoto,
+                            onChange: (appearance) => updateProject('cardAppearance', appearance),
+                          } : undefined}
+                        />
+                      ) : (
+                        <HypeCardDraftSectionPreview
+                          side={draftPreviewSide}
+                          athleteName={project.playerName}
+                          teamName={project.teamName}
+                        />
+                      )}
                     </div>
-                    <HypeCardPreviewNavigation />
+                    <HypeCardPreviewNavigation
+                      activeSide={draftPreviewSide}
+                      onSideChange={(side) => {
+                        setDraftPreviewSide(side);
+                        setPositioningPhoto(false);
+                      }}
+                    />
                   </div>} placementActions={<div>
                     <button type="button" data-testid="button-position-photo" aria-pressed={positioningPhoto} onClick={() => setPositioningPhoto(value => !value)} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white">{positioningPhoto ? 'Done positioning' : 'Position photo'}</button>
                     <p className="mt-2 text-xs text-white/70">{positioningPhoto ? 'Drag the live preview or focus it and use the arrow keys. Turn positioning off before scrolling.' : 'Choose Position photo to adjust the athlete on the live preview.'}</p>

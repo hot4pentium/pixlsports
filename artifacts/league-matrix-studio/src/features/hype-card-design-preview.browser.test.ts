@@ -142,43 +142,24 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       `document.querySelector('[data-testid="design-media-framing-panel"]')?.open`,
       Boolean,
     );
-    const mediaZoomBeforeDrag = await connection.evaluate<number>(
+    const mediaZoomBeforeKeyboard = await connection.evaluate<number>(
       `Number(document.querySelector('[aria-label="Media zoom"] [role="slider"]')?.getAttribute('aria-valuenow'))`,
       session,
     );
-    const mediaZoomDrag = await connection.evaluate<{ startX: number; targetX: number; y: number }>(`(() => {
-      const root = document.querySelector('[aria-label="Media zoom"]');
-      const thumb = root?.querySelector('[role="slider"]');
-      const rect = root.getBoundingClientRect();
-      const min = Number(thumb.getAttribute('aria-valuemin'));
-      const max = Number(thumb.getAttribute('aria-valuemax'));
-      const current = Number(thumb.getAttribute('aria-valuenow'));
-      const thumbInset = 8;
-      const trackWidth = Math.max(1, rect.width - thumbInset * 2);
-      const ratio = (value) => (value - min) / (max - min);
-      return {
-        startX: rect.left + thumbInset + ratio(current) * trackWidth,
-        targetX: rect.left + thumbInset + ratio(2.2) * trackWidth,
-        y: rect.top + rect.height / 2,
-      };
-    })()`, session);
-    await connection.send('Input.dispatchMouseEvent', {
-      type: 'mouseMoved', x: mediaZoomDrag.startX, y: mediaZoomDrag.y, button: 'none', buttons: 0,
-    }, session);
-    await connection.send('Input.dispatchMouseEvent', {
-      type: 'mousePressed', x: mediaZoomDrag.startX, y: mediaZoomDrag.y, button: 'left', buttons: 1, clickCount: 1,
-    }, session);
-    await connection.send('Input.dispatchMouseEvent', {
-      type: 'mouseMoved', x: mediaZoomDrag.targetX, y: mediaZoomDrag.y, button: 'left', buttons: 1,
-    }, session);
-    await connection.send('Input.dispatchMouseEvent', {
-      type: 'mouseReleased', x: mediaZoomDrag.targetX, y: mediaZoomDrag.y, button: 'left', buttons: 0, clickCount: 1,
-    }, session);
+    await connection.evaluate(`document.querySelector('[aria-label="Media zoom"] [role="slider"]')?.focus()`, session);
+    for (let step = 0; step < 60; step += 1) {
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39,
+      }, session);
+      await connection.send('Input.dispatchKeyEvent', {
+        type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39,
+      }, session);
+    }
     await waitFor(
       connection,
       session,
       `Number(document.querySelector('[aria-label="Media zoom"] [role="slider"]')?.getAttribute('aria-valuenow'))`,
-      (value) => value > mediaZoomBeforeDrag + 0.5,
+      (value) => value > mediaZoomBeforeKeyboard + 0.5,
     );
 
     assert.equal(await connection.evaluate<number>(
@@ -206,6 +187,52 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       session,
     );
     assert.equal(designOrder, true, 'the card, four-side strip, design arrows, and position controls appear in order');
+    assert.equal(await connection.evaluate<boolean>(
+      `(() => {
+        const navigation = document.querySelector('[data-testid="appearance-navigation-preview"]');
+        const buttons = Array.from(navigation?.querySelectorAll('button') ?? []);
+        return buttons.length === 4 && buttons.every((button) => button.type === 'button')
+          && navigation?.querySelectorAll('a').length === 0;
+      })()`,
+      session,
+    ), true, 'draft section controls stay local buttons rather than opening a saved or public card');
+    for (const [label, side] of [
+      ['replies', 'responses'],
+      ['stats', 'stats'],
+      ['taps', 'live-taps'],
+      ['events', 'events'],
+    ]) {
+      await connection.evaluate(
+        `document.querySelector('[data-testid="button-preview-section-${label}"]')?.click()`,
+        session,
+      );
+      await waitFor(
+        connection,
+        session,
+        `document.querySelector('[data-testid="hype-card-draft-section-preview"]')?.getAttribute('data-preview-side') || ''`,
+        (value) => value === side,
+      );
+      assert.equal(await connection.evaluate<boolean>(
+        `document.querySelector('[data-testid="button-preview-section-${label}"]')?.getAttribute('aria-pressed') === 'true'
+          && document.querySelector('[data-testid="hype-card-draft-section-preview"]')?.textContent?.includes('Example preview')`,
+        session,
+      ), true, `${label} opens a selected, clearly labeled local example preview`);
+    }
+    await connection.evaluate(
+      `document.querySelector('[data-testid="button-preview-section-events"]')?.click()`,
+      session,
+    );
+    await waitFor(
+      connection,
+      session,
+      `Boolean(document.querySelector('[data-testid="hype-preview-canvas"]'))`,
+      Boolean,
+    );
+    assert.equal(await connection.evaluate<boolean>(
+      `document.querySelector('[data-testid="button-preview-section-events"]')?.getAttribute('aria-pressed') === 'false'
+        && !document.querySelector('[data-testid="hype-card-draft-section-preview"]')`,
+      session,
+    ), true, 'selecting the current section again returns to the editable card front');
     assert.equal(await connection.evaluate<number>(
       `document.querySelectorAll('[data-testid="slider-card-athleteX"], [data-testid="slider-card-athleteY"], [data-testid="slider-card-athleteScale"]').length`,
       session,
@@ -351,6 +378,13 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       `document.querySelectorAll('[data-testid="hype-preview-canvas"]').length`,
       session,
     ), 1, 'the phone layout also keeps a single live card preview');
+    await connection.evaluate(`document.querySelector('[data-testid="button-preview-section-taps"]')?.click()`, session);
+    await waitFor(
+      connection,
+      session,
+      `document.querySelector('[data-testid="hype-card-draft-section-preview"]')?.getAttribute('data-preview-side') || ''`,
+      (value) => value === 'live-taps',
+    );
     assert.equal(await connection.evaluate<boolean>(
       `(() => {
         const controls = document.querySelector('[data-testid="hype-card-appearance-controls"]');
@@ -370,6 +404,25 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
     }))()`, session);
     assert.ok(phoneFit.page <= phoneFit.viewport + 2, `the phone layout should not scroll horizontally: ${JSON.stringify(phoneFit)}`);
     assert.ok(phoneFit.previewWidth > 0 && phoneFit.previewWidth <= phoneFit.viewport, 'the main preview should fit the phone viewport');
+    const phoneSectionBounds = await connection.evaluate<{ width: number; height: number; right: number }>(
+      `(() => {
+        const stage = document.querySelector('[data-testid="hype-card-draft-section-stage"]');
+        const preview = document.querySelector('[data-testid="hype-card-draft-section-preview"]');
+        const bounds = preview?.getBoundingClientRect();
+        return {
+          width: bounds?.width ?? 0,
+          height: bounds?.height ?? 0,
+          right: bounds?.right ?? Number.POSITIVE_INFINITY,
+          stageWidth: stage?.getBoundingClientRect().width ?? 0,
+        };
+      })()`,
+      session,
+    );
+    assert.ok(phoneSectionBounds.width > 0 && phoneSectionBounds.height > 0
+      && phoneSectionBounds.right <= phoneFit.viewport + 1,
+    `the selected sample section should remain visible on a phone: ${JSON.stringify(phoneSectionBounds)}`);
+    assert.ok(Math.abs(phoneSectionBounds.width / phoneSectionBounds.height - .75) < .05,
+      `the selected sample section should keep portrait card proportions: ${JSON.stringify(phoneSectionBounds)}`);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

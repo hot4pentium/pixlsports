@@ -129,3 +129,4 @@
 - [Patch batch recovery](patch-batch-recovery.md) — after any failed multi-file patch, inspect every targeted file because partial application is possible.
 - [Starter HYPE Card setup](starter-hype-card-setup.md) — onboarding assigns an editable private starter; softball keeps its own sport.
 - [Completed Event sharing](completed-event-sharing.md) — finished Event Cards share the athlete’s HYPE Card, without automatically publishing private cards.
+- [Draft HYPE Card section previews](draft-hype-card-section-preview.md) — onboarding uses local sample content for Replies, Stats, Taps, and Events without save or share requests.

@@ -34,7 +34,8 @@
   background: #07172b;
   color: #e9eef7;
 }
-.classic-card-preview-navigation :is(span, a) {
+.classic-card-preview-navigation :is(span, a, button) {
+  appearance: none;
   display: flex;
   min-width: 0;
   min-height: 40px;
@@ -42,11 +43,18 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
+  padding: 3px 1px;
   border-right: 1px solid #ffffff22;
+  background: transparent;
+  color: inherit;
   font-size: 7px;
   font-weight: 800;
   text-transform: uppercase;
+  cursor: default;
 }
-.classic-card-preview-navigation :is(span, a):last-child { border-right: 0; }
-.classic-card-preview-navigation a:hover, .classic-card-preview-navigation a:focus-visible { background: #ffffff1f; outline: 2px solid #8ecbff; outline-offset: -2px; }
+.classic-card-preview-navigation :is(span, a, button):last-child { border-right: 0; }
+.classic-card-preview-navigation button { cursor: pointer; }
+.classic-card-preview-navigation a:hover, .classic-card-preview-navigation a:focus-visible,
+.classic-card-preview-navigation button:hover, .classic-card-preview-navigation button:focus-visible { background: #ffffff1f; outline: 2px solid #8ecbff; outline-offset: -2px; }
+.classic-card-preview-navigation button[aria-pressed="true"] { background: #8ecbff2b; color: #fff; }
 .classic-card-preview-navigation svg { width: 12px; height: 12px; }
