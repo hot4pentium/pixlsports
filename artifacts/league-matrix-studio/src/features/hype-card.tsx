@@ -501,15 +501,9 @@ function Section({
 }
 
 const hypeWalkthroughSteps = [
-  { label: 'Media', hint: 'Add player media' },
+  { label: 'Media', hint: 'Add the player photo and/or team logo' },
   { label: 'Design', hint: 'Choose a card template, colors, and athlete placement' },
   { label: 'Review', hint: 'Preview and export' },
-] as const;
-
-const mobileMediaSteps = [
-  { label: 'Add photo', hint: 'Choose the player photo and team logo.' },
-  { label: 'Frame', hint: 'Set the crop and position.' },
-  { label: 'Fine-tune', hint: 'Adjust color and image export options.' },
 ] as const;
 
 function HypeField({
@@ -586,7 +580,7 @@ function MediaAssetControls({
   onLogoRemove: () => void | Promise<void>;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="media-asset-only-controls">
       <AssetButton
         label="Photo"
         hasAsset={hasMedia}
@@ -618,7 +612,7 @@ function MediaFramingControls({
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/50 p-4">
+    <div className="rounded-xl border border-border bg-muted/50 p-4" data-testid="media-framing-controls">
       <div className="mb-3 flex items-center justify-between">
         <Label className="text-xs font-bold">Crop & Position</Label>
         <button type="button" onClick={onReset} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">Reset</button>
@@ -1177,7 +1171,6 @@ export function HypeCardEditor({
   const [includeAudio, setIncludeAudio] = useState(true);
   const [imageFormat, setImageFormat] = useState<'png' | 'jpeg'>('png');
   const [walkthroughStep, setWalkthroughStep] = useState(0);
-  const [mediaSubstep, setMediaSubstep] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [shareProgress, setShareProgress] = useState(0);
   const [shareStage, setShareStage] = useState('');
@@ -3235,66 +3228,10 @@ export function HypeCardEditor({
                   setProject((current) => ({ ...current, logo: null, logoMediaId: null }));
                 }}
               />
-              {project.mediaType && (
-                <div className="mt-4">
-                  <MediaFramingControls
-                    project={project}
-                    onReset={() => setProject((current) => ({ ...current, photoTransform: defaultProject().photoTransform }))}
-                    onTransformChange={updateTransform}
-                    onVideoFitChange={(value) => updateProject('videoFit', value)}
-                  >
-                    <div className="mt-4 border-t border-border pt-3">
-                      <MediaAdjustmentControls
-                        project={project}
-                        showAdvanced={showAdvanced}
-                        onToggle={() => setShowAdvanced((open) => !open)}
-                        onAdjustmentChange={updateAdjustment}
-                        className="rounded-none border-0 bg-transparent p-0"
-                      />
-                    </div>
-                  </MediaFramingControls>
-                </div>
-              )}
-              {false && project.mediaType === 'video' && (
-                <div className="mt-3">
-                  <MediaTrimAndAudioControls
-                    project={project}
-                    exportSupport={exportSupport}
-                    includeAudio={includeAudio}
-                    audioId="include-audio"
-                    onAudioChange={setIncludeAudio}
-                    onTrimChange={updateTrim}
-                  />
-                </div>
-              )}
-              {project.mediaType === 'image' && (
-                <div className="mt-3">
-                  <MediaImageDownloadControls imageFormat={imageFormat} onFormatChange={setImageFormat} />
-                </div>
-              )}
               </div>
               <div className="sm:hidden">
                  <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos and logos in cloud storage. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo. {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
 
-                <div className="mb-4 flex gap-1 overflow-x-auto border-y border-border py-2" role="tablist" aria-label="Mobile media editing steps">
-                  {mobileMediaSteps.map((step, index) => (
-                    <button
-                      key={step.label}
-                      type="button"
-                      role="tab"
-                      aria-selected={mediaSubstep === index}
-                      onClick={() => setMediaSubstep(index)}
-                      className={`min-h-9 shrink-0 border px-3 text-[10px] font-bold uppercase tracking-wide transition-colors ${mediaSubstep === index ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
-                    >
-                      {index + 1}. {step.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="mb-4 text-xs font-medium text-muted-foreground">
-                  {mobileMediaSteps[mediaSubstep].hint}
-                </p>
-
-                {mediaSubstep === 0 && (
                   <div className="space-y-3">
                     {cloudProjectId && !project.mediaType && (
                       <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
@@ -3319,66 +3256,6 @@ export function HypeCardEditor({
                       }}
                     />
                   </div>
-                )}
-
-                {mediaSubstep === 1 && (
-                  project.mediaType ? (
-                    <MediaFramingControls
-                      project={project}
-                      onReset={() => setProject((current) => ({ ...current, photoTransform: defaultProject().photoTransform }))}
-                      onTransformChange={updateTransform}
-                      onVideoFitChange={(value) => updateProject('videoFit', value)}
-                    />
-                  ) : (
-                    <div className="border-l-2 border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground">
-                      Add a photo in the first step to adjust its framing.
-                    </div>
-                  )
-                )}
-
-                {mediaSubstep === 2 && (
-                  <div className="space-y-3">
-                    {project.mediaType ? (
-                      <>
-                        <MediaAdjustmentControls
-                          project={project}
-                          showAdvanced={showAdvanced}
-                          onToggle={() => setShowAdvanced((open) => !open)}
-                          onAdjustmentChange={updateAdjustment}
-                        />
-                        {false && project.mediaType === 'video' && (
-                          <MediaTrimAndAudioControls
-                            project={project}
-                            exportSupport={exportSupport}
-                            includeAudio={includeAudio}
-                            audioId="mobile-include-audio"
-                            onAudioChange={setIncludeAudio}
-                            onTrimChange={updateTrim}
-                          />
-                        )}
-                        {project.mediaType === 'image' && (
-                          <MediaImageDownloadControls imageFormat={imageFormat} onFormatChange={setImageFormat} />
-                        )}
-                      </>
-                    ) : (
-                      <div className="border-l-2 border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground">
-                        Add a photo in the first step to fine-tune it.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setMediaSubstep((step) => Math.max(0, step - 1))} disabled={mediaSubstep === 0} className="rounded-none clip-angled-sm">
-                    Back
-                  </Button>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {mediaSubstep + 1} / {mobileMediaSteps.length}
-                  </span>
-                  <Button type="button" size="sm" onClick={() => setMediaSubstep((step) => Math.min(mobileMediaSteps.length - 1, step + 1))} disabled={mediaSubstep === mobileMediaSteps.length - 1} className="rounded-none bg-foreground text-background hover:bg-primary hover:text-primary-foreground clip-angled-sm">
-                    Next
-                  </Button>
-                </div>
 
                 <div className="mt-5 border border-border bg-muted p-2" data-testid="mobile-media-preview">
                   <div className="mb-2 flex items-center justify-between px-1">
@@ -3426,6 +3303,34 @@ export function HypeCardEditor({
                     </select>
                   </label>
                 </div>
+                {project.mediaType && (
+                  <details className="rounded-xl border border-border bg-muted/40" data-testid="design-media-framing-panel">
+                    <summary className="cursor-pointer px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground">
+                      Photo framing & image settings
+                    </summary>
+                    <div className="space-y-3 border-t border-border p-3">
+                      <MediaFramingControls
+                        project={project}
+                        onReset={() => setProject((current) => ({ ...current, photoTransform: defaultProject().photoTransform }))}
+                        onTransformChange={updateTransform}
+                        onVideoFitChange={(value) => updateProject('videoFit', value)}
+                      >
+                        <div className="mt-4 border-t border-border pt-3">
+                          <MediaAdjustmentControls
+                            project={project}
+                            showAdvanced={showAdvanced}
+                            onToggle={() => setShowAdvanced((open) => !open)}
+                            onAdjustmentChange={updateAdjustment}
+                            className="rounded-none border-0 bg-transparent p-0"
+                          />
+                        </div>
+                      </MediaFramingControls>
+                      {project.mediaType === 'image' && (
+                        <MediaImageDownloadControls imageFormat={imageFormat} onFormatChange={setImageFormat} />
+                      )}
+                    </div>
+                  </details>
+                )}
                 {project.cardAppearance.design === 'classic' && <CardFinishOptions project={project} onFinishChange={(finish) => updateProject('finish', finish)} />}
 
                 {project.cardAppearance.design === 'classic' && <div className="border-t border-border pt-5">

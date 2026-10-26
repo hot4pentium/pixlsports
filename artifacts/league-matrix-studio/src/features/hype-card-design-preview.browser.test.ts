@@ -109,8 +109,77 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       30_000,
     );
     assert.equal(await connection.evaluate<string>('document.body.dataset.signedInFixture', session), 'true');
+    const desktopMediaOnly = await connection.evaluate<boolean>(
+      `(() => {
+        const uploadPanels = Array.from(document.querySelectorAll('[data-testid="media-asset-only-controls"]'));
+        const visiblePanel = uploadPanels.find((panel) => panel.getBoundingClientRect().width > 0);
+        return Boolean(
+          visiblePanel
+          && visiblePanel.textContent?.includes('Photo')
+          && visiblePanel.textContent?.includes('Team logo')
+          && !document.querySelector('[data-testid="media-framing-controls"]')
+          && !document.querySelector('[aria-label="Mobile media editing steps"]')
+        );
+      })()`,
+      session,
+    );
+    assert.equal(desktopMediaOnly, true, 'Media is for uploading the player photo and team logo only');
+
     await connection.evaluate(`document.querySelector('[data-testid="button-walkthrough-step-design"]')?.click()`, session);
     await waitFor(connection, session, `Boolean(document.querySelector('[data-testid="frame-template-cycler"]'))`, Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      `Boolean(document.querySelector('[data-testid="design-media-framing-panel"]')
+        ?.querySelector('[data-testid="media-framing-controls"]'))`,
+      session,
+    ), true, 'photo framing remains available in Design');
+    await connection.evaluate(
+      `document.querySelector('[data-testid="design-media-framing-panel"] summary')?.click()`,
+      session,
+    );
+    await waitFor(
+      connection,
+      session,
+      `document.querySelector('[data-testid="design-media-framing-panel"]')?.open`,
+      Boolean,
+    );
+    const mediaZoomBeforeDrag = await connection.evaluate<number>(
+      `Number(document.querySelector('[aria-label="Media zoom"] [role="slider"]')?.getAttribute('aria-valuenow'))`,
+      session,
+    );
+    const mediaZoomDrag = await connection.evaluate<{ startX: number; targetX: number; y: number }>(`(() => {
+      const root = document.querySelector('[aria-label="Media zoom"]');
+      const thumb = root?.querySelector('[role="slider"]');
+      const rect = root.getBoundingClientRect();
+      const min = Number(thumb.getAttribute('aria-valuemin'));
+      const max = Number(thumb.getAttribute('aria-valuemax'));
+      const current = Number(thumb.getAttribute('aria-valuenow'));
+      const thumbInset = 8;
+      const trackWidth = Math.max(1, rect.width - thumbInset * 2);
+      const ratio = (value) => (value - min) / (max - min);
+      return {
+        startX: rect.left + thumbInset + ratio(current) * trackWidth,
+        targetX: rect.left + thumbInset + ratio(2.2) * trackWidth,
+        y: rect.top + rect.height / 2,
+      };
+    })()`, session);
+    await connection.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved', x: mediaZoomDrag.startX, y: mediaZoomDrag.y, button: 'none', buttons: 0,
+    }, session);
+    await connection.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: mediaZoomDrag.startX, y: mediaZoomDrag.y, button: 'left', buttons: 1, clickCount: 1,
+    }, session);
+    await connection.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved', x: mediaZoomDrag.targetX, y: mediaZoomDrag.y, button: 'left', buttons: 1,
+    }, session);
+    await connection.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: mediaZoomDrag.targetX, y: mediaZoomDrag.y, button: 'left', buttons: 0, clickCount: 1,
+    }, session);
+    await waitFor(
+      connection,
+      session,
+      `Number(document.querySelector('[aria-label="Media zoom"] [role="slider"]')?.getAttribute('aria-valuenow'))`,
+      (value) => value > mediaZoomBeforeDrag + 0.5,
+    );
 
     assert.equal(await connection.evaluate<number>(
       `document.querySelectorAll('[data-testid="hype-preview-canvas"]').length`,
@@ -245,6 +314,24 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       mobile: true,
     }, session);
     await waitFor(connection, session, 'innerWidth', (width) => width === 390);
+    await connection.evaluate(`document.querySelector('[data-testid="button-walkthrough-step-media"]')?.click()`, session);
+    await waitFor(connection, session, `Boolean(document.querySelector('[data-testid="media-asset-only-controls"]'))`, Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      `(() => {
+        const uploadPanels = Array.from(document.querySelectorAll('[data-testid="media-asset-only-controls"]'));
+        const visiblePanel = uploadPanels.find((panel) => panel.getBoundingClientRect().width > 0);
+        return Boolean(
+          visiblePanel
+          && visiblePanel.textContent?.includes('Photo')
+          && visiblePanel.textContent?.includes('Team logo')
+          && !document.querySelector('[data-testid="media-framing-controls"]')
+          && !document.querySelector('[aria-label="Mobile media editing steps"]')
+        );
+      })()`,
+      session,
+    ), true, 'phone Media step only contains photo and logo uploads');
+    await connection.evaluate(`document.querySelector('[data-testid="button-walkthrough-step-design"]')?.click()`, session);
+    await waitFor(connection, session, `Boolean(document.querySelector('[data-testid="frame-template-cycler"]'))`, Boolean);
     assert.equal(await connection.evaluate<number>(
       `document.querySelectorAll('[data-testid="hype-preview-canvas"]').length`,
       session,
