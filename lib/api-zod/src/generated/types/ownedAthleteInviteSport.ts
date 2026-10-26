@@ -14,5 +14,6 @@ export const OwnedAthleteInviteSport = {
   basketball: 'basketball',
   football: 'football',
   soccer: 'soccer',
+  softball: 'softball',
   volleyball: 'volleyball',
 } as const;

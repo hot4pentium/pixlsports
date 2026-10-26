@@ -4350,7 +4350,7 @@ components:
         seasonEndsAt: { type: string, format: date-time }
         sport:
           type: string
-          enum: [baseball, basketball, football, soccer, volleyball]
+          enum: [baseball, basketball, football, soccer, softball, volleyball]
         timezone:
           type: string
           minLength: 1
@@ -4392,7 +4392,7 @@ components:
         athleteName: { type: string }
         teamName: { type: string }
         seasonName: { type: string }
-        sport: { type: string, enum: [baseball, basketball, football, soccer, volleyball] }
+        sport: { type: string, enum: [baseball, basketball, football, soccer, softball, volleyball] }
         jerseyNumber: { type: string }
         position: { type: string }
         projectId: { type: ["string", "null"], format: uuid }
@@ -4422,7 +4422,7 @@ components:
         teamName: { type: string }
         seasonName: { type: string }
         seasonEndsAt: { type: string, format: date-time }
-        sport: { type: string, enum: [baseball, basketball, football, soccer, volleyball] }
+        sport: { type: string, enum: [baseball, basketball, football, soccer, softball, volleyball] }
         timezone: { type: ["string", "null"], maxLength: 100 }
         trackerProjectId: { type: ["string", "null"], format: uuid }
         scheduleProjectId: { type: ["string", "null"], format: uuid }

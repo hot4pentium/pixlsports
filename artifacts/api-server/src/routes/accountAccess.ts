@@ -212,6 +212,7 @@ export function createAccountAccessRouter(
     getClerkUserIdsByVerifiedEmails,
     markAccountProvisioned,
   },
+  isAthleteEditorIdentity: typeof isAthleteEditorInvitationIdentity = isAthleteEditorInvitationIdentity,
 ) {
   const router: IRouter = Router();
 
@@ -230,7 +231,7 @@ export function createAccountAccessRouter(
 
     const ownerClerkUserId = getRequiredClerkUserId(res);
     try {
-      if (await isAthleteEditorInvitationIdentity(ownerClerkUserId)) {
+      if (await isAthleteEditorIdentity(ownerClerkUserId)) {
         res.status(403).json({
           error: "Athlete sign-ins cannot change account access or set up a supporter account.",
           code: "ATHLETE_EDITOR_SCOPE",

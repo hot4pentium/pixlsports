@@ -140,13 +140,13 @@ export function AthleteInviteManager() {
   const { data: projects } = useListProjects({ query: { enabled: Boolean(isSignedIn && isParentAccount), queryKey: getListProjectsQueryKey() } });
   const existing = invites?.[0] ?? null;
   const trackerProjects = projects?.filter((project) => project.project.tool === 'stat-tracker') ?? [];
-  const defaultSport = profile.sport && profile.sport !== 'softball' ? profile.sport : 'basketball';
+  const defaultSport = profile.sport ?? 'basketball';
   const [athleteName, setAthleteName] = useState(profile.athleteName);
   const [teamName, setTeamName] = useState(profile.teamName);
   const [seasonName, setSeasonName] = useState(() => profile.seasonName || `Season ${new Date().getFullYear()}`);
   const [seasonEndsAt, setSeasonEndsAt] = useState(defaultSeasonEnd);
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || '');
-  const [sport, setSport] = useState<Exclude<Sport, 'softball'>>(defaultSport);
+  const [sport, setSport] = useState<Sport>(defaultSport);
   const [trackerProjectId, setTrackerProjectId] = useState('none');
   const [showHypeCard, setShowHypeCard] = useState(true);
   const [showStats, setShowStats] = useState(true);
@@ -542,7 +542,7 @@ type OwnedAthleteInvite = {
   teamName: string;
   seasonName: string;
   seasonEndsAt: string;
-  sport: Exclude<Sport, 'softball'>;
+  sport: Sport;
   trackerProjectId: string | null;
   showHypeCard: boolean;
   showStats: boolean;

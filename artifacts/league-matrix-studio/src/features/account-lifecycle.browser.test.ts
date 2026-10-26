@@ -256,7 +256,7 @@ test('signed-in account controls survive phone and desktop transitions against r
     await connection.evaluate(`(() => {
       const sport = document.querySelector('[data-testid="select-profile-sport"]');
       const setSelectValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
-      setSelectValue.call(sport, 'soccer');
+      setSelectValue.call(sport, 'softball');
       sport.dispatchEvent(new Event('change', { bubbles: true }));
     })()`, firstSaveCache);
     await admin('fail-clerk-once', { viewer: firstSaveOwner });
@@ -267,7 +267,7 @@ test('signed-in account controls survive phone and desktop transitions against r
     assert.equal(await connection.evaluate<string>(
       "document.querySelector('[data-testid=\"select-profile-sport\"]')?.value || ''",
       firstSaveCache,
-    ), 'soccer', 'a temporary save failure must not clear the selected sport');
+    ), 'softball', 'a temporary save failure must not clear the selected sport');
     assert.equal((await state(firstSaveOwner)).status, 'not_provisioned');
     assert.equal((await state(firstSaveOwner)).provisionedMarker, false);
     assert.deepEqual(await athleteInvites(firstSaveOwner), [], 'a failed account setup must not leave a half-created HYPE Card');
@@ -280,6 +280,15 @@ test('signed-in account controls survive phone and desktop transitions against r
     ), { dashboard: null, tracker: null });
 
     await click(firstSaveCache, 'button-save-profile');
+    await waitFor(connection, firstSaveCache,
+      "Boolean(document.querySelector('[data-testid=\"studio-restored\"]') || document.querySelector('[role=\"alert\"]'))",
+      Boolean, 30_000);
+    const setupError = await connection.evaluate<string | null>(
+      "document.querySelector('[role=\"alert\"]')?.textContent || null", firstSaveCache,
+    );
+    assert.equal(setupError, null, `Unexpected setup failure: ${JSON.stringify(
+      await fetch(`${apiOrigin}/__fixture/errors`).then(response => response.json()),
+    )}`);
     await waitVisible(firstSaveCache, 'studio-restored');
     assert.equal(await connection.evaluate<string>('location.pathname', firstSaveCache), '/studio');
     assert.deepEqual(await state(firstSaveOwner), {
@@ -306,7 +315,7 @@ test('signed-in account controls survive phone and desktop transitions against r
       athleteName: 'Alex Morgan',
       teamName: 'Northside Comets',
       seasonName: 'Fall 2026',
-      sport: 'soccer',
+      sport: 'softball',
       trackerProjectId: null,
       scheduleProjectId: null,
       showHypeCard: true,
@@ -325,7 +334,7 @@ test('signed-in account controls survive phone and desktop transitions against r
       displayName: 'Morgan Supporter',
       teamName: 'Northside Comets',
       athleteName: 'Alex Morgan',
-      sport: 'soccer',
+      sport: 'softball',
       seasonName: 'Fall 2026',
     }, 'supporter and athlete details must be persisted in the Clerk profile source');
 
@@ -348,7 +357,7 @@ test('signed-in account controls survive phone and desktop transitions against r
     await connection.evaluate("window.__navigateLifecycle('/studio/stat-tracker')", firstSaveCache);
     await waitVisible(firstSaveCache, 'stat-tracker-setup');
     await waitFor(connection, firstSaveCache,
-      "document.querySelector('[role=\"tab\"][aria-selected=\"true\"]')?.textContent.trim().toLowerCase() === 'soccer'",
+      "document.querySelector('[role=\"tab\"][aria-selected=\"true\"]')?.textContent.trim().toLowerCase() === 'softball'",
       Boolean, 30_000);
     assert.equal(await connection.evaluate<boolean>(
       "document.querySelector('[data-testid=\"stat-tracker-sport-choice\"]') !== null",

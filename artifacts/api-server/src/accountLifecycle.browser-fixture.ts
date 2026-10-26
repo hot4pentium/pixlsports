@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import { eq } from "drizzle-orm";
 import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
+import { CreateAthleteInviteBody } from "@workspace/api-zod";
 import { createAccountAccessRouter } from "./routes/accountAccess";
 import lifecycleRouter from "./routes/accountLifecycle";
 import {
@@ -17,6 +18,7 @@ let failNextFirstSaveClerkRead = false;
 let firstSavePublicMetadata: Record<string, unknown> = {};
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
 let firstSaveAthleteInvites: Record<string, unknown>[] = [];
+const fixtureErrors: string[] = [];
 const firstSaveClerk = {
   users: {
     async getUser(userId: string) {
@@ -81,6 +83,7 @@ async function main() {
     next();
   });
   app.get("/__fixture/health", (_req, res) => res.json({ owner, other }));
+  app.get("/__fixture/errors", (_req, res) => res.json(fixtureErrors));
   app.post("/__fixture/fail-clerk-once", (req, res) => {
     if (req.body?.viewer !== firstSaveOwner) { res.status(400).end(); return; }
     failNextFirstSaveClerkRead = true;
@@ -143,7 +146,12 @@ async function main() {
     const auth = () => ({ userId: viewer, tokenType: "session_token" });
     (auth as typeof auth & { [key: symbol]: boolean })[Symbol.for("@clerk/express.auth")] = true;
     (req as typeof req & { auth: typeof auth; log: { error: () => void; warn: () => void } }).auth = auth;
-    req.log = { error: () => {}, warn: () => {} } as unknown as typeof req.log;
+    req.log = {
+      error: (details: { err?: unknown }) => {
+        fixtureErrors.push(details.err instanceof Error ? details.err.message : JSON.stringify(details));
+      },
+      warn: () => {},
+    } as unknown as typeof req.log;
     next();
   });
   app.use("/api", (req, res, next) => {
@@ -161,8 +169,13 @@ async function main() {
       res.status(409).json({ error: "This account already has an athlete invite." });
       return;
     }
+    const parsed = CreateAthleteInviteBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid starter HYPE Card" });
+      return;
+    }
     const invite = {
-      ...(req.body as Record<string, unknown>),
+      ...parsed.data,
       inviteToken: randomUUID().replaceAll("-", ""),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -170,7 +183,7 @@ async function main() {
     firstSaveAthleteInvites = [invite];
     res.status(201).json(invite);
   });
-  app.use("/api", createAccountAccessRouter(firstSaveProvisioning));
+  app.use("/api", createAccountAccessRouter(firstSaveProvisioning, async () => false));
   app.use("/api", lifecycleRouter);
   app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
   const server = app.listen(Number(process.env.PORT), "127.0.0.1");

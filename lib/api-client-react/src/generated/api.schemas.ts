@@ -1532,6 +1532,7 @@ export const AthleteInviteInputSport = {
   basketball: 'basketball',
   football: 'football',
   soccer: 'soccer',
+  softball: 'softball',
   volleyball: 'volleyball',
 } as const;
 
@@ -1614,6 +1615,7 @@ export const AthleteEditorAccessSport = {
   basketball: 'basketball',
   football: 'football',
   soccer: 'soccer',
+  softball: 'softball',
   volleyball: 'volleyball',
 } as const;
 
@@ -1661,6 +1663,7 @@ export const OwnedAthleteInviteSport = {
   basketball: 'basketball',
   football: 'football',
   soccer: 'soccer',
+  softball: 'softball',
   volleyball: 'volleyball',
 } as const;
 

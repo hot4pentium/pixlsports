@@ -20,6 +20,7 @@ import {
   useConsumeAccountUsage,
   getGetAccountAccessQueryKey,
   useGetAccountLifecycle,
+  getAccountLifecycle,
   useCancelAccount,
   usePauseAccount,
   useResumeAccount,
@@ -3589,7 +3590,6 @@ export function RoleSelectionPage() {
       return;
     }
 
-    const shouldAssignInitialHypeCard = canShowInitialAccountSetup(user);
     setSavingProfile(true);
     setError('');
     try {
@@ -3597,11 +3597,15 @@ export function RoleSelectionPage() {
         data: { role: 'fan', accessMode: selectedAccessMode },
       });
       const lifecycleQueryKey = [...getGetAccountLifecycleQueryKey(), user.id];
-      await queryClient.invalidateQueries({ queryKey: lifecycleQueryKey });
-      if (queryClient.getQueryData<{ status?: string }>(lifecycleQueryKey)?.status !== 'active') {
+      const confirmedLifecycle = await queryClient.fetchQuery({
+        queryKey: lifecycleQueryKey,
+        queryFn: () => getAccountLifecycle(),
+        staleTime: 0,
+      });
+      if (confirmedLifecycle.status !== 'active') {
         throw new Error('Account setup could not be confirmed.');
       }
-      if (shouldAssignInitialHypeCard) {
+      {
         const ownedInvites = await athleteInvitesQuery.refetch();
         if (ownedInvites.isError || !ownedInvites.data) {
           throw new Error('INITIAL_HYPE_CARD_SETUP_FAILED');
@@ -3638,6 +3642,7 @@ export function RoleSelectionPage() {
           }
         }
       }
+      await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
       await user.update({
         unsafeMetadata: {
           ...(user.unsafeMetadata ?? {}),
@@ -3775,11 +3780,9 @@ export function RoleSelectionPage() {
                   Manage your athlete’s HYPE Card, game-day prep, and stats from one dashboard.
                 </p>
               </div>
-              {canShowInitialAccountSetup(user) && (
-                <p className="mt-4 border border-border bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground" data-testid="initial-hype-card-notice">
-                  We’ll create a private starter HYPE Card with these details. You can edit it and choose when to share it.
-                </p>
-              )}
+              <p className="mt-4 border border-border bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground" data-testid="initial-hype-card-notice">
+                Your setup includes a starter HYPE Card. A new card stays private until you edit it and choose to share it.
+              </p>
               <button type="submit" disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">
                 {savingProfile ? 'Saving your dashboard…' : 'Build my dashboard'}
               </button>
