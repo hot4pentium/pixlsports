@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 
 import App from '@/app-entry';
 import { defaultProject, saveHypeCardProject } from './hype-card-types';
+import { defaultCardAppearance } from './hype-card-appearance';
 import { currentAccountId } from './account-lifecycle-browser-auth';
 
 import '../index.css';
@@ -9,7 +10,14 @@ import '../index.css';
 const params = new URLSearchParams(location.search);
 const scenario = params.get('scenario') || 'still';
 
-if (scenario === 'video') {
+if (scenario === 'photo') {
+  saveHypeCardProject(window.localStorage, {
+    ...defaultProject(),
+    mediaType: 'image',
+    photo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p5wAAAAASUVORK5CYII=',
+    cardAppearance: defaultCardAppearance('pixel-edge'),
+  });
+} else if (scenario === 'video') {
   saveHypeCardProject(window.localStorage, {
     ...defaultProject(),
     mediaType: 'video',

@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 
 import { buildHypeCardSvg, getPhotoClipInfo, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { getDimensions, type HypeCardProject } from './hype-card-types';
+import { isHypeCardTemplate } from './hype-card-template-artwork';
 
 export function PreviewArtwork({
   project,
@@ -25,6 +26,7 @@ export function PreviewArtwork({
   const frame = project.format === 'card' ? STADIUM_MEDIA_FRAME : getPhotoFrame(project.format);
   const hasVideo = project.mediaType === 'video' && Boolean(videoUrl);
   const hasImage = project.mediaType !== 'video' && Boolean(project.photo);
+  const templateContainsFullPhoto = hasImage && isHypeCardTemplate(project.cardAppearance.design);
 
   if (!hasVideo && !hasImage) {
     return (
@@ -50,41 +52,43 @@ export function PreviewArtwork({
   return (
     <div className="relative h-full w-full overflow-hidden" data-testid={testId}>
       <div className="absolute inset-0 pointer-events-none [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'bg', ns) }} />
-      <div
-        className="absolute overflow-hidden"
-        style={{
-          left: `${frame.x / dimensions.width * 100}%`,
-          top: `${frame.y / dimensions.height * 100}%`,
-          width: `${frame.width / dimensions.width * 100}%`,
-          height: `${frame.height / dimensions.height * 100}%`,
-          borderRadius: `${frame.radius / frame.width * 100}%`,
-        }}
-      >
-        {hasVideo ? (
-          <>
-            {project.videoFit === 'fit' && (
-              <video src={videoUrl} className="absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-xl" muted playsInline aria-hidden="true" />
-            )}
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              poster={poster}
-              className="absolute max-w-none"
-              muted={muted}
-              playsInline
+      {!templateContainsFullPhoto && (
+        <div
+          className="absolute overflow-hidden"
+          style={{
+            left: `${frame.x / dimensions.width * 100}%`,
+            top: `${frame.y / dimensions.height * 100}%`,
+            width: `${frame.width / dimensions.width * 100}%`,
+            height: `${frame.height / dimensions.height * 100}%`,
+            borderRadius: `${frame.radius / frame.width * 100}%`,
+          }}
+        >
+          {hasVideo ? (
+            <>
+              {project.videoFit === 'fit' && (
+                <video src={videoUrl} className="absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-xl" muted playsInline aria-hidden="true" />
+              )}
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                poster={poster}
+                className="absolute max-w-none"
+                muted={muted}
+                playsInline
+                style={mediaStyle}
+              />
+            </>
+          ) : (
+            <img
+              src={project.photo ?? ''}
+              alt=""
+              className="absolute max-w-none object-contain"
+              draggable={false}
               style={mediaStyle}
             />
-          </>
-        ) : (
-          <img
-            src={project.photo ?? ''}
-            alt=""
-            className="absolute max-w-none object-contain"
-            draggable={false}
-            style={mediaStyle}
-          />
-        )}
-      </div>
+          )}
+        </div>
+      )}
       <div className="absolute inset-0 pointer-events-none [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
     </div>
   );

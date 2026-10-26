@@ -90,7 +90,7 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
   let connection: DevToolsConnection | undefined;
   let page: BrowserPage | undefined;
   try {
-    const fixtureUrl = `http://127.0.0.1:${port}/hype-card-breakout-browser-test.html?viewer=workspace-journey&statTrackerReturnTest=1&scenario=still`;
+    const fixtureUrl = `http://127.0.0.1:${port}/hype-card-breakout-browser-test.html?viewer=workspace-journey&statTrackerReturnTest=1&scenario=photo`;
     await waitForUrl(`http://127.0.0.1:${port}/hype-card-breakout-browser-test.html`, 30_000, devMonitor);
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
     const { webSocketDebuggerUrl } = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
@@ -129,6 +129,15 @@ test('the Hype Card Design step keeps one live preview and supports photo positi
       `document.querySelector('[data-testid="hype-card-main-preview"]')?.getBoundingClientRect().width > 0`,
       session,
     ), true, 'the live preview stays visible in the Design step');
+    assert.equal(await connection.evaluate<number>(
+      `document.querySelectorAll('[data-testid="hype-preview-canvas"] image[data-testid="svg-card-photo"]').length
+        + document.querySelectorAll('[data-testid="hype-preview-canvas"] img').length`,
+      session,
+    ), 1, 'the full-card template renders the uploaded photo once without an inset duplicate');
+    assert.equal(await connection.evaluate<number>(
+      `document.querySelectorAll('[data-testid="hype-preview-canvas"] img').length`,
+      session,
+    ), 0, 'the full-card template does not add the legacy inset image');
 
     const frameBefore = await connection.evaluate<string>(
       `document.querySelector('[data-testid="frame-template-cycler-selected"]')?.textContent?.trim() || ''`,
