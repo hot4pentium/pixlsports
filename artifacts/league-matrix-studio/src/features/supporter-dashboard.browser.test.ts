@@ -482,7 +482,8 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       viewportHeight: number;
       scrollY: number;
     }>(`(() => {
-      const action = document.querySelector('[data-testid="dashboard-checklist-action-event-card"]');
+      const action = Array.from(document.querySelectorAll('[data-testid="dashboard-checklist-action-event-card"]'))
+        .find((candidate) => candidate instanceof HTMLElement && candidate.getClientRects().length > 0);
       if (!(action instanceof HTMLElement)) {
         return {
           visible: false, left: -1, right: -1, top: -1, bottom: -1,
@@ -587,6 +588,20 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       ),
       5,
       'all five checklist items should use manual checkboxes',
+    );
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const checklist = Array.from(document.querySelectorAll('[data-testid="supporter-dashboard-checklist"]'))
+          .find((element) => element.getClientRects().length > 0);
+        if (!(checklist instanceof HTMLElement)) return null;
+        return {
+          visibleItems: Array.from(checklist.querySelectorAll('.supporter-dashboard-checklist__item'))
+            .filter((item) => item.getClientRects().length > 0).length,
+          navigationDisplay: getComputedStyle(checklist.querySelector('[data-testid="dashboard-checklist-step-navigation"]')).display,
+        };
+      })()`, page.sessionId),
+      { visibleItems: 5, navigationDisplay: 'none' },
+      'desktop should retain the full checklist without phone-only navigation',
     );
     assert.equal(
       await connection.evaluate(
@@ -717,7 +732,8 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
     );
     assert.equal(
       await connection.evaluate(`(() => {
-        const checklist = document.querySelector('[data-testid="supporter-dashboard-checklist"]');
+        const checklist = Array.from(document.querySelectorAll('[data-testid="supporter-dashboard-checklist"]'))
+          .find((element) => element.getClientRects().length > 0);
         if (!(checklist instanceof HTMLElement)) return false;
         const rect = checklist.getBoundingClientRect();
         return rect.left >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight;
@@ -725,20 +741,102 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       true,
       'the checklist should fit within a phone viewport',
     );
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const checklist = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="supporter-dashboard-checklist"]');
+        if (!(checklist instanceof HTMLElement)) return null;
+        return {
+          step: checklist.querySelector('[data-testid="dashboard-checklist-step-indicator"]')?.textContent?.trim(),
+          visibleItems: Array.from(checklist.querySelectorAll('.supporter-dashboard-checklist__item'))
+            .filter((item) => item.getClientRects().length > 0).length,
+          previousDisabled: checklist.querySelector('[data-testid="dashboard-checklist-previous-step"]')?.disabled,
+          nextDisabled: checklist.querySelector('[data-testid="dashboard-checklist-next-step"]')?.disabled,
+        };
+      })()`, page.sessionId),
+      {
+        step: 'Step 1 of 5',
+        visibleItems: 1,
+        previousDisabled: true,
+        nextDisabled: false,
+      },
+      'phone checklist should start with one visible step and working navigation',
+    );
+    for (let step = 0; step < 5; step += 1) {
+      const currentCard = await connection.evaluate<{
+        title: string;
+        step: string;
+        visibleItems: number;
+        actionVisible: boolean;
+        previousDisabled: boolean;
+        nextDisabled: boolean;
+      }>(`(() => {
+        const checklist = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="supporter-dashboard-checklist"]');
+        const item = checklist?.querySelector('.supporter-dashboard-checklist__item[data-current="true"]');
+        const action = item?.querySelector('.supporter-dashboard-checklist__action > *');
+        return {
+          title: item?.querySelector('.supporter-dashboard-checklist__item-title')?.textContent?.trim() || '',
+          step: checklist?.querySelector('[data-testid="dashboard-checklist-step-indicator"]')?.textContent?.trim() || '',
+          visibleItems: checklist ? Array.from(checklist.querySelectorAll('.supporter-dashboard-checklist__item'))
+            .filter((candidate) => candidate.getClientRects().length > 0).length : 0,
+          actionVisible: Boolean(action && action.getClientRects().length > 0),
+          previousDisabled: Boolean(checklist?.querySelector('[data-testid="dashboard-checklist-previous-step"]')?.disabled),
+          nextDisabled: Boolean(checklist?.querySelector('[data-testid="dashboard-checklist-next-step"]')?.disabled),
+        };
+      })()`, page.sessionId);
+      assert.deepEqual(currentCard, {
+        title: ['Setup Account Profile', 'Check out Shoutouts', 'View Hype Card', 'Create an Event Card', 'Install as an app'][step],
+        step: `Step ${step + 1} of 5`,
+        visibleItems: 1,
+        actionVisible: true,
+        previousDisabled: step === 0,
+        nextDisabled: step === 4,
+      }, `phone step ${step + 1} should show its own action and correct arrow states`);
+      if (step === 4) break;
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-next-step\\"]")?.click()',
+        page.sessionId,
+      );
+    }
+    await connection.evaluate(
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-previous-step\\"]")?.click()',
+      page.sessionId,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim()',
+        page.sessionId,
+      ),
+      'Step 4 of 5',
+      'next arrows should move the phone checklist to the Event Card step',
+    );
     const phoneEventCardAction = await eventCardActionViewportStatus();
     assert.equal(
       phoneEventCardAction.visible,
       true,
       `the Event Card checklist action should be visible without scrolling on phone: ${JSON.stringify(phoneEventCardAction)}`,
     );
+    for (let step = 0; step < 3; step += 1) {
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-previous-step\\"]")?.click()',
+        page.sessionId,
+      );
+    }
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim()',
+        page.sessionId,
+      ),
+      'Step 1 of 5',
+      'previous arrows should return to the first phone checklist step',
+    );
     await connection.evaluate(
-      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.click()',
+      'document.querySelector(".supporter-dashboard-mobile-shell label[for=\\"dashboard-checklist-mobile-profile\\"]")?.click()',
       page.sessionId,
     );
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.checked === true && window.__dashboardChecklistSaves?.length === 1',
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.checked === true && window.__dashboardChecklistSaves?.length === 1',
       Boolean,
     );
     const checklistProgressBeforeEventCard = await connection.evaluate<{
@@ -754,6 +852,12 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       checkedItemIds: ['profile'],
       saveCount: 1,
     }, 'the Event Card flow should start with saved checklist progress');
+    for (let step = 0; step < 3; step += 1) {
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-next-step\\"]")?.click()',
+        page.sessionId,
+      );
+    }
     let eventCardActionFocused = false;
     for (let tabCount = 0; tabCount < 100; tabCount += 1) {
       await connection.send('Input.dispatchKeyEvent', {
@@ -877,8 +981,14 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       checklistProgressBeforeEventCard,
       'closing the Event Card editor should preserve the same saved checklist progress',
     );
+    for (let step = 0; step < 2; step += 1) {
+      await connection.evaluate(
+        'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-previous-step\\"]")?.click()',
+        page.sessionId,
+      );
+    }
     await connection.evaluate(
-      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-shoutouts\\"]")?.click()',
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-checkbox-shoutouts\\"]")?.click()',
       page.sessionId,
     );
     await waitFor(
@@ -906,9 +1016,21 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=complete`);
     await waitForChecklist();
-    for (const itemId of ['profile', 'shoutouts', 'hype-card', 'event-card', 'install-app']) {
+    for (const [index, itemId] of ['profile', 'shoutouts', 'hype-card', 'event-card', 'install-app'].entries()) {
+      if (index > 0) {
+        await connection.evaluate(
+          'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-next-step\\"]")?.click()',
+          page.sessionId,
+        );
+        await waitFor(
+          connection,
+          page.sessionId,
+          `document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-step-indicator\\"]")?.textContent?.trim() === "Step ${index + 1} of 5"`,
+          Boolean,
+        );
+      }
       await connection.evaluate(
-        `document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-${itemId}\\"]")?.click()`,
+        `document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"dashboard-checklist-checkbox-${itemId}\\"]")?.click()`,
         page.sessionId,
       );
       await waitFor(

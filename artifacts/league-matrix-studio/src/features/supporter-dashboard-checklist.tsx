@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
-import { ArrowUpRight, Check, Trophy, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Trophy, X } from 'lucide-react';
 import {
   Dialog,
   DialogClose,
@@ -120,12 +120,17 @@ export function SupporterDashboardChecklist({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [hidden, setHidden] = useState(false);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   useEffect(() => {
     setChecked(normalizeDashboardChecklistItemIds(checkedItemIds));
     setError('');
     setHidden(false);
   }, [userId, incomingCheckedKey]);
+
+  useEffect(() => {
+    setActiveStepIndex(0);
+  }, [userId]);
 
   const saveProgress = async (next: DashboardChecklistItemId[]) => {
     setPending(true);
@@ -206,17 +211,57 @@ export function SupporterDashboardChecklist({
         <span className="supporter-dashboard-checklist__progress-label">{progressLabel}</span>
       </div>
 
+      <nav
+        className="supporter-dashboard-checklist__step-navigation"
+        aria-label="Dashboard getting started steps"
+        data-testid="dashboard-checklist-step-navigation"
+      >
+        <button
+          type="button"
+          className="supporter-dashboard-checklist__step-button"
+          onClick={() => setActiveStepIndex((current) => Math.max(0, current - 1))}
+          disabled={pending || activeStepIndex === 0}
+          aria-label="Previous checklist step"
+          data-testid="dashboard-checklist-previous-step"
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+          <span>Previous</span>
+        </button>
+        <span
+          className="supporter-dashboard-checklist__step-count"
+          aria-live="polite"
+          data-testid="dashboard-checklist-step-indicator"
+        >
+          Step {activeStepIndex + 1} of {SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length}
+        </span>
+        <button
+          type="button"
+          className="supporter-dashboard-checklist__step-button"
+          onClick={() => setActiveStepIndex((current) => Math.min(SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1, current + 1))}
+          disabled={pending || activeStepIndex === SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.length - 1}
+          aria-label="Next checklist step"
+          data-testid="dashboard-checklist-next-step"
+        >
+          <span>Next</span>
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+      </nav>
+
       <ul className="supporter-dashboard-checklist__items" aria-label="Dashboard getting started steps">
-        {SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.map((item) => {
+        {SUPPORTER_DASHBOARD_CHECKLIST_ITEMS.map((item, index) => {
           const isChecked = checked.includes(item.id);
+          const isCurrentStep = index === activeStepIndex;
+          const checkboxId = `dashboard-checklist-${installDeviceClass}-${item.id}`;
           return (
             <li
               className="supporter-dashboard-checklist__item"
               data-complete={isChecked}
+              data-current={isCurrentStep}
+              aria-current={isCurrentStep ? 'step' : undefined}
               key={item.id}
             >
               <input
-                id={`dashboard-checklist-${item.id}`}
+                id={checkboxId}
                 className="supporter-dashboard-checklist__checkbox"
                 type="checkbox"
                 checked={isChecked}
@@ -227,7 +272,7 @@ export function SupporterDashboardChecklist({
               />
               <label
                 className="supporter-dashboard-checklist__item-copy"
-                htmlFor={`dashboard-checklist-${item.id}`}
+                htmlFor={checkboxId}
               >
                 <span className="supporter-dashboard-checklist__item-title">{item.title}</span>
                 {item.id === 'profile' && <span>Add your athlete and account details.</span>}
