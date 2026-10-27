@@ -37,6 +37,17 @@ test('the initial HTML shell shows landing content before React starts', () => {
   assert.doesNotMatch(bootShellSource, /Loading Pixl Sports/);
 });
 
+test('returning sessions replace the static landing shell before first paint', () => {
+  const sessionCheck = bootShellSource.indexOf(
+    "window.localStorage.getItem('pixl:previous-private-session:v1') === 'seen'",
+  );
+  const staticLanding = bootShellSource.indexOf('<div id="app-boot-fallback"');
+  assert.ok(sessionCheck >= 0 && sessionCheck < staticLanding);
+  assert.match(bootShellSource, /isPrivateStudioRoute \|\| \(isHomeRoute && hasKnownPrivateSession\)/);
+  assert.match(bootShellSource, /data-pixl-private-return="true"[\s\S]*#app-boot-fallback \.boot-main/);
+  assert.match(bootShellSource, /id="app-boot-returning"[\s\S]*pixlsports-logo\.png/);
+});
+
 test('only signed-out or unresolved home visits bypass account lifecycle checks', () => {
   assert.equal(shouldBypassAccountLifecycle('/', false, true), true);
   assert.equal(shouldBypassAccountLifecycle('/', true, false), true);

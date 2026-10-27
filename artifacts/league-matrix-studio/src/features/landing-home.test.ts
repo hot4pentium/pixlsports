@@ -65,7 +65,7 @@ test('landing shows the dashboard in mobile and landscape with fictional example
 
 test('supported sports appear as plain text above the ribbon, not over the photo', () => {
   assert.doesNotMatch(source, /photo-caption|The moments that make a season/);
-  assert.match(source, /alt="Youth soccer player smiling while running on a field"/);
+  assert.match(source, /alt="Teenage American football player running the ball during practice"/);
   assert.match(source, /<div className="supported-sports" role="group" aria-label="Sports PIXL supports" data-testid="hero-supported-sports">/);
   assert.ok(source.indexOf('className="supported-sports"') < source.indexOf('className="week-ribbon"'), 'sports list should appear above the lime ribbon');
   const imageFrame = source.indexOf('<div className="hero-image-frame">');

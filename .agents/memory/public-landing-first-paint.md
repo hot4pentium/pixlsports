@@ -7,7 +7,7 @@ First-time and signed-out visitors should see landing content immediately while 
 
 **Why:** The user said a black “Loading Pixl Sports” screen followed by a Studio access splash made the landing page feel bad to load.
 
-**How to apply:** Preserve the immediate public landing on `/` for first-time and signed-out visits; use a non-sensitive, device-local marker only to choose a waiting screen on a returning session. Never treat the marker as auth or account authority. Match the HTML boot shell to the current landing brand, and bump the offline-shell cache when changing the cached HTML.
+**How to apply:** Preserve the immediate public landing on `/` for first-time and signed-out visits; use a non-sensitive, device-local marker only to choose a waiting screen on a returning session. Check that marker in the initial HTML before rendering the static shell, and mirror the choice in React startup. Never treat the marker as auth or account authority. Match the HTML boot shell to the current landing brand, and bump the offline-shell cache when changing the cached HTML.
 
 The private account-loading splash uses the actual full PIXL SPORTS logo. Keep both parts of the logo legible while the screen remains concise and distinct from the public landing page.
 

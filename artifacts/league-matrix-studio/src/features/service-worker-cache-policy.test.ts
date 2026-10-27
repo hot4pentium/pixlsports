@@ -110,8 +110,8 @@ test('shell updates preserve cached schedules and Clerk code without retaining o
 
   await worker.activate();
 
-  assert.deepEqual(await worker.caches.keys(), ['pixl-sports-shell-v16']);
-  const currentCache = await worker.caches.open('pixl-sports-shell-v16');
+  assert.deepEqual(await worker.caches.keys(), ['pixl-sports-shell-v17']);
+  const currentCache = await worker.caches.open('pixl-sports-shell-v17');
   assert.equal(await (await currentCache.match(clerk))?.text(), 'public Clerk code');
   assert.equal(await currentCache.match(optionalTool), undefined);
   assert.equal(await currentCache.match(wasm), undefined);
@@ -123,7 +123,7 @@ test('shell updates preserve cached schedules and Clerk code without retaining o
 test('optional scripts cache on use while retired WASM and private APIs remain uncached', async () => {
   const worker = await createWorker();
   const wasm = new Request(`${scope}assets/ort-runtime.wasm`);
-  const currentCache = await worker.caches.open('pixl-sports-shell-v16');
+  const currentCache = await worker.caches.open('pixl-sports-shell-v17');
   assert.equal(await currentCache.match(wasm), undefined);
   assert.equal(await worker.request(wasm), undefined);
   const script = new Request(`${scope}assets/player-showcase.js`);

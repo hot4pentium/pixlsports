@@ -27,6 +27,19 @@
       (() => {
         const base = '%BASE_URL%';
         const fanPath = `${base}fan/`;
+        const appPath = base.endsWith('/') ? base : `${base}/`;
+        const isPrivateStudioRoute = window.location.pathname === `${appPath}studio`
+          || window.location.pathname.startsWith(`${appPath}studio/`);
+        const isHomeRoute = window.location.pathname === appPath;
+        let hasKnownPrivateSession = false;
+        try {
+          hasKnownPrivateSession = window.localStorage.getItem('pixl:previous-private-session:v1') === 'seen';
+        } catch {
+          // Storage is a presentation hint only; private access is checked after the app starts.
+        }
+        if (isPrivateStudioRoute || (isHomeRoute && hasKnownPrivateSession)) {
+          document.documentElement.setAttribute('data-pixl-private-return', 'true');
+        }
         if (!location.pathname.startsWith(fanPath)) return;
         const token = location.pathname.slice(fanPath.length);
         if (!/^[A-Za-z0-9_-]{32,100}$/.test(token)) return;
@@ -180,6 +193,100 @@
         font-weight: 800;
         cursor: pointer;
       }
+      #app-boot-returning {
+        display: none;
+      }
+      html[data-pixl-private-return="true"] body {
+        margin: 0;
+        background: #e6eef7;
+      }
+      html[data-pixl-private-return="true"] #root {
+        min-height: 100svh;
+      }
+      html[data-pixl-private-return="true"] #app-boot-fallback {
+        display: grid;
+        min-height: 100vh;
+        min-height: 100svh;
+        align-content: center;
+        justify-items: center;
+        gap: 12px;
+        padding: 24px 20px;
+        background:
+          radial-gradient(ellipse at 50% 0%, rgba(168, 218, 250, .75), transparent 47%),
+          linear-gradient(155deg, #edf4fb 0%, #dce9f7 48%, #c8ddf1 100%);
+        color: #102849;
+      }
+      html[data-pixl-private-return="true"] #app-boot-fallback .boot-header,
+      html[data-pixl-private-return="true"] #app-boot-fallback .boot-main {
+        display: none;
+      }
+      html[data-pixl-private-return="true"] #app-boot-returning {
+        display: flex;
+        width: min(100%, 398px);
+        flex-direction: column;
+        align-items: center;
+        gap: 17px;
+        padding: 34px 28px 26px;
+        border: 1px solid rgba(255, 255, 255, .88);
+        border-radius: 22px;
+        background: rgba(249, 251, 254, .94);
+        box-shadow: 0 24px 70px rgba(25, 61, 102, .14), 0 3px 12px rgba(25, 61, 102, .06);
+        text-align: center;
+      }
+      .boot-return-logo {
+        display: block;
+        width: min(100%, 276px);
+        height: 112px;
+        padding: 13px 16px;
+        border: 1px solid #e3ebf5;
+        border-radius: 13px;
+        background: #fff;
+        object-fit: contain;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 5px 14px rgba(26, 66, 116, .045);
+      }
+      .boot-return-kicker {
+        color: #56718f;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .23em;
+      }
+      .boot-return-progress {
+        width: 118px;
+        height: 4px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #dbe6f1;
+      }
+      .boot-return-progress::after {
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: #2879ec;
+        content: "";
+        animation: boot-return-progress 1.5s ease-in-out infinite alternate;
+      }
+      .boot-return-title {
+        margin: 3px 0 0;
+        color: #102849;
+        font-size: clamp(21px, 5vw, 26px);
+        font-weight: 850;
+        letter-spacing: -.045em;
+      }
+      #app-boot-return-message {
+        max-width: 34ch;
+        margin: 0;
+        color: #586e87;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      html[data-pixl-private-return="true"] #app-boot-retry {
+        margin: 0;
+      }
+      @keyframes boot-return-progress {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(250%); }
+      }
       @media (max-width: 850px) {
         .boot-header { min-height: 66px; }
         .boot-main {
@@ -194,6 +301,11 @@
         .boot-description { margin-top: 20px; font-size: 15px; }
         .boot-feature { min-height: 210px; border-radius: 22px; }
         .boot-feature strong { max-width: 300px; font-size: 38px; }
+        html[data-pixl-private-return="true"] #app-boot-returning { padding: 28px 20px 22px; }
+        html[data-pixl-private-return="true"] .boot-return-logo { height: 96px; width: min(100%, 248px); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-return-progress::after { animation: none; width: 100%; opacity: .85; }
       }
     </style>
     <script>
@@ -209,6 +321,13 @@
   <body>
     <div id="root">
       <div id="app-boot-fallback" aria-busy="true">
+        <section id="app-boot-returning" aria-live="polite">
+          <img class="boot-return-logo" src="%BASE_URL%pixlsports-logo.png" alt="PIXL SPORTS" />
+          <span class="boot-return-kicker" aria-hidden="true">RESTORING YOUR SEASON</span>
+          <div class="boot-return-progress" aria-hidden="true"></div>
+          <h1 class="boot-return-title">Opening your studio</h1>
+          <p id="app-boot-return-message" role="status">Checking your saved session…</p>
+        </section>
         <header class="boot-header">
           <a class="boot-brand" href="%BASE_URL%" aria-label="Pixl Sports home">PIXL<span>SPORTS</span></a>
           <a class="boot-login" href="%BASE_URL%auth">Sign up / sign in</a>
@@ -236,6 +355,11 @@
       (() => {
         const fallback = document.getElementById('app-boot-fallback');
         const message = document.getElementById('app-boot-message');
+        const returningMessage = document.getElementById('app-boot-return-message');
+        const syncReturningMessage = () => {
+          if (!document.documentElement.hasAttribute('data-pixl-private-return') || !message || !returningMessage) return;
+          returningMessage.textContent = message.textContent || 'Checking your saved session…';
+        };
         const retry = document.getElementById('app-boot-retry');
         let booted = false;
         let phase = 'html';
@@ -259,12 +383,14 @@
           message.textContent = '%MODE%' === 'development'
             ? `The app could not start (${phase}). ${failure || 'Startup files have not finished loading.'}`
             : 'The page did not finish loading. Refresh to try again.';
+          syncReturningMessage();
           retry.hidden = false;
           reportFailure();
         };
         retry?.addEventListener('click', async () => {
           retry.disabled = true;
           message.textContent = 'Reconnecting to Pixl Sports…';
+          syncReturningMessage();
           try {
             // Run recovery before the app module: a stale shell can prevent
             // main.tsx (and its development-worker cleanup) from ever loading.
@@ -294,6 +420,7 @@
           } catch (error) {
             console.warn('Pixl Sports preview recovery failed.', error);
             message.textContent = 'The browser could not reconnect. Try opening this dev link in Safari.';
+            syncReturningMessage();
             retry.disabled = false;
           }
         });
@@ -323,6 +450,7 @@
           message.textContent = '%MODE%' === 'development'
             ? 'The dev site is taking longer to load. You can keep waiting or reconnect.'
             : 'The landing page is taking longer than expected. You can keep waiting or refresh.';
+          syncReturningMessage();
           retry.hidden = false;
         }, 7000);
         const timeout = window.setTimeout(showRetry, 30000);

@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v16`;
+const CACHE_NAME = `${CACHE_PREFIX}-v17`;
 const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
 const SCHEDULE_CACHE_HEADER = 'X-Pixl-Schedule-Cache';
 

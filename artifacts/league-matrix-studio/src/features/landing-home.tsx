@@ -5,7 +5,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import landingHypeCardPhoto from '@/assets/landing-hype-card-photo.jpg';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
-import youthSoccerHero from '@/assets/landing-candid-athlete.jpg';
+import teenFootballHero from '@/assets/landing-american-football-player.jpg';
 import { useAppInstallPrompt } from './app-install-prompt';
 
 const LandingToolDemo = lazy(() => import('./landing-tool-demo').then(
@@ -186,7 +186,7 @@ export function PublicLandingPage() {
             </div>
             <div className="hero-visual">
               <div className="hero-image-frame">
-                <img src={youthSoccerHero} alt="Youth soccer player smiling while running on a field" width="1024" height="1024" fetchPriority="high" decoding="async" />
+              <img src={teenFootballHero} alt="Teenage American football player running the ball during practice" width="1024" height="1024" fetchPriority="high" decoding="async" />
               </div>
               <div className="hero-message">
                 <strong>Every player has a story worth sharing.</strong>
