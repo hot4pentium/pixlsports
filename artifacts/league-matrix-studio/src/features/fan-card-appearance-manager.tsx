@@ -13,7 +13,7 @@ import { simpleCardLogoSrc } from './simple-hype-card-brand';
 import { buildSimpleHypeCardArtwork, HYPE_TEMPLATE_CARD_H, HYPE_TEMPLATE_CARD_W } from './simple-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
-import { HypeCardDesignPicker, HypeCardLowerThirdPicker, HypeCardPhotoPositionSliders, HypeCardTemplateCyclers } from './hype-card-appearance-controls';
+import { HypeCardPhotoPositionSliders, HypeCardTemplateCyclers } from './hype-card-appearance-controls';
 import antonFontUrl from '../assets/anton-regular.ttf?url';
 
 type Draft = HypeCardAppearance;
@@ -236,21 +236,17 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]" data-testid="fan-card-appearance-manager">
+    <div className="mx-auto grid w-full max-w-[360px] gap-6" data-testid="fan-card-appearance-manager">
       <div className="min-w-0">
         <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl" data-testid="appearance-preview">
           <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={currentAppearance} cardHref={cardHref} />
         </div>
         <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
-        <div className="mx-auto mt-3 w-full max-w-[360px] lg:hidden">
+        <div className="mx-auto mt-3 w-full max-w-[360px]">
           <HypeCardTemplateCyclers appearance={currentAppearance} onChange={updateAppearance} disabled={busy} />
         </div>
       </div>
       <div className="space-y-5">
-        <div className="hidden space-y-5 lg:block" data-testid="appearance-desktop-template-pickers">
-          <HypeCardDesignPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
-          <HypeCardLowerThirdPicker appearance={draft} onChange={updateAppearance} disabled={busy} />
-        </div>
         <div className="space-y-3" data-testid="photo-position-controls">
           <p className="text-xs font-bold uppercase tracking-widest text-white/70">Photo position</p>
           <HypeCardPhotoPositionSliders

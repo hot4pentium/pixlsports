@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'wouter';
-import { ArrowUpRight, Copy, Loader2, Share2 } from 'lucide-react';
+import { Copy, Loader2, Share2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import {
   Dialog,
@@ -64,7 +63,6 @@ export function SupporterHypeCardPreview({
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   const showcaseHref = card ? `${basePath}/showcase/${encodeURIComponent(card.inviteToken)}` : '';
   const shareUrl = shareOrigin ? new URL(showcaseHref, shareOrigin).toString() : showcaseHref;
-  const previewHref = isMobile ? '/studio/player-showcase' : href;
 
   useEffect(() => {
     if (!shareOpen || loading || failed || !card || unavailable) return;
@@ -174,14 +172,14 @@ export function SupporterHypeCardPreview({
                 {reconnectError && <p role="alert">{reconnectError}</p>}
               </div>
             )}
-            <Link href="/studio/athlete-page">{card ? 'Manage card' : 'Set up card'}<ArrowUpRight size={18} aria-hidden="true" /></Link>
+            <p className="text-xs text-white/70">Use the Player Showcase tab to set up, view, and manage your HYPE Card.</p>
           </div>
         ) : (
           <div className="supporter-hype-preview__card-wrap">
-            <Link
-              href={previewHref}
+            <div
               className="supporter-hype-preview__link"
-              aria-label={isMobile ? `View ${card.athleteName}'s Player Showcase` : `View ${card.athleteName}'s HYPE Card`}
+              role="img"
+              aria-label={`${card.athleteName}'s HYPE Card preview`}
               data-testid={isMobile ? 'link-mobile-hype-preview' : 'link-desktop-hype-preview'}
             >
               <div className="supporter-hype-preview__surface" data-design={appearance?.design ?? 'velocity'}>
@@ -195,7 +193,7 @@ export function SupporterHypeCardPreview({
                   onPhotoError={() => setFailedPhoto(card.photoUrl)}
                 />
               </div>
-            </Link>
+            </div>
             <DialogTrigger asChild>
               <button
                 type="button"

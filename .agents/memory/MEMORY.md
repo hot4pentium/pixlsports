@@ -119,7 +119,7 @@
 - [Sharp sprite cropping](sharp-crop-trim-order.md) — materialize each crop before trimming; Sharp can otherwise apply trim ahead of extraction.
 - [Simplified interactive HYPE Card](simple-interactive-hype-card.md) — keep full 2:3 portrait framing, lower-third at the bottom, left branding, style choices, identity, positioning, and public flips.
 - [Showcase slide boundaries](showcase-slide-boundaries.md) — keep the named Showcase centered on the full interactive HYPE Card; do not reintroduce jersey or gear surfaces.
-- [Mobile dashboard Showcase navigation](mobile-dashboard-showcase-navigation.md) — the mobile owner card opens private Showcase; sharing stays public, and the owner can return to Supporter Hub.
+- [Dashboard Showcase navigation](mobile-dashboard-showcase-navigation.md) — dashboard card images are non-clickable; view and edit through Player Showcase, with mobile-style editor controls on desktop.
 - [Installed offline priorities](installed-offline-priorities.md) — preload day-of tools; cache other tools on use rather than downloading every feature at installation.
 - [Fixed paired-card content](fixed-paired-card-content.md) — preserve equal 3:4 card sizing by keeping required text from flex-shrinking and reclaiming space inside the card.
 - [Tracker attribution boundaries](tracker-attribution-boundaries.md) — recipient scoreboards name the team; athlete snapshots and opponent possession stats stay distinct.

@@ -1,10 +1,16 @@
 ---
-name: Mobile dashboard Showcase navigation
-description: Owner navigation from the mobile HYPE Card preview to the private Player Showcase and back.
+name: Dashboard and Showcase navigation
+description: Dashboard HYPE Card previews are non-clickable; viewing and editing belong in Player Showcase.
 ---
 
-On the signed-in mobile Supporter Hub, tapping the saved HYPE Card preview opens the owner's private Player Showcase. Its public share link remains a separate recipient destination, and the desktop preview keeps its direct HYPE Card route. The owner Showcase provides a return link to the Supporter Hub.
+The dashboard HYPE Card image is a non-clickable preview on both mobile and desktop. Users should go through the Player Showcase tab to view, edit, and manage the HYPE Card. Keep public sharing separate from private owner navigation, and preserve the Showcase return link to Supporter Hub.
 
-**Why:** The user asked for the mobile card tap to open the owner's Showcase and for owners to be able to return to the dashboard.
+**Why:** The user said there were too many HYPE Card entry points and explicitly replaced the earlier dashboard-card navigation request.
 
-**How to apply:** Keep the mobile preview href separate from the public share URL, preserve the desktop destination unless asked to change it, and verify both forward and return navigation.
+**How to apply:** Do not add a link, button role, keyboard tab stop, or card-opening handler to the dashboard artwork. Direct card-management guidance to Player Showcase.
+
+The desktop card-design editor should follow the mobile sequence: card with its four content buttons, frame and lower-third arrows, then photo-position sliders.
+
+**Why:** The user requested the same mobile-style design layout on desktop rather than a side-by-side card and large template gallery.
+
+**How to apply:** Keep the single-column editor bounded and centered, and use the same arrow controls on both desktop and mobile.

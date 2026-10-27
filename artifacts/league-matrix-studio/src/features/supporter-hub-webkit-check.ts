@@ -292,14 +292,11 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
     await evaluate(`(window.__hypePreviewState='velocity', localStorage.setItem('hype-preview-fixture','"velocity"'))`);
     await click('[data-testid="mobile-saved-hype-card"] button');
     await wait(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
-    // WebDriver sends native input, not DOM .click() or dispatched JS events.
-    await key('[data-testid="link-mobile-hype-preview"]', '\uE007');
-    await wait(`location.pathname==='/fan/saved-athlete-token'`);
-    await evaluate(`(history.back(), true)`);
-    await wait(`location.pathname.endsWith('.html')`);
-    await wait(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
+    const previewPath = await evaluate('location.pathname');
+    assert.equal(await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').tabIndex`), -1);
+    assert.equal(await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').getAttribute('href')`), null);
     await click('[data-testid="link-mobile-hype-preview"]');
-    await wait(`location.pathname==='/fan/saved-athlete-token'`);
+    assert.equal(await evaluate('location.pathname'), previewPath, 'dashboard artwork does not navigate');
   } finally {
     if (sessionPath) await command('DELETE', sessionPath).catch(() => undefined);
     for (const { child, monitor } of processes.reverse()) {

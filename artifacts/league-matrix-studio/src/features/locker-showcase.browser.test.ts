@@ -888,16 +888,16 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
      await browser.wait(`document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
      assert.equal(
        await browser.evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').getAttribute('href')`),
-       `${base}/studio/player-showcase`,
-       'the mobile dashboard HYPE Card preview links to the owner Showcase',
+       null,
+       'the mobile dashboard HYPE Card is display-only',
      );
      assert.equal(
        await browser.evaluate(`document.querySelector('[data-testid="link-desktop-hype-preview"]').getAttribute('href')`),
-       `${base}/fan/fixture-athlete`,
-       'the desktop preview keeps its direct HYPE Card destination',
+       null,
+       'the desktop dashboard HYPE Card is display-only',
      );
      await browser.evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').click()`);
-     await browser.wait(`location.pathname==='${base}/studio/player-showcase'`);
+     assert.equal(await browser.evaluate('location.pathname'), `${base}/studio`, 'dashboard artwork does not navigate');
   } finally {
     browser?.close();
     await stop(chromium);

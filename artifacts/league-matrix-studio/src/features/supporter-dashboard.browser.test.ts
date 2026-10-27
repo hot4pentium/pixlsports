@@ -7174,7 +7174,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
             profileAccessRemainsInHeader: profileIcon instanceof HTMLElement
               && profileIcon.getClientRects().length > 0,
             hypeQuickLinkRemoved: quickHypeLink === null,
-            cardPreviewStillLinks: navLink instanceof HTMLAnchorElement && Boolean(navLink.getAttribute('href')),
+            cardPreviewIsStatic: navLink instanceof HTMLElement && !(navLink instanceof HTMLAnchorElement) && navLink.tabIndex === -1,
             noLandingCardControls: nav === null,
             noCardTextLabels: !event.querySelector('.supporter-hype-preview__label')
               && !slot.querySelector('.supporter-hype-preview__label')
@@ -7207,7 +7207,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
           messageActionFits: true, badgeExtended: true, graphicFits: true, graphicKeepsRatio: true,
           eventActionAvailable: true, ratio: true, noOverflow: true,
           athleteCardRemoved: true, profileAccessRemainsInHeader: true,
-          hypeQuickLinkRemoved: true, cardPreviewStillLinks: true,
+          hypeQuickLinkRemoved: true, cardPreviewIsStatic: true,
           noLandingCardControls: true,
           noCardTextLabels: true,
           nativeArt: true, spillover: true, noInteractiveControls: true, preserved: true, desktopInboxRetained: true },
@@ -7271,14 +7271,14 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
       const rect = surface?.getBoundingClientRect();
       return {
         previewVisible: preview instanceof HTMLElement && preview.getClientRects().length > 0,
-        linkPath: link instanceof HTMLAnchorElement ? new URL(link.href).pathname : '',
+        staticPreview: link instanceof HTMLElement && !(link instanceof HTMLAnchorElement) && link.tabIndex === -1,
         cardRatio: Boolean(rect && Math.abs(rect.width / rect.height - 3 / 4) < .01),
         cardCompact: Boolean(rect && rect.width > 0 && rect.width <= 221),
         mobileShellHidden: mobile instanceof HTMLElement && getComputedStyle(mobile).display === 'none',
       };
     })()`), {
       previewVisible: true,
-      linkPath: '/fan/saved-athlete-token',
+      staticPreview: true,
       cardRatio: true,
       cardCompact: true,
       mobileShellHidden: true,
@@ -7352,7 +7352,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
       teamName: window.__hypeReconnectBody?.teamName,
       retainedVisibility: window.__hypeReconnectBody?.showHypeCard === true,
       artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {})),
-      showcasePath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname
+      staticPreview: !document.querySelector('[data-testid="link-mobile-hype-preview"]').hasAttribute('href')
     })`), {
       calls: 1,
       updatePath: '/api/athlete-invites/saved-athlete-token',
@@ -7360,7 +7360,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
       teamName: 'The Northside Comets Select Travel Club',
       retainedVisibility: true,
       artworkUntouched: true,
-      showcasePath: '/studio/player-showcase',
+      staticPreview: true,
     });
 
     for (const state of ['empty', 'paused', 'hidden', 'error']) {
@@ -7416,15 +7416,14 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false }, page.sessionId);
     assert.equal(await evaluate(`!!document.querySelector('[data-testid="desktop-game-on-summary"] [data-testid="mobile-calendar-hype-row"]')`), false);
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
-    await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').focus()`);
-    assert.equal(await evaluate(`document.activeElement?.getAttribute('data-testid')`), 'link-mobile-hype-preview');
+    const previewPath = await evaluate<string>('location.pathname');
+    await evaluate(`document.activeElement?.blur(); document.querySelector('[data-testid="link-mobile-hype-preview"]').focus()`);
+    assert.notEqual(await evaluate(`document.activeElement?.getAttribute('data-testid')`), 'link-mobile-hype-preview');
     await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
     await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page.sessionId);
-     await wait(`location.pathname==='/studio/player-showcase'`);
-     await connection.send('Page.navigate', { url: fixtureUrl }, page.sessionId);
-     await wait(`Boolean(document.querySelector('[data-testid="link-mobile-hype-preview"]'))`);
+     assert.equal(await evaluate('location.pathname'), previewPath, 'Enter cannot open the dashboard artwork');
      await tap('[data-testid="link-mobile-hype-preview"]');
-     await wait(`location.pathname==='/studio/player-showcase'`);
+     assert.equal(await evaluate('location.pathname'), previewPath, 'tapping dashboard artwork does not navigate');
   } finally {
     if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
     connection?.close();
@@ -7529,14 +7528,14 @@ test('reconnecting a saved HYPE Card requires review and confirmation', { concur
       athleteName: window.__hypeReconnectBody?.athleteName,
       teamName: window.__hypeReconnectBody?.teamName,
       artworkUntouched: !('cardAppearance' in (window.__hypeReconnectBody || {})),
-      showcasePath: new URL(document.querySelector('[data-testid="link-mobile-hype-preview"]').href).pathname,
+      staticPreview: !document.querySelector('[data-testid="link-mobile-hype-preview"]').hasAttribute('href'),
     })`), {
       updates: 1,
       updatePath: '/api/athlete-invites/saved-athlete-token',
       athleteName: 'Alexandria Montgomery-Williams',
       teamName: 'The Northside Comets Select Travel Club',
       artworkUntouched: true,
-      showcasePath: '/studio/player-showcase',
+      staticPreview: true,
     });
   } finally {
     if (connection && page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});

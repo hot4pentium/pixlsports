@@ -182,7 +182,7 @@ export async function checkSavedHypeCardOwnerApi(appDirectory: string, chromiumP
           .some(e => [e.getAttribute('href'),e.getAttribute('xlink:href'),e.getAttribute('src')].includes(${JSON.stringify(media)}))`);
       }
       const front = await readFront();
-      assert.equal(front.href, `/fan/${card.inviteToken}`);
+      assert.equal(front.href, null, 'dashboard artwork is not a navigation link');
       assert.ok(front.text.toUpperCase().includes(card.athleteName.toUpperCase()), front.text);
       assert.ok(front.text.toUpperCase().includes(card.teamName.toUpperCase()), front.text);
       if (media) {
@@ -198,7 +198,8 @@ export async function checkSavedHypeCardOwnerApi(appDirectory: string, chromiumP
       return front;
     };
     const fullMatches = async (front: Front) => {
-      await click('[data-testid="link-mobile-hype-preview"]');
+      const card = await ownerCard();
+      await evaluate(`history.pushState({}, '', ${JSON.stringify(`/fan/${card.inviteToken}`)}); dispatchEvent(new PopStateEvent('popstate'))`);
       await wait(`Boolean(document.querySelector('.living-card-page .living-card-face'))`);
       await wait(`(() => {
         const root = document.querySelector('.living-card-page .living-card-face');
@@ -207,7 +208,7 @@ export async function checkSavedHypeCardOwnerApi(appDirectory: string, chromiumP
           .map(e => e.getAttribute('href') || e.getAttribute('xlink:href') || e.getAttribute('src')).filter(Boolean);
         return design === ${JSON.stringify(front.design)} && JSON.stringify(images) === ${JSON.stringify(JSON.stringify(front.images))};
       })()`);
-      assert.equal(await evaluate('location.pathname'), front.href);
+      assert.equal(await evaluate('location.pathname'), `/fan/${card.inviteToken}`);
       const full = await readFront(true);
       assert.deepEqual({ ...full, href: front.href }, front, 'Hub and real full-card destination render the same saved front');
       await evaluate(`history.back()`);
@@ -287,7 +288,7 @@ export async function checkSavedHypeCardOwnerApi(appDirectory: string, chromiumP
     await fullMatches(await expectFront(replacement, 'spotlight', replacement.photoUrl));
 
     await evaluate(`window.__switchSavedCardAccount(${JSON.stringify(other)})`);
-    await wait(`document.querySelector('[data-testid="link-mobile-hype-preview"]')?.getAttribute('href') === '/fan/${second.inviteToken}'`);
+    await wait(`document.querySelector('.supporter-hype-preview__surface')?.dataset.design === 'gallery'`);
     const isolated = await readFront();
     assert.equal(isolated.design, 'gallery');
     assert.ok(isolated.text.includes('99'));
