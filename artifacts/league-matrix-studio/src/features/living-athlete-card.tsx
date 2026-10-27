@@ -1,3 +1,4 @@
+import './showcase-desktop-density.css';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Radio, RotateCcw, Send } from 'lucide-react';
 import { useUser } from '@clerk/react';

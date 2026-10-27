@@ -10,6 +10,7 @@ import { BackNavigationLink } from '@/components/back-navigation-link';
 import { normalizeCardAppearance } from './hype-card-appearance';
 import { LivingAthleteCardPage } from './living-athlete-card';
 import './public-player-showcase.css';
+import './showcase-desktop-density.css';
 
 export interface PublicPlayerShowcasePageProps {
   params: { inviteToken?: string };

@@ -74,6 +74,7 @@ import { FanCardPhotoManager } from './fan-card-photo-manager';
 import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
 import { OwnerEventNotifications } from './owner-event-notifications';
+import './showcase-desktop-density.css';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile, getUserRole, type UserProfile } from './supporter-dashboard-model';
@@ -1564,7 +1565,7 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="owner-athlete-invite-management-page">
       <PublicHeader />
-      <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
+      <main className="ps-owner-manage mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
         <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-back-to-dynamic-showcase" variant="public" />
          <OwnerHypePageManage invite={ownerInvite} profile={profile} />
       </main>

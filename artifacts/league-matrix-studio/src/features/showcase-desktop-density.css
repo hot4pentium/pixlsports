@@ -1,0 +1,73 @@
+/* Desktop-only density correction for Showcase, owner HYPE Card management, and public HYPE Card.
+   Everything is scoped to >=1024px; mobile layouts are untouched.
+   :root keeps these overrides effective when route CSS loads after this shared import. */
+@media (min-width: 1024px) {
+  /* /studio/player-showcase */
+  :root .ps { max-width: 880px; gap: 12px; padding: 12px 24px 24px; }
+  :root .ps__stage-wrap--card-only { width: min(100%, 880px); padding: 8px 0 16px; }
+  :root .ps__section-title { font-size: 30px; }
+  :root .ps__card-only-intro { margin-bottom: 14px; font-size: 13px; }
+  :root .ps__card-only { max-width: 820px; }
+  :root .ps__card-only-panel { grid-template-columns: minmax(0, 1fr) 260px; gap: 32px; padding: 24px 28px; }
+  :root .ps__card-only-heading { gap: 16px; }
+  :root .ps__card-only-team { font-size: 26px; }
+  :root .ps__card-only-art { width: 260px; box-shadow: 10px 13px 0 rgba(2,10,24,.38), 0 14px 30px rgba(0,0,0,.26); }
+  :root .ps__card-links { width: min(100%, 320px); gap: 8px; }
+  :root .ps__card-links .ps__link { min-height: 46px; font-size: 14px; }
+  :root .ps__card-links .ps__link svg { width: 22px; height: 22px; flex-basis: 22px; }
+  :root .ps__card-unavailable { padding: 22px; }
+  :root .ps__card-unavailable strong { font-size: 22px; }
+  .ps-desktop-bounded { max-width: 880px !important; }
+  .ps-desktop-bounded [data-testid="panel-share-public-showcase"] { padding: 16px 20px; }
+  .ps-desktop-bounded [data-testid="panel-share-public-showcase"] h2 { font-size: 20px; }
+  .ps-desktop-bounded [data-testid="athlete-editor-invitation"] { margin-top: 20px; padding: 20px 24px; }
+  .ps-desktop-bounded [data-testid="athlete-editor-invitation"] h2 { font-size: 24px; }
+
+  /* /player/:inviteToken/manage */
+  .ps-owner-manage { max-width: 880px !important; padding-top: 24px !important; padding-bottom: 32px !important; }
+  .ps-owner-manage [data-testid="owner-hype-page-management"] { margin-top: 16px; }
+  .ps-owner-manage #owner-hype-page-management { font-size: 34px; line-height: 1; }
+  .ps-owner-manage .hype-manager-task-grid { gap: 12px; }
+  .ps-owner-manage .hype-manager-task-grid .hype-manager-task-button { min-height: 112px; padding: 14px 16px; gap: 12px; border-radius: 16px; }
+  .ps-owner-manage .hype-manager-task-grid .hype-manager-task-icon { width: 40px; height: 40px; border-radius: 12px; }
+  .ps-owner-manage .hype-manager-task-icon svg { width: 21px; height: 21px; }
+  .ps-owner-manage .hype-manager-task-grid .hype-manager-task-title { font-size: 21px; }
+  .ps-owner-manage .hype-manager-task-description { font-size: 12px; }
+  .ps-owner-manage .hype-manager-task-preview { max-height: 56px; }
+  .ps-owner-manage .hype-manager-task-preview img,
+  .ps-owner-manage .hype-manager-task-preview video { max-height: 56px; }
+  .ps-owner-manage .hype-manager-task-preview img.h-14 { width: 44px; height: 44px; }
+  .ps-owner-manage .hype-manager-task-chevron { width: 28px; height: 28px; }
+  .ps-owner-manage .hype-manager-task-panel { padding: 20px 24px; border-radius: 16px; }
+  .ps-owner-manage .hype-manager-task-panel h3.text-2xl,
+  .ps-owner-manage .hype-manager-task-panel h3.text-3xl { font-size: 22px; }
+
+  /* /showcase/:inviteToken */
+  :root .public-showcase__topbar,
+  :root .public-showcase__owner-nav,
+  :root .public-showcase__footer { width: min(960px, calc(100% - 80px)); }
+  :root .public-showcase__topbar { height: 64px; }
+  :root .public-showcase--card-only .public-showcase__hero {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 48px;
+    width: min(920px, calc(100% - 80px));
+    min-height: 0;
+    padding: 28px 0 36px;
+  }
+  :root .public-showcase--card .public-showcase__hero h1 { font-size: 48px; }
+  :root .public-showcase--card-only .public-showcase__visual { max-width: 380px; }
+  :root .public-showcase__card-interactive .living-card-stage { max-width: 380px; }
+  :root .public-showcase__card-interactive .living-card-frame { height: auto; min-height: 0; max-height: none; aspect-ratio: 2 / 3; }
+  :root .public-showcase__state-panel { width: min(100%, 560px); padding: 40px; }
+  :root .public-showcase__state-panel h1 { font-size: 52px; }
+
+  /* /fan/:inviteToken (standalone, not embedded) */
+  .living-card-header-inner { max-width: 960px; min-height: 64px; }
+  .living-card-main:not(.living-card-main--embedded) { max-width: 960px; padding: 28px 32px 56px; }
+  .living-card-main:not(.living-card-main--embedded) .living-card-intro { padding-bottom: 14px; margin-bottom: 24px; }
+  .living-card-main:not(.living-card-main--embedded) .living-card-layout { grid-template-columns: minmax(0, 440px) minmax(260px, 1fr); gap: 40px; justify-content: center; }
+  .living-card-main:not(.living-card-main--embedded) .living-card-layout-solo { grid-template-columns: minmax(0, 440px); }
+  .living-card-main:not(.living-card-main--embedded) .living-card-frame { height: auto; min-height: 0; max-height: none; aspect-ratio: 2 / 3; }
+  .living-card-main:not(.living-card-main--embedded) .living-card-athlete-name { font-size: 60px; }
+  .living-card-main:not(.living-card-main--embedded) .living-card-alt-title { font-size: 62px; margin-top: 22px; }
+}

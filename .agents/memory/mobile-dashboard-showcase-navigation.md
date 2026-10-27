@@ -20,3 +20,9 @@ The desktop card-design editor should follow the mobile sequence: card with its 
 **Why:** The user requested the same mobile-style design layout on desktop rather than a side-by-side card and large template gallery.
 
 **How to apply:** Keep the single-column editor bounded and centered, and use the same arrow controls on both desktop and mobile.
+
+Keep the desktop Showcase and its downstream management and public-card pages compact, centered, and consistently bounded. Avoid oversized previews, headings, and excessive panel whitespace; preserve the mobile layouts.
+
+**Why:** The user said the Showcase and its subsequent pages were too large and overwhelming on desktop.
+
+**How to apply:** Apply density adjustments across the owner Showcase, manager, public Showcase, and standalone card together. Preserve card proportions, readable controls, and the established navigation.

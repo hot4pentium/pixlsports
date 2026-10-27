@@ -22,6 +22,7 @@ import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
 import './player-showcase.css';
+import './showcase-desktop-density.css';
 
 export interface PlayerShowcaseContentProps {
   profile: SupporterProfile;
@@ -182,7 +183,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   };
   return (
     <>
-      <div className="mx-auto w-full max-w-6xl px-4 pt-5 sm:px-8">
+      <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pt-5 sm:px-8">
         <BackNavigationLink
           href="/studio"
           label="Back to Supporter Hub"
@@ -199,7 +200,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         }}
         cardEditHref={cardSettingsHref}
         cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}?from=player-showcase` : undefined} />
-      <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
+      <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         {publicShowcaseUrl && (
           <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">
             <div className="min-w-0">
