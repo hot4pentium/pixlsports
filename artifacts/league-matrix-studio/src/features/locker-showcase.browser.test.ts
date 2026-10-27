@@ -7,6 +7,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { monitorProcess, waitForUrl } from './browser-test-diagnostics';
+import { showcaseResponsiveFixture } from './showcase-responsive-fixture';
+import { checkResponsiveRoute, responsiveRoutes } from './showcase-responsive-checks';
 
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const base = '/locker-check';
@@ -199,6 +201,65 @@ async function stop(process: ChildProcess | undefined) {
     process.once('exit', () => { clearTimeout(timer); done(); });
   });
 }
+
+test('Showcase responsive geometry stays compact across owner/public route import orders', { timeout: 240_000 }, async (t) => {
+  const suffix = `showcase-responsive-${process.pid}`;
+  const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
+  const htmlPath = resolve(appDirectory, `${suffix}.html`);
+  const configPath = resolve(appDirectory, `${suffix}.config.ts`);
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-showcase-responsive-'));
+  const port = await availablePort();
+  const debugPort = await availablePort();
+  let vite: ChildProcess | undefined;
+  let chromium: ChildProcess | undefined;
+  let browser: Browser | undefined;
+  try {
+    await writeFile(sourcePath, showcaseResponsiveFixture(base));
+    await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
+    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-owner-identity',enforce:'pre',resolveId(id){if(id==='@clerk/react')return '\\0fixture-owner-identity';},load(id){if(id==='\\0fixture-owner-identity')return 'export function useUser(){return {user:window.__fixtureUser,isLoaded:true,isSignedIn:true}} export function useClerk(){return {signOut:async()=>{}}}';}}]});`);
+    vite = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(port), BASE_PATH: `${base}/`, VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_c2hvd2Nhc2UuZXhhbXBsZS5jb20k' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const viteMonitor = monitorProcess(vite, 'Responsive Showcase Vite');
+    await waitForUrl(`http://127.0.0.1:${port}${base}/`, 25_000, viteMonitor);
+    chromium = spawn(process.env.CHROMIUM_PATH || 'chromium', [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const chromeMonitor = monitorProcess(chromium, 'Responsive Showcase Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 15_000, chromeMonitor);
+    const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json() as Array<{ type: string; webSocketDebuggerUrl: string }>;
+    browser = await Browser.connect(tabs.find((tab) => tab.type === 'page')!.webSocketDebuggerUrl);
+    await browser.send('Page.enable');
+    await browser.send('Runtime.enable');
+    await browser.send('Log.enable');
+    await browser.send('Network.enable');
+    // A new document per order/width resets CSS insertion order. SPA navigation
+    // within it retains earlier route styles, exposing cascade regressions.
+    const orders = [responsiveRoutes, [...responsiveRoutes].reverse()];
+    for (const width of [390, 430, 1024, 1280, 1600]) {
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+      for (const [orderIndex, routes] of orders.entries()) {
+        await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?route=${encodeURIComponent(routes[0])}` });
+        await browser.wait(`typeof window.__navigate==='function'`);
+        for (const [routeIndex, route] of routes.entries()) {
+          await t.test(`${width}px order ${orderIndex + 1}: ${route}`, async () => {
+            if (routeIndex) await browser!.evaluate(`window.__navigate(${JSON.stringify(base + route)})`);
+            await checkResponsiveRoute(browser!, route, width);
+          });
+        }
+      }
+    }
+  } finally {
+    browser?.close();
+    await stop(chromium);
+    await stop(vite);
+    await Promise.all([sourcePath, htmlPath, configPath].map((path) => rm(path, { force: true })));
+    await rm(profile, { recursive: true, force: true });
+  }
+});
 
 test('Showcase keeps the HYPE Card central and the athlete moment parent-controlled', { timeout: 120_000 }, async () => {
   const suffix = `showcase-card-only-${process.pid}`;
