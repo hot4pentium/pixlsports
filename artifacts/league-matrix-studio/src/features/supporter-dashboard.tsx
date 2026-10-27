@@ -1170,17 +1170,15 @@ export function SupporterDashboardView({
     </div>
   );
 
-  const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
-    variant === 'desktop' ? (
-      <div>
-        {renderUpcomingEventsList('desktop')}
-      </div>
-    ) : (
-      <div className={`supporter-event-graphic supporter-event-graphic--mobile${hasLiveGuidance || !guidanceEventCard ? ' supporter-event-graphic--guidance' : ''}`}>
+  const renderGameOnEventMessageBoard = (variant: 'mobile' | 'desktop') => {
+    const isMobile = variant === 'mobile';
+    const actionTestId = isMobile ? 'button-guidance-event-card' : 'button-guidance-event-card-desktop';
+    return (
+      <div className={`supporter-event-graphic ${isMobile ? 'supporter-event-graphic--mobile' : 'supporter-event-graphic--desktop-message'}${hasLiveGuidance || !guidanceEventCard ? ' supporter-event-graphic--guidance' : ''}`}>
         <h2
-          id="mobile-upcoming-calendar-events-heading"
+          id={isMobile ? 'mobile-upcoming-calendar-events-heading' : 'desktop-upcoming-calendar-events-heading'}
           className="sr-only"
-          data-testid="upcoming-calendar-events-heading"
+          data-testid={isMobile ? 'upcoming-calendar-events-heading' : 'desktop-upcoming-calendar-events-heading'}
         >
           Game-day guidance
         </h2>
@@ -1194,9 +1192,11 @@ export function SupporterDashboardView({
             ].filter(Boolean).join(' · ')}
             actionLabel={guidanceStepLabel}
             onOpen={openGuidanceEventCard}
+            testId={isMobile ? 'upcoming-event-badge' : 'dashboard-desktop-message-board-ticket'}
+            actionTestId={actionTestId}
           />
         )}
-        {(!guidanceEventCard || hasLiveGuidance) && <div className="supporter-event-guidance" data-testid="mobile-event-guidance" data-state={hasLiveGuidance ? 'live' : 'empty'}>
+        {(!guidanceEventCard || hasLiveGuidance) && <div className="supporter-event-guidance" data-testid={isMobile ? 'mobile-event-guidance' : 'desktop-event-guidance'} data-state={hasLiveGuidance ? 'live' : 'empty'}>
           <span className="supporter-event-guidance__label">{hasLiveGuidance ? 'Happening now' : 'Ready for what’s next'}</span>
           <h3>{hasLiveGuidance
             ? guidanceEventCard?.type === 'practice' ? 'Practice is live.' : 'Game day is live.'
@@ -1208,17 +1208,23 @@ export function SupporterDashboardView({
               : 'Keep tracking your athlete’s moments. Open the game to update stats and the score.'
             : 'Start by creating an Event Card for your athlete’s next game or practice. Your game-day guidance will appear here.'}</p>
           {guidanceEventCard ? (
-            <button type="button" onClick={openGuidanceEventCard} data-testid="button-guidance-event-card" aria-label={`${guidanceStepLabel}: open Event Card for ${getUpcomingEventCardTitle(guidanceEventCard, profile.teamName)}`}>
+            <button type="button" onClick={openGuidanceEventCard} data-testid={actionTestId} aria-label={`${guidanceStepLabel}: open Event Card for ${getUpcomingEventCardTitle(guidanceEventCard, profile.teamName)}`}>
               {guidanceStepLabel} <ArrowRight size={14} aria-hidden="true" />
             </button>
           ) : (
-            <button type="button" onClick={openCardWorkspace} data-testid="button-guidance-create-event">Create Event Card <ArrowRight size={14} aria-hidden="true" /></button>
+            <button type="button" onClick={openCardWorkspace} data-testid={isMobile ? 'button-guidance-create-event' : 'button-guidance-create-event-desktop'}>Create Event Card <ArrowRight size={14} aria-hidden="true" /></button>
           )}
         </div>}
-        {!guidanceEventCard && !hasLiveGuidance && <span className="sr-only" data-testid="upcoming-calendar-events-empty">No upcoming games or practices are available as Event Cards.</span>}
-        {upcomingEventCards.length > 0 && renderUpcomingEventsList('mobile')}
+        {!guidanceEventCard && !hasLiveGuidance && <span className="sr-only" data-testid={isMobile ? 'upcoming-calendar-events-empty' : 'desktop-upcoming-calendar-events-empty'}>No upcoming games or practices are available as Event Cards.</span>}
+        {isMobile && upcomingEventCards.length > 0 && renderUpcomingEventsList('mobile')}
       </div>
-    )
+    );
+  };
+
+  const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
+    variant === 'desktop'
+      ? <div>{renderUpcomingEventsList('desktop')}</div>
+      : renderGameOnEventMessageBoard('mobile')
   );
 
   const ownerDayEventRows = visibleEventDayReminders.flatMap((reminder) => (
@@ -1538,6 +1544,13 @@ export function SupporterDashboardView({
             </div>
           </section>
         </aside>
+        <section
+          className="dashboard-desktop-message-board"
+          aria-label="Game-day message board"
+          data-testid="dashboard-desktop-message-board"
+        >
+          {renderGameOnEventMessageBoard('desktop')}
+        </section>
         <div className="dashboard-desktop-stat-stack" data-testid="dashboard-desktop-stat-stack">
           <div className="dashboard-desktop-overview-heading" data-testid="dashboard-desktop-overview-heading">
             <h2 id="game-on-summary-heading-desktop">Athlete overview</h2>

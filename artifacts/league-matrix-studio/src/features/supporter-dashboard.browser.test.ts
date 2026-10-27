@@ -5685,7 +5685,10 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       desktopHypeCardVisible: boolean;
       desktopHypePreviewVisible: boolean;
       desktopHypeCardAtTopLeft: boolean;
-      desktopHypeCardNextToRightStack: boolean;
+      desktopMessageBoardVisible: boolean;
+      desktopHypeCardNextToMessageBoard: boolean;
+      desktopMessageBoardNextToOverview: boolean;
+      desktopMessageBoardMatchesMobile: boolean;
       overviewHeadingAboveTrends: boolean;
       overviewLabelsVisible: boolean;
       seasonLabelAboveTrends: boolean;
@@ -5712,6 +5715,10 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       const hypeCard = sidebar?.querySelector('[data-testid="dashboard-hype-card-desktop"]');
       const preview = hypeCard?.querySelector('[data-testid="desktop-saved-hype-card"]');
       const quickLinks = sidebar?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
+      const desktopMessageBoard = shell?.querySelector('[data-testid="dashboard-desktop-message-board"]');
+      const desktopMessageBoardRect = desktopMessageBoard instanceof HTMLElement ? desktopMessageBoard.getBoundingClientRect() : null;
+      const desktopMessageState = desktopMessageBoard?.querySelector('[data-testid="dashboard-desktop-message-board-ticket"], [data-testid="desktop-event-guidance"]');
+      const mobileMessageState = mobile?.querySelector('[data-testid="upcoming-event-badge"], [data-testid="mobile-event-guidance"]');
       const overview = shell?.querySelector('[data-testid="dashboard-desktop-overview-heading"]');
       const overviewRect = overview instanceof HTMLElement ? overview.getBoundingClientRect() : null;
       const overviewText = overview?.textContent?.replace(/\\s+/g, ' ').trim() || '';
@@ -5752,10 +5759,18 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         desktopHypeCardAtTopLeft: Boolean(hypeRect && summaryRect
           && hypeRect.top < summaryRect.top
           && Math.abs(hypeRect.left - (hypeRowRect?.left ?? 0)) <= 1),
-        desktopHypeCardNextToRightStack: Boolean(hypeRect && rightStackRect
-          && Math.abs(hypeRect.top - rightStackRect.top) <= 10
-          && rightStackRect.left >= hypeRect.right
-          && rightStackRect.left - hypeRect.right < 32),
+        desktopMessageBoardVisible: visible(desktopMessageBoard) && visible(desktopMessageState),
+        desktopHypeCardNextToMessageBoard: Boolean(hypeRect && desktopMessageBoardRect
+          && Math.abs(hypeRect.top - desktopMessageBoardRect.top) <= 10
+          && desktopMessageBoardRect.left >= hypeRect.right
+          && desktopMessageBoardRect.left - hypeRect.right < 32),
+        desktopMessageBoardNextToOverview: Boolean(desktopMessageBoardRect && rightStackRect
+          && Math.abs(desktopMessageBoardRect.top - rightStackRect.top) <= 10
+          && rightStackRect.left >= desktopMessageBoardRect.right
+          && rightStackRect.left - desktopMessageBoardRect.right < 32),
+        desktopMessageBoardMatchesMobile: Boolean(desktopMessageState && mobileMessageState
+          && desktopMessageState.textContent?.replace(/\s+/g, ' ').trim()
+            === mobileMessageState.textContent?.replace(/\s+/g, ' ').trim()),
         overviewHeadingAboveTrends: Boolean(overviewRect && trendRect && overviewRect.bottom <= trendRect.top),
         overviewLabelsVisible: overviewText.includes('Athlete overview') && overviewText.includes('All in, all season'),
         seasonLabelAboveTrends: !summary?.querySelector('.supporter-game-on-summary__locker-season')
@@ -5793,7 +5808,10 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       desktopHypeCardVisible: true,
       desktopHypePreviewVisible: true,
       desktopHypeCardAtTopLeft: true,
-      desktopHypeCardNextToRightStack: true,
+      desktopMessageBoardVisible: true,
+      desktopHypeCardNextToMessageBoard: true,
+      desktopMessageBoardNextToOverview: true,
+      desktopMessageBoardMatchesMobile: true,
       overviewHeadingAboveTrends: true,
       overviewLabelsVisible: true,
       seasonLabelAboveTrends: true,
@@ -7240,12 +7258,14 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
         previewVisible: preview instanceof HTMLElement && preview.getClientRects().length > 0,
         linkPath: link instanceof HTMLAnchorElement ? new URL(link.href).pathname : '',
         cardRatio: Boolean(rect && Math.abs(rect.width / rect.height - 3 / 4) < .01),
+        cardCompact: Boolean(rect && rect.width > 0 && rect.width <= 221),
         mobileShellHidden: mobile instanceof HTMLElement && getComputedStyle(mobile).display === 'none',
       };
     })()`), {
       previewVisible: true,
       linkPath: '/fan/saved-athlete-token',
       cardRatio: true,
+      cardCompact: true,
       mobileShellHidden: true,
     });
     await verifyHypeCardShare('desktop');

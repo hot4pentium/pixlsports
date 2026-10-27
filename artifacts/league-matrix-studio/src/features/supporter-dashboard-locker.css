@@ -483,6 +483,26 @@
     display: none;
   }
 
+  .pixl-locker-dashboard .dashboard-desktop-message-board {
+    min-width: 0;
+    align-self: start;
+  }
+
+  .pixl-locker-dashboard .supporter-event-graphic--desktop-message {
+    display: flex;
+    width: 100%;
+    height: clamp(300px, 31vw, 370px);
+    min-width: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .pixl-locker-dashboard .supporter-event-graphic--desktop-message > .supporter-event-guidance-board,
+  .pixl-locker-dashboard .supporter-event-graphic--desktop-message > .supporter-event-guidance {
+    width: 100%;
+    height: 100%;
+  }
+
   .pixl-locker-dashboard #event-cards-desktop > .game-on-collection {
     width: 100%;
     min-width: 0;
@@ -499,16 +519,16 @@
     grid-column: 1 / -1;
     grid-row: 1;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(190px, .62fr) minmax(210px, .82fr) minmax(320px, 1.2fr);
     align-items: start;
-    gap: 18px;
+    gap: 14px;
     min-width: 0;
   }
 
   .pixl-locker-dashboard .dashboard-hype-card-panel__body {
     justify-items: center;
-    gap: 16px;
-    padding: 0 clamp(18px, 4vw, 42px) clamp(20px, 3vw, 32px);
+    gap: 12px;
+    padding: 0 clamp(8px, 1vw, 14px) 20px;
   }
 
   .pixl-locker-dashboard .dashboard-hype-card-panel__meta {
@@ -517,7 +537,7 @@
   }
 
   .pixl-locker-dashboard .supporter-hype-preview--desktop .supporter-hype-preview__card-wrap {
-    width: min(100%, 320px);
+    width: min(100%, 220px);
   }
 
   .pixl-locker-dashboard .supporter-stat-trends-stage > .supporter-event-graphic--desktop {

@@ -7,6 +7,8 @@ type SupporterEventGuidanceMessageBoardProps = {
   dateTime: string;
   actionLabel: string;
   onOpen: () => void;
+  testId?: string;
+  actionTestId?: string;
 };
 
 export function SupporterEventGuidanceMessageBoard({
@@ -15,11 +17,13 @@ export function SupporterEventGuidanceMessageBoard({
   dateTime,
   actionLabel,
   onOpen,
+  testId = 'upcoming-event-badge',
+  actionTestId = 'button-guidance-event-card',
 }: SupporterEventGuidanceMessageBoardProps) {
   return (
     <section
       className="supporter-event-guidance-board"
-      data-testid="upcoming-event-badge"
+      data-testid={testId}
       aria-label="Event Card message board"
     >
       <article className="supporter-event-guidance-board__ticket">
@@ -40,7 +44,7 @@ export function SupporterEventGuidanceMessageBoard({
         <button
           type="button"
           onClick={onOpen}
-          data-testid="button-guidance-event-card"
+          data-testid={actionTestId}
           aria-label={`${actionLabel}: open Event Card for ${title}`}
         >
           <span>{actionLabel}</span>
