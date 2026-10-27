@@ -227,10 +227,9 @@ export function buildHypeCardTemplateArtwork(
   const fittedName = fitName(athleteName, 39, 590);
   const fittedPosition = textFit(input.position ?? '', 22, 590);
   const number = (input.jerseyNumber ?? '').replace(/^#/, '').trim().slice(0, 12);
-  const initials = esc(athleteName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'P');
   const photo = photoUrl
     ? `<g clip-path="url(#${clipId})"><g transform="translate(${cx} ${cy})" data-photo-placement="true"><image href="${photoUrl}" x="${imageX.toFixed(2)}" y="${imageY.toFixed(2)}" width="${(900 * scale).toFixed(2)}" height="${(1200 * scale).toFixed(2)}" preserveAspectRatio="xMidYMid slice" data-testid="svg-card-photo"/></g></g>`
-    : `<g clip-path="url(#${clipId})"><rect width="900" height="1200" fill="url(#${prefix}-placeholder)"/><circle cx="450" cy="460" r="155" fill="#D7E8F7" opacity=".18"/><path d="M180 1120Q215 720 450 720T720 1120Z" fill="#D7E8F7" opacity=".18"/><text x="450" y="600" text-anchor="middle" font-family="Barlow Condensed,Impact,sans-serif" font-size="100" font-weight="800" fill="#FFFFFFB8">${initials}</text></g>`;
+    : `<g clip-path="url(#${clipId})"><rect width="900" height="1200" fill="url(#${prefix}-placeholder)"/><circle cx="450" cy="460" r="155" fill="#D7E8F7" opacity=".18"/><path d="M180 1120Q215 720 450 720T720 1120Z" fill="#D7E8F7" opacity=".18"/></g>`;
   const nameTextColor = lowerThirdTemplate.textColor === 'dark'
     ? '#061A38'
     : lowerThirdTemplate.textColor === 'primary'

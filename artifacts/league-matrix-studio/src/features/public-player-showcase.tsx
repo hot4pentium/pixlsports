@@ -81,7 +81,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
         <nav className="public-showcase__owner-nav" aria-label="Owner navigation">
           <BackNavigationLink
             href="/studio/player-showcase"
-            label="Back to my Showcase"
+            label="Back to my Player Showcase"
             testId="link-owner-back-to-showcase"
             variant="public"
           />
@@ -90,7 +90,7 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
 
       <section className="public-showcase__hero" aria-labelledby="public-showcase-title">
         <div className="public-showcase__hero-copy">
-          <p className="public-showcase__eyebrow"><span /> Pixl Sports / Showcase</p>
+          <p className="public-showcase__eyebrow"><span /> Pixl Sports / Player Showcase</p>
           <h1 id="public-showcase-title" data-testid="text-public-showcase-name">{invite.athleteName}<i>.</i></h1>
           <p className="public-showcase__intro">HYPE Card.</p>
           <div className="public-showcase__identity">

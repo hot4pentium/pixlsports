@@ -5,7 +5,7 @@ import { getHypeCardBackNavigation } from './hype-card-back-navigation';
 test('a verified card owner returns to the private Player Showcase', () => {
   assert.deepEqual(getHypeCardBackNavigation('athlete-token', true), {
     href: '/studio/player-showcase',
-    label: 'Back to Showcase',
+    label: 'Back to Player Showcase',
     testId: 'link-back-owner-showcase',
   });
 });
@@ -20,7 +20,7 @@ test('Open public card returns to Player Showcase before ownership finishes load
 test('ordinary shared links return recipients to the public Showcase', () => {
   assert.deepEqual(getHypeCardBackNavigation('athlete/token'), {
     href: '/showcase/athlete%2Ftoken',
-    label: 'Back to Dynamic Showcase',
+    label: 'Back to Player Showcase',
     testId: 'link-back-public-showcase',
   });
 });

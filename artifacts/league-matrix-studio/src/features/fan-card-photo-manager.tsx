@@ -85,12 +85,12 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
   }
 
   async function removePhoto() {
-    if (!window.confirm('Remove the HYPE Card photo? Fans will see initials instead.')) return;
+    if (!window.confirm('Remove the HYPE Card photo? Fans will see a silhouette placeholder instead.')) return;
     setNotice('');
     try {
       await remove.mutateAsync({ inviteToken });
       await refresh();
-      setNotice('HYPE Card photo removed. Fans will see initials instead.');
+      setNotice('HYPE Card photo removed. Fans will see a silhouette placeholder instead.');
     } catch {
       setNotice('The HYPE Card photo could not be removed. Please try again.');
     }

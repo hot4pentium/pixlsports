@@ -1553,20 +1553,20 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
         <div className="max-w-md text-center">
           <h1 className="font-display text-5xl uppercase">Sign in to manage this Hype Page</h1>
           <Link href={`${basePath}/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`} className="mt-6 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link>
-          <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-management-sign-in-athlete" variant="public" className="mx-auto mt-3" />
+          <BackNavigationLink href="/studio/player-showcase" label="Back to Player Showcase" testId="link-management-sign-in-athlete" variant="public" className="mx-auto mt-3" />
         </div>
       </PublicShell>
     );
   }
   if (!ownerInvite) {
-    return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Management unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">Only the account that owns this Hype Page can open these controls.</p><BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-management-unavailable-athlete" variant="public" className="mx-auto mt-6" /></div></PublicShell>;
+    return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Management unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">Only the account that owns this Hype Page can open these controls.</p><BackNavigationLink href="/studio/player-showcase" label="Back to Player Showcase" testId="link-management-unavailable-athlete" variant="public" className="mx-auto mt-6" /></div></PublicShell>;
   }
 
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="owner-athlete-invite-management-page">
       <PublicHeader />
       <main className="ps-owner-manage mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
-        <BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="link-back-to-dynamic-showcase" variant="public" />
+        <BackNavigationLink href="/studio/player-showcase" label="Back to Player Showcase" testId="link-back-to-dynamic-showcase" variant="public" />
          <OwnerHypePageManage invite={ownerInvite} profile={profile} />
       </main>
     </div>

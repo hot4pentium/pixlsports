@@ -1,7 +1,7 @@
 /* Desktop-only density correction for Showcase, owner HYPE Card management, and public HYPE Card.
-   Everything is scoped to >=1024px; mobile layouts are untouched.
+   Everything is scoped to >=768px (desktop and medium preview panes); phone layouts are untouched.
    :root keeps these overrides effective when route CSS loads after this shared import. */
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   /* /studio/player-showcase */
   :root .ps { max-width: 880px; gap: 12px; padding: 12px 24px 24px; }
   :root .ps__stage-wrap--card-only { width: min(100%, 880px); padding: 8px 0 16px; }
@@ -70,4 +70,50 @@
   .living-card-main:not(.living-card-main--embedded) .living-card-frame { height: auto; min-height: 0; max-height: none; aspect-ratio: 2 / 3; }
   .living-card-main:not(.living-card-main--embedded) .living-card-athlete-name { font-size: 60px; }
   .living-card-main:not(.living-card-main--embedded) .living-card-alt-title { font-size: 62px; margin-top: 22px; }
+}
+
+/* Medium + desktop (>=768px): compact owner Showcase entry buttons and HYPE Card design editor.
+   Phones (<768px) keep their existing layout. */
+@media (min-width: 768px) {
+  /* Showcase card panel: narrower panel, compact inline buttons instead of wide slabs */
+  :root .ps__card-only { max-width: 720px; }
+  :root .ps__card-only-panel { grid-template-columns: minmax(0, 1fr) 240px; gap: 28px; padding: 20px 24px; }
+  :root .ps__card-only-art { width: 240px; }
+  :root .ps__card-only-heading { gap: 14px; align-content: center; }
+  :root .ps__card-only-team { font-size: 24px; }
+  :root .ps__card-links { flex-direction: column; align-items: flex-start; width: auto; max-width: 100%; gap: 8px; }
+  :root .ps__card-links .ps__link {
+    width: auto; min-width: 200px; min-height: 44px; justify-content: flex-start; gap: 10px;
+    padding: 8px 16px 8px 10px; border-radius: 8px; font-size: 13px; letter-spacing: .11em;
+    box-shadow: 0 4px 12px rgba(1, 8, 20, .22);
+  }
+  :root .ps__card-links .ps__link svg { width: 20px; height: 20px; flex-basis: 20px; padding: 3px; }
+  :root .ps__card-unavailable .ps__link { min-height: 44px; padding: 8px 16px; font-size: 13px; }
+
+  /* Card design editor (owner manage "design" panel and athlete /card-editor/design).
+     Keeps the single centered column: preview + 4 buttons, frame/lower-third arrows, photo sliders. */
+  :root .fan-card-editor { max-width: 320px; gap: 16px; }
+  :root .fan-card-editor__preview,
+  :root .fan-card-editor__templates { max-width: 320px; }
+  :root .fan-card-editor__status { margin-top: 6px; font-size: 10px; }
+  :root .fan-card-editor__templates fieldset { border-radius: 10px; }
+  :root .fan-card-editor__controls > * + * { margin-top: 14px; }
+  :root .fan-card-editor__position > * + * { margin-top: 8px; }
+  :root .fan-card-editor__actions { padding-top: 12px; gap: 8px; }
+  :root .fan-card-editor__actions button { min-height: 44px; padding-inline: 14px; }
+
+  /* Owner design panel: center the compact editor inside the wide task panel */
+  .ps-owner-manage .hype-manager-task-panel .fan-card-editor { margin-inline: auto; }
+
+  /* Athlete editor route /card-editor/design and /studio/player-showcase/hype-card */
+  .ps-card-editor-route { max-width: 720px !important; padding-top: 20px !important; padding-bottom: 32px !important; }
+  .ps-card-editor-route > h1 { margin-bottom: 16px; font-size: 28px; line-height: 1.05; text-align: center; }
+  .ps-card-editor-route > a:first-child { margin-bottom: 14px; }
+}
+
+/* Medium panes (768-1023px): stack two-column public layouts so nothing overflows. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .living-card-main:not(.living-card-main--embedded) .living-card-layout { grid-template-columns: minmax(0, 440px); }
+  :root .public-showcase--card-only .public-showcase__hero { grid-template-columns: minmax(0, 1fr); width: min(440px, calc(100% - 48px)); gap: 20px; }
+  :root .public-showcase--card-only .public-showcase__visual { margin-inline: auto; width: 100%; }
 }

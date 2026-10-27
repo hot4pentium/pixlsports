@@ -15,6 +15,7 @@ import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
 import { HypeCardPhotoPositionSliders, HypeCardTemplateCyclers } from './hype-card-appearance-controls';
 import antonFontUrl from '../assets/anton-regular.ttf?url';
+import './showcase-desktop-density.css';
 
 type Draft = HypeCardAppearance;
 const norm = (v: unknown): Draft => normalizeCardAppearance(v);
@@ -236,18 +237,18 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-[360px] gap-6" data-testid="fan-card-appearance-manager">
+    <div className="fan-card-editor mx-auto grid w-full max-w-[360px] gap-6" data-testid="fan-card-appearance-manager">
       <div className="min-w-0">
-        <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl" data-testid="appearance-preview">
+        <div className="fan-card-editor__preview mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl" data-testid="appearance-preview">
           <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={currentAppearance} cardHref={cardHref} />
         </div>
-        <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
-        <div className="mx-auto mt-3 w-full max-w-[360px]">
+        <p className="fan-card-editor__status mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
+        <div className="fan-card-editor__templates mx-auto mt-3 w-full max-w-[360px]">
           <HypeCardTemplateCyclers appearance={currentAppearance} onChange={updateAppearance} disabled={busy} />
         </div>
       </div>
-      <div className="space-y-5">
-        <div className="space-y-3" data-testid="photo-position-controls">
+      <div className="fan-card-editor__controls space-y-5">
+        <div className="fan-card-editor__position space-y-3" data-testid="photo-position-controls">
           <p className="text-xs font-bold uppercase tracking-widest text-white/70">Photo position</p>
           <HypeCardPhotoPositionSliders
             appearance={currentAppearance}
@@ -259,7 +260,7 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
             resetTestId="button-reset-photo-position"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
+        <div className="fan-card-editor__actions flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || busy} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{busy ? 'Saving…' : 'Save design'}</button>
           {!athleteEditor && (
             <button type="button" onClick={() => void exportJpeg()} disabled={exportState === 'working'}

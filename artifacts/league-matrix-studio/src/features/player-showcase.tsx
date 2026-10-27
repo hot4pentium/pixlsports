@@ -64,7 +64,7 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
   return (
     <div className="ps" data-testid="page-player-showcase">
       <section className="ps__stage-wrap ps__stage-wrap--card-only" aria-labelledby="ps-dyn" data-testid="section-dynamic-showcase">
-        <h1 id="ps-dyn" className="ps__section-title"><span>Showcase</span></h1>
+        <h1 id="ps-dyn" className="ps__section-title"><span>Player Showcase</span></h1>
         <p className="ps__card-only-intro">One athlete. One season. Your HYPE Card.</p>
         <div className="ps__card-only" role="region" aria-label={`${profile.athleteName || 'Athlete'} HYPE Card Showcase`}>
           {cardPicker}
@@ -176,7 +176,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(publicShowcaseUrl);
-      setShareStatus('Showcase link copied.');
+      setShareStatus('Player Showcase link copied.');
     } catch {
       setShareStatus('Could not copy the link. Open the showcase and copy its address.');
     }
@@ -205,7 +205,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Public recipient view</p>
-              <h2 id="share-showcase-title" className="mt-2 font-display text-2xl uppercase">Share the Showcase</h2>
+              <h2 id="share-showcase-title" className="mt-2 font-display text-2xl uppercase">Share the Player Showcase</h2>
               <p className="mt-1 text-sm text-muted-foreground">Recipients open the HYPE Card and its currently published faces.</p>
               <a href={publicShowcaseUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex max-w-full items-center gap-2 break-all text-xs font-semibold text-primary underline underline-offset-4" data-testid="link-public-showcase-url">
                 {publicShowcaseUrl}<ExternalLink size={13} aria-hidden="true" />
@@ -213,8 +213,8 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
               {shareStatus && <p className="mt-2 text-xs" role="status" data-testid="status-public-showcase-share">{shareStatus}</p>}
             </div>
             <button type="button" onClick={() => void copyShowcaseUrl()} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90" data-testid="button-copy-public-showcase">
-              {shareStatus === 'Showcase link copied.' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
-              {shareStatus === 'Showcase link copied.' ? 'Copied' : 'Copy link'}
+              {shareStatus === 'Player Showcase link copied.' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+              {shareStatus === 'Player Showcase link copied.' ? 'Copied' : 'Copy link'}
             </button>
           </section>
         )}
@@ -410,13 +410,13 @@ export function AthleteFanCardAppearancePage() {
   }
   if (access.status === 'pending') return <AthleteShowcaseHome />;
   if (access.projectId) {
-    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7"><h1 className="font-display text-4xl uppercase">This card uses a legacy editor.</h1><p className="mt-3 text-sm text-muted-foreground">Open the linked HYPE Card from your Showcase home.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Showcase</Link></section></main></AthleteStudioShell>;
+    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7"><h1 className="font-display text-4xl uppercase">This card uses a legacy editor.</h1><p className="mt-3 text-sm text-muted-foreground">Open the linked HYPE Card from your Player Showcase home.</p><Link href="/studio/player-showcase" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Player Showcase</Link></section></main></AthleteStudioShell>;
   }
   if (cardQuery.isLoading) {
     return <AthleteStudioShell><main className="grid min-h-[70dvh] place-items-center px-5"><div className="h-40 w-full max-w-2xl animate-pulse bg-muted" /></main></AthleteStudioShell>;
   }
   if (cardQuery.isError || !cardQuery.data || cardQuery.data.inviteToken !== access.inviteToken) {
-    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">HYPE Card unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Your parent may have paused the public card. Ask them to resume it before editing.</p><Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Showcase</Link></section></main></AthleteStudioShell>;
+    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">HYPE Card unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Your parent may have paused the public card. Ask them to resume it before editing.</p><Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Player Showcase</Link></section></main></AthleteStudioShell>;
   }
   const profile = {
     athleteName: access.athleteName,
@@ -425,8 +425,8 @@ export function AthleteFanCardAppearancePage() {
   };
   return (
     <AthleteStudioShell>
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8">
-        <Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mb-5 inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary">Back to Showcase</Link>
+      <main className="ps-card-editor-route mx-auto w-full max-w-6xl px-4 py-6 sm:px-8">
+        <Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mb-5 inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary">Back to Player Showcase</Link>
         <h1 className="mb-6 font-display text-4xl uppercase">Edit your HYPE Card design</h1>
         <FanCardAppearanceManager invite={cardQuery.data} profile={profile} athleteEditor />
       </main>

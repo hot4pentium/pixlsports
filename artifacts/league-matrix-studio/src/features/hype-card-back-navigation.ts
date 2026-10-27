@@ -4,7 +4,7 @@ export function getHypeCardBackNavigation(inviteToken: string, ownerView = false
     || new URLSearchParams(search).get('from') === 'player-showcase';
   return {
     href: returnToOwner ? '/studio/player-showcase' : `/showcase/${encodeURIComponent(inviteToken)}`,
-    label: returnToOwner ? 'Back to Showcase' : 'Back to Dynamic Showcase',
+    label: 'Back to Player Showcase',
     testId: returnToOwner ? 'link-back-owner-showcase' : 'link-back-public-showcase',
   };
 }

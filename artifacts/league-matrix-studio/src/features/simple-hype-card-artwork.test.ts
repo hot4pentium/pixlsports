@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildSimpleHypeCardArtwork } from './simple-hype-card-artwork';
+import { HYPE_CARD_TEMPLATE_IDS } from './hype-card-template-artwork';
+
+test('no-photo placeholders retain the silhouette and nameplate without player initials', () => {
+  for (const design of [...HYPE_CARD_TEMPLATE_IDS, undefined]) {
+    for (const athleteName of ['Billy', 'Billy King', '']) {
+      const svg = buildSimpleHypeCardArtwork({ athleteName, design });
+      assert.match(svg, /<circle cx="(?:450|300)" cy="(?:460|345)" r="(?:155|100)"/);
+      assert.doesNotMatch(svg, /<text\b[^>]*>\s*(?:B|BK|P)\s*<\/text>/);
+      if (athleteName) {
+        const labels = Array.from(svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g), (match) => match[1].toLowerCase());
+        assert.ok(labels.includes(athleteName.toLowerCase()), `${design ?? 'legacy'} should retain the nameplate`);
+      }
+    }
+  }
+});
 
 test('all lower-third choices retain the photo, left logo and athlete identity', () => {
   const artwork = new Set<string>();
@@ -39,7 +54,7 @@ test('photo movement stays bounded, and unsafe text and URLs are escaped', () =>
   assert.match(svg, /&lt;SCRIPT&gt;/);
   assert.match(svg, /A &amp; B/);
   assert.doesNotMatch(svg, /<script|href="" onload/);
-  assert.match(buildSimpleHypeCardArtwork({ athleteName: 'Jordan Matthews' }), />JM<\/text>/);
+  assert.doesNotMatch(buildSimpleHypeCardArtwork({ athleteName: 'Jordan Matthews' }), />JM<\/text>/);
 });
 
 test('the simplified public-card renderer uses a selected frame and independent lower third', () => {

@@ -58,10 +58,9 @@ export function buildSimpleHypeCardArtwork(input: SimpleCardInput, ns = 'sc'): s
   const position = (input.position ?? '').trim().toUpperCase();
   const num = (input.jerseyNumber ?? '').replace(/^#/, '').trim();
   const id = `${ns}-photo-clip`;
-  const initials = esc(name.split(/\s+/).slice(0, 2).map((p) => p.charAt(0)).join('') || 'P');
   const photo = input.photoUrl
     ? `<g clip-path="url(#${id})"><g transform="translate(${x.toFixed(2)} ${y.toFixed(2)})" data-photo-placement="true"><image href="${esc(input.photoUrl)}" x="0" y="0" width="${SIMPLE_CARD_W}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" data-testid="svg-card-photo"/></g></g>`
-    : `<text x="300" y="400" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="900" font-size="260" fill="#b5d8f71f">${initials}</text>`;
+    : `<g aria-hidden="true"><circle cx="300" cy="345" r="100" fill="#D7E8F7" opacity=".18"/><path d="M120 840Q145 540 300 540T480 840Z" fill="#D7E8F7" opacity=".18"/></g>`;
   const logo = input.logoUrl ? `<rect x="14" y="14" width="208" height="74" rx="8" fill="#ffffff" fill-opacity=".96"/><image href="${esc(input.logoUrl)}" x="22" y="20" width="190" height="62" preserveAspectRatio="xMinYMin meet" data-testid="svg-card-logo"/>` : '';
   const nameFont = "Barlow Condensed, Impact, sans-serif";
   const L = (nameW: number, nx: number, overPhoto = false) => {

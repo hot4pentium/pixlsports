@@ -31,7 +31,7 @@ test('HYPE Card create button is inside its create section', () => {
   assert.doesNotMatch(source, /className="mt-8 max-w-xl"/);
 });
 
-test('Player Showcase HYPE Card back actions return to the Dynamic Showcase carousel', () => {
+test('Player Showcase HYPE Card back actions use consistent Player Showcase naming', () => {
   for (const testId of [
     'link-management-sign-in-athlete',
     'link-management-unavailable-athlete',
@@ -39,8 +39,8 @@ test('Player Showcase HYPE Card back actions return to the Dynamic Showcase caro
   ]) {
     assert.match(
       source,
-      new RegExp(`<BackNavigationLink href="/studio/player-showcase" label="Back to Dynamic Showcase" testId="${testId}"`),
-      `${testId} should return to the Dynamic Showcase`,
+      new RegExp(`<BackNavigationLink href="/studio/player-showcase" label="Back to Player Showcase" testId="${testId}"`),
+      `${testId} should return to Player Showcase`,
     );
   }
   const ownerManagementStart = source.indexOf('data-testid="owner-athlete-invite-management-page"');
@@ -51,8 +51,8 @@ test('Player Showcase HYPE Card back actions return to the Dynamic Showcase caro
   assert.doesNotMatch(ownerManagementRoute, /link-hype-manager-studio/);
   assert.match(
     hypeCardSource,
-    /href=\{athleteRestricted \? '\/studio\/player-showcase' : '\/studio'\} label=\{athleteRestricted \? 'Back to Dynamic Showcase' : 'Back to studio'\}/,
-    'the athlete-restricted card editor returns to the Dynamic Showcase',
+    /href=\{athleteRestricted \? '\/studio\/player-showcase' : '\/studio'\} label=\{athleteRestricted \? 'Back to Player Showcase' : 'Back to studio'\}/,
+    'the athlete-restricted card editor returns to Player Showcase',
   );
 });
 
