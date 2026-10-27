@@ -21,8 +21,8 @@ Keep the mobile Shoutouts & Replies summary card out of the overview grid. Surfa
 
 **How to apply:** Keep the inbox reachable from the header; use the existing unread reply count and the available Fan Shoutouts list to control the glow.
 
-For the desktop supporter dashboard, keep a compact HYPE Card on the left with the same game-day message board used on mobile immediately beside it. Retain the athlete overview and stats to the right, Quick Links beneath the HYPE Card, and centered Event Cards below.
+For the desktop supporter dashboard, keep everything within one centered, bounded column with aligned section edges and consistent spacing. Keep a compact HYPE Card and the same mobile game-day message board together, a grouped athlete overview to the right, Quick Links beneath the HYPE Card, and Event Cards aligned below.
 
-**Why:** The user requested a smaller desktop HYPE Card and the same message board seen on mobile next to it. Earlier unbounded portrait artwork made neighboring dashboard panels excessively tall.
+**Why:** The user requested a smaller desktop HYPE Card and the same mobile message board beside it, then rejected the scattered desktop composition as overwhelming and asked for centered content with properly aligned sections.
 
-**How to apply:** Preserve mobile/desktop message and action parity using real event state, not a static badge substitute. Bound desktop card and board dimensions independently from the overview, Shoutouts, and record panels.
+**How to apply:** Preserve mobile/desktop message and action parity using real event state, not a static badge substitute. Check full-screen centering and shared section boundaries at both narrow desktop and wide-screen widths; do not treat merely fitting three columns as sufficient visual verification.

@@ -556,3 +556,117 @@
     transition: none;
   }
 }
+
+/*
+ * Desktop composition (>=1024px): one centered column, two aligned bands.
+ * Band 1: [HYPE Card + quick links | game-day message board] as a paired spotlight,
+ *         beside the athlete overview (trends + record + Shoutouts) panel.
+ * Band 2: Event Cards spanning the same centered width.
+ */
+@media (min-width: 1024px) {
+  .supporter-dashboard-desktop-shell.pixl-locker-dashboard {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 100%;
+    align-self: stretch;
+    justify-self: stretch;
+    margin-inline: 0;
+  }
+
+  .supporter-dashboard-desktop-shell.pixl-locker-dashboard .pixl-dashboard.pixl-locker-content {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 22px;
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding: 32px clamp(24px, 3vw, 40px) 48px;
+    border-inline: 0;
+    box-sizing: border-box;
+  }
+
+  .supporter-dashboard-desktop-shell .pixl-locker-content > .dashboard-hype-trends-row {
+    display: grid;
+    grid-template-columns: 228px 248px minmax(0, 1fr);
+    grid-column: auto;
+    grid-row: auto;
+    align-items: stretch;
+    gap: 18px;
+    width: 100%;
+  }
+
+  .supporter-dashboard-desktop-shell .dashboard-hype-trends-row > .supporter-dashboard-desktop-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-self: stretch;
+  }
+
+  .supporter-dashboard-desktop-shell .dashboard-hype-trends-row > .supporter-dashboard-desktop-sidebar > .dashboard-hype-card-panel {
+    flex: 1 1 auto;
+  }
+
+  .supporter-dashboard-desktop-shell .dashboard-hype-card-panel__body {
+    padding: 0 12px 14px;
+  }
+
+  .supporter-dashboard-desktop-shell .supporter-hype-preview--desktop .supporter-hype-preview__card-wrap {
+    width: min(100%, 184px);
+  }
+
+  .supporter-dashboard-desktop-shell .dashboard-hype-trends-row > .dashboard-desktop-message-board {
+    display: flex;
+    align-self: stretch;
+    min-height: 360px;
+  }
+
+  .supporter-dashboard-desktop-shell .supporter-event-graphic--desktop-message {
+    height: auto;
+    flex: 1 1 auto;
+  }
+
+  .supporter-dashboard-desktop-shell .dashboard-hype-trends-row > .dashboard-desktop-stat-stack {
+    align-self: stretch;
+    align-content: start;
+    gap: 12px;
+    padding: 18px;
+    border: 1px solid var(--locker-line);
+    border-radius: 18px;
+    background: linear-gradient(145deg, #0f2849, #0a1d38);
+    box-shadow: 0 16px 38px rgba(2, 9, 20, .28);
+  }
+
+  .supporter-dashboard-desktop-shell .supporter-stat-trends-stage {
+    gap: 0;
+  }
+
+  .supporter-dashboard-desktop-shell .supporter-game-on-summary--desktop .supporter-game-on-summary__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .supporter-dashboard-desktop-shell .supporter-game-on-summary--desktop .supporter-game-on-summary__grid > :not(.supporter-game-on-summary__replies):not(.supporter-game-on-summary__record) {
+    grid-column: 1 / -1;
+  }
+
+  .supporter-dashboard-desktop-shell .supporter-game-on-summary--desktop .supporter-game-on-summary__header {
+    grid-column: 1 / -1;
+  }
+
+  .supporter-dashboard-desktop-shell .pixl-locker-content > #event-cards-desktop {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .supporter-dashboard-desktop-shell .pixl-locker-content > .dashboard-hype-trends-row {
+    grid-template-columns: 210px 230px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .supporter-dashboard-desktop-shell .supporter-game-on-summary--desktop .supporter-game-on-summary__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

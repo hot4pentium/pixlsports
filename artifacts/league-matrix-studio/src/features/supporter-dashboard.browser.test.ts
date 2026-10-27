@@ -1618,11 +1618,11 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
     })()`, page.sessionId);
     assert.equal(desktopTrend.visible, true, 'the desktop dashboard displays the stat trends panel');
     assert.equal(desktopTrend.heading, 'STAT TRENDS');
-    assert.equal(desktopTrend.desktopBadgeVisible, true, 'the generic Event Card artwork remains visible in the desktop event context');
+    assert.equal(desktopTrend.desktopBadgeVisible, false, 'the real message board replaces redundant decorative Event Card artwork');
     assert.equal(
       desktopTrend.badgeAlignedWithTrend,
-      true,
-      `the trend chart and Event Card artwork share one aligned stage: ${desktopTrend.alignmentGeometry}`,
+      false,
+      `no duplicate Event Card artwork competes with the real message board: ${desktopTrend.alignmentGeometry}`,
     );
     assert.equal(desktopTrend.hasTrendContent, true, 'the chart or its honest empty state is visible');
     assert.equal(desktopTrend.eventContextScreenReaderOnly, true, 'upcoming Event Card details remain available without an empty visual panel');
@@ -2113,7 +2113,7 @@ test('desktop dashboard shows stat trends while mobile keeps the Event Card grap
       true,
       `the returning supporter can see the stat trend panel inline on desktop: ${JSON.stringify(desktopTrendViewport)}`,
     );
-    assert.equal(desktopTrendViewport.desktopBadgeVisible, true);
+    assert.equal(desktopTrendViewport.desktopBadgeVisible, false);
     assert.equal(desktopTrendViewport.hasTrendContent, true);
     assert.equal(desktopTrendViewport.trendChartSvg, true);
     assert.equal(desktopTrendViewport.trendCurveCount, 1);
@@ -5694,7 +5694,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       seasonLabelAboveTrends: boolean;
       desktopSummaryUnderTrends: boolean;
       shoutoutsUnderTrends: boolean;
-      recordUnderShoutouts: boolean;
+      recordAlignedWithShoutouts: boolean;
       desktopInstallReminderRemoved: boolean;
       eventCardsBelowTopRow: boolean;
       eventCardsFillHorizontalSpace: boolean;
@@ -5777,7 +5777,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
           && (!seasonLabel || Boolean(seasonLabelRect && trendRect && seasonLabelRect.bottom <= trendRect.top)),
         desktopSummaryUnderTrends: Boolean(trendRect && summaryRect && summaryRect.top >= trendRect.bottom - 1),
         shoutoutsUnderTrends: Boolean(trendRect && repliesRect && repliesRect.top >= trendRect.bottom - 1),
-        recordUnderShoutouts: Boolean(repliesRect && recordRect && recordRect.top >= repliesRect.bottom - 1),
+        recordAlignedWithShoutouts: Boolean(repliesRect && recordRect && Math.abs(recordRect.top - repliesRect.top) <= 1),
         desktopInstallReminderRemoved: !shell?.querySelector('[data-testid="dashboard-install-reminder-desktop"]'),
         eventCardsBelowTopRow: Boolean(hypeRowRect && collectionRect && collectionRect.top >= hypeRowRect.bottom - 1),
         eventCardsFillHorizontalSpace: Boolean(hypeRowRect && collectionRect && Math.abs(collectionRect.width - hypeRowRect.width) <= 1),
@@ -5817,7 +5817,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       seasonLabelAboveTrends: true,
       desktopSummaryUnderTrends: true,
       shoutoutsUnderTrends: true,
-      recordUnderShoutouts: true,
+      recordAlignedWithShoutouts: true,
       desktopInstallReminderRemoved: true,
       eventCardsBelowTopRow: true,
       eventCardsFillHorizontalSpace: true,
@@ -7285,6 +7285,37 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
     });
     const desktopScreenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
     await writeFile('/tmp/supporter-dashboard-desktop-message-board.png', Buffer.from(desktopScreenshot.data, 'base64'));
+    for (const width of [1024, 1280, 1600]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', {
+        width, height: 1000, deviceScaleFactor: 1, mobile: false,
+      }, page.sessionId);
+      const alignedLayout = await evaluate(`(() => {
+        const shell = document.querySelector('.supporter-dashboard-desktop-shell');
+        const content = shell.querySelector('.pixl-locker-content').getBoundingClientRect();
+        const row = shell.querySelector('[data-testid="dashboard-hype-trends-row"]').getBoundingClientRect();
+        const sidebar = shell.querySelector('[data-testid="dashboard-desktop-sidebar"]').getBoundingClientRect();
+        const board = shell.querySelector('[data-testid="dashboard-desktop-message-board"]').getBoundingClientRect();
+        const overview = shell.querySelector('[data-testid="dashboard-desktop-stat-stack"]').getBoundingClientRect();
+        const events = shell.querySelector('#event-cards-desktop').getBoundingClientRect();
+        return {
+          centered: Math.abs(content.left + content.width / 2 - document.documentElement.clientWidth / 2) <= 1,
+          bounded: content.width <= 1240,
+          noOverflow: document.documentElement.scrollWidth <= innerWidth,
+          alignedTop: Math.abs(sidebar.top - board.top) <= 1 && Math.abs(board.top - overview.top) <= 1,
+          alignedBottom: Math.abs(sidebar.bottom - board.bottom) <= 1 && Math.abs(board.bottom - overview.bottom) <= 1,
+          eventsAligned: Math.abs(events.left - row.left) <= 1 && Math.abs(events.right - row.right) <= 1,
+          consistentGap: events.top - row.bottom >= 20 && events.top - row.bottom <= 24,
+        };
+      })()`);
+      assert.deepEqual(alignedLayout, {
+        centered: true, bounded: true, noOverflow: true,
+        alignedTop: true, alignedBottom: true, eventsAligned: true, consistentGap: true,
+      }, `desktop sections remain centered and aligned at ${width}px`);
+      if (width === 1600) {
+        const image = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
+        await writeFile('/tmp/supporter-dashboard-centered-1600.png', Buffer.from(image.data, 'base64'));
+      }
+    }
     await verifyHypeCardShare('desktop');
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
 

@@ -1157,16 +1157,6 @@ export function SupporterDashboardView({
       )}>
         <SupporterStatTrends games={completedLocalGames} profileSport={profile.sport ?? null} />
       </Suspense>
-      {upcomingEventCards.length > 0 && (
-        <div className="supporter-event-graphic supporter-event-graphic--desktop">
-          <img
-            className="supporter-event-graphic__image"
-            src={`${basePath}/assets/upcoming-event-card.png`}
-            alt=""
-            data-testid="img-upcoming-event-card-desktop"
-          />
-        </div>
-      )}
     </div>
   );
 
@@ -1459,7 +1449,7 @@ export function SupporterDashboardView({
 
       {/* DESKTOP VIEW (hidden on mobile) */}
       <div className="supporter-dashboard-desktop-shell pixl-locker-dashboard w-full">
-    <div className="pixl-dashboard pixl-locker-content w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
+    <div className="pixl-dashboard pixl-locker-content w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8">
       {showStageReminder && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 p-5 backdrop-blur-sm"
