@@ -5,14 +5,23 @@ import test from 'node:test';
 const editorSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 const serverSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
 
-test('Hype Card sharing offers device download or Athlete Hype Page posting', () => {
+test('Hype Card sharing distinguishes a local download from publishing to the public page', () => {
   assert.match(editorSource, /data-testid="button-download-hype-card"/);
   assert.match(editorSource, /data-testid="button-post-athlete-hype-page"/);
+  assert.match(editorSource, /Download to this device/);
+  assert.match(editorSource, /Publish to public HYPE Page/);
+  assert.match(editorSource, /Anyone with the page link can view it/);
+  assert.match(editorSource, /This does not publish it to your HYPE Page/);
+  assert.match(editorSource, /aria-pressed=\{shareCardDestination === 'download'\}/);
+  assert.match(editorSource, /aria-pressed=\{shareCardDestination === 'athlete-page'\}/);
+  assert.match(editorSource, /data-testid="button-confirm-share-destination"[\s\S]*?>\s*OK\s*<\/Button>/);
+  assert.match(editorSource, /data-testid="share-destination-confirmed"/);
+  assert.match(editorSource, /data-testid="button-change-share-destination"/);
   assert.doesNotMatch(editorSource, /data-testid="button-share-stats-only"/);
   assert.doesNotMatch(editorSource, /data-testid="button-share-hosted-card"/);
   assert.doesNotMatch(editorSource, /data-testid="link-preview-recipient"/);
-  assert.match(editorSource, /Hype Card added to Athlete Hype Page/);
-  assert.match(editorSource, /Video added to Athlete Hype Page/);
+  assert.match(editorSource, /HYPE Card published on your public HYPE Page/);
+  assert.match(editorSource, /Video published on your public HYPE Page/);
   assert.match(editorSource, /const isStatsOnly = shareMode === 'stats'/);
   assert.match(editorSource, /if \(isStatsOnly\) \{\s*mediaKind = project\.mediaType === 'image' \? 'image' : 'video';\s*setShareProgress\(0\.75\);/);
   assert.match(editorSource, /mediaUploadClaimId: isStatsOnly \? null : claimId/);

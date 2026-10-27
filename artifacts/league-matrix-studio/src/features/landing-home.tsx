@@ -2,7 +2,7 @@ import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload, Download, Smartphone, MoreVertical } from 'lucide-react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
+import landingHypeCardPhoto from '@/assets/landing-hype-card-photo.jpg';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
 import youthSoccerHero from '@/assets/landing-candid-athlete.jpg';
@@ -105,11 +105,12 @@ function AthletePreview() {
       <div className="landing-hype-card-art">
         <img
           className="landing-athlete-render"
-          src={kimberlyHypeCard}
-          alt="Kimberly in a pink soccer jersey holding a ball on a Pixl Hype Card."
-          width="1228"
-          height="1981"
+          src={landingHypeCardPhoto}
+          alt="Fictional athlete in a pink soccer jersey holding a ball on a PIXL HYPE Card."
+          width="583"
+          height="940"
         />
+        <span className="landing-hype-card-watermark" aria-hidden="true" data-testid="landing-hype-card-watermark">HYPE CARD</span>
         <div className="landing-hype-card-tabs" aria-hidden="true" data-testid="landing-hype-card-tabs">
           <span className="landing-hype-card-tab landing-hype-card-tab--active"><RotateCcw size={10} /><span>Card front</span></span>
           <span className="landing-hype-card-tab"><ChartNoAxesCombined size={10} /><span>Stats</span></span>

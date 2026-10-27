@@ -141,6 +141,18 @@ test('family Live Taps access is shown as a private QR code, not a shareable lin
   assert.match(livingCardSource, /family QR code is invalid or has been revoked/);
 });
 
+test('the HYPE Page manager explains public link access and temporary hiding', () => {
+  assert.match(source, /title="Public HYPE Page" description="Page link and visibility"/);
+  assert.match(source, /Anyone with this link can open the page/);
+  assert.match(source, /Family Live Taps uses a separate private QR code/);
+  assert.match(source, /HIDDEN FROM FANS/);
+  assert.match(source, /same link is kept; make it public again whenever you are ready/);
+  assert.match(source, /Hiding the page also ends any active Game Day Live session/);
+  assert.match(source, /PUBLIC TO ANYONE WITH THIS LINK/);
+  assert.match(source, /Hide public page/);
+  assert.match(source, /Make page public again/);
+});
+
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 

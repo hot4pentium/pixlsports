@@ -126,6 +126,8 @@ test('week step numbers use circular badges and a one-time staggered reveal', ()
 
 test('landing Hype Card artwork shows the current sides without video references', () => {
   assert.match(source, /className="landing-hype-card-tabs"/);
+  assert.match(source, /data-testid="landing-hype-card-watermark">HYPE CARD<\/span>/);
+  assert.match(styles, /landing-hype-card-watermark \{[^}]*left:\s*82%;[^}]*opacity:\s*\.35;/);
   for (const side of ['Card front', 'Stats', 'Events']) {
     assert.ok(source.includes(`<span>${side}</span>`), `landing artwork should show ${side}`);
   }

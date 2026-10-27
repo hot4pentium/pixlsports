@@ -782,7 +782,9 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.equal(await connection.evaluate(element('[data-testid="button-hype-manager-media"]'), ownerManage), false, 'the media manager remains unavailable');
     assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), false);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-share\"]').click()", ownerManage);
-    assert.ok((await connection.evaluate<string>("document.querySelector('#hype-manager-panel-share')?.innerText || ''", ownerManage)).includes('Pause Hype Page'));
+    const publicPagePanel = await connection.evaluate<string>("document.querySelector('#hype-manager-panel-share')?.innerText || ''", ownerManage);
+    assert.ok(publicPagePanel.includes('Hide public page'));
+    assert.ok(publicPagePanel.includes('Anyone with this link can open the page.'));
     assert.equal(await connection.evaluate(
       "Array.from(document.querySelectorAll('#hype-manager-panel-share button')).some(button => /(?:Start|Stop) Game Day Live/.test(button.textContent || ''))",
       ownerManage,
@@ -957,8 +959,9 @@ test('player-page owner tools remain private across account changes and pause', 
     const openCutoutCard = await open('visitor', 'fan');
     await waitFor(connection, openCutoutCard, `document.querySelector('[data-testid="img-living-card-athlete"] [data-testid="svg-card-photo"]')?.getAttribute('href') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
 
-    await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Pause Hype Page')).click()", ownerManage);
-    await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('resume hype page'))", Boolean, 12_000);
+    await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Hide public page')).click()", ownerManage);
+    await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('make page public again'))", Boolean, 12_000);
+    assert.ok((await connection.evaluate<string>("document.querySelector('[data-testid=\"status-athlete-hype-page-visibility\"]')?.textContent || ''", ownerManage)).includes('same link is kept'));
     assert.equal(paused, true);
     for (const session of [openPhotoCard, openCutoutCard]) {
       const targetId = pages.find((page) => page.sessionId === session)?.targetId;

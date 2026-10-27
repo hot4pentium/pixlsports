@@ -261,8 +261,8 @@ export function AthleteInviteManager() {
       await updateInvite.mutateAsync({ inviteToken: existing.inviteToken, data: { ...payload(), paused } });
       await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
       setNotice(paused
-        ? 'Hype Page paused. The same URL is ready to resume.'
-        : 'Hype Page resumed. The same URL is live again.');
+        ? 'HYPE Page hidden from fans. The same link is ready when you make it public again.'
+        : 'HYPE Page is public again. Anyone with the link can view it.');
     } catch {
       setNotice('The Hype Page availability could not be changed.');
     }
@@ -1245,7 +1245,9 @@ function OwnerHypePageManage({ invite, profile }: {
     try {
       await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload(!invite.paused, false) });
       await refreshPage();
-      setNotice(invite.paused ? 'Hype Page resumed.' : 'Hype Page paused. Only you can access its management section.');
+      setNotice(invite.paused
+        ? 'HYPE Page is public again. Anyone with this link can view it.'
+        : 'HYPE Page hidden from fans. The same link stays in place. Any active Game Day Live session has ended.');
     } catch {
       setNotice('The Hype Page availability could not be changed.');
     }
@@ -1306,22 +1308,26 @@ function OwnerHypePageManage({ invite, profile }: {
       {notice && <p role="status" className="my-3 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed" data-testid="status-hype-manager">{notice}</p>}
 
       <div className="hype-manager-task-grid mt-5">
-      <HypeManagerTaskCard key="share" id="share" taskIndex={0} activeTaskIndex={activeTaskIndex} title="Share Hype Card" description="Choose a card to share" Icon={Share2} active={activeTask === 'share'} onSelect={() => toggleTask('share')} badge={invite.paused ? 'Paused' : 'Live'} preview={invite.photoUrl ? <img src={invite.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 place-items-center bg-[#dceaf4] text-lg font-black text-[#102a4c]">{invite.athleteName.trim().charAt(0).toUpperCase() || 'P'}</span>}>
+      <HypeManagerTaskCard key="share" id="share" taskIndex={0} activeTaskIndex={activeTaskIndex} title="Public HYPE Page" description="Page link and visibility" Icon={Share2} active={activeTask === 'share'} onSelect={() => toggleTask('share')} badge={invite.paused ? 'Hidden' : 'Public'} preview={invite.photoUrl ? <img src={invite.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 place-items-center bg-[#dceaf4] text-lg font-black text-[#102a4c]">{invite.athleteName.trim().charAt(0).toUpperCase() || 'P'}</span>}>
       <div>
-        <h3 className="font-display text-2xl uppercase">Share the HYPE Card</h3>
-        <p className="mt-1 text-xs text-white/55">This is the main link for family and fans. It stays with this athlete as their season updates.</p>
+        <h3 className="font-display text-2xl uppercase">Share your public HYPE Page</h3>
+        <p className="mt-1 text-xs text-white/65">Anyone with this link can open the page. Family Live Taps uses a separate private QR code.</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Link2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <input readOnly value={fanCardUrl(invite.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white" aria-label="HYPE Card URL" data-testid="input-fan-hype-card-url" />
-          <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={copyFanCard} data-testid="button-copy-fan-hype-card"><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
-          <Button type="button" className="rounded-none" onClick={shareFanCard} data-testid="button-share-fan-hype-card"><Share2 className="mr-2 h-4 w-4" />Share</Button>
-          <Link href={`/fan/${invite.inviteToken}`} className="inline-flex min-h-10 items-center border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground" data-testid="link-preview-fan-hype-card">Preview</Link>
+          <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={copyFanCard} data-testid="button-copy-fan-hype-card"><Clipboard className="mr-2 h-4 w-4" />Copy public link</Button>
+          <Button type="button" className="rounded-none" onClick={shareFanCard} data-testid="button-share-fan-hype-card"><Share2 className="mr-2 h-4 w-4" />Share public link</Button>
+          <Link href={`/fan/${invite.inviteToken}`} className="inline-flex min-h-10 items-center border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground" data-testid="link-preview-fan-hype-card">Preview page</Link>
         </div>
       </div>
-      <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — fans cannot open this card until you resume it.' : 'Live — fans can open this HYPE Card page.'}</p>
+      <p role="status" className="mt-3 border-l-2 border-primary bg-white/5 px-3 py-3 text-xs font-semibold leading-relaxed text-white/80" data-testid="status-athlete-hype-page-visibility">
+        {invite.paused
+          ? 'HIDDEN FROM FANS — They cannot open this page right now. The same link is kept; make it public again whenever you are ready. Hiding the page also ends any active Game Day Live session.'
+          : 'PUBLIC TO ANYONE WITH THIS LINK — Fans can open this page. Hiding it keeps the same link but ends any active Game Day Live session.'}
+      </p>
       <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
         <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending || visibilitySaving} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
-          <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
+          <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Make page public again' : 'Hide public page'}
         </Button>
       </div>
       </HypeManagerTaskCard>

@@ -1181,6 +1181,8 @@ export function HypeCardEditor({
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
   const [shareMode, setShareMode] = useState<'card' | 'stats'>('card');
+  const [shareCardDestination, setShareCardDestination] = useState<'download' | 'athlete-page'>('athlete-page');
+  const [shareDestinationConfirmed, setShareDestinationConfirmed] = useState(false);
   const [shareVideoQuality, setShareVideoQuality] = useState<HypeCardShareQuality>('standard');
   const [shareVideoTooLargeQuality, setShareVideoTooLargeQuality] = useState<HypeCardShareQuality | null>(null);
   const [shareMediaName, setShareMediaName] = useState(DEFAULT_MEDIA_NAME);
@@ -1381,8 +1383,8 @@ export function HypeCardEditor({
       onError: () => setNotice('Could not delete that reply. Please try again.'),
     },
   });
-  const isShareSuccessNotice = notice.startsWith('Hype Card added to Athlete Hype Page')
-    || notice.startsWith('Video added to Athlete Hype Page')
+  const isShareSuccessNotice = notice.startsWith('HYPE Card published on your public HYPE Page')
+    || notice.startsWith('Video published on your public HYPE Page')
     || notice.startsWith('Stats link ready')
     || notice === 'Share link copied.'
     || notice === 'Stats link copied.'
@@ -2643,8 +2645,10 @@ export function HypeCardEditor({
     setNotice('');
     setShareVideoQuality('standard');
     setShareVideoTooLargeQuality(null);
+    setShareCardDestination('athlete-page');
+    setShareDestinationConfirmed(false);
     if (!isOnline) {
-      setNotice('Your Hype Card is ready on this phone. Reconnect to post it to an Athlete Hype Page.');
+      setNotice('Your Hype Card is ready on this phone. Reconnect to publish this HYPE Card on your public HYPE Page.');
       return;
     }
     if (!isSignedIn) {
@@ -2671,13 +2675,13 @@ export function HypeCardEditor({
     e.preventDefault();
     if (!isOnline) {
       setShareDialogOpen(false);
-        setNotice('Reconnect to post this Hype Card to the Athlete Hype Page.');
+        setNotice('Reconnect to publish this HYPE Card on your public HYPE Page.');
       return;
     }
     setSharing(true);
     setShareDialogOpen(false);
     setShareProgress(0);
-    setShareStage('Starting the Athlete Hype Page upload…');
+    setShareStage('Starting publication to your public HYPE Page…');
     const shareAbortController = new AbortController();
     sharePreparationAbortRef.current = shareAbortController;
     const linkedExport = linkedExportPending;
@@ -2707,7 +2711,7 @@ export function HypeCardEditor({
         setShareProgress(0.75);
         setShareStage('Creating the finalized stats link…');
       } else if (project.mediaType === 'video' && videoUrl && videoRef.current) {
-        setShareStage('Preparing the clip on this device for the Athlete Hype Page…');
+        setShareStage('Preparing the clip on this device for your public HYPE Page…');
         const prepared = await prepareHypeCardShareMedia(
           videoRef.current,
           project,
@@ -2725,8 +2729,8 @@ export function HypeCardEditor({
         if (prepared.video.size > MAX_HOSTED_VIDEO_BYTES) {
           const error = new Error(
             shareVideoQuality === 'standard'
-              ? 'The prepared video is too large for the Athlete Hype Page.'
-              : 'The lower-quality prepared video is still too large for the Athlete Hype Page.',
+              ? 'The prepared video is too large for the public HYPE Page.'
+              : 'The lower-quality prepared video is still too large for the public HYPE Page.',
           );
           error.name = 'HostedVideoTooLarge';
           throw error;
@@ -2821,7 +2825,7 @@ export function HypeCardEditor({
         cancellation.name = 'AbortError';
         throw cancellation;
       }
-      setShareStage(isStatsOnly ? 'Saving the finalized stats link…' : 'Saving the Athlete Hype Page video…');
+      setShareStage(isStatsOnly ? 'Saving the finalized stats link…' : 'Saving your public HYPE Page media…');
       const shareManifestProject = isStatsOnly
         ? null
         : {
@@ -2869,8 +2873,8 @@ export function HypeCardEditor({
           ? `Stats link ready for ${shareExpiresInDays} days. Printing it onto your export now.`
           : `Stats link ready for ${shareExpiresInDays} days. Your video stays on this phone.`
          : project.mediaType === 'video'
-           ? `Video added to Athlete Hype Page for ${shareExpiresInDays} days.`
-           : `Hype Card added to Athlete Hype Page for ${shareExpiresInDays} days.`);
+           ? `Video published on your public HYPE Page for ${shareExpiresInDays} days. Anyone with the link can view it.`
+           : `HYPE Card published on your public HYPE Page for ${shareExpiresInDays} days. Anyone with the link can view it.`);
        setShareVideoQuality('standard');
        setShareVideoTooLargeQuality(null);
       setLinkedExportPending(false);
@@ -2915,8 +2919,8 @@ export function HypeCardEditor({
         setShareDialogOpen(true);
       } else {
         setNotice(cancelled
-          ? 'Athlete Hype Page upload cancelled. Your Hype Card is still available for download on this device.'
-          : message || 'Could not add this media to the Athlete Hype Page.');
+          ? 'Public HYPE Page upload cancelled. Your HYPE Card is still available for download on this device.'
+          : message || 'Could not publish this media to your public HYPE Page.');
       }
     } finally {
       setLinkedExportPending(false);
@@ -2959,7 +2963,7 @@ export function HypeCardEditor({
   const deviceOnlyMedia = hasDeviceOnlyMedia(project);
   const successShare = shareMode === 'stats' ? existingStatsShare : existingShare;
   const deviceMediaMessage = !isOnline
-    ? 'Media is attached on this phone. Reconnect only if you want a cloud copy or Athlete Hype Page post.'
+    ? 'Media is attached on this phone. Reconnect to publish it on your public HYPE Page.'
     : project.mediaType === 'video' && !project.videoPrepared
       ? 'The original video is attached on this phone and remains available for local export.'
       : accountAccess?.paid
@@ -3107,7 +3111,7 @@ export function HypeCardEditor({
                 className="inline-flex min-h-8 items-center gap-2 border border-white/40 bg-white/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-white/20"
                 data-testid="link-manage-athlete-page-success"
               >
-                <Eye className="h-3.5 w-3.5" /> Manage Athlete Hype Page
+                <Eye className="h-3.5 w-3.5" /> Manage public HYPE Page
               </Link>
             )}
             <button type="button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X className="h-4 w-4" /></button>
@@ -3117,8 +3121,8 @@ export function HypeCardEditor({
 
       {!athleteRestricted && existingShare && (
         <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
-          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Athlete Hype Page</span>
-          <span className="min-w-0 flex-1 text-xs font-medium leading-relaxed text-muted-foreground">The latest playable Hype Card is available on the Athlete Hype Page with its stats, Game Day Live, and event cards.</span>
+          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Public HYPE Page</span>
+          <span className="min-w-0 flex-1 text-xs font-medium leading-relaxed text-muted-foreground">Anyone with the page link can open the latest playable HYPE Card alongside its stats, Game Day Live, and events.</span>
           <Link href="/studio/athlete-page" className="inline-flex min-h-9 items-center justify-center gap-2 border border-border bg-background px-3 text-xs font-bold uppercase tracking-wider hover:border-primary hover:bg-muted" data-testid="link-manage-athlete-page">
             <Eye className="h-4 w-4" /> Manage
           </Link>
@@ -3381,11 +3385,11 @@ export function HypeCardEditor({
                   ))}
                 </div>
                 <p className="mt-5 text-xs font-medium leading-relaxed text-muted-foreground">
-                  Your design updates instantly in the preview. When it is ready, post it to the Athlete Hype Page.
+                  Your design updates instantly in the preview. When it is ready, publish it to your public HYPE Page.
                 </p>
                 <div className="mt-5">
                   <Button type="button" onClick={handleShareClick} disabled={sharing || exporting} data-testid="walkthrough-publish-page" className="w-full min-w-0 gap-2 rounded-none bg-primary px-3 font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
-                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : 'Add to Athlete Hype Page'}</span>
+                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : 'Publish to public HYPE Page'}</span>
                   </Button>
                 </div>
               </section>
@@ -3443,44 +3447,115 @@ export function HypeCardEditor({
             <DialogDescription>
               {shareMode === 'stats'
                 ? 'Keep your video on this phone and send a separate finalized stats link with it.'
-                : project.mediaType === 'video'
-                  ? 'Add a prepared, playable video to the Athlete Hype Page. Finalized stats, Game Day Live, and events are managed on that same page.'
-                  : 'Add this playable Hype Card to the Athlete Hype Page. Finalized stats, Game Day Live, and events are managed on that same page.'}
+                : !shareDestinationConfirmed && shareCardDestination === 'download'
+                  ? 'Download the HYPE Card to this device. It will not appear on your public page. Press OK to save the file.'
+                  : project.mediaType === 'video'
+                    ? 'Publish a prepared, playable video to your public HYPE Page. Anyone with the page link can view it.'
+                    : 'Publish this playable HYPE Card to your public HYPE Page. Anyone with the page link can view it.'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePublishShare} className="space-y-4 pt-4">
             {shareMode === 'card' && (
-              <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Choose how to share">
-               <button
-                 type="button"
-                 onClick={() => {
-                   setShareDialogOpen(false);
-                   void handleExport();
-                 }}
-                 data-testid="button-download-hype-card"
-                 className="border border-border bg-muted/30 p-3 text-left transition-colors hover:border-primary/50"
-               >
-                 <span className="block text-xs font-bold uppercase tracking-widest text-primary">Download Hype Card</span>
-                 {project.statSource && (
-                   <span className="mt-1 block text-xs text-muted-foreground">
-                     {project.stat === project.statSource.lastGeneratedStat
-                       ? 'Finished game stats refresh before each download.'
-                       : 'Your custom stat text stays as written. Linked finalized stats update separately.'}
-                   </span>
-                 )}
-                 <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Save the finished vertical card to this device, then share the file anywhere.</span>
-               </button>
-              <button
-                type="button"
-                 onClick={() => setShareMode('card')}
-                 data-testid="button-post-athlete-hype-page"
-                 aria-pressed
-                 className="border border-primary bg-primary/10 p-3 text-left transition-colors"
-              >
-                  <span className="block text-xs font-bold uppercase tracking-widest text-primary">{project.mediaType === 'video' ? 'Add video to Athlete Hype Page' : 'Add to Athlete Hype Page'}</span>
-                  <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">{project.mediaType === 'video' ? 'Prepare a smaller web copy for reliable recipient playback. The original video stays on this device.' : 'Keep this playable card with finalized stats, Game Day Live, and event cards on the athlete’s HYPE Card page.'}</span>
-              </button>
-             </div>
+              <>
+                {!shareDestinationConfirmed ? (
+                  <div className="space-y-3" data-testid="share-destination-picker">
+                    <p className="text-sm font-medium text-muted-foreground">Choose one option, then press OK to continue.</p>
+                    <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="Choose how to share">
+                      <button
+                        type="button"
+                        onClick={() => setShareCardDestination('download')}
+                        data-testid="button-download-hype-card"
+                        aria-pressed={shareCardDestination === 'download'}
+                        className={`relative min-h-36 border-2 p-4 pr-12 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                          shareCardDestination === 'download'
+                            ? 'border-primary bg-primary/15 ring-2 ring-primary shadow-md'
+                            : 'border-border bg-muted/30 hover:border-primary/60'
+                        }`}
+                      >
+                        <span className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center border-2 ${
+                          shareCardDestination === 'download'
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-muted-foreground/60 bg-background text-transparent'
+                        }`} aria-hidden="true">
+                          {shareCardDestination === 'download' && <Check className="h-4 w-4" />}
+                        </span>
+                        <span className="block text-xs font-bold uppercase tracking-widest text-primary">Download to this device</span>
+                        {project.statSource && (
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {project.stat === project.statSource.lastGeneratedStat
+                              ? 'Finished game stats refresh before each download.'
+                              : 'Your custom stat text stays as written. Linked finalized stats update separately.'}
+                          </span>
+                        )}
+                        <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Save the file here, then share it yourself if you choose. This does not publish it to your HYPE Page.</span>
+                        {shareCardDestination === 'download' && (
+                          <span className="mt-3 inline-flex bg-primary px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary-foreground">Selected</span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShareMode('card');
+                          setShareCardDestination('athlete-page');
+                        }}
+                        data-testid="button-post-athlete-hype-page"
+                        aria-pressed={shareCardDestination === 'athlete-page'}
+                        className={`relative min-h-36 border-2 p-4 pr-12 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                          shareCardDestination === 'athlete-page'
+                            ? 'border-primary bg-primary/15 ring-2 ring-primary shadow-md'
+                            : 'border-border bg-muted/30 hover:border-primary/60'
+                        }`}
+                      >
+                        <span className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center border-2 ${
+                          shareCardDestination === 'athlete-page'
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-muted-foreground/60 bg-background text-transparent'
+                        }`} aria-hidden="true">
+                          {shareCardDestination === 'athlete-page' && <Check className="h-4 w-4" />}
+                        </span>
+                        <span className="block text-xs font-bold uppercase tracking-widest text-primary">{project.mediaType === 'video' ? 'Publish video to public HYPE Page' : 'Publish to public HYPE Page'}</span>
+                        <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">
+                          {project.mediaType === 'video'
+                            ? 'Anyone with the page link can view the prepared copy. Your original video stays on this device.'
+                            : 'Anyone with the page link can view this HYPE Card alongside the athlete’s season updates.'}
+                        </span>
+                        {shareCardDestination === 'athlete-page' && (
+                          <span className="mt-3 inline-flex bg-primary px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary-foreground">Selected</span>
+                        )}
+                      </button>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (shareCardDestination === 'download') {
+                            setShareDialogOpen(false);
+                            void handleExport();
+                          } else {
+                            setShareDestinationConfirmed(true);
+                          }
+                        }}
+                        data-testid="button-confirm-share-destination"
+                        className="h-11 min-w-24 clip-angled-sm rounded-none font-bold uppercase tracking-widest"
+                      >
+                        OK
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3 border-2 border-primary bg-primary/10 p-3" data-testid="share-destination-confirmed">
+                    <div>
+                      <span className="block text-[10px] font-extrabold uppercase tracking-widest text-primary">Ready to publish</span>
+                      <span className="mt-1 block text-sm font-bold text-foreground">
+                        Public HYPE Page — anyone with the link can view
+                      </span>
+                    </div>
+                    <Button type="button" variant="outline" onClick={() => setShareDestinationConfirmed(false)} data-testid="button-change-share-destination" className="rounded-none">
+                      Change
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
             {false && shareMode === 'card' && project.mediaType === 'video' && (
                <>
@@ -3514,9 +3589,9 @@ export function HypeCardEditor({
                  </Select>
                </div>
              )}
-             {shareMode === 'card' && (
+              {shareMode === 'card' && shareDestinationConfirmed && (
                <div className="space-y-2">
-                 <Label htmlFor="share-media-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Moment name</Label>
+                  <Label htmlFor="share-media-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Name shown on public page</Label>
                  <Input
                    id="share-media-name"
                    value={shareMediaName}
@@ -3526,7 +3601,7 @@ export function HypeCardEditor({
                    aria-describedby="share-media-name-help"
                    data-testid="input-share-media-name"
                  />
-                 <p id="share-media-name-help" className="text-xs font-medium text-muted-foreground">Shown on the Athlete Hype Page. Your device filename stays private.</p>
+                  <p id="share-media-name-help" className="text-xs font-medium text-muted-foreground">Fans see this name on the page. Your device filename stays private.</p>
                </div>
              )}
             {shareMode === 'stats' && (
@@ -3592,7 +3667,7 @@ export function HypeCardEditor({
               </div>
             )}
 
-             <DialogFooter className="mt-6">
+             {shareMode !== 'card' || shareDestinationConfirmed ? <DialogFooter className="mt-6">
                {shareMode === 'card' && project.mediaType === 'video' && shareVideoTooLargeQuality === 'compact' ? (
                  <Button
                    type="button"
@@ -3603,7 +3678,7 @@ export function HypeCardEditor({
                    className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold"
                    data-testid="button-download-oversized-hype-card"
                  >
-                   <Download className="mr-2 h-4 w-4" /> Download Hype Card to this device
+                    <Download className="mr-2 h-4 w-4" /> Download to this device instead
                  </Button>
                ) : (
                  <Button type="submit" disabled={shareMode === 'stats' && (shareTrackerProjectId === 'none' || !profile.athleteName)} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
@@ -3612,11 +3687,11 @@ export function HypeCardEditor({
                      : shareVideoTooLargeQuality === 'standard'
                        ? 'Retry at lower quality'
                        : project.mediaType === 'video'
-                         ? 'Add video to Athlete Hype Page'
-                         : 'Add to Athlete Hype Page'}
+                        ? 'Publish video to public HYPE Page'
+                        : 'Publish to public HYPE Page'}
                  </Button>
                )}
-            </DialogFooter>
+             </DialogFooter> : null}
           </form>
         </DialogContent>
       </Dialog>}
@@ -3625,11 +3700,11 @@ export function HypeCardEditor({
         <DialogContent className="clip-angled-sm sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-xl">Hype Card Replies</DialogTitle>
-            <DialogDescription>Reactions and messages from people who opened your active Athlete Hype Page card.</DialogDescription>
+            <DialogDescription>Reactions and messages from people who opened your active HYPE Page card.</DialogDescription>
           </DialogHeader>
           <div className="max-h-[55dvh] space-y-3 overflow-y-auto pt-3">
             {!shareReplies?.replies.length ? (
-              <div className="border border-dashed border-border p-6 text-center text-sm font-medium text-muted-foreground">No replies yet. Post the Athlete Hype Page to invite reactions.</div>
+              <div className="border border-dashed border-border p-6 text-center text-sm font-medium text-muted-foreground">No replies yet. Publish your HYPE Card to invite reactions.</div>
             ) : shareReplies.replies.map((reply) => (
               <article key={reply.id} className={`border p-3 ${reply.isRead ? 'border-border bg-muted/30' : 'border-primary/40 bg-primary/10'}`}>
                 <div className="flex items-start gap-3">
@@ -3676,7 +3751,7 @@ export function HypeCardEditor({
               </div>
               <div className="min-w-0">
                  <p className="text-xs font-bold uppercase tracking-widest text-primary">{shareStage || 'Preparing share link'}</p>
-                 <h2 className="mt-1 font-display text-2xl uppercase tracking-wide text-foreground">{shareMode === 'stats' ? 'Creating your stats link' : 'Adding your Athlete Hype Page media'}</h2>
+                 <h2 className="mt-1 font-display text-2xl uppercase tracking-wide text-foreground">{shareMode === 'stats' ? 'Creating your stats link' : 'Publishing your HYPE Page media'}</h2>
                 <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
                    {shareMode === 'stats'
                      ? 'Keep this page open while we create the separate finalized stats link.'
@@ -3701,7 +3776,7 @@ export function HypeCardEditor({
               </div>
             </div>
             {shareMode === 'card' && (
-              <Button type="button" variant="outline" onClick={cancelSharePublish} aria-label="Cancel Athlete Hype Page upload" className="mt-5 w-full rounded-none clip-angled-sm">
+              <Button type="button" variant="outline" onClick={cancelSharePublish} aria-label="Cancel public HYPE Page upload" className="mt-5 w-full rounded-none clip-angled-sm">
                 Cancel upload
               </Button>
             )}
