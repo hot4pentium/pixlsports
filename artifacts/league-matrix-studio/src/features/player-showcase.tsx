@@ -198,7 +198,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           else void invitesQuery.refetch();
         }}
         cardEditHref={cardSettingsHref}
-        cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}` : undefined} />
+        cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}?from=player-showcase` : undefined} />
       <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         {publicShowcaseUrl && (
           <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">

@@ -56,12 +56,14 @@ test('Player Showcase HYPE Card back actions return to the Dynamic Showcase caro
   );
 });
 
-test('the public HYPE Card returns to its public Dynamic Showcase', () => {
+test('HYPE Card back navigation distinguishes owner Showcase from public Showcase', () => {
   assert.match(
     livingCardSource,
-    /href=\{`\/showcase\/\$\{encodeURIComponent\(inviteToken\)\}`\} label="Back to Dynamic Showcase" testId="link-back-public-showcase"/,
+    /<BackNavigationLink \{\.\.\.backNavigation\} variant="public"/,
   );
-  assert.equal((livingCardSource.match(/<Shell inviteToken=\{inviteToken\}>/g) ?? []).length, 3);
+  assert.match(livingCardSource, /const backNavigation = getHypeCardBackNavigation\(/);
+  assert.equal((livingCardSource.match(/<Shell inviteToken=\{inviteToken\} embedded=\{embedded\} ownerView=\{Boolean\(isSignedIn && ownerInvite\)\}>/g) ?? []).length, 3,
+    'loaded, loading, and unavailable cards all preserve the owner return destination');
   assert.match(appSource, /path="\/showcase\/:inviteToken" component=\{PublicPlayerShowcasePage\}/);
 });
 

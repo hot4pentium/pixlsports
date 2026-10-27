@@ -76,32 +76,32 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
       await confirm.mutateAsync({ inviteToken, data: { objectPath: claim.objectPath } });
       setSelected(null);
       await refresh();
-      setNotice('Athlete photo saved. Your uploaded photo is ready to use.');
+      setNotice('HYPE Card photo saved.');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'The athlete photo could not be uploaded.');
+      setNotice(error instanceof Error ? error.message : 'The HYPE Card photo could not be uploaded.');
     } finally {
       setBusy(false);
     }
   }
 
   async function removePhoto() {
-    if (!window.confirm('Remove the athlete photo from the HYPE Card? Fans will see initials instead.')) return;
+    if (!window.confirm('Remove the HYPE Card photo? Fans will see initials instead.')) return;
     setNotice('');
     try {
       await remove.mutateAsync({ inviteToken });
       await refresh();
-      setNotice('Athlete photo removed. Fans will see the initials card.');
+      setNotice('HYPE Card photo removed. Fans will see initials instead.');
     } catch {
-      setNotice('The athlete photo could not be removed. Please try again.');
+      setNotice('The HYPE Card photo could not be removed. Please try again.');
     }
   }
 
   return (
     <section className="mt-6 border-t border-white/15 pt-6" aria-label="HYPE Card photo" data-testid="section-fan-card-photo">
-      <h3 className="font-display text-2xl uppercase">Athlete photo</h3>
-      <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose a photo of the athlete for the front of their HYPE Card. Only this photo is used; your account picture is never shown. Photos are resized and stripped of device metadata before posting.</p>
+      <h3 className="font-display text-2xl uppercase">HYPE Card photo</h3>
+      <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Upload one athlete photo for the front of their public HYPE Card. There is no separate athlete-profile photo to upload. Photos are resized and device metadata is removed before upload.</p>
       <div role="note" aria-label="Public photo visibility" className="mt-4 max-w-2xl border border-amber-200/40 bg-amber-100/10 p-4 text-sm leading-relaxed text-white" data-testid="notice-fan-card-photo-visibility">
-        <p className="font-bold uppercase tracking-wide text-amber-100">Before you upload</p>
+        <p className="font-bold uppercase tracking-wide text-amber-100">When fans can see it</p>
         <p className="mt-1">{HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE}</p>
       </div>
       <div className="mt-4 flex flex-wrap items-end gap-4">
@@ -115,7 +115,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setSelected(event.target.files?.[0] ?? null); setNotice(''); }} className="max-w-[270px] text-xs font-normal normal-case tracking-normal file:mr-3 file:border-0 file:bg-white/15 file:px-3 file:py-2 file:text-white" data-testid="input-fan-card-photo" />
         </label>
         <button type="button" onClick={() => void upload()} disabled={!selected || isBusy} className="inline-flex min-h-11 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-upload-fan-card-photo">
-          <ImagePlus className="h-4 w-4" aria-hidden="true" />{isBusy ? 'Saving…' : photoUrl ? 'Replace photo' : 'Post photo'}
+          <ImagePlus className="h-4 w-4" aria-hidden="true" />{isBusy ? 'Saving…' : photoUrl ? 'Replace photo' : 'Upload photo'}
         </button>
         {photoUrl && <button type="button" onClick={() => void removePhoto()} disabled={isBusy} className="inline-flex min-h-11 items-center gap-2 border border-red-300/60 px-4 text-xs font-bold uppercase tracking-widest text-red-200 disabled:opacity-50" data-testid="button-remove-fan-card-photo"><Trash2 className="h-4 w-4" aria-hidden="true" />Remove</button>}
       </div>

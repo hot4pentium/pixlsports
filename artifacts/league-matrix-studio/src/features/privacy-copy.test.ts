@@ -20,9 +20,12 @@ test('privacy copy distinguishes local source media from published share media',
   assert.match(PUBLIC_SHARE_MEDIA, /expires or you revoke it/i);
   assert.match(HYPE_CARD_ATHLETE_PHOTO_PRIVACY, /account-restricted cloud storage/i);
   assert.match(HYPE_CARD_ATHLETE_PHOTO_PRIVACY, /anyone who has its link/i);
-  assert.match(HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE, /prepared photo will appear on the active public hype card page/i);
+  assert.match(HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE, /when the hype card is public/i);
   assert.match(HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE, /anyone with its link/i);
-  assert.match(HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE, /remove the photo or pause the hype card page/i);
+  assert.match(HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE, /uploading a photo does not make a private card public/i);
+  assert.match(HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE, /replace or remove the photo here/i);
+  assert.match(HYPE_CARD_ATHLETE_PHOTO_PRIVACY, /not a separate profile photo/i);
+  assert.doesNotMatch(HYPE_CARD_ATHLETE_PHOTO_PRIVACY, /transparent cutout/i);
   assert.match(SUPPORT_TICKET_ATTACHMENT_PRIVACY, /private cloud storage with the ticket/i);
   assert.match(SUPPORT_TICKET_ATTACHMENT_PRIVACY, /text reply is still saved/i);
 });

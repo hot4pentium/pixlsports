@@ -34,6 +34,7 @@ import {
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { LivingCardControls, type CardSide } from './living-card-controls';
 import { BackNavigationLink } from '@/components/back-navigation-link';
+import { getHypeCardBackNavigation } from './hype-card-back-navigation';
 
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
 const liveTapAccessTokenPattern = /^[A-Za-z0-9_-]{40,100}$/;
@@ -59,7 +60,12 @@ function gameOutcome(game: FanGame) {
   return game.score > game.opponentScore ? 'W' : game.score < game.opponentScore ? 'L' : 'T';
 }
 
-function Shell({ children, inviteToken, embedded = false }: { children: ReactNode; inviteToken: string; embedded?: boolean }) {
+function Shell({ children, inviteToken, embedded = false, ownerView = false }: { children: ReactNode; inviteToken: string; embedded?: boolean; ownerView?: boolean }) {
+  const backNavigation = getHypeCardBackNavigation(
+    inviteToken,
+    ownerView,
+    typeof window === 'undefined' ? '' : window.location.search,
+  );
   return (
     <div className={`living-card-page${embedded ? ' living-card-page--embedded' : ''}`}>
       {!embedded && <header className="living-card-header">
@@ -68,7 +74,7 @@ function Shell({ children, inviteToken, embedded = false }: { children: ReactNod
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports home" />
           </Link>
           <span className="living-card-header-label">A season worth keeping / Pixl Sports</span>
-          <BackNavigationLink href={`/showcase/${encodeURIComponent(inviteToken)}`} label="Back to Dynamic Showcase" testId="link-back-public-showcase" variant="public" />
+          <BackNavigationLink {...backNavigation} variant="public" />
         </div>
       </header>}
       {children}
@@ -271,7 +277,7 @@ export function LivingAthleteCardPage({
   const MainElement = embedded ? 'div' : 'main';
   if (isLoading) {
     return (
-      <Shell inviteToken={inviteToken} embedded={embedded}>
+      <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
         <MainElement className={embedded ? 'living-card-main--embedded' : undefined} aria-busy="true" aria-label="Loading athlete card" role="status">
           <div className="living-card-skeleton"><div /><aside><span /><span /><span /></aside></div>
           <span className="sr-only">Loading athlete card</span>
@@ -281,7 +287,7 @@ export function LivingAthleteCardPage({
   }
   if (isError || !invite || !inviteToken) {
     return (
-      <Shell inviteToken={inviteToken} embedded={embedded}>
+      <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
         <MainElement className={`living-card-state${embedded ? ' living-card-state--embedded' : ''}`} role="alert" data-testid="state-living-card-unavailable">
           <span className="living-card-eyebrow">The card is off the field</span>
           <h1>This HYPE Card is paused or unavailable.</h1>
@@ -436,7 +442,7 @@ export function LivingAthleteCardPage({
   };
 
   return (
-    <Shell inviteToken={inviteToken} embedded={embedded}>
+    <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
       <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`}>
         {!embedded && ownerInvite && profileNameSyncKey && updateInvite.isPending && (
           <p className="mb-4 border-l-2 border-sky-300 bg-sky-950/60 px-4 py-3 text-sm text-white" role="status" data-testid="status-profile-name-sync">

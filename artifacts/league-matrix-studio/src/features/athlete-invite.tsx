@@ -1410,7 +1410,7 @@ function OwnerHypePageManage({ invite, profile }: {
         </section>
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard key="photo" id="photo" taskIndex={3} activeTaskIndex={activeTaskIndex} title="Upload Photo" description="Add a new athlete photo" Icon={ImagePlus} active={activeTask === 'photo'} onSelect={() => toggleTask('photo')} badge={invite.photoUrl ? 'Photo added' : undefined}>
+      <HypeManagerTaskCard key="photo" id="photo" taskIndex={3} activeTaskIndex={activeTaskIndex} title="Upload Photo" description="Photo for the public HYPE Card" Icon={ImagePlus} active={activeTask === 'photo'} onSelect={() => toggleTask('photo')} badge={invite.photoUrl ? 'Photo added' : undefined}>
         <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} cutoutUrl={invite.cutoutUrl} photoRevision={invite.photoRevision} />
       </HypeManagerTaskCard>
 

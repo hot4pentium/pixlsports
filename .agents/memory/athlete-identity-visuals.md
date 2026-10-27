@@ -10,3 +10,9 @@ Athlete Profile contains names and team details, not a separate photo upload. Ne
 **Why:** The user said multiple avatars are confusing and photo uploads should live only in the HYPE Card process. Existing private profile-photo data is preserved rather than deleted.
 
 **How to apply:** Before showing an athlete image in dashboard or tracker UI, match the saved HYPE Card to the current athlete and use its photo. If there is no match or photo, render initials. Keep the owner upload/edit flow in Manage HYPE Card and do not couple card creation to legacy profile-photo storage.
+
+Describe the upload as the photo for the public HYPE Card, not a separate athlete-profile photo. Explain public visibility conditionally: uploading a photo does not publish a private card.
+
+**Why:** The user found the athlete-photo description contradictory and said the only photo uploaded should be for the public HYPE Card.
+
+**How to apply:** Use HYPE Card photo terminology throughout upload guidance and status messages. Do not imply that uploading also changes the card's privacy.
