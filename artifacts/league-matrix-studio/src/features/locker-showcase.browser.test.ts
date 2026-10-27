@@ -193,6 +193,149 @@ render();
 `;
 }
 
+test('PIXL account-loading splash keeps the full logo visible across screen sizes', { timeout: 120_000 }, async (t) => {
+  const suffix = `account-loading-responsive-${process.pid}`;
+  const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
+  const htmlPath = resolve(appDirectory, `${suffix}.html`);
+  const configPath = resolve(appDirectory, `${suffix}.config.ts`);
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-account-loading-'));
+  const port = await availablePort();
+  const debugPort = await availablePort();
+  const viewports = [
+    { label: 'narrow phone', width: 320, height: 568 },
+    { label: 'standard phone', width: 390, height: 844 },
+    { label: 'tablet', width: 768, height: 1024 },
+    { label: 'desktop', width: 1440, height: 900 },
+  ];
+  let vite: ChildProcess | undefined;
+  let chromium: ChildProcess | undefined;
+  let browser: Browser | undefined;
+
+  const checkSplash = async (label: string, width: number, height: number, scenario: string) => {
+    const geometry = await browser!.evaluate(`(() => {
+      const screen = document.querySelector('.account-loading-screen');
+      const content = document.querySelector('.account-loading-content');
+      const brand = document.querySelector('.account-loading-brand');
+      const logo = document.querySelector('.account-loading-logo');
+      const retry = document.querySelector('.account-loading-retry');
+      const rect = element => {
+        const value = element.getBoundingClientRect();
+        return {left:value.left,top:value.top,right:value.right,bottom:value.bottom,width:value.width,height:value.height};
+      };
+      const contentRect = rect(content);
+      const visibleChildrenFit = [...content.querySelectorAll('*')].every(element => {
+        if (getComputedStyle(element).display === 'none') return true;
+        const value = rect(element);
+        return value.left >= contentRect.left - 1 && value.right <= contentRect.right + 1
+          && value.top >= contentRect.top - 1 && value.bottom <= contentRect.bottom + 1;
+      });
+      return {
+        viewport:{width:innerWidth,height:innerHeight},
+        screen:rect(screen),content:contentRect,brand:rect(brand),logo:rect(logo),
+        logoLoaded:logo.complete && logo.naturalWidth > 0,
+        logoNaturalWidth:logo.naturalWidth,
+        logoObjectFit:getComputedStyle(logo).objectFit,
+        hasRetry:Boolean(retry),
+        status:document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent?.trim(),
+        visibleChildrenFit,
+        documentWidth:document.documentElement.scrollWidth,
+        bodyWidth:document.body.scrollWidth,
+      };
+    })()`);
+
+    assert.equal(geometry.viewport.width, width, `${label}: browser viewport width`);
+    assert.equal(geometry.viewport.height, height, `${label}: browser viewport height`);
+    assert.ok(geometry.logoLoaded, `${label}: the PIXL SPORTS logo image loaded`);
+    assert.equal(geometry.logoNaturalWidth, 1347, `${label}: the full source logo is used`);
+    assert.equal(geometry.logoObjectFit, 'contain', `${label}: the logo is not cropped`);
+    assert.ok(geometry.logo.width >= 160, `${label}: the full logo remains large enough to read (${geometry.logo.width}px wide)`);
+    assert.ok(geometry.logo.left >= geometry.brand.left && geometry.logo.right <= geometry.brand.right, `${label}: logo stays inside its brand frame`);
+    assert.ok(geometry.content.left >= 0 && geometry.content.right <= width, `${label}: content does not clip horizontally`);
+    assert.ok(geometry.content.top >= 0 && geometry.content.bottom <= height, `${label}: content does not clip vertically`);
+    assert.ok(geometry.visibleChildrenFit, `${label}: splash content stays inside its panel`);
+    assert.ok(geometry.documentWidth <= width && geometry.bodyWidth <= width, `${label}: page does not overflow horizontally`);
+    assert.match(geometry.status, scenario === 'normal' ? /Checking your account access/ : scenario === 'slow' ? /Still checking your account/ : /Could not check your account access/);
+    assert.equal(geometry.hasRetry, scenario !== 'normal', `${label}: retry action matches the ${scenario} state`);
+  };
+
+  try {
+    await writeFile(sourcePath, `
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {AccountLoadingScreen} from './src/features/account-loading-screen';
+import './src/index.css';
+const root=createRoot(document.getElementById('root'));
+window.__retryCount=0;
+window.__showError=error=>root.render(<AccountLoadingScreen error={error} onRetry={()=>window.__retryCount++}/>);
+window.__showError(false);
+`);
+    await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
+    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{});`);
+    vite = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(port), BASE_PATH: '/' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const viteMonitor = monitorProcess(vite, 'Account loading fixture Vite');
+    await waitForUrl(`http://127.0.0.1:${port}/`, 25_000, viteMonitor);
+    chromium = spawn(process.env.CHROMIUM_PATH || 'chromium', [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const chromeMonitor = monitorProcess(chromium, 'Account loading fixture Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 15_000, chromeMonitor);
+    const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json() as Array<{ type: string; webSocketDebuggerUrl: string }>;
+    browser = await Browser.connect(tabs.find((tab) => tab.type === 'page')!.webSocketDebuggerUrl);
+    await browser.send('Page.enable');
+    await browser.send('Runtime.enable');
+    await browser.send('Log.enable');
+    await browser.send('Network.enable');
+
+    const url = `http://127.0.0.1:${port}/${suffix}.html`;
+    for (const viewport of viewports) {
+      await browser.send('Emulation.setDeviceMetricsOverride', {
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: 1,
+        mobile: viewport.width < 600,
+      });
+      await browser.send('Page.navigate', { url });
+      await browser.wait(`document.querySelector('.account-loading-logo')?.complete && document.querySelector('.account-loading-logo')?.naturalWidth > 0`);
+      await t.test(`${viewport.label}: normal loading`, () => checkSplash(viewport.label, viewport.width, viewport.height, 'normal'));
+    }
+
+    await browser.wait(`document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('Still checking')`);
+    for (const viewport of viewports) {
+      await browser.send('Emulation.setDeviceMetricsOverride', {
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: 1,
+        mobile: viewport.width < 600,
+      });
+      await t.test(`${viewport.label}: slow loading`, () => checkSplash(viewport.label, viewport.width, viewport.height, 'slow'));
+    }
+
+    await browser.evaluate('window.__showError(true)');
+    for (const viewport of viewports) {
+      await browser.send('Emulation.setDeviceMetricsOverride', {
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: 1,
+        mobile: viewport.width < 600,
+      });
+      await t.test(`${viewport.label}: error with retry`, () => checkSplash(viewport.label, viewport.width, viewport.height, 'error'));
+    }
+    await browser.evaluate(`document.querySelector('.account-loading-retry').click()`);
+    assert.equal(await browser.evaluate('window.__retryCount'), 1, 'the retry action remains usable in the error state');
+  } finally {
+    browser?.close();
+    await stop(chromium);
+    await stop(vite);
+    await Promise.all([sourcePath, htmlPath, configPath].map((path) => rm(path, { force: true })));
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
 async function stop(process: ChildProcess | undefined) {
   if (!process || process.exitCode !== null) return;
   process.kill('SIGTERM');
