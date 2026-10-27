@@ -44,6 +44,7 @@ test('returning sessions replace the static landing shell before first paint', (
   const staticLanding = bootShellSource.indexOf('<div id="app-boot-fallback"');
   assert.ok(sessionCheck >= 0 && sessionCheck < staticLanding);
   assert.match(bootShellSource, /isPrivateStudioRoute \|\| \(isHomeRoute && hasKnownPrivateSession\)/);
+  assert.match(bootShellSource, /setAttribute\('data-pixl-private-return-started-at', String\(performance\.now\(\)\)\)/);
   assert.match(bootShellSource, /data-pixl-private-return="true"[\s\S]*#app-boot-fallback \.boot-main/);
   assert.match(bootShellSource, /id="app-boot-returning"[\s\S]*pixlsports-logo\.png/);
 });
@@ -60,12 +61,23 @@ test('the app bypasses lifecycle checks on public home visits and opens the stud
   assert.match(appSource, /shouldBypassAccountLifecycle\(location, isLoaded, Boolean\(isSignedIn\)\)/);
   assert.match(appSource, /location === '\/' && canShowInitialAccountSetup\(user\)/);
   assert.match(entrySource, /getHomeEntryState\(isLoaded, Boolean\(isSignedIn\), hasPriorPrivateSession\)/);
+  assert.match(entrySource, /function PrivateEntrySplashGate[\s\S]*!isLoaded \|\| \(Boolean\(isSignedIn\) && !minimumElapsed\)/);
+  assert.match(entrySource, /<PrivateEntrySplashGate>[\s\S]*<Switch>/);
   assert.match(entrySource, /entryState === 'loading'.*<AccountLoadingScreen \/>/);
   assert.match(appSource, /lifecycle\?\.status !== 'active'[\s\S]*?rememberPrivateSession\(\)/);
   assert.match(entrySource, /<Redirect to="\/studio" \/>/);
   assert.match(entrySource, /return <PublicLandingPage \/>/);
   assert.match(entrySource, /const ApplicationRoutes = lazy\(\(\) => import\('\.\/App'\)\)/);
   assert.match(entrySource, /<Route path="\/" component=\{HomeEntry\} \/>/);
+});
+
+test('lazy screen transitions use a compact progress state instead of the account splash', () => {
+  const routeLoadingState = appSource.match(/function RouteLoadingState\(\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(routeLoadingState);
+  assert.match(routeLoadingState, /data-testid="route-transition-loading"/);
+  assert.match(routeLoadingState, /Loading next screen/);
+  assert.doesNotMatch(routeLoadingState, /AccountLoadingScreen/);
+  assert.match(appSource, /<Suspense fallback=\{<RouteLoadingState \/>\}>/);
 });
 
 test('generic account entry points show the choice before Google sign-in', () => {

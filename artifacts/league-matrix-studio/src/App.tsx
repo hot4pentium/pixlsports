@@ -4162,7 +4162,21 @@ function ApplicationRoutes() {
 }
 
 function RouteLoadingState() {
-  return <AccountLoadingScreen />;
+  return (
+    <div
+      className="grid place-items-center bg-background"
+      style={{ minHeight: '100svh' }}
+      role="status"
+      aria-label="Loading next screen"
+      data-testid="route-transition-loading"
+    >
+      <span
+        className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[#55a4ff]"
+        aria-hidden="true"
+      />
+      <span className="sr-only">Loading next screen…</span>
+    </div>
+  );
 }
 
 export default ApplicationRoutes;

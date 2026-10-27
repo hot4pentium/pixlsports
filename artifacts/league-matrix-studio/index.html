@@ -39,6 +39,7 @@
         }
         if (isPrivateStudioRoute || (isHomeRoute && hasKnownPrivateSession)) {
           document.documentElement.setAttribute('data-pixl-private-return', 'true');
+          document.documentElement.setAttribute('data-pixl-private-return-started-at', String(performance.now()));
         }
         if (!location.pathname.startsWith(fanPath)) return;
         const token = location.pathname.slice(fanPath.length);

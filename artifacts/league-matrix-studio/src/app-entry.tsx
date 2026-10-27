@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { ClerkProvider, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { AccountLoadingScreen } from '@/features/account-loading-screen';
 import { getHomeEntryState } from '@/features/auth-entry-routing';
 import { forgetPrivateSession, hasPreviousPrivateSession } from '@/features/previous-private-session';
+import { getPrivateEntrySplashRemainingMs } from '@/features/private-entry-splash';
 import { PublicLandingPage } from '@/features/landing-home';
 import { ClerkQueryClientCacheInvalidator, queryClient } from './app-session';
 import { clerkAppearance } from './clerk-appearance';
@@ -14,6 +15,7 @@ import './landing-unified.css';
 
 const ApplicationRoutes = lazy(() => import('./App'));
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const PRIVATE_ENTRY_SPLASH_STARTED_AT_ATTRIBUTE = 'data-pixl-private-return-started-at';
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
@@ -37,6 +39,27 @@ function HomeEntry() {
   return <PublicLandingPage />;
 }
 
+function PrivateEntrySplashGate({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useUser();
+  const [startedAt] = useState(() => document.documentElement.getAttribute(PRIVATE_ENTRY_SPLASH_STARTED_AT_ATTRIBUTE));
+  const [minimumElapsed, setMinimumElapsed] = useState(
+    () => getPrivateEntrySplashRemainingMs(startedAt, performance.now()) === 0,
+  );
+
+  useEffect(() => {
+    if (minimumElapsed) return;
+    const remaining = getPrivateEntrySplashRemainingMs(startedAt, performance.now());
+    const timer = window.setTimeout(() => setMinimumElapsed(true), remaining);
+    return () => window.clearTimeout(timer);
+  }, [minimumElapsed, startedAt]);
+
+  const isPrivateEntry = startedAt !== null;
+  const shouldKeepSplash = isPrivateEntry
+    && (!isLoaded || (Boolean(isSignedIn) && !minimumElapsed));
+  if (shouldKeepSplash) return <AccountLoadingScreen />;
+  return children;
+}
+
 function SessionRoutes() {
   const [location, setLocation] = useLocation();
   return (
@@ -55,16 +78,18 @@ function SessionRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
-        <ErrorBoundary resetKey={location}>
-          <Switch>
-            <Route path="/" component={HomeEntry} />
-            <Route>
-              <Suspense fallback={<AccountLoadingScreen />}>
-                <ApplicationRoutes />
-              </Suspense>
-            </Route>
-          </Switch>
-        </ErrorBoundary>
+        <PrivateEntrySplashGate>
+          <ErrorBoundary resetKey={location}>
+            <Switch>
+              <Route path="/" component={HomeEntry} />
+              <Route>
+                <Suspense fallback={<AccountLoadingScreen />}>
+                  <ApplicationRoutes />
+                </Suspense>
+              </Route>
+            </Switch>
+          </ErrorBoundary>
+        </PrivateEntrySplashGate>
       </QueryClientProvider>
     </ClerkProvider>
   );

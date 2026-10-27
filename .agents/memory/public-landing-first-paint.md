@@ -20,3 +20,15 @@ The previously-signed-in marker is a presentation hint only. Server lifecycle ch
 **Why:** The user requested a smooth return from app backgrounding without exposing the public landing during dashboard restoration.
 
 **How to apply:** Set the marker only after the private dashboard is verified active. If session storage cannot be read, retain the existing safe public-entry behavior; never use this marker to grant or restore access.
+
+For a returning signed-in session, keep the private-entry splash visible for at least five seconds from its initial HTML paint, even if Clerk restores the session faster. First-time and confirmed signed-out visits should still reach the public landing without an added delay.
+
+**Why:** The user said the return splash appeared only briefly and asked for it to remain visible for five seconds.
+
+**How to apply:** Start timing in the static HTML shell and let the React startup gate wait for both the minimum duration and Clerk's signed-in confirmation. Increase the offline-shell cache version when changing the HTML startup timestamp.
+
+Keep the full account splash for genuine startup/session verification only. Lazy screen-to-screen navigation should use a compact progress state instead of briefly replaying the full-screen splash.
+
+**Why:** The user said seeing the splash flash between screens is jarring.
+
+**How to apply:** Keep private access and lifecycle checks intact; change route-loading fallbacks rather than removing their loading state.
