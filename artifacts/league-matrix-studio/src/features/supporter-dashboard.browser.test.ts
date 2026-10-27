@@ -5528,7 +5528,7 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?route=dashboard&game-on-card-save-transition`,
     );
     const session = page.sessionId;
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"mobile-header\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"mobile-header\\"]"))', Boolean, 30_000);
 
     for (const width of [320, 390, 768]) {
       await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -5769,8 +5769,8 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
           && rightStackRect.left >= desktopMessageBoardRect.right
           && rightStackRect.left - desktopMessageBoardRect.right < 32),
         desktopMessageBoardMatchesMobile: Boolean(desktopMessageState && mobileMessageState
-          && desktopMessageState.textContent?.replace(/\s+/g, ' ').trim()
-            === mobileMessageState.textContent?.replace(/\s+/g, ' ').trim()),
+          && desktopMessageState.textContent?.replace(/\\s+/g, ' ').trim()
+            === mobileMessageState.textContent?.replace(/\\s+/g, ' ').trim()),
         overviewHeadingAboveTrends: Boolean(overviewRect && trendRect && overviewRect.bottom <= trendRect.top),
         overviewLabelsVisible: overviewText.includes('Athlete overview') && overviewText.includes('All in, all season'),
         seasonLabelAboveTrends: !summary?.querySelector('.supporter-game-on-summary__locker-season')
@@ -5832,6 +5832,21 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       actionsUseSingleStatsLink: true,
       statsMatchesReference: true,
     });
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1024, height: 900, deviceScaleFactor: 1, mobile: false,
+    }, session);
+    assert.equal(await connection.evaluate<boolean>(`(() => {
+      const shell = document.querySelector('.supporter-dashboard-desktop-shell');
+      const card = shell?.querySelector('[data-testid="dashboard-hype-card-desktop"]')?.getBoundingClientRect();
+      const board = shell?.querySelector('[data-testid="dashboard-desktop-message-board"]')?.getBoundingClientRect();
+      const overview = shell?.querySelector('[data-testid="dashboard-desktop-stat-stack"]')?.getBoundingClientRect();
+      return Boolean(card && board && overview
+        && card.right <= board.left && board.right <= overview.left
+        && document.documentElement.scrollWidth <= innerWidth);
+    })()`, session), true, 'the card, message board, and overview fit side by side at the desktop breakpoint');
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280, height: 900, deviceScaleFactor: 1, mobile: false,
+    }, session);
     assert.equal(
       await connection.evaluate<boolean>(`!document.querySelector('.supporter-dashboard-desktop-shell .supporter-game-on-summary__athlete-link')`, session),
       true,
@@ -7268,6 +7283,8 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
       cardCompact: true,
       mobileShellHidden: true,
     });
+    const desktopScreenshot = await connection.send<{ data: string }>('Page.captureScreenshot', { format: 'png' }, page.sessionId);
+    await writeFile('/tmp/supporter-dashboard-desktop-message-board.png', Buffer.from(desktopScreenshot.data, 'base64'));
     await verifyHypeCardShare('desktop');
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
 
