@@ -35,6 +35,7 @@ import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, use
 import { ErrorBoundary } from '@/components/error-boundary';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { AccountLoadingScreen } from '@/features/account-loading-screen';
+import { rememberPrivateSession } from '@/features/previous-private-session';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -3972,6 +3973,10 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     },
   });
   const { data: lifecycle, isLoading, isError, refetch } = lifecycleQuery;
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || lifecycle?.status !== 'active' || lifecycle.adminSuspended === true) return;
+    rememberPrivateSession();
+  }, [isLoaded, isSignedIn, lifecycle?.status, lifecycle?.adminSuspended]);
   useEffect(() => {
     if (!user?.id || lifecycle?.status !== 'not_provisioned') return;
     clearPrivateOfflineAccountData(window.localStorage, user.id);

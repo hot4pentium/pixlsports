@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { ClerkProvider, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -6,6 +6,7 @@ import { Redirect, Route, Router, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AccountLoadingScreen } from '@/features/account-loading-screen';
 import { getHomeEntryState } from '@/features/auth-entry-routing';
+import { forgetPrivateSession, hasPreviousPrivateSession } from '@/features/previous-private-session';
 import { PublicLandingPage } from '@/features/landing-home';
 import { ClerkQueryClientCacheInvalidator, queryClient } from './app-session';
 import { clerkAppearance } from './clerk-appearance';
@@ -25,9 +26,15 @@ function stripBase(path: string) {
 
 function HomeEntry() {
   const { isLoaded, isSignedIn } = useUser();
-  return getHomeEntryState(isLoaded, Boolean(isSignedIn)) === 'dashboard'
-    ? <Redirect to="/studio" />
-    : <PublicLandingPage />;
+  const [hasPriorPrivateSession] = useState(hasPreviousPrivateSession);
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) forgetPrivateSession();
+  }, [isLoaded, isSignedIn]);
+
+  const entryState = getHomeEntryState(isLoaded, Boolean(isSignedIn), hasPriorPrivateSession);
+  if (entryState === 'dashboard') return <Redirect to="/studio" />;
+  if (entryState === 'loading') return <AccountLoadingScreen />;
+  return <PublicLandingPage />;
 }
 
 function SessionRoutes() {

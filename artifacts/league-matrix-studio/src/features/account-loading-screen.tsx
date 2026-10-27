@@ -21,9 +21,14 @@ export function AccountLoadingScreen({ onRetry, error = false }: { onRetry?: () 
   return (
     <div className="account-loading-screen" data-error={error || !online ? 'true' : undefined} role={error ? 'alert' : 'status'} aria-live="polite">
       <div className="account-loading-content">
-        <span className="account-loading-logo" aria-label="Pixl Sports">
-          PIXL <span>SPORTS</span>
-        </span>
+        <div className="account-loading-brand">
+          <img className="account-loading-logo" src="/pixlsports-logo.png" alt="PIXL SPORTS" />
+        </div>
+        <div className="account-loading-kicker" aria-hidden="true">
+          <span className="account-loading-kicker-line" />
+          <span>SEASON HQ</span>
+          <span className="account-loading-kicker-line" />
+        </div>
         <div className="account-loading-track" aria-hidden="true">
           <span className="account-loading-progress" />
         </div>

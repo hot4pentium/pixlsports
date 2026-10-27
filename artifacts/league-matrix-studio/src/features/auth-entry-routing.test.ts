@@ -20,11 +20,15 @@ test('auth choice destinations retain a protected destination for both account p
   assert.equal(buildAuthEntryHref('sign-up'), '/sign-up');
 });
 
-test('home entry shows the landing page while Clerk initializes and redirects loaded users to the studio', () => {
+test('first-time home stays public; returning sessions wait for Clerk before entering the studio', () => {
   assert.equal(getHomeEntryState(false, false), 'landing');
   assert.equal(getHomeEntryState(false, true), 'landing');
   assert.equal(getHomeEntryState(true, true), 'dashboard');
   assert.equal(getHomeEntryState(true, false), 'landing');
+  assert.equal(getHomeEntryState(false, false, true), 'loading');
+  assert.equal(getHomeEntryState(false, true, true), 'loading');
+  assert.equal(getHomeEntryState(true, false, true), 'landing');
+  assert.equal(getHomeEntryState(true, true, true), 'dashboard');
 });
 
 test('the initial HTML shell shows landing content before React starts', () => {
@@ -44,9 +48,11 @@ test('only signed-out or unresolved home visits bypass account lifecycle checks'
 test('the app bypasses lifecycle checks on public home visits and opens the studio for signed-in users', () => {
   assert.match(appSource, /shouldBypassAccountLifecycle\(location, isLoaded, Boolean\(isSignedIn\)\)/);
   assert.match(appSource, /location === '\/' && canShowInitialAccountSetup\(user\)/);
-  assert.match(entrySource, /getHomeEntryState\(isLoaded, Boolean\(isSignedIn\)\) === 'dashboard'/);
+  assert.match(entrySource, /getHomeEntryState\(isLoaded, Boolean\(isSignedIn\), hasPriorPrivateSession\)/);
+  assert.match(entrySource, /entryState === 'loading'.*<AccountLoadingScreen \/>/);
+  assert.match(appSource, /lifecycle\?\.status !== 'active'[\s\S]*?rememberPrivateSession\(\)/);
   assert.match(entrySource, /<Redirect to="\/studio" \/>/);
-  assert.match(entrySource, /: <PublicLandingPage \/>/);
+  assert.match(entrySource, /return <PublicLandingPage \/>/);
   assert.match(entrySource, /const ApplicationRoutes = lazy\(\(\) => import\('\.\/App'\)\)/);
   assert.match(entrySource, /<Route path="\/" component=\{HomeEntry\} \/>/);
 });
