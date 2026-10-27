@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { longShowcaseLabels, type ShowcaseGeometryScenario } from './showcase-responsive-fixture';
 
 type Browser = {
   evaluate(expression: string): Promise<any>;
@@ -33,6 +34,95 @@ async function proportion(browser: Browser, selector: string, ratio: number) {
 async function contained(browser: Browser) {
   const size = await browser.evaluate(`({scroll:document.documentElement.scrollWidth,body:document.body.scrollWidth,width:innerWidth})`);
   assert.ok(size.scroll <= size.width + 1 && size.body <= size.width + 1, `Horizontal overflow: ${JSON.stringify(size)}`);
+}
+
+// Check the actual text bounds too: overflow:hidden can hide broken labels
+// without making the document wider.
+async function readable(browser: Browser, selector: string, action = false) {
+  const box = await rect(browser, selector);
+  assert.ok(box.x >= -1 && box.right <= box.viewport + 1, `${selector} escapes viewport: ${JSON.stringify(box)}`);
+  const text = await browser.evaluate(`(() => {
+    const el=document.querySelector(${JSON.stringify(selector)}),r=el.getBoundingClientRect();
+    const range=document.createRange();range.selectNodeContents(el);
+    const bounds=Array.from(range.getClientRects()).filter(b=>b.width&&b.height);
+    return {label:el.matches('select')?el.selectedOptions[0]?.textContent:el.textContent.trim(),font:parseFloat(getComputedStyle(el).fontSize),
+      fits:el.matches('select')||bounds.every(b=>b.left>=r.left-1&&b.right<=r.right+1&&(!${action}||(b.top>=r.top-1&&b.bottom<=r.bottom+1))),
+      scrollFits:el.scrollWidth<=el.clientWidth+1&&(!${action}||el.scrollHeight<=el.clientHeight+1)};
+  })()`);
+  assert.ok(text.label && text.font >= 11 && text.fits && text.scrollFits, `${selector} clips its label: ${JSON.stringify(text)}`);
+  if (action) {
+    assert.ok(box.width >= 44 && box.height >= 42, `${selector} retains a usable target: ${JSON.stringify(box)}`);
+    await browser.evaluate(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center',behavior:'instant'})`);
+    assert.ok(await browser.evaluate(`(() => {const el=document.querySelector(${JSON.stringify(selector)}),r=el.getBoundingClientRect();return !el.matches(':disabled')&&el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})()`), `${selector} is covered or disabled`);
+  }
+}
+
+export async function checkShowcaseEdgeGeometry(browser: Browser, route: string, width: number, scenario: ShowcaseGeometryScenario) {
+  const desktop = width >= 1024;
+  if (route.startsWith('/studio/')) {
+    await browser.wait(scenario === 'long-labels'
+      ? `document.querySelector('[data-testid="showcase-card-art"]')`
+      : `document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent===${JSON.stringify({
+        missing: 'No HYPE Card linked', unavailable: 'HYPE Card unavailable', ambiguous: 'Choose a HYPE Card', 'not-shared': 'HYPE Card not shared',
+      }[scenario as 'missing' | 'unavailable' | 'ambiguous' | 'not-shared'])}`);
+    await bounded(browser, '.ps', desktop ? 880 : width);
+    await bounded(browser, '.ps-desktop-bounded', desktop ? 880 : width);
+    await readable(browser, byId('link-back-supporter-dashboard'), true);
+    if (scenario === 'long-labels') {
+      assert.equal(await browser.evaluate(`document.querySelector('.ps__card-only-team').textContent`), longShowcaseLabels.teamName);
+      await readable(browser, '.ps__card-only-team');
+      await bounded(browser, byId('showcase-card-art'), desktop ? 260 : width, false);
+      await proportion(browser, byId('showcase-card-art'), 2 / 3);
+      for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) await readable(browser, byId(id), true);
+    } else {
+      await bounded(browser, '.ps__card-unavailable', 460, false);
+      for (const selector of ['.ps__card-unavailable strong', '.ps__card-unavailable > span']) await readable(browser, selector);
+      if (scenario === 'ambiguous') {
+        // Both picker placements must stay bounded, even with long native options.
+        for (const selector of ['.ps__card-only > .ps__card-picker', '.ps__card-unavailable .ps__card-picker']) {
+          await bounded(browser, selector, selector.includes(' > ') ? 520 : 360, false);
+          await readable(browser, `${selector} select`, true);
+          assert.deepEqual(await browser.evaluate(`Array.from(document.querySelector(${JSON.stringify(selector + ' select')}).options).slice(1).map(o=>o.textContent.trim())`), [
+            `Soccer · ${longShowcaseLabels.seasonName} · Regional qualification`,
+            `Soccer · ${longShowcaseLabels.seasonName} · National championship`,
+          ]);
+        }
+      } else {
+        await readable(browser, byId('link-showcase-card-edit-unavailable'), true);
+        if (scenario === 'unavailable') await readable(browser, byId('button-showcase-card-retry'), true);
+      }
+    }
+  } else if (route.startsWith('/showcase/')) {
+    if (scenario === 'unavailable') {
+      await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
+      await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
+      await readable(browser, '.public-showcase__state-panel h1');
+      await readable(browser, byId('button-public-showcase-retry'), true);
+    } else {
+      await browser.wait(`document.querySelector('.living-card-frame')`);
+      await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
+      await bounded(browser, '.public-showcase__topbar', desktop ? 960 : width);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), longShowcaseLabels.athleteName + '.');
+      await readable(browser, byId('text-public-showcase-name'));
+      await readable(browser, '.public-showcase__identity');
+      await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
+      await proportion(browser, '.living-card-frame', 2 / 3);
+      await readable(browser, byId('link-owner-back-to-showcase'), true);
+    }
+  } else if (route.startsWith('/player/')) {
+    await browser.wait(`document.querySelector('[data-testid="fan-card-appearance-manager"]')`);
+    await bounded(browser, '.ps-owner-manage', desktop ? 880 : width);
+    await bounded(browser, byId('fan-card-appearance-manager'), 360);
+    await proportion(browser, byId('classic-card-preview-surface'), 3 / 4);
+    await readable(browser, byId('button-hype-manager-design'), true);
+  } else {
+    await browser.wait(`document.querySelector('.living-card-frame')`);
+    await bounded(browser, '.living-card-main', desktop ? 960 : width);
+    await bounded(browser, '.living-card-stage', desktop ? 440 : width);
+    await proportion(browser, '.living-card-frame', 2 / 3);
+  }
+  await contained(browser);
+  assert.deepEqual(await browser.evaluate('window.__unexpectedRequests'), [], 'Edge fixtures must explicitly handle all requests');
 }
 
 // Real CDP clicks catch covered/unclickable controls; element.click() would not.

@@ -38,3 +38,9 @@ Back-to-back test-owned Vite/Chromium fixtures can intermittently time out at an
 **Why:** A visible text dump alone cannot distinguish a missing attribute from a transient CDP/fixture startup condition.
 
 **How to apply:** On an initial-element timeout, inspect the page's actual test IDs and rerun the focused fixture once before changing product code.
+
+Text ranges can extend vertically beyond a heading's CSS line box when condensed display fonts use a tight line-height, without any visible clipping.
+
+**Why:** Treating every glyph-range overhang as clipping produced false failures for ordinary short headings as well as long labels.
+
+**How to apply:** Check horizontal text containment for wrapping labels; require vertical containment for bounded action controls, or check actual clipping ancestors before diagnosing a heading as unreadable.

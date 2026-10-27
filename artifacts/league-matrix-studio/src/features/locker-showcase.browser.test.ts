@@ -7,8 +7,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { monitorProcess, waitForUrl } from './browser-test-diagnostics';
-import { showcaseResponsiveFixture } from './showcase-responsive-fixture';
-import { checkResponsiveRoute, responsiveRoutes } from './showcase-responsive-checks';
+import { showcaseResponsiveFixture, showcaseGeometryScenarios } from './showcase-responsive-fixture';
+import { checkResponsiveRoute, checkShowcaseEdgeGeometry, responsiveRoutes } from './showcase-responsive-checks';
 
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const base = '/locker-check';
@@ -241,14 +241,19 @@ test('Showcase responsive geometry stays compact across owner/public route impor
     const orders = [responsiveRoutes, [...responsiveRoutes].reverse()];
     for (const width of [390, 430, 1024, 1280, 1600]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
-      for (const [orderIndex, routes] of orders.entries()) {
-        await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?route=${encodeURIComponent(routes[0])}` });
-        await browser.wait(`typeof window.__navigate==='function'`);
-        for (const [routeIndex, route] of routes.entries()) {
-          await t.test(`${width}px order ${orderIndex + 1}: ${route}`, async () => {
-            if (routeIndex) await browser!.evaluate(`window.__navigate(${JSON.stringify(base + route)})`);
-            await checkResponsiveRoute(browser!, route, width);
-          });
+      for (const scenario of showcaseGeometryScenarios) {
+        for (const [orderIndex, order] of orders.entries()) {
+          const routes = scenario === 'linked' || scenario === 'long-labels' ? order
+            : order.filter(route => route.startsWith('/studio/') || (scenario === 'unavailable' && route.startsWith('/showcase/')));
+          await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?scenario=${scenario}&route=${encodeURIComponent(routes[0])}` });
+          await browser.wait(`typeof window.__navigate==='function'`);
+          for (const [routeIndex, route] of routes.entries()) {
+            await t.test(`${width}px ${scenario} order ${orderIndex + 1}: ${route}`, async () => {
+              if (routeIndex) await browser!.evaluate(`window.__navigate(${JSON.stringify(base + route)})`);
+              if (scenario === 'linked') await checkResponsiveRoute(browser!, route, width);
+              else await checkShowcaseEdgeGeometry(browser!, route, width, scenario);
+            });
+          }
         }
       }
     }

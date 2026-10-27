@@ -1,3 +1,11 @@
+export const showcaseGeometryScenarios = ['linked', 'long-labels', 'missing', 'unavailable', 'ambiguous', 'not-shared'] as const;
+export type ShowcaseGeometryScenario = typeof showcaseGeometryScenarios[number];
+export const longShowcaseLabels = {
+  athleteName: 'Alexandria-Montgomery Maximiliana Worthington-Smythe',
+  teamName: 'NorthwesternInternationalChampionshipAcademy United Development Club',
+  seasonName: 'FallWinterInternationalChampionshipQualificationSeason 2026–2027',
+};
+
 // Deliberately no static route imports: each fresh document exercises a different
 // first-import order, just as the lazy production routes do.
 export function showcaseResponsiveFixture(base: string) {
@@ -9,15 +17,23 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {Router} from 'wouter';
 import './src/index.css';
 const profile={role:'fan',displayName:'Parent',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',jerseyNumber:'17',position:'Striker',relationship:'parent',sport:'soccer',accessMode:'full'};
+const scenario=new URLSearchParams(location.search).get('scenario')||'linked';
+if(scenario!=='linked') Object.assign(profile,${JSON.stringify(longShowcaseLabels)});
 window.__fixtureUser={id:'responsive-owner',firstName:'Parent',unsafeMetadata:profile};
 const card={inviteToken:'responsive-athlete',...profile,showHypeCard:true,showStats:true,showEvents:true,hypesEnabled:true,paused:false,photoUrl:null,cutoutUrl:null,cardAppearance:{design:'classic',jerseyNumber:'17'},timezone:'America/New_York',seasonEndsAt:'',projectId:null,replies:[],videos:[],scheduleEvents:[],events:[],favoriteMoment:null,liveScoreboard:null,liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]}};
+const ownerCards=scenario==='missing'?[]:scenario==='ambiguous'?
+  [{...card,seasonName:profile.seasonName+' · Regional qualification'},{...card,inviteToken:'responsive-alternate',seasonName:profile.seasonName+' · National championship'}]:
+  [{...card,showHypeCard:scenario!=='not-shared'}];
 window.__unexpectedRequests=[];
 window.fetch=async(input,init)=>{
   const path=new URL(typeof input==='string'?input:input.url,location.origin).pathname;
   let data;
   if(init?.method && init.method!=='GET') throw new Error('Geometry checks must not write data: '+path);
-  if(path.endsWith('/athlete-invites')) data=[card];
-  else if(path.endsWith('/responsive-athlete/fan')) data=card;
+  if(path.endsWith('/athlete-invites')) data=ownerCards;
+  else if(path.endsWith('/responsive-athlete/fan')) {
+    if(scenario==='unavailable') return new Response(JSON.stringify({error:'Fixture card unavailable'}),{status:503,headers:{'Content-Type':'application/json'}});
+    data=card;
+  }
   else if(path.endsWith('/projects')||path.endsWith('/hypes')||path.endsWith('/public-shoutouts')||path.endsWith('/live-tap-access-links')||path.endsWith('/hype-card-shares')) data=[];
   else if(path.endsWith('/editor-access')) data={status:'not_invited',emailAddress:null,projectId:null,updatedAt:null};
   else {window.__unexpectedRequests.push(path);throw new Error('Unstubbed geometry request: '+path);}
