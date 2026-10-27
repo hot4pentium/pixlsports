@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
+import { getHypeCardBackNavigation } from './hype-card-back-navigation';
+import { resolveHypeCardAthleteName } from './hype-card-appearance';
 
 const source = readFileSync(new URL('./athlete-invite.tsx', import.meta.url), 'utf8');
 const athleteDraftSource = readFileSync(new URL('./athlete-video-draft.ts', import.meta.url), 'utf8');
@@ -12,6 +16,68 @@ const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/at
 const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', import.meta.url), 'utf8');
 const eventNotificationsSource = readFileSync(new URL('./owner-event-notifications.tsx', import.meta.url), 'utf8');
 const supporterDashboardSource = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+const showcaseSource = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
+const livingControlsSource = readFileSync(new URL('./living-card-controls.tsx', import.meta.url), 'utf8');
+
+// Execute the actual identity declarations/effect without importing Vite assets,
+// Clerk, or the page's unrelated UI. AST selection ignores whitespace/formatting.
+const livingCardAst = ts.createSourceFile('living-athlete-card.tsx', livingCardSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+function findNodes(predicate: (node: ts.Node) => boolean, ast: ts.SourceFile = livingCardAst) {
+  const matches: ts.Node[] = [];
+  function visit(node: ts.Node) {
+    if (predicate(node)) matches.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  return matches;
+}
+
+async function runProfileSync({
+  embedded = false, ownedInvites = [], profileName = ' Current Athlete ', pending = false,
+  fail = false,
+}: {
+  embedded?: boolean; ownedInvites?: Array<Record<string, unknown>>;
+  profileName?: string; pending?: boolean; fail?: boolean;
+} = {}) {
+  const declarations = ['ownerInvite', 'profileAthleteName', 'displayAthleteName', 'profileNameSyncKey']
+    .map((name) => {
+      const matches = findNodes((node) => ts.isVariableDeclaration(node) && node.name.getText(livingCardAst) === name);
+      assert.equal(matches.length, 1, `identity declaration ${name} exists once`);
+      return `const ${matches[0].getText(livingCardAst)};`;
+    });
+  const effects = findNodes((node) => ts.isCallExpression(node)
+    && node.expression.getText(livingCardAst) === 'useEffect'
+    && node.arguments[0]?.getText(livingCardAst).includes('updateInvite.mutateAsync'));
+  assert.equal(effects.length, 1, 'one owner profile synchronization effect');
+  const writes: Array<{ inviteToken: string; data: Record<string, unknown> }> = [];
+  const invalidations: unknown[] = [];
+  const errors: boolean[] = [];
+  const context = {
+    embedded, ownedInvites, inviteToken: 'shared-athlete',
+    invite: { athleteName: 'Published Athlete' },
+    profile: { athleteName: profileName }, resolveHypeCardAthleteName,
+    profileNameSyncAttemptRef: { current: '' },
+    setProfileNameSyncError: (error: boolean) => errors.push(error),
+    updateInvite: {
+      isPending: pending,
+      mutateAsync: async (input: (typeof writes)[number]) => {
+        writes.push(input);
+        if (fail) throw new Error('Save failed');
+      },
+    },
+    queryClient: { invalidateQueries: async (input: unknown) => { invalidations.push(structuredClone(input)); } },
+    getListAthleteInvitesQueryKey: () => ['owned-invites'],
+    getGetAthleteFanCardQueryKey: (token: string) => ['fan-card', token],
+  };
+  const script = ts.transpileModule([
+    ...declarations,
+    `const sync = ${(effects[0] as ts.CallExpression).arguments[0].getText(livingCardAst)};`,
+    'sync(); sync(); ({ displayAthleteName });',
+  ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const result = runInNewContext(script, context) as { displayAthleteName: string };
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  return { ...result, writes, invalidations, errors };
+}
 
 test('HYPE Card creation directs athlete photo uploads to its manager, not Athlete Profile', () => {
   assert.match(source, /data-testid="first-card-photo-guidance"/);
@@ -57,6 +123,10 @@ test('Player Showcase HYPE Card back actions use consistent Player Showcase nami
 });
 
 test('HYPE Card back navigation distinguishes owner Showcase from public Showcase', () => {
+  assert.equal(getHypeCardBackNavigation('athlete/token', true).href, '/studio/player-showcase');
+  assert.equal(getHypeCardBackNavigation('athlete/token', false).href, '/showcase/athlete%2Ftoken');
+  assert.equal(getHypeCardBackNavigation('athlete/token', false, '?from=player-showcase').href, '/studio/player-showcase');
+  assert.match(showcaseSource, /cardPublicHref=[^\n]*\?from=player-showcase/);
   assert.match(
     livingCardSource,
     /<BackNavigationLink \{\.\.\.backNavigation\} variant="public"/,
@@ -114,15 +184,18 @@ test('new fan Shoutouts require public disclosure while older private responses 
   assert.match(source, /Fan Shoutouts/);
   assert.match(source, /Leave a reply/);
 });
-test('real Hype Card replaces the front slot with responses and moves flip under the card', () => {
-  assert.match(livingCardSource, /function LivingCardControls\(/);
+test('real Hype Card uses shared side controls below the card and retains private actions', () => {
+  assert.match(livingCardSource, /import \{ LivingCardControls,[^}]*\} from '\.\/living-card-controls'/);
   assert.doesNotMatch(livingCardSource, /controlsBelowCard/);
   assert.match(livingCardSource, /<div className="living-card-frame-outer">[\s\S]*?<\/div>\s*<LivingCardControls/);
-  assert.match(livingCardSource, /data-testid="button-living-card-responses"/);
+  for (const side of ['responses', 'stats', 'live-taps', 'events']) {
+    assert.ok(livingControlsSource.includes(`button-living-card-${side}`), `${side} remains available`);
+  }
+  assert.match(livingControlsSource, /onSelectSide\?\.\(control\.side\)/);
+  assert.match(livingControlsSource, /aria-pressed=\{side === control\.side\}/);
   assert.match(livingCardSource, /data-testid="button-living-card-front"/);
   assert.match(livingCardSource, /data-design=\{cardAppearance\.design\}/);
   assert.match(livingCardSource, /living-card-responses-side/);
-  assert.match(livingCardSource, /button-living-card-live-taps/);
   assert.match(livingCardSource, /living-card-live-taps-side/);
   assert.match(livingCardSource, /family-link-required/);
   assert.match(livingCardSource, /The public HYPE Card link is view-only/);
@@ -206,7 +279,7 @@ test('the HYPE Card manager preserves the public page path and protected studio 
     hypeCardSource,
     /if \(linkedExport\) await handleExport\(url\);\s*if \(!isStatsOnly && !linkedExport\)/,
   );
-  assert.doesNotMatch(source, /Hype Card editor|studio\/hype-card/);
+  assert.doesNotMatch(publicPageSource, /studio\/hype-card/, 'public pages do not expose the protected editor');
   assert.match(
     appSource,
     /<Route path="\/studio\/hype-card\/:id\?"><ProtectedEditor kind="hype"><HypeCardEditor \/><\/ProtectedEditor><\/Route>/,
@@ -217,7 +290,13 @@ test('the HYPE Card manager preserves the public page path and protected studio 
   assert.match(source, /value=\{fanCardUrl\(invite\.inviteToken\)\}/);
   assert.match(appSource, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
   assert.match(appSource, /path="\/player\/:inviteToken" component=\{LegacyAthleteInviteRedirect\}/);
-  assert.match(source, /\{!existing && \(/);
+  const inviteAst = ts.createSourceFile('athlete-invite.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const createBranch = findNodes((node) => ts.isConditionalExpression(node)
+    && node.condition.getText(inviteAst) === 'existing'
+    && node.whenFalse.getText(inviteAst).includes('form-create-hype-card'), inviteAst);
+  assert.equal(createBranch.length, 1, 'creation is offered only when no existing card is present');
+  assert.ok((createBranch[0] as ts.ConditionalExpression).whenTrue.getText(inviteAst).includes('link-manage-athlete-card'),
+    'existing cards lead to management instead of creating duplicates');
   assert.match(source, /Create the HYPE Card/);
   assert.match(hypeCardSource, /shareMode === 'stats' && \([\s\S]*?Link Stats Project/);
   assert.match(hypeCardSource, /trackerProjectId: isStatsOnly && shareTrackerProjectId !== 'none'/);
@@ -332,30 +411,62 @@ test('Athlete Hype Pages cap active highlight videos at three', () => {
   assert.match(athleteApiSource, /\.limit\(maxHighlightVideos\)/);
 });
 
-test('shared card omits the intro headline while keeping the owner manage link', () => {
-  const introIndex = livingCardSource.indexOf('className="living-card-intro"');
-  const manageIndex = livingCardSource.indexOf('data-testid="link-manage-living-card"');
-  const layoutIndex = livingCardSource.indexOf('className="living-card-layout living-card-layout-solo"');
-  assert.ok(introIndex >= 0 && manageIndex > introIndex && manageIndex < layoutIndex);
-  assert.match(livingCardSource, /\{ownerInvite && \(\s*<div className="living-card-intro">\s*<Link className="living-card-manage"/);
-  assert.match(livingCardSource, /<span>Manage this athletic card<\/span><ArrowRight aria-hidden="true" \/>/);
+test('shared card has no management banner; management stays in the owner Showcase', () => {
+  assert.doesNotMatch(livingCardSource, /living-card-intro|link-manage-living-card|Manage this athletic card/);
+  assert.match(showcaseSource, /cardEditHref=\{cardSettingsHref\}/);
+  assert.match(showcaseSource, /\/player\/\$\{encodeURIComponent\(matchedInvite\.inviteToken\)\}\/manage#design/);
   assert.match(livingCardSource, /aria-label=\{`\$\{displayAthleteName\}'s HYPE Card`\}/);
   assert.doesNotMatch(livingCardSource, /One card\.|Every chapter\./);
-  assert.match(livingCardStyles, /\.living-card-manage \{[^}]*flex-wrap: nowrap/);
   assert.doesNotMatch(livingCardSource, /The same athlete, a new story after every game\. Keep this link close\./);
-  assert.doesNotMatch(
-    livingCardSource,
-    /className="living-card-story"[\s\S]*?data-testid="link-manage-living-card"/,
-  );
 });
 
-test('the live HYPE Card uses the owner profile name and syncs it to the shared invite', () => {
-  assert.match(livingCardSource, /const displayAthleteName = resolveHypeCardAthleteName\(\s*ownerInvite \? profileAthleteName : '',\s*invite\?\.athleteName \?\? '',\s*\)/);
-  assert.match(livingCardSource, /const ownerInvite = ownedInvites\?\.find\(\(item\) => item\.inviteToken === inviteToken\) \?\? null/);
-  assert.match(livingCardSource, /useUpdateAthleteInvite\(\)/);
-  assert.match(livingCardSource, /athleteName: profileAthleteName/);
-  assert.match(livingCardSource, /invalidateQueries\(\{ queryKey: getGetAthleteFanCardQueryKey\(inviteToken\) \}\)/);
+const ownedInvite = {
+  inviteToken: 'shared-athlete', athleteName: 'Previous Athlete',
+  teamName: 'Team', seasonName: 'Season', seasonEndsAt: '2027-12-31',
+  timezone: 'UTC', sport: 'soccer', trackerProjectId: 'private-tracker',
+  showHypeCard: true, showStats: false, showEvents: false, hypesEnabled: false, paused: true,
+};
+
+test('verified owner profile synchronization preserves privacy settings and refreshes both readers', async () => {
+  const result = await runProfileSync({ ownedInvites: [ownedInvite] });
+  assert.equal(result.displayAthleteName, 'Current Athlete');
+  assert.equal(result.writes.length, 1, 'repeated effects do not duplicate the write');
+  assert.equal(result.writes[0].inviteToken, ownedInvite.inviteToken);
+  assert.deepEqual({ ...result.writes[0].data }, {
+    ...Object.fromEntries(Object.entries(ownedInvite).filter(([key]) => key !== 'inviteToken')),
+    athleteName: 'Current Athlete', scheduleProjectId: null, showSchedule: false,
+  });
+  assert.deepEqual(result.invalidations, [
+    { queryKey: ['owned-invites'] }, { queryKey: ['fan-card', 'shared-athlete'] },
+  ]);
+  assert.deepEqual(result.errors, [false]);
   assert.match(livingCardSource, /athleteName=\{displayAthleteName\}/);
+});
+
+test('public, other-owner, and embedded cards never use or save the viewer profile', async () => {
+  for (const options of [
+    {},
+    { ownedInvites: [{ ...ownedInvite, inviteToken: 'another-athlete' }] },
+    { ownedInvites: [ownedInvite], embedded: true },
+  ]) {
+    const result = await runProfileSync(options);
+    assert.equal(result.displayAthleteName, 'Published Athlete');
+    assert.deepEqual(result.writes, []);
+    assert.deepEqual(result.invalidations, []);
+  }
+});
+
+test('owner name synchronization skips blank, unchanged, and in-flight updates and surfaces failures', async () => {
+  for (const options of [
+    { profileName: '   ' },
+    { profileName: ownedInvite.athleteName },
+    { pending: true },
+  ]) {
+    assert.deepEqual((await runProfileSync({ ownedInvites: [ownedInvite], ...options })).writes, []);
+  }
+  const failed = await runProfileSync({ ownedInvites: [ownedInvite], fail: true });
+  assert.deepEqual(failed.errors, [false, true]);
+  assert.deepEqual(failed.invalidations, [], 'failed saves must not claim refreshed shared data');
 });
 
 test('athlete pages retire schedule content and force retired API fields off', () => {
