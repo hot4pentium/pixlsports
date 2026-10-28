@@ -222,7 +222,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .account-loading-content {
-    animation: account-loading-reveal 0s linear 450ms backwards;
+    animation: none;
   }
 
   .account-loading-logo,

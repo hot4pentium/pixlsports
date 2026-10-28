@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -81,9 +81,10 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
          'window.__pixlStartupBlockedFrames ?? []',
          page.sessionId,
        );
-       assert.deepEqual(startupBlockedFrames, [], `the root route showed an account or route splash at ${width}px`);
+       assert.deepEqual(startupBlockedFrames, [], `the public home should stay on its landing page while Clerk initializes at ${width}px`);
+       assert.equal(await connection.evaluate('location.pathname', page.sessionId), '/', 'Clerk startup must not change the public home route');
       await connection.evaluate('document.fonts.ready', page.sessionId);
-       await waitFor(connection, page.sessionId, 'document.querySelector(".landing-athlete-render")?.naturalWidth === 1228', Boolean);
+       await waitFor(connection, page.sessionId, 'document.querySelector(".landing-athlete-render")?.naturalWidth === 583', Boolean);
        const heroCopy = await connection.evaluate<{ headline: string; description: string; obsoleteLabel: boolean; photoCaption: boolean; heroCardLabel: boolean }>(`(() => ({
         headline: document.querySelector('[data-testid="text-landing-headline"]')?.innerText || '',
          description: document.querySelector('.hero-description')?.innerText || '',
@@ -141,8 +142,8 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
           assert.match(installCopy, /Keep your game week close/);
           assert.match(installCopy, /Progressive Web App \(PWA\)/);
           assert.match(installCopy, /Add PIXL to your Home Screen/);
-         assert.match(installCopy, /iPhone & iPad/);
-         assert.match(installCopy, /Android/);
+         assert.match(installCopy, /iPhone & iPad/i);
+         assert.match(installCopy, /Android/i);
           assert.doesNotMatch(installCopy, /HTTPS|App Store|Google Play review|safety/i);
           assert.equal(await connection.evaluate<boolean>(
             `(() => {
@@ -158,7 +159,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
             page.sessionId,
           ), true, 'visitors should see and try PIXL before the Home Screen install section');
        }
-      await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
+      await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 583`, Boolean);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number; hypeCardBeforeOffline: boolean;
         heroSports: string[]; heroSportsAboveRibbon: boolean; heroSportsOffPhoto: boolean;
@@ -175,7 +176,7 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
           return Boolean(sports && ribbon && sports.bottom <= ribbon.top + 1);
         })(),
         heroSportsOffPhoto: !document.querySelector('.hero-image-frame [data-testid="hero-supported-sports"]'),
-        fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 1228,
+        fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 583,
         cardSides: [...document.querySelectorAll('.landing-hype-card-tab > span')].map(label => label.textContent?.replace(/\\s+/g, ' ').trim() || ''),
         cardTabLayout: (() => {
           const card = document.querySelector('.landing-hype-card-art')?.getBoundingClientRect();
@@ -304,7 +305,8 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
               await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=text-demo-follow-stat-touchdown]')?.textContent === '2'`, Boolean);
               assert.equal(await connection.evaluate(`document.querySelector('[data-testid=text-demo-follow-teamScore]')?.textContent === '17'`, page.sessionId), true);
            } else {
-             await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=face-demo-hype-front] img')?.naturalWidth > 0`, Boolean);
+             await waitFor(connection, page.sessionId, `Boolean(document.querySelector('[data-testid=face-demo-hype-front] [data-testid=img-living-card-athlete] svg'))`, Boolean);
+             assert.equal(await connection.evaluate(`document.querySelector('[data-testid=face-demo-hype-front] [data-testid=img-living-card-athlete]')?.getAttribute('role')`, page.sessionId), 'img', 'the Hype Card front should render its inline athlete artwork');
               const controlsFit = await connection.evaluate<boolean>(`[...document.querySelectorAll('.pixl-demo-hype-controls button')].every(button => {
                 const bounds = button.getBoundingClientRect();
                 return [...button.children].every(child => {
@@ -387,6 +389,111 @@ test('landing layout, links, and mobile menu work across phone, tablet, and desk
     if (browserMonitor) await browserMonitor.waitForExit();
     if (!serverMonitor.hasExited()) server.kill('SIGTERM');
     await serverMonitor.waitForExit();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test('account-loading splash explains offline recovery and respects reduced motion', { timeout: 90_000 }, async () => {
+  const suffix = `account-loading-recovery-${process.pid}`;
+  const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
+  const htmlPath = resolve(appDirectory, `${suffix}.html`);
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-account-recovery-browser-'));
+  const port = await freePort();
+  const debugPort = await freePort();
+  const server = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+    cwd: appDirectory,
+    env: { ...process.env, PORT: String(port), BASE_PATH: '/' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const serverMonitor = monitorProcess(server, 'Account recovery Vite');
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: BrowserPage | undefined;
+  try {
+    await writeFile(sourcePath, `
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {AccountLoadingScreen} from './src/features/account-loading-screen';
+import './src/index.css';
+const root=createRoot(document.getElementById('root'));
+window.__retryCount=0;
+window.__setOnline=value=>{
+  Object.defineProperty(navigator,'onLine',{configurable:true,value});
+  window.dispatchEvent(new Event(value?'online':'offline'));
+};
+window.__showError=()=>root.render(<AccountLoadingScreen error onRetry={()=>window.__retryCount++}/>);
+root.render(<AccountLoadingScreen onRetry={()=>window.__retryCount++}/>);
+`);
+    await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
+    await waitForUrl(`http://127.0.0.1:${port}/`, 30_000, serverMonitor);
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Account recovery Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then(res => res.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+    const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
+    page = { targetId: target.targetId, sessionId: attached.sessionId };
+    connection.registerTarget(page.targetId, page.sessionId);
+    await connection.send('Page.enable', {}, page.sessionId);
+    await connection.send('Runtime.enable', {}, page.sessionId);
+    await connection.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    }, page.sessionId);
+    await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/${suffix}.html` }, page.sessionId);
+
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('Checking your account access')`, Boolean);
+    assert.equal(await connection.evaluate(`Boolean(document.querySelector('.account-loading-retry'))`, page.sessionId), false, 'a normal account check should not offer retry immediately');
+    const motion = await connection.evaluate<{ content: string; logo: string; progress: string }>(`(() => ({
+      content:getComputedStyle(document.querySelector('.account-loading-content')).animationName,
+      logo:getComputedStyle(document.querySelector('.account-loading-logo')).animationName,
+      progress:getComputedStyle(document.querySelector('.account-loading-progress')).animationName,
+      card:getComputedStyle(document.querySelector('.account-loading-dashboard-card')).animationName
+    }))()`, page.sessionId);
+    assert.equal(motion.content, 'none', 'reduced motion should not delay or animate the account splash');
+    assert.equal(motion.logo, 'none');
+    assert.equal(motion.progress, 'none');
+    assert.equal(motion.card, 'none');
+
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('Still checking your account')`, Boolean);
+    assert.equal(await connection.evaluate(`Boolean(document.querySelector('.account-loading-retry'))`, page.sessionId), true, 'a delayed account check should reveal retry');
+    const retryTransitionSeconds = await connection.evaluate<number>(`parseFloat(getComputedStyle(document.querySelector('.account-loading-retry')).transitionDuration)`, page.sessionId);
+    assert.ok(retryTransitionSeconds <= 0.00001, `reduced motion should keep retry transitions at or below 0.01ms, got ${retryTransitionSeconds}s`);
+    await connection.evaluate(`document.querySelector('.account-loading-retry').click()`, page.sessionId);
+    assert.equal(await connection.evaluate('window.__retryCount', page.sessionId), 1, 'retry should activate during a delayed account check');
+
+    await connection.evaluate('window.__setOnline(false)', page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('You are offline')`, Boolean);
+    assert.equal(await connection.evaluate(`Boolean(document.querySelector('.account-loading-retry'))`, page.sessionId), false, 'retry should be hidden until the device reconnects');
+    await connection.evaluate('window.__setOnline(true)', page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('Still checking your account')`, Boolean);
+    assert.equal(await connection.evaluate(`Boolean(document.querySelector('.account-loading-retry'))`, page.sessionId), true, 'reconnecting should restore the delayed-check retry');
+
+    await connection.evaluate('window.__showError()', page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('Could not check your account access')`, Boolean);
+    assert.equal(await connection.evaluate(`document.querySelector('.account-loading-screen')?.getAttribute('role')`, page.sessionId), 'alert');
+    assert.equal(await connection.evaluate(`Boolean(document.querySelector('.account-loading-retry'))`, page.sessionId), true, 'a failed account check should show retry');
+    await connection.evaluate('window.__setOnline(false)', page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('You are offline')`, Boolean);
+    assert.equal(await connection.evaluate(`Boolean(document.querySelector('.account-loading-retry'))`, page.sessionId), false);
+    await connection.evaluate('window.__setOnline(true)', page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dashboard-boot-status"]')?.textContent.includes('Could not check your account access')`, Boolean);
+    await connection.evaluate(`document.querySelector('.account-loading-retry').click()`, page.sessionId);
+    assert.equal(await connection.evaluate('window.__retryCount', page.sessionId), 2, 'retry should activate after reconnecting from a failed check');
+  } finally {
+    if (connection) {
+      if (page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+      connection.close();
+    }
+    if (browser && browserMonitor && !browserMonitor.hasExited()) browser.kill('SIGTERM');
+    if (browserMonitor) await browserMonitor.waitForExit();
+    if (!serverMonitor.hasExited()) server.kill('SIGTERM');
+    await serverMonitor.waitForExit();
+    await Promise.all([sourcePath, htmlPath].map(path => rm(path, { force: true })));
     await rm(profile, { recursive: true, force: true });
   }
 });
