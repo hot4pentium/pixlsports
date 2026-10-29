@@ -385,9 +385,15 @@ test('Showcase responsive geometry stays compact across owner/public route impor
     for (const width of [390, 430, 1024, 1280, 1600]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
       for (const scenario of showcaseGeometryScenarios) {
-        for (const [orderIndex, order] of orders.entries()) {
+        const focusedScenario = ['delayed-owner-invites', 'delayed-fan-card', 'retry-owner', 'retry-public'].includes(scenario);
+        if (focusedScenario && width !== 390 && width !== 1280) continue;
+        const scenarioOrders = focusedScenario ? [orders[0]] : orders;
+        for (const [orderIndex, order] of scenarioOrders.entries()) {
           const routes = scenario === 'linked' || scenario === 'long-labels' ? order
-            : order.filter(route => route.startsWith('/studio/') || (scenario === 'unavailable' && route.startsWith('/showcase/')));
+            : scenario === 'retry-public' ? order.filter(route => route.startsWith('/showcase/'))
+            : order.filter(route => route.startsWith('/studio/') || (
+              ['unavailable', 'delayed-fan-card', 'retry-public'].includes(scenario) && route.startsWith('/showcase/')
+            ));
           await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?scenario=${scenario}&route=${encodeURIComponent(routes[0])}` });
           await browser.wait(`typeof window.__navigate==='function'`);
           for (const [routeIndex, route] of routes.entries()) {

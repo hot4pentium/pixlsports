@@ -38,7 +38,7 @@ async function contained(browser: Browser) {
 
 // Check the actual text bounds too: overflow:hidden can hide broken labels
 // without making the document wider.
-async function readable(browser: Browser, selector: string, action = false) {
+async function readable(browser: Browser, selector: string, action = false, minimumFont = 11) {
   const box = await rect(browser, selector);
   assert.ok(box.x >= -1 && box.right <= box.viewport + 1, `${selector} escapes viewport: ${JSON.stringify(box)}`);
   const text = await browser.evaluate(`(() => {
@@ -49,7 +49,7 @@ async function readable(browser: Browser, selector: string, action = false) {
       fits:el.matches('select')||bounds.every(b=>b.left>=r.left-1&&b.right<=r.right+1&&(!${action}||(b.top>=r.top-1&&b.bottom<=r.bottom+1))),
       scrollFits:el.scrollWidth<=el.clientWidth+1&&(!${action}||el.scrollHeight<=el.clientHeight+1)};
   })()`);
-  assert.ok(text.label && text.font >= 11 && text.fits && text.scrollFits, `${selector} clips its label: ${JSON.stringify(text)}`);
+  assert.ok(text.label && text.font >= minimumFont && text.fits && text.scrollFits, `${selector} clips its label: ${JSON.stringify(text)}`);
   if (action) {
     assert.ok(box.width >= 44 && box.height >= 42, `${selector} retains a usable target: ${JSON.stringify(box)}`);
     await browser.evaluate(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center',behavior:'instant'})`);
@@ -59,7 +59,62 @@ async function readable(browser: Browser, selector: string, action = false) {
 
 export async function checkShowcaseEdgeGeometry(browser: Browser, route: string, width: number, scenario: ShowcaseGeometryScenario) {
   const desktop = width >= 1024;
-  if (route.startsWith('/studio/')) {
+  if (scenario === 'delayed-owner-invites') {
+    assert.ok(route.startsWith('/studio/'), 'Delayed owner-invite geometry runs on the owner Showcase');
+    await browser.wait(`typeof window.__pendingFixtureRequests['owner-invites']==='function'`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='Loading the saved card…'`);
+    await bounded(browser, '.ps', desktop ? 880 : width);
+    await bounded(browser, '.ps__card-unavailable', 460, false);
+    await readable(browser, '.ps__card-unavailable strong');
+    await readable(browser, '.ps__card-unavailable > span');
+    await browser.evaluate(`window.__releaseFixtureRequest('owner-invites')`);
+    await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"]')`);
+    await bounded(browser, byId('showcase-card-art'), desktop ? 390 : width, false);
+  } else if (scenario === 'delayed-fan-card') {
+    await browser.wait(`typeof window.__pendingFixtureRequests['fan-card']==='function'`);
+    if (route.startsWith('/studio/')) {
+      await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='Loading the saved card…'`);
+      await bounded(browser, '.ps', desktop ? 880 : width);
+      await bounded(browser, '.ps__card-unavailable', 460, false);
+      await readable(browser, '.ps__card-unavailable strong');
+      await readable(browser, '.ps__card-unavailable > span');
+    } else {
+      await browser.wait(`document.querySelector('[data-testid="status-public-showcase-loading"]')`);
+      await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
+      await readable(browser, '.public-showcase__loading-copy', false, 10);
+    }
+    await browser.evaluate(`window.__releaseFixtureRequest('fan-card')`);
+    if (route.startsWith('/studio/')) {
+      await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"]')`);
+      await bounded(browser, byId('showcase-card-art'), desktop ? 390 : width, false);
+    } else {
+      await browser.wait(`document.querySelector('.living-card-frame')`);
+      await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
+      await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
+    }
+  } else if (scenario === 'retry-owner') {
+    assert.ok(route.startsWith('/studio/'), 'Owner retry geometry runs on the owner Showcase');
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='HYPE Card unavailable'`);
+    await bounded(browser, '.ps__card-unavailable', 460, false);
+    await readable(browser, byId('button-showcase-card-retry'), true);
+    await click(browser, byId('button-showcase-card-retry'));
+    await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"]')`);
+    assert.equal(await browser.evaluate(`window.__fixtureAttempts.fanCard`), 2, 'Owner retry makes a second fan-card request');
+    await readable(browser, '.ps__card-only-team');
+    await bounded(browser, byId('showcase-card-art'), desktop ? 390 : width, false);
+  } else if (scenario === 'retry-public') {
+    assert.ok(route.startsWith('/showcase/'), 'Public retry geometry runs on the public Showcase');
+    await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
+    await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
+    await readable(browser, byId('button-public-showcase-retry'), true);
+    const attemptsBeforeRetry = await browser.evaluate(`window.__fixtureAttempts.fanCard`);
+    await click(browser, byId('button-public-showcase-retry'));
+    await browser.wait(`document.querySelector('.living-card-frame')`);
+    assert.ok(await browser.evaluate(`window.__fixtureAttempts.fanCard`) > attemptsBeforeRetry, 'Public retry makes a new fan-card request');
+    await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
+    await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]')?.textContent.includes(${JSON.stringify(longShowcaseLabels.athleteName)})`), 'Retry displays the successful athlete card');
+  } else if (route.startsWith('/studio/')) {
     await browser.wait(scenario === 'long-labels'
       ? `document.querySelector('[data-testid="showcase-card-art"]')`
       : `document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent===${JSON.stringify({
