@@ -27,7 +27,7 @@
 - [Vite artifact entrypoints](vite-artifact-entrypoints.md) — use a relative HTML module entry so root and subpath production builds resolve the same current app.
 - [OpenAPI path nesting](openapi-path-nesting.md) — successful codegen does not guarantee operations stayed under the intended route.
 - [Landing responsive browser checks](landing-responsive-browser-checks.md) — distinguish page containment from intentional internal ticker scrolling across phone and desktop widths.
-- [Public landing first paint](public-landing-first-paint.md) — show landing content while Clerk initializes; keep studio loading states off the public root route.
+- [Public landing first paint](public-landing-first-paint.md) — keep returning-session startup to one overlay while preserving public-first landing and the five-second splash floor.
 - [Centered Help content on phones](help-page-phone-width.md) — centered content in the flex-column page shell needs an explicit available width at small breakpoints.
 - [Supporter-only product boundary](supporter-only-product-boundary.md) — center the parent’s athlete journey; team stats stay advanced and meetings leave the product flow.
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.

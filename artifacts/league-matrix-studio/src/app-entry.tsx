@@ -56,8 +56,44 @@ function PrivateEntrySplashGate({ children }: { children: ReactNode }) {
   const isPrivateEntry = startedAt !== null;
   const shouldKeepSplash = isPrivateEntry
     && (!isLoaded || (Boolean(isSignedIn) && !minimumElapsed));
-  if (shouldKeepSplash) return <AccountLoadingScreen />;
-  return children;
+
+  return (
+    <>
+      <div
+        aria-hidden={shouldKeepSplash || undefined}
+        inert={shouldKeepSplash || undefined}
+        style={{ visibility: shouldKeepSplash ? 'hidden' : undefined }}
+      >
+        {children}
+      </div>
+      {shouldKeepSplash && (
+        <div
+          className="fixed inset-0 z-[100]"
+          data-testid="private-entry-splash-overlay"
+        >
+          <AccountLoadingScreen />
+        </div>
+      )}
+    </>
+  );
+}
+
+function EntryModuleLoadingState() {
+  return (
+    <div
+      className="grid place-items-center bg-background"
+      style={{ minHeight: '100svh' }}
+      role="status"
+      aria-label="Loading your studio"
+      data-testid="entry-module-loading"
+    >
+      <span
+        className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[#55a4ff]"
+        aria-hidden="true"
+      />
+      <span className="sr-only">Loading your studio…</span>
+    </div>
+  );
 }
 
 function SessionRoutes() {
@@ -83,7 +119,7 @@ function SessionRoutes() {
             <Switch>
               <Route path="/" component={HomeEntry} />
               <Route>
-                <Suspense fallback={<AccountLoadingScreen />}>
+                <Suspense fallback={<EntryModuleLoadingState />}>
                   <ApplicationRoutes />
                 </Suspense>
               </Route>

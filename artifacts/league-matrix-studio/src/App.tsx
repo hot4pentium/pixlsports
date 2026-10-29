@@ -4026,7 +4026,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     || waitingForFreshLifecycle
     || (isSignedIn && isLoading && !canUseCachedLifecycle)
   )) {
-    return <AccountLoadingScreen onRetry={isLoaded && isSignedIn ? () => void refetch() : undefined} />;
+    return <RouteLoadingState />;
   }
   if (isSignedIn && !bypassLifecycle && (isError || !lifecycle) && !canUseCachedLifecycle) {
     return <AccountLoadingScreen error onRetry={() => void refetch()} />;
@@ -4062,7 +4062,7 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
   const athleteOnlyPath = location === '/studio/player-showcase'
     || location === '/studio/player-showcase/hype-card'
     || /^\/studio\/player-showcase\/hype-card\/[^/]+$/.test(location);
-  if (location.startsWith('/studio') && !isLoaded) return <AccountLoadingScreen />;
+  if (location.startsWith('/studio') && !isLoaded) return <RouteLoadingState />;
   if (retiredGearPath) return <Redirect to="/studio/player-showcase" />;
   if (isSignedIn && user && isAthleteEditorAccount(user)) {
     return athleteOnlyPath ? <>{children}</> : <Redirect to="/studio/player-showcase" />;

@@ -27,6 +27,12 @@ For a returning signed-in session, keep the private-entry splash visible for at 
 
 **How to apply:** Start timing in the static HTML shell and let the React startup gate wait for both the minimum duration and Clerk's signed-in confirmation. Increase the offline-shell cache version when changing the HTML startup timestamp.
 
+For a returning private session, keep one full-screen splash mounted as an overlay while the app tree initializes behind it. Keep the covered tree visually hidden, inert, and excluded from assistive technology until Clerk is loaded; signed-in sessions retain the five-second minimum, while confirmed signed-out visitors proceed without an added delay. Routine route and lifecycle loading beneath the overlay should use compact progress states, not another full-screen splash. Account access still depends on server-verified lifecycle state.
+
+**Why:** The installed app showed the same splash three times because the startup gate, lazy-module fallback, and account-lifecycle gate each rendered it in sequence.
+
+**How to apply:** Preserve the single overlay and the hidden/inert boundary when changing startup, auth, or route-loading behavior. Verify delayed session restoration and ensure private content stays inaccessible while covered.
+
 Keep the full account splash for genuine startup/session verification only. Lazy screen-to-screen navigation should use a compact progress state instead of briefly replaying the full-screen splash.
 
 **Why:** The user said seeing the splash flash between screens is jarring.
