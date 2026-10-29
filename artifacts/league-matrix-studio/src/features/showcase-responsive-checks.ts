@@ -45,7 +45,9 @@ async function readable(browser: Browser, selector: string, action = false, mini
     const el=document.querySelector(${JSON.stringify(selector)}),r=el.getBoundingClientRect();
     const range=document.createRange();range.selectNodeContents(el);
     const bounds=Array.from(range.getClientRects()).filter(b=>b.width&&b.height);
-    return {label:el.matches('select')?el.selectedOptions[0]?.textContent:el.textContent.trim(),font:parseFloat(getComputedStyle(el).fontSize),
+    return {label:el.matches('select')?el.selectedOptions[0]?.textContent:el.textContent.trim(),font:parseFloat(getComputedStyle(el).fontSize),lineHeight:getComputedStyle(el).lineHeight,
+      box:{width:r.width,height:r.height,scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight},
+      textBounds:bounds.map(b=>({left:b.left,right:b.right,top:b.top,bottom:b.bottom,width:b.width,height:b.height})),
       fits:el.matches('select')||bounds.every(b=>b.left>=r.left-1&&b.right<=r.right+1&&(!${action}||(b.top>=r.top-1&&b.bottom<=r.bottom+1))),
       scrollFits:el.scrollWidth<=el.clientWidth+1&&(!${action}||el.scrollHeight<=el.clientHeight+1)};
   })()`);
@@ -191,6 +193,93 @@ async function click(browser: Browser, selector: string) {
   assert.ok(point.hit && !point.disabled, `${selector} is not usable: ${JSON.stringify(point)}`);
   await browser.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: point.x, y: point.y, button: 'left', clickCount: 1 });
   await browser.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x, y: point.y, button: 'left', clickCount: 1 });
+}
+
+async function keyboardFocusable(browser: Browser, selector: string) {
+  const target = await browser.evaluate(`(() => {
+    const el=document.querySelector(${JSON.stringify(selector)});
+    if(!el) throw new Error('Missing keyboard target: '+${JSON.stringify(selector)});
+    const visible=element=>{
+      const style=getComputedStyle(element),r=element.getBoundingClientRect();
+      return style.display!=='none'&&style.visibility!=='hidden'&&r.width>0&&r.height>0;
+    };
+    const candidates=Array.from(document.querySelectorAll('a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')).filter(visible);
+    const index=candidates.indexOf(el);
+    if(index<0) throw new Error('Target is not in the keyboard tab order: '+${JSON.stringify(selector)});
+    if(index===0) document.body.tabIndex=-1;
+    (index===0?document.body:candidates[index-1]).focus();
+    return {index,tag:el.tagName};
+  })()`);
+  assert.ok(target.index >= 0, `${selector} is in the tab order`);
+  await browser.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  await browser.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  assert.ok(await browser.evaluate(`document.activeElement===document.querySelector(${JSON.stringify(selector)})`), `${selector} receives keyboard focus with Tab`);
+}
+
+async function enlargeText(browser: Browser, selectors: string[]) {
+  const sizes = await browser.evaluate(`(() => {
+    const selectors=${JSON.stringify(selectors)};
+    return selectors.map(selector=>{
+      const el=document.querySelector(selector);
+      if(!el) throw new Error('Missing enlarged-text target: '+selector);
+      const before=parseFloat(getComputedStyle(el).fontSize);
+      el.style.setProperty('font-size',(before*2)+'px','important');
+      return {selector,before,after:parseFloat(getComputedStyle(el).fontSize)};
+    });
+  })()`);
+  for (const size of sizes) {
+    assert.equal(size.after, size.before * 2, `${size.selector} uses 200% text: ${JSON.stringify(size)}`);
+  }
+}
+
+export async function checkShowcaseEnlargedText(
+  browser: Browser,
+  route: string,
+  width: number,
+  scenario: 'long-labels' | 'ambiguous' | 'retry-public',
+) {
+  const desktop = width >= 1024;
+  if (scenario === 'long-labels') {
+    assert.ok(route.startsWith('/studio/'), 'Enlarged owner-label checks run on the owner Showcase');
+    await browser.wait(`document.querySelector('[data-testid="showcase-card-art"]')`);
+    await enlargeText(browser, ['.ps__card-only-team', byId('link-showcase-card-edit'), byId('link-showcase-card-public')]);
+    assert.equal(await browser.evaluate(`document.querySelector('.ps__card-only-team').textContent`), longShowcaseLabels.teamName);
+    await readable(browser, '.ps__card-only-team');
+    for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) {
+      await readable(browser, byId(id), true);
+      await keyboardFocusable(browser, byId(id));
+    }
+    await bounded(browser, '.ps', desktop ? 880 : width);
+  } else if (scenario === 'ambiguous') {
+    assert.ok(route.startsWith('/studio/'), 'Enlarged picker checks run on the owner Showcase');
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='Choose a HYPE Card'`);
+    const pickers = ['.ps__card-only > .ps__card-picker', '.ps__card-unavailable .ps__card-picker'];
+    await enlargeText(browser, pickers.flatMap((selector) => [selector, `${selector} select`]));
+    for (const selector of pickers) {
+      await readable(browser, `${selector} select`, true);
+      await keyboardFocusable(browser, `${selector} select`);
+      assert.deepEqual(await browser.evaluate(`Array.from(document.querySelector(${JSON.stringify(`${selector} select`)}).options).slice(1).map(option=>option.textContent.trim())`), [
+        `Soccer · ${longShowcaseLabels.seasonName} · Regional qualification`,
+        `Soccer · ${longShowcaseLabels.seasonName} · National championship`,
+      ]);
+    }
+    await bounded(browser, '.ps', desktop ? 880 : width);
+  } else {
+    assert.ok(route.startsWith('/showcase/'), 'Enlarged retry checks run on the public Showcase');
+    await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
+    await enlargeText(browser, [
+      '.public-showcase__state-panel h1',
+      '.public-showcase__state-panel > p:not(.public-showcase__eyebrow)',
+      byId('button-public-showcase-retry'),
+    ]);
+    await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
+    await readable(browser, '.public-showcase__state-panel h1');
+    await readable(browser, '.public-showcase__state-panel > p:not(.public-showcase__eyebrow)');
+    await readable(browser, byId('button-public-showcase-retry'), true);
+    await keyboardFocusable(browser, byId('button-public-showcase-retry'));
+  }
+  await contained(browser);
+  assert.deepEqual(await browser.evaluate('window.__unexpectedRequests'), [], 'Enlarged-text fixtures must explicitly handle all requests');
 }
 
 async function cardSides(browser: Browser) {

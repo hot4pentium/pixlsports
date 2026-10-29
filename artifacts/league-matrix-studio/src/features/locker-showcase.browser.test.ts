@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { monitorProcess, waitForUrl } from './browser-test-diagnostics';
 import { showcaseResponsiveFixture, showcaseGeometryScenarios } from './showcase-responsive-fixture';
-import { checkResponsiveRoute, checkShowcaseEdgeGeometry, responsiveRoutes } from './showcase-responsive-checks';
+import { checkResponsiveRoute, checkShowcaseEdgeGeometry, checkShowcaseEnlargedText, responsiveRoutes } from './showcase-responsive-checks';
 
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const base = '/locker-check';
@@ -404,6 +404,69 @@ test('Showcase responsive geometry stays compact across owner/public route impor
             });
           }
         }
+      }
+    }
+
+  } finally {
+    browser?.close();
+    await stop(chromium);
+    await stop(vite);
+    await Promise.all([sourcePath, htmlPath, configPath].map((path) => rm(path, { force: true })));
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test('Showcase responsive geometry remains usable at 200% text', { timeout: 120_000 }, async (t) => {
+  const suffix = `showcase-enlarged-text-${process.pid}`;
+  const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
+  const htmlPath = resolve(appDirectory, `${suffix}.html`);
+  const configPath = resolve(appDirectory, `${suffix}.config.ts`);
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-showcase-enlarged-text-'));
+  const port = await availablePort();
+  const debugPort = await availablePort();
+  let vite: ChildProcess | undefined;
+  let chromium: ChildProcess | undefined;
+  let browser: Browser | undefined;
+  const cases = [
+    { scenario: 'long-labels', route: '/studio/player-showcase' },
+    { scenario: 'ambiguous', route: '/studio/player-showcase' },
+    { scenario: 'retry-public', route: '/showcase/responsive-athlete' },
+  ] as const;
+
+  try {
+    await writeFile(sourcePath, showcaseResponsiveFixture(base));
+    await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="./${suffix}.tsx"></script></body></html>`);
+    await writeFile(configPath, `import {mergeConfig} from 'vite';import original from './vite.config';export default mergeConfig(original,{plugins:[{name:'fixture-owner-identity',enforce:'pre',resolveId(id){if(id==='@clerk/react')return '\\0fixture-owner-identity';},load(id){if(id==='\\0fixture-owner-identity')return 'export function useUser(){return {user:window.__fixtureUser,isLoaded:true,isSignedIn:true}} export function useClerk(){return {signOut:async()=>{}}}';}}]});`);
+    vite = spawn('pnpm', ['exec', 'vite', '--config', configPath, '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(port), BASE_PATH: `${base}/`, VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_c2hvd2Nhc2UuZXhhbXBsZS5jb20k' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const viteMonitor = monitorProcess(vite, 'Enlarged-text Showcase Vite');
+    await waitForUrl(`http://127.0.0.1:${port}${base}/`, 25_000, viteMonitor);
+    chromium = spawn(process.env.CHROMIUM_PATH || 'chromium', [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const chromeMonitor = monitorProcess(chromium, 'Enlarged-text Showcase Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 15_000, chromeMonitor);
+    const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json() as Array<{ type: string; webSocketDebuggerUrl: string }>;
+    browser = await Browser.connect(tabs.find((tab) => tab.type === 'page')!.webSocketDebuggerUrl);
+    await browser.send('Page.enable');
+    await browser.send('Runtime.enable');
+    await browser.send('Log.enable');
+    await browser.send('Network.enable');
+
+    for (const width of [390, 1280]) {
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+      for (const { scenario, route } of cases) {
+        await browser.send('Page.navigate', {
+          url: `http://127.0.0.1:${port}${base}/${suffix}.html?scenario=${scenario}&route=${encodeURIComponent(route)}`,
+        });
+        await browser.wait(`typeof window.__navigate==='function'`);
+        await t.test(`${width}px 200% text ${scenario}: ${route}`, async () => {
+          await checkShowcaseEnlargedText(browser!, route, width, scenario);
+        });
       }
     }
   } finally {

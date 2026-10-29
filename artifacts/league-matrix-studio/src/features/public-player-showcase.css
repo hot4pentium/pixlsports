@@ -159,13 +159,13 @@
 }
 .public-showcase__footer > span:first-child { color: #b7c9dc; }
 .public-showcase__footer i { color: var(--ps-lime); font-style: normal; }
-.public-showcase--state { display: grid; place-items: center; padding: 24px; }
+.public-showcase--state { box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 24px; }
 .public-showcase__state-panel {
-  width: min(100%, 690px); padding: clamp(28px, 6vw, 64px); border: 1px solid rgba(85, 164, 255, .28);
+  box-sizing: border-box; min-width: 0; width: min(100%, 690px); padding: clamp(28px, 6vw, 64px); border: 1px solid rgba(85, 164, 255, .28);
   background: linear-gradient(135deg, rgba(18, 47, 80, .9), rgba(7, 22, 48, .94)); box-shadow: 16px 16px 0 rgba(2, 11, 24, .23);
 }
 .public-showcase__state-mark { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 24px; border: 1px solid var(--ps-blue); color: var(--ps-lime); font: 900 23px "Barlow Condensed", sans-serif; }
-.public-showcase__state-panel h1 { margin: 17px 0 12px; font: 800 clamp(40px, 7vw, 72px)/.9 "Barlow Condensed", sans-serif; text-transform: uppercase; }
+.public-showcase__state-panel h1 { margin: 17px 0 12px; font: 800 clamp(40px, 7vw, 72px)/1.25 "Barlow Condensed", sans-serif; overflow-wrap: anywhere; text-transform: uppercase; }
 .public-showcase__state-panel > p:not(.public-showcase__eyebrow) { max-width: 460px; color: #a9bdd3; font-size: 14px; line-height: 1.7; }
 .public-showcase__retry { display: inline-flex; align-items: center; gap: 10px; min-height: 46px; margin-top: 15px; padding: 0 17px; border: 0; background: var(--ps-lime); color: var(--ps-night); font: 800 11px "DM Sans", sans-serif; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
 .public-showcase__skeleton { background: linear-gradient(90deg, rgba(161, 193, 226, .07), rgba(161, 193, 226, .15), rgba(161, 193, 226, .07)); animation: public-showcase-pulse 1.5s ease-in-out infinite; }
