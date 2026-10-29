@@ -2,9 +2,9 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/breakout-card/Current.tsx": () => import("../components/mockups/breakout-card/Current.tsx"),
-  "./components/mockups/hype-manager-grid/Current.tsx": () => import("../components/mockups/hype-manager-grid/Current.tsx"),
   "./components/mockups/hype-card-controls/ArrowNavigation.tsx": () => import("../components/mockups/hype-card-controls/ArrowNavigation.tsx"),
   "./components/mockups/hype-card-controls/Current.tsx": () => import("../components/mockups/hype-card-controls/Current.tsx"),
+  "./components/mockups/hype-manager-grid/Current.tsx": () => import("../components/mockups/hype-manager-grid/Current.tsx"),
   "./components/mockups/live-tracker/RecipientView.tsx": () => import("../components/mockups/live-tracker/RecipientView.tsx"),
   "./components/mockups/pixl/PixlSportsMatchdayCommandVariant.tsx": () => import("../components/mockups/pixl/PixlSportsMatchdayCommandVariant.tsx"),
   "./components/mockups/pixl/PixlSportsResponsiveUnified.tsx": () => import("../components/mockups/pixl/PixlSportsResponsiveUnified.tsx"),
