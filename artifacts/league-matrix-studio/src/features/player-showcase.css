@@ -40,7 +40,7 @@
 .ps__card-links .ps__link:active{transform:translateY(0) scale(.99)}
 .ps__card-unavailable{grid-column:1/-1;display:grid;justify-items:start;gap:12px;max-width:460px;margin:auto;padding:28px;border-left:3px solid #dff56f;background:rgba(12,39,70,.8);color:#dce8f5}
 .ps__card-unavailable svg{color:#dff56f}
-.ps__card-unavailable strong{font:800 25px/1 "Barlow Condensed",sans-serif;text-transform:uppercase}
+.ps__card-unavailable h2{margin:0;font:800 25px/1 "Barlow Condensed",sans-serif;text-transform:uppercase}
 .ps__card-unavailable span{font-size:13px;line-height:1.6;color:#9fb4cc}
 .ps__card-unavailable .ps__link{border-radius:2px}
 .ps__card-picker{display:grid;gap:7px;min-width:0;width:min(100%,360px);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#b6c9de}

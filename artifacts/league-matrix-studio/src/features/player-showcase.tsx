@@ -89,17 +89,23 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
               </div>
             </div>
           ) : (
-            <div className="ps__card-unavailable" role="status" data-testid="status-showcase-card-unavailable">
+            <div
+              className="ps__card-unavailable"
+              role="status"
+              aria-labelledby="showcase-card-status-title"
+              aria-describedby="showcase-card-status-context"
+              data-testid="status-showcase-card-unavailable"
+            >
               <Zap size={24} aria-hidden="true" />
-              <strong>
+              <h2 id="showcase-card-status-title">
                 {cardStatus === 'loading' ? 'Loading the saved card…'
                   : cardStatus === 'unavailable' ? 'HYPE Card unavailable'
                     : cardStatus === 'ambiguous' ? 'Choose a HYPE Card'
                       : cardStatus === 'not-linked' ? 'No HYPE Card linked'
                         : cardStatus === 'not-shared' ? 'HYPE Card not shared'
                           : 'HYPE Card unavailable'}
-              </strong>
-              <span>
+              </h2>
+              <span id="showcase-card-status-context">
                 {cardStatus === 'loading' ? 'The saved HYPE Card is on its way.'
                   : cardStatus === 'not-linked' ? 'There is no HYPE Card linked to this athlete yet.'
                     : cardStatus === 'ambiguous' ? 'Several cards match this athlete and team. Compare sport and season, then choose the one for this Showcase.'
@@ -107,7 +113,7 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
                         : 'Card details stay private until sharing is active.'}
               </span>
               {(cardStatus === 'ambiguous' || (cardStatus === 'unavailable' && cardCandidates.length > 1)) && cardPicker}
-              {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" data-testid="button-showcase-card-retry">Try again</button>}
+              {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" aria-label={`Try again to load ${profile.athleteName}'s HYPE Card`} data-testid="button-showcase-card-retry">Try again</button>}
               {cardStatus !== 'ambiguous' && <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
                 {cardStatus === 'not-linked' ? 'Create HYPE Card' : 'Open HYPE Card'}
                 <ArrowRight size={15} aria-hidden="true" />

@@ -54,13 +54,19 @@ export function PublicPlayerShowcasePage({ params }: PublicPlayerShowcasePagePro
 
   if (isError || !invite) {
     return (
-      <main className="public-showcase public-showcase--state" role="alert" data-testid="status-public-showcase-unavailable">
+      <main
+        className="public-showcase public-showcase--state"
+        role="alert"
+        aria-labelledby="public-showcase-unavailable-title"
+        aria-describedby="public-showcase-unavailable-context"
+        data-testid="status-public-showcase-unavailable"
+      >
         <section className="public-showcase__state-panel public-showcase__state-panel--error">
           <span className="public-showcase__state-mark" aria-hidden="true">PS</span>
           <p className="public-showcase__eyebrow">A private-by-default share</p>
-          <h1>This showcase isn’t available.</h1>
-          <p>The link may have expired, or the athlete’s family may have paused sharing. Check with the person who sent it.</p>
-          {inviteToken && <button className="public-showcase__retry" type="button" onClick={() => void refetch()} data-testid="button-public-showcase-retry">Try again <ArrowUpRight size={16} aria-hidden="true" /></button>}
+          <h1 id="public-showcase-unavailable-title">This showcase isn’t available.</h1>
+          <p id="public-showcase-unavailable-context">The link may have expired, or the athlete’s family may have paused sharing. Check with the person who sent it.</p>
+          {inviteToken && <button className="public-showcase__retry" type="button" aria-label="Try again to load this showcase" onClick={() => void refetch()} data-testid="button-public-showcase-retry">Try again <ArrowUpRight size={16} aria-hidden="true" /></button>}
         </section>
       </main>
     );

@@ -16,7 +16,7 @@
   :root .ps__card-links .ps__link { min-height: 46px; font-size: 14px; }
   :root .ps__card-links .ps__link svg { width: 22px; height: 22px; flex-basis: 22px; }
   :root .ps__card-unavailable { padding: 22px; }
-  :root .ps__card-unavailable strong { font-size: 22px; }
+  :root .ps__card-unavailable h2 { font-size: 22px; }
   .ps-desktop-bounded { max-width: 880px !important; }
   .ps-desktop-bounded [data-testid="panel-share-public-showcase"] { padding: 16px 20px; }
   .ps-desktop-bounded [data-testid="panel-share-public-showcase"] h2 { font-size: 20px; }

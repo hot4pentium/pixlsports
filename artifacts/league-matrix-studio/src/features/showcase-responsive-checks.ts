@@ -8,6 +8,47 @@ type Browser = {
 };
 const byId = (id: string) => `[data-testid="${id}"]`;
 
+async function accessibilityNode(browser: Browser, selector: string) {
+  const evaluated = await browser.send('Runtime.evaluate', {
+    expression: `document.querySelector(${JSON.stringify(selector)})`,
+    returnByValue: false,
+  });
+  const objectId = evaluated.result?.objectId;
+  assert.ok(objectId, `Accessibility target exists: ${selector}`);
+  const described = await browser.send('DOM.describeNode', { objectId });
+  const backendDOMNodeId = described.node?.backendNodeId;
+  assert.ok(backendDOMNodeId, `Accessibility target has a DOM node: ${selector}`);
+  const tree = await browser.send('Accessibility.getFullAXTree');
+  const node = tree.nodes?.find((candidate: any) =>
+    candidate.backendDOMNodeId === backendDOMNodeId && !candidate.ignored,
+  );
+  assert.ok(node, `${selector} is present in the accessibility tree`);
+  return {
+    role: node.role?.value as string | undefined,
+    name: node.name?.value as string | undefined,
+    description: node.description?.value as string | undefined,
+  };
+}
+
+async function expectAccessible(
+  browser: Browser,
+  selector: string,
+  role: string,
+  name: string,
+  description?: RegExp,
+) {
+  const node = await accessibilityNode(browser, selector);
+  assert.equal(node.role, role, `${selector} exposes the ${role} role: ${JSON.stringify(node)}`);
+  assert.equal(
+    node.name?.replace(/\s+/g, ' ').trim().toLocaleLowerCase(),
+    name.replace(/\s+/g, ' ').trim().toLocaleLowerCase(),
+    `${selector} exposes the expected accessible name: ${JSON.stringify(node)}`,
+  );
+  if (description) {
+    assert.match(node.description ?? '', description, `${selector} exposes useful status context: ${JSON.stringify(node)}`);
+  }
+}
+
 async function rect(browser: Browser, selector: string) {
   const box = await browser.evaluate(`(() => {
     const el=document.querySelector(${JSON.stringify(selector)});
@@ -64,10 +105,10 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
   if (scenario === 'delayed-owner-invites') {
     assert.ok(route.startsWith('/studio/'), 'Delayed owner-invite geometry runs on the owner Showcase');
     await browser.wait(`typeof window.__pendingFixtureRequests['owner-invites']==='function'`);
-    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='Loading the saved card…'`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] h2')?.textContent==='Loading the saved card…'`);
     await bounded(browser, '.ps', desktop ? 880 : width);
     await bounded(browser, '.ps__card-unavailable', 460, false);
-    await readable(browser, '.ps__card-unavailable strong');
+    await readable(browser, '.ps__card-unavailable h2');
     await readable(browser, '.ps__card-unavailable > span');
     await browser.evaluate(`window.__releaseFixtureRequest('owner-invites')`);
     await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"]')`);
@@ -75,10 +116,10 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
   } else if (scenario === 'delayed-fan-card') {
     await browser.wait(`typeof window.__pendingFixtureRequests['fan-card']==='function'`);
     if (route.startsWith('/studio/')) {
-      await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='Loading the saved card…'`);
+      await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] h2')?.textContent==='Loading the saved card…'`);
       await bounded(browser, '.ps', desktop ? 880 : width);
       await bounded(browser, '.ps__card-unavailable', 460, false);
-      await readable(browser, '.ps__card-unavailable strong');
+      await readable(browser, '.ps__card-unavailable h2');
       await readable(browser, '.ps__card-unavailable > span');
     } else {
       await browser.wait(`document.querySelector('[data-testid="status-public-showcase-loading"]')`);
@@ -96,7 +137,9 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     }
   } else if (scenario === 'retry-owner') {
     assert.ok(route.startsWith('/studio/'), 'Owner retry geometry runs on the owner Showcase');
-    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='HYPE Card unavailable'`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] h2')?.textContent==='HYPE Card unavailable'`);
+    await expectAccessible(browser, byId('status-showcase-card-unavailable'), 'status', 'HYPE Card unavailable', /linked HYPE Card could not be loaded/i);
+    await expectAccessible(browser, byId('button-showcase-card-retry'), 'button', "Try again to load Alexandria-Montgomery Maximiliana Worthington-Smythe's HYPE Card");
     await bounded(browser, '.ps__card-unavailable', 460, false);
     await readable(browser, byId('button-showcase-card-retry'), true);
     await click(browser, byId('button-showcase-card-retry'));
@@ -107,6 +150,8 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
   } else if (scenario === 'retry-public') {
     assert.ok(route.startsWith('/showcase/'), 'Public retry geometry runs on the public Showcase');
     await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
+    await expectAccessible(browser, byId('status-public-showcase-unavailable'), 'alert', 'This showcase isn’t available.', /link may have expired.*paused sharing/i);
+    await expectAccessible(browser, byId('button-public-showcase-retry'), 'button', 'Try again to load this showcase');
     await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
     await readable(browser, byId('button-public-showcase-retry'), true);
     const attemptsBeforeRetry = await browser.evaluate(`window.__fixtureAttempts.fanCard`);
@@ -119,7 +164,7 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
   } else if (route.startsWith('/studio/')) {
     await browser.wait(scenario === 'long-labels'
       ? `document.querySelector('[data-testid="showcase-card-art"]')`
-      : `document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent===${JSON.stringify({
+      : `document.querySelector('[data-testid="status-showcase-card-unavailable"] h2')?.textContent===${JSON.stringify({
         missing: 'No HYPE Card linked', unavailable: 'HYPE Card unavailable', ambiguous: 'Choose a HYPE Card', 'not-shared': 'HYPE Card not shared',
       }[scenario as 'missing' | 'unavailable' | 'ambiguous' | 'not-shared'])}`);
     await bounded(browser, '.ps', desktop ? 880 : width);
@@ -131,14 +176,26 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
       await bounded(browser, byId('showcase-card-art'), desktop ? 260 : width, false);
       await proportion(browser, byId('showcase-card-art'), 2 / 3);
       for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) await readable(browser, byId(id), true);
+      await expectAccessible(browser, byId('link-showcase-card-edit'), 'link', 'Edit HYPE Card');
+      await expectAccessible(browser, byId('link-showcase-card-public'), 'link', 'Open public card');
+      await expectAccessible(browser, byId('button-copy-public-showcase'), 'button', 'Copy link');
     } else {
       await bounded(browser, '.ps__card-unavailable', 460, false);
-      for (const selector of ['.ps__card-unavailable strong', '.ps__card-unavailable > span']) await readable(browser, selector);
+      for (const selector of ['.ps__card-unavailable h2', '.ps__card-unavailable > span']) await readable(browser, selector);
+      const statusByScenario = {
+        missing: { name: 'No HYPE Card linked', context: /no HYPE Card linked to this athlete yet/i },
+        unavailable: { name: 'HYPE Card unavailable', context: /linked HYPE Card could not be loaded/i },
+        ambiguous: { name: 'Choose a HYPE Card', context: /several cards match.*compare sport and season/i },
+        'not-shared': { name: 'HYPE Card not shared', context: /Card details stay private until sharing is active/i },
+      } as const;
+      const status = statusByScenario[scenario as keyof typeof statusByScenario];
+      await expectAccessible(browser, byId('status-showcase-card-unavailable'), 'status', status.name, status.context);
       if (scenario === 'ambiguous') {
         // Both picker placements must stay bounded, even with long native options.
         for (const selector of ['.ps__card-only > .ps__card-picker', '.ps__card-unavailable .ps__card-picker']) {
           await bounded(browser, selector, selector.includes(' > ') ? 520 : 360, false);
           await readable(browser, `${selector} select`, true);
+          await expectAccessible(browser, `${selector} select`, 'combobox', 'Choose a HYPE Card for Alexandria-Montgomery Maximiliana Worthington-Smythe');
           assert.deepEqual(await browser.evaluate(`Array.from(document.querySelector(${JSON.stringify(selector + ' select')}).options).slice(1).map(o=>o.textContent.trim())`), [
             `Soccer · ${longShowcaseLabels.seasonName} · Regional qualification`,
             `Soccer · ${longShowcaseLabels.seasonName} · National championship`,
@@ -146,15 +203,21 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
         }
       } else {
         await readable(browser, byId('link-showcase-card-edit-unavailable'), true);
-        if (scenario === 'unavailable') await readable(browser, byId('button-showcase-card-retry'), true);
+        if (scenario === 'unavailable') {
+          await readable(browser, byId('button-showcase-card-retry'), true);
+          await expectAccessible(browser, byId('button-showcase-card-retry'), 'button', "Try again to load Alexandria-Montgomery Maximiliana Worthington-Smythe's HYPE Card");
+          await expectAccessible(browser, byId('status-showcase-card-unavailable'), 'status', 'HYPE Card unavailable', /linked HYPE Card could not be loaded/i);
+        }
       }
     }
   } else if (route.startsWith('/showcase/')) {
     if (scenario === 'unavailable') {
       await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
+      await expectAccessible(browser, byId('status-public-showcase-unavailable'), 'alert', 'This showcase isn’t available.', /link may have expired.*paused sharing/i);
       await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
       await readable(browser, '.public-showcase__state-panel h1');
       await readable(browser, byId('button-public-showcase-retry'), true);
+      await expectAccessible(browser, byId('button-public-showcase-retry'), 'button', 'Try again to load this showcase');
     } else {
       await browser.wait(`document.querySelector('.living-card-frame')`);
       await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
@@ -252,7 +315,7 @@ export async function checkShowcaseEnlargedText(
     await bounded(browser, '.ps', desktop ? 880 : width);
   } else if (scenario === 'ambiguous') {
     assert.ok(route.startsWith('/studio/'), 'Enlarged picker checks run on the owner Showcase');
-    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] strong')?.textContent==='Choose a HYPE Card'`);
+    await browser.wait(`document.querySelector('[data-testid="status-showcase-card-unavailable"] h2')?.textContent==='Choose a HYPE Card'`);
     const pickers = ['.ps__card-only > .ps__card-picker', '.ps__card-unavailable .ps__card-picker'];
     await enlargeText(browser, pickers.flatMap((selector) => [selector, `${selector} select`]));
     for (const selector of pickers) {
