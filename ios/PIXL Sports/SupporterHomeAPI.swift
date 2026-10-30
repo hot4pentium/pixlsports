@@ -20,6 +20,7 @@ struct AthleteFanEvent: Decodable, Identifiable {
     let status: String
     let opponent: String
     let location: String
+    let timezone: String?
 
     var id: String { shareToken }
 }
@@ -37,13 +38,36 @@ enum SupporterHomeAPI {
             throw SupporterHomeAPIError.invalidResponse
         }
     }
+
+    static func fetchPrivateEvent(
+        shareToken: String,
+        clerk: Clerk
+    ) async throws -> (schedule: NativeSupporterSchedule, event: AthleteFanEvent) {
+        let schedule = try await fetchPrivateSchedule(clerk: clerk)
+        guard schedule.status == "linked" else {
+            throw SupporterHomeAPIError.privateScheduleUnavailable
+        }
+        guard let event = schedule.events.first(where: { $0.shareToken == shareToken }) else {
+            throw SupporterHomeAPIError.eventUnavailable
+        }
+        return (schedule, event)
+    }
 }
 
 enum SupporterHomeAPIError: LocalizedError {
     case invalidResponse
+    case privateScheduleUnavailable
+    case eventUnavailable
 
     var errorDescription: String? {
-        "The PIXL Sports schedule returned information we couldn’t read. Please try again."
+        switch self {
+        case .invalidResponse:
+            return "The PIXL Sports schedule returned information we couldn’t read. Please try again."
+        case .privateScheduleUnavailable:
+            return "Reconnect the PIXL account that owns this Event Card to view its details."
+        case .eventUnavailable:
+            return "This Event Card is no longer available in your verified PIXL schedule."
+        }
     }
 }
 
@@ -55,6 +79,16 @@ extension AthleteFanEvent {
         formatter.dateFormat = "yyyy-MM-dd"
         guard let date = formatter.date(from: self.date) else { return self.date }
         formatter.dateFormat = "EEEE, MMMM d"
+        return formatter.string(from: date)
+    }
+
+    func formattedFullDate(timezone: String?) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: timezone ?? "") ?? .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: self.date) else { return self.date }
+        formatter.dateFormat = "EEEE, MMMM d, yyyy"
         return formatter.string(from: date)
     }
 

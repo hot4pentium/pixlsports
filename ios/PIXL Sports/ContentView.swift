@@ -1,7 +1,7 @@
 import SwiftUI
 import ClerkKit
 
-private enum SupporterHomeColors {
+enum SupporterHomeColors {
     static let background = Color(red: 0.035, green: 0.075, blue: 0.15)
     static let panel = Color(red: 0.075, green: 0.13, blue: 0.23)
     static let accent = Color(red: 0.72, green: 0.94, blue: 0.25)
@@ -21,30 +21,33 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [SupporterHomeColors.background, Color(red: 0.04, green: 0.11, blue: 0.22)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [SupporterHomeColors.background, Color(red: 0.04, green: 0.11, blue: 0.22)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    header
-                    accountConnectionSection
-                    nextEventSection
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 26) {
+                        header
+                        accountConnectionSection
+                        nextEventSection
+                    }
+                    .frame(maxWidth: 560, alignment: .leading)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 28)
+                    .padding(.bottom, 36)
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: 560, alignment: .leading)
-                .padding(.horizontal, 22)
-                .padding(.top, 28)
-                .padding(.bottom, 36)
-                .frame(maxWidth: .infinity)
-            }
-            .refreshable {
-                await viewModel.load(clerk: clerk)
+                .refreshable {
+                    await viewModel.load(clerk: clerk)
+                }
             }
         }
+        .toolbar(.hidden, for: .navigationBar)
         .preferredColorScheme(.dark)
         .task {
             await viewModel.load(clerk: clerk)
@@ -121,7 +124,12 @@ struct ContentView: View {
                 )
             } else {
                 VStack(alignment: .leading, spacing: 14) {
-                    eventCard(page: page, event: events[0].event, timing: events[0].timing)
+                    NavigationLink {
+                        SupporterEventDetailView(clerk: clerk, shareToken: events[0].event.shareToken)
+                    } label: {
+                        eventCard(page: page, event: events[0].event, timing: events[0].timing)
+                    }
+                    .buttonStyle(.plain)
 
                     if events.count > 1 {
                         Text("MORE UPCOMING")
@@ -234,15 +242,20 @@ struct ContentView: View {
 
                 Spacer()
 
-                if let seasonName = page.seasonName, !seasonName.isEmpty {
-                    Text(seasonName.uppercased())
-                        .font(.system(size: 10, weight: .heavy))
-                        .tracking(1.1)
-                        .foregroundStyle(.white.opacity(0.78))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color.white.opacity(0.09), in: Capsule())
-                        .lineLimit(1)
+                HStack(spacing: 8) {
+                    if let seasonName = page.seasonName, !seasonName.isEmpty {
+                        Text(seasonName.uppercased())
+                            .font(.system(size: 10, weight: .heavy))
+                            .tracking(1.1)
+                            .foregroundStyle(.white.opacity(0.78))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(Color.white.opacity(0.09), in: Capsule())
+                            .lineLimit(1)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(SupporterHomeColors.muted)
                 }
             }
 
@@ -263,8 +276,8 @@ struct ContentView: View {
                 .frame(height: 1)
 
             VStack(alignment: .leading, spacing: 13) {
-                eventDetail(icon: "calendar", text: event.formattedDate(timezone: page.timezone))
-                eventDetail(icon: "clock", text: event.formattedTime(timezone: page.timezone))
+                eventDetail(icon: "calendar", text: event.formattedDate(timezone: event.timezone ?? page.timezone))
+                eventDetail(icon: "clock", text: event.formattedTime(timezone: event.timezone ?? page.timezone))
                 eventDetail(
                     icon: "mappin.and.ellipse",
                     text: event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -290,51 +303,59 @@ struct ContentView: View {
                 }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName ?? "your athlete"), \(page.teamName ?? "team"), \(event.opponent), \(event.formattedDate(timezone: page.timezone)), \(event.formattedTime(timezone: page.timezone))")
+        .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName ?? "your athlete"), \(page.teamName ?? "team"), \(event.opponent), \(event.formattedDate(timezone: event.timezone ?? page.timezone)), \(event.formattedTime(timezone: event.timezone ?? page.timezone)), \(event.location). Tap to view details.")
     }
 
     private func compactEventCard(page: NativeSupporterSchedule, item: SupporterScheduleItem) -> some View {
-        HStack(alignment: .top, spacing: 13) {
-            Image(systemName: item.timing == .live ? "dot.radiowaves.left.and.right" : "calendar")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(SupporterHomeColors.accent)
-                .frame(width: 38, height: 38)
-                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        NavigationLink {
+            SupporterEventDetailView(clerk: clerk, shareToken: item.event.shareToken)
+        } label: {
+            HStack(alignment: .top, spacing: 13) {
+                Image(systemName: item.timing == .live ? "dot.radiowaves.left.and.right" : "calendar")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(SupporterHomeColors.accent)
+                    .frame(width: 38, height: 38)
+                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(item.event.title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("\(item.event.formattedDate(timezone: page.timezone)) · \(item.event.formattedTime(timezone: page.timezone))")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SupporterHomeColors.muted)
-                if !item.event.location.isEmpty {
-                    Text(item.event.location)
-                        .font(.system(size: 12))
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.event.title)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(item.event.formattedDate(timezone: item.event.timezone ?? page.timezone)) · \(item.event.formattedTime(timezone: item.event.timezone ?? page.timezone))")
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SupporterHomeColors.muted)
-                        .lineLimit(2)
+                    if !item.event.location.isEmpty {
+                        Text(item.event.location)
+                            .font(.system(size: 12))
+                            .foregroundStyle(SupporterHomeColors.muted)
+                            .lineLimit(2)
+                    }
                 }
+                Spacer(minLength: 0)
+                if item.timing == .live {
+                    Text("LIVE")
+                        .font(.system(size: 9, weight: .black))
+                        .tracking(1)
+                        .foregroundStyle(SupporterHomeColors.background)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(SupporterHomeColors.accent, in: Capsule())
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(SupporterHomeColors.muted.opacity(0.8))
             }
-            Spacer(minLength: 0)
-            if item.timing == .live {
-                Text("LIVE")
-                    .font(.system(size: 9, weight: .black))
-                    .tracking(1)
-                    .foregroundStyle(SupporterHomeColors.background)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(SupporterHomeColors.accent, in: Capsule())
+            .padding(15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
             }
         }
-        .padding(15)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-        }
-        .accessibilityElement(children: .combine)
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(item.event.title), \(item.event.formattedDate(timezone: item.event.timezone ?? page.timezone)), \(item.event.formattedTime(timezone: item.event.timezone ?? page.timezone)). View Event Card details.")
     }
 
     private func eventDetail(icon: String, text: String) -> some View {

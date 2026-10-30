@@ -10,7 +10,7 @@ const shares: AthleteEventShareRow[] = [
   {
     id: "game-share",
     title: "Tigers vs Bears",
-    events: [{ id: "game-1", date: "2099-04-01", time: "18:00", type: "game", opponent: "Bears", location: "Field 2" }],
+    events: [{ id: "game-1", date: "2099-04-01", time: "18:00", type: "game", opponent: "Bears", location: "Field 2", timezone: "America/Chicago", notes: "private prep", snacks: "private snacks" }],
   },
   {
     id: "practice-share",
@@ -52,7 +52,20 @@ test("event summaries retain safe schedule details and tracker final status", ()
     status: "final",
     opponent: "Bears",
     location: "Field 2",
+    timezone: "America/Chicago",
   });
   assert.equal(events[1]?.status, "upcoming");
   assert.equal(JSON.stringify(events).includes("private tracker data"), false);
+  assert.equal(JSON.stringify(events).includes("private prep"), false);
+  assert.equal(JSON.stringify(events).includes("private snacks"), false);
+});
+
+test("event summaries omit invalid event time zones", () => {
+  const events = mapAthleteEventSummaries([{
+    id: "invalid-timezone",
+    title: "Tigers vs Bears",
+    events: [{ id: "game-2", date: "2099-04-01", time: "18:00", type: "game", timezone: "not/a-timezone" }],
+  }], []);
+
+  assert.equal(events[0]?.timezone, undefined);
 });

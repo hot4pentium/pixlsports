@@ -19,6 +19,7 @@ export interface AthleteEventSummary {
   status: "upcoming" | "live" | "final";
   opponent: string;
   location: string;
+  timezone?: string;
 }
 
 function eventFromCard(events: unknown): Record<string, unknown> | null {
@@ -81,6 +82,18 @@ export function mapAthleteEventSummaries(
       status,
       opponent: typeof event.opponent === "string" ? event.opponent : "",
       location: typeof event.location === "string" ? event.location : "",
+      ...(typeof event.timezone === "string" && isValidTimeZone(event.timezone)
+        ? { timezone: event.timezone }
+        : {}),
     }];
   });
+}
+
+function isValidTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
 }

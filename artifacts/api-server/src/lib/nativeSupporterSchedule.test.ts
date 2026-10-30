@@ -60,6 +60,9 @@ test("native schedule is scoped to the explicitly linked active account", async 
       type: "game",
       opponent: "Bears",
       location: "Field 2",
+      timezone: "America/Chicago",
+      notes: "private prep",
+      snacks: "private snacks",
     }])]);
 
   await insertSchedule(linkedOwner, "linked-game", "Tigers vs Bears");
@@ -71,7 +74,14 @@ test("native schedule is scoped to the explicitly linked active account", async 
   assert.equal(schedule.events.length, 1);
   assert.equal(schedule.events[0]?.eventId, "linked-game");
   assert.equal(schedule.events[0]?.title, "Tigers vs Bears");
+  assert.equal(schedule.events[0]?.date, "2099-04-01");
+  assert.equal(schedule.events[0]?.time, "18:00");
+  assert.equal(schedule.events[0]?.opponent, "Bears");
+  assert.equal(schedule.events[0]?.location, "Field 2");
+  assert.equal(schedule.events[0]?.timezone, "America/Chicago");
   assert.equal(JSON.stringify(schedule).includes("Private opponent"), false);
+  assert.equal(JSON.stringify(schedule).includes("private prep"), false);
+  assert.equal(JSON.stringify(schedule).includes("private snacks"), false);
 });
 
 test("unlinked native identities receive no account schedule", async () => {
