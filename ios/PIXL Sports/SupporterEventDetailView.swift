@@ -4,10 +4,29 @@ import ClerkKit
 @MainActor
 struct SupporterEventDetailView: View {
     @Environment(\.scenePhase) private var scenePhase
-    let clerk: Clerk
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let clerk: Clerk?
     let shareToken: String
+    let fixture: Fixture?
 
     @State private var state: DetailState = .loading
+    @ScaledMetric(relativeTo: .largeTitle) private var eventTitlePointSize = 24
+    @ScaledMetric(relativeTo: .body) private var detailValuePointSize = 16
+    @ScaledMetric(relativeTo: .body) private var detailLabelPointSize = 10
+    @ScaledMetric(relativeTo: .body) private var buttonPointSize = 16
+    @ScaledMetric(relativeTo: .title2) private var unavailableTitlePointSize = 22
+    @ScaledMetric(relativeTo: .body) private var messagePointSize = 15
+
+    struct Fixture {
+        let schedule: NativeSupporterSchedule
+        let event: AthleteFanEvent
+    }
+
+    init(clerk: Clerk?, shareToken: String, fixture: Fixture? = nil) {
+        self.clerk = clerk
+        self.shareToken = shareToken
+        self.fixture = fixture
+    }
 
     private enum DetailState {
         case loading
@@ -54,7 +73,7 @@ struct SupporterEventDetailView: View {
                         ProgressView()
                             .tint(SupporterHomeColors.accent)
                         Text("Verifying Event Card access…")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: messagePointSize, weight: .semibold))
                             .foregroundStyle(.white)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -114,7 +133,7 @@ struct SupporterEventDetailView: View {
                         )
                     } label: {
                         Label("Send Live Taps", systemImage: "hands.clap.fill")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: buttonPointSize, weight: .bold))
                             .foregroundStyle(SupporterHomeColors.background)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -122,6 +141,7 @@ struct SupporterEventDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Open the active family cheer session. Live Taps do not record player stats.")
+                    .accessibilityIdentifier("event-detail-live-taps")
                 }
             }
             .frame(maxWidth: 560, alignment: .leading)
@@ -169,26 +189,7 @@ struct SupporterEventDetailView: View {
 
     private func eventCard(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
         VStack(alignment: .leading, spacing: 17) {
-            HStack(alignment: .top, spacing: 14) {
-                eventDateBadge(event)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    statusBadge(event)
-
-                    Text(event.title)
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .tracking(-0.4)
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(event.type == "practice" ? "PRACTICE" : "GAME DAY")
-                        .font(.system(size: 10, weight: .heavy))
-                        .tracking(1.5)
-                        .foregroundStyle(SupporterHomeColors.muted)
-                }
-
-                Spacer(minLength: 0)
-            }
+            eventCardHeading(event)
 
             if let athleteName = schedule.athleteName, !athleteName.isEmpty {
                 HStack(spacing: 7) {
@@ -239,6 +240,38 @@ struct SupporterEventDetailView: View {
                             lineWidth: 1
                         )
                 }
+        }
+    }
+
+    @ViewBuilder
+    private func eventCardHeading(_ event: AthleteFanEvent) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                eventDateBadge(event)
+                eventTitleBlock(event)
+            }
+        } else {
+            HStack(alignment: .top, spacing: 14) {
+                eventDateBadge(event)
+                eventTitleBlock(event)
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private func eventTitleBlock(_ event: AthleteFanEvent) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            statusBadge(event)
+            Text(event.title)
+                .font(.system(size: eventTitlePointSize, weight: .black, design: .rounded))
+                .tracking(-0.4)
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("event-detail-title")
+            Text(event.type == "practice" ? "PRACTICE" : "GAME DAY")
+                .font(.system(size: detailLabelPointSize, weight: .heavy))
+                .tracking(1.5)
+                .foregroundStyle(SupporterHomeColors.muted)
         }
     }
 
@@ -360,16 +393,17 @@ struct SupporterEventDetailView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(label)
-                    .font(.system(size: 10, weight: .heavy))
+                    .font(.system(size: detailLabelPointSize, weight: .heavy))
                     .tracking(1.3)
                     .foregroundStyle(SupporterHomeColors.muted)
                 Text(value)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: detailValuePointSize, weight: .semibold))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("event-detail-\(label.lowercased())")
     }
 
     private func unavailable(_ message: String) -> some View {
@@ -378,17 +412,17 @@ struct SupporterEventDetailView: View {
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(SupporterHomeColors.accent)
             Text("Event Card unavailable")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(.system(size: unavailableTitlePointSize, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             Text(message)
-                .font(.system(size: 15))
+                .font(.system(size: messagePointSize))
                 .foregroundStyle(SupporterHomeColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
             Button {
                 Task { await load() }
             } label: {
                 Label("Try again", systemImage: "arrow.clockwise")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: buttonPointSize, weight: .bold))
                     .foregroundStyle(SupporterHomeColors.background)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 11)
@@ -416,6 +450,14 @@ struct SupporterEventDetailView: View {
 
     private func load() async {
         state = .loading
+        if let fixture {
+            state = .loaded(schedule: fixture.schedule, event: fixture.event)
+            return
+        }
+        guard let clerk else {
+            state = .unavailable("Reconnect the PIXL account that owns this Event Card to view its details.")
+            return
+        }
         do {
             let result = try await SupporterHomeAPI.fetchPrivateEvent(shareToken: shareToken, clerk: clerk)
             guard !Task.isCancelled else { return }

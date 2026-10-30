@@ -103,6 +103,16 @@ loaded data are not access.
 This repository is edited on Linux, without Xcode or an iOS simulator. Build,
 signing, and rendered native UI must be verified on the Mac.
 
+The Event Card detail UI test launches a local fixture without signing in or
+requesting private data. It limits the screen content to 320 points wide, sets
+the largest accessibility text size, and checks that the date, opponent,
+location, status, and Live Taps control remain reachable:
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>'
+```
+
 Debug connection screens show **Development API — installed app**, read from the
 bundled plist rather than the Xcode editor. Connection failures include the HTTP
 status and safe destination details, without tokens, keys, or raw response bodies.

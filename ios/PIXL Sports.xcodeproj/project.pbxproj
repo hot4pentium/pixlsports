@@ -9,10 +9,13 @@
 /* Begin PBXBuildFile section */
 A10000000000000000000001 /* ClerkKit in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000001 /* ClerkKit */; };
 A10000000000000000000002 /* ClerkKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000002 /* ClerkKitUI */; };
+A10000000000000000000003 /* SupporterEventDetailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* SupporterEventDetailUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* PIXL Sports.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PIXL Sports.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000006 /* SupporterEventDetailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupporterEventDetailUITests.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* PIXL SportsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PIXL SportsUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +34,13 @@ A10000000000000000000001 /* ClerkKit in Frameworks */,
 A10000000000000000000002 /* ClerkKitUI in Frameworks */,
 			);
 		};
+		A10000000000000000000012 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +48,7 @@ A10000000000000000000002 /* ClerkKitUI in Frameworks */,
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* PIXL Sports */,
+				A10000000000000000000008 /* UITests */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,8 +57,17 @@ A10000000000000000000002 /* ClerkKitUI in Frameworks */,
 			isa = PBXGroup;
 			children = (
 				000000000000000000000120 /* PIXL Sports.app */,
+				A10000000000000000000007 /* PIXL SportsUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000008 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000006 /* SupporterEventDetailUITests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -75,6 +95,24 @@ A20000000000000000000002 /* ClerkKitUI */,
 			productReference = 000000000000000000000120 /* PIXL Sports.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A10000000000000000000009 /* PIXL SportsUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000010 /* Build configuration list for PBXNativeTarget "PIXL SportsUITests" */;
+			buildPhases = (
+				A10000000000000000000011 /* Sources */,
+				A10000000000000000000012 /* Frameworks */,
+				A10000000000000000000013 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000014 /* PBXTargetDependency */,
+			);
+			name = "PIXL SportsUITests";
+			productName = "PIXL SportsUITests";
+			productReference = A10000000000000000000007 /* PIXL SportsUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -87,6 +125,10 @@ A20000000000000000000002 /* ClerkKitUI */,
 				TargetAttributes = {
 					000000000000000100000000 = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					A10000000000000000000009 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 000000000000000100000000;
 					};
 				};
 			};
@@ -108,6 +150,7 @@ A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */,
 			projectRoot = "";
 			targets = (
 				000000000000000100000000 /* PIXL Sports */,
+				A10000000000000000000009 /* PIXL SportsUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -118,6 +161,13 @@ A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */,
 			files = (
 			);
 		};
+		A10000000000000000000013 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -126,7 +176,33 @@ A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */,
 			files = (
 			);
 		};
+		A10000000000000000000011 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000003 /* SupporterEventDetailUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000000000000000000015 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000100000000;
+			remoteInfo = "PIXL Sports";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		A10000000000000000000014 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000100000000 /* PIXL Sports */;
+			targetProxy = A10000000000000000000015 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */ = {
@@ -153,6 +229,36 @@ productName = ClerkKitUI;
 /* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
+		A10000000000000000000016 /* Debug configuration for PBXNativeTarget "PIXL SportsUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pixlsports.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = "PIXL Sports";
+			};
+			name = Debug;
+		};
+		A10000000000000000000017 /* Release configuration for PBXNativeTarget "PIXL SportsUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pixlsports.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = "PIXL Sports";
+			};
+			name = Release;
+		};
 		000000000000000011000000 /* Debug configuration for PBXProject "PIXL Sports" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -381,6 +487,14 @@ productName = ClerkKitUI;
 				000000000000000112000000 /* Release configuration for PBXNativeTarget "PIXL Sports" */,
 			);
 			defaultConfigurationName = Release;
+		};
+		A10000000000000000000010 /* Build configuration list for PBXNativeTarget "PIXL SportsUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000016 /* Debug configuration for PBXNativeTarget "PIXL SportsUITests" */,
+				A10000000000000000000017 /* Release configuration for PBXNativeTarget "PIXL SportsUITests" */,
+			);
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
