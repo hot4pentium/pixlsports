@@ -603,7 +603,7 @@ test('returning verified sessions keep one splash through delayed session and li
       })();`,
     }, page.sessionId);
     await connection.send('Page.navigate', {
-      url: `http://127.0.0.1:${vitePort}/studio?viewer=startup-return`,
+      url: `http://127.0.0.1:${vitePort}/?viewer=startup-return`,
     }, page.sessionId);
 
     const assertCoveredApp = async (stage: string) => {
@@ -654,19 +654,25 @@ test('returning verified sessions keep one splash through delayed session and li
       'Boolean(document.querySelector("[data-testid=private-entry-splash-overlay]"))', Boolean, 30_000);
     await assertCoveredApp('while Clerk is pending');
     const startup = await connection.evaluate<{
+      pathname: string;
       startedAt: number;
       returnShell: boolean;
+      previousSessionMarker: boolean;
       splashMounts: number;
       lifecycleRequests: number;
       accountScreens: number;
     }>(`({
+      pathname: location.pathname,
       startedAt: Number(document.documentElement.getAttribute('data-pixl-private-return-started-at')),
       returnShell: document.documentElement.getAttribute('data-pixl-private-return') === 'true',
+      previousSessionMarker: localStorage.getItem('pixl:previous-private-session:v1') === 'seen',
       splashMounts: window.__startupSplashMounts,
       lifecycleRequests: window.__startupLifecycleRequests,
       accountScreens: document.querySelectorAll('.account-loading-screen').length,
     })`, page.sessionId);
-    assert.equal(startup.returnShell, true, 'the private route should start in its returning-session shell');
+    assert.equal(startup.pathname, '/', 'the returning-session scenario should open the home page');
+    assert.equal(startup.previousSessionMarker, true, 'the home page should open with the previous-session marker set');
+    assert.equal(startup.returnShell, true, 'the home page should start in its returning-session shell');
     assert.ok(Number.isFinite(startup.startedAt), 'the return splash should record its initial HTML paint time');
     assert.equal(startup.lifecycleRequests, 0, 'lifecycle verification waits for the delayed Clerk session');
     assert.equal(startup.accountScreens, 1, 'the returning shell should show one account-loading screen');
@@ -734,6 +740,7 @@ test('returning verified sessions keep one splash through delayed session and li
         && Boolean(document.querySelector('[data-testid="dashboard-primary-actions-mobile"]'));
     })()`, Boolean, 10_000);
     const restoredDashboard = await connection.evaluate<{
+      pathname: string;
       elapsedMs: number;
       splashVisible: boolean;
       accountScreens: number;
@@ -743,6 +750,7 @@ test('returning verified sessions keep one splash through delayed session and li
       const dashboard = document.querySelector('[data-testid="dashboard-primary-actions-mobile"]');
       const style = dashboard ? getComputedStyle(dashboard) : null;
       return {
+        pathname: location.pathname,
         elapsedMs: performance.now() - Number(document.documentElement.getAttribute('data-pixl-private-return-started-at')),
         splashVisible: Boolean(document.querySelector('[data-testid="private-entry-splash-overlay"]')),
         accountScreens: document.querySelectorAll('.account-loading-screen').length,
@@ -750,6 +758,7 @@ test('returning verified sessions keep one splash through delayed session and li
         splashMounts: window.__startupSplashMounts,
       };
     })()`, page.sessionId);
+    assert.equal(restoredDashboard.pathname, '/studio', 'the verified returning session should route from home to the dashboard');
     assert.ok(restoredDashboard.elapsedMs >= 5_000, 'the splash must meet the five-second minimum measured from initial HTML paint');
     assert.equal(restoredDashboard.splashVisible, false, 'the original splash should be removed after startup completes');
     assert.equal(restoredDashboard.accountScreens, 0, 'no second account-loading screen should cover the dashboard');

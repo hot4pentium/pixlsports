@@ -35,7 +35,7 @@ function HomeEntry() {
 
   const entryState = getHomeEntryState(isLoaded, Boolean(isSignedIn), hasPriorPrivateSession);
   if (entryState === 'dashboard') return <Redirect to="/studio" />;
-  if (entryState === 'loading') return <AccountLoadingScreen />;
+  if (entryState === 'loading') return null;
   return <PublicLandingPage />;
 }
 
