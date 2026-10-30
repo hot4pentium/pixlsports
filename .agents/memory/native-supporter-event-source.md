@@ -1,10 +1,10 @@
 ---
 name: Native supporter event source
-description: Data boundary for the initial native iPhone Supporter Home.
+description: Authorization boundary for the native iPhone schedule and Event Card details.
 ---
 
-The first native Supporter Home reads published Event Cards through a supporter’s saved public athlete-page link. It does not read the signed-in supporter’s private account schedule. Do not call private project APIs from the unauthenticated native app.
+The native Supporter Home and Event Card details use the signed-in supporter’s verified Clerk account to read their private schedule. Do not call private schedule endpoints without that authenticated account context.
 
-**Why:** The starter Xcode project had no sign-in or native API client, while the supporter’s private schedule requires an authenticated account. The public athlete-page feed provides real event data without inventing a session or exposing credentials.
+**Why:** The private schedule contains account-linked Event Cards and must stay behind the existing native account authorization flow.
 
-**How to apply:** Preserve the public-link flow until a native sign-in/session flow is implemented. When private account schedules are added, use the authenticated API and keep the loading, empty, and recoverable error states.
+**How to apply:** Preserve authenticated schedule and detail fetches, and keep loading and recoverable error states when changing native supporter screens. Public HYPE Card and Live Taps requests remain separate public flows.
