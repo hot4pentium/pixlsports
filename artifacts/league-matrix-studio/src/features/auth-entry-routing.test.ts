@@ -63,7 +63,7 @@ test('the app bypasses lifecycle checks on public home visits and opens the stud
   assert.match(entrySource, /getHomeEntryState\(isLoaded, Boolean\(isSignedIn\), hasPriorPrivateSession\)/);
   assert.match(entrySource, /function PrivateEntrySplashGate[\s\S]*!isLoaded \|\| \(Boolean\(isSignedIn\) && !minimumElapsed\)/);
   assert.match(entrySource, /<PrivateEntrySplashGate>[\s\S]*<Switch>/);
-  assert.match(entrySource, /entryState === 'loading'.*<AccountLoadingScreen \/>/);
+  assert.match(entrySource, /entryState === 'loading'\) return null/);
   assert.match(appSource, /lifecycle\?\.status !== 'active'[\s\S]*?rememberPrivateSession\(\)/);
   assert.match(entrySource, /<Redirect to="\/studio" \/>/);
   assert.match(entrySource, /return <PublicLandingPage \/>/);

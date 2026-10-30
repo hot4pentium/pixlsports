@@ -6,6 +6,7 @@ const statTrackerReturnTest = new URLSearchParams(location.search).get('statTrac
 const workspaceSoccer = new URLSearchParams(location.search).has('workspace-soccer');
 const listeners = new Set<() => void>();
 const clerkListeners = new Set<(state: { user: ReturnType<typeof currentUser> }) => void>();
+let userStateRevision = 0;
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
 let firstSaveProfileLoaded = false;
 let userLoaded = id !== 'first-save-supporter' && !id.startsWith('startup-');
@@ -62,12 +63,17 @@ function currentUser(unsafeMetadata?: Record<string, unknown>) {
       userSnapshot = currentUser(data.unsafeMetadata);
       const state = { user: userSnapshot };
       for (const listener of clerkListeners) listener(state);
-      for (const listener of listeners) listener();
+      notifyUserState();
     },
   };
 }
 
 let userSnapshot = id.startsWith('startup-') ? null : currentUser();
+
+function notifyUserState() {
+  userStateRevision += 1;
+  for (const listener of listeners) listener();
+}
 
 if (id.startsWith('startup-')) {
   window.__restoreStartupSession = () => {
@@ -77,7 +83,7 @@ if (id.startsWith('startup-')) {
       userSnapshot?.primaryEmailAddress?.verification?.status === 'verified';
     const state = { user: userSnapshot };
     for (const listener of clerkListeners) listener(state);
-    for (const listener of listeners) listener();
+    notifyUserState();
   };
 }
 
@@ -91,12 +97,12 @@ if (id === 'first-save-supporter') {
       userLoaded = true;
       const state = { user: userSnapshot };
       for (const listener of clerkListeners) listener(state);
-      for (const listener of listeners) listener();
+      notifyUserState();
     })
     .catch((error: unknown) => {
       console.error(error);
       userLoaded = true;
-      for (const listener of listeners) listener();
+      notifyUserState();
     });
 }
 
@@ -106,17 +112,17 @@ export function switchAccount(nextId: string) {
   userSnapshot = currentUser();
   const state = { user: userSnapshot };
   for (const listener of clerkListeners) listener(state);
-  for (const listener of listeners) listener();
+  notifyUserState();
 }
 
 export function currentAccountId() { return id; }
 
 export function useUser() {
-  const user = useSyncExternalStore(
+  useSyncExternalStore(
     (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    () => userSnapshot,
+    () => userStateRevision,
   );
-  return { user, isLoaded: userLoaded, isSignedIn: Boolean(user) };
+  return { user: userSnapshot, isLoaded: userLoaded, isSignedIn: Boolean(userSnapshot) };
 }
 
 const clerk = {

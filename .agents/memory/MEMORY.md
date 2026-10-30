@@ -113,6 +113,7 @@
 - [Themed premium photo frames](themed-premium-photo-frames.md) — Spotlight and Breakout share Gallery’s strong framed-photo structure while theming the shell around it.
 - [App-only identity blocks](admin-identity-blocks.md) — block only unprovisioned identities within Pixl Sports; preserve Clerk identity, app data, and public shares.
 - [Standalone Clerk browser fixtures](standalone-clerk-browser-fixtures.md) — test-owned Vite servers need a harmless Clerk publishable-key fallback or React may stay unmounted.
+- [Signed-out auth fixture updates](signed-out-auth-fixture-updates.md) — auth test stores must version state changes when unresolved and confirmed signed-out snapshots both contain `null`.
 - [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — generic arguments on JSX components can be corrupted by source instrumentation; infer generics or pass casts through callback parameters.
 - [Support reply receiving domain](support-reply-receiving-domain.md) — use a Resend-managed or dedicated subdomain; never replace the root-domain MX serving normal support mail.
 - [Showcase HYPE Card focus](soccer-gear-product-scope.md) — retire jersey/gear tools and rewards while keeping the Showcase name, HYPE Card, and saved data.

@@ -538,6 +538,15 @@ test('returning verified sessions keep one splash through delayed session and li
         try {
           localStorage.setItem('pixl:previous-private-session:v1', 'seen');
         } catch {}
+        const nativeSetAttribute = Element.prototype.setAttribute;
+        Element.prototype.setAttribute = function(name, value) {
+          const isSignedOutHome = location.pathname === '/'
+            && new URLSearchParams(location.search).get('viewer') === 'startup-signed-out';
+          if (isSignedOutHome && name === 'data-pixl-private-return-started-at') {
+            value = String(performance.now() + 60_000);
+          }
+          return nativeSetAttribute.call(this, name, value);
+        };
         window.__startupSplashMounts = 0;
         window.__startupLifecycleRequests = 0;
         const collectSplashMounts = (nodes) => {
@@ -764,6 +773,68 @@ test('returning verified sessions keep one splash through delayed session and li
     assert.equal(restoredDashboard.accountScreens, 0, 'no second account-loading screen should cover the dashboard');
     assert.equal(restoredDashboard.dashboardVisible, true, 'the verified session should reveal the dashboard');
     assert.equal(restoredDashboard.splashMounts, 1, 'the returning startup should mount exactly one full-screen splash');
+
+    await connection.evaluate(
+      'localStorage.setItem("pixl:previous-private-session:v1", "seen")',
+      page.sessionId,
+    );
+    await connection.send('Page.navigate', {
+      url: `http://127.0.0.1:${vitePort}/?viewer=startup-signed-out`,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'Boolean(document.querySelector("[data-testid=private-entry-splash-overlay]"))', Boolean, 30_000);
+    await assertCoveredApp('returning home while Clerk is pending');
+    const pendingSignedOutHome = await connection.evaluate<{
+      markerPresent: boolean;
+      remainingSplashMs: number;
+      landingVisible: boolean;
+      dashboardVisible: boolean;
+    }>(`(() => {
+      const startedAt = Number(document.documentElement.getAttribute('data-pixl-private-return-started-at'));
+      return {
+        markerPresent: localStorage.getItem('pixl:previous-private-session:v1') === 'seen',
+        remainingSplashMs: startedAt - performance.now(),
+        landingVisible: Boolean(document.querySelector('[data-testid="text-landing-headline"]')),
+        dashboardVisible: Boolean(document.querySelector('[data-testid="dashboard-primary-actions-mobile"]')),
+      };
+    })()`, page.sessionId);
+    assert.equal(pendingSignedOutHome.markerPresent, true, 'the previous-session marker should seed the delayed-auth return');
+    assert.ok(pendingSignedOutHome.remainingSplashMs > 50_000,
+      'the fixture should preserve a substantial private-splash delay when sign-out is confirmed');
+    assert.equal(pendingSignedOutHome.landingVisible, false, 'the landing must wait for Clerk to confirm sign-out');
+    assert.equal(pendingSignedOutHome.dashboardVisible, false, 'dashboard content must stay hidden while Clerk is pending');
+
+    await connection.evaluate('window.__restoreStartupSession()', page.sessionId);
+    await waitFor(connection, page.sessionId, `(
+      Boolean(document.querySelector('[data-testid="text-landing-headline"]'))
+      && !document.querySelector('[data-testid="private-entry-splash-overlay"]')
+      && localStorage.getItem('pixl:previous-private-session:v1') === null
+    )`, Boolean, 10_000);
+    const signedOutHome = await connection.evaluate<{
+      pathname: string;
+      markerPresent: boolean;
+      splashVisible: boolean;
+      landingVisible: boolean;
+      dashboardVisible: boolean;
+      elapsedSinceSplashStart: number;
+    }>(`(() => {
+      const startedAt = Number(document.documentElement.getAttribute('data-pixl-private-return-started-at'));
+      return {
+        pathname: location.pathname,
+        markerPresent: localStorage.getItem('pixl:previous-private-session:v1') === 'seen',
+        splashVisible: Boolean(document.querySelector('[data-testid="private-entry-splash-overlay"]')),
+        landingVisible: Boolean(document.querySelector('[data-testid="text-landing-headline"]')),
+        dashboardVisible: Boolean(document.querySelector('[data-testid="dashboard-primary-actions-mobile"]')),
+        elapsedSinceSplashStart: performance.now() - startedAt,
+      };
+    })()`, page.sessionId);
+    assert.equal(signedOutHome.pathname, '/', 'confirmed signed-out visitors should remain on the public home page');
+    assert.equal(signedOutHome.markerPresent, false, 'confirmed sign-out should clear the previous-session marker');
+    assert.equal(signedOutHome.splashVisible, false, 'signed-out visitors must bypass the remaining private splash delay');
+    assert.equal(signedOutHome.landingVisible, true, 'confirmed signed-out visitors should reach the public landing');
+    assert.equal(signedOutHome.dashboardVisible, false, 'signed-out startup must never expose dashboard content');
+    assert.ok(signedOutHome.elapsedSinceSplashStart < -50_000,
+      'the landing should appear while the private splash still has more than fifty seconds remaining');
 
     const navigateStartupCase = async (viewer: 'startup-signed-out' | 'startup-blocked') => {
       await connection!.evaluate(

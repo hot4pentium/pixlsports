@@ -29,9 +29,6 @@ function stripBase(path: string) {
 function HomeEntry() {
   const { isLoaded, isSignedIn } = useUser();
   const [hasPriorPrivateSession] = useState(hasPreviousPrivateSession);
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) forgetPrivateSession();
-  }, [isLoaded, isSignedIn]);
 
   const entryState = getHomeEntryState(isLoaded, Boolean(isSignedIn), hasPriorPrivateSession);
   if (entryState === 'dashboard') return <Redirect to="/studio" />;
@@ -45,6 +42,10 @@ function PrivateEntrySplashGate({ children }: { children: ReactNode }) {
   const [minimumElapsed, setMinimumElapsed] = useState(
     () => getPrivateEntrySplashRemainingMs(startedAt, performance.now()) === 0,
   );
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) forgetPrivateSession();
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (minimumElapsed) return;
