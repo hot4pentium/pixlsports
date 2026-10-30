@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Vision
 import VisionKit
 
 @MainActor
@@ -126,7 +127,6 @@ struct SupporterLiveTapsView: View {
                                 RoundedRectangle(cornerRadius: 14)
                                     .stroke(Color.orange.opacity(0.28), lineWidth: 1)
                             }
-                            .accessibilityAddTraits(.isError)
                     }
                 }
                 .frame(maxWidth: 560, alignment: .leading)
