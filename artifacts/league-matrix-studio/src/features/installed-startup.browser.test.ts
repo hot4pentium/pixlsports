@@ -584,7 +584,7 @@ test('returning verified sessions keep one splash through delayed session and li
           if (pathname === '/api/account/lifecycle') {
             window.__startupLifecycleRequests++;
             return new Promise((resolve) => {
-              window.__restoreStartupLifecycle = () => resolve(new Response(JSON.stringify({
+            window.__restoreStartupLifecycle = (identityBlocked = false) => resolve(new Response(JSON.stringify({
                 status: 'active',
                 pauseEndsAt: null,
                 planTier: 'free',
@@ -594,7 +594,7 @@ test('returning verified sessions keep one splash through delayed session and li
                 retentionDays: 90,
                 expired: false,
                 adminSuspended: false,
-                identityBlocked: false,
+                identityBlocked,
               }), { status: 200, headers: { 'content-type': 'application/json' } }));
             });
           }
@@ -606,8 +606,53 @@ test('returning verified sessions keep one splash through delayed session and li
       url: `http://127.0.0.1:${vitePort}/studio?viewer=startup-return`,
     }, page.sessionId);
 
+    const assertCoveredApp = async (stage: string) => {
+      const covered = await connection!.evaluate<{
+        hidden: boolean;
+        inert: boolean;
+        overlayCoversViewport: boolean;
+      }>(`(() => {
+        const app = document.querySelector('#root > div[aria-hidden="true"][inert]');
+        const overlay = document.querySelector('[data-testid="private-entry-splash-overlay"]');
+        const box = overlay?.getBoundingClientRect();
+        return {
+          hidden: Boolean(app && getComputedStyle(app).visibility === 'hidden'),
+          inert: Boolean(app?.inert),
+          overlayCoversViewport: Boolean(
+            overlay && box && getComputedStyle(overlay).position === 'fixed'
+            && box.left <= 0 && box.top <= 0 && box.right >= innerWidth && box.bottom >= innerHeight,
+          ),
+        };
+      })()`, page!.sessionId);
+      assert.deepEqual(covered, { hidden: true, inert: true, overlayCoversViewport: true },
+        `${stage}: the app must be visually hidden, inert, and covered by the startup overlay`);
+
+      const { root } = await connection!.send<{ root: { nodeId: number } }>(
+        'DOM.getDocument', { depth: -1 }, page!.sessionId,
+      );
+      const { nodeId } = await connection!.send<{ nodeId: number }>('DOM.querySelector', {
+        nodeId: root.nodeId,
+        selector: '#root > div[aria-hidden="true"][inert]',
+      }, page!.sessionId);
+      assert.ok(nodeId, `${stage}: the covered app tree should remain mounted`);
+      const { object } = await connection!.send<{ object: { objectId?: string } }>(
+        'DOM.resolveNode', { nodeId }, page!.sessionId,
+      );
+      assert.ok(object.objectId, `${stage}: the covered app tree should resolve to a DOM object`);
+      const { nodes } = await connection!.send<{
+        nodes: Array<{ ignored?: boolean; ignoredReasons?: Array<{ name?: string }> }>;
+      }>('Accessibility.getPartialAXTree', {
+        objectId: object.objectId,
+        fetchRelatives: false,
+      }, page!.sessionId);
+      assert.ok(nodes.some(node => node.ignored
+        && node.ignoredReasons?.some(reason => reason.name === 'ariaHiddenElement')),
+      `${stage}: the covered app tree must be absent from assistive technology: ${JSON.stringify(nodes)}`);
+    };
+
     await waitFor(connection, page.sessionId,
       'Boolean(document.querySelector("[data-testid=private-entry-splash-overlay]"))', Boolean, 30_000);
+    await assertCoveredApp('while Clerk is pending');
     const startup = await connection.evaluate<{
       startedAt: number;
       returnShell: boolean;
@@ -626,7 +671,6 @@ test('returning verified sessions keep one splash through delayed session and li
     assert.equal(startup.lifecycleRequests, 0, 'lifecycle verification waits for the delayed Clerk session');
     assert.equal(startup.accountScreens, 1, 'the returning shell should show one account-loading screen');
 
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_200));
     await connection.evaluate('window.__restoreStartupSession()', page.sessionId);
     await waitFor(connection, page.sessionId, 'window.__startupLifecycleRequests > 0', Boolean, 10_000);
     assert.equal(
@@ -637,24 +681,39 @@ test('returning verified sessions keep one splash through delayed session and li
 
     await waitFor(connection, page.sessionId,
       'Boolean(window.__restoreStartupLifecycle)', Boolean, 10_000);
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_300));
     const waitingOnLifecycle = await connection.evaluate<{
       elapsedMs: number;
       splashMounts: number;
       accountScreens: number;
       hiddenDashboard: boolean;
+      inertDashboard: boolean;
+      overlayCoversViewport: boolean;
     }>(`(() => {
       const hiddenApp = document.querySelector('#root > div[aria-hidden="true"][inert]');
+      const overlay = document.querySelector('[data-testid="private-entry-splash-overlay"]');
+      const overlayBox = overlay?.getBoundingClientRect();
       return {
         elapsedMs: performance.now() - Number(document.documentElement.getAttribute('data-pixl-private-return-started-at')),
         splashMounts: window.__startupSplashMounts,
         accountScreens: document.querySelectorAll('.account-loading-screen').length,
         hiddenDashboard: Boolean(hiddenApp && getComputedStyle(hiddenApp).visibility === 'hidden'),
+        inertDashboard: Boolean(hiddenApp?.inert),
+        overlayCoversViewport: Boolean(
+          overlay && overlayBox
+          && getComputedStyle(overlay).position === 'fixed'
+          && overlayBox.left <= 0 && overlayBox.top <= 0
+          && overlayBox.right >= innerWidth && overlayBox.bottom >= innerHeight,
+        ),
       };
     })()`, page.sessionId);
     assert.ok(waitingOnLifecycle.elapsedMs < 5_000, 'the delayed lifecycle check should finish before the splash minimum');
     assert.equal(waitingOnLifecycle.splashMounts, 1, 'session restoration must not mount another splash');
     assert.equal(waitingOnLifecycle.accountScreens, 1, 'lifecycle loading must not add a second full-screen account splash');
+    assert.equal(waitingOnLifecycle.hiddenDashboard, true, 'the covered dashboard must remain visually hidden during lifecycle verification');
+    assert.equal(waitingOnLifecycle.inertDashboard, true, 'the covered dashboard must remain inert during lifecycle verification');
+    assert.equal(waitingOnLifecycle.overlayCoversViewport, true, 'the startup splash must cover the full viewport');
+
+    await assertCoveredApp('while account lifecycle is pending');
 
     await connection.evaluate('window.__restoreStartupLifecycle()', page.sessionId);
     await waitFor(connection, page.sessionId,
@@ -696,6 +755,71 @@ test('returning verified sessions keep one splash through delayed session and li
     assert.equal(restoredDashboard.accountScreens, 0, 'no second account-loading screen should cover the dashboard');
     assert.equal(restoredDashboard.dashboardVisible, true, 'the verified session should reveal the dashboard');
     assert.equal(restoredDashboard.splashMounts, 1, 'the returning startup should mount exactly one full-screen splash');
+
+    const navigateStartupCase = async (viewer: 'startup-signed-out' | 'startup-blocked') => {
+      await connection!.evaluate(
+        'localStorage.setItem("pixl:previous-private-session:v1", "seen")',
+        page!.sessionId,
+      );
+      await connection!.send('Page.navigate', {
+        url: `http://127.0.0.1:${vitePort}/studio?viewer=${viewer}&outcome=${viewer === 'startup-blocked' ? 'blocked' : 'signed-out'}`,
+      }, page!.sessionId);
+      await waitFor(connection!, page!.sessionId,
+        'Boolean(document.querySelector("[data-testid=private-entry-splash-overlay]"))', Boolean, 30_000);
+      await waitFor(connection!, page!.sessionId,
+        'Boolean(document.querySelector("#root > div[aria-hidden=true][inert]"))', Boolean, 10_000);
+      await assertCoveredApp(`${viewer} while Clerk is pending`);
+      assert.equal(
+        await connection!.evaluate('window.__startupLifecycleRequests', page!.sessionId),
+        0,
+        'account lifecycle verification must wait for Clerk to resolve',
+      );
+      await connection!.evaluate('window.__restoreStartupSession()', page!.sessionId);
+    };
+
+    await navigateStartupCase('startup-signed-out');
+    await waitFor(connection, page.sessionId,
+      'location.pathname === "/sign-in" && !document.querySelector("[data-testid=private-entry-splash-overlay]")',
+      Boolean, 20_000);
+    assert.equal(
+      await connection.evaluate('Boolean(document.querySelector("[data-testid=identity-blocked-account-page]"))', page.sessionId),
+      false,
+      'a confirmed signed-out visitor must not be shown the blocked-account outcome',
+    );
+
+    await navigateStartupCase('startup-blocked');
+    await waitFor(connection, page.sessionId,
+      'window.__startupLifecycleRequests > 0 && Boolean(window.__restoreStartupLifecycle)', Boolean, 20_000);
+    await assertCoveredApp('while blocked account lifecycle is pending');
+    const blockedLifecycleGate = await connection.evaluate<{
+      hidden: boolean;
+      inert: boolean;
+      visible: string;
+    }>(`(() => {
+      const app = document.querySelector('#root > div[aria-hidden="true"][inert]');
+      return {
+        hidden: Boolean(app && getComputedStyle(app).visibility === 'hidden'),
+        inert: Boolean(app?.inert),
+        visible: getComputedStyle(app).visibility,
+      };
+    })()`, page.sessionId);
+    assert.deepEqual(blockedLifecycleGate, { hidden: true, inert: true, visible: 'hidden' },
+      'the dashboard must stay hidden and inert until the blocked lifecycle response is received');
+    await connection.evaluate('window.__restoreStartupLifecycle(true)', page.sessionId);
+    await waitFor(connection, page.sessionId, `(
+      Boolean(document.querySelector('[data-testid="identity-blocked-account-page"]'))
+      && !document.querySelector('[data-testid="private-entry-splash-overlay"]')
+    )`, Boolean, 15_000);
+    assert.equal(
+      await connection.evaluate('Boolean(document.querySelector("[data-testid=dashboard-primary-actions-mobile]"))', page.sessionId),
+      false,
+      'a blocked identity must not reach dashboard actions',
+    );
+    assert.equal(
+      await connection.evaluate('Boolean(document.querySelector("#root > div[aria-hidden=true][inert]"))', page.sessionId),
+      false,
+      'the blocked-account outcome should be exposed after the startup overlay is removed',
+    );
   } catch (error) {
     console.error('Returning-session startup browser failure', JSON.stringify({
       error: error instanceof Error ? error.stack || error.message : String(error),

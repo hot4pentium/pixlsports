@@ -8,7 +8,7 @@ const listeners = new Set<() => void>();
 const clerkListeners = new Set<(state: { user: ReturnType<typeof currentUser> }) => void>();
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
 let firstSaveProfileLoaded = false;
-let userLoaded = id !== 'first-save-supporter' && id !== 'startup-return';
+let userLoaded = id !== 'first-save-supporter' && !id.startsWith('startup-');
 
 declare global {
   interface Window {
@@ -23,7 +23,7 @@ function currentUser(unsafeMetadata?: Record<string, unknown>) {
   const first = id.includes('-first-');
   const workspaceJourney = id === 'workspace-journey';
   const firstSave = id === 'first-save-supporter';
-  const startupReturn = id === 'startup-return';
+  const startupReturn = id.startsWith('startup-');
   return {
     id,
     createdAt: firstSave ? Date.now() - 60_000 : Date.now() - 86_400_000,
@@ -67,11 +67,11 @@ function currentUser(unsafeMetadata?: Record<string, unknown>) {
   };
 }
 
-let userSnapshot = id === 'startup-return' ? null : currentUser();
+let userSnapshot = id.startsWith('startup-') ? null : currentUser();
 
-if (id === 'startup-return') {
+if (id.startsWith('startup-')) {
   window.__restoreStartupSession = () => {
-    userSnapshot = currentUser();
+    userSnapshot = id === 'startup-signed-out' ? null : currentUser();
     userLoaded = true;
     window.__startupSessionVerified =
       userSnapshot?.primaryEmailAddress?.verification?.status === 'verified';
