@@ -4,6 +4,7 @@ import ClerkKit
 enum SupporterHomeColors {
     static let background = Color(red: 0.035, green: 0.075, blue: 0.15)
     static let panel = Color(red: 0.075, green: 0.13, blue: 0.23)
+    static let blue = Color(red: 0.16, green: 0.48, blue: 0.98)
     static let accent = Color(red: 0.72, green: 0.94, blue: 0.25)
     static let muted = Color(red: 0.68, green: 0.75, blue: 0.86)
 }
@@ -24,22 +25,45 @@ struct ContentView: View {
         NavigationStack {
             ZStack {
                 LinearGradient(
-                    colors: [SupporterHomeColors.background, Color(red: 0.04, green: 0.11, blue: 0.22)],
+                    colors: [SupporterHomeColors.background, Color(red: 0.035, green: 0.10, blue: 0.20)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
 
+                RadialGradient(
+                    colors: [SupporterHomeColors.blue.opacity(0.16), .clear],
+                    center: .topTrailing,
+                    startRadius: 8,
+                    endRadius: 420
+                )
+                .ignoresSafeArea()
+
+                Canvas { context, size in
+                    var grid = Path()
+                    for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
+                        grid.move(to: CGPoint(x: x, y: 0))
+                        grid.addLine(to: CGPoint(x: x, y: size.height))
+                    }
+                    for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
+                        grid.move(to: CGPoint(x: 0, y: y))
+                        grid.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    context.stroke(grid, with: .color(.white.opacity(0.035)), lineWidth: 0.5)
+                }
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 26) {
+                    VStack(alignment: .leading, spacing: 24) {
                         header
                         accountConnectionSection
                         nextEventSection
                     }
                     .frame(maxWidth: 560, alignment: .leading)
                     .padding(.horizontal, 22)
-                    .padding(.top, 28)
-                    .padding(.bottom, 36)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
                     .frame(maxWidth: .infinity)
                 }
                 .refreshable {
@@ -65,27 +89,55 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .center, spacing: 11) {
                 Image(systemName: "sportscourt.fill")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 15, weight: .black))
                     .foregroundStyle(SupporterHomeColors.background)
-                    .frame(width: 34, height: 34)
-                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 10))
+                    .frame(width: 38, height: 38)
+                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(.white.opacity(0.3), lineWidth: 1)
+                    }
 
-                Text("PIXL SPORTS")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .tracking(1.8)
-                    .foregroundStyle(.white)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("PIXL")
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .tracking(1.4)
+                        .foregroundStyle(SupporterHomeColors.blue)
+                    Text("SPORTS")
+                        .font(.system(size: 9, weight: .heavy, design: .rounded))
+                        .tracking(3.3)
+                        .foregroundStyle(.white.opacity(0.86))
+                }
+
+                Spacer()
+
+                Text("SUPPORTER HUB")
+                    .font(.system(size: 9, weight: .heavy))
+                    .tracking(1.5)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(.white.opacity(0.06), in: Capsule())
             }
 
-            Text("Your schedule")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("YOUR SEASON")
+                    .font(.system(size: 11, weight: .black))
+                    .tracking(2.1)
+                    .foregroundStyle(SupporterHomeColors.accent)
 
-            Text("Your private schedule, at a glance.")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SupporterHomeColors.muted)
+                Text("Your schedule")
+                    .font(.system(size: 35, weight: .black, design: .rounded))
+                    .tracking(-0.7)
+                    .foregroundStyle(.white)
+
+                Text("Your private schedule, at a glance.")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SupporterHomeColors.muted)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -118,14 +170,29 @@ struct ContentView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Loading your private schedule")
         case let .schedule(page, events):
-            if events.isEmpty {
-                messageCard(
-                    icon: "calendar",
-                    title: "No upcoming Event Cards",
-                    message: "New Event Cards from your connected PIXL account will appear here."
-                )
-            } else {
-                VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .lastTextBaseline) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("EVENT CARDS")
+                            .font(.system(size: 10, weight: .black))
+                            .tracking(1.9)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                        Text(events.isEmpty ? "Coming up" : "Up next")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    Spacer()
+                    if !events.isEmpty {
+                        Text("\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")")
+                            .font(.system(size: 9, weight: .black))
+                            .tracking(1.1)
+                            .foregroundStyle(SupporterHomeColors.accent)
+                    }
+                }
+
+                if events.isEmpty {
+                    emptyScheduleCard()
+                } else {
                     NavigationLink {
                         SupporterEventDetailView(clerk: clerk, shareToken: events[0].event.shareToken)
                     } label: {
@@ -223,6 +290,10 @@ struct ContentView: View {
         }
         .padding(18)
         .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(.white.opacity(0.09), lineWidth: 1)
+        }
     }
 
     private func eventCard(
@@ -230,54 +301,56 @@ struct ContentView: View {
         event: AthleteFanEvent,
         timing: SupporterEventTiming
     ) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 19) {
+            HStack(alignment: .top, spacing: 14) {
+                eventDateBadge(event)
+
+                VStack(alignment: .leading, spacing: 7) {
                     Text(timing == .live ? "HAPPENING NOW" : "UP NEXT")
-                        .font(.system(size: 11, weight: .black))
+                        .font(.system(size: 10, weight: .black))
                         .tracking(1.6)
                         .foregroundStyle(SupporterHomeColors.accent)
-                    Text(page.athleteName ?? "Your athlete")
-                        .font(.system(size: 14, weight: .semibold))
+
+                    Text(event.type == "game" ? (page.teamName ?? "Game") : "Practice")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(SupporterHomeColors.muted)
+
+                    Text(event.type == "game" && !event.opponent.isEmpty
+                         ? "vs \(event.opponent)"
+                         : event.type == "game" ? event.title : (page.teamName ?? "Practice"))
+                        .font(.system(size: 25, weight: .black, design: .rounded))
+                        .tracking(-0.4)
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(0.74))
+                    .padding(9)
+                    .background(.white.opacity(0.08), in: Circle())
+            }
 
-                HStack(spacing: 8) {
-                    if let seasonName = page.seasonName, !seasonName.isEmpty {
-                        Text(seasonName.uppercased())
-                            .font(.system(size: 10, weight: .heavy))
-                            .tracking(1.1)
-                            .foregroundStyle(.white.opacity(0.78))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(Color.white.opacity(0.09), in: Capsule())
-                            .lineLimit(1)
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(SupporterHomeColors.muted)
+            HStack(spacing: 7) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 10, weight: .bold))
+                Text(page.athleteName ?? "Your athlete")
+                    .lineLimit(1)
+                if let seasonName = page.seasonName, !seasonName.isEmpty {
+                    Circle().fill(SupporterHomeColors.accent.opacity(0.75)).frame(width: 4, height: 4)
+                    Text(seasonName)
+                        .lineLimit(1)
                 }
             }
-
-            VStack(alignment: .leading, spacing: 7) {
-                Text(event.type == "game" ? (page.teamName ?? "Game") : "Practice")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SupporterHomeColors.muted)
-                Text(event.type == "game" && !event.opponent.isEmpty
-                      ? "vs \(event.opponent)"
-                      : event.type == "game" ? event.title : (page.teamName ?? "Practice"))
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(SupporterHomeColors.muted)
 
             Rectangle()
-                .fill(Color.white.opacity(0.12))
+                .fill(.white.opacity(0.12))
                 .frame(height: 1)
 
-            VStack(alignment: .leading, spacing: 13) {
+            VStack(alignment: .leading, spacing: 12) {
                 eventDetail(icon: "calendar", text: event.formattedDate(timezone: event.timezone ?? page.timezone))
                 eventDetail(icon: "clock", text: event.formattedTime(timezone: event.timezone ?? page.timezone))
                 eventDetail(
@@ -289,19 +362,30 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(21)
+        .padding(20)
         .background {
             RoundedRectangle(cornerRadius: 24)
                 .fill(
                     LinearGradient(
-                        colors: [Color(red: 0.09, green: 0.20, blue: 0.36), SupporterHomeColors.panel],
+                        colors: [
+                            Color(red: 0.10, green: 0.24, blue: 0.43),
+                            SupporterHomeColors.panel,
+                            Color(red: 0.045, green: 0.12, blue: 0.24)
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 24)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        .stroke(
+                            LinearGradient(
+                                colors: [SupporterHomeColors.blue.opacity(0.78), .white.opacity(0.13), SupporterHomeColors.accent.opacity(0.55)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
                 }
         }
         .accessibilityElement(children: .combine)
@@ -373,6 +457,100 @@ struct ContentView: View {
         }
     }
 
+    private func eventDateBadge(_ event: AthleteFanEvent) -> some View {
+        let parts = event.date.split(separator: "-")
+        let monthNumber = parts.count == 3 ? Int(parts[1]) : nil
+        let dayNumber = parts.count == 3 ? Int(parts[2]) : nil
+        let monthSymbols = DateFormatter().shortMonthSymbols ?? []
+        let month = monthNumber.flatMap { (1...12).contains($0) ? monthSymbols[$0 - 1].uppercased() : nil } ?? "DATE"
+        let day = dayNumber.map(String.init) ?? "—"
+
+        return VStack(spacing: 2) {
+            Text(month)
+                .font(.system(size: 9, weight: .black))
+                .tracking(1.1)
+            Text(day)
+                .font(.system(size: 26, weight: .black, design: .rounded))
+                .contentTransition(.numericText())
+        }
+        .foregroundStyle(SupporterHomeColors.background)
+        .frame(width: 58, height: 66)
+        .background(
+            LinearGradient(
+                colors: [SupporterHomeColors.accent, Color(red: 0.88, green: 0.98, blue: 0.48)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 16)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(.white.opacity(0.42), lineWidth: 1)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func emptyScheduleCard() -> some View {
+        VStack(alignment: .leading, spacing: 17) {
+            HStack {
+                Image(systemName: "calendar")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(SupporterHomeColors.background)
+                    .frame(width: 46, height: 46)
+                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 14))
+
+                Spacer()
+
+                Text("ALL CAUGHT UP")
+                    .font(.system(size: 9, weight: .black))
+                    .tracking(1.4)
+                    .foregroundStyle(SupporterHomeColors.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(SupporterHomeColors.accent.opacity(0.1), in: Capsule())
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("No upcoming Event Cards")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text("New Event Cards from your connected PIXL account will show up here.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 8) {
+                Capsule()
+                    .fill(SupporterHomeColors.accent)
+                    .frame(width: 28, height: 3)
+                Capsule()
+                    .fill(SupporterHomeColors.blue.opacity(0.75))
+                    .frame(width: 12, height: 3)
+                Text("YOUR SEASON, ONE EVENT AT A TIME")
+                    .font(.system(size: 8, weight: .heavy))
+                    .tracking(1.05)
+                    .foregroundStyle(SupporterHomeColors.muted.opacity(0.88))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(19)
+        .background {
+            RoundedRectangle(cornerRadius: 22)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.08, green: 0.17, blue: 0.30), SupporterHomeColors.panel],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(.white.opacity(0.1), lineWidth: 1)
+                }
+        }
+    }
+
     private func messageCard(icon: String, title: String, message: String) -> some View {
         VStack(alignment: .leading, spacing: 11) {
             Image(systemName: icon)
@@ -388,6 +566,19 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
+        .background {
+            RoundedRectangle(cornerRadius: 22)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.08, green: 0.17, blue: 0.30), SupporterHomeColors.panel],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(.white.opacity(0.1), lineWidth: 1)
+                }
+        }
     }
 }

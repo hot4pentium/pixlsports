@@ -11,8 +11,14 @@ Linking must prove the native identity and existing web owner independently, wit
 
 Native development must not silently fall back to the published server when development configuration is missing. Safe troubleshooting should show the installed app's destination and HTTP status, never keys, tokens, or raw response bodies.
 
+Replit's private development preview can redirect requests from an external native client before they reach the API. Check the preview's privacy setting before changing a valid API origin or weakening the native client's no-redirect policy. Do not bundle a Replit external-access token in the app; use temporary public preview access only for a deliberate test, then restore privacy.
+
 **Why:** new native endpoints can be present in the workspace but absent from the published website. A production fallback hides that distinction and makes repeated plist edits/rebuilds inconclusive.
 
 **Why:** the user chose to preserve PWA sign-in and build a standalone native iOS app, then selected the private Event Card schedule as its first data milestone. It must not depend on a public HYPE Card or match users by email.
 
-**How to apply:** keep PWA auth intact. Every native private read must resolve the verified native-to-web account link, recheck current account restrictions, return only the data needed by that screen, and avoid caching private schedule data.
+**Why:** the user approved translating the existing PIXL web visual style into SwiftUI screen by screen, starting with the schedule, while keeping native sign-in and real private schedule data.
+
+**Why:** `.replit.dev` previews are private by default; external iOS requests can receive an authentication redirect even when the API responds normally inside the workspace.
+
+**How to apply:** keep PWA auth intact. Every native private read must resolve the verified native-to-web account link, recheck current account restrictions, return only the data needed by that screen, and avoid caching private schedule data. Translate the shared brand into native SwiftUI one screen at a time rather than embedding the PWA.
