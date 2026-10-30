@@ -83,7 +83,9 @@ struct NativeAccountLinkView: View {
             }
             .disabled(model.busy)
             .navigationTitle("PIXL connection")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+#endif
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .confirmationDialog("Disconnect your PIXL account?", isPresented: $confirmingDisconnect, titleVisibility: .visible) {
                 Button("Disconnect", role: .destructive) { Task { await model.disconnect(clerk: clerk) } }
