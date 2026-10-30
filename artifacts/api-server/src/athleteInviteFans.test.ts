@@ -314,7 +314,7 @@ test("removed or paused athlete photos stop loading at their existing public URL
     teamName: "City Hoops",
     seasonName: "Current",
     seasonEndsAt: new Date(Date.now() + 86_400_000),
-    sport: "basketball",
+    sport: "softball",
     trackerProjectId: null,
     scheduleProjectId: null,
     showHypeCard: true,

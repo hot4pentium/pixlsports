@@ -21,8 +21,31 @@ struct AthleteFanEvent: Decodable, Identifiable {
     let opponent: String
     let location: String
     let timezone: String?
+    let liveTapsActive: Bool
+    let liveTapsInviteToken: String?
+    let liveTapsSport: String?
 
     var id: String { shareToken }
+}
+
+struct LiveTapCheer: Decodable, Identifiable {
+    let key: String
+    let label: String
+    let emoji: String
+    let count: Int
+
+    var id: String { key }
+}
+
+struct LiveTapSummary: Decodable {
+    let active: Bool
+    let gameId: String?
+    let cheers: [LiveTapCheer]
+}
+
+private struct SupporterFanCardResponse: Decodable {
+    let sport: String
+    let liveTaps: LiveTapSummary
 }
 
 enum SupporterHomeAPI {
@@ -52,6 +75,35 @@ enum SupporterHomeAPI {
         }
         return (schedule, event)
     }
+
+    static func fetchLiveTapSummary(inviteToken: String) async throws -> (sport: String, summary: LiveTapSummary) {
+        let data = try await NativeAccountLinkClient().publicRequest(
+            "athlete-invites/\(inviteToken)/fan"
+        )
+        do {
+            let card = try JSONDecoder().decode(SupporterFanCardResponse.self, from: data)
+            return (card.sport, card.liveTaps)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func sendLiveTap(
+        inviteToken: String,
+        accessToken: String,
+        cheerKey: String
+    ) async throws -> LiveTapSummary {
+        let data = try await NativeAccountLinkClient().publicRequest(
+            "athlete-invites/\(inviteToken)/live-taps",
+            method: "POST",
+            body: ["accessToken": accessToken, "cheerKey": cheerKey]
+        )
+        do {
+            return try JSONDecoder().decode(LiveTapSummary.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
 }
 
 enum SupporterHomeAPIError: LocalizedError {
@@ -62,7 +114,7 @@ enum SupporterHomeAPIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
-            return "The PIXL Sports schedule returned information we couldn’t read. Please try again."
+            return "The PIXL Sports response returned information we couldn’t read. Please try again."
         case .privateScheduleUnavailable:
             return "Reconnect the PIXL account that owns this Event Card to view its details."
         case .eventUnavailable:

@@ -122,6 +122,28 @@ struct SupporterEventDetailView: View {
                     RoundedRectangle(cornerRadius: 22)
                         .stroke(Color.white.opacity(0.1), lineWidth: 1)
                 }
+
+                if event.liveTapsActive,
+                   let inviteToken = event.liveTapsInviteToken,
+                   let sport = event.liveTapsSport {
+                    NavigationLink {
+                        SupporterLiveTapsView(
+                            inviteToken: inviteToken,
+                            sport: sport,
+                            athleteName: schedule.athleteName ?? "your athlete",
+                            eventTitle: event.title
+                        )
+                    } label: {
+                        Label("Send Live Taps", systemImage: "hands.clap.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(SupporterHomeColors.background)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Open the active family cheer session. Live Taps do not record player stats.")
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

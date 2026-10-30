@@ -33,6 +33,7 @@ async function link(who: NativeIdentity, ownerClerkUserId: string) {
 
 after(async () => {
   await pool.query("DELETE FROM schedule_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
+  await pool.query("DELETE FROM stat_tracker_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_invites WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM native_account_links WHERE native_subject=ANY($1::text[])", [nativeSubjects]);
   await pool.query("DELETE FROM account_access WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
@@ -45,10 +46,11 @@ test("native schedule is scoped to the explicitly linked active account", async 
   const otherOwner = await owner();
   await link(who, linkedOwner);
 
+  const inviteToken = randomBytes(18).toString("base64url");
   await pool.query(`INSERT INTO athlete_invites
     (owner_clerk_user_id,public_token,athlete_name,team_name,season_name,season_ends_at,sport,timezone)
     VALUES ($1,$2,'Jordan','Tigers','Spring 2099','2099-06-01T00:00:00Z','soccer','America/New_York')`,
-  [linkedOwner, randomBytes(18).toString("base64url")]);
+  [linkedOwner, inviteToken]);
 
   const insertSchedule = (ownerClerkUserId: string, eventId: string, title: string) =>
     pool.query(`INSERT INTO schedule_shares (owner_clerk_user_id,title,team_season,events)
@@ -79,9 +81,55 @@ test("native schedule is scoped to the explicitly linked active account", async 
   assert.equal(schedule.events[0]?.opponent, "Bears");
   assert.equal(schedule.events[0]?.location, "Field 2");
   assert.equal(schedule.events[0]?.timezone, "America/Chicago");
+  assert.equal(schedule.events[0]?.liveTapsActive, false);
+  assert.equal(schedule.events[0]?.liveTapsInviteToken, null);
   assert.equal(JSON.stringify(schedule).includes("Private opponent"), false);
   assert.equal(JSON.stringify(schedule).includes("private prep"), false);
   assert.equal(JSON.stringify(schedule).includes("private snacks"), false);
+});
+
+test("native schedule exposes only the invite for its matching active Live Taps game", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+
+  const inviteToken = randomBytes(18).toString("base64url");
+  const [invite] = (await pool.query<{ id: string }>(`INSERT INTO athlete_invites
+    (owner_clerk_user_id,public_token,athlete_name,team_name,season_name,season_ends_at,sport,timezone)
+    VALUES ($1,$2,'Jordan','Tigers','Spring 2099','2099-06-01T00:00:00Z','soccer','America/New_York')
+    RETURNING id`, [linkedOwner, inviteToken])).rows;
+  await pool.query(`INSERT INTO schedule_shares (owner_clerk_user_id,title,team_season,events)
+    VALUES ($1,'Tigers vs Bears',$2,$3::jsonb)`,
+  [linkedOwner, GAME_ON_CARD_MARKER, JSON.stringify([{
+    id: "active-game",
+    date: "2099-04-01",
+    time: "18:00",
+    type: "game",
+    opponent: "Bears",
+    location: "Field 2",
+  }])]);
+  await pool.query(`INSERT INTO schedule_shares (owner_clerk_user_id,title,team_season,events)
+    VALUES ($1,'Tigers vs Wolves',$2,$3::jsonb)`,
+  [linkedOwner, GAME_ON_CARD_MARKER, JSON.stringify([{
+    id: "other-game",
+    date: "2099-04-08",
+    time: "18:00",
+    type: "game",
+    opponent: "Wolves",
+  }])]);
+  const [share] = (await pool.query<{ id: string }>(`INSERT INTO stat_tracker_shares
+    (owner_clerk_user_id,game_id,athlete_name,team_name,game,expires_at)
+    VALUES ($1,'active-game','Jordan','Tigers',$2::jsonb,NOW()+INTERVAL '1 hour')
+    RETURNING id`, [linkedOwner, JSON.stringify({ status: "live", sport: "soccer" })])).rows;
+  await pool.query(`UPDATE athlete_invites SET live_tracker_share_token=$2 WHERE id=$1`, [invite!.id, share!.id]);
+
+  const schedule = await loadNativeSupporterSchedule(who);
+  const activeEvent = schedule.events.find((event) => event.eventId === "active-game");
+  const otherEvent = schedule.events.find((event) => event.eventId === "other-game");
+  assert.equal(activeEvent?.liveTapsActive, true);
+  assert.equal(activeEvent?.liveTapsInviteToken, inviteToken);
+  assert.equal(otherEvent?.liveTapsActive, false);
+  assert.equal(otherEvent?.liveTapsInviteToken, null);
 });
 
 test("unlinked native identities receive no account schedule", async () => {

@@ -58,6 +58,10 @@ The app does not supply either Apple capability with a guessed team/prefix/domai
   live/final status. It does not return raw tracker data or depend on public
   HYPE Card visibility. The previous device-saved public athlete-page URL is
   no longer used by Supporter Home.
+- Active game Event Cards can open the native Live Taps screen. Sending a cheer
+  still requires scanning the owner’s private family QR; the public card link
+  remains view-only. The iPhone uses the existing family-token tap endpoint,
+  and Live Taps do not create stat-tracker plays or a separate history.
 
 ## Securely connect an existing PIXL account
 
@@ -88,10 +92,11 @@ Missing issuer configuration fails closed with a setup error. Never trust the
 issuer in an incoming JWT, match accounts by email, or replace the managed PWA
 keys. Existing account IDs/data ownership remain unchanged.
 
-**Not connected yet:** private Event Cards are the first native data surface.
-Stats, live taps, editing, and other account data are not included. Every future
-private native read must resolve the verified mapping and recheck current account
-lifecycle/editor restrictions; cached links or previously loaded data are not access.
+**Not connected yet:** private Event Cards and QR-authorized Live Taps are the
+current native data surfaces. Stats, editing, and other account data are not
+included. Every future private native read must resolve the verified mapping and
+recheck current account lifecycle/editor restrictions; cached links or previously
+loaded data are not access.
 
 ## Mac verification
 
@@ -118,6 +123,15 @@ The Foundation-only configuration checks do not require Clerk or network access:
 swiftc -parse-as-library "ios/PIXL Sports/NativeClerkConfiguration.swift" \
   ios/Tests/NativeClerkConfigurationChecks.swift -o /tmp/pixl-clerk-config-checks
 /tmp/pixl-clerk-config-checks
+```
+
+The family QR parser has Foundation-only checks for the correct athlete link,
+approved hosts, and token-in-fragment format:
+
+```sh
+swiftc -parse-as-library "ios/PIXL Sports/FamilyLiveTapQR.swift" \
+  ios/Tests/FamilyLiveTapQRChecks.swift -o /tmp/pixl-live-tap-qr-checks
+/tmp/pixl-live-tap-qr-checks
 ```
 
 After syncing code and configuring the publishable key:

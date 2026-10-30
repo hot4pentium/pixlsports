@@ -94,6 +94,50 @@ final class NativeAccountLinkClient {
         return data
     }
 
+    func publicRequest(_ path: String, method: String = "GET", body: [String: String]? = nil) async throws -> Data {
+        let origin = try Self.apiOrigin()
+        let components = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard !components.isEmpty,
+              components.allSatisfy({
+                  String($0).range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil
+              }) else {
+            throw NativeAccountLinkError.message("The Live Taps request could not be prepared.")
+        }
+
+        var url = origin.appendingPathComponent("api")
+        for component in components {
+            url.appendPathComponent(String(component))
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+        if let body {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let response = response as? HTTPURLResponse else {
+            throw NativeAccountLinkError.message("Live Taps could not be checked.")
+        }
+        guard (200..<300).contains(response.statusCode) else {
+            struct Failure: Decodable { let error: String }
+            if let failure = try? JSONDecoder().decode(Failure.self, from: data) {
+                throw NativeAccountLinkError.message(failure.error)
+            }
+            throw NativeAccountLinkError.message(
+                NativeAccountLinkEndpoint.responseFailure(
+                    status: response.statusCode,
+                    contentType: response.value(forHTTPHeaderField: "Content-Type"),
+                    origin: origin
+                )
+            )
+        }
+        return data
+    }
+
     func request(_ endpoint: String = "", method: String = "GET", body: [String: String]? = nil, clerk: Clerk) async throws -> NativeAccountLinkState {
         // Validate the installed app's destination before requesting a token.
         let origin = try Self.apiOrigin()

@@ -3861,7 +3861,7 @@ export const GetAthleteFanCardResponse = zod.object({
   "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
   "timezone": zod.string().max(getAthleteFanCardResponseTimezoneMax).nullable().describe('Validated IANA timezone, or null for a legacy invite without one.'),
-  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'softball', 'volleyball']),
   "photoUrl": zod.string().nullable(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({

@@ -5145,7 +5145,7 @@ components:
           description: Validated IANA timezone, or null for a legacy invite without one.
         sport:
           type: string
-          enum: [baseball, basketball, football, soccer, volleyball]
+          enum: [baseball, basketball, football, soccer, softball, volleyball]
         photoUrl: { type: ["string", "null"] }
         cutoutUrl: { type: ["string", "null"] }
         cardAppearance:
