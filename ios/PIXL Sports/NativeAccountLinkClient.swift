@@ -46,6 +46,54 @@ final class NativeAccountLinkClient {
         try NativeAccountLinkEndpoint.load(bundle: bundle)
     }
 
+    func getData(_ path: String, clerk: Clerk) async throws -> Data {
+        let origin = try Self.apiOrigin()
+        guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
+            throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
+        }
+
+        let components = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard !components.isEmpty,
+              components.allSatisfy({
+                  String($0).range(of: "^[a-z-]+$", options: .regularExpression) != nil
+              }) else {
+            throw NativeAccountLinkError.message("The PIXL Sports request could not be prepared.")
+        }
+
+        var url = origin.appendingPathComponent("api").appendingPathComponent("native")
+        for component in components {
+            url = url.appendingPathComponent(String(component))
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+        let (data, response) = try await session.data(for: request)
+        guard let response = response as? HTTPURLResponse else {
+            throw NativeAccountLinkError.message("The PIXL Sports schedule could not be checked.")
+        }
+        guard response.statusCode == 200 else {
+            struct Failure: Decodable { let error: String }
+            if let failure = try? JSONDecoder().decode(Failure.self, from: data) {
+                throw NativeAccountLinkError.message(failure.error)
+            }
+            let host = origin.host ?? "the configured server"
+            if (300...399).contains(response.statusCode) {
+                throw NativeAccountLinkError.message(
+                    "\(host) redirected the request (HTTP \(response.statusCode)). Check the API address."
+                )
+            }
+            throw NativeAccountLinkError.message(
+                "The PIXL Sports schedule request failed on \(host) (HTTP \(response.statusCode))."
+            )
+        }
+        return data
+    }
+
     func request(_ endpoint: String = "", method: String = "GET", body: [String: String]? = nil, clerk: Clerk) async throws -> NativeAccountLinkState {
         // Validate the installed app's destination before requesting a token.
         let origin = try Self.apiOrigin()

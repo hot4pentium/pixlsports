@@ -54,7 +54,13 @@ import { sanitizeAthleteInvitePhoto } from "../lib/athleteInvitePhoto";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
-import { GAME_ON_CARD_MARKER } from "./scheduleShares";
+import { GAME_ON_CARD_MARKER } from "../lib/gameOnCard";
+import {
+  AthleteEventShareRow,
+  AthleteTrackerShareRow,
+  gameIdsFromAthleteEventShares,
+  mapAthleteEventSummaries,
+} from "../lib/athleteEventSummaries";
 import { getAthleteInviteEventNotificationProgress, notifyAthleteInviteEventFollowers } from "../lib/athleteInviteEventNotifications";
 
 const router: IRouter = Router();
@@ -221,70 +227,31 @@ function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
   };
 }
 
-function sourceEventFromCard(events: unknown) {
-  if (!Array.isArray(events) || events.length !== 1) return null;
-  const event: unknown = events[0];
-  if (!event || typeof event !== "object" || Array.isArray(event)) return null;
-  const item = event as Record<string, unknown>;
-  return item.type === "game" || item.type === "practice" ? item : null;
-}
-
-function validEventDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-async function availableAthleteEvents(invite: InviteRow) {
+async function availableAthleteEvents(ownerClerkUserId: string) {
   const ownerShares = await db.select({ share: scheduleSharesTable })
     .from(scheduleSharesTable)
     .where(and(
-      eq(scheduleSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+      eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
       eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER),
     ))
     .orderBy(desc(scheduleSharesTable.createdAt));
-  const eligible = ownerShares.flatMap(({ share }) => {
-    const event = sourceEventFromCard(share.events);
-    if (!event || typeof event.id !== "string" || !validEventDate(event.date)) return [];
-    return [{ share, event }];
-  });
-  const gameIds = [...new Set(eligible.flatMap(({ event }) => event.type === "game" ? [event.id as string] : []))];
-  const trackerStatusByGame = new Map<string, string>();
+  const shares: AthleteEventShareRow[] = ownerShares.map(({ share }) => ({
+    id: share.id,
+    title: share.title,
+    events: share.events,
+  }));
+  const gameIds = gameIdsFromAthleteEventShares(shares);
+  let trackerRows: AthleteTrackerShareRow[] = [];
   if (gameIds.length) {
-    const trackerRows = await db.select({
+    trackerRows = await db.select({
       gameId: statTrackerSharesTable.gameId,
       game: statTrackerSharesTable.game,
     }).from(statTrackerSharesTable).where(and(
-      eq(statTrackerSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
       inArray(statTrackerSharesTable.gameId, gameIds),
     ));
-    for (const tracker of trackerRows) {
-      const game = tracker.game && typeof tracker.game === "object" && !Array.isArray(tracker.game)
-        ? tracker.game as Record<string, unknown>
-        : {};
-      if (game.status === "final" || game.status === "live") trackerStatusByGame.set(tracker.gameId, game.status);
-    }
   }
-  return eligible.map(({ share, event }) => {
-    const eventStatus = event.status === "final" || event.status === "live" ? event.status : "upcoming";
-    const trackerStatus = event.type === "game" ? trackerStatusByGame.get(event.id as string) : undefined;
-    const status = eventStatus === "final" || trackerStatus === "final"
-      ? "final"
-      : eventStatus === "live" || trackerStatus === "live"
-        ? "live"
-        : "upcoming";
-    return {
-      shareToken: share.id,
-      eventId: event.id as string,
-      title: share.title,
-      date: event.date as string,
-      time: typeof event.time === "string" ? event.time : "",
-      type: event.type as "game" | "practice",
-      status,
-      opponent: typeof event.opponent === "string" ? event.opponent : "",
-      location: typeof event.location === "string" ? event.location : "",
-    };
-  });
+  return mapAthleteEventSummaries(shares, trackerRows);
 }
 
 async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
@@ -320,7 +287,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
         gt(statTrackerSharesTable.expiresAt, new Date()),
       )).then(([share]) => share ?? null)
       : Promise.resolve(null),
-    invite.showEvents ? availableAthleteEvents(invite) : Promise.resolve([]),
+    invite.showEvents ? availableAthleteEvents(invite.ownerClerkUserId) : Promise.resolve([]),
   ]);
   const latestImage = latestImages[0] ?? null;
   const latestVideo = videos[0] ?? null;
@@ -445,7 +412,7 @@ async function ownedInviteResponse(invite: InviteRow) {
       : null,
     photoRevision: athletePhotoRevision(invite.photoObjectPath),
     cardAppearance: invite.cardAppearance ?? null,
-    events: invite.showEvents ? await availableAthleteEvents(invite) : [],
+    events: invite.showEvents ? await availableAthleteEvents(invite.ownerClerkUserId) : [],
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt,
   };

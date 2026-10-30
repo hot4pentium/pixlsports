@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import ClerkKit
 
 enum SupporterEventTiming: Equatable {
     case upcoming
@@ -11,33 +12,22 @@ final class SupporterHomeViewModel: ObservableObject {
     enum State {
         case notConnected
         case loading
-        case event(page: AthleteFanPage, event: AthleteFanEvent, timing: SupporterEventTiming)
-        case empty(page: AthleteFanPage)
+        case schedule(page: NativeSupporterSchedule, events: [SupporterScheduleItem])
         case failed(String)
     }
 
-    @Published private(set) var state: State = .notConnected
+    @Published private(set) var state: State = .loading
 
-    func reset() {
-        state = .notConnected
-    }
-
-    func load(from athletePageLink: String) async {
-        guard let inviteToken = SupporterHomeAPI.inviteToken(from: athletePageLink) else {
-            state = .failed(SupporterHomeAPIError.invalidPageLink.localizedDescription)
-            return
-        }
-
+    func load(clerk: Clerk) async {
         state = .loading
         do {
-            let page = try await SupporterHomeAPI.fetchFanPage(inviteToken: inviteToken)
+            let page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
             guard !Task.isCancelled else { return }
-
-            if let next = nextEvent(in: page, now: Date()) {
-                state = .event(page: page, event: next.event, timing: next.timing)
-            } else {
-                state = .empty(page: page)
+            guard page.status == "linked" else {
+                state = .notConnected
+                return
             }
+            state = .schedule(page: page, events: upcomingEvents(in: page, now: Date()))
         } catch is CancellationError {
             return
         } catch let error as URLError {
@@ -54,10 +44,10 @@ final class SupporterHomeViewModel: ObservableObject {
         }
     }
 
-    private func nextEvent(
-        in page: AthleteFanPage,
+    private func upcomingEvents(
+        in page: NativeSupporterSchedule,
         now: Date
-    ) -> (event: AthleteFanEvent, timing: SupporterEventTiming)? {
+    ) -> [SupporterScheduleItem] {
         let zone = TimeZone(identifier: page.timezone ?? "") ?? .current
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -65,45 +55,53 @@ final class SupporterHomeViewModel: ObservableObject {
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let today = dateFormatter.string(from: now)
 
-        let candidates = page.events.compactMap { event -> (AthleteFanEvent, SupporterEventTiming, Date?)? in
+        let candidates = page.events.compactMap { event -> SupporterScheduleItem? in
             guard event.status != "final" else { return nil }
             let start = event.parsedStart(timezone: page.timezone)
 
             if event.status == "live" {
-                return (event, .live, start)
+                return SupporterScheduleItem(event: event, timing: .live, start: start)
             }
 
             guard event.date >= today else { return nil }
             if event.date > today {
-                return (event, .upcoming, start)
+                return SupporterScheduleItem(event: event, timing: .upcoming, start: start)
             }
             guard let start else {
-                return event.status == "upcoming" ? (event, .upcoming, nil) : nil
+                return event.status == "upcoming"
+                    ? SupporterScheduleItem(event: event, timing: .upcoming, start: nil)
+                    : nil
             }
             if start >= now {
-                return (event, .upcoming, start)
+                return SupporterScheduleItem(event: event, timing: .upcoming, start: start)
             }
             if now.timeIntervalSince(start) <= 3 * 60 * 60 {
-                return (event, .live, start)
+                return SupporterScheduleItem(event: event, timing: .live, start: start)
             }
             return nil
         }
 
         return candidates
             .sorted { left, right in
-                if left.1 != right.1 {
-                    return left.1 == .live
+                if left.timing != right.timing {
+                    return left.timing == .live
                 }
-                if let leftStart = left.2, let rightStart = right.2 {
+                if let leftStart = left.start, let rightStart = right.start {
                     return leftStart < rightStart
                 }
-                if left.2 != nil { return true }
-                if right.2 != nil { return false }
-                return left.0.date == right.0.date
-                    ? left.0.time < right.0.time
-                    : left.0.date < right.0.date
+                if left.start != nil { return true }
+                if right.start != nil { return false }
+                return left.event.date == right.event.date
+                    ? left.event.time < right.event.time
+                    : left.event.date < right.event.date
             }
-            .first
-            .map { (event: $0.0, timing: $0.1) }
     }
+}
+
+struct SupporterScheduleItem: Identifiable {
+    let event: AthleteFanEvent
+    let timing: SupporterEventTiming
+    let start: Date?
+
+    var id: String { event.id }
 }

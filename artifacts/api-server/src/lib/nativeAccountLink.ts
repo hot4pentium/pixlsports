@@ -22,7 +22,11 @@ const nativeWhere = (who: NativeIdentity) => [who.issuer, who.subject];
 const nativeState = (link?: LinkRow): NativeLinkState => link
   ? { status: "linked", linkId: link.id, accountLabel: link.account_label } : { status: "unlinked" };
 
-export async function assertLinkableWebAccount(owner: string, tx?: PoolClient) {
+export async function assertLinkableWebAccount(
+  owner: string,
+  tx?: PoolClient,
+  unavailableMessage = "This PIXL account is not eligible for an iPhone connection.",
+) {
   if (tx) {
     // Use the transaction's connection (not a second pooled connection while
     // other callers wait on the setup lock), and hold account eligibility stable
@@ -33,7 +37,7 @@ export async function assertLinkableWebAccount(owner: string, tx?: PoolClient) {
       AND NOT EXISTS (SELECT 1 FROM admin_identity_blocks b WHERE b.clerk_user_id=$1)
       AND NOT EXISTS (SELECT 1 FROM athlete_editor_access e WHERE e.athlete_clerk_user_id=$1 AND NOT e.existing_account)
       FOR SHARE OF a`, [owner]);
-    if (!result.rowCount) throw new NativeLinkError(423, "This PIXL account is not eligible for an iPhone connection.");
+    if (!result.rowCount) throw new NativeLinkError(423, unavailableMessage);
     return;
   }
   const [lifecycle, editor] = await Promise.all([
@@ -42,7 +46,7 @@ export async function assertLinkableWebAccount(owner: string, tx?: PoolClient) {
   ]);
   if (lifecycle.status !== "active" || lifecycle.identityBlocked || lifecycle.adminSuspended
     || (editor && !editor.existingAccount)) {
-    throw new NativeLinkError(423, "This PIXL account is not eligible for an iPhone connection.");
+    throw new NativeLinkError(423, unavailableMessage);
   }
 }
 

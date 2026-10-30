@@ -23,11 +23,11 @@ import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth"
 import { isAccountActive } from "../lib/accountLifecycle";
 import { isIanaTimezone } from "../lib/timezone";
 import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
+import { GAME_ON_CARD_MARKER } from "../lib/gameOnCard";
 
 const router: IRouter = Router();
-// Stored in an existing non-card metadata field until the card has its own durable model.
-// Never return this internal value in a public or owned share response.
-export const GAME_ON_CARD_MARKER = "@pixlsports:game-on-card:v1";
+// Keep the existing export for callers while the marker lives with shared domain logic.
+export { GAME_ON_CARD_MARKER } from "../lib/gameOnCard";
 
 class InvalidCalendarAssociationError extends Error {}
 

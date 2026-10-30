@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-zod";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
+import { loadNativeSupporterSchedule } from "../lib/nativeSupporterSchedule";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 
 const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
@@ -17,8 +18,8 @@ const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, 
       res.status(error.status).json({ error: error.message });
     } else {
       // Do not log token/verifier/code bodies or third-party auth responses.
-      req.log.error("Native account link operation failed");
-      res.status(503).json({ error: "Account linking is temporarily unavailable. Please try again." });
+      req.log.error("Native PIXL operation failed");
+      res.status(503).json({ error: "PIXL Sports is temporarily unavailable. Please try again." });
     }
   }
 };
@@ -41,6 +42,9 @@ nativeAccountLinkRouter.get("/link", handle(async (_req, res) => {
 }));
 nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
   res.json(await service.disconnect(identity(res)));
+}));
+nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
+  res.json(await loadNativeSupporterSchedule(identity(res)));
 }));
 nativeAccountLinkRouter.post("/link/requests", handle(async (req, res) => {
   const parsed = BeginNativeAccountLinkBody.strict().safeParse(req.body);

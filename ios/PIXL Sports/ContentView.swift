@@ -1,4 +1,5 @@
 import SwiftUI
+import ClerkKit
 
 private enum SupporterHomeColors {
     static let background = Color(red: 0.035, green: 0.075, blue: 0.15)
@@ -9,14 +10,15 @@ private enum SupporterHomeColors {
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
-
-    @AppStorage("pixlsports.supporter.athlete-page-link")
-    private var savedAthletePageLink = ""
+    let clerk: Clerk
+    @Binding var showingAccountLink: Bool
 
     @StateObject private var viewModel = SupporterHomeViewModel()
-    @State private var draftAthletePageLink = ""
-    @State private var isEditingLink = true
-    @State private var linkError: String?
+
+    init(clerk: Clerk, showingAccountLink: Binding<Bool>) {
+        self.clerk = clerk
+        self._showingAccountLink = showingAccountLink
+    }
 
     var body: some View {
         ZStack {
@@ -30,8 +32,8 @@ struct ContentView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     header
+                    accountConnectionSection
                     nextEventSection
-                    athletePageSection
                 }
                 .frame(maxWidth: 560, alignment: .leading)
                 .padding(.horizontal, 22)
@@ -40,25 +42,20 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
             }
             .refreshable {
-                guard !savedAthletePageLink.isEmpty else { return }
-                await viewModel.load(from: savedAthletePageLink)
+                await viewModel.load(clerk: clerk)
             }
         }
         .preferredColorScheme(.dark)
-        .task(id: savedAthletePageLink) {
-            guard !savedAthletePageLink.isEmpty else {
-                viewModel.reset()
-                return
-            }
-            await viewModel.load(from: savedAthletePageLink)
-        }
-        .onAppear {
-            draftAthletePageLink = savedAthletePageLink
-            isEditingLink = savedAthletePageLink.isEmpty
+        .task {
+            await viewModel.load(clerk: clerk)
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, !savedAthletePageLink.isEmpty else { return }
-            Task { await viewModel.load(from: savedAthletePageLink) }
+            guard phase == .active else { return }
+            Task { await viewModel.load(clerk: clerk) }
+        }
+        .onChange(of: showingAccountLink) { wasShowing, isShowing in
+            guard wasShowing && !isShowing else { return }
+            Task { await viewModel.load(clerk: clerk) }
         }
     }
 
@@ -77,11 +74,11 @@ struct ContentView: View {
                     .foregroundStyle(.white)
             }
 
-            Text("Supporter Home")
+            Text("Your schedule")
                 .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
-            Text("The next big moment starts here.")
+            Text("Your private schedule, at a glance.")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(SupporterHomeColors.muted)
         }
@@ -93,19 +90,19 @@ struct ContentView: View {
         switch viewModel.state {
         case .notConnected:
             messageCard(
-                icon: "calendar.badge.plus",
-                title: "Connect an athlete page",
-                message: "Add a PIXL Sports athlete page link to see their next published Event Card here."
+                icon: "link",
+                title: "Connect your PIXL account",
+                message: "Securely link the iPhone app to the PIXL Sports account that owns your Event Cards."
             )
         case .loading:
             HStack(spacing: 14) {
                 ProgressView()
                     .tint(SupporterHomeColors.accent)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Finding the next event")
+                    Text("Loading your schedule")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
-                    Text("Loading the latest schedule…")
+                    Text("Checking your connected Event Cards…")
                         .font(.system(size: 14))
                         .foregroundStyle(SupporterHomeColors.muted)
                 }
@@ -114,25 +111,40 @@ struct ContentView: View {
             .padding(20)
             .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Loading the next event")
-        case let .event(page, event, timing):
-            eventCard(page: page, event: event, timing: timing)
-        case let .empty(page):
-            messageCard(
-                icon: "calendar",
-                title: "No upcoming events yet",
-                message: "\(page.athleteName)’s next Event Card will appear here when it’s published on their athlete page."
-            )
+            .accessibilityLabel("Loading your private schedule")
+        case let .schedule(page, events):
+            if events.isEmpty {
+                messageCard(
+                    icon: "calendar",
+                    title: "No upcoming Event Cards",
+                    message: "New Event Cards from your connected PIXL account will appear here."
+                )
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    eventCard(page: page, event: events[0].event, timing: events[0].timing)
+
+                    if events.count > 1 {
+                        Text("MORE UPCOMING")
+                            .font(.system(size: 11, weight: .black))
+                            .tracking(1.6)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                            .padding(.top, 7)
+                        ForEach(Array(events.dropFirst())) { item in
+                            compactEventCard(page: page, item: item)
+                        }
+                    }
+                }
+            }
         case let .failed(message):
             VStack(alignment: .leading, spacing: 14) {
-                Label("We couldn’t load the schedule", systemImage: "exclamationmark.triangle.fill")
+                Label("We couldn’t load your schedule", systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
                 Text(message)
                     .font(.system(size: 14))
                     .foregroundStyle(SupporterHomeColors.muted)
                 Button {
-                    Task { await viewModel.load(from: savedAthletePageLink) }
+                    Task { await viewModel.load(clerk: clerk) }
                 } label: {
                     Label("Try again", systemImage: "arrow.clockwise")
                         .font(.system(size: 14, weight: .bold))
@@ -149,77 +161,62 @@ struct ContentView: View {
         }
     }
 
-    private var athletePageSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(isEditingLink ? "ATHLETE PAGE LINK" : "CONNECTED ATHLETE")
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.5)
-                    .foregroundStyle(SupporterHomeColors.muted)
+    private var accountConnectionSection: some View {
+        let isLinked: Bool
+        let isChecking: Bool
+        if case .schedule = viewModel.state {
+            isLinked = true
+            isChecking = false
+        } else if case .loading = viewModel.state {
+            isLinked = false
+            isChecking = true
+        } else {
+            isLinked = false
+            isChecking = false
+        }
 
-                Spacer()
+        return VStack(alignment: .leading, spacing: 12) {
+            Label(
+                isLinked ? "PIXL ACCOUNT CONNECTED" : isChecking ? "CHECKING PIXL ACCOUNT" : "PRIVATE PIXL SCHEDULE",
+                systemImage: isLinked ? "checkmark.shield.fill" : isChecking ? "arrow.triangle.2.circlepath" : "lock.fill"
+            )
+            .font(.system(size: 11, weight: .heavy))
+            .tracking(1.4)
+            .foregroundStyle(isLinked ? SupporterHomeColors.accent : SupporterHomeColors.muted)
 
-                if !savedAthletePageLink.isEmpty && !isEditingLink {
-                    Button("Change") {
-                        draftAthletePageLink = savedAthletePageLink
-                        linkError = nil
-                        isEditingLink = true
-                    }
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(SupporterHomeColors.accent)
+            Text(isLinked
+                 ? "Schedule data is loaded from your verified PIXL account."
+                 : isChecking
+                    ? "Verifying your private schedule connection…"
+                    : "Connect the PIXL account you already use. Approval is required on both devices.")
+                .font(.system(size: 13))
+                .foregroundStyle(SupporterHomeColors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                showingAccountLink = true
+            } label: {
+                HStack {
+                    Image(systemName: isLinked ? "person.crop.circle.badge.checkmark" : "link")
+                    Text(isLinked ? "Manage PIXL connection" : "Connect PIXL account")
+                    Spacer()
+                    Image(systemName: "arrow.right")
                 }
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(SupporterHomeColors.background)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 14))
             }
-
-            if isEditingLink {
-                TextField("https://pixlsports.com/fan/…", text: $draftAthletePageLink)
-                    .athletePageURLInputModifiers()
-                    .padding(15)
-                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                    }
-                    .accessibilityLabel("Athlete page link")
-
-                if let linkError {
-                    Text(linkError)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color(red: 1, green: 0.65, blue: 0.61))
-                }
-
-                Button {
-                    saveAthletePageLink()
-                } label: {
-                    HStack {
-                        Text("Show my next event")
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                    }
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(SupporterHomeColors.background)
-                    .padding(.horizontal, 17)
-                    .padding(.vertical, 15)
-                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 15))
-                }
-                .buttonStyle(.plain)
-
-                Text("Paste the athlete page link shared with you. Your link is saved on this iPhone.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(SupporterHomeColors.muted)
-            } else {
-                Text(savedAthletePageLink)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(2)
-                    .textSelection(.enabled)
-            }
+            .buttonStyle(.plain)
+            .disabled(isChecking)
         }
         .padding(18)
         .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 20))
     }
 
     private func eventCard(
-        page: AthleteFanPage,
+        page: NativeSupporterSchedule,
         event: AthleteFanEvent,
         timing: SupporterEventTiming
     ) -> some View {
@@ -230,30 +227,32 @@ struct ContentView: View {
                         .font(.system(size: 11, weight: .black))
                         .tracking(1.6)
                         .foregroundStyle(SupporterHomeColors.accent)
-                    Text(page.athleteName)
+                    Text(page.athleteName ?? "Your athlete")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(SupporterHomeColors.muted)
                 }
 
                 Spacer()
 
-                Text(page.seasonName.uppercased())
-                    .font(.system(size: 10, weight: .heavy))
-                    .tracking(1.1)
-                    .foregroundStyle(.white.opacity(0.78))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(Color.white.opacity(0.09), in: Capsule())
-                    .lineLimit(1)
+                if let seasonName = page.seasonName, !seasonName.isEmpty {
+                    Text(seasonName.uppercased())
+                        .font(.system(size: 10, weight: .heavy))
+                        .tracking(1.1)
+                        .foregroundStyle(.white.opacity(0.78))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.09), in: Capsule())
+                        .lineLimit(1)
+                }
             }
 
             VStack(alignment: .leading, spacing: 7) {
-                Text(event.type == "game" ? page.teamName : "Practice")
+                Text(event.type == "game" ? (page.teamName ?? "Game") : "Practice")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SupporterHomeColors.muted)
                 Text(event.type == "game" && !event.opponent.isEmpty
-                     ? "vs \(event.opponent)"
-                     : event.type == "game" ? "Game day" : page.teamName)
+                      ? "vs \(event.opponent)"
+                      : event.type == "game" ? event.title : (page.teamName ?? "Practice"))
                     .font(.system(size: 27, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
@@ -291,7 +290,51 @@ struct ContentView: View {
                 }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName), \(page.teamName), \(event.opponent), \(event.formattedDate(timezone: page.timezone)), \(event.formattedTime(timezone: page.timezone))")
+        .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName ?? "your athlete"), \(page.teamName ?? "team"), \(event.opponent), \(event.formattedDate(timezone: page.timezone)), \(event.formattedTime(timezone: page.timezone))")
+    }
+
+    private func compactEventCard(page: NativeSupporterSchedule, item: SupporterScheduleItem) -> some View {
+        HStack(alignment: .top, spacing: 13) {
+            Image(systemName: item.timing == .live ? "dot.radiowaves.left.and.right" : "calendar")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(SupporterHomeColors.accent)
+                .frame(width: 38, height: 38)
+                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.event.title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("\(item.event.formattedDate(timezone: page.timezone)) · \(item.event.formattedTime(timezone: page.timezone))")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                if !item.event.location.isEmpty {
+                    Text(item.event.location)
+                        .font(.system(size: 12))
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .lineLimit(2)
+                }
+            }
+            Spacer(minLength: 0)
+            if item.timing == .live {
+                Text("LIVE")
+                    .font(.system(size: 9, weight: .black))
+                    .tracking(1)
+                    .foregroundStyle(SupporterHomeColors.background)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(SupporterHomeColors.accent, in: Capsule())
+            }
+        }
+        .padding(15)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func eventDetail(icon: String, text: String) -> some View {
@@ -324,71 +367,4 @@ struct ContentView: View {
         .padding(20)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
     }
-
-    private func saveAthletePageLink() {
-        let value = draftAthletePageLink.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard SupporterHomeAPI.inviteToken(from: value) != nil else {
-            linkError = "Paste a valid PIXL Sports athlete page link, such as pixlsports.com/fan/…"
-            return
-        }
-        savedAthletePageLink = value
-        linkError = nil
-        isEditingLink = false
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func athletePageURLInputModifiers() -> some View {
-#if os(iOS)
-        textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .keyboardType(.URL)
-            .textContentType(.URL)
-#else
-        self
-#endif
-    }
-}
-
-extension AthleteFanEvent {
-    func formattedDate(timezone: String?) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: timezone ?? "") ?? .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        guard let date = formatter.date(from: self.date) else { return self.date }
-        formatter.dateFormat = "EEEE, MMMM d"
-        return formatter.string(from: date)
-    }
-
-    func formattedTime(timezone: String?) -> String {
-        guard let start = parsedStart(timezone: timezone) else {
-            return time.isEmpty ? "Time to be announced" : time
-        }
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.timeZone = TimeZone(identifier: timezone ?? "") ?? .current
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: start)
-    }
-
-    func parsedStart(timezone: String?) -> Date? {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: timezone ?? "") ?? .current
-        formatter.isLenient = false
-
-        for pattern in ["yyyy-MM-dd HH:mm", "yyyy-MM-dd H:mm", "yyyy-MM-dd h:mm a"] {
-            formatter.dateFormat = pattern
-            if let date = formatter.date(from: "\(self.date) \(time)") {
-                return date
-            }
-        }
-        return nil
-    }
-}
-
-#Preview {
-    ContentView()
 }

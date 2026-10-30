@@ -13,6 +13,6 @@ Native development must not silently fall back to the published server when deve
 
 **Why:** new native endpoints can be present in the workspace but absent from the published website. A production fallback hides that distinction and makes repeated plist edits/rebuilds inconclusive.
 
-**Why:** the user chose to preserve the PWA sign-in and build a standalone native iOS app, with the native identity securely linked to existing account data. The user confirmed the dedicated native Clerk/prebuilt UI approach works with Google sign-in and approved secure account linking next; keep this approach rather than replacing the PWA's auth.
+**Why:** the user chose to preserve PWA sign-in and build a standalone native iOS app, then selected the private Event Card schedule as its first data milestone. It must not depend on a public HYPE Card or match users by email.
 
-**How to apply:** keep the PWA auth path intact; design native sign-in, Apple review compliance, and a one-time verified account-link flow before changing backend authorization or account data.
+**How to apply:** keep PWA auth intact. Every native private read must resolve the verified native-to-web account link, recheck current account restrictions, return only the data needed by that screen, and avoid caching private schedule data.

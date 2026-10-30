@@ -18,7 +18,7 @@ struct NativeAuthRootView: View {
                 startupView
             } else if clerk.isAuthFlowComplete {
                 NavigationStack {
-                    ContentView()
+                    ContentView(clerk: clerk, showingAccountLink: $showingAccountLink)
                         // Tear down previous user's screen state on account switches.
                         .id(clerk.user?.id)
                         .toolbar {
@@ -33,15 +33,6 @@ struct NativeAuthRootView: View {
                                 UserButton()
                                     .accessibilityLabel("Manage iPhone account")
                             }
-                        }
-                        .safeAreaInset(edge: .bottom, spacing: 0) {
-                            Text("Home uses your saved public athlete-page link. Manage your PIXL web connection with the link button above.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(12)
-                                .frame(maxWidth: .infinity)
-                                .background(.regularMaterial)
                         }
                         .sheet(isPresented: $showingAccountLink) {
                             NativeAccountLinkView().id(clerk.user?.id)

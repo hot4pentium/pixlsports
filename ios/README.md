@@ -50,8 +50,14 @@ The app does not supply either Apple capability with a guessed team/prefix/domai
 - Clerk's account button provides account management and sign-out.
 - Slow/failed startup has an explicit retry, and malformed local config has a
   setup message. Configuration values are not logged or displayed.
-- Supporter Home still uses a **public athlete-page link saved on the device**.
-  The link is device-managed, not proof of private account ownership.
+- Supporter Home loads the linked owner's private Event Card schedule from
+  `GET /api/native/supporter/schedule`. The API verifies the current native
+  identity-to-web-owner link and rechecks the web account's lifecycle/editor
+  restrictions on every request.
+- The native schedule includes only Event Card details and tracker-derived
+  live/final status. It does not return raw tracker data or depend on public
+  HYPE Card visibility. The previous device-saved public athlete-page URL is
+  no longer used by Supporter Home.
 
 ## Securely connect an existing PIXL account
 
@@ -82,11 +88,10 @@ Missing issuer configuration fails closed with a setup error. Never trust the
 issuer in an incoming JWT, match accounts by email, or replace the managed PWA
 keys. Existing account IDs/data ownership remain unchanged.
 
-**Not connected yet:** the native home still reads its device-saved public
-athlete-page link. This change creates the verified identity mapping; private
-native athlete/schedule APIs and their home-screen integration are a separate
-step. Every future private native read must resolve the mapping and recheck
-current account lifecycle/editor restrictions, not treat a cached link as access.
+**Not connected yet:** private Event Cards are the first native data surface.
+Stats, live taps, editing, and other account data are not included. Every future
+private native read must resolve the verified mapping and recheck current account
+lifecycle/editor restrictions; cached links or previously loaded data are not access.
 
 ## Mac verification
 
