@@ -9,6 +9,12 @@ Cold-start checks should measure first visible editor content and the first hand
 
 **How to apply:** Keep startup budgets and resource reporting in the production browser journey, use a fresh browser profile without Clerk authentication, and keep later persistence/export assertions separate from the startup gate.
 
+Keep authenticated return-session checks separate from the unauthenticated production cold-start journey. Use a browser auth fixture to delay a verified user and the active account-lifecycle response, count full-screen splash mounts, and measure the five-second minimum from the static HTML timestamp. Do not require lazy dashboard code to finish before that minimum in a development-server fixture.
+
+**Why:** Production startup coverage should not depend on live Clerk credentials, while development module loading can make dashboard rendering slower than the splash minimum without indicating a splash regression.
+
+**How to apply:** For returning-session regressions, seed only the presentation marker before HTML runs, release verified auth and active lifecycle state explicitly, and assert the final dashboard appears after the minimum with exactly one splash mount.
+
 Development preview recovery must be available before the app entry module loads, and must preserve production offline behavior and user data.
 
 **Why:** A startup screen can appear while the entry module is unavailable; recovery implemented only inside that module is then unreachable. A slow development module graph should not be reported as a failed connection after only seven seconds.

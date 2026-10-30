@@ -8,11 +8,13 @@ const listeners = new Set<() => void>();
 const clerkListeners = new Set<(state: { user: ReturnType<typeof currentUser> }) => void>();
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
 let firstSaveProfileLoaded = false;
-let userLoaded = id !== 'first-save-supporter';
+let userLoaded = id !== 'first-save-supporter' && id !== 'startup-return';
 
 declare global {
   interface Window {
     __lastLifecycleSignOutRedirectUrl?: string | null;
+    __restoreStartupSession?: () => void;
+    __startupSessionVerified?: boolean;
   }
 }
 
@@ -21,16 +23,22 @@ function currentUser(unsafeMetadata?: Record<string, unknown>) {
   const first = id.includes('-first-');
   const workspaceJourney = id === 'workspace-journey';
   const firstSave = id === 'first-save-supporter';
+  const startupReturn = id === 'startup-return';
   return {
     id,
     createdAt: firstSave ? Date.now() - 60_000 : Date.now() - 86_400_000,
     firstName: first ? 'Morgan' : 'Taylor',
     lastName: 'Supporter',
-    primaryEmailAddress: { emailAddress: first ? 'morgan@example.test' : 'taylor@example.test' },
+    primaryEmailAddress: {
+      emailAddress: first ? 'morgan@example.test' : 'taylor@example.test',
+      ...(startupReturn ? { verification: { status: 'verified' } } : {}),
+    },
     publicMetadata: firstSave ? {} : { pixlSportsAccountProvisioned: true },
     unsafeMetadata: firstSave ? (unsafeMetadata ?? firstSaveUnsafeMetadata) : {
-      role: 'fan', displayName: first ? 'Morgan' : 'Taylor',
-      teamName: workspaceJourney ? 'Northside Comets' : first ? 'Falcons' : 'Otters',
+      role: 'fan',
+      displayName: startupReturn ? 'Casey Supporter' : first ? 'Morgan' : 'Taylor',
+      teamName: startupReturn ? 'Northside Comets' : workspaceJourney ? 'Northside Comets' : first ? 'Falcons' : 'Otters',
+      ...(startupReturn ? { athleteName: 'Alex Morgan', seasonName: 'Fall 2026' } : {}),
       accessMode: 'full',
       ...(workspaceJourney ? { athleteName: 'Alexandria Montgomery-Williams', sport: workspaceSoccer ? 'soccer' : 'basketball' } : {}),
       ...(statTrackerReturnTest ? {
@@ -59,7 +67,19 @@ function currentUser(unsafeMetadata?: Record<string, unknown>) {
   };
 }
 
-let userSnapshot = currentUser();
+let userSnapshot = id === 'startup-return' ? null : currentUser();
+
+if (id === 'startup-return') {
+  window.__restoreStartupSession = () => {
+    userSnapshot = currentUser();
+    userLoaded = true;
+    window.__startupSessionVerified =
+      userSnapshot?.primaryEmailAddress?.verification?.status === 'verified';
+    const state = { user: userSnapshot };
+    for (const listener of clerkListeners) listener(state);
+    for (const listener of listeners) listener();
+  };
+}
 
 if (id === 'first-save-supporter') {
   void fetch(`${apiOrigin}/__fixture/profile?viewer=${encodeURIComponent(id)}`)

@@ -38,6 +38,42 @@ function listen(server: Server) {
   });
 }
 
+async function availablePort() {
+  const server = createServer();
+  const { port } = await listen(server);
+  await new Promise<void>((resolveClose, rejectClose) => {
+    server.close((error) => error ? rejectClose(error) : resolveClose());
+  });
+  return port;
+}
+
+async function stopProcess(child: ChildProcess | undefined, monitor: ProcessMonitor | undefined) {
+  if (!child || !monitor || monitor.hasExited()) return;
+  if (child.pid !== undefined) {
+    try {
+      process.kill(-child.pid, 'SIGTERM');
+    } catch {
+      child.kill('SIGTERM');
+    }
+  } else {
+    child.kill('SIGTERM');
+  }
+  try {
+    await withinTimeout(monitor.waitForExit(), 2_000, 'waiting for a browser-test process to stop');
+  } catch {
+    if (child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        child.kill('SIGKILL');
+      }
+    } else {
+      child.kill('SIGKILL');
+    }
+    await withinTimeout(monitor.waitForExit(), 3_000, 'waiting for a browser-test process to exit');
+  }
+}
+
 function contentType(pathname: string) {
   return pathname.endsWith('.js') ? 'text/javascript'
     : pathname.endsWith('.css') ? 'text/css'
@@ -444,5 +480,244 @@ test('installed production shell starts, navigates warm, and reopens offline on 
       console.error('Production fixture server required forced cleanup', error instanceof Error ? error.message : String(error));
       serverWithForceClose.closeAllConnections?.();
     }
+  }
+});
+
+test('returning verified sessions keep one splash through delayed session and lifecycle restoration', { timeout: 120_000 }, async () => {
+  const vitePort = await availablePort();
+  const debugPort = await availablePort();
+  const browserProfile = await mkdtemp(resolve(tmpdir(), 'pixl-startup-return-'));
+  let vite: ChildProcess | undefined;
+  let viteMonitor: ProcessMonitor | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    vite = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        REPL_ID: '',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    viteMonitor = monitorProcess(vite, 'Returning-session Vite fixture');
+    await waitForUrl(`http://127.0.0.1:${vitePort}/studio`, 30_000, viteMonitor);
+
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${browserProfile}`,
+      'about:blank',
+    ], { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium returning-session fixture');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, 'about:blank', { viewport: phoneViewport });
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `(() => {
+        window.__startupConsoleErrors = [];
+        const originalConsoleError = console.error.bind(console);
+        console.error = (...args) => {
+          window.__startupConsoleErrors.push(args.map((value) => value instanceof Error
+            ? { message: value.message, stack: value.stack }
+            : String(value)));
+          originalConsoleError(...args);
+        };
+        try {
+          localStorage.setItem('pixl:previous-private-session:v1', 'seen');
+        } catch {}
+        window.__startupSplashMounts = 0;
+        window.__startupLifecycleRequests = 0;
+        const collectSplashMounts = (nodes) => {
+          for (const node of nodes) {
+            if (!(node instanceof Element)) continue;
+            if (node.matches('[data-testid="private-entry-splash-overlay"]')) window.__startupSplashMounts++;
+            window.__startupSplashMounts += node.querySelectorAll('[data-testid="private-entry-splash-overlay"]').length;
+          }
+        };
+        new MutationObserver((records) => {
+          for (const record of records) collectSplashMounts(record.addedNodes);
+        }).observe(document, { childList: true, subtree: true });
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => {
+          const requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+          const pathname = new URL(requestUrl, location.href).pathname;
+          if (pathname === '/api/hype-card-shares/reply-inbox') {
+            return Promise.resolve(new Response(JSON.stringify({
+              unreadCount: 0,
+              totalCount: 0,
+              groups: [],
+            }), { status: 200, headers: { 'content-type': 'application/json' } }));
+          }
+          if (pathname === '/api/athlete-invites'
+            || pathname === '/api/game-on-cards/owned'
+            || pathname === '/api/projects') {
+            return Promise.resolve(new Response('[]', {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }));
+          }
+          if (pathname === '/api/supporter/active-game') {
+            return Promise.resolve(new Response(JSON.stringify({ gameId: null }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }));
+          }
+          if (pathname === '/api/account/access') {
+            return Promise.resolve(new Response(JSON.stringify({ message: 'Fixture omits account access.' }), {
+              status: 401,
+              headers: { 'content-type': 'application/json' },
+            }));
+          }
+          if (pathname === '/api/account/lifecycle') {
+            window.__startupLifecycleRequests++;
+            return new Promise((resolve) => {
+              window.__restoreStartupLifecycle = () => resolve(new Response(JSON.stringify({
+                status: 'active',
+                pauseEndsAt: null,
+                planTier: 'free',
+                cancelledAt: null,
+                lastActivityAt: null,
+                deletionEligibleAt: null,
+                retentionDays: 90,
+                expired: false,
+                adminSuspended: false,
+                identityBlocked: false,
+              }), { status: 200, headers: { 'content-type': 'application/json' } }));
+            });
+          }
+          return nativeFetch(input, init);
+        };
+      })();`,
+    }, page.sessionId);
+    await connection.send('Page.navigate', {
+      url: `http://127.0.0.1:${vitePort}/studio?viewer=startup-return`,
+    }, page.sessionId);
+
+    await waitFor(connection, page.sessionId,
+      'Boolean(document.querySelector("[data-testid=private-entry-splash-overlay]"))', Boolean, 30_000);
+    const startup = await connection.evaluate<{
+      startedAt: number;
+      returnShell: boolean;
+      splashMounts: number;
+      lifecycleRequests: number;
+      accountScreens: number;
+    }>(`({
+      startedAt: Number(document.documentElement.getAttribute('data-pixl-private-return-started-at')),
+      returnShell: document.documentElement.getAttribute('data-pixl-private-return') === 'true',
+      splashMounts: window.__startupSplashMounts,
+      lifecycleRequests: window.__startupLifecycleRequests,
+      accountScreens: document.querySelectorAll('.account-loading-screen').length,
+    })`, page.sessionId);
+    assert.equal(startup.returnShell, true, 'the private route should start in its returning-session shell');
+    assert.ok(Number.isFinite(startup.startedAt), 'the return splash should record its initial HTML paint time');
+    assert.equal(startup.lifecycleRequests, 0, 'lifecycle verification waits for the delayed Clerk session');
+    assert.equal(startup.accountScreens, 1, 'the returning shell should show one account-loading screen');
+
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_200));
+    await connection.evaluate('window.__restoreStartupSession()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.__startupLifecycleRequests > 0', Boolean, 10_000);
+    assert.equal(
+      await connection.evaluate('window.__startupSessionVerified === true', page.sessionId),
+      true,
+      'the restored fixture session should represent a verified sign-in',
+    );
+
+    await waitFor(connection, page.sessionId,
+      'Boolean(window.__restoreStartupLifecycle)', Boolean, 10_000);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_300));
+    const waitingOnLifecycle = await connection.evaluate<{
+      elapsedMs: number;
+      splashMounts: number;
+      accountScreens: number;
+      hiddenDashboard: boolean;
+    }>(`(() => {
+      const hiddenApp = document.querySelector('#root > div[aria-hidden="true"][inert]');
+      return {
+        elapsedMs: performance.now() - Number(document.documentElement.getAttribute('data-pixl-private-return-started-at')),
+        splashMounts: window.__startupSplashMounts,
+        accountScreens: document.querySelectorAll('.account-loading-screen').length,
+        hiddenDashboard: Boolean(hiddenApp && getComputedStyle(hiddenApp).visibility === 'hidden'),
+      };
+    })()`, page.sessionId);
+    assert.ok(waitingOnLifecycle.elapsedMs < 5_000, 'the delayed lifecycle check should finish before the splash minimum');
+    assert.equal(waitingOnLifecycle.splashMounts, 1, 'session restoration must not mount another splash');
+    assert.equal(waitingOnLifecycle.accountScreens, 1, 'lifecycle loading must not add a second full-screen account splash');
+
+    await connection.evaluate('window.__restoreStartupLifecycle()', page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'Boolean(document.querySelector("[data-testid=dashboard-primary-actions-mobile]"))', Boolean, 20_000);
+    assert.equal(
+      await connection.evaluate(
+        'localStorage.getItem("pixl:previous-private-session:v1") === "seen"',
+        page.sessionId,
+      ),
+      true,
+      'only active lifecycle verification remembers the private session',
+    );
+
+    await waitFor(connection, page.sessionId, `(() => {
+      const startedAt = Number(document.documentElement.getAttribute('data-pixl-private-return-started-at'));
+      return performance.now() - startedAt >= 5_000
+        && !document.querySelector('[data-testid="private-entry-splash-overlay"]')
+        && Boolean(document.querySelector('[data-testid="dashboard-primary-actions-mobile"]'));
+    })()`, Boolean, 10_000);
+    const restoredDashboard = await connection.evaluate<{
+      elapsedMs: number;
+      splashVisible: boolean;
+      accountScreens: number;
+      dashboardVisible: boolean;
+      splashMounts: number;
+    }>(`(() => {
+      const dashboard = document.querySelector('[data-testid="dashboard-primary-actions-mobile"]');
+      const style = dashboard ? getComputedStyle(dashboard) : null;
+      return {
+        elapsedMs: performance.now() - Number(document.documentElement.getAttribute('data-pixl-private-return-started-at')),
+        splashVisible: Boolean(document.querySelector('[data-testid="private-entry-splash-overlay"]')),
+        accountScreens: document.querySelectorAll('.account-loading-screen').length,
+        dashboardVisible: Boolean(dashboard && style && style.visibility !== 'hidden' && dashboard.getBoundingClientRect().width > 0),
+        splashMounts: window.__startupSplashMounts,
+      };
+    })()`, page.sessionId);
+    assert.ok(restoredDashboard.elapsedMs >= 5_000, 'the splash must meet the five-second minimum measured from initial HTML paint');
+    assert.equal(restoredDashboard.splashVisible, false, 'the original splash should be removed after startup completes');
+    assert.equal(restoredDashboard.accountScreens, 0, 'no second account-loading screen should cover the dashboard');
+    assert.equal(restoredDashboard.dashboardVisible, true, 'the verified session should reveal the dashboard');
+    assert.equal(restoredDashboard.splashMounts, 1, 'the returning startup should mount exactly one full-screen splash');
+  } catch (error) {
+    console.error('Returning-session startup browser failure', JSON.stringify({
+      error: error instanceof Error ? error.stack || error.message : String(error),
+      pageErrors: page && connection
+        ? await connection.evaluate('window.__startupConsoleErrors || []', page.sessionId).catch(() => [])
+        : [],
+      vite: viteMonitor?.diagnostics(),
+      browser: browserMonitor?.diagnostics(),
+      devtools: connection?.diagnostics(),
+    }));
+    throw error;
+  } finally {
+    if (page) await connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    await stopProcess(browser, browserMonitor).catch((error) => {
+      console.error('Could not stop returning-session Chromium', error instanceof Error ? error.message : String(error));
+    });
+    await stopProcess(vite, viteMonitor).catch((error) => {
+      console.error('Could not stop returning-session Vite', error instanceof Error ? error.message : String(error));
+    });
+    await rm(browserProfile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }).catch((error) => {
+      console.error('Could not remove the returning-session Chromium profile', error instanceof Error ? error.message : String(error));
+    });
   }
 });
