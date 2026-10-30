@@ -5,6 +5,7 @@ import ClerkKit
 enum SupporterEventTiming: Equatable {
     case upcoming
     case live
+    case complete
 }
 
 @MainActor
@@ -12,7 +13,11 @@ final class SupporterHomeViewModel: ObservableObject {
     enum State {
         case notConnected
         case loading
-        case schedule(page: NativeSupporterSchedule, events: [SupporterScheduleItem])
+        case schedule(
+            page: NativeSupporterSchedule,
+            events: [SupporterScheduleItem],
+            pastEvents: [SupporterScheduleItem]
+        )
         case failed(String)
     }
 
@@ -27,7 +32,12 @@ final class SupporterHomeViewModel: ObservableObject {
                 state = .notConnected
                 return
             }
-            state = .schedule(page: page, events: upcomingEvents(in: page, now: Date()))
+            let now = Date()
+            state = .schedule(
+                page: page,
+                events: upcomingEvents(in: page, now: now),
+                pastEvents: recentCompletedEvents(in: page, now: now)
+            )
         } catch is CancellationError {
             return
         } catch let error as URLError {
@@ -95,6 +105,54 @@ final class SupporterHomeViewModel: ObservableObject {
                     ? left.event.time < right.event.time
                     : left.event.date < right.event.date
             }
+    }
+
+    private func recentCompletedEvents(
+        in page: NativeSupporterSchedule,
+        now: Date
+    ) -> [SupporterScheduleItem] {
+        let zone = TimeZone(identifier: page.timezone ?? "") ?? .current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = zone
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        guard
+            let today = dateFormatter.date(from: dateFormatter.string(from: now)),
+            let cutoff = calendar.date(byAdding: .day, value: -30, to: today)
+        else {
+            return []
+        }
+
+        let candidates = page.events.compactMap { event -> SupporterScheduleItem? in
+            guard event.status == "final",
+                  let eventDate = dateFormatter.date(from: event.date),
+                  eventDate >= cutoff,
+                  eventDate <= today
+            else {
+                return nil
+            }
+            return SupporterScheduleItem(
+                event: event,
+                timing: .complete,
+                start: event.parsedStart(timezone: event.timezone ?? page.timezone)
+            )
+        }
+
+        return candidates.sorted { left, right in
+            if let leftStart = left.start, let rightStart = right.start {
+                return leftStart > rightStart
+            }
+            if left.event.date != right.event.date {
+                return left.event.date > right.event.date
+            }
+            if left.start != nil { return true }
+            if right.start != nil { return false }
+            return left.event.time > right.event.time
+        }
     }
 }
 

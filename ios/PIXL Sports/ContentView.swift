@@ -169,7 +169,7 @@ struct ContentView: View {
             .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Loading your private schedule")
-        case let .schedule(page, events):
+        case let .schedule(page, events, pastEvents):
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .lastTextBaseline) {
                     VStack(alignment: .leading, spacing: 5) {
@@ -210,6 +210,10 @@ struct ContentView: View {
                             compactEventCard(page: page, item: item)
                         }
                     }
+                }
+
+                if !pastEvents.isEmpty {
+                    pastEventsSection(page: page, events: pastEvents)
                 }
             }
         case let .failed(message):
@@ -397,7 +401,9 @@ struct ContentView: View {
             SupporterEventDetailView(clerk: clerk, shareToken: item.event.shareToken)
         } label: {
             HStack(alignment: .top, spacing: 13) {
-                Image(systemName: item.timing == .live ? "dot.radiowaves.left.and.right" : "calendar")
+                Image(systemName: item.timing == .live
+                      ? "dot.radiowaves.left.and.right"
+                      : item.timing == .complete ? "checkmark.circle.fill" : "calendar")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(SupporterHomeColors.accent)
                     .frame(width: 38, height: 38)
@@ -419,14 +425,17 @@ struct ContentView: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if item.timing == .live {
-                    Text("LIVE")
+                if item.timing == .live || item.timing == .complete {
+                    Text(item.timing == .live ? "LIVE" : "COMPLETE")
                         .font(.system(size: 9, weight: .black))
                         .tracking(1)
                         .foregroundStyle(SupporterHomeColors.background)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .background(SupporterHomeColors.accent, in: Capsule())
+                        .background(
+                            item.timing == .complete ? SupporterHomeColors.blue.opacity(0.8) : SupporterHomeColors.accent,
+                            in: Capsule()
+                        )
                 }
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
@@ -441,7 +450,37 @@ struct ContentView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(item.event.title), \(item.event.formattedDate(timezone: item.event.timezone ?? page.timezone)), \(item.event.formattedTime(timezone: item.event.timezone ?? page.timezone)). View Event Card details.")
+        .accessibilityLabel("\(item.timing == .complete ? "Complete, " : "")\(item.event.title), \(item.event.formattedDate(timezone: item.event.timezone ?? page.timezone)), \(item.event.formattedTime(timezone: item.event.timezone ?? page.timezone)). View Event Card details.")
+    }
+
+    private func pastEventsSection(
+        page: NativeSupporterSchedule,
+        events: [SupporterScheduleItem]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .lastTextBaseline) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("EVENT HISTORY")
+                        .font(.system(size: 10, weight: .black))
+                        .tracking(1.9)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                    Text("Past Event Cards")
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                Spacer()
+                Text("\(events.count) \(events.count == 1 ? "CARD" : "CARDS")")
+                    .font(.system(size: 9, weight: .black))
+                    .tracking(1.1)
+                    .foregroundStyle(SupporterHomeColors.blue)
+            }
+
+            ForEach(events) { item in
+                compactEventCard(page: page, item: item)
+            }
+        }
+        .padding(.top, 10)
+        .accessibilityElement(children: .contain)
     }
 
     private func eventDetail(icon: String, text: String) -> some View {
