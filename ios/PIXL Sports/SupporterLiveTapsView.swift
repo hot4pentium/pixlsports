@@ -27,8 +27,33 @@ struct SupporterLiveTapsView: View {
             )
             .ignoresSafeArea()
 
+            RadialGradient(
+                colors: [SupporterHomeColors.blue.opacity(0.16), .clear],
+                center: .topTrailing,
+                startRadius: 8,
+                endRadius: 420
+            )
+            .ignoresSafeArea()
+
+            Canvas { context, size in
+                var grid = Path()
+                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
+                    grid.move(to: CGPoint(x: x, y: 0))
+                    grid.addLine(to: CGPoint(x: x, y: size.height))
+                }
+                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
+                    grid.move(to: CGPoint(x: 0, y: y))
+                    grid.addLine(to: CGPoint(x: size.width, y: y))
+                }
+                context.stroke(grid, with: .color(.white.opacity(0.035)), lineWidth: 0.5)
+            }
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    brandHeader
+
                     VStack(alignment: .leading, spacing: 8) {
                         Label("GAME DAY LIVE", systemImage: "dot.radiowaves.left.and.right")
                             .font(.system(size: 11, weight: .black))
@@ -54,6 +79,10 @@ struct SupporterLiveTapsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(20)
                             .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 20)
+                                    .stroke(.white.opacity(0.1), lineWidth: 1)
+                            }
                     } else if let summary {
                         if summary.active {
                             cheersCard(summary)
@@ -88,8 +117,15 @@ struct SupporterLiveTapsView: View {
                     if summary != nil, let error {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Color.orange)
+                            .foregroundStyle(Color.orange.opacity(0.95))
                             .fixedSize(horizontal: false, vertical: true)
+                            .padding(13)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.orange.opacity(0.11), in: RoundedRectangle(cornerRadius: 14))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.orange.opacity(0.28), lineWidth: 1)
+                            }
                             .accessibilityAddTraits(.isError)
                     }
                 }
@@ -140,6 +176,42 @@ struct SupporterLiveTapsView: View {
         }
     }
 
+    private var brandHeader: some View {
+        HStack(alignment: .center, spacing: 11) {
+            Image(systemName: "sportscourt.fill")
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(SupporterHomeColors.background)
+                .frame(width: 38, height: 38)
+                .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(.white.opacity(0.3), lineWidth: 1)
+                }
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("PIXL")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .tracking(1.4)
+                    .foregroundStyle(SupporterHomeColors.blue)
+                Text("SPORTS")
+                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    .tracking(3.3)
+                    .foregroundStyle(.white.opacity(0.86))
+            }
+
+            Spacer()
+
+            Text("SUPPORTER HUB")
+                .font(.system(size: 9, weight: .heavy))
+                .tracking(1.5)
+                .foregroundStyle(SupporterHomeColors.muted)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.white.opacity(0.06), in: Capsule())
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private var accessCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(
@@ -175,14 +247,47 @@ struct SupporterLiveTapsView: View {
         }
         .padding(18)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            SupporterHomeColors.blue.opacity(0.65),
+                            .white.opacity(0.1),
+                            SupporterHomeColors.accent.opacity(0.35)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
     }
 
     private func cheersCard(_ summary: LiveTapSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("SEND A CHEER")
-                .font(.system(size: 11, weight: .black))
-                .tracking(1.5)
-                .foregroundStyle(SupporterHomeColors.accent)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("SEND A CHEER")
+                    .font(.system(size: 11, weight: .black))
+                    .tracking(1.5)
+                    .foregroundStyle(SupporterHomeColors.accent)
+                Text("Cheer counts only · no player stats")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(SupporterHomeColors.accent)
+                        .frame(width: 7, height: 7)
+                    Text("SESSION ACTIVE")
+                        .font(.system(size: 10, weight: .black))
+                        .tracking(0.9)
+                        .foregroundStyle(SupporterHomeColors.accent)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 7)
+                .background(SupporterHomeColors.accent.opacity(0.11), in: Capsule())
+                .accessibilityLabel("Live Taps session active")
+            }
 
             ForEach(summary.cheers) { cheer in
                 Button {
@@ -219,6 +324,10 @@ struct SupporterLiveTapsView: View {
         }
         .padding(18)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(SupporterHomeColors.blue.opacity(0.42), lineWidth: 1)
+        }
     }
 
     private func messageCard(icon: String, title: String, message: String) -> some View {
@@ -237,6 +346,10 @@ struct SupporterLiveTapsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(.white.opacity(0.1), lineWidth: 1)
+        }
     }
 
     private func loadSummary() async {
