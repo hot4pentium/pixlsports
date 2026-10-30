@@ -47,7 +47,9 @@ struct ContentView: View {
                 }
             }
         }
+#if os(iOS)
         .toolbar(.hidden, for: .navigationBar)
+#endif
         .preferredColorScheme(.dark)
         .task {
             await viewModel.load(clerk: clerk)

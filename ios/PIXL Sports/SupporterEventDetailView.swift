@@ -43,8 +43,10 @@ struct SupporterEventDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle("Event Details")
+#if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+#endif
         .task {
             await load()
         }
