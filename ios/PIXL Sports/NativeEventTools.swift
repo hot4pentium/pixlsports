@@ -137,7 +137,7 @@ struct NativeEventToolCommand: Codable {
     var notes: String? = nil
 }
 
-private struct NativeQueuedEventToolCommand: Codable {
+struct NativeQueuedEventToolCommand: Codable {
     var command: NativeEventToolCommand
     var attempted: Bool
     var displayOptimistically: Bool
@@ -155,10 +155,68 @@ final class NativeEventToolModel: ObservableObject {
     @Published var workspace: NativeEventWorkspace?
     @Published var busy = false
     @Published var errorMessage: String?
-    @Published var pending: NativeEventToolCommand?
+    @Published private(set) var pendingQueue: [NativeQueuedEventToolCommand] = []
+    @Published private(set) var conflictBlocked = false
+    @Published private(set) var unreadablePendingData = false
     @Published var reloadGeneration = 0
     private let shareToken: String
     private let storageKey: String
+    private var drainingQueue = false
+    private static let maximumPendingCommands = 1_000
+
+    var pending: NativeEventToolCommand? { pendingQueue.first?.command }
+    var pendingCount: Int { pendingQueue.count }
+    var pendingStatCount: Int { pendingQueue.filter { $0.command.kind == "stat" }.count }
+
+    var pendingDescription: String {
+        let allStats = pendingStatCount == pendingCount
+        let noun = allStats
+            ? (pendingCount == 1 ? "stat" : "stats")
+            : (pendingCount == 1 ? "change" : "changes")
+        return busy
+            ? "Syncing \(pendingCount) \(noun) with PIXL…"
+            : "\(pendingCount) \(noun) waiting to sync"
+    }
+
+    var canQueueStat: Bool {
+        guard !unreadablePendingData, !conflictBlocked,
+              workspace?.game?.status == "live",
+              !pendingQueue.contains(where: { $0.command.kind != "stat" }) else { return false }
+        return !busy || !pendingQueue.isEmpty
+    }
+
+    var displayedGame: NativeEventWorkspace.Game? {
+        guard var game = workspace?.game else { return nil }
+        for queued in pendingQueue where queued.displayOptimistically && queued.command.kind == "stat" {
+            let command = queued.command
+            guard let statID = command.statId,
+                  let stat = workspace?.rules.stats.first(where: { $0.id == statID }) else { continue }
+            let opponentTeam = game.sport == "football" && command.opponent == true
+            if opponentTeam {
+                var stats = game.opponentStats ?? [:]
+                stats[statID, default: 0] += 1
+                game.opponentStats = stats
+            } else {
+                game.stats[statID, default: 0] += 1
+            }
+            let points = opponentTeam || command.athlete != true ? stat.points : 0
+            if opponentTeam {
+                game.opponentScore += points
+            } else {
+                game.score += points
+            }
+            game.scoreRecorded = game.scoreRecorded == true || points > 0
+            game.events.append(.init(
+                id: command.mutationId,
+                statId: statID,
+                attribution: opponentTeam ? "team" : command.athlete == true ? "athlete" : "team",
+                possessionSide: game.sport == "football" ? (opponentTeam ? "opponent" : "athlete") : nil,
+                period: game.period,
+                yards: game.sport == "football" ? command.yards ?? 0 : nil
+            ))
+        }
+        return game
+    }
 #if DEBUG
     var uiTestPendingMutationID: String? {
         guard ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep") else { return nil }
@@ -170,7 +228,25 @@ final class NativeEventToolModel: ObservableObject {
         self.shareToken = shareToken
         storageKey = "pixl-native-event-pending:\(accountID):\(shareToken)"
         if let data = UserDefaults.standard.data(forKey: storageKey) {
-            pending = try? JSONDecoder().decode(NativeEventToolCommand.self, from: data)
+            if let saved = try? JSONDecoder().decode(PersistedNativeEventToolQueue.self, from: data) {
+                pendingQueue = saved.commands
+                conflictBlocked = saved.conflictBlocked
+                for index in pendingQueue.indices where pendingQueue[index].attempted {
+                    pendingQueue[index].displayOptimistically = false
+                }
+            } else if let oldCommand = try? JSONDecoder().decode(NativeEventToolCommand.self, from: data) {
+                // Migrate the previous single-command format. Its request may
+                // already have committed, so keep its exact ID and revision.
+                pendingQueue = [.init(command: oldCommand, attempted: true, displayOptimistically: false)]
+            } else {
+                unreadablePendingData = true
+                errorMessage = "A saved tracker change could not be read. It has not been removed."
+            }
+            if conflictBlocked {
+                errorMessage = "The tracker changed elsewhere. Your pending changes are still saved on this iPhone."
+            } else if !pendingQueue.isEmpty {
+                errorMessage = "Checking your saved tracker changes…"
+            }
         }
     }
 
@@ -186,14 +262,24 @@ final class NativeEventToolModel: ObservableObject {
     func load(clerk: Clerk) async {
         guard !busy else { return }
         busy = true
-        defer { busy = false }
+        var shouldDrain = false
         do {
             let data = try await NativeAccountLinkClient().postData(
                 "supporter/event-workspace", body: ["shareToken": shareToken], clerk: clerk
             )
             workspace = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
-            errorMessage = pending == nil ? nil : "A previous change is waiting for confirmation. Retry it before making another change."
+            reconcileRestoredStatQueue()
+            if unreadablePendingData {
+                errorMessage = "A saved tracker change could not be read. It has not been removed."
+            } else if conflictBlocked {
+                errorMessage = "The tracker changed elsewhere. Your pending changes are still saved on this iPhone. Reload before choosing what to keep."
+            } else {
+                errorMessage = nil
+                shouldDrain = !pendingQueue.isEmpty
+            }
         } catch { errorMessage = error.localizedDescription }
+        busy = false
+        if shouldDrain { await drainQueue(clerk: clerk) }
     }
 
     func save(
@@ -203,7 +289,17 @@ final class NativeEventToolModel: ObservableObject {
         recordScore: Bool? = nil, outcome: String? = nil,
         items: [NativePrepItem]? = nil, notes: String? = nil
     ) async {
-        guard !busy, pending == nil, let workspace else { return }
+        guard !unreadablePendingData, !conflictBlocked, let workspace else { return }
+        if kind == "stat" {
+            guard canQueueStat else { return }
+            guard pendingQueue.count < Self.maximumPendingCommands else {
+                errorMessage = "Sync the pending stats before recording more. The on-device queue is full."
+                return
+            }
+        } else {
+            guard !busy, pendingQueue.isEmpty else { return }
+        }
+
         var command = NativeEventToolCommand(
             shareToken: shareToken, mutationId: UUID().uuidString,
             linkId: workspace.linkId,
@@ -220,28 +316,65 @@ final class NativeEventToolModel: ObservableObject {
         command.outcome = outcome
         command.items = items
         command.notes = notes
+        pendingQueue.append(.init(
+            command: command,
+            attempted: false,
+            displayOptimistically: kind == "stat"
+        ))
         do {
-            let encoded = try JSONEncoder().encode(command)
-            UserDefaults.standard.set(encoded, forKey: storageKey)
-            pending = command
-            await retry(clerk: clerk)
-        } catch { errorMessage = "The pending change could not be prepared. Nothing was sent." }
+            try persistPendingQueue()
+        } catch {
+            pendingQueue.removeLast()
+            errorMessage = "The pending change could not be saved on this iPhone. Nothing was sent."
+            return
+        }
+        errorMessage = nil
+        await drainQueue(clerk: clerk)
     }
 
     func retry(clerk: Clerk) async {
-        guard !busy, let pending else { return }
+        guard !busy, !conflictBlocked, !unreadablePendingData, !pendingQueue.isEmpty else { return }
+        guard workspace != nil else {
+            await load(clerk: clerk)
+            return
+        }
+        await drainQueue(clerk: clerk)
+    }
+
+    private func drainQueue(clerk: Clerk) async {
+        guard !busy, !drainingQueue, !conflictBlocked, !unreadablePendingData,
+              !pendingQueue.isEmpty, workspace != nil else { return }
+        drainingQueue = true
         busy = true
         errorMessage = nil
-        defer { busy = false }
-        do {
-            let data = try await NativeAccountLinkClient().postData(
-                "supporter/event-workspace-save", body: pending, clerk: clerk
-            )
+        defer {
+            busy = false
+            drainingQueue = false
+        }
+
+        while !pendingQueue.isEmpty {
+            if !pendingQueue[0].attempted {
+                guard let workspace else { return }
+                pendingQueue[0].command.expectedRevision =
+                    pendingQueue[0].command.kind == "prep" ? workspace.prepRevision : workspace.trackerRevision
+                pendingQueue[0].attempted = true
+                do { try persistPendingQueue() }
+                catch {
+                    errorMessage = "The pending change could not be saved on this iPhone. Nothing was sent."
+                    return
+                }
+            }
+
+            let command = pendingQueue[0].command
+            do {
+                let data = try await NativeAccountLinkClient().postData(
+                    "supporter/event-workspace-save", body: command, clerk: clerk
+                )
 #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep"),
-               ProcessInfo.processInfo.arguments.contains("--prep-save-lost-response-once"),
-               clerk.isAuthFlowComplete, pending.kind == "prep" {
-                let responseDropKey = "\(storageKey):debug-drop-response:\(pending.mutationId)"
+                   ProcessInfo.processInfo.arguments.contains("--prep-save-lost-response-once"),
+                   clerk.isAuthFlowComplete, command.kind == "prep" {
+                    let responseDropKey = "\(storageKey):debug-drop-response:\(command.mutationId)"
                 if !UserDefaults.standard.bool(forKey: responseDropKey) {
                     // The authenticated endpoint has committed the command.
                     // Drop its success before the app decodes or acknowledges it.
@@ -252,38 +385,79 @@ final class NativeEventToolModel: ObservableObject {
                 }
             }
 #endif
-            workspace = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
-            self.pending = nil
-            UserDefaults.standard.removeObject(forKey: storageKey)
+                self.workspace = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+                pendingQueue.removeFirst()
+                do { try persistPendingQueue() }
+                catch {
+                    errorMessage = "The server saved this change, but the local queue could not be updated. Retrying is safe."
+                    return
+                }
 #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep") {
-                UserDefaults.standard.removeObject(forKey: "\(storageKey):debug-drop-response:\(pending.mutationId)")
+                    UserDefaults.standard.removeObject(forKey: "\(storageKey):debug-drop-response:\(command.mutationId)")
             }
 #endif
-            let scheduleChange: NativeEventScheduleChangeReason?
-            switch pending.kind {
-            case "start": scheduleChange = .gameStarted
-            case "finish": scheduleChange = .gameFinished
-            default: scheduleChange = nil
+                postScheduleChange(for: command)
+            } catch {
+                if (error as? NativeAccountLinkError)?.statusCode == 409 {
+                    conflictBlocked = true
+                    try? persistPendingQueue()
+                    errorMessage = "\(error.localizedDescription) Your queued changes are still saved on this iPhone. Discard them only if you want to use the server version."
+                } else {
+                    errorMessage = "\(error.localizedDescription) \(pendingCount) pending changes remain saved on this iPhone. Retry when connected."
+                }
+                return
             }
-            if let scheduleChange {
-                NotificationCenter.default.post(
-                    name: .nativeEventScheduleChanged,
-                    object: nil,
-                    userInfo: [NativeEventScheduleChangeReason.userInfoKey: scheduleChange.rawValue]
-                )
-            }
-        } catch {
-            errorMessage = "\(error.localizedDescription) Your pending change has been kept on this iPhone."
         }
     }
 
     func discardAndReload(clerk: Clerk) async {
         guard !busy else { return }
-        pending = nil
+        pendingQueue.removeAll()
+        conflictBlocked = false
+        unreadablePendingData = false
         UserDefaults.standard.removeObject(forKey: storageKey)
+        errorMessage = nil
         await load(clerk: clerk)
         reloadGeneration += 1
+    }
+
+    private func persistPendingQueue() throws {
+        guard !pendingQueue.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: storageKey)
+            return
+        }
+        let saved = PersistedNativeEventToolQueue(
+            commands: pendingQueue,
+            conflictBlocked: conflictBlocked
+        )
+        UserDefaults.standard.set(try JSONEncoder().encode(saved), forKey: storageKey)
+    }
+
+    private func reconcileRestoredStatQueue() {
+        guard !unreadablePendingData,
+              let trackerRevision = workspace?.trackerRevision else { return }
+        for index in pendingQueue.indices
+        where pendingQueue[index].attempted && pendingQueue[index].command.kind == "stat" {
+            pendingQueue[index].displayOptimistically =
+                pendingQueue[index].command.expectedRevision >= trackerRevision
+        }
+        if !pendingQueue.isEmpty { try? persistPendingQueue() }
+    }
+
+    private func postScheduleChange(for command: NativeEventToolCommand) {
+        let reason: NativeEventScheduleChangeReason?
+        switch command.kind {
+        case "start": reason = .gameStarted
+        case "finish": reason = .gameFinished
+        default: reason = nil
+        }
+        guard let reason else { return }
+        NotificationCenter.default.post(
+            name: .nativeEventScheduleChanged,
+            object: nil,
+            userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
+        )
     }
 }
 
@@ -296,19 +470,31 @@ struct NativeToolSaveNotice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if model.busy {
-                HStack { ProgressView(); Text("Syncing with PIXL…") }
+                HStack { ProgressView(); Text(model.pendingCount > 0 ? model.pendingDescription : "Loading from PIXL…") }
+            } else if model.pendingCount > 0 {
+                Label(model.pendingDescription, systemImage: "clock.arrow.circlepath")
+                    .font(.caption)
             }
             if let message = model.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .accessibilityIdentifier("native-tool-save-error")
-                if model.pending != nil {
-                    Button("Retry pending save") { Task { await model.retry(clerk: clerk) } }
+                if model.pendingCount > 0 {
+                    if !model.conflictBlocked {
+                        Button(model.pendingCount == 1 ? "Retry pending save" : "Retry pending saves") {
+                            Task { await model.retry(clerk: clerk) }
+                        }
                         .accessibilityIdentifier("native-tool-save-retry")
 #if DEBUG
                         .accessibilityValue(model.uiTestPendingMutationID ?? "")
 #endif
-                    Button("Discard pending change and reload", role: .destructive) {
+                    }
+                    Button(model.pendingCount == 1 ? "Discard pending change and reload" : "Discard pending changes and reload",
+                           role: .destructive) {
+                        confirmingDiscard = true
+                    }
+                } else if model.unreadablePendingData {
+                    Button("Discard unreadable save and reload", role: .destructive) {
                         confirmingDiscard = true
                     }
                 } else {
@@ -321,12 +507,22 @@ struct NativeToolSaveNotice: View {
             }
         }
         .disabled(model.busy)
-        .confirmationDialog("Discard this pending change?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+        .confirmationDialog(
+            model.pendingCount == 1 ? "Discard this pending change?" : "Discard these pending changes?",
+            isPresented: $confirmingDiscard,
+            titleVisibility: .visible
+        ) {
             Button("Discard and reload", role: .destructive) {
                 Task { await model.discardAndReload(clerk: clerk) }
             }
         } message: {
-            Text("The server may already have saved it. Reloading checks the latest saved data; an unsent change will not be applied.")
+            if model.unreadablePendingData {
+                Text("This removes the unreadable on-device save and reloads the server version.")
+            } else if model.pendingCount == 1 {
+                Text("The server may already have saved it. Reloading checks the latest saved data; an unsent change will not be applied.")
+            } else {
+                Text("The server may already have saved some actions. Reloading checks the latest data; any unsent actions will not be applied.")
+            }
         }
     }
 }

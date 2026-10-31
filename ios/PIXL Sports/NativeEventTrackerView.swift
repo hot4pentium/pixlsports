@@ -53,7 +53,7 @@ struct NativeEventTrackerView: View {
                     NativeToolSaveNotice(model: model, clerk: clerk)
                 }
                 if let workspace = model.workspace {
-                    if let game = workspace.game {
+                    if let game = model.displayedGame {
                         tracker(workspace: workspace, game: game)
                     } else {
                         if compact {
@@ -97,8 +97,10 @@ struct NativeEventTrackerView: View {
                 }
             }
             HStack(alignment: .top, spacing: 20) {
-                scoreboard(teamName, score: game.score, opponent: false, editable: game.status == "live")
-                scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: game.opponentScore, opponent: true, editable: game.status == "live")
+                let canEditScore = game.status == "live" && model.pendingCount == 0
+                    && !model.busy && !model.conflictBlocked
+                scoreboard(teamName, score: game.score, opponent: false, editable: canEditScore)
+                scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: game.opponentScore, opponent: true, editable: canEditScore)
             }
             if game.status == "final" {
                 Text(game.hasRecordedScore
@@ -144,7 +146,7 @@ struct NativeEventTrackerView: View {
                             .background(SupporterHomeColors.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
                         }
                         .buttonStyle(.plain)
-                        .disabled(game.status != "live")
+                        .disabled(!model.canQueueStat)
                         .accessibilityLabel("Record \(stat.label), \(opponentPossession ? "opponent" : attribution == "athlete" ? athleteName : teamName)")
                     }
                 }
@@ -152,27 +154,31 @@ struct NativeEventTrackerView: View {
                     Button(game.status == "live" ? "Pause" : "Resume") {
                         Task { await model.save(game.status == "live" ? "pause" : "resume", clerk: clerk) }
                     }
+                    .disabled(model.busy || model.pendingCount > 0 || model.conflictBlocked)
                     Spacer()
                     Button("Next \(phaseLabel(workspace: workspace, game: game).lowercased())") {
                         Task { await model.save("period", clerk: clerk) }
                     }
-                    .disabled(game.status != "live")
+                    .disabled(game.status != "live" || model.busy || model.pendingCount > 0 || model.conflictBlocked)
                 }
                 Button("Undo last stat") { Task { await model.save("undo", clerk: clerk) } }
-                    .disabled(game.events.isEmpty || game.status != "live")
-                } else if game.status == "paused" {
-                    Button("Resume game") {
-                        Task { await model.save("resume", clerk: clerk) }
-                    }
-                    .buttonStyle(.borderedProminent)
+                    .disabled(game.events.isEmpty || game.status != "live" || model.busy
+                              || model.pendingCount > 0 || model.conflictBlocked)
+            } else if game.status == "paused" {
+                Button("Resume game") {
+                    Task { await model.save("resume", clerk: clerk) }
                 }
-                Button(compact ? "End game" : "Finish game", role: .destructive) {
-                    recordScore = compact || game.hasRecordedScore
-                    outcome = ""
-                    showingFinish = true
-                }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("native-event-end-game")
+                .buttonStyle(.borderedProminent)
+                .disabled(model.busy || model.pendingCount > 0 || model.conflictBlocked)
+            }
+            Button(compact ? "End game" : "Finish game", role: .destructive) {
+                recordScore = compact || game.hasRecordedScore
+                outcome = ""
+                showingFinish = true
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.busy || model.pendingCount > 0 || model.conflictBlocked)
+            .accessibilityIdentifier("native-event-end-game")
             }
             if !compact && !game.events.isEmpty {
                 Text("RECENT STATS").font(.caption.bold())
@@ -186,7 +192,6 @@ struct NativeEventTrackerView: View {
                 }
             }
         }
-        .disabled(model.busy || model.pending != nil)
     }
 
     private func scoreboard(_ label: String, score: Int, opponent: Bool, editable: Bool) -> some View {
@@ -232,7 +237,7 @@ struct NativeEventTrackerView: View {
             Form {
                 Section("Final result") {
                     Toggle("Record the displayed final score", isOn: $recordScore)
-                    if let game = model.workspace?.game {
+                    if let game = model.displayedGame {
                         Text("\(teamName) \(game.score) – \(game.opponentScore) \(event.opponent)")
                     }
                     if !recordScore {
@@ -253,7 +258,7 @@ struct NativeEventTrackerView: View {
                         if model.workspace?.game?.status == "final" { showingFinish = false }
                     }
                 }
-                .disabled(model.busy || model.pending != nil)
+                .disabled(model.busy || model.pendingCount > 0 || model.conflictBlocked)
             }
             .navigationTitle("Finish game")
             .toolbar {
