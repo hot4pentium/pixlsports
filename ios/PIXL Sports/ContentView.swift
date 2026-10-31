@@ -248,20 +248,19 @@ struct ContentView: View {
 
     // MARK: - Athlete hero (connected only)
 
+    private var guideReferenceDate: Date {
+#if DEBUG
+        if fixtureState != nil {
+            return SupporterDashboardFixtures.fixedGuideNow ?? Date()
+        }
+#endif
+        return Date()
+    }
+
     @ViewBuilder
     private var athleteHero: some View {
         if case let .schedule(page, _, _) = displayedState {
-            let guideNow: Date
-#if DEBUG
-            if let _ = fixtureState {
-                guideNow = SupporterDashboardFixtures.fixedGuideNow ?? Date()
-            } else {
-                guideNow = Date()
-            }
-#else
-            guideNow = Date()
-#endif
-            let guide = SupporterHomeViewModel.featuredGuideEvent(in: page, now: guideNow)
+            let guide = SupporterHomeViewModel.featuredGuideEvent(in: page, now: guideReferenceDate)
             NativeHomeHeroCards(
                 athleteName: page.athleteName ?? "Your athlete",
                 teamName: page.teamName,
@@ -756,6 +755,7 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
     private func eventGrid(page: NativeSupporterSchedule, events: [SupporterScheduleItem]) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
             LazyVStack(spacing: 9) {
