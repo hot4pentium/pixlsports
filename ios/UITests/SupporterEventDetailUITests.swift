@@ -438,15 +438,18 @@ final class SupporterEventDetailUITests: XCTestCase {
         let status = assertReachable("event-detail-status", in: app)
         XCTAssertTrue(status.label.contains("Live"))
         let date = assertReachable("event-detail-date", in: app)
-        XCTAssertTrue(date.label.contains("November 14"))
-        let opponent = assertReachable("event-detail-opponent", in: app)
-        XCTAssertTrue(opponent.label.contains("Very Long Name"))
+        XCTAssertTrue(date.label.contains("Nov 14"))
+        let time = assertReachable("event-detail-time", in: app)
+        XCTAssertTrue(time.label.contains("PM"))
         let location = assertReachable("event-detail-location", in: app)
         XCTAssertTrue(location.label.contains("Field Twenty-Seven"))
         let hero = app.descendants(matching: .any)["event-detail-hero"]
         XCTAssertTrue(hero.waitForExistence(timeout: 5))
+        XCTAssertTrue(hero.frame.contains(title.frame))
         XCTAssertTrue(hero.frame.contains(date.frame))
+        XCTAssertTrue(hero.frame.contains(time.frame))
         XCTAssertTrue(hero.frame.contains(location.frame))
+        XCTAssertFalse(app.descendants(matching: .any)["event-detail-opponent"].exists)
         XCTAssertFalse(app.staticTexts["EVENT DETAILS"].exists)
         assertReachable("event-detail-tool-panel", in: app)
     }
@@ -593,7 +596,8 @@ final class SupporterEventDetailUITests: XCTestCase {
         add(screenshot)
 
         // Gesture inside the details viewport, never on the fixed step buttons.
-        for _ in 0..<25 where !app.descendants(matching: .any)["event-detail-title"].isHittable {
+        let title = app.descendants(matching: .any)["event-detail-title"]
+        for _ in 0..<25 where !title.isHittable {
             swipeDetails(scroll, up: false)
         }
         for _ in 0..<25 where !app.descendants(matching: .any)["event-detail-date"].isHittable {
@@ -601,14 +605,17 @@ final class SupporterEventDetailUITests: XCTestCase {
         }
         let date = app.descendants(matching: .any)["event-detail-date"]
         let time = app.descendants(matching: .any)["event-detail-time"]
+        let location = app.descendants(matching: .any)["event-detail-location"]
         XCTAssertTrue(date.isHittable, "The event date must be reachable inside the details viewport")
         XCTAssertTrue(time.exists)
+        XCTAssertTrue(location.exists)
+        XCTAssertEqual(date.frame.minX, time.frame.minX, accuracy: 2, "Schedule metadata should share a compact column")
+        XCTAssertGreaterThan(time.frame.minY, date.frame.minY)
+        XCTAssertGreaterThan(location.frame.minY, time.frame.minY)
         if accessibility {
-            XCTAssertEqual(date.frame.minX, time.frame.minX, accuracy: 2, "Accessibility details must stay single-column")
-            XCTAssertGreaterThan(time.frame.minY, date.frame.minY)
+            XCTAssertEqual(date.frame.minX, title.frame.minX, accuracy: 2, "Accessibility details should stack beneath the event identity")
         } else {
-            XCTAssertEqual(date.frame.minY, time.frame.minY, accuracy: 2, "Default details must keep two columns")
-            XCTAssertGreaterThan(time.frame.minX, date.frame.minX)
+            XCTAssertGreaterThan(date.frame.minX, title.frame.minX, "Default layout should place schedule details beside the event identity")
         }
 
         let initialBar = bar.frame

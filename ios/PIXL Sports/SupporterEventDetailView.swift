@@ -271,21 +271,20 @@ struct SupporterEventDetailView: View {
     }
 
     private func eventCard(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 13) {
-            eventCardHeading(event)
-
-            if let athleteName = schedule.athleteName, !athleteName.isEmpty {
-                HStack(spacing: 7) {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 10, weight: .bold))
-                    Text(athleteName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .fixedSize(horizontal: false, vertical: true)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    eventIdentity(schedule: schedule, event: event)
+                    eventScheduleDetails(schedule: schedule, event: event)
                 }
-                .foregroundStyle(SupporterHomeColors.muted)
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    eventIdentity(schedule: schedule, event: event)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    eventScheduleDetails(schedule: schedule, event: event)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-
-            eventMetadata(schedule: schedule, event: event)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -322,18 +321,22 @@ struct SupporterEventDetailView: View {
         .accessibilityIdentifier("event-detail-hero")
     }
 
-    @ViewBuilder
-    private func eventCardHeading(_ event: AthleteFanEvent) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 12) {
-                eventDateBadge(event)
-                eventTitleBlock(event)
-            }
-        } else {
-            HStack(alignment: .top, spacing: 14) {
-                eventDateBadge(event)
-                eventTitleBlock(event)
-                Spacer(minLength: 0)
+    private func eventIdentity(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            eventTitleBlock(event)
+
+            if let teamName = schedule.teamName?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !teamName.isEmpty,
+               teamName.caseInsensitiveCompare(event.title) != .orderedSame
+            {
+                HStack(spacing: 6) {
+                    Image(systemName: "shield.fill")
+                        .font(.system(size: detailLabelPointSize, weight: .semibold))
+                    Text(teamName)
+                        .font(.system(size: detailValuePointSize, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(SupporterHomeColors.muted)
             }
         }
     }
@@ -354,27 +357,10 @@ struct SupporterEventDetailView: View {
         }
     }
 
-    private func eventMetadata(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        LazyVGrid(
-            columns: Array(
-                repeating: GridItem(.flexible(), alignment: .topLeading),
-                count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
-            ),
-            alignment: .leading,
-            spacing: 14
-        ) {
-            detailRow(icon: "calendar", label: "DATE", value: event.formattedFullDate(timezone: event.timezone ?? schedule.timezone))
+    private func eventScheduleDetails(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            detailRow(icon: "calendar", label: "DATE", value: compactDate(event: event, schedule: schedule))
             detailRow(icon: "clock", label: "TIME", value: event.formattedTime(timezone: event.timezone ?? schedule.timezone))
-
-            if event.type == "game" {
-                detailRow(
-                    icon: "person.2.fill",
-                    label: "OPPONENT",
-                    value: event.opponent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "Opponent to be announced"
-                        : event.opponent
-                )
-            }
             detailRow(
                 icon: "mappin.and.ellipse",
                 label: "LOCATION",
@@ -382,53 +368,21 @@ struct SupporterEventDetailView: View {
                     ? "Location to be announced"
                     : event.location
             )
-
-            if let teamName = schedule.teamName, !teamName.isEmpty {
-                detailRow(icon: "shield.fill", label: "TEAM", value: teamName)
-            }
-            if let seasonName = schedule.seasonName, !seasonName.isEmpty {
-                detailRow(icon: "calendar", label: "SEASON", value: seasonName)
-            }
         }
-        .padding(.top, 3)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event-detail-metadata")
     }
 
-    private func eventDateBadge(_ event: AthleteFanEvent) -> some View {
-        let parts = event.date.split(separator: "-")
-        let monthNumber = parts.count == 3 ? Int(parts[1]) : nil
-        let dayNumber = parts.count == 3 ? Int(parts[2]) : nil
-        let monthSymbols = DateFormatter().shortMonthSymbols ?? []
-        let month = monthNumber.flatMap { (1...12).contains($0) ? monthSymbols[$0 - 1].uppercased() : nil } ?? "DATE"
-        let day = dayNumber.map(String.init) ?? "—"
-
-        return VStack(spacing: 2) {
-            Text(month)
-                .font(.system(size: 9, weight: .black))
-                .tracking(1.1)
-            Text(day)
-                .font(.system(size: 26, weight: .black, design: .rounded))
-                .contentTransition(.numericText())
-        }
-        .foregroundStyle(SupporterHomeColors.background)
-        .frame(width: 58, height: 66)
-        .background(
-            LinearGradient(
-                colors: [SupporterHomeColors.accent, Color(red: 0.88, green: 0.98, blue: 0.48)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 16)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.white.opacity(0.42), lineWidth: 1)
-        }
-        .accessibilityHidden(true)
+    private func compactDate(event: AthleteFanEvent, schedule: NativeSupporterSchedule) -> String {
+        let timezone = event.timezone ?? schedule.timezone
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: timezone ?? "") ?? .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: event.date) else { return event.date }
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: date)
     }
 
     private func statusBadge(_ event: AthleteFanEvent) -> some View {
