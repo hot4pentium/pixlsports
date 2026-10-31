@@ -564,7 +564,11 @@ struct ContentView: View {
 #if DEBUG
         if fixtureState != nil {
             if case .schedule(let page, _, _) = displayedState {
-                SupporterEventDetailView(fixture: .init(schedule: page, event: event))
+                SupporterEventDetailView(
+                    clerk: nil,
+                    shareToken: event.shareToken,
+                    fixture: .init(schedule: page, event: event)
+                )
             }
         } else {
             SupporterEventDetailView(clerk: clerk, shareToken: event.shareToken)
