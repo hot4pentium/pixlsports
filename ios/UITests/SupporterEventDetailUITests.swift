@@ -1,7 +1,19 @@
 import XCTest
+import UIKit
 
 @MainActor
 final class SupporterEventDetailUITests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+    }
+
+    override func tearDown() {
+        XCUIDevice.shared.orientation = .portrait
+        super.tearDown()
+    }
+
     func testUnsavedPrepSurvivesTimelineRecommendationsAndBackgroundResume() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft"]
@@ -13,6 +25,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         let recommendation = app.staticTexts["event-detail-recommended-step"]
         XCTAssertTrue(recommendation.waitForExistence(timeout: 10))
         XCTAssertEqual(recommendation.label, "Next: Prep")
+        assertRecommendedStep("Prep", in: app)
         app.buttons["event-card-prep"].tap()
         XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 10))
 
@@ -44,6 +57,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         let previousTicks = Int(ticks.label) ?? 0
         reachableFromAbove("prep-test-advance-clock", in: app).tap()
         assertLabel("Next: Track Stats", identifier: "prep-test-recommendation", in: app, timeout: 25)
+        assertRecommendedStep("Track Stats", in: app)
         XCTAssertGreaterThan(Int(ticks.label) ?? 0, previousTicks)
         app.buttons["event-card-track-stats"].tap()
         app.buttons["event-card-prep"].tap()
@@ -63,6 +77,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         expectation(for: resumed, evaluatedWith: app)
         waitForExpectations(timeout: 10)
         assertLabel("Next: Share", identifier: "prep-test-recommendation", in: app, timeout: 25)
+        assertRecommendedStep("Share", in: app)
         assertDraftRemains(in: app, notes: draftNotes, addedTask: addedTask)
 
         app.navigationBars["Event Details"].buttons["Back"].tap()
@@ -159,19 +174,195 @@ final class SupporterEventDetailUITests: XCTestCase {
         assertReachable("event-detail-tool-panel", in: app)
     }
 
-    func testEventStepButtonsStayAtTheBottomWhenDetailsScroll() {
+    func testEventStepsAtNarrowDefaultWidth() throws {
+        let app = launchStepBar()
+        defer { app.terminate() }
+        try assertStepBarLayout(in: app, accessibility: false, narrow: true)
+    }
+
+    func testEventStepsAtNarrowAccessibilityXXXLWidth() throws {
+        let app = launchStepBar(accessibility: true)
+        defer { app.terminate() }
+        try assertStepBarLayout(in: app, accessibility: true, narrow: true)
+    }
+
+    func testEventStepsInBothLandscapeDirectionsAndAfterReturningToPortrait() throws {
+        try checkLandscapeStepBar(accessibility: false)
+    }
+
+    func testEventStepsInLandscapeAtAccessibilityXXXL() throws {
+        try checkLandscapeStepBar(accessibility: true)
+    }
+
+    func testPracticeKeepsDisabledStatsReadableAtNarrowAndLandscapeAccessibilityXXXL() throws {
+        for landscape in [false, true] {
+            let app = launchStepBar(accessibility: true, fullWidth: landscape, practice: true)
+            if landscape { rotate(.landscapeLeft, in: app) }
+            try assertStepBarLayout(in: app, accessibility: true, narrow: !landscape, practice: true)
+            app.buttons["event-card-prep"].tap()
+            _ = assertReachable("event-detail-prep-summary", in: app)
+            let stats = app.buttons["event-card-track-stats"]
+            XCTAssertFalse(stats.isEnabled, "Practice must not enable game statistics after selecting Prep")
+            // Disabled controls still expose their name and recommendation metadata.
+            XCTAssertEqual(stats.label, "Track Stats")
+            app.buttons["event-card-share"].tap()
+            XCTAssertTrue(app.navigationBars["Event Details"].exists)
+            XCTAssertFalse(app.descendants(matching: .any)["event-detail-prep-summary"].exists)
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+    }
+
+    private let stepButtons = [
+        ("event-card-prep", "Prep"),
+        ("event-card-track-stats", "Track Stats"),
+        ("event-card-share", "Share")
+    ]
+
+    private func launchStepBar(
+        accessibility: Bool = false, fullWidth: Bool = false, practice: Bool = false
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail"]
+        if fullWidth { app.launchArguments.append("--event-detail-full-width") }
+        if practice { app.launchArguments.append("--event-detail-practice") }
+        if accessibility {
+            app.launchArguments += [
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"
+            ]
+        }
         app.launch()
-        let prep = app.buttons["event-card-prep"].firstMatch
-        XCTAssertTrue(prep.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["event-card-track-stats"].exists)
-        XCTAssertTrue(app.buttons["event-card-share"].exists)
-        let initialY = prep.frame.minY
-        XCTAssertGreaterThanOrEqual(prep.frame.height, 44)
-        app.swipeUp()
-        XCTAssertEqual(prep.frame.minY, initialY, accuracy: 2)
-        XCTAssertLessThanOrEqual(prep.frame.maxY, app.frame.maxY)
+        XCTAssertTrue(app.buttons["event-card-prep"].waitForExistence(timeout: 10))
+        return app
+    }
+
+    private func rotate(_ orientation: UIDeviceOrientation, in app: XCUIApplication) {
+        XCUIDevice.shared.orientation = orientation
+        let landscape = orientation == .landscapeLeft || orientation == .landscapeRight
+        expectation(for: NSPredicate { _, _ in
+            landscape ? app.frame.width > app.frame.height : app.frame.height > app.frame.width
+        }, evaluatedWith: app)
+        waitForExpectations(timeout: 10)
+    }
+
+    private func checkLandscapeStepBar(accessibility: Bool) throws {
+        let app = launchStepBar(accessibility: accessibility, fullWidth: true)
+        defer { app.terminate() }
+        for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight, .portrait] {
+            rotate(orientation, in: app)
+            try assertStepBarLayout(in: app, accessibility: accessibility, narrow: false)
+        }
+    }
+
+    private func assertRecommendedStep(_ title: String, in app: XCUIApplication) {
+        assertLabel("Next: \(title)", identifier: "event-detail-recommended-step", in: app, timeout: 5)
+        for (identifier, label) in stepButtons {
+            let button = app.buttons[identifier]
+            XCTAssertEqual(button.label, label, "VoiceOver must announce the full step name")
+            XCTAssertEqual(
+                button.value as? String ?? "",
+                label == title ? "Recommended next step" : "",
+                "Only the time-recommended step should announce the recommendation, regardless of selection"
+            )
+        }
+    }
+
+    private func assertStepBarLayout(
+        in app: XCUIApplication, accessibility: Bool, narrow: Bool, practice: Bool = false
+    ) throws {
+        let bar = app.otherElements["event-detail-step-bar"]
+        let safeArea = app.otherElements["event-detail-safe-area"]
+        let scroll = app.scrollViews["event-detail-scroll"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5))
+        XCTAssertTrue(safeArea.exists)
+        XCTAssertTrue(scroll.exists)
+        let safeFrame = safeArea.frame
+        XCTAssertGreaterThan(safeFrame.width, 0)
+        XCTAssertGreaterThan(safeFrame.height, 0)
+        if narrow { XCTAssertLessThanOrEqual(bar.frame.width, 320.5) }
+        assertContained(bar.frame, in: safeFrame)
+        XCTAssertGreaterThan(scroll.frame.height, 44, "Details must retain a usable scroll viewport above the bar")
+        XCTAssertLessThanOrEqual(scroll.frame.maxY, bar.frame.minY + 1)
+        var previousFrame: CGRect?
+        for (identifier, title) in stepButtons {
+            let button = app.buttons[identifier]
+            XCTAssertEqual(button.label, title)
+            XCTAssertEqual(button.isEnabled, !(practice && title == "Track Stats"))
+            XCTAssertGreaterThanOrEqual(button.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+            assertContained(button.frame, in: safeFrame)
+            assertContained(button.frame, in: bar.frame)
+            if button.isEnabled { XCTAssertTrue(button.isHittable) }
+            if let previousFrame {
+                XCTAssertLessThanOrEqual(previousFrame.maxX, button.frame.minX, "Step hit areas must not overlap")
+            }
+            previousFrame = button.frame
+        }
+        let recommendation = app.staticTexts["event-detail-recommended-step"].label
+        XCTAssertTrue(recommendation.hasPrefix("Next: "))
+        let recommendedTitle = String(recommendation.dropFirst("Next: ".count))
+        assertRecommendedStep(recommendedTitle, in: app)
+        if practice { XCTAssertNotEqual(recommendedTitle, "Track Stats") }
+
+        // Checking labels alone cannot detect clipped rendered glyphs. Use Apple's
+        // native audit for the bar, excluding unrelated read-only fixture content.
+        try app.performAccessibilityAudit(for: [.textClipped, .hitRegion]) { issue in
+            guard let element = issue.element else { return false }
+            return !element.frame.intersects(bar.frame) || element.identifier == "event-detail-safe-area"
+        }
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Event step bar — \(practice ? "practice" : "game") — \(accessibility ? "AX XXXL" : "default") — \(XCUIDevice.shared.orientation.rawValue)"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        // Gesture inside the details viewport, never on the fixed step buttons.
+        for _ in 0..<25 where !app.descendants(matching: .any)["event-detail-title"].isHittable {
+            swipeDetails(scroll, up: false)
+        }
+        for _ in 0..<25 where !app.descendants(matching: .any)["event-detail-date"].isHittable {
+            swipeDetails(scroll, up: true)
+        }
+        let date = app.descendants(matching: .any)["event-detail-date"]
+        let time = app.descendants(matching: .any)["event-detail-time"]
+        XCTAssertTrue(date.isHittable, "The event date must be reachable inside the details viewport")
+        XCTAssertTrue(time.exists)
+        if accessibility {
+            XCTAssertEqual(date.frame.minX, time.frame.minX, accuracy: 2, "Accessibility details must stay single-column")
+            XCTAssertGreaterThan(time.frame.minY, date.frame.minY)
+        } else {
+            XCTAssertEqual(date.frame.minY, time.frame.minY, accuracy: 2, "Default details must keep two columns")
+            XCTAssertGreaterThan(time.frame.minX, date.frame.minX)
+        }
+
+        let initialBar = bar.frame
+        let initialDateY = date.frame.minY
+        swipeDetails(scroll, up: true)
+        XCTAssertLessThan(date.frame.minY, initialDateY, "Event details must actually scroll")
+        let panel = app.descendants(matching: .any)["event-detail-tool-panel"]
+        for _ in 0..<30 where !panel.isHittable { swipeDetails(scroll, up: true) }
+        XCTAssertTrue(panel.isHittable, "The final tool panel must remain reachable above the step bar")
+        XCTAssertLessThan(panel.frame.minY, bar.frame.minY)
+        XCTAssertEqual(bar.frame.minY, initialBar.minY, accuracy: 2)
+        XCTAssertEqual(bar.frame.height, initialBar.height, accuracy: 2)
+        for (identifier, _) in stepButtons where app.buttons[identifier].isEnabled {
+            XCTAssertTrue(app.buttons[identifier].isHittable, "Scrolling must not hide the step actions")
+        }
+        // Changing selection must not move the VoiceOver recommendation.
+        app.buttons[recommendedTitle == "Prep" ? "event-card-share" : "event-card-prep"].tap()
+        assertRecommendedStep(recommendedTitle, in: app)
+    }
+
+    private func swipeDetails(_ scroll: XCUIElement, up: Bool) {
+        let top = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15))
+        let bottom = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
+        (up ? bottom : top).press(forDuration: 0.05, thenDragTo: up ? top : bottom)
+    }
+
+    private func assertContained(_ frame: CGRect, in container: CGRect) {
+        XCTAssertGreaterThanOrEqual(frame.minX, container.minX - 1)
+        XCTAssertGreaterThanOrEqual(frame.minY, container.minY - 1)
+        XCTAssertLessThanOrEqual(frame.maxX, container.maxX + 1)
+        XCTAssertLessThanOrEqual(frame.maxY, container.maxY + 1)
     }
 
     func testUnauthenticatedFixturePrepPreviewCannotEditSavedData() {

@@ -129,6 +129,14 @@ struct SupporterEventDetailView: View {
                 }
             }
         }
+#if DEBUG
+        .background {
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
+                NativeEventDetailSafeAreaProbe()
+                    .allowsHitTesting(false)
+            }
+        }
+#endif
         .navigationTitle("Event Details")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -219,6 +227,7 @@ struct SupporterEventDetailView: View {
         .onChange(of: selectedStep) { _, _ in
             withAnimation { proxy.scrollTo("active-event-tool", anchor: .top) }
         }
+        .accessibilityIdentifier("event-detail-scroll")
         }
     }
 
@@ -553,3 +562,36 @@ struct SupporterEventDetailView: View {
         }
     }
 }
+
+#if DEBUG
+/// Reports UIKit's actual safe rectangle to XCTest, not a guessed device inset.
+/// It does not replace or constrain the production SwiftUI layout.
+private struct NativeEventDetailSafeAreaProbe: UIViewRepresentable {
+    func makeUIView(context: Context) -> SafeAreaView { SafeAreaView() }
+    func updateUIView(_ uiView: SafeAreaView, context: Context) {}
+
+    final class SafeAreaView: UIView {
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isAccessibilityElement = true
+            accessibilityIdentifier = "event-detail-safe-area"
+            accessibilityLabel = "Event Details safe area"
+            isUserInteractionEnabled = false
+        }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            accessibilityFrame = UIAccessibility.convertToScreenCoordinates(
+                bounds.inset(by: safeAreaInsets), in: self
+            )
+        }
+
+        override func safeAreaInsetsDidChange() {
+            super.safeAreaInsetsDidChange()
+            setNeedsLayout()
+        }
+    }
+}
+#endif

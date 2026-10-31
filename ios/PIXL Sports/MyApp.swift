@@ -76,7 +76,7 @@ struct MyApp: App {
                                 title: "Championship Showcase With an Extraordinarily Long Event Name",
                                 date: "2026-11-14",
                                 time: "18:30",
-                                type: "game",
+                                type: ProcessInfo.processInfo.arguments.contains("--event-detail-practice") ? "practice" : "game",
                                 status: "live",
                                 opponent: "The Visiting Team With a Very Long Name",
                                 location: "Northwest Regional Athletic Complex, Field Twenty-Seven, Entrance C",
@@ -90,7 +90,7 @@ struct MyApp: App {
                                 : .init(items: [], notes: "")
                         )
                     )
-                    .frame(maxWidth: 320)
+                    .frame(maxWidth: ProcessInfo.processInfo.arguments.contains("--event-detail-full-width") ? .infinity : 320)
     }
 
     private var liveTapsFixture: SupporterLiveTapsView.Fixture {

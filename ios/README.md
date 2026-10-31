@@ -107,15 +107,65 @@ loaded data are not access.
 This repository is edited on Linux, without Xcode or an iOS simulator. Build,
 signing, and rendered native UI must be verified on the Mac.
 
-The Event Card detail UI test launches a local fixture without signing in or
-requesting private data. It limits the screen content to 320 points wide, sets
-the largest accessibility text size, and checks that the date, opponent,
-location, status, and native tool panel remain reachable:
+The Event Card detail UI tests launch local fixtures without signing in or
+requesting private data. The default fixture limits content to 320 points wide.
+Tests check that the date, opponent, location, status, and native tool panel
+remain reachable at the largest accessibility text size:
 
 ```sh
 xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>'
 ```
+
+### Fixed Event Details step bar
+
+`SupporterEventDetailUITests` covers the **Event Details bottom bar**, not the
+dashboard schedule tiles:
+
+- 320-point portrait width at default and accessibility XXXL text sizes.
+- Full-device width in both landscape directions and return to portrait at
+  both text sizes. Run on a small iPhone simulator as well as a notched/home-
+  indicator iPhone; a constrained 320-point fixture does not simulate device
+  safe-area hardware.
+- Full Prep, Track Stats, and Share accessibility labels; Apple's native
+  text-clipping and hit-region audits scoped to the bar; nonoverlapping
+  44-by-44-point minimum button frames; and enabled-button reachability.
+- UIKit-measured safe-area containment for the bar and all buttons, a usable
+  scroll viewport above it, moving event details with a stationary bar, and
+  reachability of the final tool panel.
+- Two-column date/time details at default text size versus single-column
+  details at accessibility sizes.
+- Practice at narrow and landscape XXXL sizes: Track Stats stays visible and
+  disabled while Prep and Share still switch the shared panel.
+- The recommended button's accessibility value is `Recommended next step`,
+  including Prep → Track Stats → Share timeline changes in the existing draft
+  test. Selecting another panel must not transfer that recommendation.
+
+The layout tests retain screenshots in the Xcode test result for visual review.
+Run just these new layout cases on a Mac:
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testEventStepsAtNarrowDefaultWidth \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testEventStepsAtNarrowAccessibilityXXXLWidth \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testEventStepsInBothLandscapeDirectionsAndAfterReturningToPortrait \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testEventStepsInLandscapeAtAccessibilityXXXL \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testPracticeKeepsDisabledStatsReadableAtNarrowAndLandscapeAccessibilityXXXL
+```
+
+Debug-only `--event-detail-full-width` removes the 320-point fixture constraint;
+`--event-detail-practice` changes its fictional event to a practice. Both require
+`--ui-testing-event-detail` and leave private tools locked. A Debug-only,
+noninteractive UIKit accessibility probe exposes the actual safe rectangle to
+XCTest without changing layout. It is absent from normal launches and Release.
+
+**Verification boundary:** these tests have not been compiled or run in the
+Linux workspace, which has no Apple Xcode, Swift compiler, or iOS simulator.
+Source checks are not native rendering verification. On a Mac, inspect the
+retained screenshots for complete visible labels and enable VoiceOver to confirm
+the spoken step name/recommendation and disabled-practice explanation. XCTest
+checks the accessibility metadata, not audio output or actual VoiceOver focus.
 
 The Prep draft regression uses both `--ui-testing-event-detail` and
 `--ui-testing-prep-draft` in **Debug only**. A test entry link opens Event Details

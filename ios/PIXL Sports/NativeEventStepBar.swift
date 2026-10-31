@@ -67,6 +67,7 @@ struct NativeEventStepBar: View {
         }
         .frame(maxWidth: .infinity, minHeight: 64)
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
         .foregroundStyle(step == selected ? SupporterHomeColors.background : .white)
         .background(
             step == selected ? SupporterHomeColors.accent : Color.white.opacity(0.06),
