@@ -40,6 +40,19 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertLessThanOrEqual(prep.frame.maxY, app.frame.maxY)
     }
 
+    func testPrepSummaryIsReadOnlyAndShowsAnEmptySavedState() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail"]
+        app.launch()
+        let summary = assertReachable("event-detail-prep-summary", in: app)
+        XCTAssertTrue(summary.staticTexts["Read only"].exists)
+        XCTAssertTrue(summary.descendants(matching: .any)["event-detail-prep-empty"].exists)
+        XCTAssertFalse(summary.switches.firstMatch.exists)
+        XCTAssertFalse(summary.textFields.firstMatch.exists)
+        XCTAssertFalse(summary.textViews.firstMatch.exists)
+        XCTAssertFalse(summary.buttons["native-prep-save"].exists)
+    }
+
     func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {
         let app = XCUIApplication()
         app.launchArguments = [

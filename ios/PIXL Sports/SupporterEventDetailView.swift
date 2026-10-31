@@ -22,6 +22,7 @@ struct SupporterEventDetailView: View {
     struct Fixture {
         let schedule: NativeSupporterSchedule
         let event: AthleteFanEvent
+        var prep: NativeEventWorkspace.Prep = .init(items: [], notes: "")
     }
 
     init(clerk: Clerk?, shareToken: String, fixture: Fixture? = nil) {
@@ -149,6 +150,11 @@ struct SupporterEventDetailView: View {
             VStack(alignment: .leading, spacing: 14) {
                 eventCard(schedule: schedule, event: event)
                 eventInformation(schedule: schedule, event: event)
+                NativeEventPrepSummaryView(
+                    shareToken: event.shareToken,
+                    clerk: clerk,
+                    fixturePrep: fixture?.prep
+                )
 
                 if let clerk {
                     NavigationLink {

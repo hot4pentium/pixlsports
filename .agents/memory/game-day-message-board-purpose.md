@@ -20,3 +20,9 @@ Opened native Event Cards should use compact, organized details with Prep, Track
 **Why:** The user requested less vertical detail layout and a clear, time-aware sequence of actions.
 
 **How to apply:** Keep the step bar visible as details scroll, preserve readable larger-text layouts, and distinguish recommendation changes from actual saved completion or game finalization.
+
+Show a read-only view of the current saved Prep card beneath the Event Details box.
+
+**Why:** The user explicitly requested this placement and read-only behavior.
+
+**How to apply:** Read the same verified event workspace used by Prep, refresh on returning from saved edits, and keep checklist editing and saving in the dedicated Prep screen. Do not present pending local changes as saved.
