@@ -17,6 +17,12 @@ Do not show a “PIXL account connected” card or connection-management section
 
 **How to apply:** Keep required first-time verification separate from the everyday dashboard. Removing this card does not change the verified identity-to-data mapping or authorize an authentication migration.
 
+Use subtle translucent white backgrounds to distinguish the native dashboard's sections.
+
+**Why:** The user said the sections otherwise blend together as one large section.
+
+**How to apply:** Group the hero, upcoming events, and history into separate surfaces while preserving the navy backdrop and existing card layout.
+
 The target family experience is explicit sign-up or sign-in after installation; App Store ownership is not authentication. Returning families should use their existing PIXL account, and new families should create one account usable on iPhone and web. A separate iPhone-only account and repeated web-account linking are transitional, not the desired long-term journey.
 
 **Why:** the user explicitly confirmed this sign-in experience and wants to avoid making returning families create a second PIXL account.

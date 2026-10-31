@@ -78,6 +78,9 @@ struct ContentView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         header
+                            .modifier(SupporterDashboardSectionSurface())
+                            .accessibilityElement(children: .contain)
+                            .accessibilityIdentifier("dashboard-header-section")
                         athleteHero
                         accountSetupIfNeeded
                         nextEventSection
@@ -266,6 +269,9 @@ struct ContentView: View {
                 },
                 onOpenHypeCard: { heroDestination = .hypeCard }
             )
+            .modifier(SupporterDashboardSectionSurface())
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("dashboard-hero-section")
         }
     }
 
@@ -417,29 +423,34 @@ struct ContentView: View {
         case .loading:
             loadingCard
         case let .schedule(page, events, pastEvents):
-            VStack(alignment: .leading, spacing: 14) {
-                SupporterSectionHeader(
-                    eyebrow: "Event Cards",
-                    title: events.isEmpty ? "Coming up" : "Up next",
-                    trailing: events.isEmpty ? nil : "\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")"
-                )
+            VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 14) {
+                    SupporterSectionHeader(
+                        eyebrow: "Event Cards",
+                        title: events.isEmpty ? "Coming up" : "Up next",
+                        trailing: events.isEmpty ? nil : "\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")"
+                    )
 
-                if events.isEmpty {
-                    emptyScheduleCard()
-                } else {
-                    eventGrid(page: page, events: events)
+                    if events.isEmpty {
+                        emptyScheduleCard()
+                    } else {
+                        eventGrid(page: page, events: events)
+                    }
+                    Button {
+                        heroDestination = .createEvent
+                    } label: {
+                        Label("Add an Event Card", systemImage: "plus")
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(SupporterHomeColors.accent)
+                    .foregroundStyle(SupporterHomeColors.background)
+                    .accessibilityIdentifier("dashboard-add-event-card")
                 }
-                Button {
-                    heroDestination = .createEvent
-                } label: {
-                    Label("Add an Event Card", systemImage: "plus")
-                        .font(.subheadline.bold())
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(SupporterHomeColors.accent)
-                .foregroundStyle(SupporterHomeColors.background)
-                .accessibilityIdentifier("dashboard-add-event-card")
+                .modifier(SupporterDashboardSectionSurface())
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("dashboard-upcoming-section")
                 if !pastEvents.isEmpty {
                     pastEventsSection(page: page, events: pastEvents)
                 }
@@ -715,7 +726,7 @@ struct ContentView: View {
             )
             eventGrid(page: page, events: events)
         }
-        .padding(.top, 12)
+        .modifier(SupporterDashboardSectionSurface())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dashboard-history")
     }

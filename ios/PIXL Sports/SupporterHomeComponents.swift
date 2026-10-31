@@ -142,6 +142,23 @@ struct SupporterWeekPath: View {
     }
 }
 
+/// Backplates extend into the page gutter without narrowing card grids.
+struct SupporterDashboardSectionSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, 16)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                    }
+                    .padding(.horizontal, -12)
+            }
+    }
+}
+
 struct SupporterCardBackground: View {
     var cornerRadius: CGFloat = 22
     var highlighted = false
