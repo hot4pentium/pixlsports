@@ -132,3 +132,4 @@
 - [Completed Event sharing](completed-event-sharing.md) — finished Event Cards share the athlete’s HYPE Card, without automatically publishing private cards.
 - [Draft HYPE Card section previews](draft-hype-card-section-preview.md) — onboarding uses local sample content for Replies, Stats, Taps, and Events without save or share requests.
 - [Public Showcase text reflow](public-showcase-text-reflow.md) — oversized error headings need breakable words and a constrained grid track to stay inside narrow screens.
+- [Game-day message board purpose](game-day-message-board-purpose.md) — the dashboard Message Board sits beside HYPE Card and guides the next task by the Event Card’s timing.

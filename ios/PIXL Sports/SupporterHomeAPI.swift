@@ -10,6 +10,21 @@ struct NativeSupporterSchedule: Decodable {
     let events: [AthleteFanEvent]
 }
 
+struct NativeHypeCardReference: Decodable {
+    let status: String
+    let inviteToken: String?
+}
+
+struct NativePublicHypeCard: Decodable {
+    let athleteName: String
+    let teamName: String
+    let seasonName: String
+    let sport: String
+    let photoUrl: String?
+    let cutoutUrl: String?
+    let favoriteMoment: String?
+}
+
 struct AthleteFanEvent: Decodable, Identifiable {
     let shareToken: String
     let eventId: String
@@ -57,6 +72,29 @@ enum SupporterHomeAPI {
                 throw SupporterHomeAPIError.invalidResponse
             }
             return schedule
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func fetchPublicHypeCard(clerk: Clerk) async throws -> NativePublicHypeCard? {
+        let client = NativeAccountLinkClient()
+        let data = try await client.getData("supporter/hype-card", clerk: clerk)
+        let reference: NativeHypeCardReference
+        do {
+            reference = try JSONDecoder().decode(NativeHypeCardReference.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        guard reference.status == "available" else { return nil }
+        guard let inviteToken = reference.inviteToken,
+              inviteToken.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+
+        let publicData = try await client.publicRequest("athlete-invites/\(inviteToken)/fan")
+        do {
+            return try JSONDecoder().decode(NativePublicHypeCard.self, from: publicData)
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }

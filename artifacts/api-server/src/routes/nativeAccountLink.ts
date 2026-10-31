@@ -7,6 +7,7 @@ import {
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
 import { loadNativeSupporterSchedule } from "../lib/nativeSupporterSchedule";
+import { loadNativeSupporterHypeCard } from "../lib/nativeSupporterHypeCard";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 
 const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
@@ -45,6 +46,9 @@ nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
 }));
 nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
   res.json(await loadNativeSupporterSchedule(identity(res)));
+}));
+nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
+  res.json(await loadNativeSupporterHypeCard(identity(res)));
 }));
 nativeAccountLinkRouter.post("/link/requests", handle(async (req, res) => {
   const parsed = BeginNativeAccountLinkBody.strict().safeParse(req.body);

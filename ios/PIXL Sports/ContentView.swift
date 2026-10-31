@@ -16,6 +16,21 @@ struct ContentView: View {
     @Binding var showingAccountLink: Bool
 
     @StateObject private var viewModel = SupporterHomeViewModel()
+    @State private var heroDestination: HeroDestination?
+
+    private enum HeroDestination: Identifiable {
+        case eventCard(String)
+        case hypeCard
+        case emptyGameDayGuide
+
+        var id: String {
+            switch self {
+            case let .eventCard(token): return "event-\(token)"
+            case .hypeCard: return "hype-card"
+            case .emptyGameDayGuide: return "empty-guide"
+            }
+        }
+    }
 #if DEBUG
     /// Fictional presentation states never request a session or private data.
     private let fixtureState: SupporterHomeViewModel.State?
@@ -76,6 +91,19 @@ struct ContentView: View {
                     await loadSchedule()
                 }
             }
+        }
+        .fullScreenCover(item: $heroDestination) { destination in
+            NavigationStack {
+                heroDestinationView(destination)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { heroDestination = nil }
+                                .tint(SupporterHomeColors.accent)
+                        }
+                    }
+            }
+            .toolbar(.visible, for: .navigationBar)
+            .preferredColorScheme(.dark)
         }
 #if os(iOS)
         .toolbar(.hidden, for: .navigationBar)
@@ -204,55 +232,69 @@ struct ContentView: View {
 
     @ViewBuilder
     private var athleteHero: some View {
-        if case let .schedule(page, events, _) = displayedState {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    SupporterEyebrow(text: "Cheering for", color: SupporterHomeColors.muted)
-                    Text(page.athleteName ?? "Your athlete")
-                        .font(.title.weight(.black))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("dashboard-athlete")
-
-                    let teamAndSeason = [page.teamName, page.seasonName]
-                        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { !$0.isEmpty }
-                    if !teamAndSeason.isEmpty {
-                        Text(teamAndSeason.joined(separator: " · "))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(SupporterHomeColors.accent)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("dashboard-season")
+        if case let .schedule(page, _, _) = displayedState {
+            let guide = SupporterHomeViewModel.featuredGuideEvent(in: page)
+            NativeHomeHeroCards(
+                athleteName: page.athleteName ?? "Your athlete",
+                teamName: page.teamName,
+                nextEvent: guide?.event,
+                eventTiming: guide?.timing,
+                hypePhotoURL: viewModel.hypeCardPreview?.cutoutUrl ?? viewModel.hypeCardPreview?.photoUrl,
+                hypePreviewFailed: viewModel.hypeCardPreviewError != nil,
+                onOpenEvent: {
+                    if let token = guide?.event.shareToken {
+                        heroDestination = .eventCard(token)
+                    } else {
+                        heroDestination = .emptyGameDayGuide
                     }
-                }
+                },
+                onOpenHypeCard: { heroDestination = .hypeCard }
+            )
+        }
+    }
 
-                let steps = weekSteps(page: page, events: events)
-                if !steps.isEmpty {
-                    SupporterWeekPath(steps: steps)
-                }
+    @ViewBuilder
+    private func heroDestinationView(_ destination: HeroDestination) -> some View {
+        switch destination {
+        case let .eventCard(token):
+            eventDetailScreen(token: token)
+        case .hypeCard:
+            SupporterHypeCardView(clerk: clerk)
+        case .emptyGameDayGuide:
+            NativeGameDayGuideEmptyView(athleteName: schedulePage?.athleteName ?? "your athlete")
+        }
+    }
+
+    private var schedulePage: NativeSupporterSchedule? {
+        if case let .schedule(page, _, _) = displayedState { return page }
+        return nil
+    }
+
+    @ViewBuilder
+    private func eventDetailScreen(token: String) -> some View {
+        if let page = schedulePage,
+           let event = page.events.first(where: { $0.shareToken == token }) {
+#if DEBUG
+            if fixtureState != nil {
+                SupporterEventDetailView(
+                    clerk: nil,
+                    shareToken: token,
+                    fixture: SupporterEventDetailView.Fixture(schedule: page, event: event)
+                )
+            } else if let clerk {
+                SupporterEventDetailView(clerk: clerk, shareToken: token)
+            } else {
+                ContentUnavailableView("Event Card unavailable", systemImage: "calendar")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
-            .background {
-                ZStack(alignment: .topTrailing) {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(LinearGradient(
-                            colors: [SupporterHomeColors.blue.opacity(0.42), Color(red: 0.06, green: 0.14, blue: 0.29)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Image(systemName: "sportscourt.fill")
-                        .font(.system(size: 120, weight: .black))
-                        .foregroundStyle(.white.opacity(0.05))
-                        .rotationEffect(.degrees(-12))
-                        .offset(x: 28, y: -18)
-                        .accessibilityHidden(true)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(.white.opacity(0.12), lineWidth: 1)
-                }
+#else
+            if let clerk {
+                SupporterEventDetailView(clerk: clerk, shareToken: token)
+            } else {
+                ContentUnavailableView("Event Card unavailable", systemImage: "calendar")
             }
+#endif
+        } else {
+            ContentUnavailableView("Event Card unavailable", systemImage: "calendar")
         }
     }
 
@@ -816,5 +858,34 @@ struct ContentView: View {
         .padding(20)
         .background(SupporterCardBackground())
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct NativeGameDayGuideEmptyView: View {
+    let athleteName: String
+
+    var body: some View {
+        ZStack {
+            SupporterHomeColors.background.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 14) {
+                SupporterEyebrow(text: "Game-day message board")
+                Text("Your next task will appear here.")
+                    .font(.title2.weight(.black))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("There isn’t an upcoming Event Card for \(athleteName) yet. Once one is created on PIXL Sports, this guide will show what to do before, during, and after the event.")
+                    .font(.body)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: 520, alignment: .leading)
+            .padding(24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .navigationTitle("Game-day guide")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("native-game-day-guide-empty")
     }
 }
