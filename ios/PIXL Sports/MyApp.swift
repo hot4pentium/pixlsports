@@ -9,6 +9,7 @@ struct MyApp: App {
         configuration = NativeClerkConfiguration.load()
 #if DEBUG
         if SupporterDashboardFixtures.isRequested
+            || ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
             return
         }
@@ -23,6 +24,17 @@ struct MyApp: App {
 #if DEBUG
             if SupporterDashboardFixtures.isRequested {
                 SupporterDashboardFixtureView()
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps") {
+                NavigationStack {
+                    SupporterLiveTapsView(
+                        inviteToken: "ui-test-invite",
+                        sport: "softball",
+                        athleteName: "Jordan Example",
+                        eventTitle: "Championship Showcase",
+                        fixture: liveTapsFixture
+                    )
+                    .frame(maxWidth: 320)
+                }
             } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
                 NavigationStack {
                     SupporterEventDetailView(
@@ -64,6 +76,30 @@ struct MyApp: App {
 #endif
         }
     }
+
+#if DEBUG
+    private var liveTapsFixture: SupporterLiveTapsView.Fixture {
+        let state = ProcessInfo.processInfo.arguments
+            .first(where: { $0.hasPrefix("--live-taps-state=") })?
+            .replacingOccurrences(of: "--live-taps-state=", with: "") ?? "unauthorized"
+        let cheers = [
+            LiveTapCheer(key: "team-effort", label: "Amazing Team Effort", emoji: "👏", count: 12),
+            LiveTapCheer(key: "thumbs-up", label: "Thumbs Up", emoji: "👍", count: 8)
+        ]
+        if state == "error" {
+            return .init(
+                summary: nil,
+                accessToken: nil,
+                error: "The connection timed out. Try again to check this Event Card’s active session."
+            )
+        }
+        return .init(
+            summary: LiveTapSummary(active: true, gameId: "fictional-game", cheers: cheers),
+            accessToken: state == "authorized" ? "fictional-access-token" : nil,
+            error: nil
+        )
+    }
+#endif
 
     @ViewBuilder
     private var configuredRoot: some View {

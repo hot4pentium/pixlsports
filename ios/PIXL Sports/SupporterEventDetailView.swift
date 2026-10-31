@@ -150,6 +150,9 @@ struct SupporterEventDetailView: View {
                             .foregroundStyle(SupporterHomeColors.background)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
+                            .frame(minHeight: 44)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .multilineTextAlignment(.center)
                             .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 15))
                     }
                     .buttonStyle(.plain)

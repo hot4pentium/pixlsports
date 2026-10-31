@@ -6,18 +6,58 @@ import VisionKit
 @MainActor
 struct SupporterLiveTapsView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let inviteToken: String
     let sport: String
     let athleteName: String
     let eventTitle: String
+    private let fixture: Fixture?
+
+    @ScaledMetric(relativeTo: .largeTitle) private var eventTitleSize = 28
+    @ScaledMetric(relativeTo: .body) private var bodySize = 14
+    @ScaledMetric(relativeTo: .body) private var buttonSize = 14
+    @ScaledMetric(relativeTo: .body) private var cheerLabelSize = 16
+    @ScaledMetric(relativeTo: .title3) private var cheerCountSize = 18
+    @ScaledMetric(relativeTo: .title2) private var messageTitleSize = 18
+    @ScaledMetric(relativeTo: .title2) private var messageIconSize = 22
+    @ScaledMetric(relativeTo: .body) private var sectionLabelSize = 11
+    @ScaledMetric(relativeTo: .caption) private var supportingLabelSize = 12
+    @ScaledMetric(relativeTo: .caption) private var statusLabelSize = 10
+    @ScaledMetric(relativeTo: .caption2) private var brandCaptionSize = 9
+    @ScaledMetric(relativeTo: .headline) private var brandTitleSize = 16
+    @ScaledMetric(relativeTo: .title2) private var cheerEmojiSize = 23
 
     @State private var summary: LiveTapSummary?
-    @State private var loading = true
+    @State private var loading: Bool
     @State private var error: String?
     @State private var accessToken: String?
     @State private var isScanning = false
     @State private var pendingCheerKeys = Set<String>()
+
+    struct Fixture {
+        let summary: LiveTapSummary?
+        let accessToken: String?
+        let error: String?
+    }
+
+    init(
+        inviteToken: String,
+        sport: String,
+        athleteName: String,
+        eventTitle: String,
+        fixture: Fixture? = nil
+    ) {
+        self.inviteToken = inviteToken
+        self.sport = sport
+        self.athleteName = athleteName
+        self.eventTitle = eventTitle
+        self.fixture = fixture
+        self._summary = State(initialValue: fixture?.summary)
+        self._loading = State(initialValue: fixture.map { _ in false } ?? true)
+        self._error = State(initialValue: fixture?.error)
+        self._accessToken = State(initialValue: fixture?.accessToken)
+    }
 
     var body: some View {
         ZStack {
@@ -56,16 +96,20 @@ struct SupporterLiveTapsView: View {
                     brandHeader
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("GAME DAY LIVE", systemImage: "dot.radiowaves.left.and.right")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(1.5)
+                        HStack(alignment: .top, spacing: 7) {
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                            Text("GAME DAY LIVE")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                            .font(.system(size: sectionLabelSize, weight: .black))
+                            .tracking(dynamicTypeSize.isAccessibilitySize ? 0 : 1.5)
                             .foregroundStyle(SupporterHomeColors.accent)
                         Text(eventTitle)
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .font(.system(size: eventTitleSize, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .fixedSize(horizontal: false, vertical: true)
                         Text("Cheer for \(athleteName). Live Taps do not record player stats.")
-                            .font(.system(size: 14))
+                            .font(.system(size: bodySize))
                             .foregroundStyle(SupporterHomeColors.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -75,8 +119,10 @@ struct SupporterLiveTapsView: View {
 
                     if loading {
                         ProgressView("Checking the active cheer session…")
+                            .font(.body)
                             .tint(SupporterHomeColors.accent)
                             .foregroundStyle(.white)
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(20)
                             .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
@@ -105,21 +151,27 @@ struct SupporterLiveTapsView: View {
                                 Task { await loadSummary() }
                             } label: {
                                 Label("Try again", systemImage: "arrow.clockwise")
-                                    .font(.system(size: 14, weight: .bold))
+                                    .font(.system(size: buttonSize, weight: .bold))
                                     .foregroundStyle(SupporterHomeColors.background)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 11)
+                                    .frame(minHeight: 44)
                                     .background(SupporterHomeColors.accent, in: Capsule())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("live-taps-retry")
                         }
                     }
 
                     if summary != nil, let error {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .font(.system(size: 14, weight: .medium))
+                        HStack(alignment: .top, spacing: 9) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .accessibilityHidden(true)
+                            Text(error)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                            .font(.system(size: bodySize, weight: .medium))
                             .foregroundStyle(Color.orange.opacity(0.95))
-                            .fixedSize(horizontal: false, vertical: true)
                             .padding(13)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color.orange.opacity(0.11), in: RoundedRectangle(cornerRadius: 14))
@@ -140,7 +192,7 @@ struct SupporterLiveTapsView: View {
         .toolbar(.visible, for: .navigationBar)
         .task { await loadSummary() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
+            if phase == .active, case nil = fixture {
                 Task { await loadSummary() }
             }
         }
@@ -190,44 +242,50 @@ struct SupporterLiveTapsView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 Text("PIXL")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .font(.system(size: brandTitleSize, weight: .black, design: .rounded))
                     .tracking(1.4)
                     .foregroundStyle(SupporterHomeColors.blue)
                 Text("SPORTS")
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    .font(.system(size: brandCaptionSize, weight: .heavy, design: .rounded))
                     .tracking(3.3)
                     .foregroundStyle(.white.opacity(0.86))
             }
 
             Spacer()
 
-            Text("SUPPORTER HUB")
-                .font(.system(size: 9, weight: .heavy))
-                .tracking(1.5)
-                .foregroundStyle(SupporterHomeColors.muted)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(.white.opacity(0.06), in: Capsule())
+            if !dynamicTypeSize.isAccessibilitySize {
+                Text("SUPPORTER HUB")
+                    .font(.system(size: brandCaptionSize, weight: .heavy))
+                    .tracking(1.5)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(.white.opacity(0.06), in: Capsule())
+            }
         }
         .accessibilityElement(children: .combine)
     }
 
     private var accessCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(
-                accessToken == nil ? "PRIVATE FAMILY ACCESS REQUIRED" : "FAMILY ACCESS READY",
-                systemImage: accessToken == nil ? "lock.fill" : "checkmark.shield.fill"
-            )
-            .font(.system(size: 11, weight: .heavy))
-            .tracking(1.2)
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: accessToken == nil ? "lock.fill" : "checkmark.shield.fill")
+                Text(accessToken == nil ? "PRIVATE FAMILY ACCESS REQUIRED" : "FAMILY ACCESS READY")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.system(size: sectionLabelSize, weight: .heavy))
+            .tracking(dynamicTypeSize.isAccessibilitySize ? 0 : 1.2)
             .foregroundStyle(accessToken == nil ? SupporterHomeColors.muted : SupporterHomeColors.accent)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("live-taps-access-status")
 
             Text(accessToken == nil
                  ? "Scan the private family QR shown by the card owner. The public Event Card link is view-only."
                  : "This device is authorized by the owner’s private QR. The owner can revoke access.")
-                .font(.system(size: 14))
+                .font(.system(size: bodySize))
                 .foregroundStyle(SupporterHomeColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("live-taps-qr-instructions")
 
             Button {
                 error = nil
@@ -237,13 +295,17 @@ struct SupporterLiveTapsView: View {
                     accessToken == nil ? "Scan private family QR" : "Scan another family QR",
                     systemImage: "qrcode.viewfinder"
                 )
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: buttonSize, weight: .bold))
                 .foregroundStyle(SupporterHomeColors.background)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
+                .frame(minHeight: 44)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.center)
                 .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("live-taps-scan-qr")
         }
         .padding(18)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
@@ -268,49 +330,80 @@ struct SupporterLiveTapsView: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("SEND A CHEER")
-                    .font(.system(size: 11, weight: .black))
-                    .tracking(1.5)
+                    .font(.system(size: sectionLabelSize, weight: .black))
+                    .tracking(dynamicTypeSize.isAccessibilitySize ? 0 : 1.5)
                     .foregroundStyle(SupporterHomeColors.accent)
                 Text("Cheer counts only · no player stats")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: supportingLabelSize, weight: .medium))
                     .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 6) {
                     Circle()
                         .fill(SupporterHomeColors.accent)
                         .frame(width: 7, height: 7)
                     Text("SESSION ACTIVE")
-                        .font(.system(size: 10, weight: .black))
-                        .tracking(0.9)
+                        .font(.system(size: statusLabelSize, weight: .black))
+                        .tracking(dynamicTypeSize.isAccessibilitySize ? 0 : 0.9)
                         .foregroundStyle(SupporterHomeColors.accent)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 9)
                 .padding(.vertical, 7)
                 .background(SupporterHomeColors.accent.opacity(0.11), in: Capsule())
                 .accessibilityLabel("Live Taps session active")
+                .accessibilityIdentifier("live-taps-session-status")
             }
 
             ForEach(summary.cheers) { cheer in
                 Button {
                     Task { await send(cheer.key) }
                 } label: {
-                    HStack(spacing: 12) {
-                        Text(cheer.emoji)
-                            .font(.system(size: 23))
-                            .frame(width: 34)
-                        Text(cheer.label)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        Text("\(cheer.count)")
-                            .font(.system(size: 18, weight: .heavy, design: .rounded))
-                            .foregroundStyle(SupporterHomeColors.accent)
-                        if pendingCheerKeys.contains(cheer.key) {
-                            ProgressView()
-                                .tint(SupporterHomeColors.accent)
+                    Group {
+                        if dynamicTypeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    cheerEmoji(cheer.emoji)
+                                    Text(cheer.label)
+                                        .font(.system(size: cheerLabelSize, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                HStack(spacing: 8) {
+                                    Text("\(cheer.count) cheers")
+                                        .font(.system(size: supportingLabelSize, weight: .heavy, design: .rounded))
+                                        .foregroundStyle(SupporterHomeColors.accent)
+                                    Spacer(minLength: 8)
+                                    if pendingCheerKeys.contains(cheer.key) {
+                                        ProgressView()
+                                            .tint(SupporterHomeColors.accent)
+                                        Text("Sending…")
+                                            .font(.system(size: supportingLabelSize, weight: .medium))
+                                            .foregroundStyle(SupporterHomeColors.muted)
+                                    }
+                                }
+                            }
+                        } else {
+                            HStack(spacing: 12) {
+                                cheerEmoji(cheer.emoji)
+                                Text(cheer.label)
+                                    .font(.system(size: cheerLabelSize, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 8)
+                                Text("\(cheer.count)")
+                                    .font(.system(size: cheerCountSize, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(SupporterHomeColors.accent)
+                                if pendingCheerKeys.contains(cheer.key) {
+                                    ProgressView()
+                                        .tint(SupporterHomeColors.accent)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 13)
+                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                     .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 15))
                 }
                 .buttonStyle(.plain)
@@ -320,6 +413,7 @@ struct SupporterLiveTapsView: View {
                 .accessibilityHint(accessToken == nil
                     ? "Scan the owner’s private family QR before sending a cheer."
                     : "Send one \(cheer.label) cheer.")
+                .accessibilityIdentifier("live-taps-cheer-\(cheer.key)")
             }
         }
         .padding(18)
@@ -330,18 +424,28 @@ struct SupporterLiveTapsView: View {
         }
     }
 
+    private func cheerEmoji(_ emoji: String) -> some View {
+        Text(emoji)
+            .font(.system(size: cheerEmojiSize))
+            .frame(minWidth: 34, minHeight: 34)
+            .accessibilityHidden(true)
+    }
+
     private func messageCard(icon: String, title: String, message: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 22, weight: .semibold))
+                .font(.system(size: messageIconSize, weight: .semibold))
                 .foregroundStyle(SupporterHomeColors.accent)
             Text(title)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: messageTitleSize, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("live-taps-message-title")
             Text(message)
-                .font(.system(size: 14))
+                .font(.system(size: bodySize))
                 .foregroundStyle(SupporterHomeColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("live-taps-message")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
@@ -353,6 +457,7 @@ struct SupporterLiveTapsView: View {
     }
 
     private func loadSummary() async {
+        guard case nil = fixture else { return }
         loading = true
         summary = nil
         error = nil
