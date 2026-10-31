@@ -16,7 +16,7 @@ enum SupporterDashboardFixtures {
         case "loading": return .loading
         case "unlinked": return .notConnected
         case "error": return .failed("Check your internet connection, then try again.")
-        case "empty": return .schedule(page: page, events: [], pastEvents: [])
+        case "empty": return .schedule(page: page(), events: [], pastEvents: [])
         case "guide-upcoming", "guide-live", "guide-postgame":
             let game = guideGame
             let practice = event("guide-practice", day: "15", status: "upcoming", type: "practice")
