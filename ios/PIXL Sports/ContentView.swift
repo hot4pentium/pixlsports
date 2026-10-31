@@ -11,63 +11,69 @@ enum SupporterHomeColors {
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
-    let clerk: Clerk
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private let clerk: Clerk?
     @Binding var showingAccountLink: Bool
 
     @StateObject private var viewModel = SupporterHomeViewModel()
+#if DEBUG
+    /// Fictional presentation states never request a session or private data.
+    private let fixtureState: SupporterHomeViewModel.State?
+#endif
 
     init(clerk: Clerk, showingAccountLink: Binding<Bool>) {
         self.clerk = clerk
         self._showingAccountLink = showingAccountLink
+#if DEBUG
+        self.fixtureState = nil
+#endif
+    }
+
+#if DEBUG
+    /// Fictional, network-free dashboard fixture for UI verification.
+    init(fixtureState: SupporterHomeViewModel.State, showingAccountLink: Binding<Bool>) {
+        self.clerk = nil
+        self._showingAccountLink = showingAccountLink
+        self.fixtureState = fixtureState
+    }
+#endif
+
+    private var displayedState: SupporterHomeViewModel.State {
+#if DEBUG
+        if let fixtureState { return fixtureState }
+#endif
+        return viewModel.state
+    }
+
+    private func loadSchedule() async {
+#if DEBUG
+        guard fixtureState == nil else { return }
+#endif
+        guard let clerk else { return }
+        await viewModel.load(clerk: clerk)
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(
-                    colors: [SupporterHomeColors.background, Color(red: 0.035, green: 0.10, blue: 0.20)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
-                RadialGradient(
-                    colors: [SupporterHomeColors.blue.opacity(0.16), .clear],
-                    center: .topTrailing,
-                    startRadius: 8,
-                    endRadius: 420
-                )
-                .ignoresSafeArea()
-
-                Canvas { context, size in
-                    var grid = Path()
-                    for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
-                        grid.move(to: CGPoint(x: x, y: 0))
-                        grid.addLine(to: CGPoint(x: x, y: size.height))
-                    }
-                    for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
-                        grid.move(to: CGPoint(x: 0, y: y))
-                        grid.addLine(to: CGPoint(x: size.width, y: y))
-                    }
-                    context.stroke(grid, with: .color(.white.opacity(0.035)), lineWidth: 0.5)
-                }
-                .ignoresSafeArea()
-                .accessibilityHidden(true)
+                backdrop
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 22) {
                         header
+                        athleteHero
                         accountConnectionSection
                         nextEventSection
                     }
                     .frame(maxWidth: 560, alignment: .leading)
-                    .padding(.horizontal, 22)
-                    .padding(.top, 20)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
                     .padding(.bottom, 40)
                     .frame(maxWidth: .infinity)
                 }
+                .scrollIndicators(.hidden)
                 .refreshable {
-                    await viewModel.load(clerk: clerk)
+                    await loadSchedule()
                 }
             }
         }
@@ -76,75 +82,308 @@ struct ContentView: View {
 #endif
         .preferredColorScheme(.dark)
         .task {
-            await viewModel.load(clerk: clerk)
+            await loadSchedule()
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
-            Task { await viewModel.load(clerk: clerk) }
+            Task { await loadSchedule() }
         }
         .onChange(of: showingAccountLink) { wasShowing, isShowing in
             guard wasShowing && !isShowing else { return }
-            Task { await viewModel.load(clerk: clerk) }
+            Task { await loadSchedule() }
         }
     }
 
+    // MARK: - Backdrop
+
+    private var backdrop: some View {
+        ZStack {
+            LinearGradient(
+                colors: [SupporterHomeColors.background, Color(red: 0.035, green: 0.10, blue: 0.20)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [SupporterHomeColors.blue.opacity(0.22), .clear],
+                center: .topTrailing,
+                startRadius: 8,
+                endRadius: 440
+            )
+            RadialGradient(
+                colors: [SupporterHomeColors.accent.opacity(0.05), .clear],
+                center: .bottomLeading,
+                startRadius: 8,
+                endRadius: 380
+            )
+            Canvas { context, size in
+                var grid = Path()
+                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
+                    grid.move(to: CGPoint(x: x, y: 0))
+                    grid.addLine(to: CGPoint(x: x, y: size.height))
+                }
+                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
+                    grid.move(to: CGPoint(x: 0, y: y))
+                    grid.addLine(to: CGPoint(x: size.width, y: y))
+                }
+                context.stroke(grid, with: .color(.white.opacity(0.035)), lineWidth: 0.5)
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Header
+
     private var header: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center, spacing: 11) {
                 Image(systemName: "sportscourt.fill")
-                    .font(.system(size: 15, weight: .black))
+                    .font(.system(size: 18, weight: .black))
                     .foregroundStyle(SupporterHomeColors.background)
-                    .frame(width: 38, height: 38)
-                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 12))
+                    .frame(width: 40, height: 40)
+                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(.white.opacity(0.3), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(.white.opacity(0.3), lineWidth: 1)
                     }
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text("PIXL")
-                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .font(.headline.weight(.black))
+                        .fontDesign(.rounded)
                         .tracking(1.4)
                         .foregroundStyle(SupporterHomeColors.blue)
                     Text("SPORTS")
-                        .font(.system(size: 9, weight: .heavy, design: .rounded))
-                        .tracking(3.3)
+                        .font(.caption2.weight(.heavy))
+                        .fontDesign(.rounded)
+                        .tracking(3)
                         .foregroundStyle(.white.opacity(0.86))
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("PIXL Sports")
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                Text("SUPPORTER HUB")
-                    .font(.system(size: 9, weight: .heavy))
-                    .tracking(1.5)
-                    .foregroundStyle(SupporterHomeColors.muted)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(.white.opacity(0.06), in: Capsule())
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Text("SUPPORTER HUB")
+                        .font(.caption2.weight(.heavy))
+                        .tracking(1.4)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(.white.opacity(0.06), in: Capsule())
+                        .overlay { Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 1) }
+                        .lineLimit(1)
+                        .accessibilityHidden(true)
+                }
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("YOUR SEASON")
-                    .font(.system(size: 11, weight: .black))
-                    .tracking(2.1)
-                    .foregroundStyle(SupporterHomeColors.accent)
-
+                HStack(spacing: 8) {
+                    Capsule().fill(SupporterHomeColors.accent).frame(width: 22, height: 3)
+                    SupporterEyebrow(text: "Your season")
+                }
                 Text("Your schedule")
-                    .font(.system(size: 35, weight: .black, design: .rounded))
-                    .tracking(-0.7)
+                    .font(.largeTitle.weight(.black))
+                    .fontDesign(.rounded)
+                    .tracking(-0.6)
                     .foregroundStyle(.white)
-
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("dashboard-title")
                 Text("Your private schedule, at a glance.")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .accessibilityElement(children: .combine)
     }
+
+    // MARK: - Athlete hero (connected only)
+
+    @ViewBuilder
+    private var athleteHero: some View {
+        if case let .schedule(page, events, _) = displayedState {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    SupporterEyebrow(text: "Cheering for", color: SupporterHomeColors.muted)
+                    Text(page.athleteName ?? "Your athlete")
+                        .font(.title.weight(.black))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("dashboard-athlete")
+
+                    let teamAndSeason = [page.teamName, page.seasonName]
+                        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                    if !teamAndSeason.isEmpty {
+                        Text(teamAndSeason.joined(separator: " · "))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(SupporterHomeColors.accent)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("dashboard-season")
+                    }
+                }
+
+                let steps = weekSteps(page: page, events: events)
+                if !steps.isEmpty {
+                    SupporterWeekPath(steps: steps)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(18)
+            .background {
+                ZStack(alignment: .topTrailing) {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(LinearGradient(
+                            colors: [SupporterHomeColors.blue.opacity(0.42), Color(red: 0.06, green: 0.14, blue: 0.29)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Image(systemName: "sportscourt.fill")
+                        .font(.system(size: 120, weight: .black))
+                        .foregroundStyle(.white.opacity(0.05))
+                        .rotationEffect(.degrees(-12))
+                        .offset(x: 28, y: -18)
+                        .accessibilityHidden(true)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                }
+            }
+        }
+    }
+
+    private func weekSteps(page: NativeSupporterSchedule, events: [SupporterScheduleItem]) -> [SupporterWeekStep] {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(identifier: page.timezone ?? "") ?? .current
+        parser.dateFormat = "yyyy-MM-dd"
+        let weekday = DateFormatter()
+        weekday.timeZone = parser.timeZone
+        weekday.dateFormat = "EEE"
+        let month = DateFormatter()
+        month.timeZone = parser.timeZone
+        month.dateFormat = "MMM"
+
+        return events.prefix(4).enumerated().map { index, item in
+            let date = parser.date(from: item.event.date)
+            let day = item.event.date.split(separator: "-").last.flatMap { Int($0) }.map(String.init) ?? "—"
+            return SupporterWeekStep(
+                id: item.id,
+                weekday: date.map { weekday.string(from: $0).uppercased() } ?? "TBA",
+                day: day,
+                month: date.map { month.string(from: $0).uppercased() } ?? "",
+                accessibleDate: item.event.formattedDate(timezone: item.event.timezone ?? page.timezone),
+                isCurrent: index == 0,
+                isLive: item.timing == .live
+            )
+        }
+    }
+
+    // MARK: - Account connection
+
+    @ViewBuilder
+    private var accountConnectionSection: some View {
+        if case .schedule = displayedState {
+            Button {
+                showingAccountLink = true
+            } label: {
+                HStack(alignment: .center, spacing: 12) {
+                    Image(systemName: "checkmark.shield.fill")
+                        .foregroundStyle(SupporterHomeColors.accent)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("PIXL account connected")
+                            .font(.caption.weight(.heavy))
+                            .foregroundStyle(SupporterHomeColors.accent)
+                        Text("Manage connection")
+                            .font(.footnote)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .padding(16)
+                .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(.white.opacity(0.09), lineWidth: 1)
+                }
+            }
+            .buttonStyle(SupporterCardPressStyle())
+            .accessibilityLabel("PIXL account connected. Manage PIXL connection")
+            .accessibilityHint("Schedule data is loaded from your verified PIXL account.")
+            .accessibilityIdentifier("dashboard-connection-action")
+        } else {
+            accountSetupSection
+        }
+    }
+
+    private var accountSetupSection: some View {
+        let isChecking: Bool
+        if case .loading = displayedState {
+            isChecking = true
+        } else {
+            isChecking = false
+        }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Label {
+                Text(isChecking ? "Checking PIXL account" : "Private PIXL schedule")
+                    .textCase(.uppercase)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: isChecking ? "arrow.triangle.2.circlepath" : "lock.fill")
+            }
+            .font(.caption.weight(.heavy))
+            .tracking(1.3)
+            .foregroundStyle(SupporterHomeColors.muted)
+
+            Text(isChecking
+                    ? "Verifying your private schedule connection…"
+                    : "Connect the PIXL account you already use. Approval is required on both devices.")
+                .font(.footnote)
+                .foregroundStyle(SupporterHomeColors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                showingAccountLink = true
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "link")
+                    Text("Connect PIXL account")
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    Image(systemName: "arrow.right")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(SupporterPrimaryButtonStyle())
+            .disabled(isChecking)
+            .opacity(isChecking ? 0.55 : 1)
+            .accessibilityIdentifier("dashboard-connection-action")
+        }
+        .padding(18)
+        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(.white.opacity(0.09), lineWidth: 1)
+        }
+    }
+
+    // MARK: - Schedule states
 
     @ViewBuilder
     private var nextEventSection: some View {
-        switch viewModel.state {
+        switch displayedState {
         case .notConnected:
             messageCard(
                 icon: "link",
@@ -152,60 +391,29 @@ struct ContentView: View {
                 message: "Securely link the iPhone app to the PIXL Sports account that owns your Event Cards."
             )
         case .loading:
-            HStack(spacing: 14) {
-                ProgressView()
-                    .tint(SupporterHomeColors.accent)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Loading your schedule")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
-                    Text("Checking your connected Event Cards…")
-                        .font(.system(size: 14))
-                        .foregroundStyle(SupporterHomeColors.muted)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
-            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Loading your private schedule")
+            loadingCard
         case let .schedule(page, events, pastEvents):
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .lastTextBaseline) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("EVENT CARDS")
-                            .font(.system(size: 10, weight: .black))
-                            .tracking(1.9)
-                            .foregroundStyle(SupporterHomeColors.muted)
-                        Text(events.isEmpty ? "Coming up" : "Up next")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                    }
-                    Spacer()
-                    if !events.isEmpty {
-                        Text("\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")")
-                            .font(.system(size: 9, weight: .black))
-                            .tracking(1.1)
-                            .foregroundStyle(SupporterHomeColors.accent)
-                    }
-                }
+            VStack(alignment: .leading, spacing: 14) {
+                SupporterSectionHeader(
+                    eyebrow: "Event Cards",
+                    title: events.isEmpty ? "Coming up" : "Up next",
+                    trailing: events.isEmpty ? nil : "\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")"
+                )
 
                 if events.isEmpty {
                     emptyScheduleCard()
                 } else {
                     NavigationLink {
-                        SupporterEventDetailView(clerk: clerk, shareToken: events[0].event.shareToken)
+                        eventDestination(for: events[0].event)
                     } label: {
                         eventCard(page: page, event: events[0].event, timing: events[0].timing)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SupporterCardPressStyle())
+                    .accessibilityIdentifier("dashboard-upcoming-card")
 
                     if events.count > 1 {
-                        Text("MORE UPCOMING")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(1.6)
-                            .foregroundStyle(SupporterHomeColors.muted)
-                            .padding(.top, 7)
+                        SupporterEyebrow(text: "More upcoming", color: SupporterHomeColors.muted)
+                            .padding(.top, 6)
                         ForEach(Array(events.dropFirst())) { item in
                             compactEventCard(page: page, item: item)
                         }
@@ -218,86 +426,87 @@ struct ContentView: View {
             }
         case let .failed(message):
             VStack(alignment: .leading, spacing: 14) {
-                Label("We couldn’t load your schedule", systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 16, weight: .bold))
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(SupporterHomeColors.background)
+                    .frame(width: 44, height: 44)
+                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .accessibilityHidden(true)
+                Text("We couldn’t load your schedule")
+                    .font(.headline.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(message)
-                    .font(.system(size: 14))
+                    .font(.subheadline)
                     .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button {
-                    Task { await viewModel.load(clerk: clerk) }
+                    Task { await loadSchedule() }
                 } label: {
                     Label("Try again", systemImage: "arrow.clockwise")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(SupporterHomeColors.background)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 11)
-                        .background(SupporterHomeColors.accent, in: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SupporterPrimaryButtonStyle())
+                .accessibilityIdentifier("dashboard-retry")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
-            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
+            .background(SupporterCardBackground())
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("dashboard-error")
         }
     }
 
-    private var accountConnectionSection: some View {
-        let isLinked: Bool
-        let isChecking: Bool
-        if case .schedule = viewModel.state {
-            isLinked = true
-            isChecking = false
-        } else if case .loading = viewModel.state {
-            isLinked = false
-            isChecking = true
-        } else {
-            isLinked = false
-            isChecking = false
-        }
-
-        return VStack(alignment: .leading, spacing: 12) {
-            Label(
-                isLinked ? "PIXL ACCOUNT CONNECTED" : isChecking ? "CHECKING PIXL ACCOUNT" : "PRIVATE PIXL SCHEDULE",
-                systemImage: isLinked ? "checkmark.shield.fill" : isChecking ? "arrow.triangle.2.circlepath" : "lock.fill"
-            )
-            .font(.system(size: 11, weight: .heavy))
-            .tracking(1.4)
-            .foregroundStyle(isLinked ? SupporterHomeColors.accent : SupporterHomeColors.muted)
-
-            Text(isLinked
-                 ? "Schedule data is loaded from your verified PIXL account."
-                 : isChecking
-                    ? "Verifying your private schedule connection…"
-                    : "Connect the PIXL account you already use. Approval is required on both devices.")
-                .font(.system(size: 13))
-                .foregroundStyle(SupporterHomeColors.muted)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Button {
-                showingAccountLink = true
-            } label: {
-                HStack {
-                    Image(systemName: isLinked ? "person.crop.circle.badge.checkmark" : "link")
-                    Text(isLinked ? "Manage PIXL connection" : "Connect PIXL account")
-                    Spacer()
-                    Image(systemName: "arrow.right")
+    private var loadingCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                ProgressView()
+                    .tint(SupporterHomeColors.accent)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Loading your schedule")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Checking your connected Event Cards…")
+                        .font(.subheadline)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(SupporterHomeColors.background)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 13)
-                .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 14))
             }
-            .buttonStyle(.plain)
-            .disabled(isChecking)
+            HStack(alignment: .top, spacing: 14) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .frame(width: 58, height: 66)
+                VStack(alignment: .leading, spacing: 10) {
+                    SupporterSkeletonBar(width: 70, height: 9)
+                    SupporterSkeletonBar(width: 180, height: 18)
+                    SupporterSkeletonBar(width: 130, height: 10)
+                }
+            }
+            .accessibilityHidden(true)
         }
-        .padding(18)
-        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 20))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(.white.opacity(0.09), lineWidth: 1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(SupporterCardBackground())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Loading your private schedule")
+        .accessibilityIdentifier("dashboard-loading")
+    }
+
+    // MARK: - Event cards
+
+    @ViewBuilder
+    private func eventDestination(for event: AthleteFanEvent) -> some View {
+#if DEBUG
+        if fixtureState != nil {
+            Text(event.title)
+                .padding()
+                .accessibilityIdentifier("dashboard-fixture-event")
+        } else {
+            SupporterEventDetailView(clerk: clerk, shareToken: event.shareToken)
         }
+#else
+        SupporterEventDetailView(clerk: clerk, shareToken: event.shareToken)
+#endif
     }
 
     private func eventCard(
@@ -305,152 +514,159 @@ struct ContentView: View {
         event: AthleteFanEvent,
         timing: SupporterEventTiming
     ) -> some View {
-        VStack(alignment: .leading, spacing: 19) {
-            HStack(alignment: .top, spacing: 14) {
+        let zone = event.timezone ?? page.timezone
+        let location = event.location.trimmingCharacters(in: .whitespacesAndNewlines)
+        let headline = event.type == "game" && !event.opponent.isEmpty
+            ? "vs \(event.opponent)"
+            : event.type == "game" ? event.title : (page.teamName ?? "Practice")
+
+        let headingLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 14))
+
+        return VStack(alignment: .leading, spacing: 18) {
+            headingLayout {
                 eventDateBadge(event)
 
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(timing == .live ? "HAPPENING NOW" : "UP NEXT")
-                        .font(.system(size: 10, weight: .black))
-                        .tracking(1.6)
-                        .foregroundStyle(SupporterHomeColors.accent)
-
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        if timing == .live {
+                            Circle().fill(SupporterHomeColors.accent).frame(width: 7, height: 7)
+                        }
+                        SupporterEyebrow(text: timing == .live ? "Happening now" : "Up next")
+                    }
                     Text(event.type == "game" ? (page.teamName ?? "Game") : "Practice")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(SupporterHomeColors.muted)
-
-                    Text(event.type == "game" && !event.opponent.isEmpty
-                         ? "vs \(event.opponent)"
-                         : event.type == "game" ? event.title : (page.teamName ?? "Practice"))
-                        .font(.system(size: 25, weight: .black, design: .rounded))
-                        .tracking(-0.4)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(headline)
+                        .font(.title2.weight(.black))
+                        .fontDesign(.rounded)
+                        .tracking(-0.3)
                         .foregroundStyle(.white)
+                        .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer(minLength: 0)
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.74))
-                    .padding(9)
-                    .background(.white.opacity(0.08), in: Circle())
-            }
-
-            HStack(spacing: 7) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 10, weight: .bold))
-                Text(page.athleteName ?? "Your athlete")
-                    .lineLimit(1)
-                if let seasonName = page.seasonName, !seasonName.isEmpty {
-                    Circle().fill(SupporterHomeColors.accent.opacity(0.75)).frame(width: 4, height: 4)
-                    Text(seasonName)
-                        .lineLimit(1)
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Spacer(minLength: 0)
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption.weight(.black))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .frame(width: 32, height: 32)
+                        .background(.white.opacity(0.08), in: Circle())
+                        .accessibilityHidden(true)
                 }
             }
-            .font(.system(size: 11, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Label {
+                    Text(page.athleteName ?? "Your athlete")
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "person.2.fill")
+                }
+                if let seasonName = page.seasonName, !seasonName.isEmpty {
+                    Label {
+                        Text(seasonName)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "flag.checkered")
+                    }
+                }
+            }
+            .font(.caption.weight(.semibold))
             .foregroundStyle(SupporterHomeColors.muted)
 
             Rectangle()
-                .fill(.white.opacity(0.12))
+                .fill(LinearGradient(
+                    colors: [SupporterHomeColors.accent.opacity(0.5), .white.opacity(0.1), .clear],
+                    startPoint: .leading, endPoint: .trailing))
                 .frame(height: 1)
 
-            VStack(alignment: .leading, spacing: 12) {
-                eventDetail(icon: "calendar", text: event.formattedDate(timezone: event.timezone ?? page.timezone))
-                eventDetail(icon: "clock", text: event.formattedTime(timezone: event.timezone ?? page.timezone))
-                eventDetail(
-                    icon: "mappin.and.ellipse",
-                    text: event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "Location to be announced"
-                        : event.location
-                )
+            VStack(alignment: .leading, spacing: 11) {
+                eventDetail(icon: "calendar", text: event.formattedDate(timezone: zone))
+                eventDetail(icon: "clock", text: event.formattedTime(timezone: zone))
+                eventDetail(icon: "mappin.and.ellipse", text: location.isEmpty ? "Location to be announced" : event.location)
+                    .accessibilityIdentifier("dashboard-event-location")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 24)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.10, green: 0.24, blue: 0.43),
-                            SupporterHomeColors.panel,
-                            Color(red: 0.045, green: 0.12, blue: 0.24)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(
-                            LinearGradient(
-                                colors: [SupporterHomeColors.blue.opacity(0.78), .white.opacity(0.13), SupporterHomeColors.accent.opacity(0.55)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                }
-        }
+        .background(SupporterCardBackground(cornerRadius: 24, highlighted: true))
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName ?? "your athlete"), \(page.teamName ?? "team"), \(event.opponent), \(event.formattedDate(timezone: event.timezone ?? page.timezone)), \(event.formattedTime(timezone: event.timezone ?? page.timezone)), \(event.location). Tap to view details.")
+        .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName ?? "your athlete"), \(page.teamName ?? "team"), \(headline), \(event.formattedDate(timezone: zone)), \(event.formattedTime(timezone: zone)), \(location.isEmpty ? "Location to be announced" : event.location). Tap to view details.")
     }
 
     private func compactEventCard(page: NativeSupporterSchedule, item: SupporterScheduleItem) -> some View {
-        NavigationLink {
-            SupporterEventDetailView(clerk: clerk, shareToken: item.event.shareToken)
+        let zone = item.event.timezone ?? page.timezone
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 13))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 13))
+        return NavigationLink {
+            eventDestination(for: item.event)
         } label: {
-            HStack(alignment: .top, spacing: 13) {
+            layout {
                 Image(systemName: item.timing == .live
                       ? "dot.radiowaves.left.and.right"
                       : item.timing == .complete ? "checkmark.circle.fill" : "calendar")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(SupporterHomeColors.accent)
-                    .frame(width: 38, height: 38)
-                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(item.timing == .complete ? SupporterHomeColors.blue : SupporterHomeColors.accent)
+                    .frame(width: 40, height: 40)
+                    .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
+                    if item.timing == .live || item.timing == .complete {
+                        Text(item.timing == .live ? "LIVE" : "COMPLETE")
+                            .font(.caption2.weight(.black))
+                            .tracking(1)
+                            .foregroundStyle(SupporterHomeColors.background)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                item.timing == .complete ? SupporterHomeColors.blue.opacity(0.85) : SupporterHomeColors.accent,
+                                in: Capsule()
+                            )
+                    }
                     Text(item.event.title)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.headline.weight(.bold))
+                        .fontDesign(.rounded)
                         .foregroundStyle(.white)
+                        .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("\(item.event.formattedDate(timezone: item.event.timezone ?? page.timezone)) · \(item.event.formattedTime(timezone: item.event.timezone ?? page.timezone))")
-                        .font(.system(size: 12, weight: .medium))
+                    Text("\(item.event.formattedDate(timezone: zone)) · \(item.event.formattedTime(timezone: zone))")
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                     if !item.event.location.isEmpty {
                         Text(item.event.location)
-                            .font(.system(size: 12))
+                            .font(.caption)
                             .foregroundStyle(SupporterHomeColors.muted)
-                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                Spacer(minLength: 0)
-                if item.timing == .live || item.timing == .complete {
-                    Text(item.timing == .live ? "LIVE" : "COMPLETE")
-                        .font(.system(size: 9, weight: .black))
-                        .tracking(1)
-                        .foregroundStyle(SupporterHomeColors.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(
-                            item.timing == .complete ? SupporterHomeColors.blue.opacity(0.8) : SupporterHomeColors.accent,
-                            in: Capsule()
-                        )
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(SupporterHomeColors.muted.opacity(0.8))
+                        .frame(minHeight: 40)
+                        .accessibilityHidden(true)
                 }
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(SupporterHomeColors.muted.opacity(0.8))
             }
             .padding(15)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
             }
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(item.timing == .complete ? "Complete, " : "")\(item.event.title), \(item.event.formattedDate(timezone: item.event.timezone ?? page.timezone)), \(item.event.formattedTime(timezone: item.event.timezone ?? page.timezone)). View Event Card details.")
+        .buttonStyle(SupporterCardPressStyle())
+        .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : "")\(item.event.title), \(item.event.formattedDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
     }
 
     private func pastEventsSection(
@@ -458,40 +674,32 @@ struct ContentView: View {
         events: [SupporterScheduleItem]
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .lastTextBaseline) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("EVENT HISTORY")
-                        .font(.system(size: 10, weight: .black))
-                        .tracking(1.9)
-                        .foregroundStyle(SupporterHomeColors.muted)
-                    Text("Past Event Cards")
-                        .font(.system(size: 21, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                Spacer()
-                Text("\(events.count) \(events.count == 1 ? "CARD" : "CARDS")")
-                    .font(.system(size: 9, weight: .black))
-                    .tracking(1.1)
-                    .foregroundStyle(SupporterHomeColors.blue)
-            }
-
+            SupporterSectionHeader(
+                eyebrow: "Event history",
+                title: "Past Event Cards",
+                trailing: "\(events.count) \(events.count == 1 ? "CARD" : "CARDS")",
+                trailingColor: SupporterHomeColors.blue
+            )
             ForEach(events) { item in
                 compactEventCard(page: page, item: item)
             }
         }
-        .padding(.top, 10)
+        .padding(.top, 12)
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dashboard-history")
     }
 
     private func eventDetail(icon: String, text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 11) {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(SupporterHomeColors.accent)
-                .frame(width: 18)
+                .frame(minWidth: 20)
+                .accessibilityHidden(true)
             Text(text)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.9))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.white.opacity(0.92))
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -501,123 +709,112 @@ struct ContentView: View {
         let monthNumber = parts.count == 3 ? Int(parts[1]) : nil
         let dayNumber = parts.count == 3 ? Int(parts[2]) : nil
         let monthSymbols = DateFormatter().shortMonthSymbols ?? []
-        let month = monthNumber.flatMap { (1...12).contains($0) ? monthSymbols[$0 - 1].uppercased() : nil } ?? "DATE"
+        let month = monthNumber.flatMap { (1...12).contains($0) && monthSymbols.count >= $0 ? monthSymbols[$0 - 1].uppercased() : nil } ?? "DATE"
         let day = dayNumber.map(String.init) ?? "—"
 
         return VStack(spacing: 2) {
             Text(month)
-                .font(.system(size: 9, weight: .black))
+                .font(.caption2.weight(.black))
                 .tracking(1.1)
             Text(day)
-                .font(.system(size: 26, weight: .black, design: .rounded))
+                .font(.title.weight(.black))
+                .fontDesign(.rounded)
+                .monospacedDigit()
                 .contentTransition(.numericText())
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
         .foregroundStyle(SupporterHomeColors.background)
-        .frame(width: 58, height: 66)
+        .frame(minWidth: 58, minHeight: 66)
+        .padding(.horizontal, 4)
         .background(
             LinearGradient(
                 colors: [SupporterHomeColors.accent, Color(red: 0.88, green: 0.98, blue: 0.48)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ),
-            in: RoundedRectangle(cornerRadius: 16)
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.white.opacity(0.42), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(.white.opacity(0.42), lineWidth: 1)
         }
         .accessibilityHidden(true)
     }
 
     private func emptyScheduleCard() -> some View {
-        VStack(alignment: .leading, spacing: 17) {
-            HStack {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        return VStack(alignment: .leading, spacing: 16) {
+            layout {
                 Image(systemName: "calendar")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(SupporterHomeColors.background)
                     .frame(width: 46, height: 46)
-                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 14))
-
-                Spacer()
-
+                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityHidden(true)
+                if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
                 Text("ALL CAUGHT UP")
-                    .font(.system(size: 9, weight: .black))
-                    .tracking(1.4)
+                    .font(.caption2.weight(.black))
+                    .tracking(1.3)
                     .foregroundStyle(SupporterHomeColors.accent)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 7)
                     .background(SupporterHomeColors.accent.opacity(0.1), in: Capsule())
             }
 
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("No upcoming Event Cards")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.title3.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("New Event Cards from your connected PIXL account will show up here.")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(SupporterHomeColors.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack(spacing: 8) {
-                Capsule()
-                    .fill(SupporterHomeColors.accent)
-                    .frame(width: 28, height: 3)
-                Capsule()
-                    .fill(SupporterHomeColors.blue.opacity(0.75))
-                    .frame(width: 12, height: 3)
+                Capsule().fill(SupporterHomeColors.accent).frame(width: 28, height: 3)
+                Capsule().fill(SupporterHomeColors.blue.opacity(0.75)).frame(width: 12, height: 3)
                 Text("YOUR SEASON, ONE EVENT AT A TIME")
-                    .font(.system(size: 8, weight: .heavy))
-                    .tracking(1.05)
+                    .font(.caption2.weight(.heavy))
+                    .tracking(1)
                     .foregroundStyle(SupporterHomeColors.muted.opacity(0.88))
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(19)
-        .background {
-            RoundedRectangle(cornerRadius: 22)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.08, green: 0.17, blue: 0.30), SupporterHomeColors.panel],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(.white.opacity(0.1), lineWidth: 1)
-                }
-        }
+        .background(SupporterCardBackground())
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("dashboard-empty")
     }
 
     private func messageCard(icon: String, title: String, message: String) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 22, weight: .semibold))
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(SupporterHomeColors.accent)
+                .frame(width: 44, height: 44)
+                .background(SupporterHomeColors.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .accessibilityHidden(true)
             Text(title)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.title3.weight(.bold))
+                .fontDesign(.rounded)
                 .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
             Text(message)
-                .font(.system(size: 14))
+                .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 22)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.08, green: 0.17, blue: 0.30), SupporterHomeColors.panel],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(.white.opacity(0.1), lineWidth: 1)
-                }
-        }
+        .background(SupporterCardBackground())
+        .accessibilityElement(children: .combine)
     }
 }

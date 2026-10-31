@@ -8,7 +8,8 @@ struct MyApp: App {
     init() {
         configuration = NativeClerkConfiguration.load()
 #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
+        if SupporterDashboardFixtures.isRequested
+            || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
             return
         }
 #endif
@@ -20,7 +21,9 @@ struct MyApp: App {
     var body: some Scene {
         WindowGroup {
 #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
+            if SupporterDashboardFixtures.isRequested {
+                SupporterDashboardFixtureView()
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
                 NavigationStack {
                     SupporterEventDetailView(
                         clerk: nil,

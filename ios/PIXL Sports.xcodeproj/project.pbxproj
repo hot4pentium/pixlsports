@@ -10,11 +10,13 @@
 A10000000000000000000001 /* ClerkKit in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000001 /* ClerkKit */; };
 A10000000000000000000002 /* ClerkKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000002 /* ClerkKitUI */; };
 A10000000000000000000003 /* SupporterEventDetailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* SupporterEventDetailUITests.swift */; };
+A10000000000000000000022 /* SupporterDashboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* SupporterDashboardUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* PIXL Sports.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PIXL Sports.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000006 /* SupporterEventDetailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupporterEventDetailUITests.swift; sourceTree = "<group>"; };
+		A10000000000000000000021 /* SupporterDashboardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupporterDashboardUITests.swift; sourceTree = "<group>"; };
 		A10000000000000000000007 /* PIXL SportsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PIXL SportsUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -66,6 +68,7 @@ A10000000000000000000002 /* ClerkKitUI in Frameworks */,
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000006 /* SupporterEventDetailUITests.swift */,
+				A10000000000000000000021 /* SupporterDashboardUITests.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -181,6 +184,7 @@ A30000000000000000000001 /* XCRemoteSwiftPackageReference "clerk-ios" */,
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000003 /* SupporterEventDetailUITests.swift in Sources */,
+A10000000000000000000022 /* SupporterDashboardUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

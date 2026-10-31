@@ -24,3 +24,11 @@ Replit's private development preview can redirect requests from an external nati
 **Why:** `.replit.dev` previews are private by default; external iOS requests can receive an authentication redirect even when the API responds normally inside the workspace.
 
 **How to apply:** keep PWA auth intact. Every native private read must resolve the verified native-to-web account link, recheck current account restrictions, return only the data needed by that screen, and avoid caching private schedule data. Translate the shared brand into native SwiftUI one screen at a time rather than embedding the PWA.
+
+## Source and Mac copy
+
+Replit's SwiftUI project is the source of truth. GitHub transfers changes to the single Mac build/test clone at `~/Projects/pixlsports-xcode`.
+
+**Why:** the user selected Replit's SwiftUI project as the main copy after confusion caused by multiple local projects and lost local sign-in configuration.
+
+**How to apply:** make source edits in Replit, sync through GitHub, and pull into that Mac clone before building. Preserve locally configured `ClerkConfig.plist` values; do not replace them with repository placeholders or treat installed simulator bundles as source projects.

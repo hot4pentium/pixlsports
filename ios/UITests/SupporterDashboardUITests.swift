@@ -1,0 +1,74 @@
+import XCTest
+
+@MainActor
+final class SupporterDashboardUITests: XCTestCase {
+    func testDashboardStatesAtNarrowPhoneWidth() {
+        for (state, identifier) in [
+            ("empty", "dashboard-empty"),
+            ("loading", "dashboard-loading"),
+            ("unlinked", "dashboard-connection-action"),
+            ("error", "dashboard-retry")
+        ] {
+            let app = launch(state)
+            XCTAssertTrue(app.staticTexts["dashboard-title"].waitForExistence(timeout: 10))
+            let element = reachable(identifier, in: app)
+            if state == "loading" {
+                XCTAssertFalse(app.buttons["dashboard-connection-action"].isEnabled)
+            } else if state == "empty" {
+                XCTAssertTrue(element.label.contains("No upcoming Event Cards"))
+            } else if state == "error" {
+                element.tap()
+                XCTAssertTrue(app.descendants(matching: .any)["dashboard-error"].exists)
+            }
+            app.terminate()
+        }
+    }
+
+    func testAthleteAndConnectionRemainReadableWithAccessibilityText() {
+        let app = launch("empty", accessibilityText: true)
+        let athlete = reachable("dashboard-athlete", in: app)
+        XCTAssertEqual(athlete.label, "Jordan Example With a Long Athlete Name")
+        let season = reachable("dashboard-season", in: app)
+        XCTAssertTrue(season.label.contains("Autumn Championship Season"))
+        let connection = reachable("dashboard-connection-action", in: app)
+        XCTAssertGreaterThanOrEqual(connection.frame.height, 44)
+        connection.tap()
+        XCTAssertTrue(app.staticTexts["dashboard-fixture-connection"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        reachable("dashboard-empty", in: app)
+    }
+
+    func testUpcomingAndLiveCardsKeepNativeNavigation() {
+        for state in ["upcoming", "live"] {
+            let app = launch(state)
+            let card = reachable("dashboard-upcoming-card", in: app)
+            XCTAssertTrue(card.label.contains(state == "live" ? "Happening now" : "Up next"))
+            XCTAssertTrue(card.label.contains("Visiting Team"))
+            card.tap()
+            XCTAssertTrue(app.staticTexts["dashboard-fixture-event"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
+    private func launch(_ state: String, accessibilityText: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-dashboard", "--dashboard-narrow", "--dashboard-state=\(state)"]
+        if accessibilityText {
+            app.launchArguments += [
+                "-UIPreferredContentSizeCategoryName",
+                "UICTContentSizeCategoryAccessibilityXXXL"
+            ]
+        }
+        app.launch()
+        return app
+    }
+
+    @discardableResult
+    private func reachable(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "Missing \(identifier)")
+        for _ in 0..<20 where !element.isHittable { app.swipeUp() }
+        XCTAssertTrue(element.isHittable, "\(identifier) must remain reachable in the scroll view")
+        return element
+    }
+}
