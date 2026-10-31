@@ -251,7 +251,17 @@ struct ContentView: View {
     @ViewBuilder
     private var athleteHero: some View {
         if case let .schedule(page, _, _) = displayedState {
-            let guide = SupporterHomeViewModel.featuredGuideEvent(in: page)
+            let guideNow: Date
+#if DEBUG
+            if let _ = fixtureState {
+                guideNow = SupporterDashboardFixtures.fixedGuideNow ?? Date()
+            } else {
+                guideNow = Date()
+            }
+#else
+            guideNow = Date()
+#endif
+            let guide = SupporterHomeViewModel.featuredGuideEvent(in: page, now: guideNow)
             NativeHomeHeroCards(
                 athleteName: page.athleteName ?? "Your athlete",
                 teamName: page.teamName,

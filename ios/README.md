@@ -123,12 +123,21 @@ xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -only-testing:PIXL\ SportsUITests/SupporterDashboardUITests
 ```
 
+The dashboard suite also uses fictional fixed-time guide fixtures:
+`guide-upcoming` is one minute before the Event Card begins in Los Angeles,
+`guide-live` is its exact start, and `guide-postgame` is just over three hours
+after it. These deliberately occur on November 13 in Los Angeles and November
+14 in UTC. The tests check the guide label/date, both hero-card layouts at
+normal and largest accessibility text sizes, and that each hero opens its
+native destination. Run the suite above on an iPhone simulator before release.
+
 For visual checks without signing in, temporarily add `--ui-testing-dashboard`,
 `--dashboard-narrow`, and `--dashboard-state=empty` to the **Debug** scheme's
 launch arguments. Other states are `unlinked`, `loading`, `error`, `upcoming`,
-and `live`. These fixtures use fictional data, skip Clerk configuration and all
-schedule requests, and open only fictional destinations. They are excluded from
-Release builds. Remove the arguments to return to the real signed-in app.
+`live`, `guide-upcoming`, `guide-live`, and `guide-postgame`. These fixtures use
+fictional data, skip Clerk configuration and all schedule requests, and open
+only fictional destinations. They are excluded from Release builds. Remove the
+arguments to return to the real signed-in app.
 
 Debug connection screens show **Development API — installed app**, read from the
 bundled plist rather than the Xcode editor. Connection failures include the HTTP

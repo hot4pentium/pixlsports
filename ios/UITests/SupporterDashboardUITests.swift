@@ -59,6 +59,58 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testMessageBoardTaskUsesLocalEventTimeAcrossUTCDayBoundary() {
+        for (state, expectedTiming) in [
+            ("guide-upcoming", "Upcoming"),
+            ("guide-live", "Live now"),
+            ("guide-postgame", "After the event")
+        ] {
+            let app = launch(state)
+            let messageBoard = reachable("dashboard-message-board-card", in: app)
+            XCTAssertTrue(messageBoard.label.contains(expectedTiming), "\(state): \(messageBoard.label)")
+            XCTAssertTrue(messageBoard.label.contains("Championship Showcase"))
+            XCTAssertTrue(
+                messageBoard.label.contains("November 13"),
+                "The Event Card date must use Los Angeles time: \(messageBoard.label)"
+            )
+            messageBoard.tap()
+            XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
+    func testBothHeroCardsFitAndOpenTheirNativeScreensAtNormalAndAccessibilitySizes() {
+        for accessibilityText in [false, true] {
+            let layoutApp = launch("guide-upcoming", accessibilityText: accessibilityText)
+            let messageBoard = reachable("dashboard-message-board-card", in: layoutApp)
+            let hypeCard = reachable("dashboard-hype-card", in: layoutApp)
+            for card in [messageBoard, hypeCard] {
+                XCTAssertGreaterThan(card.frame.width, 0)
+                XCTAssertGreaterThanOrEqual(card.frame.height, 260)
+                XCTAssertGreaterThanOrEqual(card.frame.minX, 0)
+                XCTAssertLessThanOrEqual(card.frame.maxX, layoutApp.windows.firstMatch.frame.maxX)
+            }
+            XCTAssertFalse(messageBoard.frame.intersects(hypeCard.frame), "Hero cards must not overlap.")
+            if accessibilityText {
+                XCTAssertGreaterThan(hypeCard.frame.minY, messageBoard.frame.minY)
+                XCTAssertGreaterThanOrEqual(hypeCard.frame.minY, messageBoard.frame.maxY)
+            } else {
+                XCTAssertEqual(messageBoard.frame.minY, hypeCard.frame.minY, accuracy: 2)
+            }
+            layoutApp.terminate()
+
+            let eventApp = launch("guide-upcoming", accessibilityText: accessibilityText)
+            reachable("dashboard-message-board-card", in: eventApp).tap()
+            XCTAssertTrue(eventApp.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            eventApp.terminate()
+
+            let hypeApp = launch("guide-upcoming", accessibilityText: accessibilityText)
+            reachable("dashboard-hype-card", in: hypeApp).tap()
+            XCTAssertTrue(hypeApp.staticTexts["HYPE Card"].waitForExistence(timeout: 5))
+            hypeApp.terminate()
+        }
+    }
+
     func testThreeSquareCardsShareOneRowAndHeroContainsTimeAndPlace() {
         let app = launch("upcoming")
         let hero = reachable("dashboard-message-board-card", in: app)
