@@ -443,6 +443,11 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(opponent.label.contains("Very Long Name"))
         let location = assertReachable("event-detail-location", in: app)
         XCTAssertTrue(location.label.contains("Field Twenty-Seven"))
+        let hero = app.descendants(matching: .any)["event-detail-hero"]
+        XCTAssertTrue(hero.waitForExistence(timeout: 5))
+        XCTAssertTrue(hero.frame.contains(date.frame))
+        XCTAssertTrue(hero.frame.contains(location.frame))
+        XCTAssertFalse(app.staticTexts["EVENT DETAILS"].exists)
         assertReachable("event-detail-tool-panel", in: app)
     }
 

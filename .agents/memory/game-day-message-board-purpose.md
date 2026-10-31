@@ -21,6 +21,12 @@ Opened native Event Cards should use compact, organized details with Prep, Track
 
 **How to apply:** Keep the step bar visible as details scroll, preserve readable larger-text layouts, and distinguish recommendation changes from actual saved completion or game finalization.
 
+Keep date, time, and location in the Event Card hero and remove the separate Event Details card. Preserve other relevant metadata, such as opponent, team, and season, in the hero rather than dropping it.
+
+**Why:** The user wants the key schedule facts visible with the event identity without stacking another full card beneath it.
+
+**How to apply:** Keep the metadata readable inside the hero, retaining the responsive one-column layout at accessibility text sizes.
+
 Use the section beneath Event Details as the active native Prep, Track Stats, or Share panel rather than a permanent read-only Prep summary. The user calls this section “Content.”
 
 **Why:** The user preferred using the same area for the selected task instead of opening another screen for every tool.

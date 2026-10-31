@@ -178,7 +178,6 @@ struct SupporterEventDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 eventCard(schedule: schedule, event: event)
-                eventInformation(schedule: schedule, event: event)
                 if prepHasUnsavedChanges {
                     Label("Prep has unsaved edits", systemImage: "pencil.circle")
                         .font(.caption.weight(.semibold))
@@ -272,7 +271,7 @@ struct SupporterEventDetailView: View {
     }
 
     private func eventCard(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 13) {
             eventCardHeading(event)
 
             if let athleteName = schedule.athleteName, !athleteName.isEmpty {
@@ -285,6 +284,8 @@ struct SupporterEventDetailView: View {
                 }
                 .foregroundStyle(SupporterHomeColors.muted)
             }
+
+            eventMetadata(schedule: schedule, event: event)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -317,6 +318,8 @@ struct SupporterEventDetailView: View {
                         )
                 }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("event-detail-hero")
     }
 
     @ViewBuilder
@@ -351,56 +354,48 @@ struct SupporterEventDetailView: View {
         }
     }
 
-    private func eventInformation(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("EVENT DETAILS")
-                .font(.system(size: 10, weight: .black))
-                .tracking(1.9)
-                .foregroundStyle(SupporterHomeColors.accent)
+    private func eventMetadata(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        LazyVGrid(
+            columns: Array(
+                repeating: GridItem(.flexible(), alignment: .topLeading),
+                count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+            ),
+            alignment: .leading,
+            spacing: 14
+        ) {
+            detailRow(icon: "calendar", label: "DATE", value: event.formattedFullDate(timezone: event.timezone ?? schedule.timezone))
+            detailRow(icon: "clock", label: "TIME", value: event.formattedTime(timezone: event.timezone ?? schedule.timezone))
 
-            LazyVGrid(
-                columns: Array(
-                    repeating: GridItem(.flexible(), alignment: .topLeading),
-                    count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
-                ),
-                alignment: .leading,
-                spacing: 16
-            ) {
-                detailRow(icon: "calendar", label: "DATE", value: event.formattedFullDate(timezone: event.timezone ?? schedule.timezone))
-                detailRow(icon: "clock", label: "TIME", value: event.formattedTime(timezone: event.timezone ?? schedule.timezone))
-
-                if event.type == "game" {
-                    detailRow(
-                        icon: "person.2.fill",
-                        label: "OPPONENT",
-                        value: event.opponent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? "Opponent to be announced"
-                            : event.opponent
-                    )
-                }
+            if event.type == "game" {
                 detailRow(
-                    icon: "mappin.and.ellipse",
-                    label: "LOCATION",
-                    value: event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "Location to be announced"
-                        : event.location
+                    icon: "person.2.fill",
+                    label: "OPPONENT",
+                    value: event.opponent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "Opponent to be announced"
+                        : event.opponent
                 )
+            }
+            detailRow(
+                icon: "mappin.and.ellipse",
+                label: "LOCATION",
+                value: event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? "Location to be announced"
+                    : event.location
+            )
 
-                if let teamName = schedule.teamName, !teamName.isEmpty {
-                    detailRow(icon: "shield.fill", label: "TEAM", value: teamName)
-                }
-                if let seasonName = schedule.seasonName, !seasonName.isEmpty {
-                    detailRow(icon: "calendar", label: "SEASON", value: seasonName)
-                }
+            if let teamName = schedule.teamName, !teamName.isEmpty {
+                detailRow(icon: "shield.fill", label: "TEAM", value: teamName)
+            }
+            if let seasonName = schedule.seasonName, !seasonName.isEmpty {
+                detailRow(icon: "calendar", label: "SEASON", value: seasonName)
             }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        .padding(.top, 3)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("event-detail-metadata")
     }
 
     private func eventDateBadge(_ event: AthleteFanEvent) -> some View {
