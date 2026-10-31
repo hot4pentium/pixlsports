@@ -50,3 +50,8 @@ Thumbs.db
 .cache/
 .local/
 /generated-artifacts/
+
+# Temporary fixtures created by the responsive browser test
+/artifacts/league-matrix-studio/showcase-responsive-*.config.ts
+/artifacts/league-matrix-studio/showcase-responsive-*.html
+/artifacts/league-matrix-studio/showcase-responsive-*.tsx
