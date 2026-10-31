@@ -31,9 +31,9 @@ Use the section beneath Event Details as the active native Prep, Track Stats, or
 
 **How to apply:** Keep quick checklist changes in the same draft and save flow as the full Prep editor; the full editor remains responsible for adding, removing, and editing tasks and notes.
 
-Within Track Stats, offer Track Stats and Live Taps choices. Stats should be condensed with an option to open the full tracker; Live Taps should show actual interactive cheers and a shareable QR for fans at the game.
+Within Track Stats, open score-only tracking directly in Content, with team and opponent scores, Start/End Game, Access Live Taps, and Open full tracker. Do not require a second stats-mode selection or put individual player-stat buttons in this compact panel.
 
-**Why:** The user explicitly requested this split and in-person fan QR sharing. Cheers must remain distinct from recorded stats.
+**Why:** The user wants supporters to be able to keep only the score, while retaining separate access to Live Taps and full stat tracking. Cheers must remain distinct from recorded stats.
 
 **How to apply:** Compact and full tracking must use the same game state. Fan QR creation requires an active session and verified ownership. Existing family QR access lasts until revoked: explain this clearly and provide revocation, rather than implying that these codes expire at the end of a game.
 

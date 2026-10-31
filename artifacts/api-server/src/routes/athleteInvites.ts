@@ -891,6 +891,20 @@ router.post("/athlete-invites/:inviteToken/live", requireAuth, async (req, res):
     res.status(409).json({ error: "Unable to start Game Day Live." });
     return;
   }
+  if (invite.liveTrackerShareToken && invite.liveTrackerShareToken !== share.id) {
+    const [activeShare] = await db.select().from(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+      gt(statTrackerSharesTable.expiresAt, new Date()),
+    )).limit(1);
+    const activeGame = activeShare?.game && typeof activeShare.game === "object" && !Array.isArray(activeShare.game)
+      ? activeShare.game as Record<string, unknown>
+      : null;
+    if (activeGame?.status === "live" && activeGame.liveTapsEnded !== true) {
+      res.status(409).json({ error: "Finish the active game before starting a separate Live Taps session." });
+      return;
+    }
+  }
   await db.update(athleteInvitesTable).set({
     liveTrackerShareToken: share.id,
     updatedAt: new Date(),

@@ -812,6 +812,41 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       StartAthleteInviteLiveResponse.parse(await linkedFromTracker.json()),
       liveSession,
     );
+    const liveTapsOnlyGame = {
+      id: "live-taps-only-game",
+      sourceEventId: "scheduled-event-ended-live-taps",
+      liveTapsOnly: true,
+      sport: "basketball",
+      status: "live",
+      date: dateKey(0),
+      opponent: "Comets",
+      period: 1,
+      score: 0,
+      opponentScore: 0,
+      stats: {},
+      trackYards: false,
+      yardStats: {},
+      events: [],
+    };
+    const [liveTapsOnlyShare] = await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId: ownerId,
+      gameId: liveTapsOnlyGame.id,
+      athleteName: "Jordan",
+      teamName: "City Hoops",
+      game: liveTapsOnlyGame,
+      expiresAt: new Date(Date.now() + 60_000),
+    }).returning();
+    const competingSession = await fetch(liveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({ shareToken: liveTapsOnlyShare!.id }),
+    });
+    assert.equal(competingSession.status, 409, "a second Event Card session cannot replace the active stats game");
+    const [inviteAfterConflict] = await db.select({
+      liveTrackerShareToken: athleteInvitesTable.liveTrackerShareToken,
+    }).from(athleteInvitesTable).where(eq(athleteInvitesTable.publicToken, created.inviteToken));
+    assert.equal(inviteAfterConflict?.liveTrackerShareToken, liveSession.shareToken,
+      "a rejected cheer-only session leaves the active stats game connected");
     const accessLinksUrl = `${publicUrl}/live-taps/access-links`;
     const tapUrl = `${publicUrl}/live-taps`;
     assert.equal((await fetch(accessLinksUrl)).status, 401);
@@ -1047,33 +1082,37 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.ok(persistedSeasonTaps.every((tap) => tap.seasonName === "Fall 2026"),
       "existing cheers keep their original season after rollover");
 
-    const liveTapsOnlyGame = {
-      id: "live-taps-only-game",
-      sourceEventId: "scheduled-event-ended-live-taps",
-      liveTapsOnly: true,
-      sport: "basketball",
-      status: "live",
-      date: dateKey(0),
-      opponent: "Comets",
-      period: 1,
-      score: 0,
-      opponentScore: 0,
-      stats: { points: 0 },
-      trackYards: false,
-      yardStats: {},
-      events: [],
-    };
-    const [liveTapsOnlyShare] = await db.insert(statTrackerSharesTable).values({
-      ownerClerkUserId: ownerId,
-      gameId: liveTapsOnlyGame.id,
-      athleteName: "Jordan",
-      teamName: "City Hoops",
-      game: liveTapsOnlyGame,
-      expiresAt: new Date(Date.now() + 60_000),
-    }).returning();
-    await db.update(athleteInvitesTable).set({
-      liveTrackerShareToken: liveTapsOnlyShare.id,
-    }).where(eq(athleteInvitesTable.id, inviteRow.id));
+    const startedLiveTapsOnly = await fetch(liveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({ shareToken: liveTapsOnlyShare!.id }),
+    });
+    assert.equal(startedLiveTapsOnly.status, 201);
+    const tapsOnlySession = StartAthleteInviteLiveResponse.parse(await startedLiveTapsOnly.json());
+    assert.equal(tapsOnlySession.gameId, liveTapsOnlyGame.id);
+    const tapsOnlyAccessResponse = await fetch(accessLinksUrl, {
+      method: "POST",
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(tapsOnlyAccessResponse.status, 201);
+    const tapsOnlyAccess = CreateAthleteInviteLiveTapAccessLinkResponse.parse(
+      await tapsOnlyAccessResponse.json(),
+    );
+    const tapsOnlyCheer = await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "bucket", accessToken: tapsOnlyAccess.accessToken }),
+    });
+    assert.equal(tapsOnlyCheer.status, 201);
+    const tapsOnlySummary = SendAthleteLiveTapResponse.parse(await tapsOnlyCheer.json());
+    assert.equal(tapsOnlySummary.gameId, liveTapsOnlyGame.id);
+    assert.equal(tapsOnlySummary.cheers.find((cheer) => cheer.key === "bucket")?.count, 1);
+    const [savedTapsOnlyShare] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, liveTapsOnlyShare!.id));
+    assert.deepEqual((savedTapsOnlyShare!.game as Record<string, unknown>).stats, {});
+    assert.deepEqual((savedTapsOnlyShare!.game as Record<string, unknown>).events, []);
+    assert.equal((savedTapsOnlyShare!.game as Record<string, unknown>).score, 0);
+    assert.equal((savedTapsOnlyShare!.game as Record<string, unknown>).opponentScore, 0);
     const endedLiveTapsResponse = await fetch(liveUrl, {
       method: "DELETE",
       headers: { "x-test-user": ownerId },

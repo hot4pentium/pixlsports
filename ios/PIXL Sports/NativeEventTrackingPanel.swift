@@ -9,7 +9,7 @@ struct NativeEventTrackingPanel: View {
     let clerk: Clerk
     let hasActiveLiveTapsElsewhere: Bool
     @StateObject private var trackerModel: NativeEventToolModel
-    @State private var showingTaps: Bool?
+    @State private var showingTaps = false
     @State private var tapsVisited = false
 
     init(
@@ -32,17 +32,21 @@ struct NativeEventTrackingPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 10) {
-                modeButton("Track Stats", icon: "chart.bar", taps: false)
-                modeButton("Live Taps only", icon: "hands.clap", taps: true)
-            }
-            if showingTaps == nil {
-                Text("Choose game statistics or cheers only. Live Taps does not record player stats.")
-                    .font(.caption)
-                    .foregroundStyle(SupporterHomeColors.muted)
-            }
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 14) {
+                    NativeEventTrackerView(
+                        event: event, teamName: teamName, athleteName: athleteName,
+                        clerk: clerk, model: trackerModel, embedded: true, compact: true
+                    )
+                    Button {
+                        tapsVisited = true
+                        showingTaps = true
+                    } label: {
+                        Label("Access Live Taps", systemImage: "hands.clap")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("native-event-mode-live-taps")
                     NavigationLink {
                         NativeEventTrackerView(
                             event: event, teamName: teamName, athleteName: athleteName,
@@ -53,41 +57,30 @@ struct NativeEventTrackingPanel: View {
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .accessibilityIdentifier("native-event-full-tracker")
-                    Text("Quick tracking · Full tracker includes every stat and recent play history.")
+                    Text("Keep score here, or open the full tracker to record player stats.")
                         .font(.caption).foregroundStyle(SupporterHomeColors.muted)
-                    NativeEventTrackerView(
-                        event: event, teamName: teamName, athleteName: athleteName,
-                        clerk: clerk, model: trackerModel, embedded: true, compact: true
-                    )
                 }
-                .eventToolVisibility(showingTaps == false)
+                .eventToolVisibility(!showingTaps)
                 if tapsVisited {
-                    NativeEventFanAccessView(
-                        event: event,
-                        athleteName: athleteName,
-                        clerk: clerk,
-                        hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere
-                    )
-                        .eventToolVisibility(showingTaps == true)
+                    VStack(alignment: .leading, spacing: 14) {
+                        Button {
+                            showingTaps = false
+                        } label: {
+                            Label("Back to scorekeeping", systemImage: "arrow.left")
+                                .frame(minHeight: 44)
+                        }
+                        .accessibilityIdentifier("native-event-mode-stats")
+                        NativeEventFanAccessView(
+                            event: event,
+                            athleteName: athleteName,
+                            clerk: clerk,
+                            hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere
+                        )
+                    }
+                    .eventToolVisibility(showingTaps)
                 }
             }
         }
-    }
-
-    private func modeButton(_ title: String, icon: String, taps: Bool) -> some View {
-        Button {
-            showingTaps = taps
-            if taps { tapsVisited = true }
-        } label: {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.bold))
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .background(showingTaps == taps ? SupporterHomeColors.blue.opacity(0.35) : Color.white.opacity(0.05),
-                            in: RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(showingTaps == taps ? .isSelected : [])
-        .accessibilityIdentifier(taps ? "native-event-mode-live-taps" : "native-event-mode-stats")
     }
 }
 

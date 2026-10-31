@@ -204,6 +204,43 @@ test("native tracking preserves prior games, athlete attribution, revisions, and
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("stat", state.trackerRevision, { statId: "goal" })), denied(409));
 });
 
+test("score-only games persist both scores without player stats and finalize the same Event Card", async () => {
+  for (const keepZeroScore of [false, true]) {
+    const a = await fixture("basketball");
+    let state = await nativeEventWorkspace(a.who, a.shareToken, a.command("start", 0));
+    const gameID = state.game!.id;
+    if (!keepZeroScore) {
+      state = await nativeEventWorkspace(a.who, a.shareToken, a.command("score", state.trackerRevision, { delta: 1 }));
+      state = await nativeEventWorkspace(a.who, a.shareToken, a.command("score", state.trackerRevision, { delta: 1 }));
+      state = await nativeEventWorkspace(a.who, a.shareToken, a.command("score", state.trackerRevision, { opponent: true, delta: 1 }));
+      state = await nativeEventWorkspace(a.who, a.shareToken, a.command("score", state.trackerRevision, { opponent: true, delta: 1 }));
+      state = await nativeEventWorkspace(a.who, a.shareToken, a.command("score", state.trackerRevision, { opponent: true, delta: -1 }));
+    }
+    state = await nativeEventWorkspace(a.who, a.shareToken);
+    assert.equal(state.game!.id, gameID);
+    assert.equal(state.game!.score, keepZeroScore ? 0 : 2);
+    assert.equal(state.game!.opponentScore, keepZeroScore ? 0 : 1);
+    assert.deepEqual(state.game!.stats, {});
+    assert.deepEqual(state.game!.events, []);
+    state = await nativeEventWorkspace(a.who, a.shareToken,
+      a.command("finish", state.trackerRevision, { recordScore: true }));
+    const reopened = await nativeEventWorkspace(a.who, a.shareToken);
+    assert.equal(reopened.game!.id, gameID);
+    assert.equal(reopened.game!.status, "final");
+    assert.equal(reopened.game!.score, keepZeroScore ? 0 : 2);
+    assert.equal(reopened.game!.opponentScore, keepZeroScore ? 0 : 1);
+    assert.equal(reopened.game!.scoreRecorded, true);
+    assert.equal(reopened.game!.outcome, keepZeroScore ? "tie" : "win");
+    assert.deepEqual(reopened.game!.stats, {});
+    assert.deepEqual(reopened.game!.events, []);
+    const stored = (await pool.query("SELECT project FROM cloud_projects WHERE owner_clerk_user_id=$1", [a.owner])).rows[0].project;
+    assert.equal(stored.games.length, 1, "scorekeeping and the full tracker share one game");
+    assert.equal((await pool.query("SELECT events FROM schedule_shares WHERE id=$1", [a.shareToken])).rows[0].events[0].status, "final");
+    await assert.rejects(nativeEventWorkspace(a.who, a.shareToken,
+      a.command("score", state.trackerRevision, { delta: 1 })), denied(409));
+  }
+});
+
 test("legacy spectator games continue in one canonical cloud game without duplicates", async () => {
   const a = await fixture("volleyball");
   const game = applyNativeTrackerCommand(null, a.command("start", 0), { sport: "volleyball", eventId: a.eventId, date: "2099-11-01", opponent: "Bears" });

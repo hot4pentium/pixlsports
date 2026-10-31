@@ -92,6 +92,13 @@ The Prep Content panel starts with four interactive checklist items and a
 progress count. “Manage full Prep” opens the existing editor in place for the
 complete list, notes, adding, removing, and saving without losing quick edits.
 
+Track Stats opens directly to scorekeeping in Content: team and opponent scores,
+Start game, and End game with explicit final-score confirmation. This compact
+panel has no player-stat buttons. Access Live Taps opens the existing fan-access
+panel; Back to scorekeeping returns without discarding its QR. Open full tracker
+uses the same workspace model and saved game for individual stats and advanced
+controls. A game paused in the full tracker can be resumed in the score panel.
+
 The standalone timing checks can run on a Mac with the Swift toolchain:
 
 ```sh

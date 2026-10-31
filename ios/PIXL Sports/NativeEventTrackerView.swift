@@ -56,7 +56,18 @@ struct NativeEventTrackerView: View {
                     if let game = workspace.game {
                         tracker(workspace: workspace, game: game)
                     } else {
-                        Text("Track \(workspace.sport.capitalized) for \(athleteName). Each tap saves to your existing PIXL game history.")
+                        if compact {
+                            Text("Keep score").font(.headline)
+                            Text("Start the game to update the team scores. Player stats are optional in the full tracker.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            HStack(alignment: .top, spacing: 20) {
+                                scoreboard(teamName, score: 0, opponent: false, editable: false)
+                                scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: 0, opponent: true, editable: false)
+                            }
+                        } else {
+                            Text("Track \(workspace.sport.capitalized) for \(athleteName). Each tap saves to your existing PIXL game history.")
+                        }
                         if workspace.sport == "soccer" {
                             Picker("Soccer format", selection: $soccerFormat) {
                                 Text("Halves").tag("halves")
@@ -64,11 +75,12 @@ struct NativeEventTrackerView: View {
                             }
                             .pickerStyle(.segmented)
                         }
-                        Button("Start tracking") {
+                        Button(compact ? "Start game" : "Start tracking") {
                             Task { await model.save("start", clerk: clerk, soccerFormat: workspace.sport == "soccer" ? soccerFormat : nil) }
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(model.busy || model.pending != nil || event.status == "final")
+                        .accessibilityIdentifier("native-event-start-game")
                     }
                 }
             }
@@ -79,8 +91,10 @@ struct NativeEventTrackerView: View {
             HStack {
                 Text(game.status.uppercased()).font(.caption.bold())
                 Spacer()
-                Text("\(phaseLabel(workspace: workspace, game: game)) \(game.period)")
-                    .font(.headline)
+                if !compact {
+                    Text("\(phaseLabel(workspace: workspace, game: game)) \(game.period)")
+                        .font(.headline)
+                }
             }
             HStack(alignment: .top, spacing: 20) {
                 scoreboard(teamName, score: game.score, opponent: false, editable: game.status == "live")
@@ -93,6 +107,7 @@ struct NativeEventTrackerView: View {
                 NavigationLink("Open HYPE Card to share") { SupporterHypeCardView(clerk: clerk) }
                     .buttonStyle(.borderedProminent)
             } else {
+                if !compact {
                 if game.sport == "football" {
                     Toggle("Opponent possession", isOn: $opponentPossession)
                     Stepper("Yards on next play: \(yards)", value: $yards, in: 0...100)
@@ -145,12 +160,19 @@ struct NativeEventTrackerView: View {
                 }
                 Button("Undo last stat") { Task { await model.save("undo", clerk: clerk) } }
                     .disabled(game.events.isEmpty || game.status != "live")
-                Button("Finish game", role: .destructive) {
-                    recordScore = game.hasRecordedScore
+                } else if game.status == "paused" {
+                    Button("Resume game") {
+                        Task { await model.save("resume", clerk: clerk) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                Button(compact ? "End game" : "Finish game", role: .destructive) {
+                    recordScore = compact || game.hasRecordedScore
                     outcome = ""
                     showingFinish = true
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("native-event-end-game")
             }
             if !compact && !game.events.isEmpty {
                 Text("RECENT STATS").font(.caption.bold())
@@ -177,9 +199,11 @@ struct NativeEventTrackerView: View {
                         Image(systemName: "minus.circle.fill").font(.title2).frame(minWidth: 44, minHeight: 44)
                     }
                     .disabled(score == 0)
+                     .accessibilityLabel("Decrease \(label) score")
                     Button { adjustScore(opponent: opponent, delta: 1) } label: {
                         Image(systemName: "plus.circle.fill").font(.title2).frame(minWidth: 44, minHeight: 44)
                     }
+                     .accessibilityLabel("Increase \(label) score")
                 }
                 .accessibilityLabel("\(label) score")
             }
