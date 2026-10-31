@@ -327,7 +327,7 @@ struct ContentView: View {
                     clerk: nil,
                     shareToken: token,
                     fixture: SupporterEventDetailView.Fixture(
-                        schedule: page, event: event, now: guideReferenceDate(Date())
+                        schedule: page, event: event, now: guideReferenceDate(for: Date())
                     )
                 )
             } else if let clerk {
