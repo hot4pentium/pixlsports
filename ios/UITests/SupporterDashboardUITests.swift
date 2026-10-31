@@ -50,6 +50,16 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testEmptyMessageBoardLeadsToNativeEventCardCreation() {
+        let app = launch("empty")
+        let messageBoard = reachable("dashboard-message-board-card", in: app)
+        XCTAssertTrue(messageBoard.label.contains("Tap to create"))
+        messageBoard.tap()
+
+        XCTAssertTrue(app.staticTexts["Create an Event Card"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["native-event-create-submit"].exists)
+    }
+
     private func launch(_ state: String, accessibilityText: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-dashboard", "--dashboard-narrow", "--dashboard-state=\(state)"]

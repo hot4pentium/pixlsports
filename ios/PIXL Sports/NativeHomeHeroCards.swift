@@ -29,7 +29,7 @@ struct NativeHomeHeroCards: View {
 
     private var eventAccessibilityDescription: String {
         guard let nextEvent else {
-            return "Game-day message board. No upcoming Event Card is available. Tap to open the guide."
+            return "Game-day message board. No upcoming Event Card is available. Tap to create one."
         }
         let status = eventTiming == .live ? "Live now" : eventTiming == .complete ? "After the event" : "Upcoming"
         return "Game-day message board, \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone)). Tap to open the Event Card."
@@ -48,7 +48,9 @@ struct NativeHomeHeroCards: View {
             .buttonStyle(SupporterCardPressStyle())
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(eventAccessibilityDescription)
-            .accessibilityHint("Opens the game-day message board and the next Event Card task.")
+            .accessibilityHint(nextEvent == nil
+                ? "Opens the Event Card creation form."
+                : "Opens the game-day message board and the next Event Card task.")
             .accessibilityIdentifier("dashboard-message-board-card")
 
             Button(action: onOpenHypeCard) {
@@ -106,7 +108,7 @@ struct NativeHomeHeroCards: View {
             Spacer(minLength: 0)
 
             HStack(alignment: .center, spacing: 4) {
-                Text(nextEvent == nil ? "OPEN GUIDE" : timingTitle)
+                Text(nextEvent == nil ? "CREATE EVENT" : timingTitle)
                     .font(.system(size: 9, weight: .black, design: .rounded))
                     .tracking(0.65)
                     .lineLimit(1)

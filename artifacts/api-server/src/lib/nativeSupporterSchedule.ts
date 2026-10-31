@@ -2,7 +2,7 @@ import { pool } from "@workspace/db";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { AthleteEventShareRow, AthleteTrackerShareRow, gameIdsFromAthleteEventShares, mapAthleteEventSummaries } from "./athleteEventSummaries";
 import { GAME_ON_CARD_MARKER } from "./gameOnCard";
-import type { NativeIdentity } from "./nativeIdentity";
+import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 
 type NativeSupporterEvent = ReturnType<typeof mapAthleteEventSummaries>[number] & {
   liveTapsActive: boolean;
@@ -19,6 +19,29 @@ export interface NativeSupporterScheduleResponse {
   events: NativeSupporterEvent[];
 }
 
+export interface NativeEventCardDraft {
+  eventId: string;
+  type: "game" | "practice";
+  date: string;
+  time: string;
+  timezone: string;
+  location: string;
+  opponent: string;
+}
+
+export interface CreatedNativeEventCard {
+  shareToken: string;
+  eventId: string;
+  created: boolean;
+  share: {
+    id: string;
+    ownerClerkUserId: string;
+    title: string;
+    teamSeason: string;
+    events: unknown;
+  };
+}
+
 interface InviteRow {
   athlete_name: string;
   team_name: string;
@@ -33,6 +56,104 @@ interface InviteRow {
 interface LiveShareRow {
   game_id: string;
   game: unknown;
+}
+
+export async function createNativeSupporterEventCard(
+  identity: NativeIdentity,
+  draft: NativeEventCardDraft,
+): Promise<CreatedNativeEventCard> {
+  const tx = await pool.connect();
+  let result: CreatedNativeEventCard;
+  try {
+    await tx.query("BEGIN");
+    const { rows: links } = await tx.query<{ owner_clerk_user_id: string }>(`SELECT owner_clerk_user_id
+      FROM native_account_links
+      WHERE native_issuer=$1 AND native_subject=$2
+      FOR SHARE`, [identity.issuer, identity.subject]);
+    const owner = links[0]?.owner_clerk_user_id;
+    if (!owner) throw new NativeLinkError(409, "Connect your PIXL web account before creating an Event Card.");
+
+    await assertLinkableWebAccount(
+      owner,
+      tx,
+      "This PIXL account can’t create Event Cards right now. Check its account status on PIXL Sports.",
+    );
+
+    const { rows: invites } = await tx.query<{ team_name: string }>(`SELECT team_name
+      FROM athlete_invites
+      WHERE owner_clerk_user_id=$1
+      LIMIT 1
+      FOR SHARE`, [owner]);
+    const teamName = invites[0]?.team_name?.trim();
+    if (!teamName) {
+      throw new NativeLinkError(409, "Finish athlete setup on PIXL Sports before creating an Event Card.");
+    }
+
+    const event = {
+      id: draft.eventId,
+      type: draft.type,
+      status: "upcoming",
+      date: draft.date,
+      time: draft.time,
+      timezone: draft.timezone,
+      location: draft.location.trim(),
+      opponent: draft.type === "practice" ? "" : draft.opponent.trim(),
+      snacks: "",
+      drinks: "",
+      notes: "",
+    };
+    const events = [event];
+    const { rows: existingRows } = await tx.query<{
+      id: string;
+      ownerClerkUserId: string;
+      title: string;
+      teamSeason: string;
+      events: unknown;
+    }>(`SELECT id::text AS id, owner_clerk_user_id AS "ownerClerkUserId",
+        title, team_season AS "teamSeason", events
+      FROM schedule_shares
+      WHERE owner_clerk_user_id=$1 AND team_season=$2 AND events @> $3::jsonb
+      LIMIT 1
+      FOR UPDATE`, [owner, GAME_ON_CARD_MARKER, JSON.stringify([{ id: draft.eventId }])]);
+
+    if (existingRows[0]) {
+      const existing = existingRows[0];
+      result = {
+        shareToken: existing.id,
+        eventId: draft.eventId,
+        created: false,
+        share: { ...existing, events: existing.events },
+      };
+      await tx.query("COMMIT");
+    } else {
+      const { rows } = await tx.query<{
+        id: string;
+        ownerClerkUserId: string;
+        title: string;
+        teamSeason: string;
+        events: unknown;
+      }>(`INSERT INTO schedule_shares (owner_clerk_user_id, title, team_season, events)
+        VALUES ($1,$2,$3,$4::jsonb)
+        RETURNING id::text AS id, owner_clerk_user_id AS "ownerClerkUserId",
+          title, team_season AS "teamSeason", events`,
+      [owner, teamName, GAME_ON_CARD_MARKER, JSON.stringify(events)]);
+      const created = rows[0];
+      if (!created) throw new Error("Event Card insert returned no row");
+      result = {
+        shareToken: created.id,
+        eventId: draft.eventId,
+        created: true,
+        share: created,
+      };
+      await tx.query("COMMIT");
+    }
+  } catch (error) {
+    await tx.query("ROLLBACK");
+    throw error;
+  } finally {
+    tx.release();
+  }
+  return result;
 }
 
 export async function loadNativeSupporterSchedule(

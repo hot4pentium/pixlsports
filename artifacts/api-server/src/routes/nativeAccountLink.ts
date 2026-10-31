@@ -3,12 +3,15 @@ import { Router, type RequestHandler } from "express";
 import {
   BeginNativeAccountLinkBody, PollNativeAccountLinkBody,
   PreviewWebNativeAccountLinkBody, DecideWebNativeAccountLinkBody,
+  CreateScheduleShareBody,
 } from "@workspace/api-zod";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
-import { loadNativeSupporterSchedule } from "../lib/nativeSupporterSchedule";
+import { createNativeSupporterEventCard, loadNativeSupporterSchedule } from "../lib/nativeSupporterSchedule";
 import { loadNativeSupporterHypeCard } from "../lib/nativeSupporterHypeCard";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
+import { isIanaTimezone } from "../lib/timezone";
+import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
 
 const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -46,6 +49,48 @@ nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
 }));
 nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
   res.json(await loadNativeSupporterSchedule(identity(res)));
+}));
+nativeAccountLinkRouter.post("/supporter/event-cards", handle(async (req, res) => {
+  const parsed = CreateScheduleShareBody.strict().safeParse(req.body);
+  if (!parsed.success || parsed.data.purpose !== "game-on-card"
+    || parsed.data.calendarProjectId !== undefined || parsed.data.events.length !== 1) {
+    throw new NativeLinkError(400, "Enter one valid game or practice Event Card.");
+  }
+  const event = parsed.data.events[0];
+  const parsedDate = event ? new Date(`${event.date}T00:00:00.000Z`) : null;
+  const dateIsValid = Boolean(
+    parsedDate
+    && Number.isFinite(parsedDate.getTime())
+    && parsedDate.toISOString().slice(0, 10) === event?.date,
+  );
+  if (!event || (event.type !== "game" && event.type !== "practice")
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(event.id)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(event.date)
+    || !dateIsValid
+    || (event.time !== "" && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(event.time))
+    || !event.timezone || !isIanaTimezone(event.timezone)
+    || (event.type === "game" && !event.opponent.trim())) {
+    throw new NativeLinkError(400, "Check the event date, time, time zone, and opponent.");
+  }
+
+  const created = await createNativeSupporterEventCard(identity(res), {
+    eventId: event.id,
+    type: event.type,
+    date: event.date,
+    time: event.time,
+    timezone: event.timezone!,
+    location: event.location,
+    opponent: event.opponent,
+  });
+  try {
+    await reconcileGameOnShare(created.share);
+  } catch {
+    req.log.warn("Native Event Card saved; reminder scheduling needs reconciliation");
+  }
+  res.status(created.created ? 201 : 200).json({
+    shareToken: created.shareToken,
+    eventId: created.eventId,
+  });
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
   res.json(await loadNativeSupporterHypeCard(identity(res)));

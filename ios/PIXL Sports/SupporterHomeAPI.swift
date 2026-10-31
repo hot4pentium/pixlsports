@@ -63,6 +63,42 @@ private struct SupporterFanCardResponse: Decodable {
     let liveTaps: LiveTapSummary
 }
 
+struct NativeEventCardDraft {
+    let id: String
+    let type: String
+    let date: String
+    let time: String
+    let timezone: String
+    let location: String
+    let opponent: String
+}
+
+private struct NativeEventCardCreateBody: Encodable {
+    let title: String
+    let teamSeason: String
+    let purpose: String
+    let events: [Event]
+
+    struct Event: Encodable {
+        let id: String
+        let type: String
+        let status: String
+        let date: String
+        let time: String
+        let timezone: String
+        let location: String
+        let opponent: String
+        let snacks: String
+        let drinks: String
+        let notes: String
+    }
+}
+
+private struct NativeEventCardCreateResponse: Decodable {
+    let shareToken: String
+    let eventId: String
+}
+
 enum SupporterHomeAPI {
     static func fetchPrivateSchedule(clerk: Clerk) async throws -> NativeSupporterSchedule {
         let data = try await NativeAccountLinkClient().getData("supporter/schedule", clerk: clerk)
@@ -72,6 +108,49 @@ enum SupporterHomeAPI {
                 throw SupporterHomeAPIError.invalidResponse
             }
             return schedule
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func createEventCard(
+        draft: NativeEventCardDraft,
+        teamName: String?,
+        clerk: Clerk
+    ) async throws -> String {
+        let event = NativeEventCardCreateBody.Event(
+            id: draft.id,
+            type: draft.type,
+            status: "upcoming",
+            date: draft.date,
+            time: draft.time,
+            timezone: draft.timezone,
+            location: draft.location,
+            opponent: draft.opponent,
+            snacks: "",
+            drinks: "",
+            notes: ""
+        )
+        let body = NativeEventCardCreateBody(
+            title: {
+                let trimmed = teamName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return trimmed.isEmpty ? "PIXL Sports" : trimmed
+            }(),
+            teamSeason: "",
+            purpose: "game-on-card",
+            events: [event]
+        )
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/event-cards",
+            body: body,
+            clerk: clerk
+        )
+        do {
+            let response = try JSONDecoder().decode(NativeEventCardCreateResponse.self, from: data)
+            guard response.eventId == draft.id else { throw SupporterHomeAPIError.invalidResponse }
+            return response.shareToken
+        } catch let error as SupporterHomeAPIError {
+            throw error
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }

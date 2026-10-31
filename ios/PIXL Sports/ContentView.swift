@@ -21,13 +21,13 @@ struct ContentView: View {
     private enum HeroDestination: Identifiable {
         case eventCard(String)
         case hypeCard
-        case emptyGameDayGuide
+        case createEvent
 
         var id: String {
             switch self {
             case let .eventCard(token): return "event-\(token)"
             case .hypeCard: return "hype-card"
-            case .emptyGameDayGuide: return "empty-guide"
+            case .createEvent: return "create-event"
             }
         }
     }
@@ -245,7 +245,7 @@ struct ContentView: View {
                     if let token = guide?.event.shareToken {
                         heroDestination = .eventCard(token)
                     } else {
-                        heroDestination = .emptyGameDayGuide
+                        heroDestination = .createEvent
                     }
                 },
                 onOpenHypeCard: { heroDestination = .hypeCard }
@@ -260,8 +260,19 @@ struct ContentView: View {
             eventDetailScreen(token: token)
         case .hypeCard:
             SupporterHypeCardView(clerk: clerk)
-        case .emptyGameDayGuide:
-            NativeGameDayGuideEmptyView(athleteName: schedulePage?.athleteName ?? "your athlete")
+        case .createEvent:
+            NativeCreateEventCardView(
+                athleteName: schedulePage?.athleteName ?? "your athlete",
+                teamName: schedulePage?.teamName,
+                initialTimezone: schedulePage?.timezone,
+                clerk: clerk,
+                onCreated: { token in
+                    Task {
+                        await loadSchedule()
+                        heroDestination = .eventCard(token)
+                    }
+                }
+            )
         }
     }
 
@@ -858,34 +869,5 @@ struct ContentView: View {
         .padding(20)
         .background(SupporterCardBackground())
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct NativeGameDayGuideEmptyView: View {
-    let athleteName: String
-
-    var body: some View {
-        ZStack {
-            SupporterHomeColors.background.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 14) {
-                SupporterEyebrow(text: "Game-day message board")
-                Text("Your next task will appear here.")
-                    .font(.title2.weight(.black))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("There isn’t an upcoming Event Card for \(athleteName) yet. Once one is created on PIXL Sports, this guide will show what to do before, during, and after the event.")
-                    .font(.body)
-                    .foregroundStyle(SupporterHomeColors.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: 520, alignment: .leading)
-            .padding(24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .navigationTitle("Game-day guide")
-        .navigationBarTitleDisplayMode(.inline)
-        .accessibilityIdentifier("native-game-day-guide-empty")
     }
 }

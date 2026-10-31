@@ -1,7 +1,13 @@
 ---
 name: Event Card pregame state
-description: Product timing rule separating Event Card status from early tracker access.
+description: Defines the supporter Event Card lifecycle and timing rule separating card status from tracker access.
 ---
+
+Event Cards are the backbone of the supporter experience. Opening the selected card should lead into the current event task: prepare before the game, track stats during it, or share the athlete’s HYPE Card afterward. If there is no future Event Card, the primary action is to create one. Keep Live Taps separate from stat tracking.
+
+**Why:** the user explicitly defined this end-to-end Event Card lifecycle as the core iOS experience.
+
+**How to apply:** use the Event Card as the entry point for stage-specific work, preserve event identity through each destination, and offer creation when no future card exists. The timing rules below determine which action is primary.
 
 Event Cards should show “Starting Soon” during the one-hour pregame capture window and switch to “Live” at the event’s scheduled start in its saved time zone. The tracker may still treat that pregame window as capture-eligible. Resolve nonexistent spring-forward wall times by moving forward by the clock gap; resolve repeated fall-back wall times to their earlier instant. The badge and capture window must use that same resolved start.
 
