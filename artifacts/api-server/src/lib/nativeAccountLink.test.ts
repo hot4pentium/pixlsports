@@ -36,6 +36,7 @@ after(async () => {
   await pool.query("DELETE FROM native_link_requests WHERE native_subject=ANY($1::text[])", [nativeSubjects]);
   await pool.query("DELETE FROM native_account_links WHERE native_subject=ANY($1::text[])", [nativeSubjects]);
   await pool.query("DELETE FROM native_link_rate_limits WHERE key=ANY($1::text[])", [limitKeys]);
+  await pool.query("DELETE FROM schedule_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM account_access WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.end();
 });
@@ -141,6 +142,48 @@ test("inactive, suspended or unprovisioned owners cannot approve, and status is 
   await pool.query("UPDATE account_access SET lifecycle_status='cancelled' WHERE owner_clerk_user_id=$1", [web]);
   await assert.rejects(service.complete(a.who, a.id, a.verifier), errorStatus(423));
 });
+
+test("same email labels need separate verified approvals; disconnect keeps the original web account data", async () => {
+  const [first, second] = await Promise.all([attempt(), attempt()]);
+  const [firstOwner, secondOwner] = await Promise.all([owner(), owner()]);
+  assert.notEqual(firstOwner, secondOwner);
+  const sameMaskedEmailLabel = "Parent · p…@example.com";
+
+  for (const [attemptState, webOwner] of [[first, firstOwner], [second, secondOwner]] as const) {
+    await service.decide(webOwner, attemptState.id, attemptState.code, "approve", sameMaskedEmailLabel);
+    assert.equal((await service.complete(attemptState.who, attemptState.id, attemptState.verifier)).status, "linked");
+  }
+
+  const firstSchedule = (await pool.query<{ id: string }>(`INSERT INTO schedule_shares
+    (owner_clerk_user_id,title,team_season,events)
+    VALUES ($1,'Original family schedule','game-on-card','[{"id":"first-family-game","notes":"private first-family data"}]'::jsonb)
+    RETURNING id`, [firstOwner])).rows[0]!.id;
+  const secondSchedule = (await pool.query<{ id: string }>(`INSERT INTO schedule_shares
+    (owner_clerk_user_id,title,team_season,events)
+    VALUES ($1,'Other family schedule','game-on-card','[{"id":"second-family-game","notes":"private second-family data"}]'::jsonb)
+    RETURNING id`, [secondOwner])).rows[0]!.id;
+
+  const mappings = (await pool.query<{ native_subject: string; owner_clerk_user_id: string; account_label: string }>(
+    `SELECT native_subject,owner_clerk_user_id,account_label FROM native_account_links
+     WHERE native_subject=ANY($1::text[])`,
+    [[first.who.subject, second.who.subject]],
+  )).rows;
+  assert.equal(mappings.length, 2);
+  assert.equal(mappings.find((row) => row.native_subject === first.who.subject)?.owner_clerk_user_id, firstOwner);
+  assert.equal(mappings.find((row) => row.native_subject === second.who.subject)?.owner_clerk_user_id, secondOwner);
+  assert.ok(mappings.every((row) => row.account_label === sameMaskedEmailLabel));
+  assert.equal((await service.webCurrent(firstOwner)).status, "linked");
+  assert.equal((await service.webCurrent(secondOwner)).status, "linked");
+
+  // Reverting to the prior web sign-in resolves the unchanged original account ID.
+  await service.disconnect(firstOwner);
+  assert.equal((await service.webCurrent(firstOwner)).status, "unlinked");
+  assert.equal((await service.webCurrent(secondOwner)).status, "linked");
+  assert.equal((await pool.query("SELECT id FROM account_access WHERE owner_clerk_user_id=$1", [firstOwner])).rowCount, 1);
+  assert.equal((await pool.query("SELECT id FROM schedule_shares WHERE id=$1 AND owner_clerk_user_id=$2", [firstSchedule, firstOwner])).rowCount, 1);
+  assert.equal((await pool.query("SELECT id FROM schedule_shares WHERE id=$1 AND owner_clerk_user_id=$2", [secondSchedule, secondOwner])).rowCount, 1);
+});
+
 test("durable rate limits count attempts atomically across concurrent callers", async () => {
   const actor = randomUUID();
   limitKeys.push(digest(`fixture:${actor}`));

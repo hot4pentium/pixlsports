@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { loadNativeSupporterSchedule } from "./nativeSupporterSchedule";
+import { loadNativeSupporterSchedule, updateNativeSupporterEventCard } from "./nativeSupporterSchedule";
 import { nativeEventWorkspace } from "./nativeEventWorkspace";
 import type { NativeIdentity } from "./nativeIdentity";
 import { GAME_ON_CARD_MARKER } from "./gameOnCard";
@@ -33,6 +33,7 @@ async function link(who: NativeIdentity, ownerClerkUserId: string) {
 }
 
 after(async () => {
+  await pool.query("DELETE FROM admin_identity_blocks WHERE clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM checklist_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM schedule_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM stat_tracker_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
@@ -73,7 +74,7 @@ test("native schedule is scoped to the explicitly linked active account", async 
   };
 
   const linkedShareToken = await insertSchedule(linkedOwner, "linked-game", "Tigers vs Bears");
-  await insertSchedule(otherOwner, "other-game", "Private opponent");
+  const otherShareToken = await insertSchedule(otherOwner, "other-game", "Private opponent");
   await pool.query(`INSERT INTO checklist_shares(owner_clerk_user_id,title,items,notes,selected_game)
     VALUES ($1,'Private game prep','[]','private checklist prep',$2::jsonb)`,
   [linkedOwner, JSON.stringify({ id: "linked-game" })]);
@@ -98,9 +99,38 @@ test("native schedule is scoped to the explicitly linked active account", async 
   assert.equal(JSON.stringify(schedule).includes("private checklist prep"), false);
   const privatePrep = await nativeEventWorkspace(who, schedule.events[0]!.shareToken);
   assert.equal(privatePrep.prep.notes, "private checklist prep");
+  const updated = await updateNativeSupporterEventCard(who, linkedShareToken, {
+    eventId: "linked-game",
+    type: "game",
+    date: "2099-04-02",
+    time: "19:15",
+    timezone: "America/Denver",
+    location: "Field 9",
+    opponent: "Updated Bears",
+  });
+  assert.equal(updated.share.ownerClerkUserId, linkedOwner);
+  const stored = await pool.query<{ owner_clerk_user_id: string; events: Array<Record<string, unknown>> }>(
+    "SELECT owner_clerk_user_id,events FROM schedule_shares WHERE id=ANY($1::uuid[]) ORDER BY owner_clerk_user_id",
+    [[linkedShareToken, otherShareToken]],
+  );
+  const linkedStored = stored.rows.find((row) => row.owner_clerk_user_id === linkedOwner);
+  const otherStored = stored.rows.find((row) => row.owner_clerk_user_id === otherOwner);
+  assert.equal(linkedStored?.events[0]?.date, "2099-04-02");
+  assert.equal(linkedStored?.events[0]?.location, "Field 9");
+  assert.equal(otherStored?.events[0]?.date, "2099-04-01");
+  assert.equal(otherStored?.events[0]?.location, "Field 2");
   const otherWho = identity();
   await link(otherWho, otherOwner);
   await assert.rejects(nativeEventWorkspace(otherWho, schedule.events[0]!.shareToken), errorStatus(404));
+  await assert.rejects(updateNativeSupporterEventCard(otherWho, linkedShareToken, {
+    eventId: "linked-game",
+    type: "game",
+    date: "2099-04-03",
+    time: "20:00",
+    timezone: "America/Denver",
+    location: "Unauthorized field",
+    opponent: "Unauthorized opponent",
+  }), errorStatus(404));
 });
 
 test("native schedule exposes only the invite for its matching active Live Taps game", async () => {
@@ -165,4 +195,39 @@ test("paused PIXL accounts cannot read their linked private schedule", async () 
   await link(who, pausedOwner);
 
   await assert.rejects(loadNativeSupporterSchedule(who), errorStatus(423));
+});
+
+test("blocked PIXL owners cannot read or update private schedules through a native link", async () => {
+  const who = identity();
+  const blockedOwner = await owner();
+  await link(who, blockedOwner);
+  const shareToken = (await pool.query<{ id: string }>(`INSERT INTO schedule_shares
+    (owner_clerk_user_id,title,team_season,events)
+    VALUES ($1,'Private Tigers card',$2,$3::jsonb) RETURNING id`,
+  [blockedOwner, GAME_ON_CARD_MARKER, JSON.stringify([{
+    id: "blocked-game",
+    type: "game",
+    date: "2099-04-01",
+    time: "18:00",
+    timezone: "America/New_York",
+    location: "Private field",
+    opponent: "Private opponent",
+  }])])).rows[0]!.id;
+  await pool.query(`INSERT INTO admin_identity_blocks(clerk_user_id,blocked_by_clerk_user_id,reason)
+    VALUES ($1,$2,'native link release fixture')`, [blockedOwner, `user_admin${randomUUID().replaceAll("-", "")}`]);
+
+  await assert.rejects(loadNativeSupporterSchedule(who), errorStatus(423));
+  await assert.rejects(updateNativeSupporterEventCard(who, shareToken, {
+    eventId: "blocked-game",
+    type: "game",
+    date: "2099-04-02",
+    time: "19:00",
+    timezone: "America/New_York",
+    location: "Changed field",
+    opponent: "Changed opponent",
+  }), errorStatus(423));
+  const stored = (await pool.query<{ events: Array<Record<string, unknown>> }>(
+    "SELECT events FROM schedule_shares WHERE id=$1", [shareToken],
+  )).rows[0]!;
+  assert.equal(stored.events[0]?.location, "Private field");
 });

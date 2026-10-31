@@ -11,11 +11,14 @@ before(async () => {
   const publicKey = await exportJWK(keys.publicKey);
   resolver = createLocalJWKSet({ keys: [{ ...publicKey, kid: "fixture" }] });
 });
-async function token(options: { issuer?: string; sub?: string; sid?: string | null; exp?: number; iat?: number; sts?: string } = {}) {
+async function token(options: {
+  issuer?: string; sub?: string; sid?: string | null; exp?: number; iat?: number; sts?: string; email?: string;
+} = {}) {
   const now = Math.floor(Date.now() / 1000);
   return new SignJWT({
     ...(options.sid === null ? {} : { sid: options.sid ?? "sess_nativeFixture" }),
     ...(options.sts ? { sts: options.sts } : {}),
+    ...(options.email ? { email: options.email, email_verified: true } : {}),
   }).setProtectedHeader({ alg: "RS256", kid: "fixture" })
     .setIssuer(options.issuer ?? issuer).setSubject(options.sub ?? "user_nativeFixture")
     .setIssuedAt(options.iat ?? now).setExpirationTime(options.exp ?? now + 60).sign(keys.privateKey);
@@ -23,6 +26,13 @@ async function token(options: { issuer?: string; sub?: string; sid?: string | nu
 test("native verifier accepts only a signed, short-lived native session", async () => {
   assert.deepEqual(await verifyNativeIdentity(await token(), issuer, resolver),
     { issuer, subject: "user_nativeFixture" });
+});
+test("matching verified email claims never merge distinct native identity subjects", async () => {
+  const sharedEmail = "parent@example.com";
+  const first = await verifyNativeIdentity(await token({ sub: "user_nativeFirst", email: sharedEmail }), issuer, resolver);
+  const second = await verifyNativeIdentity(await token({ sub: "user_nativeSecond", email: sharedEmail }), issuer, resolver);
+  assert.equal(first.issuer, second.issuer);
+  assert.notEqual(first.subject, second.subject);
 });
 test("PWA issuer, expired, missing-session, pending-session and long-lived JWTs are rejected", async () => {
   const now = Math.floor(Date.now() / 1000);
