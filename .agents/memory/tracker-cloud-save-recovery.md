@@ -9,6 +9,12 @@ Completed tracker results are local-first. Persist retryable cloud failures unde
 
 **How to apply:** When changing completed-game saves, retry handling, or reload hydration, cover account isolation, acknowledgement timing, local-result retention, and conflict recovery as one end-to-end flow.
 
+For native Event Card stat taps, queue each tap durably per account and event, then send commands serially. Keep the in-flight mutation ID and expected revision unchanged until the server acknowledges it; assign the next queued command the acknowledged revision. A stale revision remains a user-visible conflict, not a transport retry.
+
+**Why:** Rapid taps must remain responsive on slow connections, while retrying a request whose response was lost must not create duplicate game events or overwrite a revision changed on another device.
+
+**How to apply:** When changing native stat saves or their persistence tests, cover process interruption between queued commands, same-ID retry after an uncertain response, and explicit conflict recovery.
+
 Publish a completed game to the temporary supporter share only after its finalized tracker project is confirmed in the cloud. If that project save fails, keep the share pending; after recovery, publish the final state and let the HYPE Card read the recap from the owner-owned project. A failed final-share update must remain retryable.
 
 **Why:** The HYPE Card reads durable summaries from the cloud tracker project, while finalizing the temporary share removes its live scoreboard. Publishing the share first can briefly leave the card with neither the live board nor the new recap.

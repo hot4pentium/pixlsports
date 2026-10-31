@@ -17,13 +17,6 @@ enum NativeEventScheduleChangeReason: String {
     var refreshesEventDetail: Bool { self != .eventCardEdited }
 }
 
-struct NativePrepItem: Codable, Identifiable, Equatable {
-    var id: String
-    var label: String
-    var completed: Bool
-    var section: String?
-}
-
 struct NativeEventWorkspace: Decodable {
     struct Prep: Decodable {
         let items: [NativePrepItem]
@@ -119,33 +112,10 @@ final class NativeEventWorkspaceUITestFixture: ObservableObject {
 }
 #endif
 
-struct NativeEventToolCommand: Codable {
-    let shareToken: String
-    let mutationId: String
-    let linkId: String
-    var expectedRevision: Int
-    let kind: String
-    var statId: String? = nil
-    var athlete: Bool? = nil
-    var opponent: Bool? = nil
-    var yards: Int? = nil
-    var delta: Int? = nil
-    var soccerFormat: String? = nil
-    var recordScore: Bool? = nil
-    var outcome: String? = nil
-    var items: [NativePrepItem]? = nil
-    var notes: String? = nil
-}
-
 struct NativeQueuedEventToolCommand: Codable {
     var command: NativeEventToolCommand
     var attempted: Bool
     var displayOptimistically: Bool
-}
-
-private struct PersistedNativeEventToolQueue: Codable {
-    var commands: [NativeQueuedEventToolCommand]
-    var conflictBlocked: Bool
 }
 
 /// Stat taps update the local display immediately and persist in an account-scoped
@@ -161,6 +131,7 @@ final class NativeEventToolModel: ObservableObject {
     @Published var reloadGeneration = 0
     private let shareToken: String
     private let storageKey: String
+    private let durableQueue: NativeEventDurableQueue<NativeQueuedEventToolCommand>
     private var drainingQueue = false
     private static let maximumPendingCommands = 1_000
 
@@ -227,26 +198,27 @@ final class NativeEventToolModel: ObservableObject {
     init(shareToken: String, accountID: String) {
         self.shareToken = shareToken
         storageKey = "pixl-native-event-pending:\(accountID):\(shareToken)"
-        if let data = UserDefaults.standard.data(forKey: storageKey) {
-            if let saved = try? JSONDecoder().decode(PersistedNativeEventToolQueue.self, from: data) {
-                pendingQueue = saved.commands
-                conflictBlocked = saved.conflictBlocked
-                for index in pendingQueue.indices where pendingQueue[index].attempted {
-                    pendingQueue[index].displayOptimistically = false
-                }
-            } else if let oldCommand = try? JSONDecoder().decode(NativeEventToolCommand.self, from: data) {
-                // Migrate the previous single-command format. Its request may
-                // already have committed, so keep its exact ID and revision.
-                pendingQueue = [.init(command: oldCommand, attempted: true, displayOptimistically: false)]
-            } else {
-                unreadablePendingData = true
-                errorMessage = "A saved tracker change could not be read. It has not been removed."
-            }
-            if conflictBlocked {
-                errorMessage = "The tracker changed elsewhere. Your pending changes are still saved on this iPhone."
-            } else if !pendingQueue.isEmpty {
-                errorMessage = "Checking your saved tracker changes…"
-            }
+        let legacyCommand = UserDefaults.standard.data(forKey: storageKey)
+            .flatMap { try? JSONDecoder().decode(NativeEventToolCommand.self, from: $0) }
+        let legacyQueue = legacyCommand.map {
+            [NativeQueuedEventToolCommand(command: $0, attempted: true, displayOptimistically: false)]
+        } ?? []
+        durableQueue = NativeEventDurableQueue(
+            storageKey: storageKey,
+            initialCommands: legacyQueue
+        )
+        pendingQueue = durableQueue.commands
+        conflictBlocked = durableQueue.conflictBlocked
+        if durableQueue.storageError != nil {
+            unreadablePendingData = true
+            errorMessage = durableQueue.storageError?.localizedDescription
+        } else if conflictBlocked {
+            errorMessage = "The tracker changed elsewhere. Your pending changes are still saved on this iPhone."
+        } else if !pendingQueue.isEmpty {
+            errorMessage = "Checking your saved tracker changes…"
+        }
+        for index in pendingQueue.indices where pendingQueue[index].attempted {
+            pendingQueue[index].displayOptimistically = false
         }
     }
 
@@ -255,6 +227,7 @@ final class NativeEventToolModel: ObservableObject {
         precondition(NativeEventWorkspaceUITestFixture.isRequested)
         shareToken = "ui-test-event"
         storageKey = "unused-ui-test-prep-draft"
+        durableQueue = NativeEventDurableQueue(storageKey: storageKey)
         workspace = uiTestFixture.workspace
     }
 #endif
@@ -416,22 +389,14 @@ final class NativeEventToolModel: ObservableObject {
         pendingQueue.removeAll()
         conflictBlocked = false
         unreadablePendingData = false
-        UserDefaults.standard.removeObject(forKey: storageKey)
+        durableQueue.removeAll()
         errorMessage = nil
         await load(clerk: clerk)
         reloadGeneration += 1
     }
 
     private func persistPendingQueue() throws {
-        guard !pendingQueue.isEmpty else {
-            UserDefaults.standard.removeObject(forKey: storageKey)
-            return
-        }
-        let saved = PersistedNativeEventToolQueue(
-            commands: pendingQueue,
-            conflictBlocked: conflictBlocked
-        )
-        UserDefaults.standard.set(try JSONEncoder().encode(saved), forKey: storageKey)
+        try durableQueue.save(commands: pendingQueue, conflictBlocked: conflictBlocked)
     }
 
     private func reconcileRestoredStatQueue() {

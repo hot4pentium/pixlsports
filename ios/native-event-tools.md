@@ -15,9 +15,14 @@ native sharing—not embedded web tools.
   selected game's session. Other games and unrelated payload fields are retained.
 - Both tools check revisions. A conflicting save requires discarding the pending
   command and reloading; it never silently overwrites another device's work.
-- A failed request keeps its exact command and mutation ID on this iPhone, scoped
-  to the native account and event. Retrying does not duplicate a saved tap.
-  A command also contains the account-link ID, preventing replay after relinking.
+- Stat taps are added immediately to an account- and event-scoped iPhone outbox,
+  shown optimistically, and sent one at a time. The outbox survives app suspension.
+  Each tap keeps its mutation ID and sent revision until acknowledged, so a retry
+  after a lost response cannot duplicate a saved play. Later queued taps use the
+  revision returned by the previous acknowledgment.
+- A failed request keeps its exact command on this iPhone. Revision conflicts
+  remain visible and require an explicit retry or discard-and-reload choice.
+  Commands include the account-link ID, preventing replay after relinking.
 - Writes require a connection and server acknowledgment. This is not an offline
   tracker; don't describe an unacknowledged tap as saved.
 
@@ -61,6 +66,13 @@ Backend regression tests:
 ```sh
 pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/lib/nativeEventWorkspace.test.ts
 pnpm --filter @workspace/api-server typecheck
+```
+
+The durable iPhone outbox interruption check can run anywhere with Swift:
+
+```sh
+swiftc "ios/PIXL Sports/NativeEventDurableQueue.swift" ios/Tests/NativeEventDurableQueueChecks.swift -o /tmp/pixl-event-queue-checks
+/tmp/pixl-event-queue-checks
 ```
 
 Dashboard XCTest coverage checks square grid geometry, three cards per row,

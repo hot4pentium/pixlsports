@@ -222,6 +222,34 @@ test("native tracking preserves prior games, athlete attribution, revisions, and
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("stat", state.trackerRevision, { statId: "goal" })), denied(409));
 });
 
+test("native stat batches survive an interrupted acknowledgment without duplicate plays", async () => {
+  const a = await fixture("volleyball");
+  let state = await nativeEventWorkspace(a.who, a.shareToken, a.command("start", 0));
+  const firstTap = a.command("stat", state.trackerRevision, { statId: "dig", athlete: true });
+  state = await nativeEventWorkspace(a.who, a.shareToken, firstTap);
+
+  // The client loses the response to its second queued tap, then retries the
+  // exact saved mutation before advancing the next tap to the new revision.
+  const interruptedTap = a.command("stat", state.trackerRevision, { statId: "assist", athlete: true });
+  state = await nativeEventWorkspace(a.who, a.shareToken, interruptedTap);
+  const acknowledgedRevision = state.trackerRevision;
+  state = await nativeEventWorkspace(a.who, a.shareToken, interruptedTap);
+  assert.equal(state.trackerRevision, acknowledgedRevision, "retrying an acknowledged tap must not increment the revision");
+
+  const finalTap = a.command("stat", state.trackerRevision, { statId: "dig", athlete: true });
+  state = await nativeEventWorkspace(a.who, a.shareToken, finalTap);
+  const reopened = await nativeEventWorkspace(a.who, a.shareToken);
+  assert.equal(reopened.trackerRevision, state.trackerRevision);
+  assert.equal(reopened.game?.events.length, 3, "each queued tap must be present exactly once");
+  assert.deepEqual(reopened.game?.stats, { dig: 2, assist: 1 });
+  assert.equal(new Set(reopened.game?.events.map((play) => play.id)).size, 3);
+  await assert.rejects(
+    nativeEventWorkspace(a.who, a.shareToken, a.command("stat", 1, { statId: "kill", athlete: true })),
+    denied(409),
+    "stale batches remain explicit revision conflicts",
+  );
+});
+
 test("score-only games persist both scores without player stats and finalize the same Event Card", async () => {
   for (const keepZeroScore of [false, true]) {
     const a = await fixture("basketball");
