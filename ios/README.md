@@ -58,6 +58,10 @@ The app does not supply either Apple capability with a guessed team/prefix/domai
   live/final status. It does not return raw tracker data or depend on public
   HYPE Card visibility. The previous device-saved public athlete-page URL is
   no longer used by Supporter Home.
+- Families can create Event Cards from the dashboard and edit an existing card
+  from its detail screen. Each save checks the linked account and card owner on
+  the server, then confirms the changed card through a fresh private schedule
+  read. The existing web management and public Event Card link stay in place.
 - Active game Event Cards can open the native Live Taps screen. Sending a cheer
   still requires scanning the owner’s private family QR; the public card link
   remains view-only. The iPhone uses the existing family-token tap endpoint,
@@ -93,7 +97,7 @@ issuer in an incoming JWT, match accounts by email, or replace the managed PWA
 keys. Existing account IDs/data ownership remain unchanged.
 
 **Not connected yet:** private Event Cards and QR-authorized Live Taps are the
-current native data surfaces. Stats, editing, and other account data are not
+current native data surfaces. Native stat editing and other account data are not
 included. Every future private native read must resolve the verified mapping and
 recheck current account lifecycle/editor restrictions; cached links or previously
 loaded data are not access.

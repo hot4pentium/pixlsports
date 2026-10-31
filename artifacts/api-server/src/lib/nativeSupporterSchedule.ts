@@ -78,6 +78,9 @@ export async function createNativeSupporterEventCard(
       tx,
       "This PIXL account can’t create Event Cards right now. Check its account status on PIXL Sports.",
     );
+    // Serialize idempotent retries for the same account so simultaneous
+    // requests cannot both observe a missing card and insert duplicates.
+    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`native-event:${owner}`]);
 
     const { rows: invites } = await tx.query<{ team_name: string }>(`SELECT team_name
       FROM athlete_invites
@@ -154,6 +157,88 @@ export async function createNativeSupporterEventCard(
     tx.release();
   }
   return result;
+}
+
+export async function updateNativeSupporterEventCard(
+  identity: NativeIdentity,
+  shareToken: string,
+  draft: NativeEventCardDraft,
+): Promise<CreatedNativeEventCard> {
+  const tx = await pool.connect();
+  try {
+    await tx.query("BEGIN");
+    const { rows: links } = await tx.query<{ owner_clerk_user_id: string }>(`SELECT owner_clerk_user_id
+      FROM native_account_links
+      WHERE native_issuer=$1 AND native_subject=$2
+      FOR SHARE`, [identity.issuer, identity.subject]);
+    const owner = links[0]?.owner_clerk_user_id;
+    if (!owner) throw new NativeLinkError(409, "Connect your PIXL web account before editing an Event Card.");
+
+    await assertLinkableWebAccount(
+      owner,
+      tx,
+      "This PIXL account can’t edit Event Cards right now. Check its account status on PIXL Sports.",
+    );
+    // Share this account lock with tracker/prep writers to avoid replacing a
+    // concurrently updated event payload while changing its schedule details.
+    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`native-event:${owner}`]);
+
+    const { rows } = await tx.query<{
+      id: string;
+      ownerClerkUserId: string;
+      title: string;
+      teamSeason: string;
+      events: unknown;
+    }>(`SELECT id::text AS id, owner_clerk_user_id AS "ownerClerkUserId",
+        title, team_season AS "teamSeason", events
+      FROM schedule_shares
+      WHERE id=$1 AND owner_clerk_user_id=$2 AND team_season=$3
+      FOR UPDATE`, [shareToken, owner, GAME_ON_CARD_MARKER]);
+    const share = rows[0];
+    const events = Array.isArray(share?.events) ? share.events as Array<Record<string, unknown>> : [];
+    const event = events.length === 1 ? events[0] : undefined;
+    if (!share || !event || event.id !== draft.eventId
+      || (event.type !== "game" && event.type !== "practice")) {
+      throw new NativeLinkError(404, "This Event Card is not available to your account.");
+    }
+
+    const updatedEvent = {
+      ...event,
+      type: draft.type,
+      date: draft.date,
+      time: draft.time,
+      timezone: draft.timezone,
+      location: draft.location.trim(),
+      opponent: draft.type === "practice" ? "" : draft.opponent.trim(),
+    };
+    const updatedEvents = [updatedEvent];
+    const { rows: updatedRows } = await tx.query<{
+      id: string;
+      ownerClerkUserId: string;
+      title: string;
+      teamSeason: string;
+      events: unknown;
+    }>(`UPDATE schedule_shares
+      SET events=$1::jsonb, updated_at=NOW()
+      WHERE id=$2 AND owner_clerk_user_id=$3 AND team_season=$4
+      RETURNING id::text AS id, owner_clerk_user_id AS "ownerClerkUserId",
+        title, team_season AS "teamSeason", events`,
+    [JSON.stringify(updatedEvents), shareToken, owner, GAME_ON_CARD_MARKER]);
+    const updated = updatedRows[0];
+    if (!updated) throw new NativeLinkError(404, "This Event Card is not available to your account.");
+    await tx.query("COMMIT");
+    return {
+      shareToken: updated.id,
+      eventId: draft.eventId,
+      created: false,
+      share: updated,
+    };
+  } catch (error) {
+    await tx.query("ROLLBACK");
+    throw error;
+  } finally {
+    tx.release();
+  }
 }
 
 export async function loadNativeSupporterSchedule(

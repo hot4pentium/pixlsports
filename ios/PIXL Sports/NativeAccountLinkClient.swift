@@ -97,7 +97,12 @@ final class NativeAccountLinkClient {
         return data
     }
 
-    func postData<T: Encodable>(_ path: String, body: T, clerk: Clerk) async throws -> Data {
+    func postData<T: Encodable>(
+        _ path: String,
+        body: T,
+        method: String = "POST",
+        clerk: Clerk
+    ) async throws -> Data {
         let origin = try Self.apiOrigin()
         guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
             throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
@@ -107,6 +112,7 @@ final class NativeAccountLinkClient {
         guard !components.isEmpty,
               components.allSatisfy({
                   String($0).range(of: "^[a-z-]+$", options: .regularExpression) != nil
+                    || String($0).range(of: "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", options: .regularExpression) != nil
               }) else {
             throw NativeAccountLinkError.message("The PIXL Sports request could not be prepared.")
         }
@@ -117,7 +123,7 @@ final class NativeAccountLinkClient {
         }
 
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = method
         request.httpBody = try JSONEncoder().encode(body)
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

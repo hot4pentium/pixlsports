@@ -7,7 +7,11 @@ import {
 } from "@workspace/api-zod";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
-import { createNativeSupporterEventCard, loadNativeSupporterSchedule } from "../lib/nativeSupporterSchedule";
+import {
+  createNativeSupporterEventCard,
+  loadNativeSupporterSchedule,
+  updateNativeSupporterEventCard,
+} from "../lib/nativeSupporterSchedule";
 import { loadNativeSupporterHypeCard } from "../lib/nativeSupporterHypeCard";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
@@ -45,6 +49,23 @@ nativeAccountLinkRouter.use(handle(async (req, res, next) => {
   next();
 }));
 const identity = (res: { locals: Record<string, unknown> }) => res.locals.nativeIdentity as NativeIdentity;
+const NativeEventCardEditBody = z.object({
+  eventId: z.uuid(),
+  type: z.enum(["game", "practice"]),
+  date: z.string().length(10),
+  time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  timezone: z.string().min(1).max(100),
+  location: z.string().max(300),
+  opponent: z.string().max(200),
+}).strict();
+
+function isValidNativeEventDate(date: string) {
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date)
+    && Number.isFinite(parsed.getTime())
+    && parsed.toISOString().slice(0, 10) === date;
+}
+
 nativeAccountLinkRouter.get("/link", handle(async (_req, res) => {
   res.json(await service.current(identity(res)));
 }));
@@ -105,6 +126,28 @@ nativeAccountLinkRouter.post("/supporter/event-cards", handle(async (req, res) =
     shareToken: created.shareToken,
     eventId: created.eventId,
   });
+}));
+nativeAccountLinkRouter.patch("/supporter/event-cards/:shareToken", handle(async (req, res) => {
+  const parsedToken = z.uuid().safeParse(req.params.shareToken);
+  const parsed = NativeEventCardEditBody.safeParse(req.body);
+  if (!parsedToken.success || !parsed.success
+    || !isValidNativeEventDate(parsed.data.date)
+    || !isIanaTimezone(parsed.data.timezone)
+    || (parsed.data.type === "game" && !parsed.data.opponent.trim())) {
+    throw new NativeLinkError(400, "Check the event type, date, time, time zone, and opponent.");
+  }
+
+  const updated = await updateNativeSupporterEventCard(
+    identity(res),
+    parsedToken.data,
+    parsed.data,
+  );
+  try {
+    await reconcileGameOnShare(updated.share);
+  } catch {
+    req.log.warn("Native Event Card updated; reminder scheduling needs reconciliation");
+  }
+  res.json({ shareToken: updated.shareToken, eventId: updated.eventId });
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
   res.json(await loadNativeSupporterHypeCard(identity(res)));

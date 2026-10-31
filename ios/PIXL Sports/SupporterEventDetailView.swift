@@ -150,6 +150,31 @@ struct SupporterEventDetailView: View {
                 eventCard(schedule: schedule, event: event)
                 eventInformation(schedule: schedule, event: event)
 
+                if let clerk {
+                    NavigationLink {
+                        NativeCreateEventCardView(
+                            athleteName: schedule.athleteName ?? "your athlete",
+                            teamName: schedule.teamName,
+                            initialTimezone: event.timezone ?? schedule.timezone,
+                            clerk: clerk,
+                            existingEvent: event,
+                            shareToken: event.shareToken,
+                            onCreated: { _ in Task { await load() } }
+                        )
+                    } label: {
+                        Label("Edit Event Card", systemImage: "pencil")
+                            .font(.system(size: buttonPointSize, weight: .bold))
+                            .foregroundStyle(SupporterHomeColors.accent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .frame(minHeight: 44)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 15))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("event-detail-edit")
+                }
+
                 if event.liveTapsActive,
                    let inviteToken = event.liveTapsInviteToken,
                    let sport = event.liveTapsSport {

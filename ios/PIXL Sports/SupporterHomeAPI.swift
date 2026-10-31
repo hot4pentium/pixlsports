@@ -100,6 +100,16 @@ private struct NativeEventCardCreateResponse: Decodable {
     let eventId: String
 }
 
+private struct NativeEventCardEditBody: Encodable {
+    let eventId: String
+    let type: String
+    let date: String
+    let time: String
+    let timezone: String
+    let location: String
+    let opponent: String
+}
+
 enum SupporterHomeAPI {
     static func fetchPrivateSchedule(clerk: Clerk) async throws -> NativeSupporterSchedule {
         let data = try await NativeAccountLinkClient().getData("supporter/schedule", clerk: clerk)
@@ -154,6 +164,59 @@ enum SupporterHomeAPI {
             throw error
         } catch {
             throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func updateEventCard(
+        shareToken: String,
+        draft: NativeEventCardDraft,
+        clerk: Clerk
+    ) async throws -> String {
+        let body = NativeEventCardEditBody(
+            eventId: draft.id,
+            type: draft.type,
+            date: draft.date,
+            time: draft.time,
+            timezone: draft.timezone,
+            location: draft.location,
+            opponent: draft.opponent
+        )
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/event-cards/\(shareToken)",
+            body: body,
+            method: "PATCH",
+            clerk: clerk
+        )
+        do {
+            let response = try JSONDecoder().decode(NativeEventCardCreateResponse.self, from: data)
+            guard response.shareToken == shareToken, response.eventId == draft.id else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
+            return response.shareToken
+        } catch let error as SupporterHomeAPIError {
+            throw error
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func confirmEventCard(
+        shareToken: String,
+        draft: NativeEventCardDraft,
+        clerk: Clerk
+    ) async throws {
+        let schedule = try await fetchPrivateSchedule(clerk: clerk)
+        guard schedule.status == "linked",
+              let event = schedule.events.first(where: {
+                  $0.shareToken == shareToken && $0.eventId == draft.id
+              }),
+              event.type == draft.type,
+              event.date == draft.date,
+              event.time == draft.time,
+              event.timezone == draft.timezone,
+              event.location == draft.location,
+              event.opponent == draft.opponent else {
+            throw SupporterHomeAPIError.eventSaveNotConfirmed
         }
     }
 
@@ -231,6 +294,7 @@ enum SupporterHomeAPIError: LocalizedError {
     case invalidResponse
     case privateScheduleUnavailable
     case eventUnavailable
+    case eventSaveNotConfirmed
 
     var errorDescription: String? {
         switch self {
@@ -240,6 +304,8 @@ enum SupporterHomeAPIError: LocalizedError {
             return "Reconnect the PIXL account that owns this Event Card to view its details."
         case .eventUnavailable:
             return "This Event Card is no longer available in your verified PIXL schedule."
+        case .eventSaveNotConfirmed:
+            return "The Event Card was saved, but the refreshed schedule didn’t confirm the change. Check your connection and try again."
         }
     }
 }

@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { createNativeSupporterEventCard, loadNativeSupporterSchedule } from "./nativeSupporterSchedule";
+import {
+  createNativeSupporterEventCard,
+  loadNativeSupporterSchedule,
+  updateNativeSupporterEventCard,
+} from "./nativeSupporterSchedule";
 import type { NativeIdentity } from "./nativeIdentity";
 import { GAME_ON_CARD_MARKER } from "./gameOnCard";
 
@@ -56,11 +60,12 @@ test("native Event Card creation is account-scoped, redacts prep fields, and saf
     location: "Field 2",
     opponent: "Bears",
   };
-  const first = await createNativeSupporterEventCard(who, draft);
-  const retry = await createNativeSupporterEventCard(who, draft);
+  const [first, retry] = await Promise.all([
+    createNativeSupporterEventCard(who, draft),
+    createNativeSupporterEventCard(who, draft),
+  ]);
 
-  assert.equal(first.created, true);
-  assert.equal(retry.created, false);
+  assert.notEqual(first.created, retry.created, "concurrent retries create only one card");
   assert.equal(retry.shareToken, first.shareToken);
   assert.equal(first.share.teamSeason, GAME_ON_CARD_MARKER);
   const savedEvent = (first.share.events as Array<Record<string, unknown>>)[0];
@@ -71,10 +76,67 @@ test("native Event Card creation is account-scoped, redacts prep fields, and saf
   assert.equal(savedEvent?.snacks, "");
   assert.equal(savedEvent?.drinks, "");
 
+  await pool.query(`UPDATE schedule_shares
+    SET events=jsonb_set(events, '{0}', events->0 || $1::jsonb)
+    WHERE id=$2`, [JSON.stringify({
+    status: "live",
+    snacks: "Fruit",
+    drinks: "Water",
+    notes: "Bring cleats",
+  }), first.shareToken]);
+
+  const updatedDraft = {
+    ...draft,
+    type: "practice" as const,
+    date: "2099-04-02",
+    time: "19:15",
+    timezone: "America/Denver",
+    location: "Field 4",
+    opponent: "",
+  };
+  const updated = await updateNativeSupporterEventCard(who, first.shareToken, updatedDraft);
+  const updateRetry = await updateNativeSupporterEventCard(who, first.shareToken, updatedDraft);
+  assert.equal(updated.shareToken, first.shareToken);
+  assert.equal(updateRetry.shareToken, first.shareToken);
+  const updatedEvent = (updateRetry.share.events as Array<Record<string, unknown>>)[0];
+  assert.equal(updatedEvent?.type, "practice");
+  assert.equal(updatedEvent?.date, "2099-04-02");
+  assert.equal(updatedEvent?.time, "19:15");
+  assert.equal(updatedEvent?.timezone, "America/Denver");
+  assert.equal(updatedEvent?.location, "Field 4");
+  assert.equal(updatedEvent?.opponent, "");
+  assert.equal(updatedEvent?.status, "live");
+  assert.equal(updatedEvent?.snacks, "Fruit");
+  assert.equal(updatedEvent?.drinks, "Water");
+  assert.equal(updatedEvent?.notes, "Bring cleats");
+
+  await pool.query("UPDATE account_access SET lifecycle_status='paused' WHERE owner_clerk_user_id=$1", [linkedOwner]);
+  await assert.rejects(
+    updateNativeSupporterEventCard(who, first.shareToken, updatedDraft),
+    (error: unknown) => Boolean(error && typeof error === "object" && "status" in error && error.status === 423),
+  );
+  await pool.query("UPDATE account_access SET lifecycle_status='active' WHERE owner_clerk_user_id=$1", [linkedOwner]);
+
+  const otherOwner = await owner();
+  const foreignEventId = randomUUID();
+  const { rows: foreignRows } = await pool.query<{ id: string }>(`INSERT INTO schedule_shares
+    (owner_clerk_user_id,title,team_season,events)
+    VALUES ($1,'Other team',$2,$3::jsonb) RETURNING id::text AS id`,
+  [otherOwner, GAME_ON_CARD_MARKER, JSON.stringify([{
+    id: foreignEventId, type: "game", status: "upcoming", date: "2099-04-01", time: "18:00",
+    timezone: "America/Chicago", location: "Other field", opponent: "Other team",
+  }])]);
+  await assert.rejects(
+    updateNativeSupporterEventCard(who, foreignRows[0]!.id, { ...draft, eventId: foreignEventId }),
+    (error: unknown) => Boolean(error && typeof error === "object" && "status" in error && error.status === 404),
+  );
+
   const schedule = await loadNativeSupporterSchedule(who);
   assert.equal(schedule.events.length, 1);
   assert.equal(schedule.events[0]?.eventId, draft.eventId);
   assert.equal(schedule.events[0]?.shareToken, first.shareToken);
+  assert.equal(schedule.events[0]?.type, "practice");
+  assert.equal(schedule.events[0]?.date, "2099-04-02");
 });
 
 test("native Event Card creation rejects an unlinked iPhone identity", async () => {
