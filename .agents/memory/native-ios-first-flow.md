@@ -3,7 +3,7 @@ name: Cross-platform account path
 description: The selected client and shared-auth direction for PIXL Sports.
 ---
 
-Target a native SwiftUI iPhone app for the App Store; keep the existing PWA and its Replit-managed Clerk sign-in for web and Android (the PWA can be packaged for Google Play as a Trusted Web Activity). The user approved a dedicated external Clerk app for iOS-only authentication, with Sign in with Apple and the prebuilt native UI. It must securely link to existing PIXL account/data. Replit-managed Clerk supports the web app but not native ClerkKit/Native API, and its accounts are not designed for direct export. Existing records are keyed to Clerk user IDs, so the API needs a verified identity-linking strategy.
+Prioritize the native SwiftUI iPhone app as the mobile development target, using the existing PWA as the reference for product behavior and visual direction. Do not plan a separate native Android client now; this focus choice does not itself decide whether web or PWA access should be removed. The user approved a dedicated external Clerk app for iOS-only authentication, with Sign in with Apple and the prebuilt native UI. It must securely link to existing PIXL account/data. Replit-managed Clerk supports the web app but not native ClerkKit/Native API, and its accounts are not designed for direct export. Existing records are keyed to Clerk user IDs, so the API needs a verified identity-linking strategy.
 
 Do not replace PWA auth, migrate production accounts, or connect the SwiftUI project to the generic personal “My Application” Clerk project. The user chose a new dedicated iOS Clerk app instead. The native SwiftUI prototype remains part of the product; the PWA is not replacing it.
 
@@ -17,13 +17,11 @@ Replit's private development preview can redirect requests from an external nati
 
 **Why:** new native endpoints can be present in the workspace but absent from the published website. A production fallback hides that distinction and makes repeated plist edits/rebuilds inconclusive.
 
-**Why:** the user chose to preserve PWA sign-in and build a standalone native iOS app, then selected the private Event Card schedule as its first data milestone. It must not depend on a public HYPE Card or match users by email.
-
-**Why:** the user approved translating the existing PIXL web visual style into SwiftUI screen by screen, starting with the schedule, while keeping native sign-in and real private schedule data.
+**Why:** the user chose to focus mobile development on native iOS, use the PWA as its design and behavior reference, and avoid expanding to another native mobile platform. The first data milestone is the private Event Card schedule. It must not depend on a public HYPE Card or match users by email.
 
 **Why:** `.replit.dev` previews are private by default; external iOS requests can receive an authentication redirect even when the API responds normally inside the workspace.
 
-**How to apply:** keep PWA auth intact. Every native private read must resolve the verified native-to-web account link, recheck current account restrictions, return only the data needed by that screen, and avoid caching private schedule data. Translate the shared brand into native SwiftUI one screen at a time rather than embedding the PWA.
+**How to apply:** every native private read must resolve the verified native-to-web account link, recheck current account restrictions, return only the data needed by that screen, and avoid caching private schedule data. Use the PWA for workflows, visual references, assets, and API contracts; implement native screens in SwiftUI rather than assuming React/CSS can be reused. Do not remove web or PWA access without an explicit migration decision.
 
 ## Source and Mac copy
 
