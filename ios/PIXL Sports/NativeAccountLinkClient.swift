@@ -11,6 +11,10 @@ struct NativeAccountLinkState: Decodable, Sendable {
     let accountLabel: String?
 }
 
+private struct NativeAccountLinkFailure: Decodable {
+    let error: String
+}
+
 enum NativeAccountLinkError: LocalizedError {
     case message(String)
     var errorDescription: String? {
@@ -77,8 +81,7 @@ final class NativeAccountLinkClient {
             throw NativeAccountLinkError.message("The PIXL Sports schedule could not be checked.")
         }
         guard response.statusCode == 200 else {
-            struct Failure: Decodable { let error: String }
-            if let failure = try? JSONDecoder().decode(Failure.self, from: data) {
+            if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
                 throw NativeAccountLinkError.message(failure.error)
             }
             let host = origin.host ?? "the configured server"
@@ -127,8 +130,7 @@ final class NativeAccountLinkClient {
             throw NativeAccountLinkError.message("The Event Card could not be saved.")
         }
         guard (200...299).contains(response.statusCode) else {
-            struct Failure: Decodable { let error: String }
-            if let failure = try? JSONDecoder().decode(Failure.self, from: data) {
+            if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
                 throw NativeAccountLinkError.message(failure.error)
             }
             let host = origin.host ?? "the configured server"
@@ -173,8 +175,7 @@ final class NativeAccountLinkClient {
             throw NativeAccountLinkError.message("Live Taps could not be checked.")
         }
         guard (200..<300).contains(response.statusCode) else {
-            struct Failure: Decodable { let error: String }
-            if let failure = try? JSONDecoder().decode(Failure.self, from: data) {
+            if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
                 throw NativeAccountLinkError.message(failure.error)
             }
             throw NativeAccountLinkError.message(
@@ -209,8 +210,7 @@ final class NativeAccountLinkClient {
             throw NativeAccountLinkError.message("The account connection could not be checked.")
         }
         guard response.statusCode == 200 else {
-            struct Failure: Decodable { let error: String }
-            let message = (try? JSONDecoder().decode(Failure.self, from: data))?.error
+            let message = (try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data))?.error
             let detail = message.map { "\($0) (HTTP \(response.statusCode))" }
                 ?? NativeAccountLinkEndpoint.responseFailure(
                     status: response.statusCode,
