@@ -193,6 +193,34 @@ confirmed discard, and reopening the unchanged saved data.
 Allow up to 25 seconds per timeline transition. Linux source checks or browser
 tests do not verify SwiftUI navigation or iOS lifecycle behavior.
 
+### Compact Prep with large iPhone text
+
+Two local-fixture cases cover the first four long checklist labels at 320-point
+width, at default and accessibility XXXL text sizes:
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testCompactPrepLongLabelsAtNarrowDefaultWidth \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testCompactPrepLongLabelsAtNarrowAccessibilityXXXLWidth
+```
+
+These check each full label and readiness value, expanded row heights,
+nonoverlapping hit areas, full control containment above the fixed step bar,
+and Apple's text-clipping/hit-region audits for each visible task and the
+**Manage full Prep** / **Back to Content** controls. Screenshots are retained
+for every task and both navigation actions. The full editor changes a fifth
+task and notes; returning to Content and reopening must preserve all edits
+and keep Save Prep enabled without making a save request.
+
+`--prep-long-labels` only changes the Debug workspace used with both
+`--ui-testing-event-detail` and `--ui-testing-prep-draft`. It omits the
+timeline-only test diagnostics to preserve the normal Content viewport.
+The existing timeline/draft fixture is unchanged without this argument.
+Run these cases on a small iPhone simulator and inspect the retained
+screenshots before release. They cannot be compiled or run in this Linux
+workspace; source checks do not verify native rendering or VoiceOver speech.
+
 ### Signed-in quick Prep persistence
 
 Two opt-in cases in `SupporterEventDetailUITests` use the **real native auth,

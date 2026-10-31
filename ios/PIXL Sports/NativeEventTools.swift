@@ -73,7 +73,13 @@ final class NativeEventWorkspaceUITestFixture: ObservableObject {
     let workspace = NativeEventWorkspace(
         linkId: "fictional-prep-draft", prepRevision: 1, trackerRevision: 0,
         sport: "softball",
-        prep: .init(items: [
+        prep: .init(items: ProcessInfo.processInfo.arguments.contains("--prep-long-labels") ? [
+            .init(id: "water", label: "Pack enough water for warmups and the whole game", completed: false),
+            .init(id: "cleats", label: "Bring cleats and spare socks for the muddy field", completed: false),
+            .init(id: "uniform", label: "Pack the full uniform with both home and away jerseys", completed: false),
+            .init(id: "arrival", label: "Confirm the field entrance and warmup arrival time", completed: false),
+            .init(id: "snack", label: "Bring a snack for after the game", completed: false)
+        ] : [
             .init(id: "water", label: "Pack water", completed: false),
             .init(id: "cleats", label: "Pack cleats", completed: false)
         ], notes: "Saved fixture note"),

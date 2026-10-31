@@ -200,9 +200,7 @@ struct NativeEventPrepView: View {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { isManagingFullPrep = true }
             } label: {
-                Label("Manage full Prep", systemImage: "slider.horizontal.3")
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                prepNavigationLabel("Manage full Prep", systemImage: "slider.horizontal.3")
             }
             .buttonStyle(.plain)
             .foregroundStyle(SupporterHomeColors.accent)
@@ -219,13 +217,16 @@ struct NativeEventPrepView: View {
                 Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
                     .foregroundStyle(item.completed ? SupporterHomeColors.accent : SupporterHomeColors.muted)
+                    .fixedSize()
                     .accessibilityHidden(true)
                 Text(item.label)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(item.completed ? SupporterHomeColors.muted : .white)
                     .strikethrough(item.completed)
+                    .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())
@@ -236,6 +237,22 @@ struct NativeEventPrepView: View {
         .accessibilityValue(item.completed ? "Ready" : "Not ready")
         .accessibilityHint("Mark this task ready or not ready.")
         .accessibilityIdentifier("native-prep-item-\(item.id)")
+    }
+
+    private func prepNavigationLabel(_ title: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .fixedSize()
+                .accessibilityHidden(true)
+            Text(title)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+        }
+        .font(.subheadline.weight(.bold))
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     var body: some View {
@@ -253,9 +270,7 @@ struct NativeEventPrepView: View {
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) { isManagingFullPrep = false }
                             } label: {
-                                Label("Back to Content", systemImage: "chevron.left")
-                                    .font(.subheadline.weight(.bold))
-                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                prepNavigationLabel("Back to Content", systemImage: "chevron.left")
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(SupporterHomeColors.accent)
@@ -307,7 +322,8 @@ struct NativeEventPrepView: View {
         .onChange(of: hasUnsavedEdits) { _, value in onDirtyChange(value) }
 #if DEBUG
         .safeAreaInset(edge: .top) {
-            if NativeEventWorkspaceUITestFixture.isRequested {
+            if NativeEventWorkspaceUITestFixture.isRequested,
+               !ProcessInfo.processInfo.arguments.contains("--prep-long-labels") {
                 NativePrepDraftUITestControls()
             }
         }

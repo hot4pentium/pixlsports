@@ -235,6 +235,143 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
     }
 
+    func testCompactPrepLongLabelsAtNarrowDefaultWidth() throws {
+        try checkCompactPrepLongLabels(accessibility: false)
+    }
+
+    func testCompactPrepLongLabelsAtNarrowAccessibilityXXXLWidth() throws {
+        try checkCompactPrepLongLabels(accessibility: true)
+    }
+
+    private func checkCompactPrepLongLabels(accessibility: Bool) throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-event-detail", "--ui-testing-prep-draft", "--prep-long-labels"
+        ]
+        if accessibility {
+            app.launchArguments += [
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"
+            ]
+        }
+        app.launch()
+        defer { app.terminate() }
+        let openEvent = app.buttons["prep-test-open-event"]
+        XCTAssertTrue(openEvent.waitForExistence(timeout: 10))
+        openEvent.tap()
+        XCTAssertTrue(app.buttons["event-card-prep"].waitForExistence(timeout: 10))
+        app.buttons["event-card-prep"].tap()
+
+        let tasks = [
+            ("water", "Pack enough water for warmups and the whole game"),
+            ("cleats", "Bring cleats and spare socks for the muddy field"),
+            ("uniform", "Pack the full uniform with both home and away jerseys"),
+            ("arrival", "Confirm the field entrance and warmup arrival time")
+        ]
+        let scroll = app.scrollViews["event-detail-scroll"]
+        XCTAssertTrue(scroll.exists)
+        XCTAssertLessThanOrEqual(scroll.frame.width, 320.5)
+        for (index, task) in tasks.enumerated() {
+            let row = revealPrepControl("native-prep-item-\(task.0)", in: app)
+            XCTAssertEqual(row.label, task.1, "VoiceOver must receive the complete task label")
+            XCTAssertEqual(row.value as? String, "Not ready")
+            XCTAssertTrue(row.isEnabled)
+            if accessibility {
+                XCTAssertGreaterThan(row.frame.height, 60, "Long labels must expand into multiple lines")
+            }
+            if index > 0 {
+                let previous = app.buttons["native-prep-item-\(tasks[index - 1].0)"]
+                XCTAssertLessThanOrEqual(previous.frame.maxY, row.frame.minY,
+                                         "Wrapped checklist hit areas must not overlap")
+            }
+            try auditPrepControl(row, in: app)
+            retainPrepScreenshot(in: app, name: "\(task.0) — \(accessibility ? "AX XXXL" : "default")")
+            row.tap()
+            XCTAssertEqual(row.value as? String, "Ready")
+            XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "\(index + 1) of 5 ready")
+        }
+        XCTAssertFalse(app.buttons["native-prep-item-snack"].exists,
+                       "Content should show only the first four tasks")
+        let manage = revealPrepControl("native-prep-manage-full", in: app)
+        XCTAssertEqual(manage.label, "Manage full Prep")
+        XCTAssertLessThanOrEqual(app.buttons["native-prep-item-arrival"].frame.maxY, manage.frame.minY)
+        try auditPrepControl(manage, in: app)
+        retainPrepScreenshot(in: app, name: "Manage full Prep — \(accessibility ? "AX XXXL" : "default")")
+        manage.tap()
+
+        // Both presentations edit the same in-memory draft, never a fixture save.
+        for task in tasks {
+            XCTAssertEqual(app.buttons["native-prep-item-\(task.0)"].value as? String, "Ready")
+        }
+        let fifth = revealPrepControl("native-prep-item-snack", in: app)
+        XCTAssertEqual(fifth.value as? String, "Not ready")
+        fifth.tap()
+        let notes = revealPrepControl("native-prep-notes", in: app)
+        notes.tap()
+        notes.typeText(" local draft ")
+        let draftNotes = notes.value as? String ?? ""
+        XCTAssertTrue(draftNotes.contains(" local draft "))
+
+        // The production step actions dismiss the keyboard without saving.
+        app.buttons["event-card-share"].tap()
+        app.buttons["event-card-prep"].tap()
+        let back = revealPrepControl("native-prep-back-to-content", in: app)
+        XCTAssertEqual(back.label, "Back to Content")
+        try auditPrepControl(back, in: app)
+        retainPrepScreenshot(in: app, name: "Back to Content — \(accessibility ? "AX XXXL" : "default")")
+        back.tap()
+        _ = revealPrepControl("native-prep-item-water", in: app)
+        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "5 of 5 ready")
+        for task in tasks {
+            XCTAssertEqual(app.buttons["native-prep-item-\(task.0)"].value as? String, "Ready")
+        }
+        XCTAssertFalse(app.buttons["native-prep-item-snack"].exists)
+        XCTAssertTrue(revealPrepControl("native-prep-save", in: app).isEnabled)
+        revealPrepControl("native-prep-manage-full", in: app).tap()
+        XCTAssertEqual(revealPrepControl("native-prep-item-snack", in: app).value as? String, "Ready")
+        XCTAssertEqual(revealPrepControl("native-prep-notes", in: app).value as? String, draftNotes,
+                       "Returning to Content and reopening full Prep must not reload saved notes")
+    }
+
+    // isHittable alone can pass for a clipped row. Bring the entire control
+    // inside the scroll viewport above the fixed step bar, using short drags
+    // near the target so a tall wrapped row is not repeatedly overscrolled.
+    @discardableResult
+    private func revealPrepControl(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "Missing \(identifier)")
+        let scroll = app.scrollViews["event-detail-scroll"]
+        let viewport = scroll.frame.insetBy(dx: 0, dy: 4)
+        for _ in 0..<40 {
+            let frame = element.frame
+            if frame.minY >= viewport.minY && frame.maxY <= viewport.maxY && element.isHittable { break }
+            let up = frame.maxY > viewport.maxY
+            let distance = up ? frame.maxY - viewport.maxY + 8 : viewport.minY - frame.minY + 8
+            let fraction = min(0.6, max(0.08, distance / scroll.frame.height))
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.8 : 0.2))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.8 - fraction : 0.2 + fraction))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+        XCTAssertTrue(element.isHittable, "\(identifier) must remain reachable")
+        XCTAssertGreaterThanOrEqual(element.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(element.frame.width, 44)
+        assertContained(element.frame, in: viewport)
+        return element
+    }
+
+    private func auditPrepControl(_ control: XCUIElement, in app: XCUIApplication) throws {
+        try app.performAccessibilityAudit(for: [.textClipped, .hitRegion]) { issue in
+            guard let element = issue.element else { return false }
+            return element.identifier == "event-detail-safe-area" || !element.frame.intersects(control.frame)
+        }
+    }
+
+    private func retainPrepScreenshot(in app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Compact Prep — \(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     func testReadOnlyDetailFixtureDoesNotExposePrivateEditorsWithoutClerk() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail"]
