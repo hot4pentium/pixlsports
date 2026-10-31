@@ -86,6 +86,6 @@ Missing kickoff times stay on Prep rather than inventing a time.
 The standalone timing checks can run on a Mac with the Swift toolchain:
 
 ```sh
-swiftc "ios/PIXL Sports/NativeEventDetailStep.swift" ios/Tests/NativeEventDetailStepChecks.swift -o /tmp/pixl-event-step-checks
+swiftc "ios/PIXL Sports/NativeEventDetailStep.swift" "ios/PIXL Sports/NativeEventGuideTiming.swift" ios/Tests/NativeEventDetailStepChecks.swift -o /tmp/pixl-event-step-checks
 /tmp/pixl-event-step-checks
 ```

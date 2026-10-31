@@ -25,65 +25,59 @@ final class SupporterHomeViewModel: ObservableObject {
     @Published private(set) var hypeCardPreview: NativePublicHypeCard?
     @Published private(set) var hypeCardPreviewError: String?
 
-    /// Mirrors the web Message Board's priority: live event, recently ended
-    /// event, then the next upcoming event. Event Cards use a two-hour window
-    /// after their scheduled start when no explicit end time is available.
+    /// Chooses the game-day guide from scheduled time, not a saved game status.
+    /// The home guide shares the detail-step phases, then advances after two hours.
     static func featuredGuideEvent(
         in page: NativeSupporterSchedule,
         now: Date = Date()
     ) -> SupporterScheduleItem? {
-        let zone = TimeZone(identifier: page.timezone ?? "") ?? .current
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = zone
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let today = dateFormatter.string(from: now)
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = zone
-        let recentDate = calendar.date(byAdding: .day, value: -1, to: now) ?? now
-        let recentDateKey = dateFormatter.string(from: recentDate)
-
         let candidates = page.events.compactMap { event -> SupporterScheduleItem? in
+            let eventTimeZone = TimeZone(identifier: event.timezone ?? page.timezone ?? "") ?? .current
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateFormatter.timeZone = eventTimeZone
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            let today = dateFormatter.string(from: now)
             let start = event.parsedStart(timezone: event.timezone ?? page.timezone)
-            let elapsed = start.map { now.timeIntervalSince($0) }
-            let isRecent = elapsed.map { $0 >= 0 && $0 < 24 * 60 * 60 }
-                ?? (event.date >= recentDateKey && event.date <= today)
 
-            if event.date < today {
-                return isRecent && event.type == "game"
-                    ? SupporterScheduleItem(event: event, timing: .complete, start: start)
-                    : nil
+            if event.type == "game" {
+                guard let step = NativeEventGuideTiming.gameRecommendation(
+                    eventDate: event.date,
+                    start: start,
+                    timeZone: eventTimeZone,
+                    now: now
+                ) else {
+                    return nil
+                }
+                let timing: SupporterEventTiming
+                switch step {
+                case .prep: timing = .upcoming
+                case .trackStats: timing = .live
+                case .share: timing = .complete
+                }
+                return SupporterScheduleItem(event: event, timing: timing, start: start)
             }
-            if event.status == "final" {
-                return isRecent && event.type == "game"
-                    ? SupporterScheduleItem(event: event, timing: .complete, start: start)
-                    : nil
+
+            // A stale status must not turn a future game or practice into a
+            // live event before its scheduled start.
+            if event.date > today || (start.map { $0 > now } ?? false) {
+                return SupporterScheduleItem(event: event, timing: .upcoming, start: start)
             }
+            guard event.date == today else { return nil }
+            if event.status == "final" { return nil }
 
             if event.status == "live" {
-                if let elapsed, elapsed >= 2 * 60 * 60 {
-                    return isRecent && event.type == "game"
-                        ? SupporterScheduleItem(event: event, timing: .complete, start: start)
-                        : nil
-                }
+                if let start, now.timeIntervalSince(start) >= 2 * 60 * 60 { return nil }
                 return SupporterScheduleItem(event: event, timing: .live, start: start)
             }
 
-            if event.date > today {
-                return SupporterScheduleItem(event: event, timing: .upcoming, start: start)
-            }
             guard let start else {
                 return SupporterScheduleItem(event: event, timing: .upcoming, start: nil)
-            }
-            if start > now {
-                return SupporterScheduleItem(event: event, timing: .upcoming, start: start)
             }
             if now.timeIntervalSince(start) < 2 * 60 * 60 {
                 return SupporterScheduleItem(event: event, timing: .live, start: start)
             }
-            return isRecent && event.type == "game"
-                ? SupporterScheduleItem(event: event, timing: .complete, start: start)
-                : nil
+            return nil
         }
 
         return candidates.sorted { left, right in

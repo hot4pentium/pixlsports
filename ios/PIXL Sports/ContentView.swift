@@ -250,41 +250,46 @@ struct ContentView: View {
 
     // MARK: - Athlete hero (connected only)
 
-    private var guideReferenceDate: Date {
+    private func guideReferenceDate(for timelineDate: Date) -> Date {
 #if DEBUG
         if fixtureState != nil {
-            return SupporterDashboardFixtures.fixedGuideNow ?? Date()
+            return SupporterDashboardFixtures.fixedGuideNow ?? timelineDate
         }
 #endif
-        return Date()
+        return timelineDate
     }
 
     @ViewBuilder
     private var athleteHero: some View {
         if case let .schedule(page, _, _) = displayedState {
-            let guide = SupporterHomeViewModel.featuredGuideEvent(in: page, now: guideReferenceDate)
-            NativeHomeHeroCards(
-                athleteName: page.athleteName ?? "Your athlete",
-                teamName: page.teamName,
-                scheduleTimezone: page.timezone,
-                nextEvent: guide?.event,
-                eventTiming: guide?.timing,
-                hypePhotoURL: viewModel.hypeCardPreview?.cutoutUrl ?? viewModel.hypeCardPreview?.photoUrl,
-                hypePreviewFailed: viewModel.hypeCardPreviewError != nil,
-                onOpenEvent: {
-                    if let token = guide?.event.shareToken {
-                        heroDestination = guide?.timing == .upcoming
-                            ? .eventPrep(token)
-                            : .eventCard(token)
-                    } else {
-                        heroDestination = .createEvent
-                    }
-                },
-                onOpenHypeCard: { heroDestination = .hypeCard }
-            )
-            .modifier(SupporterDashboardSectionSurface())
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("dashboard-hero-section")
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                let guide = SupporterHomeViewModel.featuredGuideEvent(
+                    in: page,
+                    now: guideReferenceDate(for: context.date)
+                )
+                NativeHomeHeroCards(
+                    athleteName: page.athleteName ?? "Your athlete",
+                    teamName: page.teamName,
+                    scheduleTimezone: page.timezone,
+                    nextEvent: guide?.event,
+                    eventTiming: guide?.timing,
+                    hypePhotoURL: viewModel.hypeCardPreview?.cutoutUrl ?? viewModel.hypeCardPreview?.photoUrl,
+                    hypePreviewFailed: viewModel.hypeCardPreviewError != nil,
+                    onOpenEvent: {
+                        if let token = guide?.event.shareToken {
+                            heroDestination = guide?.timing == .upcoming
+                                ? .eventPrep(token)
+                                : .eventCard(token)
+                        } else {
+                            heroDestination = .createEvent
+                        }
+                    },
+                    onOpenHypeCard: { heroDestination = .hypeCard }
+                )
+                .modifier(SupporterDashboardSectionSurface())
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("dashboard-hero-section")
+            }
         }
     }
 

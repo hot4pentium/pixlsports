@@ -60,10 +60,12 @@ final class SupporterDashboardUITests: XCTestCase {
     }
 
     func testMessageBoardTaskUsesLocalEventTimeAcrossUTCDayBoundary() {
-        for (state, expectedTiming) in [
-            ("guide-upcoming", "Upcoming"),
-            ("guide-live", "Live now"),
-            ("guide-postgame", "After the event")
+        for (state, expectedTiming, expectsPrep) in [
+            ("guide-upcoming", "Upcoming", true),
+            ("guide-future-live", "Upcoming", true),
+            ("guide-future-final", "Upcoming", true),
+            ("guide-live", "Live now", false),
+            ("guide-postgame", "After the event", false)
         ] {
             let app = launch(state)
             let messageBoard = reachable("dashboard-message-board-card", in: app)
@@ -74,7 +76,7 @@ final class SupporterDashboardUITests: XCTestCase {
                 "The Event Card date must use Los Angeles time: \(messageBoard.label)"
             )
             messageBoard.tap()
-            if state == "guide-upcoming" {
+            if expectsPrep {
                 XCTAssertTrue(app.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
                 XCTAssertFalse(app.staticTexts["event-detail-title"].exists)
             } else {
@@ -97,6 +99,16 @@ final class SupporterDashboardUITests: XCTestCase {
             XCTAssertFalse(app.staticTexts["event-detail-title"].exists)
             app.terminate()
         }
+    }
+
+    func testMessageBoardAdvancesAfterShareWindowUsingEventTimeZone() {
+        let app = launch("guide-after-share-window")
+        let messageBoard = reachable("dashboard-message-board-card", in: app)
+        XCTAssertTrue(messageBoard.label.contains("November 15"), "\(messageBoard.label)")
+        XCTAssertTrue(messageBoard.label.contains("Upcoming"), "\(messageBoard.label)")
+        messageBoard.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
+        app.terminate()
     }
 
     func testBothHeroCardsFitAndOpenTheirNativeScreensAtNormalAndAccessibilitySizes() {
