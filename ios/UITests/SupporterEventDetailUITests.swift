@@ -14,6 +14,120 @@ final class SupporterEventDetailUITests: XCTestCase {
         super.tearDown()
     }
 
+    // Opt-in integration tests. Use a disposable development account already
+    // signed in and linked on this simulator; never pass credentials to XCTest.
+    // Unlike --ui-testing-prep-draft these use the real authenticated API.
+    func testSignedInQuickPrepCheckoffPersistsAfterSavingAndReopening() throws {
+        try checkSignedInPrepPersistence(failFirstSave: false)
+    }
+
+    func testSignedInQuickPrepFailedSaveStaysVisibleAndRetriesAfterReopening() throws {
+        try checkSignedInPrepPersistence(failFirstSave: true)
+    }
+
+    private func checkSignedInPrepPersistence(failFirstSave: Bool) throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let eventID = environment["PIXL_PREP_TEST_EVENT_ID"], !eventID.isEmpty,
+              let itemID = environment["PIXL_PREP_TEST_ITEM_ID"], !itemID.isEmpty else {
+            throw XCTSkip("Set PIXL_PREP_TEST_EVENT_ID and PIXL_PREP_TEST_ITEM_ID for a dedicated development Event Card and one of its first four Prep items. Sign in and link its owner on this simulator first.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-signed-in-prep"]
+        if failFirstSave { app.launchArguments.append("--prep-save-fails-once") }
+        app.launch()
+        defer { app.terminate() }
+
+        openSignedInPrep(eventID: eventID, in: app)
+        let itemIdentifier = "native-prep-item-\(itemID)"
+        let item = assertReachable(itemIdentifier, in: app)
+        let originalValue = item.value as? String
+        XCTAssertEqual(originalValue, "Not ready", "Prepare an unchecked task so this test checks it off.")
+        let changedValue = "Ready"
+        let originalProgress = app.staticTexts["native-prep-quick-progress"].label
+        XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled,
+                       "Start with saved Prep and no unresolved pending command.")
+        reachableFromAbove(itemIdentifier, in: app).tap()
+        XCTAssertEqual(item.value as? String, changedValue)
+        let changedProgress = app.staticTexts["native-prep-quick-progress"].label
+        XCTAssertNotEqual(changedProgress, originalProgress)
+        let save = assertReachable("native-prep-save", in: app)
+        XCTAssertTrue(save.isEnabled)
+        save.tap()
+
+        if failFirstSave {
+            let error = app.descendants(matching: .any)["native-tool-save-error"].firstMatch
+            XCTAssertTrue(error.waitForExistence(timeout: 10))
+            XCTAssertTrue(error.label.contains("Test connection interrupted"))
+            XCTAssertTrue(error.label.contains("kept on this iPhone"))
+            XCTAssertTrue(app.staticTexts["Unsaved changes"].exists)
+            XCTAssertFalse(save.isEnabled, "Use the retained-command retry, not a new save.")
+            XCTAssertFalse(reachableFromAbove(itemIdentifier, in: app).isEnabled)
+            XCTAssertEqual(item.value as? String, changedValue, "Failure must retain the checkoff.")
+            XCTAssertTrue(assertReachable("native-tool-save-retry", in: app).isEnabled)
+
+            // Reopening builds a new model and restores the pending command
+            // from its account/event-scoped journal, rather than view state.
+            app.navigationBars["Event Details"].buttons["Back"].tap()
+            let leave = app.buttons["Leave without saving"]
+            XCTAssertTrue(leave.waitForExistence(timeout: 5))
+            leave.tap()
+            openSignedInPrep(eventID: eventID, in: app)
+            XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, changedValue)
+            XCTAssertTrue(app.descendants(matching: .any)["native-tool-save-error"].exists)
+            assertReachable("native-tool-save-retry", in: app).tap()
+        }
+
+        waitForPrepSaved(in: app)
+        reopenSignedInPrep(eventID: eventID, in: app)
+        XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, changedValue,
+                       "Fresh Event Details must load the server-confirmed checkoff.")
+        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, changedProgress)
+        XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
+        XCTAssertFalse(app.descendants(matching: .any)["native-tool-save-error"].exists)
+
+        // Restore the dedicated test item and verify that write too. Never
+        // delete a card, clear all defaults, or modify a user's other tasks.
+        reachableFromAbove(itemIdentifier, in: app).tap()
+        assertReachable("native-prep-save", in: app).tap()
+        waitForPrepSaved(in: app)
+        reopenSignedInPrep(eventID: eventID, in: app)
+        XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, originalValue)
+        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, originalProgress)
+    }
+
+    private func openSignedInPrep(eventID: String, in app: XCUIApplication) {
+        XCTAssertTrue(app.descendants(matching: .any)["dashboard-upcoming-section"].waitForExistence(timeout: 30),
+                      "Sign in and link the dedicated development owner; its Event Card must be in the upcoming list.")
+        // Normal text uses grid tiles; accessibility text uses expanded cards.
+        let card = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ OR identifier == %@",
+            "dashboard-event-tile-\(eventID)", "dashboard-event-card-\(eventID)"
+        )).firstMatch
+        for _ in 0..<20 where !card.isHittable { app.swipeUp() }
+        XCTAssertTrue(card.isHittable, "The configured development Event Card must be reachable.")
+        card.tap()
+        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
+        app.buttons["event-card-prep"].tap()
+        _ = assertReachable("native-prep-quick-progress", in: app)
+        XCTAssertFalse(app.buttons["prep-test-open-event"].exists)
+        XCTAssertFalse(app.buttons["prep-test-advance-clock"].exists)
+    }
+
+    private func waitForPrepSaved(in app: XCUIApplication) {
+        XCTAssertTrue(app.staticTexts["Prep saved"].waitForExistence(timeout: 30),
+                      "Saving must receive the authenticated server acknowledgement.")
+        XCTAssertFalse(app.staticTexts["Unsaved changes"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["native-tool-save-error"].exists)
+        XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
+    }
+
+    private func reopenSignedInPrep(eventID: String, in app: XCUIApplication) {
+        app.navigationBars["Event Details"].buttons.firstMatch.tap()
+        XCTAssertFalse(app.buttons["Leave without saving"].exists,
+                       "An acknowledged save must clear the dirty-navigation warning.")
+        openSignedInPrep(eventID: eventID, in: app)
+    }
+
     func testUnsavedPrepSurvivesTimelineRecommendationsAndBackgroundResume() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft"]

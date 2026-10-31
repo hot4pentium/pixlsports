@@ -131,6 +131,11 @@ final class NativeEventToolModel: ObservableObject {
     @Published var reloadGeneration = 0
     private let shareToken: String
     private let storageKey: String
+#if DEBUG
+    // Process-scoped so reopening the editor does not fail the retry again.
+    // Only the explicit signed-in regression launch may inject a failure.
+    private static var prepSaveFailureInjected = false
+#endif
 
     init(shareToken: String, accountID: String) {
         self.shareToken = shareToken
@@ -200,6 +205,15 @@ final class NativeEventToolModel: ObservableObject {
         errorMessage = nil
         defer { busy = false }
         do {
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep"),
+               ProcessInfo.processInfo.arguments.contains("--prep-save-fails-once"),
+               clerk.isAuthFlowComplete, pending.kind == "prep",
+               !Self.prepSaveFailureInjected {
+                Self.prepSaveFailureInjected = true
+                throw NativeAccountLinkError.message("Test connection interrupted before sending Prep.")
+            }
+#endif
             let data = try await NativeAccountLinkClient().postData(
                 "supporter/event-workspace-save", body: pending, clerk: clerk
             )
@@ -235,8 +249,10 @@ struct NativeToolSaveNotice: View {
             if let message = model.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
+                    .accessibilityIdentifier("native-tool-save-error")
                 if model.pending != nil {
                     Button("Retry pending save") { Task { await model.retry(clerk: clerk) } }
+                        .accessibilityIdentifier("native-tool-save-retry")
                     Button("Discard pending change and reload", role: .destructive) {
                         confirmingDiscard = true
                     }

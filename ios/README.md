@@ -193,6 +193,59 @@ confirmed discard, and reopening the unchanged saved data.
 Allow up to 25 seconds per timeline transition. Linux source checks or browser
 tests do not verify SwiftUI navigation or iOS lifecycle behavior.
 
+### Signed-in quick Prep persistence
+
+Two opt-in cases in `SupporterEventDetailUITests` use the **real native auth,
+account link, workspace reads, save endpoint, and pending-command journal**:
+
+- `testSignedInQuickPrepCheckoffPersistsAfterSavingAndReopening`
+- `testSignedInQuickPrepFailedSaveStaysVisibleAndRetriesAfterReopening`
+
+Run only against a dedicated development account and disposable upcoming Event
+Card. On the target iPhone simulator, launch the app normally, complete Clerk
+sign-in, and link the development owner. Create an unchecked Prep item in the
+card's first four tasks and ensure there are no pending commands. Keep the card upcoming
+throughout the run. The installed Debug configuration must point at the
+development API and its native Clerk tenant; no auth credentials are supplied
+through launch arguments or test environment variables.
+
+Set these **non-secret identifiers** in the Xcode scheme's **Test** environment
+(not only the app's Run environment):
+
+- `PIXL_PREP_TEST_EVENT_ID`: the upcoming card's event ID.
+- `PIXL_PREP_TEST_ITEM_ID`: a saved task ID within its first four tasks.
+
+Missing identifiers skip these opt-in tests. Once identifiers are supplied,
+missing sign-in, linking, card, checklist, or server acknowledgement fails the
+test rather than falling back to a fixture.
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInQuickPrepCheckoffPersistsAfterSavingAndReopening \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInQuickPrepFailedSaveStaysVisibleAndRetriesAfterReopening
+```
+
+Each test changes one compact checklist task, presses Save Prep, closes Event
+Details, reopens the same card, and checks the fresh server state and readiness
+count. It then restores and verifies the original task state. A failed test may
+leave that dedicated task changed or a pending command: inspect/retry or discard
+that command and reset the test item before rerunning.
+
+The retry case adds `--prep-save-fails-once` together with
+`--ui-testing-signed-in-prep`. This Debug-only hook interrupts the first Prep
+command before sending it, only with a completed Clerk sign-in. It never
+fabricates success, changes the API destination, bypasses authorization, or
+affects Release. The real save failure handler retains the draft and mutation
+ID; the test checks the visible error, disabled duplicate-save/edit controls,
+reopens to recover the pending command, retries against the API, and checks the
+saved state after another reopen. The no-Clerk draft fixture remains unable to
+save.
+
+**Execution boundary:** these signed-in cases require Apple Xcode, an iPhone
+simulator, and the prepared development session/card. They have not been run in
+this Linux workspace; adding the tests does not confirm a successful native run.
+
 `SupporterDashboardUITests` also checks the dashboard at 320 points: connected
 empty, unlinked, loading, error, upcoming, and live states; large-text athlete
 identity and connection controls; and Event Card navigation. Run just this suite:
