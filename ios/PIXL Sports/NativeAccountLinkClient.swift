@@ -17,9 +17,18 @@ private struct NativeAccountLinkFailure: Decodable {
 
 enum NativeAccountLinkError: LocalizedError {
     case message(String)
+    case serverStatus(Int, String)
+
+    var statusCode: Int? {
+        guard case let .serverStatus(status, _) = self else { return nil }
+        return status
+    }
+
     var errorDescription: String? {
-        if case let .message(message) = self { return message }
-        return nil
+        switch self {
+        case let .message(message), let .serverStatus(_, message):
+            return message
+        }
     }
 }
 
@@ -140,15 +149,17 @@ final class NativeAccountLinkClient {
         }
         guard (200...299).contains(response.statusCode) else {
             if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
-                throw NativeAccountLinkError.message(failure.error)
+                throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
             }
             let host = origin.host ?? "the configured server"
             if (300...399).contains(response.statusCode) {
-                throw NativeAccountLinkError.message(
+                throw NativeAccountLinkError.serverStatus(
+                    response.statusCode,
                     "\(host) redirected the request (HTTP \(response.statusCode)). Check the API address."
                 )
             }
-            throw NativeAccountLinkError.message(
+            throw NativeAccountLinkError.serverStatus(
+                response.statusCode,
                 "The Event Card request failed on \(host) (HTTP \(response.statusCode))."
             )
         }

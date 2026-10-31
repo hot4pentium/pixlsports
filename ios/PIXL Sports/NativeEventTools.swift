@@ -52,13 +52,13 @@ struct NativeEventWorkspace: Decodable {
         let status: String
         let period: Int
         let soccerPeriodFormat: String?
-        let score: Int
-        let opponentScore: Int
-        let scoreRecorded: Bool?
+        var score: Int
+        var opponentScore: Int
+        var scoreRecorded: Bool?
         let outcome: String?
-        let stats: [String: Int]
-        let opponentStats: [String: Int]?
-        let events: [Play]
+        var stats: [String: Int]
+        var opponentStats: [String: Int]?
+        var events: [Play]
         var hasRecordedScore: Bool { scoreRecorded ?? (score != 0 || opponentScore != 0) }
     }
     let linkId: String
@@ -123,7 +123,7 @@ struct NativeEventToolCommand: Codable {
     let shareToken: String
     let mutationId: String
     let linkId: String
-    let expectedRevision: Int
+    var expectedRevision: Int
     let kind: String
     var statId: String? = nil
     var athlete: Bool? = nil
@@ -137,8 +137,19 @@ struct NativeEventToolCommand: Codable {
     var notes: String? = nil
 }
 
-/// Each saved tap is acknowledged by the server before another can be sent.
-/// A timed-out request keeps the same mutation ID, including after relaunch.
+private struct NativeQueuedEventToolCommand: Codable {
+    var command: NativeEventToolCommand
+    var attempted: Bool
+    var displayOptimistically: Bool
+}
+
+private struct PersistedNativeEventToolQueue: Codable {
+    var commands: [NativeQueuedEventToolCommand]
+    var conflictBlocked: Bool
+}
+
+/// Stat taps update the local display immediately and persist in an account-scoped
+/// queue. The server processes each mutation in order with one stable ID per tap.
 @MainActor
 final class NativeEventToolModel: ObservableObject {
     @Published var workspace: NativeEventWorkspace?
