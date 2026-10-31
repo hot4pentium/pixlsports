@@ -17,6 +17,12 @@ Do not show a “PIXL account connected” card or connection-management section
 
 **How to apply:** Keep required first-time verification separate from the everyday dashboard. Removing this card does not change the verified identity-to-data mapping or authorize an authentication migration.
 
+The native Prep screen's top content should show only the event date, without a routine connected-account box.
+
+**Why:** The user requested a date-only Prep header and removal of the “connected to your PIXL account” box.
+
+**How to apply:** Keep actionable save, retry, and error feedback; omit redundant event metadata and routine account-status panels from Prep.
+
 Use subtle translucent white backgrounds to distinguish the native dashboard's sections.
 
 **Why:** The user said the sections otherwise blend together as one large section.
