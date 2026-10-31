@@ -23,6 +23,7 @@ struct NativePublicHypeCard: Decodable {
     let photoUrl: String?
     let cutoutUrl: String?
     let favoriteMoment: String?
+    var shareURL: URL? = nil
 }
 
 struct AthleteFanEvent: Decodable, Identifiable {
@@ -173,7 +174,10 @@ enum SupporterHomeAPI {
 
         let publicData = try await client.publicRequest("athlete-invites/\(inviteToken)/fan")
         do {
-            return try JSONDecoder().decode(NativePublicHypeCard.self, from: publicData)
+            var card = try JSONDecoder().decode(NativePublicHypeCard.self, from: publicData)
+            card.shareURL = try NativeAccountLinkClient.apiOrigin()
+                .appendingPathComponent("fan").appendingPathComponent(inviteToken)
+            return card
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }

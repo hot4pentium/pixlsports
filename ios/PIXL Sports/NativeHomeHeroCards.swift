@@ -4,6 +4,7 @@ import SwiftUI
 struct NativeHomeHeroCards: View {
     let athleteName: String
     let teamName: String?
+    let scheduleTimezone: String?
     let nextEvent: AthleteFanEvent?
     let eventTiming: SupporterEventTiming?
     let hypePhotoURL: String?
@@ -32,7 +33,7 @@ struct NativeHomeHeroCards: View {
             return "Game-day message board. No upcoming Event Card is available. Tap to create one."
         }
         let status = eventTiming == .live ? "Live now" : eventTiming == .complete ? "After the event" : "Upcoming"
-        return "Game-day message board, \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone)). Tap to open the Event Card."
+        return "Game-day message board, \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.opponent), \(nextEvent.location). Tap to open the Event Card."
     }
 
     private var validHypePhotoURL: URL? {
@@ -82,7 +83,7 @@ struct NativeHomeHeroCards: View {
             .foregroundStyle(SupporterHomeColors.blue)
 
             if let nextEvent {
-                Text(nextEvent.formattedDate(timezone: nextEvent.timezone))
+                Text(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone))
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(Color(red: 0.30, green: 0.37, blue: 0.47))
                     .lineLimit(1)
@@ -94,6 +95,22 @@ struct NativeHomeHeroCards: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
+                Label(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone), systemImage: "clock")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(SupporterHomeColors.background)
+                if !nextEvent.location.isEmpty {
+                    Label(nextEvent.location, systemImage: "mappin.and.ellipse")
+                        .font(.caption2)
+                        .foregroundStyle(SupporterHomeColors.background.opacity(0.75))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if !nextEvent.opponent.isEmpty && !nextEvent.title.localizedCaseInsensitiveContains(nextEvent.opponent) {
+                    Text("vs \(nextEvent.opponent)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(SupporterHomeColors.background)
+                        .lineLimit(2)
+                }
             } else {
                 Text("No event yet")
                     .font(.system(.subheadline, design: .rounded).weight(.black))
@@ -122,7 +139,7 @@ struct NativeHomeHeroCards: View {
             .frame(minHeight: 28)
             .background(SupporterHomeColors.accent, in: Capsule())
         }
-        .frame(maxWidth: .infinity, minHeight: 220, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 260, alignment: .leading)
         .padding(12)
         .background(Color(red: 0.96, green: 0.97, blue: 0.94), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
         .overlay(alignment: .trailing) {
@@ -210,7 +227,7 @@ struct NativeHomeHeroCards: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 220, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 260, alignment: .leading)
         .padding(12)
         .background {
             ZStack(alignment: .topTrailing) {

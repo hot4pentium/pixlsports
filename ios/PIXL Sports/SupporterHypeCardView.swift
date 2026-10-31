@@ -55,6 +55,17 @@ struct SupporterHypeCardView: View {
                 .frame(maxWidth: .infinity, minHeight: 240)
         } else if let card {
             hypeCard(card)
+            if let shareURL = card.shareURL {
+                ShareLink(item: shareURL) {
+                    Label("Share HYPE Card", systemImage: "square.and.arrow.up")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(SupporterHomeColors.accent)
+                .foregroundStyle(SupporterHomeColors.background)
+                .accessibilityIdentifier("native-hype-card-share")
+            }
         } else if let errorMessage {
             VStack(alignment: .leading, spacing: 12) {
                 Label("The HYPE Card couldn’t load", systemImage: "exclamationmark.triangle.fill")

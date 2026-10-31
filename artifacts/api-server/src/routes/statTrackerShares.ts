@@ -154,6 +154,15 @@ function broadcast(shareToken: string, event: string, payload: unknown, revision
   if (!listeners.size) subscribers.delete(shareToken);
 }
 
+/** Native saves use the same public stream as web-owner saves. */
+export async function notifyStatTrackerShareUpdate(shareToken: string) {
+  if (!subscribers.has(shareToken)) return;
+  const share = await findActiveShare(shareToken);
+  if (!share) return;
+  broadcast(shareToken, "stat-tracker",
+    publicResponse(share, false, await getPublicFanCardPath(share)), share.revision);
+}
+
 async function findActiveShare(shareToken: string) {
   const [share] = await db.select().from(statTrackerSharesTable).where(and(
     eq(statTrackerSharesTable.id, shareToken),

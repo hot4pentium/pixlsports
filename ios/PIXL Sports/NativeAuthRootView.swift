@@ -186,22 +186,20 @@ struct NativeAuthRootView: View {
     }
 
     private var clerkTheme: ClerkTheme {
-        ClerkTheme(
-            colors: .init(
-                background: SupporterHomeColors.panel,
-                border: .white.opacity(0.14),
-                foreground: .white,
-                input: .white.opacity(0.07),
-                inputForeground: .white,
-                muted: .white.opacity(0.06),
-                mutedForeground: SupporterHomeColors.muted,
-                primary: SupporterHomeColors.accent,
-                primaryForeground: SupporterHomeColors.background,
-                ring: SupporterHomeColors.blue
-            ),
-            fonts: .init(fontFamily: "Avenir Next"),
-            design: .init(borderRadius: 16)
-        )
+        var theme = ClerkTheme()
+        theme.colors.background = SupporterHomeColors.panel
+        theme.colors.border = .white.opacity(0.14)
+        theme.colors.foreground = .white
+        theme.colors.input = .white.opacity(0.07)
+        theme.colors.inputForeground = .white
+        theme.colors.muted = .white.opacity(0.06)
+        theme.colors.mutedForeground = SupporterHomeColors.muted
+        theme.colors.primary = SupporterHomeColors.accent
+        theme.colors.primaryForeground = SupporterHomeColors.background
+        theme.colors.ring = SupporterHomeColors.blue
+        theme.fonts = .init(fontFamily: "Avenir Next")
+        theme.design = .init(borderRadius: 16)
+        return theme
     }
 
     private var startupView: some View {

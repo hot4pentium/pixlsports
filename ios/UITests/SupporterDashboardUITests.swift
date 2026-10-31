@@ -41,12 +41,30 @@ final class SupporterDashboardUITests: XCTestCase {
     func testUpcomingAndLiveCardsKeepNativeNavigation() {
         for state in ["upcoming", "live"] {
             let app = launch(state)
-            let card = reachable("dashboard-upcoming-card", in: app)
-            XCTAssertTrue(card.label.contains(state == "live" ? "Happening now" : "Up next"))
+            let card = reachable("dashboard-event-tile-fictional-next", in: app)
+            XCTAssertTrue(card.label.contains(state == "live" ? "live" : "upcoming"))
             XCTAssertTrue(card.label.contains("Visiting Team"))
+            XCTAssertEqual(card.frame.width, card.frame.height, accuracy: 2)
             card.tap()
-            XCTAssertTrue(app.staticTexts["dashboard-fixture-event"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
             app.terminate()
+        }
+    }
+
+    func testThreeSquareCardsShareOneRowAndHeroContainsTimeAndPlace() {
+        let app = launch("upcoming")
+        let hero = reachable("dashboard-message-board-card", in: app)
+        XCTAssertTrue(hero.label.contains("6:30"))
+        XCTAssertTrue(hero.label.contains("Entrance C"))
+        let first = reachable("dashboard-event-tile-fictional-next", in: app)
+        let second = reachable("dashboard-event-tile-fictional-later", in: app)
+        let third = reachable("dashboard-event-tile-fictional-third", in: app)
+        XCTAssertEqual(first.frame.minY, second.frame.minY, accuracy: 2)
+        XCTAssertEqual(second.frame.minY, third.frame.minY, accuracy: 2)
+        XCTAssertLessThan(first.frame.minX, second.frame.minX)
+        XCTAssertLessThan(second.frame.minX, third.frame.minX)
+        for tile in [first, second, third] {
+            XCTAssertEqual(tile.frame.width, tile.frame.height, accuracy: 2)
         }
     }
 

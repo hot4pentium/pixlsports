@@ -17,6 +17,8 @@ struct ContentView: View {
 
     @StateObject private var viewModel = SupporterHomeViewModel()
     @State private var heroDestination: HeroDestination?
+    @State private var eventToolsChanged = false
+    @State private var dashboardVisible = false
 
     private enum HeroDestination: Identifiable {
         case eventCard(String)
@@ -90,9 +92,19 @@ struct ContentView: View {
                 .refreshable {
                     await loadSchedule()
                 }
+                .onAppear {
+                    dashboardVisible = true
+                    if eventToolsChanged {
+                        eventToolsChanged = false
+                        Task { await loadSchedule() }
+                    }
+                }
+                .onDisappear { dashboardVisible = false }
             }
         }
-        .fullScreenCover(item: $heroDestination) { destination in
+        .fullScreenCover(item: $heroDestination, onDismiss: {
+            Task { await loadSchedule() }
+        }) { destination in
             NavigationStack {
                 heroDestinationView(destination)
                     .toolbar {
@@ -113,12 +125,15 @@ struct ContentView: View {
             await loadSchedule()
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
+            guard phase == .active, dashboardVisible, heroDestination == nil else { return }
             Task { await loadSchedule() }
         }
         .onChange(of: showingAccountLink) { wasShowing, isShowing in
             guard wasShowing && !isShowing else { return }
             Task { await loadSchedule() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nativeEventToolsSaved)) { _ in
+            eventToolsChanged = true
         }
     }
 
@@ -237,6 +252,7 @@ struct ContentView: View {
             NativeHomeHeroCards(
                 athleteName: page.athleteName ?? "Your athlete",
                 teamName: page.teamName,
+                scheduleTimezone: page.timezone,
                 nextEvent: guide?.event,
                 eventTiming: guide?.timing,
                 hypePhotoURL: viewModel.hypeCardPreview?.cutoutUrl ?? viewModel.hypeCardPreview?.photoUrl,
@@ -456,23 +472,19 @@ struct ContentView: View {
                 if events.isEmpty {
                     emptyScheduleCard()
                 } else {
-                    NavigationLink {
-                        eventDestination(for: events[0].event)
-                    } label: {
-                        eventCard(page: page, event: events[0].event, timing: events[0].timing)
-                    }
-                    .buttonStyle(SupporterCardPressStyle())
-                    .accessibilityIdentifier("dashboard-upcoming-card")
-
-                    if events.count > 1 {
-                        SupporterEyebrow(text: "More upcoming", color: SupporterHomeColors.muted)
-                            .padding(.top, 6)
-                        ForEach(Array(events.dropFirst())) { item in
-                            compactEventCard(page: page, item: item)
-                        }
-                    }
+                    eventGrid(page: page, events: events)
                 }
-
+                Button {
+                    heroDestination = .createEvent
+                } label: {
+                    Label("Add an Event Card", systemImage: "plus")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(SupporterHomeColors.accent)
+                .foregroundStyle(SupporterHomeColors.background)
+                .accessibilityIdentifier("dashboard-add-event-card")
                 if !pastEvents.isEmpty {
                     pastEventsSection(page: page, events: pastEvents)
                 }
@@ -551,9 +563,9 @@ struct ContentView: View {
     private func eventDestination(for event: AthleteFanEvent) -> some View {
 #if DEBUG
         if fixtureState != nil {
-            Text(event.title)
-                .padding()
-                .accessibilityIdentifier("dashboard-fixture-event")
+            if case .schedule(let page, _, _) = displayedState {
+                SupporterEventDetailView(fixture: .init(schedule: page, event: event))
+            }
         } else {
             SupporterEventDetailView(clerk: clerk, shareToken: event.shareToken)
         }
@@ -733,9 +745,7 @@ struct ContentView: View {
                 trailing: "\(events.count) \(events.count == 1 ? "CARD" : "CARDS")",
                 trailingColor: SupporterHomeColors.blue
             )
-            ForEach(events) { item in
-                compactEventCard(page: page, item: item)
-            }
+            eventGrid(page: page, events: events)
         }
         .padding(.top, 12)
         .accessibilityElement(children: .contain)
@@ -755,6 +765,21 @@ struct ContentView: View {
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private func eventGrid(page: NativeSupporterSchedule, events: [SupporterScheduleItem]) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: 3), spacing: 9) {
+            ForEach(events) { item in
+                NavigationLink {
+                    eventDestination(for: item.event)
+                } label: {
+                    NativeEventGridTile(event: item.event, timezone: page.timezone)
+                }
+                .buttonStyle(SupporterCardPressStyle())
+                .accessibilityIdentifier("dashboard-event-tile-\(item.event.eventId)")
+            }
+        }
+        .accessibilityIdentifier("dashboard-event-grid")
     }
 
     private func eventDateBadge(_ event: AthleteFanEvent) -> some View {

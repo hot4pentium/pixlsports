@@ -23,7 +23,8 @@ enum SupporterDashboardFixtures {
                 page: page,
                 events: [
                     SupporterScheduleItem(event: event("next", day: "14", status: name == "live" ? "live" : "upcoming"), timing: timing, start: nil),
-                    SupporterScheduleItem(event: event("later", day: "21", status: "upcoming"), timing: .upcoming, start: nil)
+                    SupporterScheduleItem(event: event("later", day: "21", status: "upcoming"), timing: .upcoming, start: nil),
+                    SupporterScheduleItem(event: event("third", day: "28", status: "upcoming"), timing: .upcoming, start: nil)
                 ],
                 pastEvents: [
                     SupporterScheduleItem(event: event("past", day: "07", status: "final"), timing: .complete, start: nil)

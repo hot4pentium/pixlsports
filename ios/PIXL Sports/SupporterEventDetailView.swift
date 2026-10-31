@@ -10,6 +10,8 @@ struct SupporterEventDetailView: View {
     let fixture: Fixture?
 
     @State private var state: DetailState = .loading
+    @State private var toolsChanged = false
+    @State private var detailsVisible = false
     @ScaledMetric(relativeTo: .largeTitle) private var eventTitlePointSize = 24
     @ScaledMetric(relativeTo: .body) private var detailValuePointSize = 16
     @ScaledMetric(relativeTo: .body) private var detailLabelPointSize = 10
@@ -104,11 +106,21 @@ struct SupporterEventDetailView: View {
         .task {
             await load()
         }
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else {
-                state = .loading
-                return
+        .onReceive(NotificationCenter.default.publisher(for: .nativeEventToolsSaved)) { _ in
+            toolsChanged = true
+        }
+        .onAppear {
+            detailsVisible = true
+            if toolsChanged {
+                toolsChanged = false
+                Task { await load() }
             }
+        }
+        .onDisappear { detailsVisible = false }
+        .onChange(of: scenePhase) { _, phase in
+            // Don't remove the destination's NavigationLink while a native tool
+            // has unsaved work. Its requests still recheck account access.
+            guard phase == .active, detailsVisible else { return }
             Task { await load() }
         }
     }
@@ -120,6 +132,7 @@ struct SupporterEventDetailView: View {
                 brandHeader
                 eventCard(schedule: schedule, event: event)
                 eventInformation(schedule: schedule, event: event)
+                nativeTools(schedule: schedule, event: event)
 
                 if event.liveTapsActive,
                    let inviteToken = event.liveTapsInviteToken,
@@ -149,6 +162,75 @@ struct SupporterEventDetailView: View {
             .padding(.bottom, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func nativeTools(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("YOUR EVENT TOOLS")
+                .font(.caption.bold())
+                .tracking(2)
+                .foregroundStyle(SupporterHomeColors.accent)
+            if let clerk {
+                NavigationLink {
+                    NativeEventPrepView(event: event, clerk: clerk)
+                } label: {
+                    toolRow("Prep", subtitle: "Pack, plan, and check off what’s ready.", icon: "checklist")
+                }
+                .accessibilityIdentifier("event-card-prep")
+                if event.type == "game" {
+                    NavigationLink {
+                        NativeEventTrackerView(event: event, teamName: schedule.teamName ?? "Your team",
+                                               athleteName: schedule.athleteName ?? "Athlete", clerk: clerk)
+                    } label: {
+                        toolRow(event.status == "final" ? "View Stats" : "Track Stats",
+                                subtitle: "Your athlete’s stats and the team scoreboard.", icon: "chart.bar.fill")
+                    }
+                    .accessibilityIdentifier("event-card-track-stats")
+                }
+                if event.status == "final" {
+                    NavigationLink {
+                        SupporterHypeCardView(clerk: clerk)
+                    } label: {
+                        toolRow("Share HYPE Card", subtitle: "Celebrate your athlete after the game.", icon: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("event-card-share")
+                } else {
+                    ShareLink(item: eventShareText(event, timezone: schedule.timezone)) {
+                        toolRow("Share", subtitle: "Send this event’s time, place, and matchup.", icon: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("event-card-share")
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func toolRow(_ title: String, subtitle: String, icon: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(SupporterHomeColors.accent)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.headline).foregroundStyle(.white)
+                Text(subtitle).font(.caption).foregroundStyle(SupporterHomeColors.muted)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").foregroundStyle(SupporterHomeColors.muted)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func eventShareText(_ event: AthleteFanEvent, timezone: String?) -> String {
+        [
+            "PIXL SPORTS · \(event.title)",
+            "\(event.formattedFullDate(timezone: event.timezone ?? timezone)) · \(event.formattedTime(timezone: event.timezone ?? timezone))",
+            (event.timezone ?? timezone).map { "Time zone: \($0)" },
+            event.opponent.isEmpty ? nil : "Opponent: \(event.opponent)",
+            event.location.isEmpty ? nil : "Location: \(event.location)",
+        ].compactMap { $0 }.joined(separator: "\n")
     }
 
     private var brandHeader: some View {

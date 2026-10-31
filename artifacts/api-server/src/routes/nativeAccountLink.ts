@@ -12,6 +12,10 @@ import { loadNativeSupporterHypeCard } from "../lib/nativeSupporterHypeCard";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
+import { z } from "zod/v4";
+import { nativeWorkspaceCommand } from "../lib/nativeEventTracker";
+import { nativeEventWorkspace } from "../lib/nativeEventWorkspace";
+import { notifyStatTrackerShareUpdate } from "./statTrackerShares";
 
 const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -49,6 +53,16 @@ nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
 }));
 nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
   res.json(await loadNativeSupporterSchedule(identity(res)));
+}));
+nativeAccountLinkRouter.post("/supporter/event-workspace", handle(async (req, res) => {
+  const parsed = z.object({ shareToken: z.uuid() }).strict().safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Choose a valid Event Card.");
+  res.json(await nativeEventWorkspace(identity(res), parsed.data.shareToken));
+}));
+nativeAccountLinkRouter.post("/supporter/event-workspace-save", handle(async (req, res) => {
+  const parsed = nativeWorkspaceCommand.safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Check the event tool changes and try again.");
+  res.json(await nativeEventWorkspace(identity(res), parsed.data.shareToken, parsed.data, notifyStatTrackerShareUpdate));
 }));
 nativeAccountLinkRouter.post("/supporter/event-cards", handle(async (req, res) => {
   const parsed = CreateScheduleShareBody.strict().safeParse(req.body);
