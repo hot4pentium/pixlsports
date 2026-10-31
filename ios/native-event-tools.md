@@ -67,3 +67,25 @@ Dashboard XCTest coverage checks square grid geometry, three cards per row,
 Message Board event details, and native event navigation. Run these tests and
 build the iPhone target in Xcode on macOS; the Replit Linux environment cannot
 compile or render this SwiftUI app.
+
+## Opened Event Card steps
+
+Event details use a two-column grid at standard text sizes and a single column
+at accessibility sizes. A safe-area bottom bar keeps Prep, Track Stats, and
+Share visible while scrolling. Each opens its native screen. Share offers
+event text and the existing HYPE Card viewer, without publishing private cards.
+
+For games, Prep is recommended until one hour before the event's resolved
+kickoff instant; Track Stats from -1 hour through just before +1 hour; Share
+from +1 hour onward. The bar refreshes its recommendation while open. This
+does not start, finish, or save a game. Historical detail screens remain on
+their selected event; dashboard selection still advances independently.
+Practices keep Prep until +2 hours, then Share, with game tracking disabled.
+Missing kickoff times stay on Prep rather than inventing a time.
+
+The standalone timing checks can run on a Mac with the Swift toolchain:
+
+```sh
+swiftc "ios/PIXL Sports/NativeEventDetailStep.swift" ios/Tests/NativeEventDetailStepChecks.swift -o /tmp/pixl-event-step-checks
+/tmp/pixl-event-step-checks
+```

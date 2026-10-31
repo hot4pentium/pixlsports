@@ -98,6 +98,24 @@ struct SupporterEventDetailView: View {
             .padding(.vertical, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if case let .loaded(schedule, event) = state {
+                TimelineView(.periodic(from: .now, by: 15)) { context in
+                    NativeEventStepBar(
+                        recommended: .recommended(
+                            start: event.parsedStart(timezone: event.timezone ?? schedule.timezone),
+                            isGame: event.type == "game",
+                            now: context.date
+                        ),
+                        isGame: event.type == "game",
+                        actionsEnabled: clerk != nil,
+                        prepDestination: { prepScreen(event: event) },
+                        trackerDestination: { trackerScreen(schedule: schedule, event: event) },
+                        shareDestination: { shareScreen(schedule: schedule, event: event) }
+                    )
+                }
+            }
+        }
         .navigationTitle("Event Details")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -128,11 +146,9 @@ struct SupporterEventDetailView: View {
     @ViewBuilder
     private func eventDetails(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                brandHeader
+            VStack(alignment: .leading, spacing: 14) {
                 eventCard(schedule: schedule, event: event)
                 eventInformation(schedule: schedule, event: event)
-                nativeTools(schedule: schedule, event: event)
 
                 if event.liveTapsActive,
                    let inviteToken = event.liveTapsInviteToken,
@@ -167,113 +183,40 @@ struct SupporterEventDetailView: View {
         }
     }
 
-    private func nativeTools(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("YOUR EVENT TOOLS")
-                .font(.caption.bold())
-                .tracking(2)
-                .foregroundStyle(SupporterHomeColors.accent)
-            if let clerk {
-                NavigationLink {
-                    NativeEventPrepView(event: event, clerk: clerk)
-                } label: {
-                    toolRow("Prep", subtitle: "Pack, plan, and check off what’s ready.", icon: "checklist")
-                }
-                .accessibilityIdentifier("event-card-prep")
-                if event.type == "game" {
-                    NavigationLink {
-                        NativeEventTrackerView(event: event, teamName: schedule.teamName ?? "Your team",
-                                               athleteName: schedule.athleteName ?? "Athlete", clerk: clerk)
-                    } label: {
-                        toolRow(event.status == "final" ? "View Stats" : "Track Stats",
-                                subtitle: "Your athlete’s stats and the team scoreboard.", icon: "chart.bar.fill")
-                    }
-                    .accessibilityIdentifier("event-card-track-stats")
-                }
-                if event.status == "final" {
-                    NavigationLink {
-                        SupporterHypeCardView(clerk: clerk)
-                    } label: {
-                        toolRow("Share HYPE Card", subtitle: "Celebrate your athlete after the game.", icon: "square.and.arrow.up")
-                    }
-                    .accessibilityIdentifier("event-card-share")
-                } else {
-                    ShareLink(item: eventShareText(event, timezone: schedule.timezone)) {
-                        toolRow("Share", subtitle: "Send this event’s time, place, and matchup.", icon: "square.and.arrow.up")
-                    }
-                    .accessibilityIdentifier("event-card-share")
-                }
-            }
+    @ViewBuilder
+    private func prepScreen(event: AthleteFanEvent) -> some View {
+        if let clerk {
+            NativeEventPrepView(event: event, clerk: clerk)
+        } else {
+            ContentUnavailableView("Sign in to prepare", systemImage: "lock.fill")
         }
-        .buttonStyle(.plain)
     }
 
-    private func toolRow(_ title: String, subtitle: String, icon: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(SupporterHomeColors.accent)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.headline).foregroundStyle(.white)
-                Text(subtitle).font(.caption).foregroundStyle(SupporterHomeColors.muted)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").foregroundStyle(SupporterHomeColors.muted)
+    @ViewBuilder
+    private func trackerScreen(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        if let clerk, event.type == "game" {
+            NativeEventTrackerView(
+                event: event,
+                teamName: schedule.teamName ?? "Your team",
+                athleteName: schedule.athleteName ?? "Athlete",
+                clerk: clerk
+            )
+        } else {
+            ContentUnavailableView("Game statistics unavailable", systemImage: "chart.bar.fill")
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
-        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
     }
 
-    private func eventShareText(_ event: AthleteFanEvent, timezone: String?) -> String {
-        [
-            "PIXL SPORTS · \(event.title)",
-            "\(event.formattedFullDate(timezone: event.timezone ?? timezone)) · \(event.formattedTime(timezone: event.timezone ?? timezone))",
-            (event.timezone ?? timezone).map { "Time zone: \($0)" },
-            event.opponent.isEmpty ? nil : "Opponent: \(event.opponent)",
-            event.location.isEmpty ? nil : "Location: \(event.location)",
-        ].compactMap { $0 }.joined(separator: "\n")
-    }
-
-    private var brandHeader: some View {
-        HStack(alignment: .center, spacing: 11) {
-            Image(systemName: "sportscourt.fill")
-                .font(.system(size: 15, weight: .black))
-                .foregroundStyle(SupporterHomeColors.background)
-                .frame(width: 38, height: 38)
-                .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 12))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(.white.opacity(0.3), lineWidth: 1)
-                }
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text("PIXL")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                    .tracking(1.4)
-                    .foregroundStyle(SupporterHomeColors.blue)
-                Text("SPORTS")
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
-                    .tracking(3.3)
-                    .foregroundStyle(.white.opacity(0.86))
-            }
-
-            Spacer()
-
-            Text("SUPPORTER HUB")
-                .font(.system(size: 9, weight: .heavy))
-                .tracking(1.5)
-                .foregroundStyle(SupporterHomeColors.muted)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(.white.opacity(0.06), in: Capsule())
+    @ViewBuilder
+    private func shareScreen(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        if let clerk {
+            NativeEventShareView(schedule: schedule, event: event, clerk: clerk)
+        } else {
+            ContentUnavailableView("Sign in to share", systemImage: "lock.fill")
         }
-        .accessibilityElement(children: .combine)
     }
 
     private func eventCard(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 17) {
+        VStack(alignment: .leading, spacing: 10) {
             eventCardHeading(event)
 
             if let athleteName = schedule.athleteName, !athleteName.isEmpty {
@@ -282,21 +225,13 @@ struct SupporterEventDetailView: View {
                         .font(.system(size: 10, weight: .bold))
                     Text(athleteName)
                         .font(.system(size: 12, weight: .semibold))
-                        .lineLimit(1)
-                    if let seasonName = schedule.seasonName, !seasonName.isEmpty {
-                        Circle()
-                            .fill(SupporterHomeColors.accent.opacity(0.75))
-                            .frame(width: 4, height: 4)
-                        Text(seasonName)
-                            .font(.system(size: 11, weight: .medium))
-                            .lineLimit(1)
-                    }
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(SupporterHomeColors.muted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
+        .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 24)
                 .fill(
@@ -361,44 +296,47 @@ struct SupporterEventDetailView: View {
     }
 
     private func eventInformation(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("EVENT DETAILS")
                 .font(.system(size: 10, weight: .black))
                 .tracking(1.9)
                 .foregroundStyle(SupporterHomeColors.accent)
 
-            detailRow(icon: "calendar", label: "DATE", value: event.formattedFullDate(timezone: event.timezone ?? schedule.timezone))
-            detailRow(icon: "clock", label: "TIME", value: event.formattedTime(timezone: event.timezone ?? schedule.timezone))
+            LazyVGrid(
+                columns: Array(
+                    repeating: GridItem(.flexible(), alignment: .topLeading),
+                    count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+                ),
+                alignment: .leading,
+                spacing: 16
+            ) {
+                detailRow(icon: "calendar", label: "DATE", value: event.formattedFullDate(timezone: event.timezone ?? schedule.timezone))
+                detailRow(icon: "clock", label: "TIME", value: event.formattedTime(timezone: event.timezone ?? schedule.timezone))
 
-            if event.type == "game" {
+                if event.type == "game" {
+                    detailRow(
+                        icon: "person.2.fill",
+                        label: "OPPONENT",
+                        value: event.opponent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "Opponent to be announced"
+                            : event.opponent
+                    )
+                }
                 detailRow(
-                    icon: "person.2.fill",
-                    label: "OPPONENT",
-                    value: event.opponent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "Opponent to be announced"
-                        : event.opponent
+                    icon: "mappin.and.ellipse",
+                    label: "LOCATION",
+                    value: event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "Location to be announced"
+                        : event.location
                 )
-            }
 
-            detailRow(
-                icon: "mappin.and.ellipse",
-                label: "LOCATION",
-                value: event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? "Location to be announced"
-                    : event.location
-            )
-
-            if let teamName = schedule.teamName, !teamName.isEmpty {
-                detailRow(icon: "shield.fill", label: "TEAM", value: teamName)
+                if let teamName = schedule.teamName, !teamName.isEmpty {
+                    detailRow(icon: "shield.fill", label: "TEAM", value: teamName)
+                }
+                if let seasonName = schedule.seasonName, !seasonName.isEmpty {
+                    detailRow(icon: "calendar", label: "SEASON", value: seasonName)
+                }
             }
-            if let seasonName = schedule.seasonName, !seasonName.isEmpty {
-                detailRow(icon: "calendar", label: "SEASON", value: seasonName)
-            }
-            detailRow(
-                icon: event.status == "live" ? "dot.radiowaves.left.and.right" : "checkmark.circle",
-                label: "STATUS",
-                value: statusText(event)
-            )
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -461,7 +399,9 @@ struct SupporterEventDetailView: View {
             isLive ? SupporterHomeColors.accent.opacity(0.11) : SupporterHomeColors.blue.opacity(0.16),
             in: Capsule()
         )
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Status: \(statusText(event))")
+        .accessibilityIdentifier("event-detail-status")
     }
 
     private func statusText(_ event: AthleteFanEvent) -> String {
@@ -469,24 +409,22 @@ struct SupporterEventDetailView: View {
     }
 
     private func detailRow(icon: String, label: String, value: String) -> some View {
-        HStack(alignment: .top, spacing: 13) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(SupporterHomeColors.accent)
-                .frame(width: 20)
-                .padding(.top, 1)
-
-            VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: detailLabelPointSize, weight: .semibold))
+                    .foregroundStyle(SupporterHomeColors.accent)
                 Text(label)
                     .font(.system(size: detailLabelPointSize, weight: .heavy))
                     .tracking(1.3)
                     .foregroundStyle(SupporterHomeColors.muted)
-                Text(value)
-                    .font(.system(size: detailValuePointSize, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+            Text(value)
+                .font(.system(size: detailValuePointSize, weight: .semibold))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("event-detail-\(label.lowercased())")
     }

@@ -14,15 +14,30 @@ final class SupporterEventDetailUITests: XCTestCase {
         let title = app.descendants(matching: .any)["event-detail-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 10))
         XCTAssertTrue(title.label.contains("Championship Showcase"))
+        let status = assertReachable("event-detail-status", in: app)
+        XCTAssertTrue(status.label.contains("Live"))
         let date = assertReachable("event-detail-date", in: app)
         XCTAssertTrue(date.label.contains("November 14"))
         let opponent = assertReachable("event-detail-opponent", in: app)
         XCTAssertTrue(opponent.label.contains("Very Long Name"))
         let location = assertReachable("event-detail-location", in: app)
         XCTAssertTrue(location.label.contains("Field Twenty-Seven"))
-        let status = assertReachable("event-detail-status", in: app)
-        XCTAssertTrue(status.label.contains("Live"))
         assertReachable("event-detail-live-taps", in: app)
+    }
+
+    func testEventStepButtonsStayAtTheBottomWhenDetailsScroll() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail"]
+        app.launch()
+        let prep = app.buttons["event-card-prep"].firstMatch
+        XCTAssertTrue(prep.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["event-card-track-stats"].exists)
+        XCTAssertTrue(app.buttons["event-card-share"].exists)
+        let initialY = prep.frame.minY
+        XCTAssertGreaterThanOrEqual(prep.frame.height, 44)
+        app.swipeUp()
+        XCTAssertEqual(prep.frame.minY, initialY, accuracy: 2)
+        XCTAssertLessThanOrEqual(prep.frame.maxY, app.frame.maxY)
     }
 
     func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {

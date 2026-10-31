@@ -14,3 +14,9 @@ For native iPhone, the Message Board should show event details beside the HYPE C
 **Why:** The user requested this layout and explicitly chose native tools instead of temporarily opening the web tools.
 
 **How to apply:** Use the PWA's behavior as the reference, preserve existing account-owned checklist and game history, and keep these actions inside the native journey.
+
+Opened native Event Cards should use compact, organized details with Prep, Track Stats, and Share step buttons at the bottom. Each opens its native section, and the recommended step is highlighted according to the event's timing.
+
+**Why:** The user requested less vertical detail layout and a clear, time-aware sequence of actions.
+
+**How to apply:** Keep the step bar visible as details scroll, preserve readable larger-text layouts, and distinguish recommendation changes from actual saved completion or game finalization.
