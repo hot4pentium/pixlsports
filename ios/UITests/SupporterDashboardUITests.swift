@@ -13,7 +13,7 @@ final class SupporterDashboardUITests: XCTestCase {
             XCTAssertTrue(app.staticTexts["dashboard-title"].waitForExistence(timeout: 10))
             let element = reachable(identifier, in: app)
             if state == "loading" {
-                XCTAssertFalse(app.buttons["dashboard-connection-action"].isEnabled)
+                XCTAssertFalse(app.buttons["dashboard-connection-action"].exists)
             } else if state == "empty" {
                 XCTAssertTrue(element.label.contains("No upcoming Event Cards"))
             } else if state == "error" {
@@ -24,18 +24,26 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
-    func testAthleteAndConnectionRemainReadableWithAccessibilityText() {
+    func testConnectedDashboardKeepsAthleteContentWithoutConnectionManagement() {
         let app = launch("empty", accessibilityText: true)
         let athlete = reachable("dashboard-athlete", in: app)
         XCTAssertEqual(athlete.label, "Jordan Example With a Long Athlete Name")
         let season = reachable("dashboard-season", in: app)
         XCTAssertTrue(season.label.contains("Autumn Championship Season"))
+        XCTAssertFalse(app.buttons["dashboard-connection-action"].exists)
+        XCTAssertFalse(app.staticTexts["PIXL account connected"].exists)
+        XCTAssertFalse(app.staticTexts["Manage connection"].exists)
+        reachable("dashboard-empty", in: app)
+    }
+
+    func testFirstTimeConnectionSetupRemainsAvailableWithAccessibilityText() {
+        let app = launch("unlinked", accessibilityText: true)
         let connection = reachable("dashboard-connection-action", in: app)
         XCTAssertGreaterThanOrEqual(connection.frame.height, 44)
         connection.tap()
         XCTAssertTrue(app.staticTexts["dashboard-fixture-connection"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
-        reachable("dashboard-empty", in: app)
+        reachable("dashboard-connection-action", in: app)
     }
 
     func testUpcomingAndLiveCardsKeepNativeNavigation() {

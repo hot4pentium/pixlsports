@@ -79,7 +79,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         header
                         athleteHero
-                        accountConnectionSection
+                        accountSetupIfNeeded
                         nextEventSection
                     }
                     .frame(maxWidth: 560, alignment: .leading)
@@ -352,72 +352,29 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Account connection
+    // MARK: - First-time account setup
 
     @ViewBuilder
-    private var accountConnectionSection: some View {
-        if case .schedule = displayedState {
-            Button {
-                showingAccountLink = true
-            } label: {
-                HStack(alignment: .center, spacing: 12) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .foregroundStyle(SupporterHomeColors.accent)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("PIXL account connected")
-                            .font(.caption.weight(.heavy))
-                            .foregroundStyle(SupporterHomeColors.accent)
-                        Text("Manage connection")
-                            .font(.footnote)
-                            .foregroundStyle(SupporterHomeColors.muted)
-                    }
-                    .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(SupporterHomeColors.muted)
-                        .accessibilityHidden(true)
-                }
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .padding(16)
-                .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(.white.opacity(0.09), lineWidth: 1)
-                }
-            }
-            .buttonStyle(SupporterCardPressStyle())
-            .accessibilityLabel("PIXL account connected. Manage PIXL connection")
-            .accessibilityHint("Schedule data is loaded from your verified PIXL account.")
-            .accessibilityIdentifier("dashboard-connection-action")
-        } else {
+    private var accountSetupIfNeeded: some View {
+        if case .notConnected = displayedState {
             accountSetupSection
         }
     }
 
     private var accountSetupSection: some View {
-        let isChecking: Bool
-        if case .loading = displayedState {
-            isChecking = true
-        } else {
-            isChecking = false
-        }
-
-        return VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             Label {
-                Text(isChecking ? "Checking PIXL account" : "Private PIXL schedule")
+                Text("Private PIXL schedule")
                     .textCase(.uppercase)
                     .fixedSize(horizontal: false, vertical: true)
             } icon: {
-                Image(systemName: isChecking ? "arrow.triangle.2.circlepath" : "lock.fill")
+                Image(systemName: "lock.fill")
             }
             .font(.caption.weight(.heavy))
             .tracking(1.3)
             .foregroundStyle(SupporterHomeColors.muted)
 
-            Text(isChecking
-                    ? "Verifying your private schedule connection…"
-                    : "Connect the PIXL account you already use. Approval is required on both devices.")
+            Text("Connect the PIXL account you already use. Approval is required on both devices.")
                 .font(.footnote)
                 .foregroundStyle(SupporterHomeColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -436,8 +393,6 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(SupporterPrimaryButtonStyle())
-            .disabled(isChecking)
-            .opacity(isChecking ? 0.55 : 1)
             .accessibilityIdentifier("dashboard-connection-action")
         }
         .padding(18)

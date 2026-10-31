@@ -11,6 +11,12 @@ The iOS `ClerkConfig.plist` publishable key must belong to the dedicated iOS Cle
 
 Linking must prove the native identity and existing web owner independently, with explicit approval on both sides. Never infer ownership from matching emails or silently replace a connection. Disconnect preserves both accounts and their saved data.
 
+Do not show a “PIXL account connected” card or connection-management section on the native dashboard.
+
+**Why:** The user said the user does not need to manage their connection.
+
+**How to apply:** Keep required first-time verification separate from the everyday dashboard. Removing this card does not change the verified identity-to-data mapping or authorize an authentication migration.
+
 The target family experience is explicit sign-up or sign-in after installation; App Store ownership is not authentication. Returning families should use their existing PIXL account, and new families should create one account usable on iPhone and web. A separate iPhone-only account and repeated web-account linking are transitional, not the desired long-term journey.
 
 **Why:** the user explicitly confirmed this sign-in experience and wants to avoid making returning families create a second PIXL account.
