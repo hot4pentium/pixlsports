@@ -88,7 +88,7 @@ enum SupporterDashboardFixtures {
             "guide-after-share-window": "2026-11-14T06:29:00Z",
             "guide-practice-upcoming": "2026-11-14T02:29:00Z",
             "guide-live": "2026-11-14T02:30:00Z",
-            "guide-postgame": "2026-11-14T05:31:00Z"
+            "guide-postgame": "2026-11-14T04:00:00Z"
         ]
         guard let timestamp = timestamps[state] else { return nil }
         return ISO8601DateFormatter().date(from: timestamp)

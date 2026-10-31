@@ -32,13 +32,15 @@ final class SupporterHomeViewModel: ObservableObject {
         now: Date = Date()
     ) -> SupporterScheduleItem? {
         let candidates = page.events.compactMap { event -> SupporterScheduleItem? in
-            let eventTimeZone = TimeZone(identifier: event.timezone ?? page.timezone ?? "") ?? .current
+            let eventTimeZone = TimeZone(identifier: event.timezone ?? "")
+                ?? TimeZone(identifier: page.timezone ?? "")
+                ?? .current
             let dateFormatter = DateFormatter()
             dateFormatter.locale = Locale(identifier: "en_US_POSIX")
             dateFormatter.timeZone = eventTimeZone
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let today = dateFormatter.string(from: now)
-            let start = event.parsedStart(timezone: event.timezone ?? page.timezone)
+            let start = event.parsedStart(timezone: eventTimeZone.identifier)
 
             if event.type == "game" {
                 guard let step = NativeEventGuideTiming.gameRecommendation(

@@ -61,6 +61,6 @@ struct NativeEventDetailStepChecks {
             timeZone: losAngeles,
             now: oneMinuteBefore
         ) == .prep, "A future event without a valid start remains on Prep.")
-        print("Native event detail step boundary checks passed.")
+        print("Native Event Card and Message Board timing checks passed.")
     }
 }
