@@ -18,14 +18,14 @@ final class SupporterEventDetailUITests: XCTestCase {
     // signed in and linked on this simulator; never pass credentials to XCTest.
     // Unlike --ui-testing-prep-draft these use the real authenticated API.
     func testSignedInQuickPrepCheckoffPersistsAfterSavingAndReopening() throws {
-        try checkSignedInPrepPersistence(failFirstSave: false)
+        try checkSignedInPrepPersistence(dropFirstResponse: false)
     }
 
-    func testSignedInQuickPrepFailedSaveStaysVisibleAndRetriesAfterReopening() throws {
-        try checkSignedInPrepPersistence(failFirstSave: true)
+    func testSignedInQuickPrepLostResponseRetriesSameMutationAfterRelaunch() throws {
+        try checkSignedInPrepPersistence(dropFirstResponse: true)
     }
 
-    private func checkSignedInPrepPersistence(failFirstSave: Bool) throws {
+    private func checkSignedInPrepPersistence(dropFirstResponse: Bool) throws {
         let environment = ProcessInfo.processInfo.environment
         guard let eventID = environment["PIXL_PREP_TEST_EVENT_ID"], !eventID.isEmpty,
               let itemID = environment["PIXL_PREP_TEST_ITEM_ID"], !itemID.isEmpty else {
@@ -33,7 +33,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         }
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-signed-in-prep"]
-        if failFirstSave { app.launchArguments.append("--prep-save-fails-once") }
+        if dropFirstResponse { app.launchArguments.append("--prep-save-lost-response-once") }
         app.launch()
         defer { app.terminate() }
 
@@ -54,27 +54,33 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(save.isEnabled)
         save.tap()
 
-        if failFirstSave {
+        if dropFirstResponse {
             let error = app.descendants(matching: .any)["native-tool-save-error"].firstMatch
             XCTAssertTrue(error.waitForExistence(timeout: 10))
-            XCTAssertTrue(error.label.contains("Test connection interrupted"))
+            XCTAssertTrue(error.label.contains("Test server committed Prep"))
+            XCTAssertTrue(error.label.contains("response dropped before acknowledgement"))
             XCTAssertTrue(error.label.contains("kept on this iPhone"))
             XCTAssertTrue(app.staticTexts["Unsaved changes"].exists)
             XCTAssertFalse(save.isEnabled, "Use the retained-command retry, not a new save.")
             XCTAssertFalse(reachableFromAbove(itemIdentifier, in: app).isEnabled)
             XCTAssertEqual(item.value as? String, changedValue, "Failure must retain the checkoff.")
-            XCTAssertTrue(assertReachable("native-tool-save-retry", in: app).isEnabled)
+            let pendingMutation = assertReachable("native-tool-save-retry", in: app)
+            XCTAssertTrue(pendingMutation.isEnabled)
+            let mutationID = pendingMutation.value as? String
+            XCTAssertNotNil(mutationID, "Debug test hook should expose the journaled mutation ID to XCTest.")
+            XCTAssertFalse(mutationID?.isEmpty ?? true)
 
-            // Reopening builds a new model and restores the pending command
-            // from its account/event-scoped journal, rather than view state.
-            app.navigationBars["Event Details"].buttons["Back"].tap()
-            let leave = app.buttons["Leave without saving"]
-            XCTAssertTrue(leave.waitForExistence(timeout: 5))
-            leave.tap()
+            // A process restart must restore the command from its account/event
+            // journal, not from the editor's in-memory state.
+            app.terminate()
+            app.launch()
             openSignedInPrep(eventID: eventID, in: app)
             XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, changedValue)
             XCTAssertTrue(app.descendants(matching: .any)["native-tool-save-error"].exists)
-            assertReachable("native-tool-save-retry", in: app).tap()
+            let restoredRetry = assertReachable("native-tool-save-retry", in: app)
+            XCTAssertEqual(restoredRetry.value as? String, mutationID,
+                           "Relaunch must restore the same account/event-scoped mutation.")
+            restoredRetry.tap()
         }
 
         waitForPrepSaved(in: app)

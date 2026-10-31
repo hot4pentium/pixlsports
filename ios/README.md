@@ -227,7 +227,7 @@ Two opt-in cases in `SupporterEventDetailUITests` use the **real native auth,
 account link, workspace reads, save endpoint, and pending-command journal**:
 
 - `testSignedInQuickPrepCheckoffPersistsAfterSavingAndReopening`
-- `testSignedInQuickPrepFailedSaveStaysVisibleAndRetriesAfterReopening`
+- `testSignedInQuickPrepLostResponseRetriesSameMutationAfterRelaunch`
 
 Run only against a dedicated development account and disposable upcoming Event
 Card. On the target iPhone simulator, launch the app normally, complete Clerk
@@ -251,7 +251,7 @@ test rather than falling back to a fixture.
 xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
   -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInQuickPrepCheckoffPersistsAfterSavingAndReopening \
-  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInQuickPrepFailedSaveStaysVisibleAndRetriesAfterReopening
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInQuickPrepLostResponseRetriesSameMutationAfterRelaunch
 ```
 
 Each test changes one compact checklist task, presses Save Prep, closes Event
@@ -260,15 +260,16 @@ count. It then restores and verifies the original task state. A failed test may
 leave that dedicated task changed or a pending command: inspect/retry or discard
 that command and reset the test item before rerunning.
 
-The retry case adds `--prep-save-fails-once` together with
-`--ui-testing-signed-in-prep`. This Debug-only hook interrupts the first Prep
-command before sending it, only with a completed Clerk sign-in. It never
-fabricates success, changes the API destination, bypasses authorization, or
-affects Release. The real save failure handler retains the draft and mutation
-ID; the test checks the visible error, disabled duplicate-save/edit controls,
-reopens to recover the pending command, retries against the API, and checks the
-saved state after another reopen. The no-Clerk draft fixture remains unable to
-save.
+The retry case adds `--prep-save-lost-response-once` together with
+`--ui-testing-signed-in-prep`. This Debug-only hook sends the real authenticated
+Prep command, lets the development server commit it, then discards the success
+before the app acknowledges it. It is limited to a signed-in Prep mutation and
+stores its one-shot marker against that account, Event Card, and mutation ID.
+The test terminates and relaunches the app, confirms that the same pending
+mutation returns, retries through the real API, and verifies the checkoff after
+reopening. It never fabricates success, changes the API destination, bypasses
+authorization, or affects Release. The no-Clerk draft fixture remains unable
+to save.
 
 **Execution boundary:** these signed-in cases require Apple Xcode, an iPhone
 simulator, and the prepared development session/card. They have not been run in

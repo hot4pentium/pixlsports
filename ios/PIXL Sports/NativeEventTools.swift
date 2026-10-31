@@ -138,9 +138,10 @@ final class NativeEventToolModel: ObservableObject {
     private let shareToken: String
     private let storageKey: String
 #if DEBUG
-    // Process-scoped so reopening the editor does not fail the retry again.
-    // Only the explicit signed-in regression launch may inject a failure.
-    private static var prepSaveFailureInjected = false
+    var uiTestPendingMutationID: String? {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep") else { return nil }
+        return pending?.mutationId
+    }
 #endif
 
     init(shareToken: String, accountID: String) {
@@ -211,21 +212,32 @@ final class NativeEventToolModel: ObservableObject {
         errorMessage = nil
         defer { busy = false }
         do {
-#if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep"),
-               ProcessInfo.processInfo.arguments.contains("--prep-save-fails-once"),
-               clerk.isAuthFlowComplete, pending.kind == "prep",
-               !Self.prepSaveFailureInjected {
-                Self.prepSaveFailureInjected = true
-                throw NativeAccountLinkError.message("Test connection interrupted before sending Prep.")
-            }
-#endif
             let data = try await NativeAccountLinkClient().postData(
                 "supporter/event-workspace-save", body: pending, clerk: clerk
             )
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep"),
+               ProcessInfo.processInfo.arguments.contains("--prep-save-lost-response-once"),
+               clerk.isAuthFlowComplete, pending.kind == "prep" {
+                let responseDropKey = "\(storageKey):debug-drop-response:\(pending.mutationId)"
+                if !UserDefaults.standard.bool(forKey: responseDropKey) {
+                    // The authenticated endpoint has committed the command.
+                    // Drop its success before the app decodes or acknowledges it.
+                    UserDefaults.standard.set(true, forKey: responseDropKey)
+                    throw NativeAccountLinkError.message(
+                        "Test server committed Prep; response dropped before acknowledgement."
+                    )
+                }
+            }
+#endif
             workspace = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
             self.pending = nil
             UserDefaults.standard.removeObject(forKey: storageKey)
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep") {
+                UserDefaults.standard.removeObject(forKey: "\(storageKey):debug-drop-response:\(pending.mutationId)")
+            }
+#endif
             NotificationCenter.default.post(name: .nativeEventToolsSaved, object: nil)
         } catch {
             errorMessage = "\(error.localizedDescription) Your pending change has been kept on this iPhone."
@@ -259,6 +271,9 @@ struct NativeToolSaveNotice: View {
                 if model.pending != nil {
                     Button("Retry pending save") { Task { await model.retry(clerk: clerk) } }
                         .accessibilityIdentifier("native-tool-save-retry")
+#if DEBUG
+                        .accessibilityValue(model.uiTestPendingMutationID ?? "")
+#endif
                     Button("Discard pending change and reload", role: .destructive) {
                         confirmingDiscard = true
                     }

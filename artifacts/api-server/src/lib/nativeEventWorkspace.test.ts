@@ -146,9 +146,27 @@ test("native Prep updates the existing shared checklist, detects conflicts, and 
   const saved = await nativeEventWorkspace(a.who, a.shareToken, command);
   assert.equal(saved.prep.notes, "Meet at entrance C");
   assert.equal(saved.prep.items[0]?.completed, true);
-  assert.equal((await pool.query("SELECT id FROM checklist_shares WHERE owner_clerk_user_id=$1", [a.owner])).rows[0].id, existing);
+  assert.equal(saved.prepRevision, initial.prepRevision + 1);
+  const firstSaveRows = await pool.query(
+    "SELECT id,revision,items FROM checklist_shares WHERE owner_clerk_user_id=$1 AND selected_game->>'id'=$2",
+    [a.owner, a.eventId],
+  );
+  assert.equal(firstSaveRows.rowCount, 1);
+  assert.equal(firstSaveRows.rows[0].id, existing);
+  const committedRevision = saved.prepRevision;
   const retried = await nativeEventWorkspace(a.who, a.shareToken, command);
-  assert.equal(retried.prepRevision, saved.prepRevision);
+  assert.equal(retried.prepRevision, committedRevision, "replaying a committed mutation must not increment its revision");
+  const retryRows = await pool.query(
+    "SELECT id,revision,items FROM checklist_shares WHERE owner_clerk_user_id=$1 AND selected_game->>'id'=$2",
+    [a.owner, a.eventId],
+  );
+  assert.equal(retryRows.rowCount, 1, "retry must not create a duplicate checklist");
+  assert.equal(retryRows.rows[0].id, existing);
+  assert.equal(retryRows.rows[0].revision, firstSaveRows.rows[0].revision);
+  assert.equal(retryRows.rows[0].items[0]?.completed, true);
+  const reopened = await nativeEventWorkspace(a.who, a.shareToken);
+  assert.equal(reopened.prepRevision, committedRevision);
+  assert.equal(reopened.prep.items[0]?.completed, true, "the checkoff must remain saved when the workspace is reopened");
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("prep", 1, { items: [] })), denied(409));
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("start", 0)), denied(409));
 });
