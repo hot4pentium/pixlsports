@@ -323,7 +323,12 @@ struct NativeEventFanAccessView: View {
             guard started.shareToken == created.shareToken else {
                 throw NativeAccountLinkError.message("Live Taps could not be connected to this Event Card.")
             }
-            NotificationCenter.default.post(name: .nativeEventToolsSaved, object: nil)
+            let reason = NativeEventScheduleChangeReason.liveTapsStarted
+            NotificationCenter.default.post(
+                name: .nativeEventScheduleChanged,
+                object: nil,
+                userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
+            )
         } catch {
             liveTapsStartError = error.localizedDescription
         }

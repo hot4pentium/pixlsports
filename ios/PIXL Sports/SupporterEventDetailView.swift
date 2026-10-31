@@ -146,7 +146,10 @@ struct SupporterEventDetailView: View {
         .task {
             await load()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nativeEventToolsSaved)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .nativeEventScheduleChanged)) { notification in
+            guard let rawReason = notification.userInfo?[NativeEventScheduleChangeReason.userInfoKey] as? String,
+                  let reason = NativeEventScheduleChangeReason(rawValue: rawReason),
+                  reason.refreshesEventDetail else { return }
             toolsChanged = true
             scheduleRefresh()
         }
@@ -202,7 +205,17 @@ struct SupporterEventDetailView: View {
                             clerk: clerk,
                             existingEvent: event,
                             shareToken: event.shareToken,
-                            onCreated: { _ in Task { await load() } }
+                            onCreated: { _ in
+                                Task {
+                                    await load()
+                                    let reason = NativeEventScheduleChangeReason.eventCardEdited
+                                    NotificationCenter.default.post(
+                                        name: .nativeEventScheduleChanged,
+                                        object: nil,
+                                        userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
+                                    )
+                                }
+                            }
                         )
                     } label: {
                         Label("Edit Event Card", systemImage: "pencil")

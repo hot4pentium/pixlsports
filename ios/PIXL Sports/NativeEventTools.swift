@@ -3,7 +3,18 @@ import Combine
 import ClerkKit
 
 extension Notification.Name {
-    static let nativeEventToolsSaved = Notification.Name("pixl.nativeEventToolsSaved")
+    static let nativeEventScheduleChanged = Notification.Name("pixl.nativeEventScheduleChanged")
+}
+
+enum NativeEventScheduleChangeReason: String {
+    case gameStarted
+    case gameFinished
+    case liveTapsStarted
+    case eventCardEdited
+
+    static let userInfoKey = "reason"
+
+    var refreshesEventDetail: Bool { self != .eventCardEdited }
 }
 
 struct NativePrepItem: Codable, Identifiable, Equatable {
@@ -238,7 +249,19 @@ final class NativeEventToolModel: ObservableObject {
                 UserDefaults.standard.removeObject(forKey: "\(storageKey):debug-drop-response:\(pending.mutationId)")
             }
 #endif
-            NotificationCenter.default.post(name: .nativeEventToolsSaved, object: nil)
+            let scheduleChange: NativeEventScheduleChangeReason?
+            switch pending.kind {
+            case "start": scheduleChange = .gameStarted
+            case "finish": scheduleChange = .gameFinished
+            default: scheduleChange = nil
+            }
+            if let scheduleChange {
+                NotificationCenter.default.post(
+                    name: .nativeEventScheduleChanged,
+                    object: nil,
+                    userInfo: [NativeEventScheduleChangeReason.userInfoKey: scheduleChange.rawValue]
+                )
+            }
         } catch {
             errorMessage = "\(error.localizedDescription) Your pending change has been kept on this iPhone."
         }

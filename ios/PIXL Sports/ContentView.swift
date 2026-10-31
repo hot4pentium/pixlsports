@@ -106,7 +106,10 @@ struct ContentView: View {
             }
         }
         .fullScreenCover(item: $heroDestination, onDismiss: {
-            Task { await loadSchedule() }
+            if eventToolsChanged {
+                eventToolsChanged = false
+                Task { await loadSchedule() }
+            }
         }) { destination in
             NavigationStack {
                 heroDestinationView(destination)
@@ -135,7 +138,7 @@ struct ContentView: View {
             guard wasShowing && !isShowing else { return }
             Task { await loadSchedule() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nativeEventToolsSaved)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .nativeEventScheduleChanged)) { _ in
             eventToolsChanged = true
         }
     }
