@@ -37,6 +37,27 @@ struct MyApp: App {
                 }
             } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
                 NavigationStack {
+                    if NativeEventWorkspaceUITestFixture.isRequested {
+                        NavigationLink("Open test Event Card") {
+                            eventDetailFixture
+                        }
+                        .accessibilityIdentifier("prep-test-open-event")
+                        .navigationTitle("Test workspace")
+                    } else {
+                        eventDetailFixture
+                    }
+                }
+            } else {
+                configuredRoot
+            }
+#else
+            configuredRoot
+#endif
+        }
+    }
+
+#if DEBUG
+    private var eventDetailFixture: some View {
                     SupporterEventDetailView(
                         clerk: nil,
                         shareToken: "ui-test-event",
@@ -63,21 +84,15 @@ struct MyApp: App {
                                 liveTapsActive: true,
                                 liveTapsInviteToken: "ui-test-invite",
                                 liveTapsSport: "softball"
-                            )
+                            ),
+                            prep: NativeEventWorkspaceUITestFixture.isRequested
+                                ? NativeEventWorkspaceUITestFixture.shared.workspace.prep
+                                : .init(items: [], notes: "")
                         )
                     )
                     .frame(maxWidth: 320)
-                }
-            } else {
-                configuredRoot
-            }
-#else
-            configuredRoot
-#endif
-        }
     }
 
-#if DEBUG
     private var liveTapsFixture: SupporterLiveTapsView.Fixture {
         let state = ProcessInfo.processInfo.arguments
             .first(where: { $0.hasPrefix("--live-taps-state=") })?

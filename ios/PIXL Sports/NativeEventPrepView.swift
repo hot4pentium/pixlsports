@@ -3,7 +3,7 @@ import ClerkKit
 
 struct NativeEventPrepView: View {
     let event: AthleteFanEvent
-    let clerk: Clerk
+    private let clerk: Clerk?
     let embedded: Bool
     let onDirtyChange: (Bool) -> Void
     @StateObject private var model: NativeEventToolModel
@@ -26,6 +26,19 @@ struct NativeEventPrepView: View {
         ))
     }
 
+#if DEBUG
+    init(event: AthleteFanEvent, uiTestFixture: NativeEventWorkspaceUITestFixture,
+         model: NativeEventToolModel? = nil, embedded: Bool = false,
+         onDirtyChange: @escaping (Bool) -> Void = { _ in }) {
+        precondition(NativeEventWorkspaceUITestFixture.isRequested)
+        self.event = event
+        self.clerk = nil
+        self.embedded = embedded
+        self.onDirtyChange = onDirtyChange
+        _model = StateObject(wrappedValue: model ?? NativeEventToolModel(uiTestFixture: uiTestFixture))
+    }
+#endif
+
     @ViewBuilder
     private var prepSections: some View {
             Section {
@@ -36,7 +49,7 @@ struct NativeEventPrepView: View {
                     .accessibilityIdentifier("native-prep-date")
             }
             .listRowBackground(Color.white.opacity(0.06))
-            if model.busy || model.errorMessage != nil {
+            if let clerk, model.busy || model.errorMessage != nil {
                 Section {
                     NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
                 }
@@ -181,10 +194,17 @@ struct NativeEventPrepView: View {
         .tint(SupporterHomeColors.accent)
         .task {
             guard !hasUnsavedEdits else { return }
-            if model.workspace == nil { await model.load(clerk: clerk) }
+            if model.workspace == nil, let clerk { await model.load(clerk: clerk) }
             applySavedPrep()
         }
         .onChange(of: hasUnsavedEdits) { _, value in onDirtyChange(value) }
+#if DEBUG
+        .safeAreaInset(edge: .top) {
+            if NativeEventWorkspaceUITestFixture.isRequested {
+                NativePrepDraftUITestControls()
+            }
+        }
+#endif
         .onChange(of: model.workspace?.prepRevision) { _, _ in
             if let prep = model.workspace?.prep, prep.items == items && prep.notes == notes && model.pending == nil {
                 edited = false
@@ -245,6 +265,11 @@ struct NativeEventPrepView: View {
                 .foregroundStyle(SupporterHomeColors.muted)
             Button("Save Prep") {
                 Task {
+                    guard let clerk else {
+                        // Test workspaces must never send or pretend to save.
+                        model.errorMessage = "This UI-test workspace cannot save."
+                        return
+                    }
                     recoveringPrepDraft = true
                     await model.save("prep", clerk: clerk, items: items, notes: notes)
                     if model.errorMessage == nil && model.pending == nil {
@@ -285,3 +310,27 @@ struct NativeEventPrepView: View {
         edited = recoveringPrepDraft
     }
 }
+
+#if DEBUG
+private struct NativePrepDraftUITestControls: View {
+    @ObservedObject private var fixture = NativeEventWorkspaceUITestFixture.shared
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        VStack {
+            Text("Next: \(fixture.recommendation)")
+                .accessibilityIdentifier("prep-test-recommendation")
+            Text("\(fixture.timelineTicks)")
+                .accessibilityIdentifier("prep-test-timeline-ticks")
+            Text("\(fixture.resumes)")
+                .accessibilityIdentifier("prep-test-resumes")
+            Button("Advance test clock") { fixture.advanceClock() }
+                .accessibilityIdentifier("prep-test-advance-clock")
+        }
+        .font(.caption)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { fixture.recordResume() }
+        }
+    }
+}
+#endif

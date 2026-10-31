@@ -59,6 +59,49 @@ struct NativeEventWorkspace: Decodable {
     let game: Game?
 }
 
+#if DEBUG
+/// Local UI-test data only. No Clerk identity, network requests, or persistent
+/// pending-command storage are used by this workspace.
+@MainActor
+final class NativeEventWorkspaceUITestFixture: ObservableObject {
+    static let shared = NativeEventWorkspaceUITestFixture()
+    static var isRequested: Bool {
+        ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail")
+            && ProcessInfo.processInfo.arguments.contains("--ui-testing-prep-draft")
+    }
+
+    let workspace = NativeEventWorkspace(
+        linkId: "fictional-prep-draft", prepRevision: 1, trackerRevision: 0,
+        sport: "softball",
+        prep: .init(items: [
+            .init(id: "water", label: "Pack water", completed: false),
+            .init(id: "cleats", label: "Pack cleats", completed: false)
+        ], notes: "Saved fixture note"),
+        rules: .init(phaseLabel: "Inning", stats: []), game: nil
+    )
+    private let launchedAt = Date()
+    private var clockOffset: TimeInterval = 0
+    @Published private(set) var recommendation = "Waiting for timeline"
+    @Published private(set) var timelineTicks = 0
+    @Published private(set) var resumes = 0
+
+    private init() {}
+
+    func timelineDate(_ date: Date, eventStart: Date) -> Date {
+        eventStart.addingTimeInterval(-2 * 60 * 60 + date.timeIntervalSince(launchedAt) + clockOffset)
+    }
+
+    func advanceClock() { clockOffset += 2 * 60 * 60 }
+
+    func recordTimeline(_ step: NativeEventDetailStep) {
+        recommendation = step.title
+        timelineTicks += 1
+    }
+
+    func recordResume() { resumes += 1 }
+}
+#endif
+
 struct NativeEventToolCommand: Codable {
     let shareToken: String
     let mutationId: String
@@ -96,6 +139,15 @@ final class NativeEventToolModel: ObservableObject {
             pending = try? JSONDecoder().decode(NativeEventToolCommand.self, from: data)
         }
     }
+
+#if DEBUG
+    init(uiTestFixture: NativeEventWorkspaceUITestFixture) {
+        precondition(NativeEventWorkspaceUITestFixture.isRequested)
+        shareToken = "ui-test-event"
+        storageKey = "unused-ui-test-prep-draft"
+        workspace = uiTestFixture.workspace
+    }
+#endif
 
     func load(clerk: Clerk) async {
         guard !busy else { return }

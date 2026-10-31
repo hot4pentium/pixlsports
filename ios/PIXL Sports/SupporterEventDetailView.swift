@@ -108,11 +108,7 @@ struct SupporterEventDetailView: View {
             if case let .loaded(schedule, event) = state {
                 TimelineView(.periodic(from: .now, by: 15)) { context in
                     NativeEventStepBar(
-                        recommended: .recommended(
-                            start: event.parsedStart(timezone: event.timezone ?? schedule.timezone),
-                            isGame: event.type == "game",
-                            now: context.date
-                        ),
+                        recommended: recommendedStep(schedule: schedule, event: event, date: context.date),
                         selected: selectedStep,
                         isGame: event.type == "game",
                         actionsEnabled: clerk != nil || fixture != nil,
@@ -121,6 +117,15 @@ struct SupporterEventDetailView: View {
                             selectedStep = step
                         }
                     )
+#if DEBUG
+                    .onChange(of: context.date, initial: true) { _, date in
+                        if NativeEventWorkspaceUITestFixture.isRequested {
+                            NativeEventWorkspaceUITestFixture.shared.recordTimeline(
+                                recommendedStep(schedule: schedule, event: event, date: date)
+                            )
+                        }
+                    }
+#endif
                 }
             }
         }
@@ -217,13 +222,15 @@ struct SupporterEventDetailView: View {
         }
     }
 
-    @ViewBuilder
-    private func prepScreen(event: AthleteFanEvent) -> some View {
-        if let clerk {
-            NativeEventPrepView(event: event, clerk: clerk)
-        } else {
-            ContentUnavailableView("Sign in to prepare", systemImage: "lock.fill")
+    private func recommendedStep(schedule: NativeSupporterSchedule, event: AthleteFanEvent, date: Date) -> NativeEventDetailStep {
+        let start = event.parsedStart(timezone: event.timezone ?? schedule.timezone)
+        var now = date
+#if DEBUG
+        if NativeEventWorkspaceUITestFixture.isRequested, let start {
+            now = NativeEventWorkspaceUITestFixture.shared.timelineDate(date, eventStart: start)
         }
+#endif
+        return .recommended(start: start, isGame: event.type == "game", now: now)
     }
 
     @ViewBuilder
@@ -517,10 +524,7 @@ struct SupporterEventDetailView: View {
 
     private func chooseInitialStep(schedule: NativeSupporterSchedule, event: AthleteFanEvent) {
         guard !selectionInitialized else { return }
-        selectedStep = .recommended(
-            start: event.parsedStart(timezone: event.timezone ?? schedule.timezone),
-            isGame: event.type == "game", now: Date()
-        )
+        selectedStep = recommendedStep(schedule: schedule, event: event, date: Date())
         selectionInitialized = true
     }
 

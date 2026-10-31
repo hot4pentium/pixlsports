@@ -110,12 +110,38 @@ signing, and rendered native UI must be verified on the Mac.
 The Event Card detail UI test launches a local fixture without signing in or
 requesting private data. It limits the screen content to 320 points wide, sets
 the largest accessibility text size, and checks that the date, opponent,
-location, status, and Live Taps control remain reachable:
+location, status, and native tool panel remain reachable:
 
 ```sh
 xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>'
 ```
+
+The Prep draft regression uses both `--ui-testing-event-detail` and
+`--ui-testing-prep-draft` in **Debug only**. A test entry link opens Event Details
+with the real embedded Prep editor and shared workspace model using
+fictional saved notes/checklist data, without configuring Clerk, reading pending
+commands, or making private requests. Its clock control advances only the test
+date; the unchanged 15-second Event Details TimelineView must deliver a tick
+before the test sees a new recommendation. Other private editors stay locked
+without Clerk, and the fixture cannot save. The ordinary detail fixture allows
+panel selection but remains read-only and never exposes private editors.
+
+Run the focused regression on a Mac with Xcode and an iPhone simulator:
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testUnsavedPrepSurvivesTimelineRecommendationsAndBackgroundResume \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testReadOnlyDetailFixtureDoesNotExposePrivateEditorsWithoutClerk
+```
+
+This checks unsaved note text, a toggled saved task, and a newly added/toggled task
+through Prep → Track Stats → Share guidance, switching away from and back to the
+Prep panel, Home/foreground activation, canceling the Event Details discard dialog,
+confirmed discard, and reopening the unchanged saved data.
+Allow up to 25 seconds per timeline transition. Linux source checks or browser
+tests do not verify SwiftUI navigation or iOS lifecycle behavior.
 
 `SupporterDashboardUITests` also checks the dashboard at 320 points: connected
 empty, unlinked, loading, error, upcoming, and live states; large-text athlete

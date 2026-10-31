@@ -23,6 +23,12 @@ struct NativeEventToolPanel: View {
         self.selected = selected
         self.fixturePrep = fixturePrep
         self.onDirtyChange = onDirtyChange
+#if DEBUG
+        if NativeEventWorkspaceUITestFixture.isRequested {
+            _workspaceModel = StateObject(wrappedValue: NativeEventToolModel(uiTestFixture: .shared))
+            return
+        }
+#endif
         _workspaceModel = StateObject(wrappedValue: NativeEventToolModel(
             shareToken: event.shareToken, accountID: clerk?.user?.id ?? "signed-out"
         ))
@@ -33,7 +39,9 @@ struct NativeEventToolPanel: View {
             Text(selected.title)
                 .font(.title3.weight(.heavy))
                 .foregroundStyle(SupporterHomeColors.accent)
-            if let clerk {
+            if usesUITestWorkspace {
+                uiTestPrepPanel
+            } else if let clerk {
                 VStack(spacing: 0) {
                     if prepVisited || selected == .prep {
                         NativeEventPrepView(event: event, clerk: clerk, model: workspaceModel,
@@ -69,6 +77,25 @@ struct NativeEventToolPanel: View {
         .accessibilityIdentifier("event-detail-tool-panel")
         .onAppear { rememberSelection() }
         .onChange(of: selected) { _, _ in rememberSelection() }
+    }
+
+    private var usesUITestWorkspace: Bool {
+#if DEBUG
+        return NativeEventWorkspaceUITestFixture.isRequested
+#else
+        return false
+#endif
+    }
+
+    @ViewBuilder
+    private var uiTestPrepPanel: some View {
+#if DEBUG
+        if prepVisited || selected == .prep {
+            NativeEventPrepView(event: event, uiTestFixture: .shared, model: workspaceModel,
+                                embedded: true, onDirtyChange: onDirtyChange)
+                .eventToolVisibility(selected == .prep)
+        }
+#endif
     }
 
     private func rememberSelection() {
