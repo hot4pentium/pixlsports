@@ -21,8 +21,20 @@ Opened native Event Cards should use compact, organized details with Prep, Track
 
 **How to apply:** Keep the step bar visible as details scroll, preserve readable larger-text layouts, and distinguish recommendation changes from actual saved completion or game finalization.
 
-Show a read-only view of the current saved Prep card beneath the Event Details box.
+Use the section beneath Event Details as the active native Prep, Track Stats, or Share panel rather than a permanent read-only Prep summary.
 
-**Why:** The user explicitly requested this placement and read-only behavior.
+**Why:** The user preferred using the same area for the selected task instead of opening another screen for every tool.
 
-**How to apply:** Read the same verified event workspace used by Prep, refresh on returning from saved edits, and keep checklist editing and saving in the dedicated Prep screen. Do not present pending local changes as saved.
+**How to apply:** Keep the bottom steps available, initially select the time-recommended step, and do not force a different selection while the user works. Retain unfinished Prep and pending tracker changes when switching panels.
+
+Within Track Stats, offer Track Stats and Live Taps choices. Stats should be condensed with an option to open the full tracker; Live Taps should show actual interactive cheers and a shareable QR for fans at the game.
+
+**Why:** The user explicitly requested this split and in-person fan QR sharing. Cheers must remain distinct from recorded stats.
+
+**How to apply:** Compact and full tracking must use the same game state. Fan QR creation requires an active session and verified ownership. Existing family QR access lasts until revoked: explain this clearly and provide revocation, rather than implying that these codes expire at the end of a game.
+
+All mounted event editors must share one workspace command/recovery owner, including Prep and both tracker presentations.
+
+**Why:** Separate controllers can overwrite or clear the same event-scoped pending-save journal. A tracker retry or discard must also never erase an unrelated unsaved Prep draft.
+
+**How to apply:** Serialize pending saves across tools and distinguish recovery of a failed Prep save from recovery of a tracker command. Preserve local Prep edits during tracker-only reloads.

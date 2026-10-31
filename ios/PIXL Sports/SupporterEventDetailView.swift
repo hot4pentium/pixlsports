@@ -1,5 +1,6 @@
 import SwiftUI
 import ClerkKit
+import UIKit
 
 @MainActor
 struct SupporterEventDetailView: View {
@@ -12,6 +13,10 @@ struct SupporterEventDetailView: View {
     @State private var state: DetailState = .loading
     @State private var toolsChanged = false
     @State private var detailsVisible = false
+    @State private var selectedStep: NativeEventDetailStep = .prep
+    @State private var selectionInitialized = false
+    @State private var prepHasUnsavedChanges = false
+    @State private var refreshTask: Task<Void, Never>?
     @ScaledMetric(relativeTo: .largeTitle) private var eventTitlePointSize = 24
     @ScaledMetric(relativeTo: .body) private var detailValuePointSize = 16
     @ScaledMetric(relativeTo: .body) private var detailLabelPointSize = 10
@@ -108,11 +113,13 @@ struct SupporterEventDetailView: View {
                             isGame: event.type == "game",
                             now: context.date
                         ),
+                        selected: selectedStep,
                         isGame: event.type == "game",
-                        actionsEnabled: clerk != nil,
-                        prepDestination: { prepScreen(event: event) },
-                        trackerDestination: { trackerScreen(schedule: schedule, event: event) },
-                        shareDestination: { shareScreen(schedule: schedule, event: event) }
+                        actionsEnabled: clerk != nil || fixture != nil,
+                        onSelect: { step in
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            selectedStep = step
+                        }
                     )
                 }
             }
@@ -127,15 +134,22 @@ struct SupporterEventDetailView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .nativeEventToolsSaved)) { _ in
             toolsChanged = true
+            scheduleRefresh()
         }
         .onAppear {
             detailsVisible = true
-            if toolsChanged {
+            if toolsChanged && !prepHasUnsavedChanges {
                 toolsChanged = false
                 Task { await load() }
             }
         }
-        .onDisappear { detailsVisible = false }
+        .onDisappear {
+            detailsVisible = false
+            refreshTask?.cancel()
+        }
+        .onChange(of: prepHasUnsavedChanges) { _, dirty in
+            if !dirty && toolsChanged { scheduleRefresh() }
+        }
         .onChange(of: scenePhase) { _, phase in
             // Don't remove the destination's NavigationLink while a native tool
             // has unsaved work. Its requests still recheck account access.
@@ -146,15 +160,25 @@ struct SupporterEventDetailView: View {
 
     @ViewBuilder
     private func eventDetails(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 eventCard(schedule: schedule, event: event)
                 eventInformation(schedule: schedule, event: event)
-                NativeEventPrepSummaryView(
-                    shareToken: event.shareToken,
+                if prepHasUnsavedChanges {
+                    Label("Prep has unsaved edits", systemImage: "pencil.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SupporterHomeColors.accent)
+                }
+                NativeEventToolPanel(
+                    schedule: schedule, event: event,
                     clerk: clerk,
-                    fixturePrep: fixture?.prep
+                    selected: selectedStep,
+                    fixturePrep: fixture?.prep,
+                    onDirtyChange: { prepHasUnsavedChanges = $0 }
                 )
+                .id("\(shareToken):\(clerk?.user?.id ?? "fixture")")
+                .id("active-event-tool")
 
                 if let clerk {
                     NavigationLink {
@@ -181,36 +205,15 @@ struct SupporterEventDetailView: View {
                     .accessibilityIdentifier("event-detail-edit")
                 }
 
-                if event.liveTapsActive,
-                   let inviteToken = event.liveTapsInviteToken,
-                   let sport = event.liveTapsSport {
-                    NavigationLink {
-                        SupporterLiveTapsView(
-                            inviteToken: inviteToken,
-                            sport: sport,
-                            athleteName: schedule.athleteName ?? "your athlete",
-                            eventTitle: event.title
-                        )
-                    } label: {
-                        Label("Send Live Taps", systemImage: "hands.clap.fill")
-                            .font(.system(size: buttonPointSize, weight: .bold))
-                            .foregroundStyle(SupporterHomeColors.background)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .frame(minHeight: 44)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .multilineTextAlignment(.center)
-                            .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 15))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Open the active family cheer session. Live Taps do not record player stats.")
-                    .accessibilityIdentifier("event-detail-live-taps")
-                }
             }
             .frame(maxWidth: 560, alignment: .leading)
             .padding(.top, 4)
             .padding(.bottom, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .onChange(of: selectedStep) { _, _ in
+            withAnimation { proxy.scrollTo("active-event-tool", anchor: .top) }
+        }
         }
     }
 
@@ -502,9 +505,31 @@ struct SupporterEventDetailView: View {
         }
     }
 
+    private func scheduleRefresh() {
+        refreshTask?.cancel()
+        refreshTask = Task {
+            do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
+            guard detailsVisible, !prepHasUnsavedChanges else { return }
+            toolsChanged = false
+            await load()
+        }
+    }
+
+    private func chooseInitialStep(schedule: NativeSupporterSchedule, event: AthleteFanEvent) {
+        guard !selectionInitialized else { return }
+        selectedStep = .recommended(
+            start: event.parsedStart(timezone: event.timezone ?? schedule.timezone),
+            isGame: event.type == "game", now: Date()
+        )
+        selectionInitialized = true
+    }
+
     private func load() async {
-        state = .loading
+        guard !prepHasUnsavedChanges else { return }
+        // Preserve mounted tool models when confirmed event data refreshes.
+        if case .loaded = state {} else { state = .loading }
         if let fixture {
+            chooseInitialStep(schedule: fixture.schedule, event: fixture.event)
             state = .loaded(schedule: fixture.schedule, event: fixture.event)
             return
         }
@@ -515,6 +540,7 @@ struct SupporterEventDetailView: View {
         do {
             let result = try await SupporterHomeAPI.fetchPrivateEvent(shareToken: shareToken, clerk: clerk)
             guard !Task.isCancelled else { return }
+            chooseInitialStep(schedule: result.schedule, event: result.event)
             state = .loaded(schedule: result.schedule, event: result.event)
         } catch is CancellationError {
         } catch {

@@ -6,10 +6,81 @@ import { GAME_ON_CARD_MARKER } from "./gameOnCard";
 import { nativeEventWorkspace } from "./nativeEventWorkspace";
 import { applyNativeTrackerCommand, nativeSportRules, nativeWorkspaceCommand, type WorkspaceCommand } from "./nativeEventTracker";
 import type { NativeIdentity } from "./nativeIdentity";
+import { nativeLiveTapAccess } from "./nativeLiveTapAccess";
 import express from "express";
 import trackerRouter, { notifyStatTrackerShareUpdate } from "../routes/statTrackerShares";
 
 const owners: string[] = [];
+
+async function liveFanFixture() {
+  const a = await fixture();
+  const workspace = await nativeEventWorkspace(
+    a.who, a.shareToken, a.command("start", 0, { soccerFormat: "halves" }),
+  );
+  const liveId = (await pool.query(
+    `INSERT INTO stat_tracker_shares(owner_clerk_user_id,game_id,athlete_name,team_name,game,expires_at)
+     VALUES($1,$2,'Jordan','Tigers',$3::jsonb,NOW()+interval '1 day') RETURNING id`,
+    [a.owner, a.eventId, JSON.stringify(workspace.game)],
+  )).rows[0].id as string;
+  await pool.query(
+    "UPDATE athlete_invites SET live_tracker_share_token=$1,paused=false WHERE owner_clerk_user_id=$2",
+    [liveId, a.owner],
+  );
+  return { ...a, liveId };
+}
+
+test("native fan QR access is owner-only, hashed, private in listings and revocable", async () => {
+  const a = await liveFanFixture();
+  const b = await liveFanFixture();
+  const created = await nativeLiveTapAccess(a.who, a.shareToken, "create");
+  assert.equal(typeof created.accessToken, "string");
+  assert.equal(created.accessToken!.length, 43);
+  const stored = (await pool.query(
+    "SELECT token_hash FROM athlete_invite_live_tap_access_links WHERE id=$1", [created.id],
+  )).rows[0];
+  assert.equal(stored.token_hash.length, 64);
+  assert.notEqual(stored.token_hash, created.accessToken);
+  const listed = await nativeLiveTapAccess(a.who, a.shareToken, "list");
+  assert.equal(listed.links?.length, 1);
+  assert.equal("accessToken" in listed.links![0]!, false);
+  await assert.rejects(nativeLiveTapAccess(b.who, a.shareToken, "create"), denied(404));
+  await assert.rejects(nativeLiveTapAccess(b.who, b.shareToken, "revoke", created.id), denied(404));
+  await assert.rejects(nativeLiveTapAccess({ ...a.who, subject: "user_no_fan_link" }, a.shareToken, "list"), denied(409));
+  await nativeLiveTapAccess(a.who, a.shareToken, "revoke", created.id);
+  assert.equal((await nativeLiveTapAccess(a.who, a.shareToken, "list")).links?.length, 0);
+  const revoked = (await pool.query(
+    "SELECT revoked_at FROM athlete_invite_live_tap_access_links WHERE id=$1", [created.id],
+  )).rows[0];
+  assert.ok(revoked.revoked_at);
+});
+
+test("native fan QR creation requires the selected active game and an available athlete", async () => {
+  const a = await liveFanFixture();
+  const otherCard = (await pool.query(
+    `INSERT INTO schedule_shares(owner_clerk_user_id,title,team_season,events)
+     VALUES($1,'Other game',$2,$3::jsonb) RETURNING id`,
+    [a.owner, GAME_ON_CARD_MARKER, JSON.stringify([{ id: randomUUID(), type: "game" }])],
+  )).rows[0].id as string;
+  await assert.rejects(nativeLiveTapAccess(a.who, otherCard, "create"), denied(409));
+  await pool.query("UPDATE athlete_invites SET paused=true WHERE owner_clerk_user_id=$1", [a.owner]);
+  await assert.rejects(nativeLiveTapAccess(a.who, a.shareToken, "create"), denied(409));
+  await pool.query("UPDATE athlete_invites SET paused=false WHERE owner_clerk_user_id=$1", [a.owner]);
+  await pool.query("UPDATE athlete_invites SET season_ends_at=NOW()-interval '1 second' WHERE owner_clerk_user_id=$1", [a.owner]);
+  await assert.rejects(nativeLiveTapAccess(a.who, a.shareToken, "create"), denied(409));
+  await pool.query("UPDATE athlete_invites SET season_ends_at='2099-12-31T00:00:00Z' WHERE owner_clerk_user_id=$1", [a.owner]);
+  await pool.query(`UPDATE stat_tracker_shares SET game=jsonb_set(game,'{status}','"final"') WHERE id=$1`, [a.liveId]);
+  await assert.rejects(nativeLiveTapAccess(a.who, a.shareToken, "create"), denied(409));
+  await pool.query(`UPDATE stat_tracker_shares SET game=jsonb_set(game,'{status}','"live"') WHERE id=$1`, [a.liveId]);
+  await pool.query("UPDATE stat_tracker_shares SET expires_at=NOW()-interval '1 second' WHERE id=$1", [a.liveId]);
+  await assert.rejects(nativeLiveTapAccess(a.who, a.shareToken, "create"), denied(409));
+  await pool.query("UPDATE account_access SET lifecycle_status='cancelled' WHERE owner_clerk_user_id=$1", [a.owner]);
+  await assert.rejects(nativeLiveTapAccess(a.who, a.shareToken, "list"), denied(423));
+  await pool.query("UPDATE account_access SET lifecycle_status='active',access_mode='guest' WHERE owner_clerk_user_id=$1", [a.owner]);
+  await assert.rejects(nativeLiveTapAccess(a.who, a.shareToken, "create"), denied(403));
+  await assert.rejects(nativeLiveTapAccess(a.who, a.shareToken, "revoke", randomUUID()), denied(403));
+  const practice = await fixture("soccer", "practice");
+  await assert.rejects(nativeLiveTapAccess(practice.who, practice.shareToken, "create"), denied(404));
+});
 const denied = (status: number) => (error: any) => error.status === status;
 async function fixture(sport = "soccer", type = "game") {
   const owner = `user_workspace${randomUUID().replaceAll("-", "")}`;

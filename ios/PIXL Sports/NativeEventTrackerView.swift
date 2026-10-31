@@ -6,6 +6,8 @@ struct NativeEventTrackerView: View {
     let teamName: String
     let athleteName: String
     let clerk: Clerk
+    let embedded: Bool
+    let compact: Bool
     @StateObject private var model: NativeEventToolModel
     @State private var attribution = "athlete"
     @State private var opponentPossession = false
@@ -15,21 +17,41 @@ struct NativeEventTrackerView: View {
     @State private var recordScore = false
     @State private var outcome = ""
 
-    init(event: AthleteFanEvent, teamName: String, athleteName: String, clerk: Clerk) {
+    init(event: AthleteFanEvent, teamName: String, athleteName: String, clerk: Clerk,
+         model: NativeEventToolModel? = nil, embedded: Bool = false, compact: Bool = false) {
         self.event = event
         self.teamName = teamName
         self.athleteName = athleteName
         self.clerk = clerk
-        _model = StateObject(wrappedValue: NativeEventToolModel(
+        self.embedded = embedded
+        self.compact = compact
+        _model = StateObject(wrappedValue: model ?? NativeEventToolModel(
             shareToken: event.shareToken, accountID: clerk.user?.id ?? "signed-out"
         ))
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                Text(event.title).font(.title2.bold())
-                NativeToolSaveNotice(model: model, clerk: clerk)
+        Group {
+            if embedded {
+                trackerContent
+            } else {
+                ScrollView { trackerContent.padding(20) }
+            }
+        }
+        .navigationTitle(embedded ? "Event Details" : "Track Stats")
+        .tint(SupporterHomeColors.accent)
+        .task {
+            if model.workspace == nil { await model.load(clerk: clerk) }
+        }
+        .sheet(isPresented: $showingFinish) { finishSheet }
+    }
+
+    private var trackerContent: some View {
+            VStack(alignment: .leading, spacing: compact ? 12 : 22) {
+                if !embedded { Text(event.title).font(.title2.bold()) }
+                if !embedded || model.busy || model.errorMessage != nil {
+                    NativeToolSaveNotice(model: model, clerk: clerk)
+                }
                 if let workspace = model.workspace {
                     if let game = workspace.game {
                         tracker(workspace: workspace, game: game)
@@ -50,12 +72,6 @@ struct NativeEventTrackerView: View {
                     }
                 }
             }
-            .padding(20)
-        }
-        .navigationTitle("Track Stats")
-        .tint(SupporterHomeColors.blue)
-        .task { await model.load(clerk: clerk) }
-        .sheet(isPresented: $showingFinish) { finishSheet }
     }
 
     private func tracker(workspace: NativeEventWorkspace, game: NativeEventWorkspace.Game) -> some View {
@@ -93,7 +109,7 @@ struct NativeEventTrackerView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(workspace.rules.stats) { stat in
+                    ForEach(Array(workspace.rules.stats.prefix(compact ? 4 : workspace.rules.stats.count))) { stat in
                         Button {
                             Task {
                                 await model.save("stat", clerk: clerk, statID: stat.id,
@@ -109,7 +125,7 @@ struct NativeEventTrackerView: View {
                                         .font(.caption2)
                                 }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 92)
+                            .frame(maxWidth: .infinity, minHeight: compact ? 72 : 92)
                             .background(SupporterHomeColors.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
                         }
                         .buttonStyle(.plain)
@@ -136,7 +152,7 @@ struct NativeEventTrackerView: View {
                 }
                 .buttonStyle(.bordered)
             }
-            if !game.events.isEmpty {
+            if !compact && !game.events.isEmpty {
                 Text("RECENT STATS").font(.caption.bold())
                 ForEach(Array(game.events.suffix(8).reversed())) { play in
                     HStack {

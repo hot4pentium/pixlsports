@@ -5,9 +5,25 @@ struct NativeEventShareView: View {
     let schedule: NativeSupporterSchedule
     let event: AthleteFanEvent
     let clerk: Clerk
+    var embedded: Bool = false
 
     var body: some View {
-        Form {
+        Group {
+            if embedded {
+                VStack(alignment: .leading, spacing: 18) { shareSections }
+            } else {
+                Form { shareSections }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .tint(SupporterHomeColors.accent)
+        .preferredColorScheme(.dark)
+        .navigationTitle(embedded ? "Event Details" : "Share")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private var shareSections: some View {
             Section("Event details") {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(event.title).font(.headline)
@@ -38,13 +54,6 @@ struct NativeEventShareView: View {
                 Text("Review your athlete’s card before sharing. This does not publish a private HYPE Card.")
             }
             .listRowBackground(SupporterHomeColors.panel)
-        }
-        .scrollContentBackground(.hidden)
-        .background(SupporterHomeColors.background)
-        .tint(SupporterHomeColors.accent)
-        .preferredColorScheme(.dark)
-        .navigationTitle("Share")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var zone: String? { event.timezone ?? schedule.timezone }

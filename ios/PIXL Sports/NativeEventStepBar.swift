@@ -1,12 +1,11 @@
 import SwiftUI
 
-struct NativeEventStepBar<Prep: View, Tracker: View, Sharing: View>: View {
+struct NativeEventStepBar: View {
     let recommended: NativeEventDetailStep
+    let selected: NativeEventDetailStep
     let isGame: Bool
     let actionsEnabled: Bool
-    let prepDestination: () -> Prep
-    let trackerDestination: () -> Tracker
-    let shareDestination: () -> Sharing
+    let onSelect: (NativeEventDetailStep) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -15,14 +14,14 @@ struct NativeEventStepBar<Prep: View, Tracker: View, Sharing: View>: View {
                 .foregroundStyle(SupporterHomeColors.accent)
                 .accessibilityIdentifier("event-detail-recommended-step")
             HStack(alignment: .top, spacing: 8) {
-                NavigationLink {
-                    prepDestination()
+                Button {
+                    onSelect(.prep)
                 } label: {
                     stepLabel(.prep)
                 }
                 .accessibilityIdentifier("event-card-prep")
-                NavigationLink {
-                    trackerDestination()
+                Button {
+                    onSelect(.trackStats)
                 } label: {
                     stepLabel(.trackStats)
                 }
@@ -30,8 +29,8 @@ struct NativeEventStepBar<Prep: View, Tracker: View, Sharing: View>: View {
                 .opacity(isGame ? 1 : 0.45)
                 .accessibilityHint(isGame ? "Open this game's statistics." : "Stat tracking is available for games, not practices.")
                 .accessibilityIdentifier("event-card-track-stats")
-                NavigationLink {
-                    shareDestination()
+                Button {
+                    onSelect(.share)
                 } label: {
                     stepLabel(.share)
                 }
@@ -68,17 +67,18 @@ struct NativeEventStepBar<Prep: View, Tracker: View, Sharing: View>: View {
         }
         .frame(maxWidth: .infinity, minHeight: 64)
         .padding(.vertical, 4)
-        .foregroundStyle(step == recommended ? SupporterHomeColors.background : .white)
+        .foregroundStyle(step == selected ? SupporterHomeColors.background : .white)
         .background(
-            step == recommended ? SupporterHomeColors.accent : Color.white.opacity(0.06),
+            step == selected ? SupporterHomeColors.accent : Color.white.opacity(0.06),
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.white.opacity(step == recommended ? 0 : 0.12), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(step == selected ? 0 : 0.12), lineWidth: 1)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(step.title)
         .accessibilityValue(step == recommended ? "Recommended next step" : "")
+        .accessibilityAddTraits(step == selected ? .isSelected : [])
     }
 }

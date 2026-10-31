@@ -22,7 +22,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(opponent.label.contains("Very Long Name"))
         let location = assertReachable("event-detail-location", in: app)
         XCTAssertTrue(location.label.contains("Field Twenty-Seven"))
-        assertReachable("event-detail-live-taps", in: app)
+        assertReachable("event-detail-tool-panel", in: app)
     }
 
     func testEventStepButtonsStayAtTheBottomWhenDetailsScroll() {
@@ -40,10 +40,12 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertLessThanOrEqual(prep.frame.maxY, app.frame.maxY)
     }
 
-    func testPrepSummaryIsReadOnlyAndShowsAnEmptySavedState() {
+    func testUnauthenticatedFixturePrepPreviewCannotEditSavedData() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail"]
         app.launch()
+        XCTAssertTrue(app.buttons["event-card-prep"].waitForExistence(timeout: 10))
+        app.buttons["event-card-prep"].tap()
         let summary = assertReachable("event-detail-prep-summary", in: app)
         XCTAssertTrue(summary.staticTexts["Read only"].exists)
         XCTAssertTrue(summary.descendants(matching: .any)["event-detail-prep-empty"].exists)
@@ -51,6 +53,21 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertFalse(summary.textFields.firstMatch.exists)
         XCTAssertFalse(summary.textViews.firstMatch.exists)
         XCTAssertFalse(summary.buttons["native-prep-save"].exists)
+    }
+
+    func testStepButtonsSwitchTheSharedPanelWithoutLeavingEventDetails() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail"]
+        app.launch()
+        let prep = app.buttons["event-card-prep"]
+        XCTAssertTrue(prep.waitForExistence(timeout: 10))
+        prep.tap()
+        assertReachable("event-detail-prep-summary", in: app)
+        app.buttons["event-card-share"].tap()
+        XCTAssertTrue(app.navigationBars["Event Details"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["event-detail-prep-summary"].exists)
+        app.buttons["event-card-prep"].tap()
+        assertReachable("event-detail-prep-summary", in: app)
     }
 
     func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {

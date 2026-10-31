@@ -12,6 +12,8 @@ struct SupporterLiveTapsView: View {
     let sport: String
     let athleteName: String
     let eventTitle: String
+    let embedded: Bool
+    let suppliedAccessToken: String?
     private let fixture: Fixture?
 
     @ScaledMetric(relativeTo: .largeTitle) private var eventTitleSize = 28
@@ -46,20 +48,28 @@ struct SupporterLiveTapsView: View {
         sport: String,
         athleteName: String,
         eventTitle: String,
-        fixture: Fixture? = nil
+        fixture: Fixture? = nil,
+        embedded: Bool = false,
+        suppliedAccessToken: String? = nil
     ) {
         self.inviteToken = inviteToken
         self.sport = sport
         self.athleteName = athleteName
         self.eventTitle = eventTitle
         self.fixture = fixture
+        self.embedded = embedded
+        self.suppliedAccessToken = suppliedAccessToken
         self._summary = State(initialValue: fixture?.summary)
         self._loading = State(initialValue: fixture.map { _ in false } ?? true)
         self._error = State(initialValue: fixture?.error)
-        self._accessToken = State(initialValue: fixture?.accessToken)
+        self._accessToken = State(initialValue: fixture?.accessToken ?? suppliedAccessToken)
     }
 
     var body: some View {
+        Group {
+            if embedded {
+                inlineContent
+            } else {
         ZStack {
             LinearGradient(
                 colors: [SupporterHomeColors.background, Color(red: 0.04, green: 0.11, blue: 0.22)],
@@ -187,10 +197,13 @@ struct SupporterLiveTapsView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .navigationTitle("Live Taps")
+            }
+        }
+        .navigationTitle(embedded ? "Event Details" : "Live Taps")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .task { await loadSummary() }
+        .onChange(of: suppliedAccessToken) { _, token in accessToken = token }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, case nil = fixture {
                 Task { await loadSummary() }
@@ -324,6 +337,32 @@ struct SupporterLiveTapsView: View {
                     lineWidth: 1
                 )
         }
+    }
+
+    @ViewBuilder
+    private var inlineContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if suppliedAccessToken == nil { accessCard }
+            if loading {
+                ProgressView("Loading Live Taps…")
+            } else if let summary, summary.active {
+                cheersCard(summary)
+                Button("Refresh cheers") { Task { await loadSummary() } }
+                    .frame(minHeight: 44)
+            } else {
+                messageCard(
+                    icon: "hands.clap",
+                    title: "Live Taps aren’t available",
+                    message: error ?? "There is no active cheer session for this Event Card."
+                )
+                Button("Check again") { Task { await loadSummary() } }
+                    .frame(minHeight: 44)
+            }
+            if let error, summary != nil {
+                Text(error).font(.caption).foregroundStyle(.orange)
+            }
+        }
+        .tint(SupporterHomeColors.accent)
     }
 
     private func cheersCard(_ summary: LiveTapSummary) -> some View {

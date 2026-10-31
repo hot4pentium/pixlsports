@@ -20,6 +20,7 @@ import { z } from "zod/v4";
 import { nativeWorkspaceCommand } from "../lib/nativeEventTracker";
 import { nativeEventWorkspace } from "../lib/nativeEventWorkspace";
 import { notifyStatTrackerShareUpdate } from "./statTrackerShares";
+import { nativeLiveTapAccess } from "../lib/nativeLiveTapAccess";
 
 const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -74,6 +75,15 @@ nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
 }));
 nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
   res.json(await loadNativeSupporterSchedule(identity(res)));
+}));
+nativeAccountLinkRouter.post("/supporter/live-taps-access", handle(async (req, res) => {
+  const parsed = z.object({
+    shareToken: z.uuid(),
+    action: z.enum(["list", "create", "revoke"]),
+    accessId: z.uuid().optional(),
+  }).strict().safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Choose a valid Event Card and fan QR action.");
+  res.json(await nativeLiveTapAccess(identity(res), parsed.data.shareToken, parsed.data.action, parsed.data.accessId));
 }));
 nativeAccountLinkRouter.post("/supporter/event-workspace", handle(async (req, res) => {
   const parsed = z.object({ shareToken: z.uuid() }).strict().safeParse(req.body);

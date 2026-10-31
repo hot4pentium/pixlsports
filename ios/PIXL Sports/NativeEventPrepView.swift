@@ -4,24 +4,30 @@ import ClerkKit
 struct NativeEventPrepView: View {
     let event: AthleteFanEvent
     let clerk: Clerk
+    let embedded: Bool
+    let onDirtyChange: (Bool) -> Void
     @StateObject private var model: NativeEventToolModel
     @State private var items: [NativePrepItem] = []
     @State private var notes = ""
     @State private var newItem = ""
     @State private var edited = false
+    @State private var recoveringPrepDraft = false
     @State private var confirmingLeave = false
     @Environment(\.dismiss) private var dismiss
 
-    init(event: AthleteFanEvent, clerk: Clerk) {
+    init(event: AthleteFanEvent, clerk: Clerk, model: NativeEventToolModel? = nil,
+         embedded: Bool = false, onDirtyChange: @escaping (Bool) -> Void = { _ in }) {
         self.event = event
         self.clerk = clerk
-        _model = StateObject(wrappedValue: NativeEventToolModel(
+        self.embedded = embedded
+        self.onDirtyChange = onDirtyChange
+        _model = StateObject(wrappedValue: model ?? NativeEventToolModel(
             shareToken: event.shareToken, accountID: clerk.user?.id ?? "signed-out"
         ))
     }
 
-    var body: some View {
-        Form {
+    @ViewBuilder
+    private var prepSections: some View {
             Section {
                 Label(event.formattedFullDate(timezone: event.timezone), systemImage: "calendar")
                     .font(.headline)
@@ -72,6 +78,14 @@ struct NativeEventPrepView: View {
                         .accessibilityValue(item.completed ? "Ready" : "Not ready")
                         .accessibilityHint("Mark this task ready or not ready.")
                         .accessibilityIdentifier("native-prep-item-\(item.id)")
+                        .contextMenu {
+                            Button("Remove task", role: .destructive) {
+                                guard !model.busy, model.pending == nil else { return }
+                                let id = item.id
+                                items.removeAll { $0.id == id }
+                                edited = true
+                            }
+                        }
                     }
                     .onDelete { offsets in
                         items.remove(atOffsets: offsets)
@@ -118,28 +132,44 @@ struct NativeEventPrepView: View {
                 }
                 .listRowBackground(Color.white.opacity(0.06))
             }
+    }
+
+    var body: some View {
+        Group {
+            if embedded {
+                VStack(alignment: .leading, spacing: 16) {
+                    prepSections
+                    Text("Press and hold a task to remove it.")
+                        .font(.caption)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                    if model.workspace != nil { saveFooter }
+                }
+            } else {
+                Form { prepSections }
+            }
         }
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .background {
-            LinearGradient(
+            if !embedded { LinearGradient(
                 colors: [SupporterHomeColors.background, SupporterHomeColors.panel],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if model.workspace != nil {
+            if !embedded && model.workspace != nil {
                 saveFooter
             }
         }
         .preferredColorScheme(.dark)
-        .navigationTitle("Prep")
+        .navigationTitle(embedded ? "Event Details" : "Prep")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(edited)
+        .navigationBarBackButtonHidden(hasUnsavedEdits)
         .toolbar {
-            if edited {
+            if hasUnsavedEdits {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { confirmingLeave = true }
                 }
@@ -150,20 +180,29 @@ struct NativeEventPrepView: View {
         }
         .tint(SupporterHomeColors.accent)
         .task {
-            await model.load(clerk: clerk)
+            guard !hasUnsavedEdits else { return }
+            if model.workspace == nil { await model.load(clerk: clerk) }
             applySavedPrep()
         }
+        .onChange(of: hasUnsavedEdits) { _, value in onDirtyChange(value) }
         .onChange(of: model.workspace?.prepRevision) { _, _ in
             if let prep = model.workspace?.prep, prep.items == items && prep.notes == notes && model.pending == nil {
                 edited = false
+                recoveringPrepDraft = false
             } else if !edited {
                 applySavedPrep()
             }
         }
-        .onChange(of: model.reloadGeneration) { _, _ in applySavedPrep() }
+        .onChange(of: model.reloadGeneration) { _, _ in
+            // Discarding a failed tracker command must not discard an unrelated Prep draft.
+            if recoveringPrepDraft || !hasUnsavedEdits { applySavedPrep() }
+        }
     }
 
     private var readyCount: Int { items.filter(\.completed).count }
+    private var hasUnsavedEdits: Bool {
+        edited || !newItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     private var readinessSummary: some View {
         HStack(spacing: 16) {
@@ -201,13 +240,17 @@ struct NativeEventPrepView: View {
 
     private var saveFooter: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(model.busy ? "Updating prep…" : edited ? "Unsaved changes" : "Prep saved")
+            Text(model.busy ? "Updating prep…" : hasUnsavedEdits ? "Unsaved changes" : "Prep saved")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(SupporterHomeColors.muted)
             Button("Save Prep") {
                 Task {
+                    recoveringPrepDraft = true
                     await model.save("prep", clerk: clerk, items: items, notes: notes)
-                    if model.errorMessage == nil && model.pending == nil { edited = false }
+                    if model.errorMessage == nil && model.pending == nil {
+                        edited = false
+                        recoveringPrepDraft = false
+                    }
                 }
             }
             .buttonStyle(SupporterPrimaryButtonStyle())
@@ -238,6 +281,7 @@ struct NativeEventPrepView: View {
         // A failed save may be newer than the server; keep its exact draft.
         items = model.pending?.items ?? prep.items
         notes = model.pending?.notes ?? prep.notes
-        edited = model.pending != nil
+        recoveringPrepDraft = model.pending?.items != nil || model.pending?.notes != nil
+        edited = recoveringPrepDraft
     }
 }
