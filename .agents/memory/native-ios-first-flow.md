@@ -11,6 +11,12 @@ The iOS `ClerkConfig.plist` publishable key must belong to the dedicated iOS Cle
 
 Linking must prove the native identity and existing web owner independently, with explicit approval on both sides. Never infer ownership from matching emails or silently replace a connection. Disconnect preserves both accounts and their saved data.
 
+The target family experience is explicit sign-up or sign-in after installation; App Store ownership is not authentication. Returning families should use their existing PIXL account, and new families should create one account usable on iPhone and web. A separate iPhone-only account and repeated web-account linking are transitional, not the desired long-term journey.
+
+**Why:** the user explicitly confirmed this sign-in experience and wants to avoid making returning families create a second PIXL account.
+
+**How to apply:** keep the current separate Clerk setup until a migration is reviewed and approved. Before any cutover, prove each existing user's identity-to-data mapping; never infer it from email. Preserve the existing web sign-in and records until users can securely access them through the shared identity.
+
 Native development must not silently fall back to the published server when development configuration is missing. Safe troubleshooting should show the installed app's destination and HTTP status, never keys, tokens, or raw response bodies.
 
 Replit's private development preview can redirect requests from an external native client before they reach the API. Check the preview's privacy setting before changing a valid API origin or weakening the native client's no-redirect policy. Do not bundle a Replit external-access token in the app; use temporary public preview access only for a deliberate test, then restore privacy.
