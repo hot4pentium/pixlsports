@@ -60,12 +60,12 @@ final class SupporterDashboardUITests: XCTestCase {
     }
 
     func testMessageBoardTaskUsesLocalEventTimeAcrossUTCDayBoundary() {
-        for (state, expectedTiming, expectsPrep) in [
-            ("guide-upcoming", "Upcoming", true),
-            ("guide-future-live", "Upcoming", true),
-            ("guide-future-final", "Upcoming", true),
-            ("guide-live", "Live now", false),
-            ("guide-postgame", "After the event", false)
+        for (state, expectedTiming, expectedStep) in [
+            ("guide-upcoming", "Upcoming", "Prep"),
+            ("guide-future-live", "Upcoming", "Prep"),
+            ("guide-future-final", "Upcoming", "Prep"),
+            ("guide-live", "Live now", "Track Stats"),
+            ("guide-postgame", "After the event", "Share")
         ] {
             let app = launch(state)
             let messageBoard = reachable("dashboard-message-board-card", in: app)
@@ -76,17 +76,13 @@ final class SupporterDashboardUITests: XCTestCase {
                 "The Event Card date must use Los Angeles time: \(messageBoard.label)"
             )
             messageBoard.tap()
-            if expectsPrep {
-                XCTAssertTrue(app.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
-                XCTAssertFalse(app.staticTexts["event-detail-title"].exists)
-            } else {
-                XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
-            }
+            XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            assertRecommendedStep(expectedStep, in: app)
             app.terminate()
         }
     }
 
-    func testMessageBoardOpensPrepForUpcomingGamesAndPractices() {
+    func testMessageBoardOpensEventDetailsAtPrepForUpcomingGamesAndPractices() {
         for (state, kind) in [
             ("guide-upcoming", "game prep"),
             ("guide-practice-upcoming", "practice prep")
@@ -95,8 +91,8 @@ final class SupporterDashboardUITests: XCTestCase {
             let messageBoard = reachable("dashboard-message-board-card", in: app)
             XCTAssertTrue(messageBoard.label.contains("Tap to open \(kind)"), "\(state): \(messageBoard.label)")
             messageBoard.tap()
-            XCTAssertTrue(app.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
-            XCTAssertFalse(app.staticTexts["event-detail-title"].exists)
+            XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            assertRecommendedStep("Prep", in: app)
             app.terminate()
         }
     }
@@ -107,7 +103,8 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertTrue(messageBoard.label.contains("November 15"), "\(messageBoard.label)")
         XCTAssertTrue(messageBoard.label.contains("Upcoming"), "\(messageBoard.label)")
         messageBoard.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+        assertRecommendedStep("Prep", in: app)
         app.terminate()
     }
 
@@ -133,7 +130,8 @@ final class SupporterDashboardUITests: XCTestCase {
 
             let eventApp = launch("guide-upcoming", accessibilityText: accessibilityText)
             reachable("dashboard-message-board-card", in: eventApp).tap()
-            XCTAssertTrue(eventApp.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
+            XCTAssertTrue(eventApp.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            assertRecommendedStep("Prep", in: eventApp)
             eventApp.terminate()
 
             let hypeApp = launch("guide-upcoming", accessibilityText: accessibilityText)
@@ -193,6 +191,26 @@ final class SupporterDashboardUITests: XCTestCase {
         }
         app.launch()
         return app
+    }
+
+    private func assertRecommendedStep(_ title: String, in app: XCUIApplication) {
+        let recommendation = app.staticTexts["event-detail-recommended-step"]
+        XCTAssertTrue(recommendation.waitForExistence(timeout: 5))
+        XCTAssertEqual(recommendation.label, "Next: \(title)")
+
+        let buttonIdentifier: String
+        switch title {
+        case "Prep": buttonIdentifier = "event-card-prep"
+        case "Track Stats": buttonIdentifier = "event-card-track-stats"
+        default: buttonIdentifier = "event-card-share"
+        }
+        XCTAssertEqual(
+            app.buttons[buttonIdentifier].value as? String,
+            "Recommended next step",
+            "\(title) should be the highlighted recommendation."
+        )
+        let panel = reachable("event-detail-tool-panel", in: app)
+        XCTAssertTrue(panel.staticTexts[title].exists, "The Content panel should open \(title).")
     }
 
     @discardableResult

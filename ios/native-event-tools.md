@@ -83,6 +83,15 @@ their selected event; dashboard selection still advances independently.
 Practices keep Prep until +2 hours, then Share, with game tracking disabled.
 Missing kickoff times stay on Prep rather than inventing a time.
 
+The Message Board always opens Event Details for its chosen Event Card. The
+initial Content panel and highlighted step use the same time recommendation,
+so Get Ready opens with Prep selected while live and postgame actions select
+Track Stats and Share.
+
+The Prep Content panel starts with four interactive checklist items and a
+progress count. “Manage full Prep” opens the existing editor in place for the
+complete list, notes, adding, removing, and saving without losing quick edits.
+
 The standalone timing checks can run on a Mac with the Swift toolchain:
 
 ```sh

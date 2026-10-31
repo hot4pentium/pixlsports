@@ -22,14 +22,12 @@ struct ContentView: View {
 
     private enum HeroDestination: Identifiable {
         case eventCard(String)
-        case eventPrep(String)
         case hypeCard
         case createEvent
 
         var id: String {
             switch self {
             case let .eventCard(token): return "event-\(token)"
-            case let .eventPrep(token): return "prep-\(token)"
             case .hypeCard: return "hype-card"
             case .createEvent: return "create-event"
             }
@@ -277,9 +275,7 @@ struct ContentView: View {
                     hypePreviewFailed: viewModel.hypeCardPreviewError != nil,
                     onOpenEvent: {
                         if let token = guide?.event.shareToken {
-                            heroDestination = guide?.timing == .upcoming
-                                ? .eventPrep(token)
-                                : .eventCard(token)
+                            heroDestination = .eventCard(token)
                         } else {
                             heroDestination = .createEvent
                         }
@@ -298,8 +294,6 @@ struct ContentView: View {
         switch destination {
         case let .eventCard(token):
             eventDetailScreen(token: token)
-        case let .eventPrep(token):
-            eventPrepScreen(token: token)
         case .hypeCard:
             SupporterHypeCardView(clerk: clerk)
         case .createEvent:
@@ -318,21 +312,6 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    private func eventPrepScreen(token: String) -> some View {
-        if let event = schedulePage?.events.first(where: {
-            $0.shareToken == token && ($0.type == "game" || $0.type == "practice")
-        }), let clerk {
-            NativeEventPrepView(event: event, clerk: clerk)
-        } else if schedulePage?.events.contains(where: { $0.shareToken == token }) == true {
-            ContentUnavailableView("Sign in to prepare", systemImage: "lock.fill")
-                .accessibilityIdentifier("dashboard-prep-access-required")
-        } else {
-            ContentUnavailableView("Event Card unavailable", systemImage: "calendar")
-                .accessibilityIdentifier("dashboard-prep-access-required")
-        }
-    }
-
     private var schedulePage: NativeSupporterSchedule? {
         if case let .schedule(page, _, _) = displayedState { return page }
         return nil
@@ -347,7 +326,9 @@ struct ContentView: View {
                 SupporterEventDetailView(
                     clerk: nil,
                     shareToken: token,
-                    fixture: SupporterEventDetailView.Fixture(schedule: page, event: event)
+                    fixture: SupporterEventDetailView.Fixture(
+                        schedule: page, event: event, now: guideReferenceDate(Date())
+                    )
                 )
             } else if let clerk {
                 SupporterEventDetailView(clerk: clerk, shareToken: token)

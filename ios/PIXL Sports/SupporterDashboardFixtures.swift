@@ -82,11 +82,11 @@ enum SupporterDashboardFixtures {
             return nil
         }
         let timestamps: [String: String] = [
-            "guide-upcoming": "2026-11-14T02:29:00Z",
-            "guide-future-live": "2026-11-14T02:29:00Z",
-            "guide-future-final": "2026-11-14T02:29:00Z",
+            "guide-upcoming": "2026-11-14T00:29:00Z",
+            "guide-future-live": "2026-11-14T00:29:00Z",
+            "guide-future-final": "2026-11-14T00:29:00Z",
             "guide-after-share-window": "2026-11-14T06:29:00Z",
-            "guide-practice-upcoming": "2026-11-14T02:29:00Z",
+            "guide-practice-upcoming": "2026-11-14T00:29:00Z",
             "guide-live": "2026-11-14T02:30:00Z",
             "guide-postgame": "2026-11-14T04:00:00Z"
         ]

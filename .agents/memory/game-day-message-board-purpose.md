@@ -21,11 +21,15 @@ Opened native Event Cards should use compact, organized details with Prep, Track
 
 **How to apply:** Keep the step bar visible as details scroll, preserve readable larger-text layouts, and distinguish recommendation changes from actual saved completion or game finalization.
 
-Use the section beneath Event Details as the active native Prep, Track Stats, or Share panel rather than a permanent read-only Prep summary.
+Use the section beneath Event Details as the active native Prep, Track Stats, or Share panel rather than a permanent read-only Prep summary. The user calls this section “Content.”
 
 **Why:** The user preferred using the same area for the selected task instead of opening another screen for every tool.
 
-**How to apply:** Keep the bottom steps available, initially select the time-recommended step, and do not force a different selection while the user works. Retain unfinished Prep and pending tracker changes when switching panels.
+**How to apply:** Keep the bottom steps available, initially select the time-recommended step, and do not force a different selection while the user works. Retain unfinished Prep and pending tracker changes when switching panels. Prep begins with a short interactive checklist and a control to open the full manager.
+
+**Why:** The user chose a compact checklist with a separate full-list management action.
+
+**How to apply:** Keep quick checklist changes in the same draft and save flow as the full Prep editor; the full editor remains responsible for adding, removing, and editing tasks and notes.
 
 Within Track Stats, offer Track Stats and Live Taps choices. Stats should be condensed with an option to open the full tracker; Live Taps should show actual interactive cheers and a shareable QR for fans at the game.
 

@@ -5,6 +5,7 @@ struct NativeEventPrepView: View {
     let event: AthleteFanEvent
     private let clerk: Clerk?
     let embedded: Bool
+    let compactContent: Bool
     let onDirtyChange: (Bool) -> Void
     @StateObject private var model: NativeEventToolModel
     @State private var items: [NativePrepItem] = []
@@ -13,13 +14,16 @@ struct NativeEventPrepView: View {
     @State private var edited = false
     @State private var recoveringPrepDraft = false
     @State private var confirmingLeave = false
+    @State private var isManagingFullPrep = false
     @Environment(\.dismiss) private var dismiss
 
     init(event: AthleteFanEvent, clerk: Clerk, model: NativeEventToolModel? = nil,
-         embedded: Bool = false, onDirtyChange: @escaping (Bool) -> Void = { _ in }) {
+         embedded: Bool = false, compactContent: Bool = false,
+         onDirtyChange: @escaping (Bool) -> Void = { _ in }) {
         self.event = event
         self.clerk = clerk
         self.embedded = embedded
+        self.compactContent = compactContent
         self.onDirtyChange = onDirtyChange
         _model = StateObject(wrappedValue: model ?? NativeEventToolModel(
             shareToken: event.shareToken, accountID: clerk.user?.id ?? "signed-out"
@@ -28,12 +32,13 @@ struct NativeEventPrepView: View {
 
 #if DEBUG
     init(event: AthleteFanEvent, uiTestFixture: NativeEventWorkspaceUITestFixture,
-         model: NativeEventToolModel? = nil, embedded: Bool = false,
+         model: NativeEventToolModel? = nil, embedded: Bool = false, compactContent: Bool = false,
          onDirtyChange: @escaping (Bool) -> Void = { _ in }) {
         precondition(NativeEventWorkspaceUITestFixture.isRequested)
         self.event = event
         self.clerk = nil
         self.embedded = embedded
+        self.compactContent = compactContent
         self.onDirtyChange = onDirtyChange
         _model = StateObject(wrappedValue: model ?? NativeEventToolModel(uiTestFixture: uiTestFixture))
     }
@@ -147,14 +152,116 @@ struct NativeEventPrepView: View {
             }
     }
 
+    private var compactPrepContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Prep checklist", systemImage: "checklist")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(SupporterHomeColors.accent)
+
+            if let clerk, model.busy || model.errorMessage != nil {
+                NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
+            }
+
+            if model.workspace != nil {
+                Text("\(readyCount) of \(items.count) ready")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .accessibilityIdentifier("native-prep-quick-progress")
+
+                if items.isEmpty {
+                    Text("No Prep tasks yet. Open the full list to add some.")
+                        .font(.subheadline)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                } else {
+                    ForEach(Array(items.prefix(4))) { item in
+                        quickChecklistItem(item)
+                    }
+                    if items.count > 4 {
+                        Text("\(items.count - 4) more tasks in the full list")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(SupporterHomeColors.muted)
+                    }
+                }
+            } else {
+                HStack(spacing: 10) {
+                    if model.busy || model.errorMessage == nil {
+                        ProgressView().tint(SupporterHomeColors.accent)
+                        Text("Loading your Prep checklist…")
+                            .font(.subheadline)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                    } else {
+                        Text("Your Prep checklist could not be loaded. Retry above.")
+                            .font(.subheadline)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                    }
+                }
+            }
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isManagingFullPrep = true }
+            } label: {
+                Label("Manage full Prep", systemImage: "slider.horizontal.3")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(SupporterHomeColors.accent)
+            .accessibilityIdentifier("native-prep-manage-full")
+        }
+        .accessibilityIdentifier("native-prep-quick-content")
+    }
+
+    private func quickChecklistItem(_ item: NativePrepItem) -> some View {
+        Button {
+            toggleItem(id: item.id)
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(item.completed ? SupporterHomeColors.accent : SupporterHomeColors.muted)
+                    .accessibilityHidden(true)
+                Text(item.label)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(item.completed ? SupporterHomeColors.muted : .white)
+                    .strikethrough(item.completed)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(model.busy || model.pending != nil)
+        .accessibilityLabel(item.label)
+        .accessibilityValue(item.completed ? "Ready" : "Not ready")
+        .accessibilityHint("Mark this task ready or not ready.")
+        .accessibilityIdentifier("native-prep-item-\(item.id)")
+    }
+
     var body: some View {
         Group {
             if embedded {
                 VStack(alignment: .leading, spacing: 16) {
-                    prepSections
-                    Text("Press and hold a task to remove it.")
-                        .font(.caption)
-                        .foregroundStyle(SupporterHomeColors.muted)
+                    if compactContent && !isManagingFullPrep {
+                        compactPrepContent
+                    } else {
+                        prepSections
+                        Text("Press and hold a task to remove it.")
+                            .font(.caption)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                        if compactContent {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) { isManagingFullPrep = false }
+                            } label: {
+                                Label("Back to Content", systemImage: "chevron.left")
+                                    .font(.subheadline.weight(.bold))
+                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(SupporterHomeColors.accent)
+                            .accessibilityIdentifier("native-prep-back-to-content")
+                        }
+                    }
                     if model.workspace != nil { saveFooter }
                 }
             } else {
@@ -298,6 +405,13 @@ struct NativeEventPrepView: View {
         guard !model.busy, model.pending == nil, !label.isEmpty, items.count < 100 else { return }
         items.append(NativePrepItem(id: UUID().uuidString, label: label, completed: false))
         newItem = ""
+        edited = true
+    }
+
+    private func toggleItem(id: String) {
+        guard !model.busy, model.pending == nil,
+              let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].completed.toggle()
         edited = true
     }
 

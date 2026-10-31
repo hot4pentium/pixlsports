@@ -45,7 +45,8 @@ struct NativeEventToolPanel: View {
                 VStack(spacing: 0) {
                     if prepVisited || selected == .prep {
                         NativeEventPrepView(event: event, clerk: clerk, model: workspaceModel,
-                                            embedded: true, onDirtyChange: onDirtyChange)
+                                            embedded: true, compactContent: true,
+                                            onDirtyChange: onDirtyChange)
                             .eventToolVisibility(selected == .prep)
                     }
                     if event.type == "game", trackingVisited || selected == .trackStats {
@@ -96,7 +97,8 @@ struct NativeEventToolPanel: View {
 #if DEBUG
         if prepVisited || selected == .prep {
             NativeEventPrepView(event: event, uiTestFixture: .shared, model: workspaceModel,
-                                embedded: true, onDirtyChange: onDirtyChange)
+                                embedded: true, compactContent: true,
+                                onDirtyChange: onDirtyChange)
                 .eventToolVisibility(selected == .prep)
         }
 #endif

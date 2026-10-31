@@ -29,9 +29,22 @@ final class SupporterEventDetailUITests: XCTestCase {
         app.buttons["event-card-prep"].tap()
         XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 10))
 
+        let quickWater = assertReachable("native-prep-item-water", in: app)
+        XCTAssertEqual(quickWater.value as? String, "Not ready")
+        quickWater.tap()
+        XCTAssertEqual(quickWater.value as? String, "Ready")
+        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "1 of 2 ready")
+        app.buttons["native-prep-manage-full"].tap()
+
         let water = assertReachable("native-prep-item-water", in: app)
-        XCTAssertEqual(water.value as? String, "Not ready")
-        water.tap()
+        XCTAssertEqual(water.value as? String, "Ready", "Quick checklist edits must carry into full Prep.")
+        assertReachable("native-prep-back-to-content", in: app).tap()
+        XCTAssertEqual(
+            assertReachable("native-prep-item-water", in: app).value as? String,
+            "Ready",
+            "Returning to Content must preserve the quick checklist edit."
+        )
+        assertReachable("native-prep-manage-full", in: app).tap()
         let addTask = assertReachable("native-prep-add-task", in: app)
         addTask.tap()
         addTask.typeText("Bring spare socks")
@@ -117,9 +130,11 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(prep.isEnabled, "Read-only fixture may switch panels, not edit private data")
         prep.tap()
         _ = assertReachable("event-detail-prep-summary", in: app)
+        assertSelectedContent("Prep", in: app)
         XCTAssertFalse(app.buttons["native-prep-save"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["native-prep-notes"].exists)
         app.buttons["event-card-track-stats"].tap()
+        assertSelectedContent("Track Stats", in: app)
         XCTAssertTrue(app.staticTexts["Sign in to use this event’s native tools."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["native-prep-save"].exists)
         XCTAssertFalse(app.buttons["prep-test-advance-clock"].exists)
@@ -388,11 +403,22 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(prep.waitForExistence(timeout: 10))
         prep.tap()
         assertReachable("event-detail-prep-summary", in: app)
+        assertSelectedContent("Prep", in: app)
         app.buttons["event-card-share"].tap()
+        assertSelectedContent("Share", in: app)
         XCTAssertTrue(app.navigationBars["Event Details"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["event-detail-prep-summary"].exists)
+        app.buttons["event-card-track-stats"].tap()
+        assertSelectedContent("Track Stats", in: app)
         app.buttons["event-card-prep"].tap()
+        assertSelectedContent("Prep", in: app)
         assertReachable("event-detail-prep-summary", in: app)
+    }
+
+    private func assertSelectedContent(_ title: String, in app: XCUIApplication) {
+        let panel = app.descendants(matching: .any)["event-detail-tool-panel"].firstMatch
+        XCTAssertTrue(panel.waitForExistence(timeout: 5))
+        XCTAssertTrue(panel.staticTexts[title].exists, "The Event Details Content section should show \(title).")
     }
 
     func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {

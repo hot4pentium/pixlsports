@@ -28,6 +28,7 @@ struct SupporterEventDetailView: View {
         let schedule: NativeSupporterSchedule
         let event: AthleteFanEvent
         var prep: NativeEventWorkspace.Prep = .init(items: [], notes: "")
+        var now: Date? = nil
     }
 
     init(clerk: Clerk?, shareToken: String, fixture: Fixture? = nil) {
@@ -233,7 +234,7 @@ struct SupporterEventDetailView: View {
 
     private func recommendedStep(schedule: NativeSupporterSchedule, event: AthleteFanEvent, date: Date) -> NativeEventDetailStep {
         let start = event.parsedStart(timezone: event.timezone ?? schedule.timezone)
-        var now = date
+        var now = fixture?.now ?? date
 #if DEBUG
         if NativeEventWorkspaceUITestFixture.isRequested, let start {
             now = NativeEventWorkspaceUITestFixture.shared.timelineDate(date, eventStart: start)
@@ -536,9 +537,9 @@ struct SupporterEventDetailView: View {
         }
     }
 
-    private func chooseInitialStep(schedule: NativeSupporterSchedule, event: AthleteFanEvent) {
+    private func chooseInitialStep(schedule: NativeSupporterSchedule, event: AthleteFanEvent, now: Date? = nil) {
         guard !selectionInitialized else { return }
-        selectedStep = recommendedStep(schedule: schedule, event: event, date: Date())
+        selectedStep = recommendedStep(schedule: schedule, event: event, date: now ?? Date())
         selectionInitialized = true
     }
 
@@ -547,7 +548,7 @@ struct SupporterEventDetailView: View {
         // Preserve mounted tool models when confirmed event data refreshes.
         if case .loaded = state {} else { state = .loading }
         if let fixture {
-            chooseInitialStep(schedule: fixture.schedule, event: fixture.event)
+            chooseInitialStep(schedule: fixture.schedule, event: fixture.event, now: fixture.now)
             state = .loaded(schedule: fixture.schedule, event: fixture.event)
             return
         }
