@@ -705,8 +705,16 @@ struct ContentView: View {
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
+                    if item.event.type == "game", !item.event.opponent.isEmpty {
+                        Text("vs \(item.event.opponent)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Text("\(item.event.formattedDate(timezone: zone)) · \(item.event.formattedTime(timezone: zone))")
-                        .font(.caption.weight(.medium))
+                        .font(dynamicTypeSize.isAccessibilitySize ? .subheadline : .caption)
+                        .fontWeight(.medium)
                         .foregroundStyle(SupporterHomeColors.muted)
                         .fixedSize(horizontal: false, vertical: true)
                     if !item.event.location.isEmpty {
@@ -735,7 +743,8 @@ struct ContentView: View {
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(SupporterCardPressStyle())
-        .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : "")\(item.event.title), \(item.event.formattedDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
+        .accessibilityIdentifier("dashboard-event-card-\(item.event.eventId)")
+        .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : "")\(item.event.title), \(item.event.opponent.isEmpty ? "" : "versus \(item.event.opponent), ")\(item.event.formattedFullDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
     }
 
     private func pastEventsSection(
@@ -772,18 +781,27 @@ struct ContentView: View {
     }
 
     private func eventGrid(page: NativeSupporterSchedule, events: [SupporterScheduleItem]) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: 3), spacing: 9) {
-            ForEach(events) { item in
-                NavigationLink {
-                    eventDestination(for: item.event)
-                } label: {
-                    NativeEventGridTile(event: item.event, timezone: page.timezone)
+        if dynamicTypeSize.isAccessibilitySize {
+            LazyVStack(spacing: 9) {
+                ForEach(events) { item in
+                    compactEventCard(page: page, item: item)
                 }
-                .buttonStyle(SupporterCardPressStyle())
-                .accessibilityIdentifier("dashboard-event-tile-\(item.event.eventId)")
             }
+            .accessibilityIdentifier("dashboard-event-grid")
+        } else {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: 3), spacing: 9) {
+                ForEach(events) { item in
+                    NavigationLink {
+                        eventDestination(for: item.event)
+                    } label: {
+                        NativeEventGridTile(event: item.event, timezone: page.timezone)
+                    }
+                    .buttonStyle(SupporterCardPressStyle())
+                    .accessibilityIdentifier("dashboard-event-tile-\(item.event.eventId)")
+                }
+            }
+            .accessibilityIdentifier("dashboard-event-grid")
         }
-        .accessibilityIdentifier("dashboard-event-grid")
     }
 
     private func eventDateBadge(_ event: AthleteFanEvent) -> some View {

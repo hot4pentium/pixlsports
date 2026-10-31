@@ -25,6 +25,33 @@ final class SupporterEventDetailUITests: XCTestCase {
         assertReachable("event-detail-live-taps", in: app)
     }
 
+    func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-dashboard",
+            "--dashboard-narrow",
+            "--dashboard-state=upcoming",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL"
+        ]
+        app.launch()
+
+        for (eventID, date) in [
+            ("next", "November 14"),
+            ("later", "November 21"),
+            ("third", "November 28")
+        ] {
+            let card = app.buttons["dashboard-event-card-fictional-\(eventID)"]
+            XCTAssertTrue(card.waitForExistence(timeout: 10), "Missing schedule card \(eventID)")
+            for _ in 0..<20 where !card.isHittable { app.swipeUp() }
+            XCTAssertTrue(card.isHittable, "Schedule card \(eventID) must remain reachable while scrolling")
+            XCTAssertGreaterThan(card.frame.height, 140, "Accessibility schedule cards should expand vertically, not stay tiny squares")
+            XCTAssertTrue(card.label.contains("Championship Showcase With a Long Event Name"))
+            XCTAssertTrue(card.label.contains("The Visiting Team With a Very Long Name"))
+            XCTAssertTrue(card.label.contains(date))
+        }
+    }
+
     func testLiveTapsActionsAndRetryRemainUsableAtAccessibilityTextSize() {
         let authorizedApp = launchLiveTaps(state: "authorized")
         let session = reachable("live-taps-session-status", in: authorizedApp)
