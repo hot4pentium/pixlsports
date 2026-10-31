@@ -16,6 +16,9 @@ struct ContentView: View {
     @Binding var showingAccountLink: Bool
 
     @StateObject private var viewModel = SupporterHomeViewModel()
+#if DEBUG
+    @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
+#endif
     @State private var heroDestination: HeroDestination?
     @State private var eventToolsChanged = false
     @State private var dashboardVisible = false
@@ -64,6 +67,9 @@ struct ContentView: View {
 
     private func loadSchedule() async {
 #if DEBUG
+        if NativeScheduleRefreshUITestProbe.isRequested {
+            NativeScheduleRefreshUITestProbe.shared.recordDashboardRefresh()
+        }
         guard fixtureState == nil else { return }
 #endif
         guard let clerk else { return }
@@ -138,9 +144,23 @@ struct ContentView: View {
             guard wasShowing && !isShowing else { return }
             Task { await loadSchedule() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nativeEventScheduleChanged)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .nativeEventScheduleChanged)) { notification in
+            guard let rawReason = notification.userInfo?[NativeEventScheduleChangeReason.userInfoKey] as? String,
+                  let reason = NativeEventScheduleChangeReason(rawValue: rawReason),
+                  reason.refreshesDashboard else { return }
             eventToolsChanged = true
         }
+#if DEBUG
+        .overlay(alignment: .topTrailing) {
+            if NativeScheduleRefreshUITestProbe.isRequested {
+                Text("Dashboard loads: \(scheduleRefreshProbe.dashboardRefreshes)")
+                    .font(.caption2)
+                    .padding(4)
+                    .background(.black.opacity(0.7), in: Capsule())
+                    .accessibilityIdentifier("schedule-refresh-dashboard-count")
+            }
+        }
+#endif
     }
 
     // MARK: - Backdrop

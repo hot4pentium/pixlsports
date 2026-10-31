@@ -332,6 +332,29 @@ swiftc -parse-as-library "ios/PIXL Sports/FamilyLiveTapQR.swift" \
 /tmp/pixl-live-tap-qr-checks
 ```
 
+The schedule-refresh policy checks that navigation, stat saves, and Prep saves
+do not announce schedule changes, while event mutations route to the views that
+need updated data:
+
+```sh
+swiftc -parse-as-library "ios/PIXL Sports/NativeEventScheduleRefreshPolicy.swift" \
+  ios/Tests/NativeEventScheduleRefreshChecks.swift -o /tmp/pixl-schedule-refresh-checks
+/tmp/pixl-schedule-refresh-checks
+```
+
+The XCTest UI coverage verifies that changing Event Details tools leaves its
+load count unchanged, and that game start, game finish, Live Taps start, and
+Event Card edits refresh the expected views once. It uses fictional dashboard
+data and Debug-only controls; it does not sign in or mutate a real Event Card.
+Run the focused cases on a Mac with Xcode:
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testStepButtonsSwitchTheSharedPanelWithoutLeavingEventDetails \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testEventChangesRefreshEventDetailsExactlyOnceAndDashboardAfterClosing
+```
+
 After syncing code and configuring the publishable key:
 
 1. Build for an iPhone simulator; confirm only one Clerk package is linked.

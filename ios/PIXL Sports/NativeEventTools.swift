@@ -6,17 +6,6 @@ extension Notification.Name {
     static let nativeEventScheduleChanged = Notification.Name("pixl.nativeEventScheduleChanged")
 }
 
-enum NativeEventScheduleChangeReason: String {
-    case gameStarted
-    case gameFinished
-    case liveTapsStarted
-    case eventCardEdited
-
-    static let userInfoKey = "reason"
-
-    var refreshesEventDetail: Bool { self != .eventCardEdited }
-}
-
 struct NativeEventWorkspace: Decodable {
     struct Prep: Decodable {
         let items: [NativePrepItem]
@@ -109,6 +98,24 @@ final class NativeEventWorkspaceUITestFixture: ObservableObject {
     }
 
     func recordResume() { resumes += 1 }
+}
+#endif
+
+#if DEBUG
+@MainActor
+final class NativeScheduleRefreshUITestProbe: ObservableObject {
+    static let shared = NativeScheduleRefreshUITestProbe()
+    static var isRequested: Bool {
+        ProcessInfo.processInfo.arguments.contains("--ui-testing-schedule-refresh")
+    }
+
+    @Published private(set) var dashboardRefreshes = 0
+    @Published private(set) var detailRefreshes = 0
+
+    private init() {}
+
+    func recordDashboardRefresh() { dashboardRefreshes += 1 }
+    func recordDetailRefresh() { detailRefreshes += 1 }
 }
 #endif
 
@@ -411,12 +418,7 @@ final class NativeEventToolModel: ObservableObject {
     }
 
     private func postScheduleChange(for command: NativeEventToolCommand) {
-        let reason: NativeEventScheduleChangeReason?
-        switch command.kind {
-        case "start": reason = .gameStarted
-        case "finish": reason = .gameFinished
-        default: reason = nil
-        }
+        let reason = NativeEventScheduleChangeReason.forToolCommandKind(command.kind)
         guard let reason else { return }
         NotificationCenter.default.post(
             name: .nativeEventScheduleChanged,

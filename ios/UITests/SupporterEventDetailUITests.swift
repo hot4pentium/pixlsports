@@ -666,10 +666,14 @@ final class SupporterEventDetailUITests: XCTestCase {
 
     func testStepButtonsSwitchTheSharedPanelWithoutLeavingEventDetails() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing-event-detail"]
+        app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-schedule-refresh"]
         app.launch()
         let prep = app.buttons["event-card-prep"]
         XCTAssertTrue(prep.waitForExistence(timeout: 10))
+        let loadCount = app.staticTexts["schedule-refresh-detail-count"]
+        XCTAssertTrue(loadCount.waitForExistence(timeout: 10))
+        waitForAtLeastOneRefresh(loadCount)
+        let initialDetailLoads = refreshCount(loadCount)
         prep.tap()
         assertReachable("event-detail-prep-summary", in: app)
         assertSelectedContent("Prep", in: app)
@@ -682,6 +686,88 @@ final class SupporterEventDetailUITests: XCTestCase {
         app.buttons["event-card-prep"].tap()
         assertSelectedContent("Prep", in: app)
         assertReachable("event-detail-prep-summary", in: app)
+        XCTAssertEqual(refreshCount(loadCount), initialDetailLoads,
+                       "Changing Event Details tools must not reload the schedule.")
+    }
+
+    func testEventChangesRefreshEventDetailsExactlyOnceAndDashboardAfterClosing() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-dashboard",
+            "--ui-testing-schedule-refresh",
+            "--dashboard-state=upcoming"
+        ]
+        app.launch()
+
+        let dashboardCount = app.staticTexts["schedule-refresh-dashboard-count"]
+        XCTAssertTrue(dashboardCount.waitForExistence(timeout: 10))
+        waitForAtLeastOneRefresh(dashboardCount)
+        var dashboardLoads = refreshCount(dashboardCount)
+
+        let detail = app.buttons["dashboard-message-board-card"]
+        XCTAssertTrue(detail.waitForExistence(timeout: 10))
+        detail.tap()
+        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 10))
+        let detailCount = app.staticTexts["schedule-refresh-detail-count"]
+        XCTAssertTrue(detailCount.waitForExistence(timeout: 10))
+        waitForAtLeastOneRefresh(detailCount)
+        var detailLoads = refreshCount(detailCount)
+
+        for reason in ["gameStarted", "gameFinished", "liveTapsStarted"] {
+            let trigger = assertReachable("schedule-change-\(reason)", in: app)
+            trigger.tap()
+            detailLoads += 1
+            waitForRefreshCount(detailCount, expected: detailLoads)
+
+            app.buttons["Done"].tap()
+            dashboardLoads += 1
+            waitForRefreshCount(dashboardCount, expected: dashboardLoads)
+
+            detail.tap()
+            XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 10))
+            detailLoads += 1
+            waitForRefreshCount(detailCount, expected: detailLoads)
+        }
+
+        let edit = assertReachable("schedule-change-eventCardEdited", in: app)
+        edit.tap()
+        detailLoads += 1
+        waitForRefreshCount(detailCount, expected: detailLoads)
+
+        app.buttons["Done"].tap()
+        dashboardLoads += 1
+        waitForRefreshCount(dashboardCount, expected: dashboardLoads)
+        XCTAssertEqual(refreshCount(detailCount), detailLoads,
+                       "The Event Card edit notification must not duplicate its editor refresh.")
+    }
+
+    private func refreshCount(_ element: XCUIElement) -> Int {
+        guard let value = Int(element.label.split(separator: " ").last ?? "") else {
+            XCTFail("Unexpected refresh counter label: \(element.label)")
+            return -1
+        }
+        return value
+    }
+
+    private func waitForRefreshCount(_ element: XCUIElement, expected: Int) {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "\(expected)"),
+            object: element
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
+        XCTAssertEqual(refreshCount(element), expected)
+    }
+
+    private func waitForAtLeastOneRefresh(_ element: XCUIElement) {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let element = object as? XCUIElement else { return false }
+                let lastLabelPart = element.label.split(separator: " ").last ?? ""
+                return (Int(lastLabelPart) ?? 0) > 0
+            },
+            object: element
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed)
     }
 
     private func assertSelectedContent(_ title: String, in app: XCUIApplication) {

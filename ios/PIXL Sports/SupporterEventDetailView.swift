@@ -17,6 +17,9 @@ struct SupporterEventDetailView: View {
     @State private var selectionInitialized = false
     @State private var prepHasUnsavedChanges = false
     @State private var refreshTask: Task<Void, Never>?
+#if DEBUG
+    @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
+#endif
     @ScaledMetric(relativeTo: .largeTitle) private var eventTitlePointSize = 24
     @ScaledMetric(relativeTo: .body) private var detailValuePointSize = 16
     @ScaledMetric(relativeTo: .body) private var detailLabelPointSize = 10
@@ -131,6 +134,15 @@ struct SupporterEventDetailView: View {
             }
         }
 #if DEBUG
+        .overlay(alignment: .topTrailing) {
+            if NativeScheduleRefreshUITestProbe.isRequested {
+                Text("Event detail loads: \(scheduleRefreshProbe.detailRefreshes)")
+                    .font(.caption2)
+                    .padding(4)
+                    .background(.black.opacity(0.7), in: Capsule())
+                    .accessibilityIdentifier("schedule-refresh-detail-count")
+            }
+        }
         .background {
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
                 NativeEventDetailSafeAreaProbe()
@@ -195,6 +207,30 @@ struct SupporterEventDetailView: View {
                 )
                 .id("\(shareToken):\(clerk?.user?.id ?? "fixture")")
                 .id("active-event-tool")
+
+#if DEBUG
+                if NativeScheduleRefreshUITestProbe.isRequested {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Schedule refresh test controls")
+                            .font(.caption.weight(.bold))
+                        ForEach(NativeEventScheduleChangeReason.allCases, id: \.rawValue) { reason in
+                            Button("Trigger \(reason.rawValue)") {
+                                if reason == .eventCardEdited {
+                                    Task {
+                                        await load()
+                                        postScheduleChange(reason)
+                                    }
+                                } else {
+                                    postScheduleChange(reason)
+                                }
+                            }
+                            .accessibilityIdentifier("schedule-change-\(reason.rawValue)")
+                        }
+                    }
+                    .padding(12)
+                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                }
+#endif
 
                 if let clerk {
                     NavigationLink {
@@ -507,6 +543,11 @@ struct SupporterEventDetailView: View {
 
     private func load() async {
         guard !prepHasUnsavedChanges else { return }
+#if DEBUG
+        if NativeScheduleRefreshUITestProbe.isRequested {
+            NativeScheduleRefreshUITestProbe.shared.recordDetailRefresh()
+        }
+#endif
         // Preserve mounted tool models when confirmed event data refreshes.
         if case .loaded = state {} else { state = .loading }
         if let fixture {
@@ -529,6 +570,16 @@ struct SupporterEventDetailView: View {
             state = .unavailable(error.localizedDescription)
         }
     }
+
+#if DEBUG
+    private func postScheduleChange(_ reason: NativeEventScheduleChangeReason) {
+        NotificationCenter.default.post(
+            name: .nativeEventScheduleChanged,
+            object: nil,
+            userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
+        )
+    }
+#endif
 }
 
 #if DEBUG
