@@ -55,7 +55,7 @@ struct NativeEventStepBar: View {
     private func stepLabel(_ step: NativeEventDetailStep) -> some View {
         let isRecommended = step == recommended
         let isSelected = step == selected
-        VStack(spacing: 5) {
+        return VStack(spacing: 5) {
             HStack(spacing: 5) {
                 Text("\(step.number)")
                     .font(.caption2.weight(.black))
