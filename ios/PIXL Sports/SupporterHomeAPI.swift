@@ -39,6 +39,7 @@ struct AthleteFanEvent: Decodable, Identifiable {
     let location: String
     let timezone: String?
     let liveTapsActive: Bool
+    let liveTapsOnly: Bool
     let liveTapsInviteToken: String?
     let liveTapsSport: String?
 

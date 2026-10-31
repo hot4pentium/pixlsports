@@ -6,6 +6,7 @@ import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 
 type NativeSupporterEvent = ReturnType<typeof mapAthleteEventSummaries>[number] & {
   liveTapsActive: boolean;
+  liveTapsOnly: boolean;
   liveTapsInviteToken: string | null;
   liveTapsSport: string | null;
 };
@@ -316,6 +317,7 @@ export async function loadNativeSupporterSchedule(
       return {
         ...event,
         liveTapsActive: isActiveEvent,
+        liveTapsOnly: isActiveEvent && liveGame?.liveTapsOnly === true,
         liveTapsInviteToken: isActiveEvent ? invite?.public_token ?? null : null,
         liveTapsSport: isActiveEvent ? invite?.sport ?? null : null,
       };

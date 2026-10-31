@@ -104,7 +104,7 @@ struct NativeEventFanAccessView: View {
             Text("Fans with this QR can send cheers when your athlete is live—not edit stats or account data. QR access remains valid until you revoke it.")
                 .font(.caption)
                 .foregroundStyle(SupporterHomeColors.muted)
-            if let grant, let fanURL {
+            if let grant, let fanURL, event.liveTapsActive, event.liveTapsOnly {
                 if let image = Self.qrImage(fanURL) {
                     Image(uiImage: image)
                         .interpolation(.none)
@@ -140,7 +140,7 @@ struct NativeEventFanAccessView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(busy || !event.liveTapsActive)
+                .disabled(busy || !event.liveTapsActive || !event.liveTapsOnly)
                 .accessibilityIdentifier("native-live-taps-create-qr")
             }
             if busy { ProgressView("Updating fan access…") }
@@ -170,16 +170,29 @@ struct NativeEventFanAccessView: View {
                 .font(.subheadline)
             }
             Divider().overlay(Color.white.opacity(0.12))
-            if event.liveTapsActive, let inviteToken = event.liveTapsInviteToken, let sport = event.liveTapsSport {
+            if event.liveTapsActive, event.liveTapsOnly,
+               let inviteToken = event.liveTapsInviteToken,
+               let sport = event.liveTapsSport {
                 SupporterLiveTapsView(
                     inviteToken: inviteToken, sport: sport,
                     athleteName: athleteName, eventTitle: event.title,
                     embedded: true, suppliedAccessToken: grant?.accessToken
                 )
             } else if event.liveTapsActive {
-                Label("Live Taps is active", systemImage: "hands.clap.fill")
+                Label(
+                    event.liveTapsOnly ? "Live Taps is active" : "Stat tracking is active",
+                    systemImage: event.liveTapsOnly ? "hands.clap.fill" : "chart.bar.fill"
+                )
                     .font(.subheadline)
-                Text("Refresh this Event Card to reopen the fan taps.")
+                Text(event.liveTapsOnly
+                    ? "Refresh this Event Card to reopen the fan taps."
+                    : "Finish this stats game before starting a separate Live Taps-only session.")
+                    .font(.caption)
+                    .foregroundStyle(SupporterHomeColors.muted)
+            } else if hasActiveLiveTapsElsewhere {
+                Label("Live Taps is already active for another Event Card.", systemImage: "pause.circle")
+                    .font(.subheadline)
+                Text("End or finish that game before starting a separate Live Taps-only session.")
                     .font(.caption)
                     .foregroundStyle(SupporterHomeColors.muted)
             } else {
@@ -188,13 +201,7 @@ struct NativeEventFanAccessView: View {
                 Text("Start a cheer-only session for fans at the game. It will not record player stats.")
                     .font(.caption)
                     .foregroundStyle(SupporterHomeColors.muted)
-                if hasActiveLiveTapsElsewhere {
-                    Label("Live Taps is already active for another Event Card.", systemImage: "pause.circle")
-                        .font(.subheadline)
-                    Text("End or finish that game before starting a separate Live Taps-only session.")
-                        .font(.caption)
-                        .foregroundStyle(SupporterHomeColors.muted)
-                } else if loadingHypeCard {
+                if loadingHypeCard {
                     ProgressView("Checking your HYPE Card…")
                 } else if let hypeCard {
                     if hypeCard.sport == "soccer" {
@@ -227,12 +234,12 @@ struct NativeEventFanAccessView: View {
         .tint(SupporterHomeColors.accent)
         .task {
             await perform("list")
-            if !event.liveTapsActive { await loadHypeCard() }
+            if !event.liveTapsActive && !hasActiveLiveTapsElsewhere { await loadHypeCard() }
         }
         .onChange(of: event.liveTapsActive) { _, isActive in
             if isActive {
                 Task { await perform("list") }
-            } else if hypeCard == nil {
+            } else if hypeCard == nil && !hasActiveLiveTapsElsewhere {
                 Task { await loadHypeCard() }
             }
         }

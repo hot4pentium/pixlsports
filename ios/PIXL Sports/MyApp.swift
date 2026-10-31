@@ -82,6 +82,7 @@ struct MyApp: App {
                                 location: "Northwest Regional Athletic Complex, Field Twenty-Seven, Entrance C",
                                 timezone: "America/Los_Angeles",
                                 liveTapsActive: true,
+                                liveTapsOnly: true,
                                 liveTapsInviteToken: "ui-test-invite",
                                 liveTapsSport: "softball"
                             ),

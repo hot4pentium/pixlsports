@@ -7,15 +7,24 @@ struct NativeEventTrackingPanel: View {
     let teamName: String
     let athleteName: String
     let clerk: Clerk
+    let hasActiveLiveTapsElsewhere: Bool
     @StateObject private var trackerModel: NativeEventToolModel
     @State private var showingTaps: Bool?
     @State private var tapsVisited = false
 
-    init(event: AthleteFanEvent, teamName: String, athleteName: String, clerk: Clerk, model: NativeEventToolModel? = nil) {
+    init(
+        event: AthleteFanEvent,
+        teamName: String,
+        athleteName: String,
+        clerk: Clerk,
+        hasActiveLiveTapsElsewhere: Bool = false,
+        model: NativeEventToolModel? = nil
+    ) {
         self.event = event
         self.teamName = teamName
         self.athleteName = athleteName
         self.clerk = clerk
+        self.hasActiveLiveTapsElsewhere = hasActiveLiveTapsElsewhere
         _trackerModel = StateObject(wrappedValue: model ?? NativeEventToolModel(
             shareToken: event.shareToken, accountID: clerk.user?.id ?? "signed-out"
         ))
@@ -53,7 +62,12 @@ struct NativeEventTrackingPanel: View {
                 }
                 .eventToolVisibility(showingTaps == false)
                 if tapsVisited {
-                    NativeEventFanAccessView(event: event, athleteName: athleteName, clerk: clerk)
+                    NativeEventFanAccessView(
+                        event: event,
+                        athleteName: athleteName,
+                        clerk: clerk,
+                        hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere
+                    )
                         .eventToolVisibility(showingTaps == true)
                 }
             }

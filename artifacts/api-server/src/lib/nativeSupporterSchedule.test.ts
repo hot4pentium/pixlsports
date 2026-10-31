@@ -165,16 +165,27 @@ test("native schedule exposes only the invite for its matching active Live Taps 
   const [share] = (await pool.query<{ id: string }>(`INSERT INTO stat_tracker_shares
     (owner_clerk_user_id,game_id,athlete_name,team_name,game,expires_at)
     VALUES ($1,'active-game','Jordan','Tigers',$2::jsonb,NOW()+INTERVAL '1 hour')
-    RETURNING id`, [linkedOwner, JSON.stringify({ status: "live", sport: "soccer" })])).rows;
+    RETURNING id`, [linkedOwner, JSON.stringify({ status: "live", sport: "soccer", liveTapsOnly: true })])).rows;
   await pool.query(`UPDATE athlete_invites SET live_tracker_share_token=$2 WHERE id=$1`, [invite!.id, share!.id]);
 
   const schedule = await loadNativeSupporterSchedule(who);
   const activeEvent = schedule.events.find((event) => event.eventId === "active-game");
   const otherEvent = schedule.events.find((event) => event.eventId === "other-game");
   assert.equal(activeEvent?.liveTapsActive, true);
+  assert.equal(activeEvent?.liveTapsOnly, true);
   assert.equal(activeEvent?.liveTapsInviteToken, inviteToken);
   assert.equal(otherEvent?.liveTapsActive, false);
+  assert.equal(otherEvent?.liveTapsOnly, false);
   assert.equal(otherEvent?.liveTapsInviteToken, null);
+
+  await pool.query(
+    "UPDATE stat_tracker_shares SET game=$2::jsonb WHERE id=$1",
+    [share!.id, JSON.stringify({ status: "live", sport: "soccer" })],
+  );
+  const statsSchedule = await loadNativeSupporterSchedule(who);
+  const statsEvent = statsSchedule.events.find((event) => event.eventId === "active-game");
+  assert.equal(statsEvent?.liveTapsActive, true);
+  assert.equal(statsEvent?.liveTapsOnly, false);
 });
 
 test("unlinked native identities receive no account schedule", async () => {

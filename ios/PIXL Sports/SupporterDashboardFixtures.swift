@@ -107,6 +107,7 @@ enum SupporterDashboardFixtures {
             location: "Northwest Regional Athletic Complex, Field Twenty-Seven, Entrance C",
             timezone: "America/Los_Angeles",
             liveTapsActive: false,
+            liveTapsOnly: false,
             liveTapsInviteToken: nil,
             liveTapsSport: nil
         )
@@ -144,6 +145,7 @@ enum SupporterDashboardFixtures {
             location: "Northwest Regional Athletic Complex, Field Twenty-Seven, Entrance C",
             timezone: "America/Los_Angeles",
             liveTapsActive: false,
+            liveTapsOnly: false,
             liveTapsInviteToken: nil,
             liveTapsSport: nil
         )

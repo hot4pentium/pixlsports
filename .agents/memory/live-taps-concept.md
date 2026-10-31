@@ -38,3 +38,9 @@ When a supporter opens Stat Tracker from an Event Card, present separate paths f
 **Why:** The user wants a clear no-stats choice at the Event Card's Stat Tracker button for days when supporters prefer cheers over tracking.
 
 **How to apply:** Keep both choices tied to the same event. Live Taps continues to use private, revocable family QR access and must not write cheers into official stats.
+
+Keep the presence of an active tracker separate from its mode. An active stats game is not a Live-Taps-only game; do not label it cheer-only or start a second cheer-only session over it.
+
+**Why:** The user needs a real no-stats option, and replacing an already-running Event Card session could disrupt game data.
+
+**How to apply:** Return a distinct `liveTapsOnly` state alongside `liveTapsActive`. Only offer the cheer-only QR flow for an active cheer-only session; if stats are active, explain that the stats game must finish before starting a separate session.
