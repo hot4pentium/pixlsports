@@ -74,7 +74,27 @@ final class SupporterDashboardUITests: XCTestCase {
                 "The Event Card date must use Los Angeles time: \(messageBoard.label)"
             )
             messageBoard.tap()
-            XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            if state == "guide-upcoming" {
+                XCTAssertTrue(app.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
+                XCTAssertFalse(app.staticTexts["event-detail-title"].exists)
+            } else {
+                XCTAssertTrue(app.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            }
+            app.terminate()
+        }
+    }
+
+    func testMessageBoardOpensPrepForUpcomingGamesAndPractices() {
+        for (state, kind) in [
+            ("guide-upcoming", "game prep"),
+            ("guide-practice-upcoming", "practice prep")
+        ] {
+            let app = launch(state)
+            let messageBoard = reachable("dashboard-message-board-card", in: app)
+            XCTAssertTrue(messageBoard.label.contains("Tap to open \(kind)"), "\(state): \(messageBoard.label)")
+            messageBoard.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.staticTexts["event-detail-title"].exists)
             app.terminate()
         }
     }
@@ -101,7 +121,7 @@ final class SupporterDashboardUITests: XCTestCase {
 
             let eventApp = launch("guide-upcoming", accessibilityText: accessibilityText)
             reachable("dashboard-message-board-card", in: eventApp).tap()
-            XCTAssertTrue(eventApp.staticTexts["event-detail-title"].waitForExistence(timeout: 5))
+            XCTAssertTrue(eventApp.descendants(matching: .any)["dashboard-prep-access-required"].waitForExistence(timeout: 5))
             eventApp.terminate()
 
             let hypeApp = launch("guide-upcoming", accessibilityText: accessibilityText)

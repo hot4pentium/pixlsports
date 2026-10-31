@@ -33,7 +33,10 @@ struct NativeHomeHeroCards: View {
             return "Game-day message board. No upcoming Event Card is available. Tap to create one."
         }
         let status = eventTiming == .live ? "Live now" : eventTiming == .complete ? "After the event" : "Upcoming"
-        return "Game-day message board, \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.opponent), \(nextEvent.location). Tap to open the Event Card."
+        let action = eventTiming == .upcoming
+            ? "Tap to open \(nextEvent.type == "practice" ? "practice" : "game") prep for this Event Card."
+            : "Tap to open the Event Card."
+        return "Game-day message board, \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.opponent), \(nextEvent.location). \(action)"
     }
 
     private var validHypePhotoURL: URL? {
@@ -51,7 +54,9 @@ struct NativeHomeHeroCards: View {
             .accessibilityLabel(eventAccessibilityDescription)
             .accessibilityHint(nextEvent == nil
                 ? "Opens the Event Card creation form."
-                : "Opens the game-day message board and the next Event Card task.")
+                : eventTiming == .upcoming
+                    ? "Opens prep for the selected Event Card."
+                    : "Opens the game-day message board and the next Event Card task.")
             .accessibilityIdentifier("dashboard-message-board-card")
 
             Button(action: onOpenHypeCard) {

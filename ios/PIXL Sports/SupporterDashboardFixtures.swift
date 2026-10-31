@@ -17,6 +17,14 @@ enum SupporterDashboardFixtures {
         case "unlinked": return .notConnected
         case "error": return .failed("Check your internet connection, then try again.")
         case "empty": return .schedule(page: page(), events: [], pastEvents: [])
+        case "guide-practice-upcoming":
+            let practice = event("guide-practice", day: "15", status: "upcoming", type: "practice")
+            let schedulePage = page(events: [practice])
+            return .schedule(
+                page: schedulePage,
+                events: [SupporterScheduleItem(event: practice, timing: .upcoming, start: practice.parsedStart(timezone: practice.timezone))],
+                pastEvents: []
+            )
         case "guide-upcoming", "guide-live", "guide-postgame":
             let game = guideGame
             let practice = event("guide-practice", day: "15", status: "upcoming", type: "practice")
@@ -58,6 +66,7 @@ enum SupporterDashboardFixtures {
         }
         let timestamps: [String: String] = [
             "guide-upcoming": "2026-11-14T02:29:00Z",
+            "guide-practice-upcoming": "2026-11-14T02:29:00Z",
             "guide-live": "2026-11-14T02:30:00Z",
             "guide-postgame": "2026-11-14T05:31:00Z"
         ]

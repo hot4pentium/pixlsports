@@ -3,6 +3,7 @@ import { after, test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import { loadNativeSupporterSchedule } from "./nativeSupporterSchedule";
+import { nativeEventWorkspace } from "./nativeEventWorkspace";
 import type { NativeIdentity } from "./nativeIdentity";
 import { GAME_ON_CARD_MARKER } from "./gameOnCard";
 
@@ -32,6 +33,7 @@ async function link(who: NativeIdentity, ownerClerkUserId: string) {
 }
 
 after(async () => {
+  await pool.query("DELETE FROM checklist_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM schedule_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM stat_tracker_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_invites WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
@@ -52,9 +54,10 @@ test("native schedule is scoped to the explicitly linked active account", async 
     VALUES ($1,$2,'Jordan','Tigers','Spring 2099','2099-06-01T00:00:00Z','soccer','America/New_York')`,
   [linkedOwner, inviteToken]);
 
-  const insertSchedule = (ownerClerkUserId: string, eventId: string, title: string) =>
-    pool.query(`INSERT INTO schedule_shares (owner_clerk_user_id,title,team_season,events)
-      VALUES ($1,$2,$3,$4::jsonb)`,
+  const insertSchedule = async (ownerClerkUserId: string, eventId: string, title: string) => {
+    const inserted = await pool.query<{ id: string }>(`INSERT INTO schedule_shares (owner_clerk_user_id,title,team_season,events)
+      VALUES ($1,$2,$3,$4::jsonb)
+      RETURNING id::text AS id`,
     [ownerClerkUserId, title, GAME_ON_CARD_MARKER, JSON.stringify([{
       id: eventId,
       date: "2099-04-01",
@@ -65,16 +68,22 @@ test("native schedule is scoped to the explicitly linked active account", async 
       timezone: "America/Chicago",
       notes: "private prep",
       snacks: "private snacks",
-    }])]);
+    }])])
+    return inserted.rows[0]!.id;
+  };
 
-  await insertSchedule(linkedOwner, "linked-game", "Tigers vs Bears");
+  const linkedShareToken = await insertSchedule(linkedOwner, "linked-game", "Tigers vs Bears");
   await insertSchedule(otherOwner, "other-game", "Private opponent");
+  await pool.query(`INSERT INTO checklist_shares(owner_clerk_user_id,title,items,notes,selected_game)
+    VALUES ($1,'Private game prep','[]','private checklist prep',$2::jsonb)`,
+  [linkedOwner, JSON.stringify({ id: "linked-game" })]);
 
   const schedule = await loadNativeSupporterSchedule(who);
   assert.equal(schedule.status, "linked");
   assert.equal(schedule.athleteName, "Jordan");
   assert.equal(schedule.events.length, 1);
   assert.equal(schedule.events[0]?.eventId, "linked-game");
+  assert.equal(schedule.events[0]?.shareToken, linkedShareToken);
   assert.equal(schedule.events[0]?.title, "Tigers vs Bears");
   assert.equal(schedule.events[0]?.date, "2099-04-01");
   assert.equal(schedule.events[0]?.time, "18:00");
@@ -86,6 +95,12 @@ test("native schedule is scoped to the explicitly linked active account", async 
   assert.equal(JSON.stringify(schedule).includes("Private opponent"), false);
   assert.equal(JSON.stringify(schedule).includes("private prep"), false);
   assert.equal(JSON.stringify(schedule).includes("private snacks"), false);
+  assert.equal(JSON.stringify(schedule).includes("private checklist prep"), false);
+  const privatePrep = await nativeEventWorkspace(who, schedule.events[0]!.shareToken);
+  assert.equal(privatePrep.prep.notes, "private checklist prep");
+  const otherWho = identity();
+  await link(otherWho, otherOwner);
+  await assert.rejects(nativeEventWorkspace(otherWho, schedule.events[0]!.shareToken), errorStatus(404));
 });
 
 test("native schedule exposes only the invite for its matching active Live Taps game", async () => {
