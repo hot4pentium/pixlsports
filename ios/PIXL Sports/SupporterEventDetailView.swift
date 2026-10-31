@@ -239,7 +239,12 @@ struct SupporterEventDetailView: View {
             now = NativeEventWorkspaceUITestFixture.shared.timelineDate(date, eventStart: start)
         }
 #endif
-        return .recommended(start: start, isGame: event.type == "game", now: now)
+        return .recommended(
+            start: start,
+            isGame: event.type == "game",
+            isLive: event.status == "live" || event.liveTapsActive,
+            now: now
+        )
     }
 
     @ViewBuilder

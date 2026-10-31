@@ -53,6 +53,8 @@ struct NativeEventStepBar: View {
     }
 
     private func stepLabel(_ step: NativeEventDetailStep) -> some View {
+        let isRecommended = step == recommended
+        let isSelected = step == selected
         VStack(spacing: 5) {
             HStack(spacing: 5) {
                 Text("\(step.number)")
@@ -68,18 +70,18 @@ struct NativeEventStepBar: View {
         .frame(maxWidth: .infinity, minHeight: 64)
         .padding(.vertical, 4)
         .contentShape(Rectangle())
-        .foregroundStyle(step == selected ? SupporterHomeColors.background : .white)
+        .foregroundStyle(isRecommended ? SupporterHomeColors.background : .white)
         .background(
-            step == selected ? SupporterHomeColors.accent : Color.white.opacity(0.06),
+            isRecommended ? SupporterHomeColors.accent : Color.white.opacity(isSelected ? 0.13 : 0.06),
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.white.opacity(step == selected ? 0 : 0.12), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(isRecommended ? 0 : (isSelected ? 0.48 : 0.12)), lineWidth: 1)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(step.title)
         .accessibilityValue(step == recommended ? "Recommended next step" : "")
-        .accessibilityAddTraits(step == selected ? .isSelected : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

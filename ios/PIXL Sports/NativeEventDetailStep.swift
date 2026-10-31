@@ -30,11 +30,19 @@ enum NativeEventDetailStep: String, CaseIterable {
         }
     }
 
-    static func recommended(start: Date?, isGame: Bool, now: Date = Date()) -> Self {
+    static func recommended(
+        start: Date?,
+        isGame: Bool,
+        isLive: Bool = false,
+        now: Date = Date()
+    ) -> Self {
         guard let start else { return .prep }
         let elapsed = now.timeIntervalSince(start)
         if !isGame {
             return elapsed < 2 * 60 * 60 ? .prep : .share
+        }
+        if isLive, elapsed >= 0, elapsed < 2 * 60 * 60 {
+            return .trackStats
         }
         if elapsed < -60 * 60 { return .prep }
         if elapsed < 60 * 60 { return .trackStats }

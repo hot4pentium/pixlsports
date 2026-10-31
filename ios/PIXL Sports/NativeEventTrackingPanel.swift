@@ -8,7 +8,7 @@ struct NativeEventTrackingPanel: View {
     let athleteName: String
     let clerk: Clerk
     @StateObject private var trackerModel: NativeEventToolModel
-    @State private var showingTaps = false
+    @State private var showingTaps: Bool?
     @State private var tapsVisited = false
 
     init(event: AthleteFanEvent, teamName: String, athleteName: String, clerk: Clerk, model: NativeEventToolModel? = nil) {
@@ -25,7 +25,12 @@ struct NativeEventTrackingPanel: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
                 modeButton("Track Stats", icon: "chart.bar", taps: false)
-                modeButton("Live Taps", icon: "hands.clap", taps: true)
+                modeButton("Live Taps only", icon: "hands.clap", taps: true)
+            }
+            if showingTaps == nil {
+                Text("Choose game statistics or cheers only. Live Taps does not record player stats.")
+                    .font(.caption)
+                    .foregroundStyle(SupporterHomeColors.muted)
             }
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 14) {
@@ -46,10 +51,10 @@ struct NativeEventTrackingPanel: View {
                         clerk: clerk, model: trackerModel, embedded: true, compact: true
                     )
                 }
-                .eventToolVisibility(!showingTaps)
+                .eventToolVisibility(showingTaps == false)
                 if tapsVisited {
                     NativeEventFanAccessView(event: event, athleteName: athleteName, clerk: clerk)
-                        .eventToolVisibility(showingTaps)
+                        .eventToolVisibility(showingTaps == true)
                 }
             }
         }

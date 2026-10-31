@@ -101,6 +101,7 @@ final class NativeAccountLinkClient {
         _ path: String,
         body: T,
         method: String = "POST",
+        apiRoot: Bool = false,
         clerk: Clerk
     ) async throws -> Data {
         let origin = try Self.apiOrigin()
@@ -111,13 +112,15 @@ final class NativeAccountLinkClient {
         let components = path.split(separator: "/", omittingEmptySubsequences: false)
         guard !components.isEmpty,
               components.allSatisfy({
-                  String($0).range(of: "^[a-z-]+$", options: .regularExpression) != nil
-                    || String($0).range(of: "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", options: .regularExpression) != nil
+                  String($0).range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil
               }) else {
             throw NativeAccountLinkError.message("The PIXL Sports request could not be prepared.")
         }
 
-        var url = origin.appendingPathComponent("api").appendingPathComponent("native")
+        var url = origin.appendingPathComponent("api")
+        if !apiRoot {
+            url.appendPathComponent("native")
+        }
         for component in components {
             url = url.appendingPathComponent(String(component))
         }

@@ -21,6 +21,20 @@ struct NativeEventDetailStepChecks {
             )
             precondition(actual == expected, "Incorrect game recommendation at \(offset)")
         }
+        for offset: TimeInterval in [0, 3600, 7199] {
+            precondition(NativeEventDetailStep.recommended(
+                start: start,
+                isGame: true,
+                isLive: true,
+                now: start.addingTimeInterval(offset)
+            ) == .trackStats, "An active live game stays on Track Stats at \(offset).")
+        }
+        precondition(NativeEventDetailStep.recommended(
+            start: start, isGame: true, isLive: true, now: start.addingTimeInterval(-1)
+        ) == .prep, "A future event marked live remains on Prep.")
+        precondition(NativeEventDetailStep.recommended(
+            start: start, isGame: true, isLive: true, now: start.addingTimeInterval(7200)
+        ) == .share, "An event outside the active window returns to Share.")
         precondition(NativeEventDetailStep.recommended(start: nil, isGame: true) == .prep)
         precondition(NativeEventDetailStep.recommended(start: start, isGame: false, now: start) == .prep)
         precondition(NativeEventDetailStep.recommended(

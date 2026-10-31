@@ -51,7 +51,11 @@ struct NativeEventToolPanel: View {
                     if event.type == "game", trackingVisited || selected == .trackStats {
                         NativeEventTrackingPanel(
                             event: event, teamName: schedule.teamName ?? "Your team",
-                            athleteName: schedule.athleteName ?? "Your athlete", clerk: clerk, model: workspaceModel
+                            athleteName: schedule.athleteName ?? "Your athlete", clerk: clerk,
+                            hasActiveLiveTapsElsewhere: schedule.events.contains {
+                                $0.liveTapsActive && $0.eventId != event.eventId
+                            },
+                            model: workspaceModel
                         )
                         .eventToolVisibility(selected == .trackStats)
                     }
