@@ -245,6 +245,9 @@ test("a changed alert time zone reschedules day-of delivery without sending at t
 
     await runScheduledGameOnReminders(new Date("2026-09-28T14:00:00.000Z"), dependencies);
     assert.equal(sends, 1);
+    const repeated = await runScheduledGameOnReminders(new Date("2026-09-28T14:00:00.000Z"), dependencies);
+    assert.equal(repeated.processed, 0);
+    assert.equal(sends, 1);
   } finally {
     await fixture.cleanup();
   }
@@ -613,6 +616,55 @@ test("changing preferences cancels queued work before sending", async () => {
     assert.equal(sends, 0);
   } finally {
     await fixture.cleanup();
+  }
+});
+
+test("account opt-out or removal of the last iPhone registration stops native delivery", async () => {
+  const optedOut = await setup({ devices: 0, nativeDevices: 1 });
+  const unregistered = await setup({ devices: 0, nativeDevices: 1 });
+  const apnsKeys = ["APNS_AUTH_KEY", "APNS_KEY_ID", "APNS_TEAM_ID", "APNS_TOPIC"];
+  const original = Object.fromEntries(apnsKeys.map((key) => [key, process.env[key]]));
+  for (const [key, value] of Object.entries({
+    APNS_AUTH_KEY: "test-key",
+    APNS_KEY_ID: "TESTKEY123",
+    APNS_TEAM_ID: "TESTTEAM123",
+    APNS_TOPIC: "com.pixlsports",
+  })) process.env[key] = value;
+
+  let sends = 0;
+  try {
+    const optedOutRow = await queueOneHour(optedOut);
+    const unregisteredRow = await queueOneHour(unregistered);
+    await db.update(plannerNotificationPreferencesTable).set({
+      oneHourBefore: false,
+      dayOf: false,
+    }).where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, optedOut.ownerClerkUserId));
+    await db.delete(nativePushSubscriptionsTable)
+      .where(eq(nativePushSubscriptionsTable.ownerClerkUserId, unregistered.ownerClerkUserId));
+
+    await runScheduledGameOnReminders(ONE_HOUR_DUE, {
+      syncPageSize: 0,
+      sendPushNotificationToSubscription: async () => {
+        sends += 1;
+        return { configured: true, sent: true, stale: false };
+      },
+    });
+
+    const [optedOutState] = await db.select().from(gameOnScheduledRemindersTable)
+      .where(eq(gameOnScheduledRemindersTable.id, optedOutRow.id));
+    const [unregisteredState] = await db.select().from(gameOnScheduledRemindersTable)
+      .where(eq(gameOnScheduledRemindersTable.id, unregisteredRow.id));
+    assert.equal(optedOutState?.status, "cancelled");
+    assert.equal(unregisteredState?.status, "cancelled");
+    assert.equal(sends, 0);
+  } finally {
+    for (const key of apnsKeys) {
+      const value = original[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    await optedOut.cleanup();
+    await unregistered.cleanup();
   }
 });
 

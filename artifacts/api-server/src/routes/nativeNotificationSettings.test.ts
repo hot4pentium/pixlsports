@@ -1,0 +1,185 @@
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+import { randomUUID } from "node:crypto";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
+import express from "express";
+import { pool } from "@workspace/db";
+import { digest } from "../lib/nativeAccountLink";
+import { nativeAccountLinkRouter } from "./nativeAccountLink";
+
+const issuer = "https://native-notification-fixture.clerk.accounts.dev";
+const ownerClerkUserId = `native-notification-owner-${randomUUID()}`;
+const nativeSubject = `user_native${randomUUID().replaceAll("-", "")}`;
+const deviceIds = [randomUUID(), randomUUID()];
+const deviceTokens = [randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", ""),
+  randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "")];
+const originalEnvironment = {
+  issuer: process.env.NATIVE_IOS_CLERK_ISSUER,
+  apnsAuthKey: process.env.APNS_AUTH_KEY,
+  apnsKeyId: process.env.APNS_KEY_ID,
+  apnsTeamId: process.env.APNS_TEAM_ID,
+  apnsTopic: process.env.APNS_TOPIC,
+};
+const originalFetch = globalThis.fetch;
+let privateKey: CryptoKey;
+
+before(async () => {
+  const keys = await generateKeyPair("RS256");
+  privateKey = keys.privateKey;
+  const publicKey = await exportJWK(keys.publicKey);
+  const jwks = JSON.stringify({
+    keys: [{ ...publicKey, kid: "native-notification-fixture", alg: "RS256", use: "sig" }],
+  });
+  process.env.NATIVE_IOS_CLERK_ISSUER = issuer;
+  process.env.APNS_AUTH_KEY = "test-key";
+  process.env.APNS_KEY_ID = "TESTKEY123";
+  process.env.APNS_TEAM_ID = "TESTTEAM123";
+  process.env.APNS_TOPIC = "com.pixlsports";
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === `${issuer}/.well-known/jwks.json`) {
+      return new Response(jwks, { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return originalFetch(input, init);
+  };
+});
+
+after(async () => {
+  globalThis.fetch = originalFetch;
+  for (const [key, value] of Object.entries({
+    NATIVE_IOS_CLERK_ISSUER: originalEnvironment.issuer,
+    APNS_AUTH_KEY: originalEnvironment.apnsAuthKey,
+    APNS_KEY_ID: originalEnvironment.apnsKeyId,
+    APNS_TEAM_ID: originalEnvironment.apnsTeamId,
+    APNS_TOPIC: originalEnvironment.apnsTopic,
+  })) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+  await pool.query("DELETE FROM native_push_subscriptions WHERE owner_clerk_user_id=$1", [ownerClerkUserId]);
+  await pool.query("DELETE FROM planner_notification_preferences WHERE owner_clerk_user_id=$1", [ownerClerkUserId]);
+  await pool.query("DELETE FROM game_on_reminder_sync WHERE key=$1", [`owner:${ownerClerkUserId}`]);
+  await pool.query("DELETE FROM native_account_links WHERE owner_clerk_user_id=$1", [ownerClerkUserId]);
+  await pool.query("DELETE FROM native_link_rate_limits WHERE key=$1", [
+    digest(`native-request:${JSON.stringify({ issuer, subject: nativeSubject })}`),
+  ]);
+  await pool.end();
+});
+
+async function sessionToken(sessionId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  return new SignJWT({ sid: sessionId })
+    .setProtectedHeader({ alg: "RS256", kid: "native-notification-fixture" })
+    .setIssuer(issuer)
+    .setSubject(nativeSubject)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 60)
+    .sign(privateKey);
+}
+
+test("linked iPhone sessions reload shared preferences and unregister only their own delivery target", async () => {
+  await pool.query(
+    `INSERT INTO native_account_links (native_issuer,native_subject,owner_clerk_user_id,account_label)
+     VALUES ($1,$2,$3,$4)`,
+    [issuer, nativeSubject, ownerClerkUserId, "Test PIXL account"],
+  );
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api/native", nativeAccountLinkRouter);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve, reject) => {
+    server.once("listening", resolve);
+    server.once("error", reject);
+  });
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const firstToken = await sessionToken("sess_nativeFirst");
+    const secondToken = await sessionToken("sess_nativeSecond");
+    const request = async (token: string, path: string, init: RequestInit = {}) =>
+      originalFetch(`http://127.0.0.1:${address.port}/api/native${path}`, {
+        ...init,
+        headers: {
+          authorization: `Bearer ${token}`,
+          ...(init.body ? { "content-type": "application/json" } : {}),
+          ...init.headers,
+        },
+      });
+    const readPreferences = async (token: string) => {
+      const response = await request(token, "/notifications/preferences");
+      assert.equal(response.status, 200);
+      return response.json();
+    };
+
+    assert.deepEqual(await readPreferences(firstToken), {
+      oneHourBefore: false,
+      dayOf: false,
+      timezone: null,
+    });
+    const saved = await request(firstToken, "/notifications/preferences", {
+      method: "PATCH",
+      body: JSON.stringify({
+        oneHourBefore: true,
+        dayOf: true,
+        timezone: "America/Los_Angeles",
+      }),
+    });
+    assert.equal(saved.status, 200);
+    assert.deepEqual(await saved.json(), {
+      oneHourBefore: true,
+      dayOf: true,
+      timezone: "America/Los_Angeles",
+    });
+    assert.deepEqual(await readPreferences(secondToken), {
+      oneHourBefore: true,
+      dayOf: true,
+      timezone: "America/Los_Angeles",
+    });
+
+    for (let index = 0; index < deviceIds.length; index += 1) {
+      const response = await request(index === 0 ? firstToken : secondToken, "/notifications/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({
+          deviceId: deviceIds[index],
+          deviceToken: deviceTokens[index],
+          environment: "sandbox",
+        }),
+      });
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { enabled: true });
+    }
+
+    const removeFirstDevice = await request(firstToken, "/notifications/subscriptions", {
+      method: "DELETE",
+      body: JSON.stringify({ deviceId: deviceIds[0], environment: "sandbox" }),
+    });
+    assert.equal(removeFirstDevice.status, 200);
+    assert.deepEqual(await removeFirstDevice.json(), { enabled: false });
+
+    const unlink = await request(secondToken, "/link", { method: "DELETE" });
+    assert.equal(unlink.status, 200);
+    assert.deepEqual(await unlink.json(), { status: "unlinked" });
+
+    const secondDeviceStatus = await request(secondToken,
+      `/notifications/subscriptions?deviceId=${deviceIds[1]}&environment=sandbox`);
+    assert.equal(secondDeviceStatus.status, 200);
+    assert.deepEqual(await secondDeviceStatus.json(), { enabled: false, available: true });
+
+    const preferencesAfterUnlink = await request(secondToken, "/notifications/preferences");
+    assert.equal(preferencesAfterUnlink.status, 409);
+    const remaining = await pool.query(
+      "SELECT id FROM native_push_subscriptions WHERE owner_clerk_user_id=$1",
+      [ownerClerkUserId],
+    );
+    assert.equal(remaining.rowCount, 0);
+  } finally {
+    if (server.listening) {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => error ? reject(error) : resolve()));
+    }
+  }
+});
