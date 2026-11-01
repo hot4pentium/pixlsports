@@ -1,6 +1,18 @@
 import Foundation
 
 enum FamilyLiveTapQR {
+    enum HandoffReadiness: String, Equatable {
+        case ready = "QR ready to show or share"
+        case existingAccess = "Existing fan access is active"
+        case none = "No fan QR ready"
+    }
+
+    static func handoffReadiness(hasLocalQR: Bool, activeQRCount: Int) -> HandoffReadiness {
+        if hasLocalQR { return .ready }
+        if activeQRCount > 0 { return .existingAccess }
+        return .none
+    }
+
     static func accessToken(
         from rawValue: String,
         inviteToken: String,

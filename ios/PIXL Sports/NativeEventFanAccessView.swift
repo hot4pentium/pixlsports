@@ -99,12 +99,26 @@ struct NativeEventFanAccessView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("Fans at the game", systemImage: "qrcode")
-                .font(.headline)
-            Text("Fans with this QR can send cheers when your athlete is live—not edit stats or account data. QR access remains valid until you revoke it.")
-                .font(.caption)
-                .foregroundStyle(SupporterHomeColors.muted)
-            if let grant, let fanURL, event.liveTapsActive, event.liveTapsOnly {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Label("Fan QR handoff", systemImage: "qrcode")
+                        .font(.headline)
+                    Spacer(minLength: 8)
+                    Text(fanAccessStatus)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(hasReadyFanQR ? SupporterHomeColors.accent : SupporterHomeColors.muted)
+                        .multilineTextAlignment(.trailing)
+                        .accessibilityIdentifier("native-live-taps-qr-status")
+                }
+                Text("Fans can use this QR to send cheers when Live Taps is active—not edit stats or account data. QR access remains valid until you revoke it.")
+                    .font(.caption)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("native-live-taps-qr-lifetime")
+            }
+            .accessibilityIdentifier("native-live-taps-fan-handoff")
+
+            if hasReadyFanQR, let grant, let fanURL {
                 if let image = Self.qrImage(fanURL) {
                     Image(uiImage: image)
                         .interpolation(.none)
@@ -121,27 +135,49 @@ struct NativeEventFanAccessView: View {
                         Label("Share QR image", systemImage: "square.and.arrow.up")
                     }
                     .frame(minHeight: 44)
+                    .accessibilityIdentifier("native-live-taps-share-qr")
                 } else {
-                    Text("The QR image couldn’t be rendered. You can still share the fan link.")
+                    Text("The QR image couldn’t be rendered. Share the fan link instead.")
+                        .font(.caption)
                         .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 ShareLink(item: fanURL) {
                     Label("Share fan link", systemImage: "link")
                 }
                 .frame(minHeight: 44)
+                .accessibilityIdentifier("native-live-taps-share-link")
                 Button("Revoke this QR", role: .destructive) { pendingRevocation = grant.id }
                     .frame(minHeight: 44)
                     .disabled(busy)
+                    .accessibilityIdentifier("native-live-taps-revoke-qr")
             } else {
+                if !links.isEmpty {
+                    Text("An earlier QR is still active, but its image and link can’t be recovered on this device. Create a new QR for this handoff, or revoke the older access below.")
+                        .font(.caption)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Button {
                     Task { await perform("create") }
                 } label: {
-                    Label("Create fan QR", systemImage: "qrcode")
+                    Label(links.isEmpty ? "Create fan QR" : "Create another fan QR", systemImage: "qrcode")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(busy || !event.liveTapsActive || !event.liveTapsOnly)
                 .accessibilityIdentifier("native-live-taps-create-qr")
+                if !event.liveTapsActive {
+                    Text("Start a Live Taps-only session for this Event Card before creating fan access.")
+                        .font(.caption)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if !event.liveTapsOnly {
+                    Text("Finish stat tracking before creating a separate Live Taps fan QR.")
+                        .font(.caption)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             if busy { ProgressView("Updating fan access…") }
             Button("Refresh fan access") { Task { await perform("list") } }
@@ -154,9 +190,10 @@ struct NativeEventFanAccessView: View {
                     .frame(minHeight: 44)
                     .disabled(busy)
             }
-            if !links.isEmpty {
-                DisclosureGroup("Existing family QR access for this athlete") {
-                    ForEach(links) { link in
+            let otherLinks = links.filter { $0.id != grant?.id }
+            if !otherLinks.isEmpty {
+                DisclosureGroup(hasReadyFanQR ? "Other active family QR codes" : "Active family QR codes") {
+                    ForEach(otherLinks) { link in
                         HStack {
                             Text("QR · \(String(link.createdAt.prefix(10))) · \(String(link.id.prefix(6)))")
                                 .font(.caption)
@@ -170,6 +207,9 @@ struct NativeEventFanAccessView: View {
                 .font(.subheadline)
             }
             Divider().overlay(Color.white.opacity(0.12))
+            Label("Live Taps session", systemImage: "hands.clap")
+                .font(.headline)
+                .accessibilityIdentifier("native-live-taps-session-heading")
             if event.liveTapsActive, event.liveTapsOnly,
                let inviteToken = event.liveTapsInviteToken,
                let sport = event.liveTapsSport {
@@ -259,6 +299,17 @@ struct NativeEventFanAccessView: View {
         } message: {
             Text("Anyone using this QR will lose Live Taps access. Other family QR codes will keep working.")
         }
+    }
+
+    private var hasReadyFanQR: Bool {
+        grant != nil && fanURL != nil
+    }
+
+    private var fanAccessStatus: String {
+        FamilyLiveTapQR.handoffReadiness(
+            hasLocalQR: hasReadyFanQR,
+            activeQRCount: links.count
+        ).rawValue
     }
 
     private func soccerFormatButton(_ title: String, value: String) -> some View {

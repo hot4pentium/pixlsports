@@ -7,6 +7,11 @@ struct FamilyLiveTapQRChecks {
         let token = String(repeating: "familyToken_", count: 4)
         let origin = URL(string: "https://pixlsports.com")!
 
+        precondition(FamilyLiveTapQR.handoffReadiness(hasLocalQR: true, activeQRCount: 1) == .ready)
+        precondition(FamilyLiveTapQR.handoffReadiness(hasLocalQR: true, activeQRCount: 0) == .ready)
+        precondition(FamilyLiveTapQR.handoffReadiness(hasLocalQR: false, activeQRCount: 1) == .existingAccess)
+        precondition(FamilyLiveTapQR.handoffReadiness(hasLocalQR: false, activeQRCount: 0) == .none)
+
         precondition(
             FamilyLiveTapQR.accessToken(
                 from: "https://pixlsports.com/fan/\(invite)#live-taps=\(token)",
