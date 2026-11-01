@@ -57,6 +57,7 @@ struct NativeEventShareView: View {
                 HStack(spacing: 9) {
                     Image(systemName: "square.and.arrow.up")
                     Text("Share event details")
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     Image(systemName: "arrow.up.right")
                 }

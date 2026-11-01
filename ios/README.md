@@ -275,6 +275,49 @@ to save.
 simulator, and the prepared development session/card. They have not been run in
 this Linux workspace; adding the tests does not confirm a successful native run.
 
+### Signed-in Event Card sharing
+
+`SupporterEventDetailUITests` also contains real-session checks for the two
+actions in the Event Details Share section:
+
+- `testSignedInShareChoicesAtNarrowWidthAndAccessibilitySizes` checks the
+  event-detail share sheet and selected athlete HYPE Card at default and
+  accessibility XXXL text sizes.
+- `testSignedInReviewKeepsPrivateHypeCardUnpublished` checks that reviewing a
+  private HYPE Card leaves it unavailable and does not expose a share action.
+
+Use a dedicated development account already signed in and linked on the target
+iPhone simulator. Set these non-secret values in the Xcode scheme's **Test**
+environment:
+
+- `PIXL_SHARE_TEST_EVENT_ID`: the upcoming Event Card's event ID.
+- `PIXL_SHARE_TEST_ATHLETE_NAME`: the selected athlete's exact display name.
+
+Use an Event Card with a saved date, time, and non-empty location.
+For the first test, the selected athlete's HYPE Card must be available to
+supporters. For the private-card test, set that card to private/hidden before
+running the test. The test uses the same read-only native lookup as the app; it
+does not change card visibility or share the HYPE Card. Do not use a personal
+or production account.
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInShareChoicesAtNarrowWidthAndAccessibilitySizes
+
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInReviewKeepsPrivateHypeCardUnpublished
+```
+
+The Debug-only `--ui-testing-share-narrow` argument constrains Event Details to
+320 points; it does not replace Clerk authentication or use fixture data.
+The tests verify that both Share actions remain reachable, that the native iOS
+share sheet contains the event date, time, and location, and that the HYPE Card
+destination matches the selected athlete. Run on a small iPhone simulator and
+inspect the share sheet at both text sizes. These device tests have not been
+compiled or run in this Linux workspace.
+
 `SupporterDashboardUITests` also checks the dashboard at 320 points: connected
 empty, unlinked, loading, error, upcoming, and live states; large-text athlete
 identity and connection controls; and Event Card navigation. Run just this suite:

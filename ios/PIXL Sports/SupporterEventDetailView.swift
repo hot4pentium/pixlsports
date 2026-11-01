@@ -103,7 +103,7 @@ struct SupporterEventDetailView: View {
                     unavailable(message)
                 }
             }
-            .frame(maxWidth: 560)
+            .frame(maxWidth: detailContentMaxWidth)
             .padding(.horizontal, 22)
             .padding(.vertical, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -268,7 +268,7 @@ struct SupporterEventDetailView: View {
                 }
 
             }
-            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: detailContentMaxWidth, alignment: .leading)
             .padding(.top, 4)
             .padding(.bottom, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -460,6 +460,15 @@ struct SupporterEventDetailView: View {
 
     private func statusText(_ event: AthleteFanEvent) -> String {
         event.status == "live" ? "Live" : event.status == "final" ? "Complete" : "Upcoming"
+    }
+
+    private var detailContentMaxWidth: CGFloat {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-share-narrow") {
+            return 320
+        }
+#endif
+        return 560
     }
 
     private func detailRow(icon: String, label: String, value: String) -> some View {

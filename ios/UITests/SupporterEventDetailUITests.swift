@@ -101,6 +101,185 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, originalProgress)
     }
 
+    func testSignedInShareChoicesAtNarrowWidthAndAccessibilitySizes() throws {
+        for accessibility in [false, true] {
+            try checkSignedInShareChoices(accessibility: accessibility, privateCard: false)
+        }
+    }
+
+    func testSignedInReviewKeepsPrivateHypeCardUnpublished() throws {
+        try checkSignedInShareChoices(accessibility: true, privateCard: true)
+    }
+
+    private func checkSignedInShareChoices(accessibility: Bool, privateCard: Bool) throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let eventID = environment["PIXL_SHARE_TEST_EVENT_ID"], !eventID.isEmpty,
+              let athleteName = environment["PIXL_SHARE_TEST_ATHLETE_NAME"], !athleteName.isEmpty else {
+            throw XCTSkip("Set PIXL_SHARE_TEST_EVENT_ID and PIXL_SHARE_TEST_ATHLETE_NAME for a dedicated development account with an upcoming Event Card. Sign in and link its owner on this simulator first.")
+        }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-share-narrow"]
+        if accessibility {
+            app.launchArguments += [
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"
+            ]
+        }
+        app.launch()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.descendants(matching: .any)["dashboard-upcoming-section"].waitForExistence(timeout: 30),
+                      "Sign in and link the dedicated development owner before running this real-session test.")
+        let dashboardHypeCard = app.descendants(matching: .any)["dashboard-hype-card"].firstMatch
+        XCTAssertTrue(dashboardHypeCard.waitForExistence(timeout: 10))
+        XCTAssertTrue(dashboardHypeCard.label.contains(athleteName),
+                      "The connected account must select the athlete expected by this test.")
+
+        let eventCard = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ OR identifier == %@",
+            "dashboard-event-tile-\(eventID)", "dashboard-event-card-\(eventID)"
+        )).firstMatch
+        for _ in 0..<20 where !eventCard.isHittable { app.swipeUp() }
+        XCTAssertTrue(eventCard.isHittable, "The configured development Event Card must be reachable.")
+        eventCard.tap()
+        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
+
+        let detailsScroll = app.scrollViews["event-detail-scroll"]
+        XCTAssertTrue(detailsScroll.waitForExistence(timeout: 10))
+        XCTAssertLessThanOrEqual(detailsScroll.frame.width, 320.5,
+                                  "The signed-in destination must use the narrow 320-point layout.")
+        let date = shareDetailValue("event-detail-date", in: app)
+        let time = shareDetailValue("event-detail-time", in: app)
+        let location = shareDetailValue("event-detail-location", in: app)
+        XCTAssertFalse(location.isEmpty, "Use an Event Card with a saved location.")
+
+        app.buttons["event-card-share"].tap()
+        let shareTitle = app.staticTexts["event-tool-title"]
+        XCTAssertTrue(shareTitle.waitForExistence(timeout: 10))
+        XCTAssertEqual(shareTitle.label, "Share")
+
+        var shareDetails = revealShareAction("native-event-share-details", in: app)
+        XCTAssertTrue(shareDetails.isEnabled)
+        XCTAssertGreaterThanOrEqual(shareDetails.frame.height, 44)
+        var shareHypeCard = revealShareAction("native-event-share-hype-card", in: app)
+        XCTAssertTrue(shareHypeCard.isEnabled)
+        XCTAssertGreaterThanOrEqual(shareHypeCard.frame.height, 44)
+        XCTAssertLessThanOrEqual(shareDetails.frame.width, detailsScroll.frame.width)
+        XCTAssertLessThanOrEqual(shareHypeCard.frame.width, detailsScroll.frame.width)
+
+        let dateForShare = fullShareDate(from: date)
+        shareDetails = revealShareAction("native-event-share-details", in: app)
+        shareDetails.tap()
+        assertShareSheetContains(dateForShare, in: app)
+        assertShareSheetContains(time, in: app)
+        assertShareSheetContains(location, in: app)
+        retainShareScreenshot(in: app, name: "Event details — \(accessibility ? "AX XXXL" : "default")")
+        dismissShareSheet(in: app)
+
+        shareHypeCard = revealShareAction("native-event-share-hype-card", in: app)
+        shareHypeCard.tap()
+        XCTAssertTrue(app.navigationBars["HYPE Card"].waitForExistence(timeout: 15))
+
+        if privateCard {
+            XCTAssertTrue(app.staticTexts["No HYPE Card is available"].waitForExistence(timeout: 15),
+                          "Reviewing a private card must not make it public.")
+            XCTAssertFalse(app.buttons["native-hype-card-share"].exists,
+                           "A private card must not gain a public sharing action.")
+            XCTAssertFalse(app.descendants(matching: .any)["native-hype-card"].exists)
+        } else {
+            let card = app.descendants(matching: .any)["native-hype-card"]
+            XCTAssertTrue(card.waitForExistence(timeout: 15), "The selected athlete’s HYPE Card must load.")
+            XCTAssertTrue(card.label.contains(athleteName),
+                          "The Event Card action must open the selected athlete’s HYPE Card.")
+            XCTAssertTrue(app.buttons["native-hype-card-share"].exists,
+                          "Sharing remains an explicit action after reviewing the card.")
+        }
+        XCTAssertFalse(app.otherElements["ActivityListView"].exists,
+                       "Opening the HYPE Card must not launch another share sheet.")
+        retainShareScreenshot(in: app, name: "HYPE Card — \(privateCard ? "private" : "available")")
+    }
+
+    private func shareDetailValue(_ identifier: String, in app: XCUIApplication) -> String {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "Missing \(identifier)")
+        let label = assertReachable(identifier, in: app).label
+        guard let separator = label.range(of: ", ") else {
+            XCTFail("Expected a labeled event detail in \(label)")
+            return ""
+        }
+        return String(label[separator.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func fullShareDate(from compactDate: String) -> String {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(secondsFromGMT: 0)
+        parser.dateFormat = "MMM d, yyyy"
+        guard let date = parser.date(from: compactDate) else {
+            XCTFail("Could not parse the Event Card date \(compactDate)")
+            return compactDate
+        }
+        parser.dateFormat = "EEEE, MMMM d, yyyy"
+        return parser.string(from: date)
+    }
+
+    private func revealShareAction(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        let element = app.buttons[identifier].firstMatch
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "Missing \(identifier)")
+        let scroll = app.scrollViews["event-detail-scroll"]
+        let viewport = scroll.frame.insetBy(dx: 1, dy: 2)
+        for _ in 0..<30 {
+            if element.isHittable && viewport.contains(element.frame) { break }
+            let frame = element.frame
+            let scrollUp = frame.maxY > viewport.maxY
+            let start = scroll.coordinate(
+                withNormalizedOffset: CGVector(dx: 0.5, dy: scrollUp ? 0.8 : 0.2)
+            )
+            let end = scroll.coordinate(
+                withNormalizedOffset: CGVector(dx: 0.5, dy: scrollUp ? 0.2 : 0.8)
+            )
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+        XCTAssertTrue(element.isHittable, "\(identifier) must remain reachable in the narrow share section.")
+        XCTAssertGreaterThanOrEqual(element.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(element.frame.height, 44)
+        assertContained(element.frame, in: scroll.frame)
+        return element
+    }
+
+    private func assertShareSheetContains(_ value: String, in app: XCUIApplication) {
+        XCTAssertFalse(value.isEmpty)
+        let match = NSPredicate(format: "label CONTAINS[c] %@", value)
+        let appContent = app.descendants(matching: .any).matching(match).firstMatch
+        if appContent.waitForExistence(timeout: 5) { return }
+
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let systemContent = springboard.descendants(matching: .any).matching(match).firstMatch
+        XCTAssertTrue(systemContent.waitForExistence(timeout: 10),
+                      "The iOS share sheet must include \(value).")
+    }
+
+    private func dismissShareSheet(in app: XCUIApplication) {
+        let close = app.buttons["Close"].firstMatch
+        if close.waitForExistence(timeout: 3) {
+            close.tap()
+            XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 5))
+            return
+        }
+        let activityList = app.otherElements["ActivityListView"].firstMatch
+        XCTAssertTrue(activityList.waitForExistence(timeout: 5),
+                      "The native iOS share sheet should be open.")
+        activityList.swipeDown()
+        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 5))
+    }
+
+    private func retainShareScreenshot(in app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Share choices — \(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     private func openSignedInPrep(eventID: String, in app: XCUIApplication) {
         XCTAssertTrue(app.descendants(matching: .any)["dashboard-upcoming-section"].waitForExistence(timeout: 30),
                       "Sign in and link the dedicated development owner; its Event Card must be in the upcoming list.")
