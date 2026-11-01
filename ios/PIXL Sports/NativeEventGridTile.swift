@@ -25,24 +25,24 @@ struct NativeEventGridTile: View {
                 VStack(spacing: 3) {
                     HStack(spacing: 3) {
                         Circle().fill(isComplete ? Color.green : event.status == "live" ? Color.red : SupporterHomeColors.blue)
-                            .frame(width: 4, height: 4)
+                            .frame(width: 5, height: 5)
                         Text(isComplete ? "COMPLETE" : event.status == "live" ? "LIVE" : "UP NEXT")
-                            .font(.system(size: 7, weight: .heavy))
-                            .tracking(0.5)
+                            .font(.system(size: 8, weight: .heavy))
+                            .tracking(0.45)
                     }
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(month).font(.system(size: 9, weight: .heavy))
-                        Text(day).font(.system(size: 28, weight: .black, design: .rounded))
+                        Text(month).font(.system(size: 10, weight: .heavy))
+                        Text(day).font(.system(size: 31, weight: .black, design: .rounded))
                     }
                     HStack(spacing: 3) {
                         Text(event.formattedTime(timezone: event.timezone ?? timezone))
-                            .font(.system(size: 8, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                         Text(event.type == "practice" ? "PRACTICE" : "GAME")
-                            .font(.system(size: 8, weight: .black))
+                            .font(.system(size: 9, weight: .black))
                     }
                     .lineLimit(1)
                     Text(event.opponent.isEmpty ? event.title : "vs \(event.opponent)")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: 11, weight: .bold))
                         .lineLimit(1)
                 }
                 .padding(7)
