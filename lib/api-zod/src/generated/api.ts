@@ -4181,6 +4181,82 @@ export const UpdateNativeSupporterHypeCardResponse = zod.object({
 
 
 /**
+ * Requires native bearer authentication. Returns no storage paths or public tokens.
+ * @summary Get the linked owner's selected HYPE Card photo state
+ */
+export const getNativeAthletePhotoStateResponseRevisionRegExp = new RegExp('^(none|[a-f0-9]{64})$');
+
+
+export const GetNativeAthletePhotoStateResponse = zod.object({
+  "cardId": zod.string().uuid(),
+  "athleteName": zod.string(),
+  "hasPhoto": zod.boolean(),
+  "revision": zod.string().regex(getNativeAthletePhotoStateResponseRevisionRegExp)
+})
+
+
+/**
+ * Native bearer authenticated. Accepts up to 5 MB, validates and sanitizes the image, stores it privately, and rejects stale revisions.
+ * @summary Replace the selected HYPE Card photo without changing its privacy
+ */
+export const replaceNativeAthletePhotoHeaderXPhotoRevisionRegExp = new RegExp('^(none|[a-f0-9]{64})$');
+
+
+export const ReplaceNativeAthletePhotoHeader = zod.object({
+  "X-Hype-Card-ID": zod.string().uuid(),
+  "X-Photo-Revision": zod.string().regex(replaceNativeAthletePhotoHeaderXPhotoRevisionRegExp)
+})
+
+export const replaceNativeAthletePhotoResponseRevisionRegExp = new RegExp('^(none|[a-f0-9]{64})$');
+
+
+export const ReplaceNativeAthletePhotoResponse = zod.object({
+  "cardId": zod.string().uuid(),
+  "athleteName": zod.string(),
+  "hasPhoto": zod.boolean(),
+  "revision": zod.string().regex(replaceNativeAthletePhotoResponseRevisionRegExp)
+})
+
+
+/**
+ * Requires native bearer authentication and the current revision. Does not change sharing settings or saved artwork.
+ * @summary Remove the selected HYPE Card photo and legacy cutout
+ */
+export const removeNativeAthletePhotoBodyRevisionRegExp = new RegExp('^(none|[a-f0-9]{64})$');
+
+
+export const RemoveNativeAthletePhotoBody = zod.object({
+  "cardId": zod.string().uuid(),
+  "revision": zod.string().regex(removeNativeAthletePhotoBodyRevisionRegExp)
+})
+
+export const removeNativeAthletePhotoResponseRevisionRegExp = new RegExp('^(none|[a-f0-9]{64})$');
+
+
+export const RemoveNativeAthletePhotoResponse = zod.object({
+  "cardId": zod.string().uuid(),
+  "athleteName": zod.string(),
+  "hasPhoto": zod.boolean(),
+  "revision": zod.string().regex(removeNativeAthletePhotoResponseRevisionRegExp)
+})
+
+
+/**
+ * Works for public and private cards. Requires native bearer authentication, the selected card ID, and the current photo revision. Never redirects to storage.
+ * @summary Read the selected photo through the authenticated owner connection
+ */
+export const getNativeAthletePhotoImageHeaderXPhotoRevisionRegExp = new RegExp('^(none|[a-f0-9]{64})$');
+
+
+export const GetNativeAthletePhotoImageHeader = zod.object({
+  "X-Hype-Card-ID": zod.string().uuid(),
+  "X-Photo-Revision": zod.string().regex(getNativeAthletePhotoImageHeaderXPhotoRevisionRegExp)
+})
+
+export const GetNativeAthletePhotoImageResponse = zod.unknown()
+
+
+/**
  * Requires explicit owner confirmation and changes only the newest saved card's athlete and team identity. Artwork, published snapshots, media, visibility, and pause settings are unchanged.
  * @summary Correct a mismatched saved HYPE Card identity
  */

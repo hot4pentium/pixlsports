@@ -18,6 +18,16 @@ struct NativeAthleteProfileView: View {
     @State private var didSave = false
     @State private var loadError: String?
     @State private var saveError: String?
+    @State private var savedProfile: NativeSupporterProfile?
+
+    private var editedProfile: NativeSupporterProfile {
+        NativeSupporterProfile(
+            athleteName: athleteName.trimmingCharacters(in: .whitespacesAndNewlines),
+            teamName: teamName.trimmingCharacters(in: .whitespacesAndNewlines),
+            jerseyNumber: jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines),
+            position: position.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
 
     private var canSave: Bool {
         !isLoading
@@ -77,6 +87,11 @@ struct NativeAthleteProfileView: View {
                         }
                 }
 
+                if !isInitialSetup {
+                    NativeAthletePhotoSection(clerk: clerk, profileIsSaved: savedProfile == editedProfile)
+                        .id(clerk.user?.id)
+                }
+
                 Section {
                     Text("These details are saved to your linked PIXL account and can be edited later in Settings. Saving your profile does not publish a private HYPE Card.")
                         .font(.footnote)
@@ -113,6 +128,7 @@ struct NativeAthleteProfileView: View {
         .interactiveDismissDisabled(isInitialSetup && !didSave)
         .task {
             if let initialProfile {
+                savedProfile = initialProfile
                 athleteName = initialProfile.athleteName
                 teamName = initialProfile.teamName
                 jerseyNumber = initialProfile.jerseyNumber
@@ -131,6 +147,7 @@ struct NativeAthleteProfileView: View {
         saveError = nil
         do {
             let profile = try await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
+            savedProfile = profile
             athleteName = profile.athleteName
             teamName = profile.teamName
             jerseyNumber = profile.jerseyNumber

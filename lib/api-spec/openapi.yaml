@@ -1489,6 +1489,111 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /native/supporter/hype-card/athlete-photo:
+    get:
+      operationId: getNativeAthletePhotoState
+      tags: [athlete-invites]
+      summary: Get the linked owner's selected HYPE Card photo state
+      description: Requires native bearer authentication. Returns no storage paths or public tokens.
+      responses:
+        "200":
+          description: Current photo state and opaque concurrency revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeAthletePhoto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Saved athlete does not identify a HYPE Card
+    put:
+      operationId: replaceNativeAthletePhoto
+      tags: [athlete-invites]
+      summary: Replace the selected HYPE Card photo without changing its privacy
+      description: Native bearer authenticated. Accepts up to 5 MB, validates and sanitizes the image, stores it privately, and rejects stale revisions.
+      parameters:
+        - in: header
+          name: X-Hype-Card-ID
+          required: true
+          schema: { type: string, format: uuid }
+        - in: header
+          name: X-Photo-Revision
+          required: true
+          schema: { type: string, pattern: "^(none|[a-f0-9]{64})$" }
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema: { $ref: "#/components/schemas/NativeAthletePhotoUpload" }
+          image/png:
+            schema: { $ref: "#/components/schemas/NativeAthletePhotoUpload" }
+          image/webp:
+            schema: { $ref: "#/components/schemas/NativeAthletePhotoUpload" }
+      responses:
+        "200":
+          description: Saved photo state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeAthletePhoto" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: The selected card or photo revision changed
+        "413":
+          description: Photo exceeds 5 MB
+    delete:
+      operationId: removeNativeAthletePhoto
+      tags: [athlete-invites]
+      summary: Remove the selected HYPE Card photo and legacy cutout
+      description: Requires native bearer authentication and the current revision. Does not change sharing settings or saved artwork.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeAthletePhotoExpectation" }
+      responses:
+        "200":
+          description: Photo removed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeAthletePhoto" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: The selected card or photo revision changed
+  /native/supporter/hype-card/athlete-photo/image:
+    get:
+      operationId: getNativeAthletePhotoImage
+      tags: [athlete-invites]
+      summary: Read the selected photo through the authenticated owner connection
+      description: Works for public and private cards. Requires native bearer authentication, the selected card ID, and the current photo revision. Never redirects to storage.
+      parameters:
+        - in: header
+          name: X-Hype-Card-ID
+          required: true
+          schema: { type: string, format: uuid }
+        - in: header
+          name: X-Photo-Revision
+          required: true
+          schema: { type: string, pattern: "^(none|[a-f0-9]{64})$" }
+      responses:
+        "200":
+          description: Sanitized athlete image
+          content:
+            image/webp:
+              schema: { type: string, format: binary }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The selected card or photo revision changed
   /native/supporter/hype-card/identity:
     post:
       operationId: correctNativeSupporterHypeCardIdentity
@@ -5364,6 +5469,24 @@ components:
         seasonName: { type: string }
         favoriteMoment: { type: ["string", "null"], maxLength: 160 }
         hasPhoto: { type: boolean }
+    NativeAthletePhoto:
+      type: object
+      required: [cardId, athleteName, hasPhoto, revision]
+      properties:
+        cardId: { type: string, format: uuid }
+        athleteName: { type: string }
+        hasPhoto: { type: boolean }
+        revision: { type: string, pattern: "^(none|[a-f0-9]{64})$" }
+    NativeAthletePhotoExpectation:
+      type: object
+      required: [cardId, revision]
+      properties:
+        cardId: { type: string, format: uuid }
+        revision: { type: string, pattern: "^(none|[a-f0-9]{64})$" }
+    NativeAthletePhotoUpload:
+      type: string
+      format: binary
+      description: JPEG, PNG, or WebP bytes, at most 5 MB before server sanitization
     NativeSupporterHypeCardSettings:
       type: object
       required: [showHypeCard, showStats, showEvents, paused, favoriteMoment]

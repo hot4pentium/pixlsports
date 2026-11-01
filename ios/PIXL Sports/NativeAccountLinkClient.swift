@@ -59,7 +59,7 @@ final class NativeAccountLinkClient {
         try NativeAccountLinkEndpoint.load(bundle: bundle)
     }
 
-    func getData(_ path: String, clerk: Clerk) async throws -> Data {
+    func getData(_ path: String, headers: [String: String] = [:], clerk: Clerk) async throws -> Data {
         let origin = try Self.apiOrigin()
         guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
             throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
@@ -81,6 +81,7 @@ final class NativeAccountLinkClient {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.cachePolicy = .reloadIgnoringLocalCacheData
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
@@ -101,6 +102,45 @@ final class NativeAccountLinkClient {
             }
             throw NativeAccountLinkError.message(
                 "The PIXL Sports schedule request failed on \(host) (HTTP \(response.statusCode))."
+            )
+        }
+        return data
+    }
+
+    func uploadAthletePhoto(
+        _ contents: Data, cardID: String, revision: String, clerk: Clerk
+    ) async throws -> Data {
+        guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
+            throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
+        }
+        var url = try Self.apiOrigin()
+        for component in ["api", "native", "supporter", "hype-card", "athlete-photo"] {
+            url.appendPathComponent(component)
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.httpBody = contents
+        request.timeoutInterval = 90
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(cardID, forHTTPHeaderField: "X-Hype-Card-ID")
+        request.setValue(revision, forHTTPHeaderField: "X-Photo-Revision")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        let (data, response) = try await session.data(for: request)
+        guard let response = response as? HTTPURLResponse else {
+            throw NativeAccountLinkError.message("The athlete photo could not be saved.")
+        }
+        guard response.statusCode == 200 else {
+            if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
+                throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
+            }
+            throw NativeAccountLinkError.serverStatus(
+                response.statusCode,
+                response.statusCode == 413
+                    ? "Choose a photo smaller than 5 MB after preparation."
+                    : "The athlete photo could not be saved. Please try again."
             )
         }
         return data

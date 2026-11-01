@@ -98,6 +98,8 @@ import type {
   MeetingWorkspace,
   MeetingWorkspaceConflict,
   MeetingWorkspaceUpdate,
+  NativeAthletePhoto,
+  NativeAthletePhotoExpectation,
   NativeHypeCardIdentityCorrection,
   NativeHypeCardIdentityCorrectionResult,
   NativeLinkChallengeInput,
@@ -5982,6 +5984,340 @@ export const useUpdateNativeSupporterHypeCard = <TError = ErrorType<BadRequestRe
       > => {
       return useMutation(getUpdateNativeSupporterHypeCardMutationOptions(options));
     }
+
+export const getGetNativeAthletePhotoStateUrl = () => {
+
+
+
+
+  return `/api/native/supporter/hype-card/athlete-photo`
+}
+
+/**
+ * Requires native bearer authentication. Returns no storage paths or public tokens.
+ * @summary Get the linked owner's selected HYPE Card photo state
+ */
+export const getNativeAthletePhotoState = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeAthletePhoto> => {
+
+  return customFetch<NativeAthletePhoto>(getGetNativeAthletePhotoStateUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeAthletePhotoStateQueryKey = () => {
+    return [
+    `/api/native/supporter/hype-card/athlete-photo`
+    ] as const;
+    }
+
+
+export const getGetNativeAthletePhotoStateQueryOptions = <TData = Awaited<ReturnType<typeof getNativeAthletePhotoState>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeAthletePhotoState>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeAthletePhotoStateQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeAthletePhotoState>>> = ({ signal }) => getNativeAthletePhotoState({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeAthletePhotoState>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeAthletePhotoStateQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeAthletePhotoState>>>
+export type GetNativeAthletePhotoStateQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>
+
+
+/**
+ * @summary Get the linked owner's selected HYPE Card photo state
+ */
+
+export function useGetNativeAthletePhotoState<TData = Awaited<ReturnType<typeof getNativeAthletePhotoState>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeAthletePhotoState>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeAthletePhotoStateQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReplaceNativeAthletePhotoUrl = () => {
+
+
+
+
+  return `/api/native/supporter/hype-card/athlete-photo`
+}
+
+/**
+ * Native bearer authenticated. Accepts up to 5 MB, validates and sanitizes the image, stores it privately, and rejects stale revisions.
+ * @summary Replace the selected HYPE Card photo without changing its privacy
+ */
+export const replaceNativeAthletePhoto = async (replaceNativeAthletePhotoBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<NativeAthletePhoto> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeAthletePhoto>(getReplaceNativeAthletePhotoUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/jpeg', ...getHeaders(options?.headers) },
+    body: replaceNativeAthletePhotoBody
+  }
+);}
+
+
+
+
+
+export const getReplaceNativeAthletePhotoMutationKey = () => ['replaceNativeAthletePhoto'] as const;
+
+export const getReplaceNativeAthletePhotoMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceNativeAthletePhoto>>, TError,ReplaceNativeAthletePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceNativeAthletePhoto>>, TError,ReplaceNativeAthletePhotoMutationVariables, TContext> => {
+
+const mutationKey = getReplaceNativeAthletePhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceNativeAthletePhoto>>, ReplaceNativeAthletePhotoMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  replaceNativeAthletePhoto(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceNativeAthletePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof replaceNativeAthletePhoto>>>
+    export type ReplaceNativeAthletePhotoMutationBody = BodyType<Blob>
+    export type ReplaceNativeAthletePhotoMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>
+    export type ReplaceNativeAthletePhotoMutationVariables = {data: BodyType<Blob>}
+
+    /**
+ * @summary Replace the selected HYPE Card photo without changing its privacy
+ */
+export const useReplaceNativeAthletePhoto = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceNativeAthletePhoto>>, TError,ReplaceNativeAthletePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceNativeAthletePhoto>>,
+        TError,
+        ReplaceNativeAthletePhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReplaceNativeAthletePhotoMutationOptions(options));
+    }
+
+export const getRemoveNativeAthletePhotoUrl = () => {
+
+
+
+
+  return `/api/native/supporter/hype-card/athlete-photo`
+}
+
+/**
+ * Requires native bearer authentication and the current revision. Does not change sharing settings or saved artwork.
+ * @summary Remove the selected HYPE Card photo and legacy cutout
+ */
+export const removeNativeAthletePhoto = async (nativeAthletePhotoExpectation: NativeAthletePhotoExpectation, options?: Parameters<typeof customFetch>[1]): Promise<NativeAthletePhoto> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeAthletePhoto>(getRemoveNativeAthletePhotoUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeAthletePhotoExpectation)
+  }
+);}
+
+
+
+
+
+export const getRemoveNativeAthletePhotoMutationKey = () => ['removeNativeAthletePhoto'] as const;
+
+export const getRemoveNativeAthletePhotoMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeNativeAthletePhoto>>, TError,RemoveNativeAthletePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeNativeAthletePhoto>>, TError,RemoveNativeAthletePhotoMutationVariables, TContext> => {
+
+const mutationKey = getRemoveNativeAthletePhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeNativeAthletePhoto>>, RemoveNativeAthletePhotoMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  removeNativeAthletePhoto(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveNativeAthletePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof removeNativeAthletePhoto>>>
+    export type RemoveNativeAthletePhotoMutationBody = BodyType<NativeAthletePhotoExpectation>
+    export type RemoveNativeAthletePhotoMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>
+    export type RemoveNativeAthletePhotoMutationVariables = {data: BodyType<NativeAthletePhotoExpectation>}
+
+    /**
+ * @summary Remove the selected HYPE Card photo and legacy cutout
+ */
+export const useRemoveNativeAthletePhoto = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeNativeAthletePhoto>>, TError,RemoveNativeAthletePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeNativeAthletePhoto>>,
+        TError,
+        RemoveNativeAthletePhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveNativeAthletePhotoMutationOptions(options));
+    }
+
+export const getGetNativeAthletePhotoImageUrl = () => {
+
+
+
+
+  return `/api/native/supporter/hype-card/athlete-photo/image`
+}
+
+/**
+ * Works for public and private cards. Requires native bearer authentication, the selected card ID, and the current photo revision. Never redirects to storage.
+ * @summary Read the selected photo through the authenticated owner connection
+ */
+export const getNativeAthletePhotoImage = async ( options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetNativeAthletePhotoImageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeAthletePhotoImageQueryKey = () => {
+    return [
+    `/api/native/supporter/hype-card/athlete-photo/image`
+    ] as const;
+    }
+
+
+export const getGetNativeAthletePhotoImageQueryOptions = <TData = Awaited<ReturnType<typeof getNativeAthletePhotoImage>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeAthletePhotoImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeAthletePhotoImageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeAthletePhotoImage>>> = ({ signal }) => getNativeAthletePhotoImage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeAthletePhotoImage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeAthletePhotoImageQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeAthletePhotoImage>>>
+export type GetNativeAthletePhotoImageQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>
+
+
+/**
+ * @summary Read the selected photo through the authenticated owner connection
+ */
+
+export function useGetNativeAthletePhotoImage<TData = Awaited<ReturnType<typeof getNativeAthletePhotoImage>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeAthletePhotoImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeAthletePhotoImageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCorrectNativeSupporterHypeCardIdentityUrl = () => {
 

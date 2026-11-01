@@ -1,5 +1,5 @@
 import { createClerkClient } from "@clerk/express";
-import { Router, type RequestHandler } from "express";
+import { Router, raw, type RequestHandler } from "express";
 import { and, desc, eq, ne } from "drizzle-orm";
 import {
   BeginNativeAccountLinkBody, PollNativeAccountLinkBody,
@@ -47,6 +47,8 @@ import {
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import { getApnsConfig } from "../lib/apns";
+import { nativeAthletePhoto } from "../lib/nativeAthletePhoto";
+import { GetNativeAthletePhotoStateResponse, RemoveNativeAthletePhotoBody } from "@workspace/api-zod";
 
 const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -375,6 +377,39 @@ nativeAccountLinkRouter.post("/supporter/hype-card/identity", handle(async (req,
   if (!parsed.success) throw new NativeLinkError(400, "Confirm that this HYPE Card belongs to the selected athlete.");
   const updated = await correctNativeSupporterHypeCardIdentity(identity(res), parsed.data);
   res.json(CorrectNativeSupporterHypeCardIdentityResponse.parse(updated));
+}));
+const NativeAthletePhotoExpectation = RemoveNativeAthletePhotoBody.strict();
+nativeAccountLinkRouter.get("/supporter/hype-card/athlete-photo", handle(async (_req, res) => {
+  res.json(GetNativeAthletePhotoStateResponse.parse(await nativeAthletePhoto.state(identity(res))));
+}));
+nativeAccountLinkRouter.get("/supporter/hype-card/athlete-photo/image", handle(async (req, res) => {
+  const parsed = NativeAthletePhotoExpectation.safeParse({
+    cardId: req.get("X-Hype-Card-ID"), revision: req.get("X-Photo-Revision"),
+  });
+  if (!parsed.success) throw new NativeLinkError(400, "Refresh the athlete photo before viewing it.");
+  const contents = await nativeAthletePhoto.image(identity(res), parsed.data);
+  if (!contents) { res.status(404).end(); return; }
+  res.type("image/webp").send(contents);
+}));
+nativeAccountLinkRouter.put("/supporter/hype-card/athlete-photo",
+  raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: "5mb" }),
+  handle(async (req, res) => {
+    await limitNativeLinkAction(JSON.stringify(identity(res)), "athlete-photo", 20);
+    const parsed = NativeAthletePhotoExpectation.safeParse({
+      cardId: req.get("X-Hype-Card-ID"), revision: req.get("X-Photo-Revision"),
+    });
+    if (!parsed.success || !Buffer.isBuffer(req.body) || !req.body.length) {
+      throw new NativeLinkError(400, "Choose a valid athlete photo and refresh before trying again.");
+    }
+    res.json(GetNativeAthletePhotoStateResponse.parse(
+      await nativeAthletePhoto.save(identity(res), parsed.data, req.body, req.get("content-type")?.split(";")[0] ?? ""),
+    ));
+  }),
+);
+nativeAccountLinkRouter.delete("/supporter/hype-card/athlete-photo", handle(async (req, res) => {
+  const parsed = NativeAthletePhotoExpectation.safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Refresh the athlete photo before removing it.");
+  res.json(GetNativeAthletePhotoStateResponse.parse(await nativeAthletePhoto.remove(identity(res), parsed.data)));
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card/photo", handle(async (_req, res) => {
   const photo = await loadNativeSupporterHypeCardPhoto(identity(res), "photo");

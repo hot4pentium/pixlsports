@@ -3063,6 +3063,25 @@ export interface NativeSupporterEventCardCreate {
   events: NativeSupporterEventCardCreateEventsItem[];
 }
 
+export interface NativeAthletePhoto {
+  cardId: string;
+  athleteName: string;
+  hasPhoto: boolean;
+  /** @pattern ^(none|[a-f0-9]{64})$ */
+  revision: string;
+}
+
+export interface NativeAthletePhotoExpectation {
+  cardId: string;
+  /** @pattern ^(none|[a-f0-9]{64})$ */
+  revision: string;
+}
+
+/**
+ * JPEG, PNG, or WebP bytes, at most 5 MB before server sanitization
+ */
+export type NativeAthletePhotoUpload = Blob;
+
 export interface NativeSupporterHypeCardUpdate {
   showHypeCard: boolean;
   showStats: boolean;
