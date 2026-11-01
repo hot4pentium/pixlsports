@@ -68,6 +68,7 @@ struct SupporterEventDetailView: View {
                         RoundedRectangle(cornerRadius: 20)
                             .stroke(.white.opacity(0.1), lineWidth: 1)
                     }
+                    .supporterSurfaceShadow()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case let .loaded(schedule, event):
                     eventDetails(schedule: schedule, event: event)
@@ -234,6 +235,7 @@ struct SupporterEventDetailView: View {
                             .frame(minHeight: 44)
                             .fixedSize(horizontal: false, vertical: true)
                             .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 15))
+                            .supporterSurfaceShadow()
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("event-detail-edit")
@@ -292,20 +294,9 @@ struct SupporterEventDetailView: View {
     }
 
     private func eventCard(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 12) {
-                    eventIdentity(schedule: schedule, event: event)
-                    eventScheduleDetails(schedule: schedule, event: event)
-                }
-            } else {
-                HStack(alignment: .top, spacing: 12) {
-                    eventIdentity(schedule: schedule, event: event)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    eventScheduleDetails(schedule: schedule, event: event)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
+        VStack(alignment: .leading, spacing: 13) {
+            eventIdentity(schedule: schedule, event: event)
+            eventScheduleDetails(schedule: schedule, event: event)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -343,52 +334,94 @@ struct SupporterEventDetailView: View {
     }
 
     private func eventIdentity(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            eventTitleBlock(event)
-
-            if let teamName = schedule.teamName?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !teamName.isEmpty,
-               teamName.caseInsensitiveCompare(event.title) != .orderedSame
-            {
-                HStack(spacing: 6) {
-                    Image(systemName: "shield.fill")
-                        .font(.system(size: detailLabelPointSize, weight: .semibold))
-                    Text(teamName)
-                        .font(.system(size: detailValuePointSize, weight: .semibold))
-                        .fixedSize(horizontal: false, vertical: true)
+        ViewThatFits(in: .horizontal) {
+            eventIdentityRow(schedule: schedule, event: event)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 9) {
+                    statusBadge(event)
+                    eventIdentityName(schedule: schedule, event: event)
                 }
-                .foregroundStyle(SupporterHomeColors.muted)
+                Text(event.type == "practice" ? "PRACTICE" : "GAME DAY")
+                    .font(.system(size: detailLabelPointSize, weight: .heavy))
+                    .tracking(1.5)
+                    .foregroundStyle(SupporterHomeColors.muted)
             }
         }
     }
 
-    private func eventTitleBlock(_ event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func eventIdentityRow(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        HStack(alignment: .center, spacing: 9) {
             statusBadge(event)
-            Text(event.title)
-                .font(.system(size: eventTitlePointSize, weight: .black, design: .rounded))
-                .tracking(-0.4)
-                .foregroundStyle(.white)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("event-detail-title")
+            eventIdentityName(schedule: schedule, event: event)
+                .layoutPriority(1)
             Text(event.type == "practice" ? "PRACTICE" : "GAME DAY")
                 .font(.system(size: detailLabelPointSize, weight: .heavy))
                 .tracking(1.5)
                 .foregroundStyle(SupporterHomeColors.muted)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func eventIdentityName(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
+        let teamName = schedule.teamName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasDistinctTeamName = teamName.map {
+            !$0.isEmpty && $0.caseInsensitiveCompare(event.title) != .orderedSame
+        } ?? false
+
+        return VStack(alignment: .leading, spacing: 2) {
+            if hasDistinctTeamName, let teamName {
+                Text(teamName)
+                    .font(.system(size: eventTitlePointSize, weight: .black, design: .rounded))
+                    .tracking(-0.4)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(event.title)
+                    .font(.system(size: detailLabelPointSize, weight: .semibold))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("event-detail-title")
+            } else {
+                Text(event.title)
+                    .font(.system(size: eventTitlePointSize, weight: .black, design: .rounded))
+                    .tracking(-0.4)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityIdentifier("event-detail-title")
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func eventScheduleDetails(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            detailRow(icon: "calendar", label: "DATE", value: compactDate(event: event, schedule: schedule))
-            detailRow(icon: "clock", label: "TIME", value: event.formattedTime(timezone: event.timezone ?? schedule.timezone))
-            detailRow(
-                icon: "mappin.and.ellipse",
-                label: "LOCATION",
-                value: event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? "Location to be announced"
-                    : event.location
-            )
+        let columns = Array(
+            repeating: GridItem(.flexible(minimum: 0), spacing: 10, alignment: .top),
+            count: 3
+        )
+        let date = compactDate(event: event, schedule: schedule)
+        let time = event.formattedTime(timezone: event.timezone ?? schedule.timezone)
+        let location = event.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Location to be announced"
+            : event.location
+
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    detailRow(icon: "calendar", label: "DATE", value: date)
+                    detailRow(icon: "clock", label: "TIME", value: time)
+                    detailRow(icon: "mappin.and.ellipse", label: "LOCATION", value: location)
+                }
+            } else {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+                    detailRow(icon: "calendar", label: "DATE", value: date)
+                    detailRow(icon: "clock", label: "TIME", value: time)
+                    detailRow(icon: "mappin.and.ellipse", label: "LOCATION", value: location)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
@@ -453,6 +486,8 @@ struct SupporterEventDetailView: View {
                     .font(.system(size: detailLabelPointSize, weight: .heavy))
                     .tracking(1.3)
                     .foregroundStyle(SupporterHomeColors.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
             }
             Text(value)
                 .font(.system(size: detailValuePointSize, weight: .semibold))

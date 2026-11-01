@@ -174,7 +174,7 @@ struct SupporterDashboardSectionSurface: ViewModifier {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .strokeBorder(SupporterHomeColors.blue.opacity(0.38), lineWidth: 1)
                     }
-                    .shadow(color: SupporterHomeColors.background.opacity(0.12), radius: 10, x: 0, y: 5)
+                    .shadow(color: SupporterHomeColors.background.opacity(0.18), radius: 13, x: 0, y: 6)
                     .padding(.horizontal, -12)
             }
     }
@@ -238,6 +238,13 @@ struct SupporterCardBackground: View {
                         lineWidth: 1
                     )
             }
+            .shadow(color: SupporterHomeColors.background.opacity(0.18), radius: 13, x: 0, y: 6)
+    }
+}
+
+extension View {
+    func supporterSurfaceShadow() -> some View {
+        shadow(color: SupporterHomeColors.background.opacity(0.18), radius: 12, x: 0, y: 6)
     }
 }
 

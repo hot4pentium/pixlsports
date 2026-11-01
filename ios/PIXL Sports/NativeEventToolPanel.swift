@@ -90,6 +90,7 @@ struct NativeEventToolPanel: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(toolAccent.opacity(0.30), lineWidth: 1)
         }
+        .supporterSurfaceShadow()
         .accessibilityIdentifier("event-detail-tool-panel")
         .onAppear { rememberSelection() }
         .onChange(of: selected) { _, _ in rememberSelection() }

@@ -158,6 +158,7 @@ struct NativeEventTrackingPanel: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(NativeEventToolColors.trackStats.opacity(0.32), lineWidth: 1)
         }
+        .supporterSurfaceShadow()
     }
 
     private func modeChoiceButton(_ mode: TrackingMode) -> some View {
@@ -240,6 +241,7 @@ struct NativeEventTrackingPanel: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .supporterSurfaceShadow()
     }
 
     private var scorekeepingSection: some View {

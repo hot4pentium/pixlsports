@@ -88,6 +88,7 @@ struct NativeEventShareView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(NativeEventToolColors.share.opacity(0.30), lineWidth: 1)
         }
+        .supporterSurfaceShadow()
         .accessibilityIdentifier("native-event-share-details-card")
     }
 
@@ -129,6 +130,7 @@ struct NativeEventShareView: View {
                 RoundedRectangle(cornerRadius: 19, style: .continuous)
                     .strokeBorder(NativeEventToolColors.share.opacity(0.30), lineWidth: 1)
             }
+            .supporterSurfaceShadow()
             .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
         }
         .buttonStyle(.plain)

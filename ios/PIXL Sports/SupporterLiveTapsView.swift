@@ -102,6 +102,7 @@ struct SupporterLiveTapsView: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .strokeBorder(SupporterHomeColors.blue.opacity(0.28), lineWidth: 1)
                     }
+                    .supporterSurfaceShadow()
                     .accessibilityElement(children: .combine)
 
                     accessCard
@@ -119,6 +120,7 @@ struct SupporterLiveTapsView: View {
                                 RoundedRectangle(cornerRadius: 20)
                                     .stroke(.white.opacity(0.1), lineWidth: 1)
                             }
+                            .supporterSurfaceShadow()
                     } else if let summary {
                         if summary.active {
                             cheersCard(summary)
@@ -316,6 +318,7 @@ struct SupporterLiveTapsView: View {
                     lineWidth: 1
                 )
         }
+        .supporterSurfaceShadow()
     }
 
     @ViewBuilder
@@ -440,6 +443,7 @@ struct SupporterLiveTapsView: View {
             RoundedRectangle(cornerRadius: 20)
                 .stroke(SupporterHomeColors.blue.opacity(0.42), lineWidth: 1)
         }
+        .supporterSurfaceShadow()
     }
 
     private func cheerEmoji(_ emoji: String) -> some View {
@@ -472,6 +476,7 @@ struct SupporterLiveTapsView: View {
             RoundedRectangle(cornerRadius: 20)
                 .stroke(.white.opacity(0.1), lineWidth: 1)
         }
+        .supporterSurfaceShadow()
     }
 
     private func loadSummary() async {

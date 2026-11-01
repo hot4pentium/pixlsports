@@ -83,7 +83,6 @@ struct NativeEventPrepView: View {
                             .font(.subheadline)
                             .foregroundStyle(SupporterHomeColors.muted)
                     } else {
-                        checklistDisclosureButton
                         if isChecklistExpanded {
                             ForEach($items) { $item in
                                 Button {
@@ -180,20 +179,17 @@ struct NativeEventPrepView: View {
                     Text("No Prep tasks yet. Add tasks or event notes in Manage.")
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
-                } else {
-                    checklistDisclosureButton
-                    if isChecklistExpanded {
-                        VStack(spacing: 8) {
-                            ForEach(items) { item in
-                                quickChecklistItem(item)
-                            }
+                } else if isChecklistExpanded {
+                    VStack(spacing: 8) {
+                        ForEach(items) { item in
+                            quickChecklistItem(item)
                         }
-                        .transition(
-                            reduceMotion
-                                ? .opacity
-                                : .move(edge: .top).combined(with: .opacity)
-                        )
                     }
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .move(edge: .top).combined(with: .opacity)
+                    )
                 }
             } else {
                 HStack(spacing: 10) {
@@ -235,102 +231,64 @@ struct NativeEventPrepView: View {
     }
 
     private var compactReadinessSummary: some View {
-        HStack(spacing: 13) {
-            ZStack {
-                Circle()
-                    .stroke(NativeEventToolColors.prep.opacity(0.18), lineWidth: 5)
-                Circle()
-                    .trim(from: 0, to: CGFloat(readyCount) / CGFloat(max(items.count, 1)))
-                    .stroke(NativeEventToolColors.prep, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text("\(readyCount)")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 46, height: 46)
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(event.type == "practice" ? "Practice prep" : "Game-day prep")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-                Text("\(readyCount) of \(items.count) ready")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SupporterHomeColors.muted)
-                    .accessibilityIdentifier("native-prep-quick-progress")
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-            Image(systemName: readyCount == items.count && !items.isEmpty ? "checkmark.seal.fill" : "checklist")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(NativeEventToolColors.prep)
-                .accessibilityHidden(true)
-        }
-        .padding(13)
-        .background(
-            LinearGradient(
-                colors: [NativeEventToolColors.prep.opacity(0.15), Color.white.opacity(0.035)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 17, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .strokeBorder(NativeEventToolColors.prep.opacity(0.32), lineWidth: 1)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("native-prep-readiness-card")
-    }
-
-    private var checklistDisclosureButton: some View {
         Button {
             withAnimation(checklistAnimation) {
                 isChecklistExpanded.toggle()
             }
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: isChecklistComplete ? "checkmark.seal.fill" : "checklist")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(NativeEventToolColors.prep)
-                    .frame(width: 42, height: 42)
-                    .background(
-                        NativeEventToolColors.prep.opacity(0.15),
-                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    )
-                    .accessibilityHidden(true)
+            HStack(spacing: 13) {
+                ZStack {
+                    Circle()
+                        .stroke(NativeEventToolColors.prep.opacity(0.18), lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(readyCount) / CGFloat(max(items.count, 1)))
+                        .stroke(NativeEventToolColors.prep, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("\(readyCount)")
+                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 46, height: 46)
+                .accessibilityHidden(true)
+
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Your checklist")
+                    Text(event.type == "practice" ? "Practice prep" : "Game-day prep")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.white)
                     Text("\(readyCount) of \(items.count) ready")
-                        .font(.caption.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(SupporterHomeColors.muted)
+                        .accessibilityIdentifier("native-prep-quick-progress")
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
                 Image(systemName: isChecklistExpanded ? "chevron.up" : "chevron.down")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(NativeEventToolColors.prep)
                     .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, minHeight: 54)
-            .padding(.horizontal, 13)
+            .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            .padding(13)
             .background(
-                NativeEventToolColors.prep.opacity(0.09),
+                LinearGradient(
+                    colors: [NativeEventToolColors.prep.opacity(0.15), Color.white.opacity(0.035)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(NativeEventToolColors.prep.opacity(0.28), lineWidth: 1)
+                    .strokeBorder(NativeEventToolColors.prep.opacity(0.32), lineWidth: 1)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Your checklist")
+        .accessibilityLabel(event.type == "practice" ? "Practice prep" : "Game-day prep")
         .accessibilityValue(
             "\(readyCount) of \(items.count) ready. \(isChecklistExpanded ? "Expanded" : "Collapsed")"
         )
-        .accessibilityHint(isChecklistExpanded ? "Collapse the checklist." : "Expand the checklist.")
+        .accessibilityHint(isChecklistExpanded ? "Collapse the prep checklist." : "Expand the prep checklist.")
         .accessibilityIdentifier("native-prep-checklist-toggle")
     }
 
@@ -549,33 +507,49 @@ struct NativeEventPrepView: View {
     }
 
     private var readinessSummary: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle().stroke(NativeEventToolColors.prep.opacity(0.18), lineWidth: 5)
-                Circle()
-                    .trim(from: 0, to: CGFloat(readyCount) / CGFloat(max(items.count, 1)))
-                    .stroke(NativeEventToolColors.prep, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text("\(readyCount)")
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+        Button {
+            withAnimation(checklistAnimation) {
+                isChecklistExpanded.toggle()
             }
-            .frame(width: 58, height: 58)
-            .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(event.type == "practice" ? "Practice prep" : "Game-day prep")
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(.white)
-                Text("\(readyCount) of \(items.count) ready")
-                    .font(.subheadline)
-                    .foregroundStyle(SupporterHomeColors.muted)
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle().stroke(NativeEventToolColors.prep.opacity(0.18), lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(readyCount) / CGFloat(max(items.count, 1)))
+                        .stroke(NativeEventToolColors.prep, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("\(readyCount)")
+                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 58, height: 58)
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(event.type == "practice" ? "Practice prep" : "Game-day prep")
+                        .font(.title3.weight(.heavy))
+                        .foregroundStyle(.white)
+                    Text("\(readyCount) of \(items.count) ready")
+                        .font(.subheadline)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Image(systemName: isChecklistExpanded ? "chevron.up" : "chevron.down")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NativeEventToolColors.prep)
+                    .accessibilityHidden(true)
             }
-            .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 6)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("native-prep-readiness")
+        .buttonStyle(.plain)
+        .accessibilityLabel(event.type == "practice" ? "Practice prep" : "Game-day prep")
+        .accessibilityValue(
+            "\(readyCount) of \(items.count) ready. \(isChecklistExpanded ? "Expanded" : "Collapsed")"
+        )
+        .accessibilityHint(isChecklistExpanded ? "Collapse the prep checklist." : "Expand the prep checklist.")
+        .accessibilityIdentifier("native-prep-checklist-toggle")
     }
 
     private var canSave: Bool {

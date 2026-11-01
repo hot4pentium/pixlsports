@@ -62,6 +62,7 @@ struct SupporterHypeCardView: View {
                         .padding(18)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+                        .supporterSurfaceShadow()
                         .accessibilityIdentifier("native-hype-card-refresh-error")
                     }
 
@@ -154,6 +155,7 @@ struct SupporterHypeCardView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
+            .supporterSurfaceShadow()
         } else if unavailable {
             ContentUnavailableView(
                 "No HYPE Card is available",
@@ -246,6 +248,7 @@ struct SupporterHypeCardView: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .strokeBorder(SupporterHomeColors.blue.opacity(0.85), lineWidth: 2)
             }
+            .supporterSurfaceShadow()
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(athleteName), \(teamName), \(seasonName), HYPE Card")
             .accessibilityIdentifier("native-hype-card")
@@ -262,6 +265,7 @@ struct SupporterHypeCardView: View {
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
+                .supporterSurfaceShadow()
             }
         }
     }

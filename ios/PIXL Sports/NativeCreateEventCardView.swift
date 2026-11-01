@@ -157,6 +157,7 @@ struct NativeCreateEventCardView: View {
                     .foregroundStyle(.white)
                     .padding(18)
                     .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+                    .supporterSurfaceShadow()
 
                     Text(isEditing
                          ? "Changes are saved to the Event Card on the schedule connected to your PIXL account."

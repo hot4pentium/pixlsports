@@ -159,6 +159,7 @@ struct NativeHomeHeroCards: View {
             RoundedRectangle(cornerRadius: 19, style: .continuous)
                 .strokeBorder(.white.opacity(0.72), lineWidth: 1)
         }
+        .supporterSurfaceShadow()
         .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
     }
 
@@ -267,6 +268,7 @@ struct NativeHomeHeroCards: View {
             RoundedRectangle(cornerRadius: 19, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 1)
         }
+        .supporterSurfaceShadow()
         .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
     }
 }

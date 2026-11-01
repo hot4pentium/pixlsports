@@ -139,6 +139,7 @@ struct NativeAuthRootView: View {
         .padding(.top, 18)
         .padding(.bottom, 14)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .supporterSurfaceShadow()
     }
 
     private var signInBackdrop: some View {

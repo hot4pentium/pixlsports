@@ -9,6 +9,12 @@ The web/PWA supporter dashboard retains its navy sports-editorial foundation, bl
 
 **How to apply:** Apply the light canvas and blue surfaces across native iOS screens and sheets, preserve designed card artwork and step accents, and leave the web/PWA navy theme unchanged.
 
+Use soft navy shadows beneath native blue containers and major cards to add separation from the white canvas. Keep shadows off small controls.
+
+**Why:** The user asked for depth around the boxes without making the interface visually heavy.
+
+**How to apply:** Use a consistent, restrained shadow on section surfaces, large cards, and tool panels; do not add elevation to every button or badge.
+
 Keep the install action in the athlete overview header, not inside the Event Card. The paired mobile Event Card and HYPE Card should have equal face sizes and aligned top edges.
 
 **Why:** The user requested moving “How to install” to the header and making the Event Card and HYPE Card equal.

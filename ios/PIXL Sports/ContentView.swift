@@ -721,6 +721,7 @@ struct ContentView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
             }
+            .supporterSurfaceShadow()
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(SupporterCardPressStyle())

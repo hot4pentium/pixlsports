@@ -228,12 +228,12 @@ final class SupporterEventDetailUITests: XCTestCase {
         let originalValue = item.value as? String
         XCTAssertEqual(originalValue, "Not ready", "Prepare an unchecked task so this test checks it off.")
         let changedValue = "Ready"
-        let originalProgress = app.staticTexts["native-prep-quick-progress"].label
+        let originalProgress = assertReachable("native-prep-checklist-toggle", in: app).value as? String ?? ""
         XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled,
                        "Start with saved Prep and no unresolved pending command.")
         reachableFromAbove(itemIdentifier, in: app).tap()
         XCTAssertEqual(item.value as? String, changedValue)
-        let changedProgress = app.staticTexts["native-prep-quick-progress"].label
+        let changedProgress = assertReachable("native-prep-checklist-toggle", in: app).value as? String ?? ""
         XCTAssertNotEqual(changedProgress, originalProgress)
         let save = assertReachable("native-prep-save", in: app)
         XCTAssertTrue(save.isEnabled)
@@ -272,7 +272,10 @@ final class SupporterEventDetailUITests: XCTestCase {
         reopenSignedInPrep(eventID: eventID, in: app)
         XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, changedValue,
                        "Fresh Event Details must load the server-confirmed checkoff.")
-        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, changedProgress)
+        XCTAssertEqual(
+            assertReachable("native-prep-checklist-toggle", in: app).value as? String,
+            changedProgress
+        )
         XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
         XCTAssertFalse(app.descendants(matching: .any)["native-tool-save-error"].exists)
 
@@ -283,7 +286,10 @@ final class SupporterEventDetailUITests: XCTestCase {
         waitForPrepSaved(in: app)
         reopenSignedInPrep(eventID: eventID, in: app)
         XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, originalValue)
-        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, originalProgress)
+        XCTAssertEqual(
+            assertReachable("native-prep-checklist-toggle", in: app).value as? String,
+            originalProgress
+        )
     }
 
     func testSignedInShareChoicesAtNarrowWidthAndAccessibilitySizes() throws {
@@ -565,7 +571,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         card.tap()
         XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
         app.buttons["event-card-prep"].tap()
-        _ = assertReachable("native-prep-quick-progress", in: app)
+        _ = assertReachable("native-prep-checklist-toggle", in: app)
         XCTAssertFalse(app.buttons["prep-test-open-event"].exists)
         XCTAssertFalse(app.buttons["prep-test-advance-clock"].exists)
     }
@@ -604,7 +610,10 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertEqual(quickWater.value as? String, "Not ready")
         quickWater.tap()
         XCTAssertEqual(quickWater.value as? String, "Ready")
-        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "1 of 2 ready")
+        XCTAssertTrue(
+            (assertReachable("native-prep-checklist-toggle", in: app).value as? String ?? "")
+                .contains("1 of 2 ready")
+        )
         app.buttons["native-prep-manage-full"].tap()
 
         let water = assertReachable("native-prep-item-water", in: app)
@@ -711,6 +720,8 @@ final class SupporterEventDetailUITests: XCTestCase {
                 .waitForExistence(timeout: 5)
         )
         let checklist = assertReachable("native-prep-checklist-toggle", in: app)
+        XCTAssertTrue(checklist.label.localizedCaseInsensitiveContains("prep"))
+        XCTAssertFalse(app.staticTexts["Your checklist"].exists)
         XCTAssertTrue((checklist.value as? String ?? "").contains("Collapsed"))
         XCTAssertFalse(app.buttons["native-prep-item-water"].exists)
 
@@ -782,7 +793,10 @@ final class SupporterEventDetailUITests: XCTestCase {
             retainPrepScreenshot(in: app, name: "\(task.0) — \(accessibility ? "AX XXXL" : "default")")
             row.tap()
             XCTAssertEqual(row.value as? String, "Ready")
-            XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "\(index + 1) of 5 ready")
+            XCTAssertTrue(
+                (assertReachable("native-prep-checklist-toggle", in: app).value as? String ?? "")
+                    .contains("\(index + 1) of 5 ready")
+            )
         }
         let fifthInContent = revealPrepControl("native-prep-item-snack", in: app)
         XCTAssertEqual(fifthInContent.value as? String, "Not ready",
@@ -823,7 +837,10 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue((checklist.value as? String ?? "").contains("Collapsed"))
         checklist.tap()
         _ = revealPrepControl("native-prep-item-water", in: app)
-        XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "5 of 5 ready")
+        XCTAssertTrue(
+            (revealPrepControl("native-prep-checklist-toggle", in: app).value as? String ?? "")
+                .contains("5 of 5 ready")
+        )
         for task in tasks {
             XCTAssertEqual(app.buttons["native-prep-item-\(task.0)"].value as? String, "Ready")
         }
@@ -947,6 +964,11 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(hero.frame.contains(date.frame))
         XCTAssertTrue(hero.frame.contains(time.frame))
         XCTAssertTrue(hero.frame.contains(location.frame))
+        XCTAssertGreaterThan(date.frame.minY, title.frame.minY)
+        XCTAssertEqual(date.frame.minX, time.frame.minX, accuracy: 2)
+        XCTAssertEqual(date.frame.minX, location.frame.minX, accuracy: 2)
+        XCTAssertGreaterThan(time.frame.minY, date.frame.minY)
+        XCTAssertGreaterThan(location.frame.minY, time.frame.minY)
         XCTAssertFalse(app.descendants(matching: .any)["event-detail-opponent"].exists)
         XCTAssertFalse(app.staticTexts["EVENT DETAILS"].exists)
         assertReachable("event-detail-tool-panel", in: app)
@@ -1107,13 +1129,19 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(date.isHittable, "The event date must be reachable inside the details viewport")
         XCTAssertTrue(time.exists)
         XCTAssertTrue(location.exists)
-        XCTAssertEqual(date.frame.minX, time.frame.minX, accuracy: 2, "Schedule metadata should share a compact column")
-        XCTAssertGreaterThan(time.frame.minY, date.frame.minY)
-        XCTAssertGreaterThan(location.frame.minY, time.frame.minY)
+        XCTAssertGreaterThan(date.frame.minY, title.frame.minY,
+                             "Schedule details should sit beneath the event identity.")
         if accessibility {
-            XCTAssertEqual(date.frame.minX, title.frame.minX, accuracy: 2, "Accessibility details should stack beneath the event identity")
+            XCTAssertEqual(date.frame.minX, time.frame.minX, accuracy: 2)
+            XCTAssertEqual(date.frame.minX, location.frame.minX, accuracy: 2)
+            XCTAssertGreaterThan(time.frame.minY, date.frame.minY)
+            XCTAssertGreaterThan(location.frame.minY, time.frame.minY)
         } else {
-            XCTAssertGreaterThan(date.frame.minX, title.frame.minX, "Default layout should place schedule details beside the event identity")
+            XCTAssertEqual(date.frame.minY, time.frame.minY, accuracy: 2,
+                           "Date, time, and location should share one horizontal row.")
+            XCTAssertEqual(date.frame.minY, location.frame.minY, accuracy: 2)
+            XCTAssertLessThan(date.frame.minX, time.frame.minX)
+            XCTAssertLessThan(time.frame.minX, location.frame.minX)
         }
 
         let initialBar = bar.frame
