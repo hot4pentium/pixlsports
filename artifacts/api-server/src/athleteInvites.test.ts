@@ -977,11 +977,26 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       [{ id: replacementLink.id, createdAt: replacementLink.createdAt.toISOString() }],
       "revoking one QR leaves the replacement active",
     );
-    assert.equal((await fetch(tapUrl, {
+    const revokedQrTap = await fetch(tapUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ cheerKey: "bucket", accessToken: familyLink.accessToken }),
-    })).status, 403);
+    });
+    assert.equal(revokedQrTap.status, 403,
+      "a device that was authorized before revocation can no longer send cheers");
+    const fanCardAfterRevocation = GetAthleteFanCardResponse.parse(
+      await (await fetch(`${publicUrl}/fan`)).json(),
+    );
+    assert.equal(
+      fanCardAfterRevocation.liveTaps.cheers.find((cheer) => cheer.key === "bucket")?.count,
+      9,
+      "cheers recorded before revocation remain visible in the live game history",
+    );
+    assert.equal(
+      fanCardAfterRevocation.liveTaps.seasonCheers.find((cheer) => cheer.key === "bucket")?.count,
+      10,
+      "revoking a QR does not remove its earlier cheers from the season history",
+    );
     const replacementTap = await fetch(tapUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
