@@ -39,7 +39,7 @@ struct NativeEventTrackerView: View {
             }
         }
         .navigationTitle(embedded ? "Event Details" : "Track Stats")
-        .tint(SupporterHomeColors.accent)
+        .tint(NativeEventToolColors.trackStats)
         .task {
             if model.workspace == nil { await model.load(clerk: clerk) }
         }
@@ -143,7 +143,7 @@ struct NativeEventTrackerView: View {
                                 }
                             }
                             .frame(maxWidth: .infinity, minHeight: compact ? 72 : 92)
-                            .background(SupporterHomeColors.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+                            .background(NativeEventToolColors.trackStats.opacity(0.16), in: RoundedRectangle(cornerRadius: 16))
                         }
                         .buttonStyle(.plain)
                         .disabled(!model.canQueueStat)

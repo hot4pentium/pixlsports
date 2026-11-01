@@ -19,7 +19,7 @@ struct NativeEventShareView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .tint(SupporterHomeColors.accent)
+        .tint(NativeEventToolColors.share)
         .preferredColorScheme(.dark)
         .navigationTitle(embedded ? "Event Details" : "Share")
         .navigationBarTitleDisplayMode(.inline)
@@ -30,9 +30,9 @@ struct NativeEventShareView: View {
             HStack(spacing: 9) {
                 Image(systemName: "calendar")
                     .font(.headline.weight(.bold))
-                    .foregroundStyle(SupporterHomeColors.blue)
+                    .foregroundStyle(NativeEventToolColors.share)
                     .accessibilityHidden(true)
-                SupporterEyebrow(text: "Event details", color: SupporterHomeColors.blue)
+                SupporterEyebrow(text: "Event details", color: NativeEventToolColors.share)
             }
 
             VStack(alignment: .leading, spacing: 5) {
@@ -63,14 +63,14 @@ struct NativeEventShareView: View {
                 .font(.subheadline.weight(.bold))
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(SupporterPrimaryButtonStyle())
+            .buttonStyle(SupporterPrimaryButtonStyle(fillColor: NativeEventToolColors.share))
             .accessibilityIdentifier("native-event-share-details")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.16), Color.white.opacity(0.045)],
+                colors: [NativeEventToolColors.share.opacity(0.15), Color.white.opacity(0.045)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ),
@@ -78,7 +78,7 @@ struct NativeEventShareView: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(SupporterHomeColors.blue.opacity(0.28), lineWidth: 1)
+                .strokeBorder(NativeEventToolColors.share.opacity(0.30), lineWidth: 1)
         }
         .accessibilityIdentifier("native-event-share-details-card")
     }
@@ -90,9 +90,9 @@ struct NativeEventShareView: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "person.crop.rectangle")
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(SupporterHomeColors.accent)
+                    .foregroundStyle(NativeEventToolColors.share)
                     .frame(width: 44, height: 44)
-                    .background(SupporterHomeColors.accent.opacity(0.13), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(NativeEventToolColors.share.opacity(0.13), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
@@ -110,16 +110,16 @@ struct NativeEventShareView: View {
 
                 Image(systemName: "arrow.right")
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(SupporterHomeColors.accent)
+                    .foregroundStyle(NativeEventToolColors.share)
                     .padding(.top, 3)
                     .accessibilityHidden(true)
             }
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .background(NativeEventToolColors.share.opacity(0.075), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 19, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.13), lineWidth: 1)
+                    .strokeBorder(NativeEventToolColors.share.opacity(0.30), lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
         }

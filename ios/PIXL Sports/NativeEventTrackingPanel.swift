@@ -33,7 +33,7 @@ struct NativeEventTrackingPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 12) {
-                SupporterEyebrow(text: "Scoreboard", color: SupporterHomeColors.blue)
+                SupporterEyebrow(text: "Scoreboard", color: NativeEventToolColors.trackStats)
                 VStack(alignment: .leading, spacing: 14) {
                     NativeEventTrackerView(
                         event: event, teamName: teamName, athleteName: athleteName,
@@ -44,7 +44,7 @@ struct NativeEventTrackingPanel: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     LinearGradient(
-                        colors: [SupporterHomeColors.blue.opacity(0.12), Color.white.opacity(0.035)],
+                        colors: [NativeEventToolColors.trackStats.opacity(0.16), Color.white.opacity(0.035)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
@@ -52,7 +52,7 @@ struct NativeEventTrackingPanel: View {
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(SupporterHomeColors.blue.opacity(0.24), lineWidth: 1)
+                        .strokeBorder(NativeEventToolColors.trackStats.opacity(0.35), lineWidth: 1)
                 }
                 .accessibilityIdentifier("native-event-scorekeeping-card")
 
@@ -78,7 +78,7 @@ struct NativeEventTrackingPanel: View {
                         .padding(.horizontal, 12)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(SupporterHomeColors.blue)
+                    .tint(NativeEventToolColors.trackStats)
                     .accessibilityIdentifier("native-event-mode-live-taps")
                     NavigationLink {
                         NativeEventTrackerView(

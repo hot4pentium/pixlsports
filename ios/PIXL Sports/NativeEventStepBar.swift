@@ -11,7 +11,7 @@ struct NativeEventStepBar: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Next: \(recommended.title)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(SupporterHomeColors.accent)
+                .foregroundStyle(NativeEventToolColors.color(for: recommended))
                 .accessibilityIdentifier("event-detail-recommended-step")
             HStack(alignment: .top, spacing: 8) {
                 Button {
@@ -55,6 +55,7 @@ struct NativeEventStepBar: View {
     private func stepLabel(_ step: NativeEventDetailStep) -> some View {
         let isRecommended = step == recommended
         let isSelected = step == selected
+        let toolColor = NativeEventToolColors.color(for: step)
         return VStack(spacing: 5) {
             HStack(spacing: 5) {
                 Text("\(step.number)")
@@ -70,19 +71,15 @@ struct NativeEventStepBar: View {
         .frame(maxWidth: .infinity, minHeight: 64)
         .padding(.vertical, 4)
         .contentShape(Rectangle())
-        .foregroundStyle(isRecommended ? SupporterHomeColors.background : .white)
+        .foregroundStyle(isSelected ? SupporterHomeColors.background : .white)
         .background(
-            isRecommended
-                ? SupporterHomeColors.accent
-                : isSelected
-                    ? SupporterHomeColors.blue.opacity(0.42)
-                    : Color.white.opacity(0.055),
+            toolColor.opacity(isSelected ? 1 : isRecommended ? 0.22 : 0.06),
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(
-                    isRecommended ? Color.clear : isSelected ? SupporterHomeColors.blue.opacity(0.95) : Color.white.opacity(0.12),
+                    isSelected ? Color.white.opacity(0.45) : isRecommended ? toolColor : toolColor.opacity(0.24),
                     lineWidth: 1
                 )
         }

@@ -49,8 +49,8 @@ All mounted event editors must share one workspace command/recovery owner, inclu
 
 **How to apply:** Serialize pending saves across tools and distinguish recovery of a failed Prep save from recovery of a tracker command. Preserve local Prep edits during tracker-only reloads.
 
-Prep, Track Stats, and Share should each have a distinct visual identity so supporters can tell which task is active at a glance. Keep their shared Event Card context and fixed step navigation.
+Prep, Track Stats, and Share should each have a distinct visual identity—orange for Prep, light blue for Track Stats, and PIXL green for Share—so supporters can tell which task is active at a glance. Keep their shared Event Card context and fixed step navigation.
 
-**Why:** The user said the current tool pages look the same and users need to know where they are.
+**Why:** The user said the current tool pages look the same, asked for clear recognition, and specified these colors.
 
-**How to apply:** Give Prep a checklist/readiness hierarchy, Track Stats a scorekeeping hierarchy, and Share a sharing-action hierarchy. Preserve the shared workspace and existing save, authorization, and recommendation behavior.
+**How to apply:** Carry each color through its page, action, and selected step. Give Prep a checklist/readiness hierarchy, Track Stats a scorekeeping hierarchy, and Share a sharing-action hierarchy. Preserve the shared workspace and existing save, authorization, and recommendation behavior.

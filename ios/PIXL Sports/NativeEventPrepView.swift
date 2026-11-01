@@ -79,7 +79,7 @@ struct NativeEventPrepView: View {
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
                                     .font(.title2)
-                                    .foregroundStyle(item.completed ? SupporterHomeColors.accent : SupporterHomeColors.muted)
+                                    .foregroundStyle(item.completed ? NativeEventToolColors.prep : SupporterHomeColors.muted)
                                     .accessibilityHidden(true)
                                 Text(item.label)
                                     .font(.subheadline.weight(.semibold))
@@ -128,7 +128,7 @@ struct NativeEventPrepView: View {
                 } header: {
                     Label("Checklist", systemImage: "checklist")
                         .font(.caption.weight(.heavy))
-                        .foregroundStyle(SupporterHomeColors.accent)
+                        .foregroundStyle(NativeEventToolColors.prep)
                 }
                 .listRowBackground(Color.white.opacity(0.06))
                 .listRowSeparatorTint(Color.white.opacity(0.10))
@@ -146,7 +146,7 @@ struct NativeEventPrepView: View {
                 } header: {
                     Label("Event notes", systemImage: "note.text")
                         .font(.caption.weight(.heavy))
-                        .foregroundStyle(SupporterHomeColors.accent)
+                        .foregroundStyle(NativeEventToolColors.prep)
                 }
                 .listRowBackground(Color.white.opacity(0.06))
             }
@@ -166,7 +166,7 @@ struct NativeEventPrepView: View {
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
                 } else {
-                    SupporterEyebrow(text: "Your checklist")
+                    SupporterEyebrow(text: "Your checklist", color: NativeEventToolColors.prep)
                         .padding(.top, 2)
                     VStack(spacing: 8) {
                         ForEach(Array(items.prefix(4))) { item in
@@ -182,7 +182,7 @@ struct NativeEventPrepView: View {
             } else {
                 HStack(spacing: 10) {
                     if model.busy || model.errorMessage == nil {
-                        ProgressView().tint(SupporterHomeColors.accent)
+                        ProgressView().tint(NativeEventToolColors.prep)
                         Text("Loading your Prep checklist…")
                             .font(.subheadline)
                             .foregroundStyle(SupporterHomeColors.muted)
@@ -206,7 +206,7 @@ struct NativeEventPrepView: View {
                 .font(.subheadline.weight(.bold))
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(SupporterPrimaryButtonStyle())
+            .buttonStyle(SupporterPrimaryButtonStyle(fillColor: NativeEventToolColors.prep))
             .accessibilityLabel("Manage full Prep")
             .accessibilityHint("Open the full checklist and event notes.")
             .accessibilityIdentifier("native-prep-manage-full")
@@ -218,10 +218,10 @@ struct NativeEventPrepView: View {
         HStack(spacing: 13) {
             ZStack {
                 Circle()
-                    .stroke(SupporterHomeColors.accent.opacity(0.18), lineWidth: 5)
+                    .stroke(NativeEventToolColors.prep.opacity(0.18), lineWidth: 5)
                 Circle()
                     .trim(from: 0, to: CGFloat(readyCount) / CGFloat(max(items.count, 1)))
-                    .stroke(SupporterHomeColors.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .stroke(NativeEventToolColors.prep, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 Text("\(readyCount)")
                     .font(.system(size: 18, weight: .black, design: .rounded))
@@ -243,13 +243,13 @@ struct NativeEventPrepView: View {
             Spacer(minLength: 0)
             Image(systemName: readyCount == items.count && !items.isEmpty ? "checkmark.seal.fill" : "checklist")
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(SupporterHomeColors.accent)
+                .foregroundStyle(NativeEventToolColors.prep)
                 .accessibilityHidden(true)
         }
         .padding(13)
         .background(
             LinearGradient(
-                colors: [SupporterHomeColors.accent.opacity(0.13), Color.white.opacity(0.035)],
+                colors: [NativeEventToolColors.prep.opacity(0.15), Color.white.opacity(0.035)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ),
@@ -257,7 +257,7 @@ struct NativeEventPrepView: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .strokeBorder(SupporterHomeColors.accent.opacity(0.24), lineWidth: 1)
+                .strokeBorder(NativeEventToolColors.prep.opacity(0.32), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("native-prep-readiness-card")
@@ -270,7 +270,7 @@ struct NativeEventPrepView: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundStyle(item.completed ? SupporterHomeColors.accent : SupporterHomeColors.muted)
+                    .foregroundStyle(item.completed ? NativeEventToolColors.prep : SupporterHomeColors.muted)
                     .fixedSize()
                     .accessibilityHidden(true)
                 Text(item.label)
@@ -287,13 +287,13 @@ struct NativeEventPrepView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(
-                item.completed ? SupporterHomeColors.accent.opacity(0.085) : Color.white.opacity(0.045),
+                item.completed ? NativeEventToolColors.prep.opacity(0.11) : Color.white.opacity(0.045),
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(
-                        item.completed ? SupporterHomeColors.accent.opacity(0.26) : Color.white.opacity(0.07),
+                        item.completed ? NativeEventToolColors.prep.opacity(0.34) : Color.white.opacity(0.07),
                         lineWidth: 1
                     )
             }
@@ -340,7 +340,7 @@ struct NativeEventPrepView: View {
                                 prepNavigationLabel("Back to Content", systemImage: "chevron.left")
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(SupporterHomeColors.accent)
+                            .foregroundStyle(NativeEventToolColors.prep)
                             .accessibilityIdentifier("native-prep-back-to-content")
                         }
                     }
@@ -380,7 +380,7 @@ struct NativeEventPrepView: View {
         .confirmationDialog("Leave without saving these prep edits?", isPresented: $confirmingLeave, titleVisibility: .visible) {
             Button("Leave without saving", role: .destructive) { dismiss() }
         }
-        .tint(SupporterHomeColors.accent)
+        .tint(NativeEventToolColors.prep)
         .task {
             guard !hasUnsavedEdits else { return }
             if model.workspace == nil, let clerk { await model.load(clerk: clerk) }
@@ -417,10 +417,10 @@ struct NativeEventPrepView: View {
     private var readinessSummary: some View {
         HStack(spacing: 16) {
             ZStack {
-                Circle().stroke(SupporterHomeColors.accent.opacity(0.14), lineWidth: 5)
+                Circle().stroke(NativeEventToolColors.prep.opacity(0.18), lineWidth: 5)
                 Circle()
                     .trim(from: 0, to: CGFloat(readyCount) / CGFloat(max(items.count, 1)))
-                    .stroke(SupporterHomeColors.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .stroke(NativeEventToolColors.prep, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 Text("\(readyCount)")
                     .font(.system(size: 22, weight: .black, design: .rounded))
@@ -468,7 +468,7 @@ struct NativeEventPrepView: View {
                     }
                 }
             }
-            .buttonStyle(SupporterPrimaryButtonStyle())
+            .buttonStyle(SupporterPrimaryButtonStyle(fillColor: NativeEventToolColors.prep))
             .disabled(!canSave)
             .opacity(canSave ? 1 : 0.5)
             .accessibilityIdentifier("native-prep-save")

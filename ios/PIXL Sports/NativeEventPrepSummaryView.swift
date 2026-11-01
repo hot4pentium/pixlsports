@@ -25,7 +25,7 @@ struct NativeEventPrepSummaryView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Label("Saved prep", systemImage: "checklist")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(NativeEventToolColors.prep)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Text("Read only")
@@ -36,10 +36,10 @@ struct NativeEventPrepSummaryView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 22))
+        .background(NativeEventToolColors.prep.opacity(0.075), in: RoundedRectangle(cornerRadius: 22))
         .overlay {
             RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                .strokeBorder(NativeEventToolColors.prep.opacity(0.28), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event-detail-prep-summary")
@@ -65,7 +65,7 @@ struct NativeEventPrepSummaryView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Retry prep summary") { Task { await load() } }
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(SupporterHomeColors.accent)
+                    .foregroundStyle(NativeEventToolColors.prep)
                     .accessibilityIdentifier("event-detail-prep-retry")
             }
         }
@@ -73,7 +73,7 @@ struct NativeEventPrepSummaryView: View {
 
     private var loadingContent: some View {
         HStack(spacing: 10) {
-            ProgressView().tint(SupporterHomeColors.accent)
+            ProgressView().tint(NativeEventToolColors.prep)
             Text("Loading saved prep…")
                 .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
@@ -93,14 +93,14 @@ struct NativeEventPrepSummaryView: View {
             } else {
                 Text("\(readyCount) of \(prep.items.count) ready")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SupporterHomeColors.accent)
+                    .foregroundStyle(NativeEventToolColors.prep)
                     .accessibilityIdentifier("event-detail-prep-progress")
                 ProgressView(value: Double(readyCount), total: Double(prep.items.count))
-                    .tint(SupporterHomeColors.accent)
+                    .tint(NativeEventToolColors.prep)
                 ForEach(visibleItems) { item in
                     HStack(alignment: .top, spacing: 9) {
                         Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(item.completed ? SupporterHomeColors.accent : SupporterHomeColors.muted)
+                            .foregroundStyle(item.completed ? NativeEventToolColors.prep : SupporterHomeColors.muted)
                             .accessibilityHidden(true)
                         Text(item.label)
                             .font(.subheadline)
@@ -114,7 +114,7 @@ struct NativeEventPrepSummaryView: View {
             }
             if hasNotes {
                 Divider().overlay(Color.white.opacity(0.10))
-                Text("Notes").font(.caption.weight(.bold)).foregroundStyle(SupporterHomeColors.accent)
+                Text("Notes").font(.caption.weight(.bold)).foregroundStyle(NativeEventToolColors.prep)
                 Text(prep.notes)
                     .font(.subheadline)
                     .foregroundStyle(SupporterHomeColors.muted)
@@ -125,7 +125,7 @@ struct NativeEventPrepSummaryView: View {
             if prep.items.count > 4 || hasNotes {
                 Button(expanded ? "Show less" : "Show full prep") { expanded.toggle() }
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(SupporterHomeColors.accent)
+                    .foregroundStyle(NativeEventToolColors.prep)
                     .accessibilityIdentifier("event-detail-prep-expand")
             }
         }

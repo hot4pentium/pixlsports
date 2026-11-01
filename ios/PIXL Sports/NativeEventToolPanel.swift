@@ -160,14 +160,7 @@ struct NativeEventToolPanel: View {
     }
 
     private var toolAccent: Color {
-        switch selected {
-        case .prep:
-            return SupporterHomeColors.accent
-        case .trackStats:
-            return SupporterHomeColors.blue
-        case .share:
-            return Color(red: 0.30, green: 0.78, blue: 0.95)
-        }
+        NativeEventToolColors.color(for: selected)
     }
 
     private var toolKicker: String {

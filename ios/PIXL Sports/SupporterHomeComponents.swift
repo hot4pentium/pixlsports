@@ -3,6 +3,20 @@ import SwiftUI
 /// Shared presentation helpers for the native supporter schedule screen.
 /// Pure SwiftUI; no data loading or navigation lives here.
 
+enum NativeEventToolColors {
+    static let prep = Color(red: 1.0, green: 0.56, blue: 0.22)
+    static let trackStats = Color(red: 0.38, green: 0.75, blue: 1.0)
+    static let share = SupporterHomeColors.accent
+
+    static func color(for step: NativeEventDetailStep) -> Color {
+        switch step {
+        case .prep: return prep
+        case .trackStats: return trackStats
+        case .share: return share
+        }
+    }
+}
+
 struct SupporterEyebrow: View {
     let text: String
     var color: Color = SupporterHomeColors.accent
@@ -189,6 +203,7 @@ struct SupporterCardBackground: View {
 }
 
 struct SupporterPrimaryButtonStyle: ButtonStyle {
+    var fillColor: Color = SupporterHomeColors.accent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
@@ -198,7 +213,7 @@ struct SupporterPrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(minHeight: 44)
-            .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(fillColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .opacity(configuration.isPressed ? 0.82 : 1)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
             .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: configuration.isPressed)
