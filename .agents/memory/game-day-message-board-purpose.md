@@ -37,6 +37,12 @@ Use the section beneath Event Details as the active native Prep, Track Stats, or
 
 **How to apply:** Keep checklist changes in the same draft and save flow as task and note management; allow the full list to scroll within Event Details.
 
+Keep the Prep checklist collapsible in both Content and Manage. Checking the final task celebrates the direct action and collapses the list; adding a task reopens it. Restored completion stays quiet.
+
+**Why:** The user wants a compact Prep view that closes on completion, while still reopening naturally when the task list changes.
+
+**How to apply:** Respect Reduce Motion and do not replay the celebration when saved or remote state loads.
+
 Within Track Stats, open score-only tracking directly in Content, with team and opponent scores, Start/End Game, Live Taps, and Open full tracker. Place scorekeeping and Live Taps in clearly separate sections, and explain that Live Taps are cheer-only.
 
 **Why:** The user wants supporters to be able to keep only the score, while retaining separate access to Live Taps and full stat tracking. Cheers must remain distinct from recorded stats.

@@ -82,43 +82,47 @@ struct NativeEventPrepView: View {
                         Text("Add your first task below.")
                             .font(.subheadline)
                             .foregroundStyle(SupporterHomeColors.muted)
-                    }
-                    ForEach($items) { $item in
-                        Button {
-                        toggleItem(id: item.id)
-                        } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
-                                    .font(.title2)
-                                    .foregroundStyle(item.completed ? NativeEventToolColors.prep : SupporterHomeColors.muted)
-                                    .accessibilityHidden(true)
-                                Text(item.label)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(item.completed ? SupporterHomeColors.muted : .white)
-                                    .strikethrough(item.completed)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Spacer(minLength: 0)
+                    } else {
+                        checklistDisclosureButton
+                        if isChecklistExpanded {
+                            ForEach($items) { $item in
+                                Button {
+                                    toggleItem(id: item.id)
+                                } label: {
+                                    HStack(alignment: .top, spacing: 12) {
+                                        Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
+                                            .font(.title2)
+                                            .foregroundStyle(item.completed ? NativeEventToolColors.prep : SupporterHomeColors.muted)
+                                            .accessibilityHidden(true)
+                                        Text(item.label)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(item.completed ? SupporterHomeColors.muted : .white)
+                                            .strikethrough(item.completed)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(item.label)
+                                .accessibilityValue(item.completed ? "Ready" : "Not ready")
+                                .accessibilityHint("Mark this task ready or not ready.")
+                                .accessibilityIdentifier("native-prep-item-\(item.id)")
+                                .contextMenu {
+                                    Button("Remove task", role: .destructive) {
+                                        guard !model.busy, model.pending == nil else { return }
+                                        let id = item.id
+                                        items.removeAll { $0.id == id }
+                                        edited = true
+                                    }
+                                }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(item.label)
-                        .accessibilityValue(item.completed ? "Ready" : "Not ready")
-                        .accessibilityHint("Mark this task ready or not ready.")
-                        .accessibilityIdentifier("native-prep-item-\(item.id)")
-                        .contextMenu {
-                            Button("Remove task", role: .destructive) {
-                                guard !model.busy, model.pending == nil else { return }
-                                let id = item.id
-                                items.removeAll { $0.id == id }
+                            .onDelete { offsets in
+                                items.remove(atOffsets: offsets)
                                 edited = true
                             }
                         }
-                    }
-                    .onDelete { offsets in
-                        items.remove(atOffsets: offsets)
-                        edited = true
                     }
                     HStack {
                         TextField("Add a task", text: $newItem)
@@ -624,11 +628,9 @@ struct NativeEventPrepView: View {
         items.append(NativePrepItem(id: UUID().uuidString, label: label, completed: false))
         newItem = ""
         edited = true
-        if compactContent {
-            withAnimation(checklistAnimation) {
-                isChecklistExpanded = true
-                showCompletionCelebration = false
-            }
+        withAnimation(checklistAnimation) {
+            isChecklistExpanded = true
+            showCompletionCelebration = false
         }
     }
 

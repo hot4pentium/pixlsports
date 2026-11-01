@@ -605,6 +605,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertEqual(revealPrepControl("native-prep-item-snack", in: app).value as? String, "Ready")
         XCTAssertTrue(revealPrepControl("native-prep-save", in: app).isEnabled)
         revealPrepControl("native-prep-manage-full", in: app).tap()
+        revealPrepControl("native-prep-checklist-toggle", in: app).tap()
         XCTAssertEqual(revealPrepControl("native-prep-item-snack", in: app).value as? String, "Ready")
         XCTAssertEqual(revealPrepControl("native-prep-notes", in: app).value as? String, draftNotes,
                        "Returning to Content and reopening full Prep must not reload saved notes")
