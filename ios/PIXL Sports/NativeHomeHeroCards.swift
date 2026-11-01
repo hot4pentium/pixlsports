@@ -282,13 +282,22 @@ struct NativeHomeHeroCards: View {
     }
 
     private var athleteDetails: String {
-        [
-            jerseyNumber?.trimmingCharacters(in: .whitespacesAndNewlines)
-                .flatMap { $0.isEmpty ? nil : "#\($0)" },
-            position?.trimmingCharacters(in: .whitespacesAndNewlines)
-                .flatMap { $0.isEmpty ? nil : $0 },
-        ]
-        .compactMap { $0 }
-        .joined(separator: " · ")
+        var details: [String] = []
+
+        if let jerseyNumber {
+            let trimmedNumber = jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedNumber.isEmpty {
+                details.append("#\(trimmedNumber)")
+            }
+        }
+
+        if let position {
+            let trimmedPosition = position.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedPosition.isEmpty {
+                details.append(trimmedPosition)
+            }
+        }
+
+        return details.joined(separator: " · ")
     }
 }
