@@ -48,3 +48,9 @@ All mounted event editors must share one workspace command/recovery owner, inclu
 **Why:** Separate controllers can overwrite or clear the same event-scoped pending-save journal. A tracker retry or discard must also never erase an unrelated unsaved Prep draft.
 
 **How to apply:** Serialize pending saves across tools and distinguish recovery of a failed Prep save from recovery of a tracker command. Preserve local Prep edits during tracker-only reloads.
+
+Prep, Track Stats, and Share should each have a distinct visual identity so supporters can tell which task is active at a glance. Keep their shared Event Card context and fixed step navigation.
+
+**Why:** The user said the current tool pages look the same and users need to know where they are.
+
+**How to apply:** Give Prep a checklist/readiness hierarchy, Track Stats a scorekeeping hierarchy, and Share a sharing-action hierarchy. Preserve the shared workspace and existing save, authorization, and recommendation behavior.
