@@ -26,7 +26,6 @@ struct NativeEventStepBar: View {
                     stepLabel(.trackStats)
                 }
                 .disabled(!isGame)
-                .opacity(isGame ? 1 : 0.45)
                 .accessibilityHint(isGame ? "Open this game's statistics." : "Stat tracking is available for games, not practices.")
                 .accessibilityIdentifier("event-card-track-stats")
                 Button {

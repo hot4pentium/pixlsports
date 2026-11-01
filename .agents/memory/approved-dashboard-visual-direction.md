@@ -21,6 +21,12 @@ On the white native canvas, use a dark, contrast-checked green for text. Keep th
 
 **How to apply:** Choose the semantic text color only for text on light surfaces; do not darken the brand fill or green accents on navy/blue cards.
 
+Scope native control appearance to its surface: blue panels need light input text, explicit readable placeholders, and dark control appearance while the page and navigation remain light.
+
+**Why:** After the white-canvas change, native light-mode defaults left Prep placeholders and Event Card date/time controls dark on blue; a parent white foreground alone did not reliably cover native controls.
+
+**How to apply:** Apply the control color scheme locally to blue form panels or inputs, not to the whole screen. Avoid additional opacity reductions on controls already dimmed by their disabled state.
+
 Keep the install action in the athlete overview header, not inside the Event Card. The paired mobile Event Card and HYPE Card should have equal face sizes and aligned top edges.
 
 **Why:** The user requested moving “How to install” to the header and making the Event Card and HYPE Card equal.

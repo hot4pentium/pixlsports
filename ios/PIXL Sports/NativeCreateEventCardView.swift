@@ -144,11 +144,11 @@ struct NativeCreateEventCardView: View {
                             displayedComponents: .date
                         )
                         .environment(\.timeZone, selectedTimeZone)
-                        .tint(SupporterHomeColors.accentText)
+                        .tint(SupporterHomeColors.accent)
                         .accessibilityIdentifier("native-event-date")
                         DatePicker("Start time", selection: $eventTime, displayedComponents: .hourAndMinute)
                             .environment(\.timeZone, selectedTimeZone)
-                            .tint(SupporterHomeColors.accentText)
+                            .tint(SupporterHomeColors.accent)
                             .accessibilityIdentifier("native-event-start-time")
 
                         Picker("Event time zone", selection: $timezone) {
@@ -156,7 +156,7 @@ struct NativeCreateEventCardView: View {
                                 Text(zone).tag(zone)
                             }
                         }
-                        .tint(SupporterHomeColors.accentText)
+                        .tint(SupporterHomeColors.accent)
                         .accessibilityIdentifier("native-event-time-zone")
                         .onChange(of: timezone) { oldZone, newZone in
                             let selectedDate = Self.formatted(eventDate, pattern: "yyyy-MM-dd", timezone: oldZone)
@@ -185,6 +185,7 @@ struct NativeCreateEventCardView: View {
                     }
                     .font(.body.weight(.medium))
                     .foregroundStyle(.white)
+                    .environment(\.colorScheme, .dark)
                     .padding(18)
                     .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
                     .supporterSurfaceShadow()

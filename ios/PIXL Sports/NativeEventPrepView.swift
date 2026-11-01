@@ -51,6 +51,10 @@ struct NativeEventPrepView: View {
     }
 #endif
 
+    private var canAddTask: Bool {
+        !newItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && items.count < 100
+    }
+
     @ViewBuilder
     private var prepSections: some View {
             Section {
@@ -128,19 +132,36 @@ struct NativeEventPrepView: View {
                         }
                     }
                     HStack {
-                        TextField("Add a task", text: $newItem)
+                        TextField(
+                            "Add a task", text: $newItem,
+                            prompt: Text("Add a task").foregroundColor(.white.opacity(0.76))
+                        )
                             .textInputAutocapitalization(.sentences)
                             .submitLabel(.done)
+                            .foregroundStyle(.white)
+                            .environment(\.colorScheme, .dark)
+                            .tint(NativeEventToolColors.prep)
+                            .padding(12)
+                            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(.white.opacity(0.22), lineWidth: 1)
+                            }
                             .onSubmit { addTask() }
                             .accessibilityIdentifier("native-prep-add-task")
                         Button(action: addTask) {
                             Label("Add", systemImage: "plus")
                                 .font(.subheadline.weight(.bold))
-                                .frame(minHeight: 32)
+                                .foregroundStyle(canAddTask ? SupporterHomeColors.background : .white.opacity(0.78))
+                                .padding(.horizontal, 12)
+                                .frame(minHeight: 44)
+                                .background(
+                                    canAddTask ? NativeEventToolColors.prep : .white.opacity(0.12),
+                                    in: RoundedRectangle(cornerRadius: 12)
+                                )
                         }
-                        .buttonStyle(.borderedProminent)
-                        .foregroundStyle(SupporterHomeColors.background)
-                        .disabled(newItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || items.count >= 100)
+                        .buttonStyle(.plain)
+                        .disabled(!canAddTask)
                         .accessibilityIdentifier("native-prep-add")
                     }
                 } header: {
@@ -152,10 +173,22 @@ struct NativeEventPrepView: View {
                 .listRowSeparatorTint(Color.white.opacity(0.10))
                 .disabled(model.busy || model.pending != nil)
                 Section {
-                    TextField("Anything to remember?", text: Binding(
-                        get: { notes }, set: { notes = $0; edited = true }
-                    ), axis: .vertical)
+                    TextField(
+                        "Anything to remember?",
+                        text: Binding(get: { notes }, set: { notes = $0; edited = true }),
+                        prompt: Text("Anything to remember?").foregroundColor(.white.opacity(0.76)),
+                        axis: .vertical
+                    )
                         .lineLimit(3...8)
+                        .foregroundStyle(.white)
+                        .environment(\.colorScheme, .dark)
+                        .tint(NativeEventToolColors.prep)
+                        .padding(12)
+                        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(.white.opacity(0.22), lineWidth: 1)
+                        }
                         .disabled(model.busy || model.pending != nil)
                         .accessibilityIdentifier("native-prep-notes")
                     if notes.count > 4000 {
