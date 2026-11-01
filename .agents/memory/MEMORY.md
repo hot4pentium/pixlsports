@@ -137,3 +137,4 @@
 - [Game-day guidance and native event tools](game-day-message-board-purpose.md) — Message Board opens Event Details at the recommended step; each active native tool needs a distinct visual identity.
 - [Native Prep autosave](native-prep-autosave.md) — checklist task changes persist automatically; event notes remain on explicit save.
 - [Embedded native navigation titles](native-embedded-navigation-titles.md) — retained tool panels must not override the event container’s selected-step title.
+- [Apple-native tooling boundary](apple-native-tooling-boundary.md) — a Linux xcodebuild executable is not proof of Apple SDKs; distinguish server, codec, and physical-iPhone checks.

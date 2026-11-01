@@ -449,6 +449,12 @@ After syncing code and configuring the publishable key:
    Also test denial, expiration, web approval withdrawal, offline retry,
    backgrounding during approval, and switching native accounts mid-flow.
 
+### HYPE Card photo checks
+
+See [native photo verification](Tests/native-athlete-photo-device-checks.md) for
+the Apple-native preparation command, physical-iPhone iCloud/cancellation,
+failure/retry, relaunch, and removal checklist, and explicit environment limits.
+
 References:
 - https://clerk.com/docs/ios/getting-started/quickstart?manual=1
 - https://clerk.com/docs/ios/reference/views/authentication/auth-view

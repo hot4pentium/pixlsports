@@ -36,7 +36,7 @@ async function fixture() {
   let saveFails = false;
   let saves = 0;
   const profile = { athleteName: "Jordan", teamName: "Tigers" };
-  const service = createNativeAthletePhotoService({
+  const newService = () => createNativeAthletePhotoService({
     loadProfile: async (linkedOwner) => {
       assert.equal(linkedOwner, owner);
       return profile;
@@ -59,9 +59,10 @@ async function fixture() {
     },
   });
   return {
-    owner, identity, id: rows[0]!.id, service, objects, removed, profile,
+    owner, identity, id: rows[0]!.id, service: newService(), newService, objects, removed, profile,
     get saves() { return saves; },
     failSave() { saveFails = true; },
+    restoreSave() { saveFails = false; },
   };
 }
 
@@ -167,11 +168,36 @@ test("unlinked, cancelled, and mismatched athletes cannot read or write the phot
 test("storage failure leaves the saved card and photo unchanged", async () => {
   const f = await fixture();
   const current = await f.service.save(f.identity, await f.service.state(f.identity), await jpeg(), "image/jpeg");
+  const priorImage = await f.service.image(f.identity, current);
   f.failSave();
   await assert.rejects(f.service.save(f.identity, current, await jpeg(), "image/jpeg"), /Storage unavailable/);
   assert.deepEqual(await f.service.state(f.identity), current);
   assert.equal(f.objects.size, 1);
   assert.equal(f.removed.length, 0);
+  assert.deepEqual(await f.service.image(f.identity, current), priorImage);
+
+  // Recovery uses the same revision; a failed upload must not consume it.
+  f.restoreSave();
+  const replacement = await sharp({
+    create: { width: 100, height: 160, channels: 3, background: "#cc4422" },
+  }).jpeg().toBuffer();
+  const saved = await f.service.save(f.identity, current, replacement, "image/jpeg");
+  assert.notEqual(saved.revision, current.revision);
+  assert.equal(f.objects.size, 1);
+  assert.equal(f.removed.length, 1);
+  const freshService = f.newService();
+  assert.deepEqual(await freshService.state(f.identity), saved);
+  const savedImage = await freshService.image(f.identity, saved);
+  assert.ok(savedImage);
+  assert.notDeepEqual(savedImage, priorImage);
+  assert.equal((await sharp(savedImage).metadata()).height, 160);
+  const { rows } = await pool.query(
+    "SELECT show_hype_card,paused,show_stats,show_events,cutout_object_path FROM athlete_invites WHERE id=$1",
+    [f.id],
+  );
+  assert.deepEqual(rows[0], {
+    show_hype_card: false, paused: true, show_stats: false, show_events: true, cutout_object_path: null,
+  });
 });
 
 test("concurrent uploads with the same revision allow only one replacement", async () => {

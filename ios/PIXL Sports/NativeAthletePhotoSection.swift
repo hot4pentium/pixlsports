@@ -1,6 +1,5 @@
 import SwiftUI
 import PhotosUI
-import ImageIO
 import UIKit
 import ClerkKit
 
@@ -231,23 +230,5 @@ struct NativeAthletePhotoSection: View {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-}
-
-enum NativeAthletePhotoPreparation {
-    nonisolated static func jpeg(_ source: Data) -> Data? {
-        guard source.count <= 40 * 1024 * 1024,
-              let imageSource = CGImageSourceCreateWithData(source as CFData, nil),
-              let thumbnail = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, [
-                kCGImageSourceCreateThumbnailFromImageAlways: true,
-                kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceThumbnailMaxPixelSize: 2048,
-                kCGImageSourceShouldCacheImmediately: true,
-              ] as CFDictionary),
-              let data = UIImage(cgImage: thumbnail).jpegData(compressionQuality: 0.85),
-              data.count <= 5 * 1024 * 1024 else {
-            return nil
-        }
-        return data
     }
 }
