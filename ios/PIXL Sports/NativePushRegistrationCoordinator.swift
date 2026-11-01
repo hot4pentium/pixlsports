@@ -59,7 +59,7 @@ final class NativePushAppDelegate: NSObject, UIApplicationDelegate, UNUserNotifi
 
 @MainActor
 final class NativePushRegistrationCoordinator: ObservableObject {
-    @Published private(set) var isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
+    @Published private(set) var isEnabled: Bool
     @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
     @Published var errorMessage: String?
 
@@ -74,6 +74,7 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     private var failureObserver: AnyCancellable?
 
     init() {
+        isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
         tokenObserver = NotificationCenter.default.publisher(for: .nativePushTokenRegistered)
             .sink { [weak self] notification in
                 guard let token = notification.userInfo?["token"] as? String,
