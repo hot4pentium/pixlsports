@@ -143,7 +143,8 @@ struct ContentView: View {
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") { heroDestination = nil }
-                                .tint(SupporterHomeColors.accent)
+                                .tint(.black)
+                                .shadow(color: .black.opacity(0.24), radius: 2, x: 0, y: 1)
                         }
                     }
             }
