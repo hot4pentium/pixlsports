@@ -38,7 +38,7 @@ struct NativeEventTrackerView: View {
                 ScrollView { trackerContent.padding(20) }
             }
         }
-        .navigationTitle(embedded ? "Event Details" : "Track Stats")
+        .eventToolNavigationTitle("Track Stats", embedded: embedded)
         .tint(NativeEventToolColors.trackStats)
         .task {
             if model.workspace == nil { await model.load(clerk: clerk) }

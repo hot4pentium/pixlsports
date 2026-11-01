@@ -332,6 +332,16 @@ struct NativeEventTrackingPanel: View {
 }
 
 extension View {
+    /// The event container owns the title for embedded and retained tool panels.
+    @ViewBuilder
+    func eventToolNavigationTitle(_ title: String, embedded: Bool) -> some View {
+        if embedded {
+            self
+        } else {
+            self.navigationTitle(title)
+        }
+    }
+
     /// Keep drafts, pending commands and the current fan QR alive when changing tools.
     func eventToolVisibility(_ visible: Bool) -> some View {
         self

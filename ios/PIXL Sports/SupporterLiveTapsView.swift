@@ -180,7 +180,7 @@ struct SupporterLiveTapsView: View {
         }
             }
         }
-        .navigationTitle(embedded ? "Event Details" : "Live Taps")
+        .eventToolNavigationTitle("Live Taps", embedded: embedded)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .task { await loadSummary() }

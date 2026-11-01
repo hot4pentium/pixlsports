@@ -450,7 +450,7 @@ struct NativeEventPrepView: View {
             }
         }
         .preferredColorScheme(.light)
-        .navigationTitle(embedded ? "Event Details" : "Prep")
+        .eventToolNavigationTitle("Prep", embedded: embedded)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(hasUnsavedEdits)
         .toolbar {

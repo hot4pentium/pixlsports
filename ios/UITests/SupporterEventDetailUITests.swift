@@ -1435,6 +1435,34 @@ final class SupporterEventDetailUITests: XCTestCase {
                        "Changing Event Details tools must not reload the schedule.")
     }
 
+    func testRetainedEmbeddedPrepDoesNotOverrideSelectedNavigationTitle() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft"]
+        app.launch()
+        defer { app.terminate() }
+
+        let openEvent = app.buttons["prep-test-open-event"]
+        XCTAssertTrue(openEvent.waitForExistence(timeout: 10))
+        openEvent.tap()
+        let prep = app.buttons["event-card-prep"]
+        XCTAssertTrue(prep.waitForExistence(timeout: 10))
+        prep.tap()
+        _ = assertReachable("native-prep-checklist-toggle", in: app)
+        assertSelectedStep("Prep", in: app)
+
+        // Prep stays mounted to preserve drafts. Its hidden content must not
+        // publish a navigation title over the newly selected page.
+        for (identifier, title) in [
+            ("event-card-track-stats", "Track Stats"),
+            ("event-card-share", "Share"),
+            ("event-card-prep", "Prep")
+        ] {
+            app.buttons[identifier].tap()
+            assertSelectedStep(title, in: app)
+        }
+        _ = assertReachable("native-prep-checklist-toggle", in: app)
+    }
+
     func testEventChangesRefreshEventDetailsExactlyOnceAndDashboardAfterClosing() {
         let app = XCUIApplication()
         app.launchArguments = [

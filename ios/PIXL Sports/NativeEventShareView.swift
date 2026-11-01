@@ -25,7 +25,7 @@ struct NativeEventShareView: View {
         .scrollContentBackground(.hidden)
         .tint(NativeEventToolColors.share)
         .preferredColorScheme(.light)
-        .navigationTitle(embedded ? "Event Details" : "Share")
+        .eventToolNavigationTitle("Share", embedded: embedded)
         .navigationBarTitleDisplayMode(.inline)
     }
 
