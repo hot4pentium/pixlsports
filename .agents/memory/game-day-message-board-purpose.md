@@ -15,11 +15,11 @@ For native iPhone, the Message Board should show event details beside the HYPE C
 
 **How to apply:** Use the PWA's behavior as the reference, preserve existing account-owned checklist and game history, and keep these actions inside the native journey.
 
-Opened native Event Cards should use compact, organized details with Prep, Track Stats, and Share step buttons at the bottom. Each opens its native section, and the recommended step is highlighted according to the event's timing. Do not add numbered step badges.
+Opened native Event Cards should use compact, organized details with Prep, Track Stats, and Share step buttons at the bottom. Each opens its native section, the recommended step is highlighted according to event timing, and the selected navigation step identifies the active tool. Do not add numbered step badges or repeat an event banner inside each tool.
 
-**Why:** The user requested less vertical detail layout and a clear, time-aware sequence of actions.
+**Why:** The user requested less vertical detail layout and said the navigation already tells people which step is open; repeated event banners take space away from the task.
 
-**How to apply:** Keep the step bar visible as details scroll, preserve readable larger-text layouts, and distinguish recommendation changes from actual saved completion or game finalization.
+**How to apply:** Keep the step bar visible as details scroll and preserve readable larger-text layouts. Keep event information in the shared Event Details hero, not in repeated Prep, Track Stats, or Share banners. Distinguish recommendation changes from actual saved completion or game finalization.
 
 Keep only event/team identity plus date, time, and location in the Event Card hero. Remove opponent, season, and other detail rows so the selected tool content has more room.
 

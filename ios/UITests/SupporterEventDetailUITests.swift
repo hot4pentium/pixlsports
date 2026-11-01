@@ -201,9 +201,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertFalse(location.isEmpty, "Use an Event Card with a saved location.")
 
         app.buttons["event-card-share"].tap()
-        let shareTitle = app.staticTexts["event-tool-title"]
-        XCTAssertTrue(shareTitle.waitForExistence(timeout: 10))
-        XCTAssertEqual(shareTitle.label, "Share")
+        assertSelectedStep("Share", in: app)
 
         var shareDetails = revealShareAction("native-event-share-details", in: app)
         XCTAssertTrue(shareDetails.isEnabled)
@@ -467,6 +465,44 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
     }
 
+    func testCompletingPrepCelebratesCollapsesChecklistAndAddingTaskReopensIt() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft"]
+        app.launch()
+        defer { app.terminate() }
+
+        let openEvent = app.buttons["prep-test-open-event"]
+        XCTAssertTrue(openEvent.waitForExistence(timeout: 10))
+        openEvent.tap()
+        XCTAssertTrue(app.buttons["event-card-prep"].waitForExistence(timeout: 10))
+        app.buttons["event-card-prep"].tap()
+
+        assertReachable("native-prep-item-water", in: app).tap()
+        assertReachable("native-prep-item-cleats", in: app).tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["native-prep-completion-celebration"]
+                .waitForExistence(timeout: 5)
+        )
+        let checklist = assertReachable("native-prep-checklist-toggle", in: app)
+        XCTAssertTrue((checklist.value as? String ?? "").contains("Collapsed"))
+        XCTAssertFalse(app.buttons["native-prep-item-water"].exists)
+
+        assertReachable("native-prep-manage-full", in: app).tap()
+        let addTask = assertReachable("native-prep-add-task", in: app)
+        addTask.tap()
+        addTask.typeText("Bring a team banner")
+        app.buttons["native-prep-add"].tap()
+        assertReachable("native-prep-back-to-content", in: app).tap()
+
+        let reopenedChecklist = assertReachable("native-prep-checklist-toggle", in: app)
+        XCTAssertTrue((reopenedChecklist.value as? String ?? "").contains("Expanded"))
+        let addedTask = app.buttons.matching(NSPredicate(
+            format: "label == %@", "Bring a team banner"
+        )).firstMatch
+        XCTAssertTrue(addedTask.waitForExistence(timeout: 5))
+        XCTAssertEqual(addedTask.value as? String, "Not ready")
+    }
+
     func testCompactPrepLongLabelsAtNarrowDefaultWidth() throws {
         try checkCompactPrepLongLabels(accessibility: false)
     }
@@ -538,6 +574,10 @@ final class SupporterEventDetailUITests: XCTestCase {
         let fifth = revealPrepControl("native-prep-item-snack", in: app)
         XCTAssertEqual(fifth.value as? String, "Not ready")
         fifth.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["native-prep-completion-celebration"]
+                .waitForExistence(timeout: 5)
+        )
         let notes = revealPrepControl("native-prep-notes", in: app)
         notes.tap()
         notes.typeText(" local draft ")
@@ -552,6 +592,9 @@ final class SupporterEventDetailUITests: XCTestCase {
         try auditPrepControl(back, in: app)
         retainPrepScreenshot(in: app, name: "Back to Content — \(accessibility ? "AX XXXL" : "default")")
         back.tap()
+        let checklist = revealPrepControl("native-prep-checklist-toggle", in: app)
+        XCTAssertTrue((checklist.value as? String ?? "").contains("Collapsed"))
+        checklist.tap()
         _ = revealPrepControl("native-prep-item-water", in: app)
         XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "5 of 5 ready")
         for task in tasks {
@@ -614,11 +657,11 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(prep.isEnabled, "Read-only fixture may switch panels, not edit private data")
         prep.tap()
         _ = assertReachable("event-detail-prep-summary", in: app)
-        assertSelectedContent("Prep", in: app)
+        assertSelectedStep("Prep", in: app)
         XCTAssertFalse(app.buttons["native-prep-save"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["native-prep-notes"].exists)
         app.buttons["event-card-track-stats"].tap()
-        assertSelectedContent("Track Stats", in: app)
+        assertSelectedStep("Track Stats", in: app)
         XCTAssertTrue(app.staticTexts["Sign in to use this event’s native tools."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["native-prep-save"].exists)
         XCTAssertFalse(app.buttons["prep-test-advance-clock"].exists)
@@ -903,15 +946,15 @@ final class SupporterEventDetailUITests: XCTestCase {
         let initialDetailLoads = refreshCount(loadCount)
         prep.tap()
         assertReachable("event-detail-prep-summary", in: app)
-        assertSelectedContent("Prep", in: app)
+        assertSelectedStep("Prep", in: app)
         app.buttons["event-card-share"].tap()
-        assertSelectedContent("Share", in: app)
+        assertSelectedStep("Share", in: app)
         XCTAssertTrue(app.navigationBars["Event Details"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["event-detail-prep-summary"].exists)
         app.buttons["event-card-track-stats"].tap()
-        assertSelectedContent("Track Stats", in: app)
+        assertSelectedStep("Track Stats", in: app)
         app.buttons["event-card-prep"].tap()
-        assertSelectedContent("Prep", in: app)
+        assertSelectedStep("Prep", in: app)
         assertReachable("event-detail-prep-summary", in: app)
         XCTAssertEqual(refreshCount(loadCount), initialDetailLoads,
                        "Changing Event Details tools must not reload the schedule.")
@@ -997,22 +1040,21 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed)
     }
 
-    private func assertSelectedContent(_ title: String, in app: XCUIApplication) {
+    private func assertSelectedStep(_ title: String, in app: XCUIApplication) {
         let panel = app.descendants(matching: .any)["event-detail-tool-panel"].firstMatch
         XCTAssertTrue(panel.waitForExistence(timeout: 5))
-        XCTAssertTrue(panel.staticTexts[title].exists, "The Event Details Content section should show \(title).")
-        XCTAssertEqual(panel.staticTexts["event-tool-title"].label, title)
-        XCTAssertFalse(panel.staticTexts["event-tool-summary"].label.isEmpty)
-        XCTAssertFalse(panel.staticTexts["event-tool-event-context"].label.isEmpty,
-                       "The selected tool should retain visible context for its Event Card.")
-        let expectedContext: String
+        let stepIdentifier: String
         switch title {
-        case "Prep": expectedContext = "BEFORE THE EVENT"
-        case "Track Stats": expectedContext = "GAME SCOREKEEPING"
-        case "Share": expectedContext = "SHARE THIS EVENT"
-        default: XCTFail("Unexpected Event Details tool \(title)"); return
+        case "Prep": stepIdentifier = "event-card-prep"
+        case "Track Stats": stepIdentifier = "event-card-track-stats"
+        case "Share": stepIdentifier = "event-card-share"
+        default: XCTFail("Unexpected Event Details step \(title)"); return
         }
-        XCTAssertEqual(panel.staticTexts["event-tool-context"].label, expectedContext)
+        let selectedStep = app.buttons[stepIdentifier]
+        XCTAssertTrue(selectedStep.waitForExistence(timeout: 5))
+        XCTAssertTrue(selectedStep.isSelected, "\(title) should be identified by the selected navigation step.")
+        XCTAssertFalse(app.descendants(matching: .any)["event-tool-header"].exists,
+                       "The selected step should not repeat an Event Card header.")
     }
 
     func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {

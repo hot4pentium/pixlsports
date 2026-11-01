@@ -15,7 +15,12 @@ struct NativeEventPrepView: View {
     @State private var recoveringPrepDraft = false
     @State private var confirmingLeave = false
     @State private var isManagingFullPrep = false
+    @State private var isChecklistExpanded = true
+    @State private var hasInitializedChecklistExpansion = false
+    @State private var showCompletionCelebration = false
+    @State private var completionCelebrationID = 0
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(event: AthleteFanEvent, clerk: Clerk, model: NativeEventToolModel? = nil,
          embedded: Bool = false, compactContent: Bool = false,
@@ -61,6 +66,13 @@ struct NativeEventPrepView: View {
                 .listRowBackground(Color.white.opacity(0.06))
             }
             if model.workspace != nil {
+                if showCompletionCelebration {
+                    Section {
+                        completionCelebration
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
                 Section {
                     readinessSummary
                 }
@@ -73,8 +85,7 @@ struct NativeEventPrepView: View {
                     }
                     ForEach($items) { $item in
                         Button {
-                            item.completed.toggle()
-                            edited = true
+                        toggleItem(id: item.id)
                         } label: {
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
@@ -166,12 +177,18 @@ struct NativeEventPrepView: View {
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
                 } else {
-                    SupporterEyebrow(text: "Your checklist", color: NativeEventToolColors.prep)
-                        .padding(.top, 2)
-                    VStack(spacing: 8) {
-                        ForEach(items) { item in
-                            quickChecklistItem(item)
+                    checklistDisclosureButton
+                    if isChecklistExpanded {
+                        VStack(spacing: 8) {
+                            ForEach(items) { item in
+                                quickChecklistItem(item)
+                            }
                         }
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .move(edge: .top).combined(with: .opacity)
+                        )
                     }
                 }
             } else {
@@ -187,6 +204,10 @@ struct NativeEventPrepView: View {
                             .foregroundStyle(SupporterHomeColors.muted)
                     }
                 }
+            }
+
+            if showCompletionCelebration {
+                completionCelebration
             }
 
             Button {
@@ -256,6 +277,101 @@ struct NativeEventPrepView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("native-prep-readiness-card")
+    }
+
+    private var checklistDisclosureButton: some View {
+        Button {
+            withAnimation(checklistAnimation) {
+                isChecklistExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isChecklistComplete ? "checkmark.seal.fill" : "checklist")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(NativeEventToolColors.prep)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        NativeEventToolColors.prep.opacity(0.15),
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    )
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Your checklist")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text("\(readyCount) of \(items.count) ready")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SupporterHomeColors.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: isChecklistExpanded ? "chevron.up" : "chevron.down")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NativeEventToolColors.prep)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 54)
+            .padding(.horizontal, 13)
+            .background(
+                NativeEventToolColors.prep.opacity(0.09),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(NativeEventToolColors.prep.opacity(0.28), lineWidth: 1)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Your checklist")
+        .accessibilityValue(
+            "\(readyCount) of \(items.count) ready. \(isChecklistExpanded ? "Expanded" : "Collapsed")"
+        )
+        .accessibilityHint(isChecklistExpanded ? "Collapse the checklist." : "Expand the checklist.")
+        .accessibilityIdentifier("native-prep-checklist-toggle")
+    }
+
+    private var completionCelebration: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "party.popper.fill")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(NativeEventToolColors.prep)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Prep complete!")
+                    .font(.headline.weight(.black))
+                    .foregroundStyle(.white)
+                Text(event.type == "practice" ? "You're ready for practice." : "You're ready for game day.")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "sparkles")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(NativeEventToolColors.prep)
+                .accessibilityHidden(true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [NativeEventToolColors.prep.opacity(0.22), NativeEventToolColors.prep.opacity(0.08)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 17, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .strokeBorder(NativeEventToolColors.prep.opacity(0.48), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("native-prep-completion-celebration")
+        .transition(
+            reduceMotion
+                ? .opacity
+                : .scale(scale: 0.96).combined(with: .opacity)
+        )
     }
 
     private func quickChecklistItem(_ item: NativePrepItem) -> some View {
@@ -413,9 +529,22 @@ struct NativeEventPrepView: View {
             // Discarding a failed tracker command must not discard an unrelated Prep draft.
             if recoveringPrepDraft || !hasUnsavedEdits { applySavedPrep() }
         }
+        .task(id: completionCelebrationID) {
+            guard showCompletionCelebration else { return }
+            try? await Task.sleep(for: .seconds(2.8))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+                showCompletionCelebration = false
+            }
+        }
     }
 
     private var readyCount: Int { items.filter(\.completed).count }
+    private var isChecklistComplete: Bool { !items.isEmpty && items.allSatisfy(\.completed) }
+    private var checklistAnimation: Animation? {
+        reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.84)
+    }
+
     private var hasUnsavedEdits: Bool {
         edited || !newItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -495,13 +624,33 @@ struct NativeEventPrepView: View {
         items.append(NativePrepItem(id: UUID().uuidString, label: label, completed: false))
         newItem = ""
         edited = true
+        if compactContent {
+            withAnimation(checklistAnimation) {
+                isChecklistExpanded = true
+                showCompletionCelebration = false
+            }
+        }
     }
 
     private func toggleItem(id: String) {
         guard !model.busy, model.pending == nil,
               let index = items.firstIndex(where: { $0.id == id }) else { return }
+        let wasComplete = isChecklistComplete
         items[index].completed.toggle()
         edited = true
+
+        if !items[index].completed {
+            withAnimation(checklistAnimation) {
+                if compactContent { isChecklistExpanded = true }
+                showCompletionCelebration = false
+            }
+        } else if !wasComplete && isChecklistComplete {
+            withAnimation(checklistAnimation) {
+                isChecklistExpanded = false
+                showCompletionCelebration = true
+                completionCelebrationID += 1
+            }
+        }
     }
 
     private func applySavedPrep() {
@@ -511,6 +660,10 @@ struct NativeEventPrepView: View {
         notes = model.pending?.notes ?? prep.notes
         recoveringPrepDraft = model.pending?.items != nil || model.pending?.notes != nil
         edited = recoveringPrepDraft
+        if !hasInitializedChecklistExpansion {
+            isChecklistExpanded = !isChecklistComplete
+            hasInitializedChecklistExpansion = true
+        }
     }
 }
 
