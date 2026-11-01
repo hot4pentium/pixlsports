@@ -20,6 +20,7 @@ import {
   gameOnReminderAttemptsTable,
   gameOnReminderSyncTable,
   gameOnScheduledRemindersTable,
+  nativePushSubscriptionsTable,
   plannerNotificationPreferencesTable,
   plannerOwnerEventAlertClaimsTable,
   scheduleSharesTable,
@@ -34,6 +35,7 @@ import {
   type TimedGameOnEvent,
 } from "./gameOnReminderTime";
 import { sendPushNotificationToSubscription, type PushNotificationPayload } from "../lib/webPush";
+import { getApnsConfig, sendApnsPush } from "../lib/apns";
 
 const GAME_ON_CARD_MARKER = "@pixlsports:game-on-card:v1";
 const GLOBAL_SYNC_KEY = "game-on-reminders:global";
@@ -51,12 +53,20 @@ const DELIVERY_START_BUDGET_MS = 12_000;
 
 type ReminderStatus = "pending" | "failed" | "sending" | "sent" | "uncertain" | "cancelled";
 type AttemptStatus = "sending" | "sent" | "stale" | "temporary" | "permanent" | "uncertain";
-type SubscriptionInput = {
+type WebSubscriptionInput = {
+  kind: "web";
   id: string;
   endpoint: string;
   p256dh: string;
   auth: string;
 };
+type NativeSubscriptionInput = {
+  kind: "native";
+  id: string;
+  deviceToken: string;
+  environment: string;
+};
+type SubscriptionInput = WebSubscriptionInput | NativeSubscriptionInput;
 type SendResult = {
   configured: boolean;
   sent: boolean;
@@ -83,7 +93,11 @@ type JobDependencies = {
   syncPageSize?: number;
 };
 
-const defaultSender = sendPushNotificationToSubscription as ReminderSender;
+const defaultSender: ReminderSender = (subscription, payload, timeoutMs) => (
+  subscription.kind === "web"
+    ? sendPushNotificationToSubscription(subscription, payload, timeoutMs)
+    : sendApnsPush(subscription, payload, timeoutMs ?? PUSH_TIMEOUT_MS)
+);
 const SCHEDULE_HEARTBEAT_MAX_AGE_MS = 15 * 60_000;
 
 export function isGameOnAlertScheduleFresh(lastSuccessAt: Date | null | undefined, now = new Date()) {
@@ -164,7 +178,7 @@ function failureCategory(error: unknown): "uncertain" {
 }
 
 async function getOwnerSettings(ownerClerkUserId: string) {
-  const [[subscription], [preferences], [account]] = await Promise.all([
+  const [[subscription], [nativeSubscription], [preferences], [account]] = await Promise.all([
     db.select({
       id: webPushSubscriptionsTable.id,
       timezone: webPushSubscriptionsTable.timezone,
@@ -172,6 +186,10 @@ async function getOwnerSettings(ownerClerkUserId: string) {
       .from(webPushSubscriptionsTable)
       .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId))
       .orderBy(desc(webPushSubscriptionsTable.updatedAt))
+      .limit(1),
+    db.select({ id: nativePushSubscriptionsTable.id })
+      .from(nativePushSubscriptionsTable)
+      .where(eq(nativePushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId))
       .limit(1),
     db.select({
       oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
@@ -189,7 +207,7 @@ async function getOwnerSettings(ownerClerkUserId: string) {
       .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
       .limit(1),
   ]);
-  return { subscription, preferences, account };
+  return { subscription, nativeSubscription, preferences, account };
 }
 
 async function cancelUndeliveredRows(shareId: string, keepKeys: string[]) {
@@ -228,12 +246,13 @@ export async function reconcileGameOnShare(share: ShareInput, now = new Date()) 
   const event = candidate && await isAuthoritativeShare(share, candidate) ? candidate : null;
   const settings = await getOwnerSettings(share.ownerClerkUserId);
   const preferences = settings.preferences ?? { oneHourBefore: false, dayOf: false, timezone: null };
+  const hasAvailableNativePush = Boolean(settings.nativeSubscription && getApnsConfig().available);
   const timezone = preferences.timezone && isIanaTimezone(preferences.timezone)
     ? preferences.timezone
     : isIanaTimezone(settings.subscription?.timezone) ? settings.subscription!.timezone : "UTC";
   const eligible = Boolean(event
     && event.status !== "final"
-    && settings.subscription
+    && (settings.subscription || hasAvailableNativePush)
     && accountIsEligible(settings.account, now)
     && (preferences.oneHourBefore || preferences.dayOf));
   const times = eligible && event
@@ -290,16 +309,29 @@ export async function reconcileGameOnShare(share: ShareInput, now = new Date()) 
     let newDevice = false;
     if (existing?.status === "failed" && existing.nextAttemptAt >= existing.expiresAt
       && existing.attemptCount < MAX_TOTAL_ATTEMPTS) {
-      const [untried] = await db.select({ id: webPushSubscriptionsTable.id })
-        .from(webPushSubscriptionsTable).where(and(
-          eq(webPushSubscriptionsTable.ownerClerkUserId, share.ownerClerkUserId),
-          sql`not exists (
-            select 1 from ${gameOnReminderAttemptsTable} attempts
-            where attempts.reminder_id = ${existing.id}
-              and attempts.subscription_id = ${webPushSubscriptionsTable.id}
-          )`,
-        )).limit(1);
-      newDevice = Boolean(untried);
+      const [untriedWeb, untriedNative] = await Promise.all([
+        db.select({ id: webPushSubscriptionsTable.id })
+          .from(webPushSubscriptionsTable).where(and(
+            eq(webPushSubscriptionsTable.ownerClerkUserId, share.ownerClerkUserId),
+            sql`not exists (
+              select 1 from ${gameOnReminderAttemptsTable} attempts
+              where attempts.reminder_id = ${existing.id}
+                and attempts.subscription_id = ${webPushSubscriptionsTable.id}
+            )`,
+          )).limit(1),
+        hasAvailableNativePush
+          ? db.select({ id: nativePushSubscriptionsTable.id })
+            .from(nativePushSubscriptionsTable).where(and(
+              eq(nativePushSubscriptionsTable.ownerClerkUserId, share.ownerClerkUserId),
+              sql`not exists (
+                select 1 from ${gameOnReminderAttemptsTable} attempts
+                where attempts.reminder_id = ${existing.id}
+                  and attempts.subscription_id = ${nativePushSubscriptionsTable.id}
+              )`,
+            )).limit(1)
+          : Promise.resolve([] as Array<{ id: string }>),
+      ]);
+      newDevice = Boolean(untriedWeb[0] || untriedNative[0]);
     }
     if (!existing) {
       await db.insert(gameOnScheduledRemindersTable).values(row).onConflictDoNothing();
@@ -536,7 +568,8 @@ async function recheckReminder(row: ReminderRow, now: Date) {
       : Promise.resolve([] as Array<{ game: unknown }>),
   ]);
   const preferences = settings.preferences ?? { oneHourBefore: false, dayOf: false, timezone: null };
-  if (!settings.subscription || !accountIsEligible(settings.account, now)
+  if ((!settings.subscription && !(settings.nativeSubscription && getApnsConfig().available))
+    || !accountIsEligible(settings.account, now)
     || trackerRows.some((shareRow) => (shareRow.game as { status?: unknown })?.status === "final")) {
     return { eligible: false as const };
   }
@@ -650,10 +683,17 @@ async function attemptSubscription(
     eq(gameOnReminderAttemptsTable.status, "sending"),
   ));
   if (status === "stale") {
-    await db.delete(webPushSubscriptionsTable).where(and(
-      eq(webPushSubscriptionsTable.id, subscription.id),
-      eq(webPushSubscriptionsTable.ownerClerkUserId, row.ownerClerkUserId),
-    ));
+    if (subscription.kind === "web") {
+      await db.delete(webPushSubscriptionsTable).where(and(
+        eq(webPushSubscriptionsTable.id, subscription.id),
+        eq(webPushSubscriptionsTable.ownerClerkUserId, row.ownerClerkUserId),
+      ));
+    } else {
+      await db.delete(nativePushSubscriptionsTable).where(and(
+        eq(nativePushSubscriptionsTable.id, subscription.id),
+        eq(nativePushSubscriptionsTable.ownerClerkUserId, row.ownerClerkUserId),
+      ));
+    }
   }
   return { status, failureCategory: category };
 }
@@ -717,15 +757,38 @@ async function deliverClaimedReminder(
   const terminal = new Set<AttemptStatus>(["sent", "stale", "permanent", "uncertain"]);
   const completedSubscriptions = [...latestAttempts].filter(([, status]) => terminal.has(status))
     .map(([id]) => id);
-  const subscriptions = await db.select({
+  const [webSubscriptions, nativeSubscriptions] = await Promise.all([
+    db.select({
     id: webPushSubscriptionsTable.id,
     endpoint: webPushSubscriptionsTable.endpoint,
     p256dh: webPushSubscriptionsTable.p256dh,
     auth: webPushSubscriptionsTable.auth,
+    createdAt: webPushSubscriptionsTable.createdAt,
   }).from(webPushSubscriptionsTable).where(and(
     eq(webPushSubscriptionsTable.ownerClerkUserId, row.ownerClerkUserId),
     ...(completedSubscriptions.length ? [notInArray(webPushSubscriptionsTable.id, completedSubscriptions)] : []),
-  )).orderBy(asc(webPushSubscriptionsTable.createdAt)).limit(maxSubscriptions + 1);
+  )).orderBy(asc(webPushSubscriptionsTable.createdAt)).limit(maxSubscriptions + 1),
+    getApnsConfig().available
+      ? db.select({
+        id: nativePushSubscriptionsTable.id,
+        deviceToken: nativePushSubscriptionsTable.deviceToken,
+        environment: nativePushSubscriptionsTable.environment,
+        createdAt: nativePushSubscriptionsTable.createdAt,
+      }).from(nativePushSubscriptionsTable).where(and(
+        eq(nativePushSubscriptionsTable.ownerClerkUserId, row.ownerClerkUserId),
+        ...(completedSubscriptions.length ? [notInArray(nativePushSubscriptionsTable.id, completedSubscriptions)] : []),
+      )).orderBy(asc(nativePushSubscriptionsTable.createdAt)).limit(maxSubscriptions + 1)
+      : Promise.resolve([] as Array<{
+        id: string;
+        deviceToken: string;
+        environment: string;
+        createdAt: Date;
+      }>),
+  ]);
+  const subscriptions: SubscriptionInput[] = [
+    ...webSubscriptions.map((subscription) => ({ ...subscription, kind: "web" as const })),
+    ...nativeSubscriptions.map((subscription) => ({ ...subscription, kind: "native" as const })),
+  ].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
   const candidates = subscriptions.slice(0, maxSubscriptions);
 
   if (candidates.length === 0) {
@@ -892,11 +955,15 @@ export async function runScheduledGameOnReminders(now = new Date(), dependencies
     const outcomes = await Promise.all(claimed.map(async (item) => {
       try {
         return await deliverClaimedReminder(item, now, send, maxSubscriptions);
-      } catch {
+      } catch (error) {
+        if (process.env["GAME_ON_REMINDER_TEST_DIAGNOSTICS"] === "1") console.error(error);
         // Unexpected local/database failures are not retried immediately. If
         // the process failed after contacting a provider, no blind resend is
         // safe; leave the claim to age into the uncertain state.
-        logger.error({ category: "reminder_processing" }, "Game On reminder processing failed");
+        logger.error({
+          category: "reminder_processing",
+          errorType: error instanceof Error ? error.name : "unknown",
+        }, "Game On reminder processing failed");
         return { sent: false, failed: true };
       }
     }));

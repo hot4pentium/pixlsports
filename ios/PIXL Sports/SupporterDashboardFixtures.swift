@@ -158,7 +158,8 @@ struct SupporterDashboardFixtureView: View {
     var body: some View {
         ContentView(
             fixtureState: SupporterDashboardFixtures.state,
-            showingAccountLink: $showingConnection
+            showingAccountLink: $showingConnection,
+            showingSettings: .constant(false)
         )
         .frame(maxWidth: ProcessInfo.processInfo.arguments.contains("--dashboard-narrow") ? 320 : .infinity)
         .sheet(isPresented: $showingConnection) {

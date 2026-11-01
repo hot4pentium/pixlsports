@@ -15,6 +15,7 @@ struct ContentView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let clerk: Clerk?
     @Binding var showingAccountLink: Bool
+    @Binding var showingSettings: Bool
 
     @StateObject private var viewModel = SupporterHomeViewModel()
 #if DEBUG
@@ -42,9 +43,10 @@ struct ContentView: View {
     private let fixtureState: SupporterHomeViewModel.State?
 #endif
 
-    init(clerk: Clerk, showingAccountLink: Binding<Bool>) {
+    init(clerk: Clerk, showingAccountLink: Binding<Bool>, showingSettings: Binding<Bool>) {
         self.clerk = clerk
         self._showingAccountLink = showingAccountLink
+        self._showingSettings = showingSettings
 #if DEBUG
         self.fixtureState = nil
 #endif
@@ -52,9 +54,14 @@ struct ContentView: View {
 
 #if DEBUG
     /// Fictional, network-free dashboard fixture for UI verification.
-    init(fixtureState: SupporterHomeViewModel.State, showingAccountLink: Binding<Bool>) {
+    init(
+        fixtureState: SupporterHomeViewModel.State,
+        showingAccountLink: Binding<Bool>,
+        showingSettings: Binding<Bool>
+    ) {
         self.clerk = nil
         self._showingAccountLink = showingAccountLink
+        self._showingSettings = showingSettings
         self.fixtureState = fixtureState
     }
 #endif
@@ -227,6 +234,21 @@ struct ContentView: View {
                         .lineLimit(1)
                         .accessibilityHidden(true)
                 }
+
+#if os(iOS)
+                Button {
+                    showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SupporterHomeColors.background)
+                        .frame(width: 38, height: 38)
+                        .background(.white.opacity(0.88), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+                .accessibilityIdentifier("dashboard-settings-button")
+#endif
             }
 
             VStack(alignment: .leading, spacing: 8) {

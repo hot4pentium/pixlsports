@@ -1,5 +1,6 @@
 import { createClerkClient } from "@clerk/express";
 import { Router, type RequestHandler } from "express";
+import { and, desc, eq, ne } from "drizzle-orm";
 import {
   BeginNativeAccountLinkBody, PollNativeAccountLinkBody,
   PreviewWebNativeAccountLinkBody, DecideWebNativeAccountLinkBody,
@@ -18,12 +19,24 @@ import {
 } from "../lib/nativeSupporterHypeCard";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
-import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
+import {
+  isGameOnAlertScheduleEnabled,
+  queueGameOnOwnerSync,
+  reconcileGameOnShare,
+} from "../jobs/gameOnReminderQueue";
 import { z } from "zod/v4";
 import { nativeWorkspaceCommand } from "../lib/nativeEventTracker";
 import { nativeEventWorkspace } from "../lib/nativeEventWorkspace";
 import { notifyStatTrackerShareUpdate } from "./statTrackerShares";
 import { nativeLiveTapAccess } from "../lib/nativeLiveTapAccess";
+import {
+  db,
+  nativeAccountLinksTable,
+  nativePushSubscriptionsTable,
+  plannerNotificationPreferencesTable,
+  webPushSubscriptionsTable,
+} from "@workspace/db";
+import { getApnsConfig } from "../lib/apns";
 
 const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -53,6 +66,170 @@ nativeAccountLinkRouter.use(handle(async (req, res, next) => {
   next();
 }));
 const identity = (res: { locals: Record<string, unknown> }) => res.locals.nativeIdentity as NativeIdentity;
+const NativeDeviceSubscriptionBody = z.object({
+  deviceId: z.uuid(),
+  deviceToken: z.string().regex(/^[a-f0-9]{64}$/i),
+  environment: z.enum(["sandbox", "production"]),
+}).strict();
+const NativeDeviceRemovalBody = z.object({
+  deviceId: z.uuid(),
+  environment: z.enum(["sandbox", "production"]),
+}).strict();
+const NativeNotificationPreferencesBody = z.object({
+  oneHourBefore: z.boolean(),
+  dayOf: z.boolean(),
+  timezone: z.string().min(1).max(100),
+}).strict();
+
+async function linkedOwner(who: NativeIdentity) {
+  const [link] = await db.select({
+    ownerClerkUserId: nativeAccountLinksTable.ownerClerkUserId,
+  }).from(nativeAccountLinksTable).where(and(
+    eq(nativeAccountLinksTable.nativeIssuer, who.issuer),
+    eq(nativeAccountLinksTable.nativeSubject, who.subject),
+  )).limit(1);
+  if (!link) throw new NativeLinkError(409, "Connect your PIXL account before setting Event Card alerts.");
+  return link.ownerClerkUserId;
+}
+
+async function unregisterNativePushForIdentity(who: NativeIdentity) {
+  const removed = await db.delete(nativePushSubscriptionsTable).where(and(
+    eq(nativePushSubscriptionsTable.nativeIssuer, who.issuer),
+    eq(nativePushSubscriptionsTable.nativeSubject, who.subject),
+  )).returning({ ownerClerkUserId: nativePushSubscriptionsTable.ownerClerkUserId });
+  for (const ownerClerkUserId of new Set(removed.map((row) => row.ownerClerkUserId))) {
+    try { await queueGameOnOwnerSync(ownerClerkUserId); } catch { /* Global reconciliation will recover. */ }
+  }
+}
+
+async function unregisterNativePushForOwner(ownerClerkUserId: string) {
+  await db.delete(nativePushSubscriptionsTable)
+    .where(eq(nativePushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId));
+  try { await queueGameOnOwnerSync(ownerClerkUserId); } catch { /* Global reconciliation will recover. */ }
+}
+
+nativeAccountLinkRouter.get("/notifications/config", handle(async (_req, res) => {
+  const apns = getApnsConfig();
+  const scheduledDeliveryEnabled = apns.available && await isGameOnAlertScheduleEnabled();
+  res.json({ available: apns.available, scheduledDeliveryEnabled });
+}));
+nativeAccountLinkRouter.get("/notifications/preferences", handle(async (_req, res) => {
+  const ownerClerkUserId = await linkedOwner(identity(res));
+  const [[preferences], [subscription]] = await Promise.all([
+    db.select({
+      oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
+      dayOf: plannerNotificationPreferencesTable.dayOf,
+      timezone: plannerNotificationPreferencesTable.timezone,
+    }).from(plannerNotificationPreferencesTable)
+      .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerClerkUserId)).limit(1),
+    db.select({ timezone: webPushSubscriptionsTable.timezone })
+      .from(webPushSubscriptionsTable)
+      .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId))
+      .orderBy(desc(webPushSubscriptionsTable.updatedAt))
+      .limit(1),
+  ]);
+  res.json({
+    oneHourBefore: preferences?.oneHourBefore ?? false,
+    dayOf: preferences?.dayOf ?? false,
+    timezone: preferences?.timezone ?? subscription?.timezone ?? null,
+  });
+}));
+nativeAccountLinkRouter.patch("/notifications/preferences", handle(async (req, res) => {
+  const parsed = NativeNotificationPreferencesBody.safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Choose valid Event Card reminder settings.");
+  if (!isIanaTimezone(parsed.data.timezone)) throw new NativeLinkError(400, "Choose a valid time zone.");
+  const ownerClerkUserId = await linkedOwner(identity(res));
+  const [preferences] = await db.insert(plannerNotificationPreferencesTable).values({
+    ownerClerkUserId,
+    ...parsed.data,
+  }).onConflictDoUpdate({
+    target: plannerNotificationPreferencesTable.ownerClerkUserId,
+    set: { ...parsed.data, updatedAt: new Date() },
+  }).returning({
+    oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
+    dayOf: plannerNotificationPreferencesTable.dayOf,
+    timezone: plannerNotificationPreferencesTable.timezone,
+  });
+  try {
+    await queueGameOnOwnerSync(ownerClerkUserId);
+  } catch {
+    req.log.warn("Native Event Card alert preferences saved; reminder scheduling needs reconciliation");
+  }
+  res.json(preferences);
+}));
+nativeAccountLinkRouter.get("/notifications/subscriptions", handle(async (_req, res) => {
+  const who = identity(res);
+  const deviceId = typeof _req.query.deviceId === "string" ? _req.query.deviceId : "";
+  const environment = _req.query.environment === "sandbox" || _req.query.environment === "production"
+    ? _req.query.environment : "";
+  if (!z.uuid().safeParse(deviceId).success || !environment) {
+    throw new NativeLinkError(400, "Invalid iPhone notification device.");
+  }
+  const [subscription] = await db.select({ id: nativePushSubscriptionsTable.id })
+    .from(nativePushSubscriptionsTable).where(and(
+      eq(nativePushSubscriptionsTable.nativeIssuer, who.issuer),
+      eq(nativePushSubscriptionsTable.nativeSubject, who.subject),
+      eq(nativePushSubscriptionsTable.deviceId, deviceId),
+      eq(nativePushSubscriptionsTable.environment, environment),
+    )).limit(1);
+  res.json({ enabled: Boolean(subscription), available: getApnsConfig().available });
+}));
+nativeAccountLinkRouter.post("/notifications/subscriptions", handle(async (req, res) => {
+  if (!getApnsConfig().available) {
+    throw new NativeLinkError(503, "iPhone alerts are not configured on this server yet.");
+  }
+  const parsed = NativeDeviceSubscriptionBody.safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Invalid iPhone notification registration.");
+  const who = identity(res);
+  const ownerClerkUserId = await linkedOwner(who);
+  await db.transaction(async (tx) => {
+    await tx.delete(nativePushSubscriptionsTable).where(and(
+      eq(nativePushSubscriptionsTable.deviceToken, parsed.data.deviceToken),
+      eq(nativePushSubscriptionsTable.environment, parsed.data.environment),
+      ne(nativePushSubscriptionsTable.deviceId, parsed.data.deviceId),
+    ));
+    await tx.insert(nativePushSubscriptionsTable).values({
+      ...parsed.data,
+      ownerClerkUserId,
+      nativeIssuer: who.issuer,
+      nativeSubject: who.subject,
+    }).onConflictDoUpdate({
+      target: [nativePushSubscriptionsTable.deviceId, nativePushSubscriptionsTable.environment],
+      set: {
+        deviceToken: parsed.data.deviceToken,
+        ownerClerkUserId,
+        nativeIssuer: who.issuer,
+        nativeSubject: who.subject,
+        updatedAt: new Date(),
+      },
+    });
+  });
+  try {
+    await queueGameOnOwnerSync(ownerClerkUserId);
+  } catch {
+    req.log.warn("Native iPhone alert registration saved; reminder scheduling needs reconciliation");
+  }
+  res.json({ enabled: true });
+}));
+nativeAccountLinkRouter.delete("/notifications/subscriptions", handle(async (req, res) => {
+  const parsed = NativeDeviceRemovalBody.safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Invalid iPhone notification registration.");
+  const who = identity(res);
+  const [removed] = await db.delete(nativePushSubscriptionsTable).where(and(
+    eq(nativePushSubscriptionsTable.nativeIssuer, who.issuer),
+    eq(nativePushSubscriptionsTable.nativeSubject, who.subject),
+    eq(nativePushSubscriptionsTable.deviceId, parsed.data.deviceId),
+    eq(nativePushSubscriptionsTable.environment, parsed.data.environment),
+  )).returning({ ownerClerkUserId: nativePushSubscriptionsTable.ownerClerkUserId });
+  if (removed) {
+    try {
+      await queueGameOnOwnerSync(removed.ownerClerkUserId);
+    } catch {
+      req.log.warn("Native iPhone notification registration removed; reminder scheduling needs reconciliation");
+    }
+  }
+  res.json({ enabled: false });
+}));
 const NativeEventCardEditBody = z.object({
   eventId: z.uuid(),
   type: z.enum(["game", "practice"]),
@@ -74,7 +251,10 @@ nativeAccountLinkRouter.get("/link", handle(async (_req, res) => {
   res.json(await service.current(identity(res)));
 }));
 nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
-  res.json(await service.disconnect(identity(res)));
+  const who = identity(res);
+  const result = await service.disconnect(who);
+  await unregisterNativePushForIdentity(who);
+  res.json(result);
 }));
 nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
   res.json(await loadNativeSupporterSchedule(identity(res)));
@@ -206,7 +386,10 @@ webNativeAccountLinkRouter.get("/account/native-link", requireAuthenticatedIdent
   res.json(await service.webCurrent(getRequiredClerkUserId(res)));
 }));
 webNativeAccountLinkRouter.delete("/account/native-link", requireAuthenticatedIdentity, handle(async (_req, res) => {
-  res.json(await service.disconnect(getRequiredClerkUserId(res)));
+  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const result = await service.disconnect(ownerClerkUserId);
+  await unregisterNativePushForOwner(ownerClerkUserId);
+  res.json(result);
 }));
 webNativeAccountLinkRouter.post("/account/native-link/preview", requireAuth, handle(async (req, res) => {
   nativeIssuer(); // Missing native configuration fails explicitly on the web too.

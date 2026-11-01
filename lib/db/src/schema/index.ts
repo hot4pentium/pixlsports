@@ -314,6 +314,7 @@ export * from "./athleteInviteLiveTaps";
 export * from "./athleteInviteFans";
 export * from "./supporterActiveGames";
 export * from "./gameOnReminders";
+export * from "./nativePushSubscriptions";
 export * from "./admin";
 export * from "./adminIdentityBlocks";
 export * from "./supportTickets";

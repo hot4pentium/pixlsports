@@ -10,6 +10,10 @@ struct NativeAuthRootView: View {
     @State private var retrying = false
     @State private var startupError: String?
     @State private var showingAccountLink = false
+    @State private var showingSettings = false
+#if os(iOS)
+    @StateObject private var notificationCoordinator = NativePushRegistrationCoordinator()
+#endif
 
     var body: some View {
 #if os(iOS) || os(macOS)
@@ -18,25 +22,28 @@ struct NativeAuthRootView: View {
                 startupView
             } else if clerk.isAuthFlowComplete {
                 NavigationStack {
-                    ContentView(clerk: clerk, showingAccountLink: $showingAccountLink)
+                    ContentView(
+                        clerk: clerk,
+                        showingAccountLink: $showingAccountLink,
+                        showingSettings: $showingSettings
+                    )
                         // Tear down previous user's screen state on account switches.
                         .id(clerk.user?.id)
-                        .toolbar {
-                            ToolbarItem(placement: .automatic) {
-                                Button {
-                                    showingAccountLink = true
-                                } label: {
-                                    Label("PIXL connection", systemImage: "link")
-                                }
-                            }
-                            ToolbarItem(placement: .automatic) {
-                                UserButton()
-                                    .accessibilityLabel("Manage iPhone account")
-                            }
-                        }
                         .sheet(isPresented: $showingAccountLink) {
                             NativeAccountLinkView().id(clerk.user?.id)
                         }
+#if os(iOS)
+                        .sheet(isPresented: $showingSettings) {
+                            NativeNotificationSettingsView(
+                                clerk: clerk
+                            )
+                            .environmentObject(notificationCoordinator)
+                        }
+                        .task(id: clerk.user?.id) {
+                            guard clerk.user != nil else { return }
+                            await notificationCoordinator.configure(clerk: clerk)
+                        }
+#endif
                 }
             } else {
                 ZStack {

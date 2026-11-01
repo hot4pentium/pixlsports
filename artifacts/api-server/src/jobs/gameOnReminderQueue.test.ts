@@ -6,6 +6,7 @@ import {
   db,
   gameOnReminderAttemptsTable,
   gameOnScheduledRemindersTable,
+  nativePushSubscriptionsTable,
   plannerNotificationPreferencesTable,
   plannerOwnerEventAlertClaimsTable,
   scheduleSharesTable,
@@ -38,6 +39,7 @@ async function setup(options: {
   timezone?: string;
   eventTimezone?: string;
   devices?: number;
+  nativeDevices?: number;
 } = {}) {
   const ownerClerkUserId = `game-on-queue-test-${randomUUID()}`;
   const eventData = event(options.eventTimezone ? { timezone: options.eventTimezone } : {});
@@ -64,6 +66,17 @@ async function setup(options: {
     }).returning({ id: webPushSubscriptionsTable.id });
     subscriptions.push(subscription!.id);
   }
+  for (let index = 0; index < (options.nativeDevices ?? 0); index += 1) {
+    const token = randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "");
+    await db.insert(nativePushSubscriptionsTable).values({
+      ownerClerkUserId,
+      nativeIssuer: "https://native-test.pixlsports.com",
+      nativeSubject: `test-subject-${randomUUID()}`,
+      deviceId: randomUUID(),
+      deviceToken: token,
+      environment: "sandbox",
+    });
+  }
   await db.insert(plannerNotificationPreferencesTable).values({
     ownerClerkUserId,
     oneHourBefore: true,
@@ -80,9 +93,47 @@ async function setup(options: {
       .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerClerkUserId));
     await db.delete(webPushSubscriptionsTable)
       .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId));
+    await db.delete(nativePushSubscriptionsTable)
+      .where(eq(nativePushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId));
   };
   return { share, eventData, ownerClerkUserId, subscriptions, cleanup };
 }
+
+test("a registered iPhone receives scheduled Event Card reminders through APNs", async () => {
+  const fixture = await setup({ devices: 0, nativeDevices: 1 });
+  const apnsKeys = ["APNS_AUTH_KEY", "APNS_KEY_ID", "APNS_TEAM_ID", "APNS_TOPIC"];
+  const original = Object.fromEntries(apnsKeys.map((key) => [key, process.env[key]]));
+  for (const [key, value] of Object.entries({
+    APNS_AUTH_KEY: "test-key",
+    APNS_KEY_ID: "TESTKEY123",
+    APNS_TEAM_ID: "TESTTEAM123",
+    APNS_TOPIC: "com.pixlsports",
+  })) process.env[key] = value;
+
+  let sends = 0;
+  try {
+    await queueOneHour(fixture);
+    await runScheduledGameOnReminders(ONE_HOUR_DUE, {
+      syncPageSize: 0,
+      sendPushNotificationToSubscription: async (subscription) => {
+        assert.equal(subscription.kind, "native");
+        if (subscription.kind !== "native") throw new Error("Expected an APNs device target.");
+        assert.equal(subscription.environment, "sandbox");
+        assert.match(subscription.deviceToken, /^[a-f0-9]{64}$/i);
+        sends += 1;
+        return { configured: true, sent: true, stale: false };
+      },
+    });
+    assert.equal(sends, 1);
+  } finally {
+    for (const key of apnsKeys) {
+      const value = original[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    await fixture.cleanup();
+  }
+});
 
 function inArrayByReminder(shareId: string) {
   return db.select({ id: gameOnScheduledRemindersTable.id })

@@ -3,6 +3,9 @@ import ClerkKit
 
 @main
 struct MyApp: App {
+#if os(iOS)
+    @UIApplicationDelegateAdaptor(NativePushAppDelegate.self) private var pushAppDelegate
+#endif
     private let configuration: Result<NativeClerkConfiguration, NativeClerkConfiguration.ConfigurationError>
 
     init() {
