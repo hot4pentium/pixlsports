@@ -25,7 +25,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         try checkSignedInPrepPersistence(dropFirstResponse: true)
     }
 
-    func testSignedInTrackStatsOffersExplainedToolChoices() throws {
+    func testSignedInTrackStatsOffersExplainedToolChoicesInLandscapeAtXXXL() throws {
         guard let eventID = ProcessInfo.processInfo.environment["PIXL_TRACKING_TEST_EVENT_ID"],
               !eventID.isEmpty else {
             throw XCTSkip("Set PIXL_TRACKING_TEST_EVENT_ID to a dedicated upcoming game Event Card. Sign in and link its owner on this simulator first.")
@@ -39,6 +39,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         ]
         app.launch()
         defer { app.terminate() }
+        rotate(.landscapeLeft, in: app)
         openSignedInPrep(eventID: eventID, in: app)
 
         let trackStats = app.buttons["event-card-track-stats"]
@@ -51,17 +52,25 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(liveTapsChoice.exists)
         assertModeChoiceAndHelpReachable("statTracker", in: app)
         assertModeChoiceAndHelpReachable("liveTaps", in: app)
+        let chooser = app.descendants(matching: .any)["native-event-mode-choice-sheet"]
+        XCTAssertTrue(chooser.exists)
 
         let statTrackerHelp = assertModeChooserReachable("native-event-mode-help-statTracker", in: app)
         XCTAssertEqual(statTrackerHelp.label, "Explain Stat Tracker")
         XCTAssertEqual(statTrackerHelp.value as? String, "Explanation hidden")
         statTrackerHelp.tap()
-        let statTrackerExplanation = app.staticTexts["native-event-mode-explanation-statTracker"]
-        XCTAssertTrue(statTrackerExplanation.waitForExistence(timeout: 5))
+        let statTrackerExplanation = assertModeChooserReachable(
+            "native-event-mode-explanation-statTracker", in: app
+        )
         XCTAssertTrue(statTrackerExplanation.isHittable)
         XCTAssertTrue(statTrackerExplanation.label.contains("team score"))
         XCTAssertGreaterThan(statTrackerExplanation.frame.height, 0)
-        XCTAssertFalse(statTrackerExplanation.frame.intersects(statTrackerHelp.frame))
+        assertModeExplanationDoesNotOverlapControls(
+            statTrackerExplanation,
+            in: app,
+            chooser: chooser
+        )
+        retainTrackingChooserScreenshot(in: app, name: "Stat Tracker explanation — landscape — AX XXXL")
         XCTAssertEqual(statTrackerHelp.label, "Hide Stat Tracker")
         XCTAssertEqual(statTrackerHelp.value as? String, "Explanation shown")
 
@@ -69,15 +78,19 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertEqual(liveTapsHelp.label, "Explain Live Taps")
         XCTAssertEqual(liveTapsHelp.value as? String, "Explanation hidden")
         liveTapsHelp.tap()
-        let liveTapsExplanation = app.staticTexts["native-event-mode-explanation-liveTaps"]
-        XCTAssertTrue(liveTapsExplanation.waitForExistence(timeout: 5))
+        let liveTapsExplanation = assertModeChooserReachable(
+            "native-event-mode-explanation-liveTaps", in: app
+        )
         XCTAssertTrue(liveTapsExplanation.isHittable)
         XCTAssertTrue(liveTapsExplanation.label.contains("cheer-only"))
         XCTAssertEqual(liveTapsHelp.label, "Hide Live Taps")
         XCTAssertEqual(liveTapsHelp.value as? String, "Explanation shown")
-        XCTAssertFalse(liveTapsExplanation.frame.intersects(liveTapsHelp.frame))
-        let chooser = app.descendants(matching: .any)["native-event-mode-choice-sheet"]
-        XCTAssertTrue(chooser.exists)
+        assertModeExplanationDoesNotOverlapControls(
+            liveTapsExplanation,
+            in: app,
+            chooser: chooser
+        )
+        retainTrackingChooserScreenshot(in: app, name: "Live Taps explanation — landscape — AX XXXL")
         try app.performAccessibilityAudit(for: [.textClipped, .hitRegion]) { issue in
             guard let element = issue.element else { return false }
             return !element.frame.intersects(chooser.frame)
@@ -97,6 +110,35 @@ final class SupporterEventDetailUITests: XCTestCase {
             format: "label CONTAINS %@", "Start a cheer-only session for fans at the game"
         )).firstMatch
         XCTAssertTrue(liveTapsIntro.waitForExistence(timeout: 10))
+    }
+
+    private func retainTrackingChooserScreenshot(in app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Tracking chooser — \(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func assertModeExplanationDoesNotOverlapControls(
+        _ explanation: XCUIElement,
+        in app: XCUIApplication,
+        chooser: XCUIElement
+    ) {
+        assertContained(explanation.frame, in: chooser.frame)
+        let controlIdentifiers = [
+            "native-event-choice-statTracker",
+            "native-event-mode-help-statTracker",
+            "native-event-choice-liveTaps",
+            "native-event-mode-help-liveTaps"
+        ]
+        for identifier in controlIdentifiers {
+            let control = app.descendants(matching: .any)[identifier].firstMatch
+            XCTAssertTrue(control.exists, "Missing \(identifier)")
+            XCTAssertFalse(
+                explanation.frame.intersects(control.frame),
+                "\(explanation.identifier) must not overlap \(identifier)."
+            )
+        }
     }
 
     private func assertModeChoiceAndHelpReachable(_ mode: String, in app: XCUIApplication) {
