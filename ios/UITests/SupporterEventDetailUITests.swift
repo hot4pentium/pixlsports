@@ -447,6 +447,17 @@ final class SupporterEventDetailUITests: XCTestCase {
                           "The preview is clearly marked as private.")
             XCTAssertFalse(app.buttons["native-hype-card-share"].exists,
                            "A private preview must not offer public sharing.")
+            let refresh = app.buttons["native-hype-card-refresh"]
+            XCTAssertTrue(refresh.waitForExistence(timeout: 10),
+                          "Families can refresh the private preview while it is open.")
+            XCTAssertTrue(refresh.isEnabled)
+            refresh.tap()
+            XCTAssertTrue(card.waitForExistence(timeout: 15),
+                          "Refreshing keeps the owner-only preview available.")
+            XCTAssertTrue(app.staticTexts["native-hype-card-private-preview"].exists,
+                          "Refreshing does not change the private card’s visibility.")
+            XCTAssertFalse(app.buttons["native-hype-card-share"].exists,
+                           "Refreshing a private card must not add a public sharing action.")
         } else {
             let card = app.descendants(matching: .any)["native-hype-card"]
             XCTAssertTrue(card.waitForExistence(timeout: 15), "The selected athlete’s HYPE Card must load.")

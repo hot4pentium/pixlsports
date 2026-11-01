@@ -12,7 +12,9 @@ struct SupporterHypeCardView: View {
     @State private var privatePhoto: UIImage?
     @State private var unavailable = false
     @State private var errorMessage: String?
+    @State private var refreshErrorMessage: String?
     @State private var loading = true
+    @State private var isRefreshing = false
 
     var body: some View {
         ZStack {
@@ -27,6 +29,42 @@ struct SupporterHypeCardView: View {
                         .foregroundStyle(SupporterHomeColors.background)
                         .accessibilityAddTraits(.isHeader)
 
+                    if isRefreshing {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                                .tint(SupporterHomeColors.accent)
+                            Text("Refreshing preview…")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(SupporterHomeColors.muted)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("native-hype-card-refreshing")
+                    }
+
+                    if let refreshErrorMessage {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("The preview couldn’t refresh", systemImage: "exclamationmark.triangle.fill")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text(refreshErrorMessage)
+                                .font(.body)
+                                .foregroundStyle(SupporterHomeColors.muted)
+                            Button("Try again") {
+                                Task { await loadCard(refresh: true) }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(SupporterHomeColors.accent)
+                            .foregroundStyle(SupporterHomeColors.background)
+                            .disabled(isRefreshing)
+                            .accessibilityIdentifier("hype-card-refresh-retry")
+                        }
+                        .padding(18)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+                        .accessibilityIdentifier("native-hype-card-refresh-error")
+                    }
+
                     content
                 }
                 .frame(maxWidth: 520, alignment: .leading)
@@ -37,6 +75,19 @@ struct SupporterHypeCardView: View {
         }
         .navigationTitle("HYPE Card")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { await loadCard(refresh: true) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .disabled(loading || isRefreshing)
+                .accessibilityLabel("Refresh HYPE Card")
+                .accessibilityHint("Reload the preview from your linked PIXL account.")
+                .accessibilityIdentifier("native-hype-card-refresh")
+            }
+        }
         .task { await loadCard() }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
@@ -225,16 +276,36 @@ struct SupporterHypeCardView: View {
             .accessibilityHidden(true)
     }
 
-    private func loadCard() async {
-        loading = true
-        errorMessage = nil
-        card = nil
-        privateCard = nil
-        privatePhoto = nil
-        unavailable = false
+    private func loadCard(refresh: Bool = false) async {
+        if refresh {
+            guard !loading, !isRefreshing else { return }
+            isRefreshing = true
+            refreshErrorMessage = nil
+        } else {
+            guard !isRefreshing else { return }
+            loading = true
+            errorMessage = nil
+            refreshErrorMessage = nil
+            card = nil
+            privateCard = nil
+            privatePhoto = nil
+            unavailable = false
+        }
+        defer {
+            if refresh { isRefreshing = false }
+        }
+
         guard let clerk else {
             loading = false
-            unavailable = true
+            if refresh {
+                card = nil
+                privateCard = nil
+                privatePhoto = nil
+                unavailable = false
+                refreshErrorMessage = "Sign in to the iPhone app again."
+            } else {
+                unavailable = true
+            }
             return
         }
         do {
@@ -247,12 +318,18 @@ struct SupporterHypeCardView: View {
             }
             unavailable = result.publicCard == nil && result.privateCard == nil
             loading = false
+            errorMessage = nil
+            refreshErrorMessage = nil
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled else { return }
             loading = false
-            errorMessage = error.localizedDescription
+            if refresh {
+                refreshErrorMessage = error.localizedDescription
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 }
