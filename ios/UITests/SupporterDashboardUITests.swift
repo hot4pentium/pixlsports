@@ -175,12 +175,26 @@ final class SupporterDashboardUITests: XCTestCase {
         let first = reachable("dashboard-event-tile-fictional-next", in: app)
         let second = reachable("dashboard-event-tile-fictional-later", in: app)
         let third = reachable("dashboard-event-tile-fictional-third", in: app)
+        XCTAssertTrue(first.label.contains("UP NEXT"), "Only the nearest upcoming card is labeled Up Next.")
+        XCTAssertFalse(second.label.contains("UP NEXT"), "Later future cards have no Up Next label.")
+        XCTAssertFalse(third.label.contains("UP NEXT"), "Later future cards have no Up Next label.")
         XCTAssertEqual(first.frame.minY, second.frame.minY, accuracy: 2)
         XCTAssertEqual(second.frame.minY, third.frame.minY, accuracy: 2)
         XCTAssertLessThan(first.frame.minX, second.frame.minX)
         XCTAssertLessThan(second.frame.minX, third.frame.minX)
         for tile in [first, second, third] {
             XCTAssertEqual(tile.frame.width, tile.frame.height, accuracy: 2)
+        }
+    }
+
+    func testOnlyNearestUpcomingCardIsLabeledWithAccessibilityText() {
+        let app = launch("upcoming", accessibilityText: true)
+        XCTAssertTrue(reachable("dashboard-event-card-fictional-next", in: app).label.contains("UP NEXT"))
+        for id in ["fictional-later", "fictional-third"] {
+            XCTAssertFalse(
+                reachable("dashboard-event-card-\(id)", in: app).label.contains("UP NEXT"),
+                "Later future cards must remain unlabeled with large text too."
+            )
         }
     }
 

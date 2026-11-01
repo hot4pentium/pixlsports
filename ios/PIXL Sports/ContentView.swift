@@ -745,7 +745,7 @@ struct ContentView: View {
         .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName ?? "your athlete"), \(page.teamName ?? "team"), \(headline), \(event.formattedDate(timezone: zone)), \(event.formattedTime(timezone: zone)), \(location.isEmpty ? "Location to be announced" : event.location). Tap to view details.")
     }
 
-    private func compactEventCard(page: NativeSupporterSchedule, item: SupporterScheduleItem) -> some View {
+    private func compactEventCard(page: NativeSupporterSchedule, item: SupporterScheduleItem, isUpNext: Bool = false) -> some View {
         let zone = item.event.timezone ?? page.timezone
         let layout = dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 13))
@@ -764,8 +764,8 @@ struct ContentView: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
-                    if item.timing == .live || item.timing == .complete {
-                        Text(item.timing == .live ? "LIVE" : "COMPLETE")
+                    if item.timing == .live || item.timing == .complete || isUpNext {
+                        Text(item.timing == .live ? "LIVE" : item.timing == .complete ? "COMPLETE" : "UP NEXT")
                             .font(.caption2.weight(.black))
                             .tracking(1)
                             .foregroundStyle(SupporterHomeColors.background)
@@ -822,7 +822,7 @@ struct ContentView: View {
         }
         .buttonStyle(SupporterCardPressStyle())
         .accessibilityIdentifier("dashboard-event-card-\(item.event.eventId)")
-        .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : "")\(item.event.title), \(item.event.opponent.isEmpty ? "" : "versus \(item.event.opponent), ")\(item.event.formattedFullDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
+        .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : isUpNext ? "UP NEXT, " : "")\(item.event.title), \(item.event.opponent.isEmpty ? "" : "versus \(item.event.opponent), ")\(item.event.formattedFullDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
     }
 
     private func eventDetail(icon: String, text: String) -> some View {
@@ -842,10 +842,11 @@ struct ContentView: View {
 
     @ViewBuilder
     private func eventGrid(page: NativeSupporterSchedule, events: [SupporterScheduleItem]) -> some View {
+        let nextUpcomingID = events.first(where: { $0.timing == .upcoming })?.id
         if dynamicTypeSize.isAccessibilitySize {
             LazyVStack(spacing: 9) {
                 ForEach(events) { item in
-                    compactEventCard(page: page, item: item)
+                    compactEventCard(page: page, item: item, isUpNext: item.id == nextUpcomingID)
                 }
             }
             .accessibilityIdentifier("dashboard-event-grid")
@@ -855,7 +856,10 @@ struct ContentView: View {
                     NavigationLink {
                         eventDestination(for: item.event)
                     } label: {
-                        NativeEventGridTile(event: item.event, timezone: page.timezone)
+                        NativeEventGridTile(
+                            event: item.event, timezone: page.timezone,
+                            timing: item.timing, isUpNext: item.id == nextUpcomingID
+                        )
                     }
                     .buttonStyle(SupporterCardPressStyle())
                     .accessibilityIdentifier("dashboard-event-tile-\(item.event.eventId)")

@@ -3,8 +3,17 @@ import SwiftUI
 struct NativeEventGridTile: View {
     let event: AthleteFanEvent
     let timezone: String?
+    let timing: SupporterEventTiming
+    let isUpNext: Bool
 
-    private var isComplete: Bool { event.status == "final" }
+    private var isComplete: Bool { timing == .complete }
+    private var statusLabel: String? {
+        switch timing {
+        case .complete: return "COMPLETE"
+        case .live: return "LIVE"
+        case .upcoming: return isUpNext ? "UP NEXT" : nil
+        }
+    }
     private var month: String {
         guard let number = Int(event.date.split(separator: "-").dropFirst().first ?? ""),
               (1...12).contains(number) else { return "EVENT" }
@@ -23,12 +32,19 @@ struct NativeEventGridTile: View {
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                 VStack(spacing: 3) {
-                    HStack(spacing: 3) {
-                        Circle().fill(isComplete ? Color.green : event.status == "live" ? Color.red : SupporterHomeColors.blue)
-                            .frame(width: 5, height: 5)
-                        Text(isComplete ? "COMPLETE" : event.status == "live" ? "LIVE" : "UP NEXT")
-                            .font(.system(size: 8, weight: .heavy))
-                            .tracking(0.45)
+                    if let statusLabel {
+                        HStack(spacing: 3) {
+                            Circle().fill(isComplete ? Color.green : timing == .live ? Color.red : SupporterHomeColors.blue)
+                                .frame(width: 5, height: 5)
+                            Text(statusLabel)
+                                .font(.system(size: 8, weight: .heavy))
+                                .tracking(0.45)
+                        }
+                        .frame(height: 11)
+                    } else {
+                        // Keep dates aligned across the row without drawing a
+                        // badge or status dot on later future cards.
+                        Color.clear.frame(height: 11).accessibilityHidden(true)
                     }
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(month).font(.system(size: 10, weight: .heavy))
@@ -53,7 +69,7 @@ struct NativeEventGridTile: View {
                 Capsule().fill(isComplete ? Color.green : SupporterHomeColors.blue).frame(height: 3).padding(.horizontal, 10)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(event.title), \(event.type), \(event.formattedFullDate(timezone: event.timezone ?? timezone)), \(event.formattedTime(timezone: event.timezone ?? timezone)), \(event.location), \(isComplete ? "complete" : event.status)")
+            .accessibilityLabel("\(event.title), \(event.type), \(event.formattedFullDate(timezone: event.timezone ?? timezone)), \(event.formattedTime(timezone: event.timezone ?? timezone)), \(event.location)\(statusLabel.map { ", \($0)" } ?? "")")
             .accessibilityHint("Opens event details, Prep, Track Stats, and sharing")
     }
 }

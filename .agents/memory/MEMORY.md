@@ -8,6 +8,7 @@
 - [Cancelled account lifecycle](cancelled-account-lifecycle.md) — lifecycle changes are atomic and deletion-pending accounts never transition backward.
 - [Custom domain routing](custom-domain-routing.md) — Replit requires apex and www domains to be added separately; registrar or app logic must handle the redirect.
 - [Upload claim cleanup races](upload-claim-cleanup-races.md) — confirmation must atomically renew a valid claim before cleanup can remove it.
+- [Photo storage readiness](photo-storage-readiness.md) — mocked uploads do not prove storage readiness; verify a real private write, readback, and cleanup.
 - [Live role routing](live-role-routing.md) — studio role UI must derive from the current Clerk user on every render, not the initial session role.
 - [Checklist sharing test harness](checklist-sharing-test-harness.md) — direct route tests must provide Clerk-branded session auth; browser coverage uses installed Chromium CDP.
 - [Checklist owner sync](checklist-owner-sync.md) — after an edit link exists, owner and collaborator edits must update the same shared checklist; local saves alone are insufficient.
@@ -93,7 +94,7 @@
 - [Game On scheduled caller](game-on-scheduled-caller.md) — choose one free two-minute caller (Cloudflare or cron-job.org), keeping the API on Autoscale and paid add-ons off.
 - [Owner alert idempotency](owner-alert-idempotency.md) — keep one-hour prompts unique across replaced Game On Cards; uncertain sends must not repeat.
 - [Season profile seeding](season-profile-seeding.md) — use one free-text `seasonName` profile value for onboarding and new athlete-page defaults.
-- [Event Card pregame state](event-card-pregame-state.md) — badges switch to Live at one deterministic kickoff instant; DST gaps shift forward and repeats choose the earlier instant.
+- [Event Card pregame state](event-card-pregame-state.md) — schedule-time badges use deterministic kickoff/DST rules; only the nearest future card says Up Next.
 - [Private dashboard offline authority](private-dashboard-offline-authority.md) — clear caches on confirmed account absence; allow first setup only under the server-checked eligibility rule.
 - [Landing Celebrate card parity](landing-celebrate-card-parity.md) — the signed-out Celebrate demo must use the Hype Card's Front, Stats, Videos, Events sides, not a message back.
 - [Safari engine test boundary](webkit-safari-coverage.md) — Linux WebKitGTK validates Safari’s engine, not Apple’s Safari app; report the distinction clearly.

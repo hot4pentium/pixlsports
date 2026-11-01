@@ -32,3 +32,9 @@ Use the saturated blue action fill only for the currently recommended action. A 
 **Why:** The user reported that the blue default Prep button looked selected after the game-time recommendation had moved to Stat Tracker.
 
 **How to apply:** Keep non-recommended Prep visually neutral; retain the blue fill and NEXT marker only while Prep is the suggested action.
+
+Only the nearest upcoming Event Card should display “Up Next.” Later future cards must have no status label or status dot. Live and Complete labels remain available for their respective states.
+
+**Why:** The user repeatedly requested that later scheduled games not also be called “Up Next.”
+
+**How to apply:** Choose the next upcoming card once from the chronologically ordered dashboard list, excluding Live and Complete cards. Keep the same exclusive badge rule in the three-column grid and the large-text layout.
