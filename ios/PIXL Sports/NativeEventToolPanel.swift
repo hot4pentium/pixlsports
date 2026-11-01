@@ -51,6 +51,7 @@ struct NativeEventToolPanel: View {
                         NativeEventTrackingPanel(
                             event: event, teamName: schedule.teamName ?? "Your team",
                             athleteName: schedule.athleteName ?? "Your athlete", clerk: clerk,
+                            isActive: selected == .trackStats,
                             hasActiveLiveTapsElsewhere: schedule.events.contains {
                                 $0.liveTapsActive && $0.eventId != event.eventId
                             },

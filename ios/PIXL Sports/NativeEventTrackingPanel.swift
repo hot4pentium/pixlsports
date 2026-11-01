@@ -7,16 +7,56 @@ struct NativeEventTrackingPanel: View {
     let teamName: String
     let athleteName: String
     let clerk: Clerk
+    let isActive: Bool
     let hasActiveLiveTapsElsewhere: Bool
     @StateObject private var trackerModel: NativeEventToolModel
-    @State private var showingTaps = false
-    @State private var tapsVisited = false
+    @State private var selectedMode: TrackingMode?
+    @State private var hasVisitedStatTracker = false
+    @State private var hasVisitedLiveTaps = false
+    @State private var showingModePicker = false
+    @State private var expandedExplanation: TrackingMode?
+
+    private enum TrackingMode: String {
+        case statTracker
+        case liveTaps
+
+        var title: String {
+            switch self {
+            case .statTracker: return "Stat Tracker"
+            case .liveTaps: return "Live Taps"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .statTracker: return "chart.bar.fill"
+            case .liveTaps: return "hands.clap.fill"
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .statTracker: return "Keep score and track player stats."
+            case .liveTaps: return "Set up cheers for fans at the game."
+            }
+        }
+
+        var explanation: String {
+            switch self {
+            case .statTracker:
+                return "Keep the team score here, then open the full tracker when you want player-stat details."
+            case .liveTaps:
+                return "Start a cheer-only session and share a QR or link with fans. Cheers do not change scores or player stats."
+            }
+        }
+    }
 
     init(
         event: AthleteFanEvent,
         teamName: String,
         athleteName: String,
         clerk: Clerk,
+        isActive: Bool,
         hasActiveLiveTapsElsewhere: Bool = false,
         model: NativeEventToolModel? = nil
     ) {
@@ -24,6 +64,7 @@ struct NativeEventTrackingPanel: View {
         self.teamName = teamName
         self.athleteName = athleteName
         self.clerk = clerk
+        self.isActive = isActive
         self.hasActiveLiveTapsElsewhere = hasActiveLiveTapsElsewhere
         _trackerModel = StateObject(wrappedValue: model ?? NativeEventToolModel(
             shareToken: event.shareToken, accountID: clerk.user?.id ?? "signed-out"
@@ -31,56 +72,179 @@ struct NativeEventTrackingPanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            scorekeepingSection
-                .eventToolVisibility(!showingTaps)
-            fanEngagementSection
-                .eventToolVisibility(!showingTaps)
-            if tapsVisited {
-                VStack(alignment: .leading, spacing: 14) {
-                    Button {
-                        showingTaps = false
-                    } label: {
-                        Label("Back to scorekeeping", systemImage: "arrow.left")
-                            .frame(minHeight: 44)
-                    }
-                    .accessibilityIdentifier("native-event-mode-stats")
-                    NativeEventFanAccessView(
-                        event: event,
-                        athleteName: athleteName,
-                        clerk: clerk,
-                        hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere
-                    )
-                }
-                .eventToolVisibility(showingTaps)
+        VStack(alignment: .leading, spacing: 18) {
+            if selectedMode == nil {
+                chooseTrackingToolPrompt
             }
+            scorekeepingSection
+                .eventToolVisibility(selectedMode == .statTracker)
+            liveTapsSection
+                .eventToolVisibility(selectedMode == .liveTaps)
         }
         .tint(NativeEventToolColors.trackStats)
+        .sheet(isPresented: $showingModePicker) {
+            modePickerSheet
+        }
+        .onAppear {
+            if isActive { presentModePicker() }
+        }
+        .onChange(of: isActive) { _, active in
+            if active { presentModePicker() }
+        }
+    }
+
+    private var modePickerSheet: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 15) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Choose your game-day tool")
+                        .font(.title2.weight(.black))
+                        .foregroundStyle(.white)
+                    Text("Choose what you want to use for this event. You can switch tools later.")
+                        .font(.subheadline)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                modeChoice(.statTracker)
+                modeChoice(.liveTaps)
+                Button(selectedMode == nil ? "Not now" : "Keep current tool") {
+                    showingModePicker = false
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(SupporterHomeColors.muted)
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .padding(20)
+            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(SupporterHomeColors.background)
+        .preferredColorScheme(.dark)
+        .accessibilityIdentifier("native-event-mode-choice-sheet")
+    }
+
+    private func modeChoice(_ mode: TrackingMode) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 8) {
+                Button {
+                    selectMode(mode)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: mode.symbol)
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(NativeEventToolColors.trackStats)
+                            .frame(width: 42, height: 42)
+                            .background(
+                                NativeEventToolColors.trackStats.opacity(0.15),
+                                in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            )
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(mode.title)
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text(mode.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(SupporterHomeColors.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "arrow.right")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(NativeEventToolColors.trackStats)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(mode.title)
+                .accessibilityHint("Use \(mode.title) for this event.")
+                .accessibilityIdentifier("native-event-choice-\(mode.rawValue)")
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        expandedExplanation = expandedExplanation == mode ? nil : mode
+                    }
+                } label: {
+                    Image(systemName: expandedExplanation == mode ? "questionmark.circle.fill" : "questionmark.circle")
+                        .font(.title3.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(NativeEventToolColors.trackStats)
+                .accessibilityLabel("\(expandedExplanation == mode ? "Hide" : "Explain") \(mode.title)")
+                .accessibilityHint(
+                    "\(expandedExplanation == mode ? "Hide" : "Show") what \(mode.title) does."
+                )
+                .accessibilityIdentifier("native-event-mode-help-\(mode.rawValue)")
+            }
+
+            if expandedExplanation == mode {
+                Text(mode.explanation)
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("native-event-mode-explanation-\(mode.rawValue)")
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(NativeEventToolColors.trackStats.opacity(0.32), lineWidth: 1)
+        }
+    }
+
+    private var chooseTrackingToolPrompt: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Choose a tracking tool", systemImage: "chart.bar.fill")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(NativeEventToolColors.trackStats)
+            Text("Select Stat Tracker or Live Taps to continue.")
+                .font(.subheadline)
+                .foregroundStyle(SupporterHomeColors.muted)
+            Button("Choose a tool", action: presentModePicker)
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("native-event-open-mode-choice")
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var scorekeepingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SupporterEyebrow(text: "Scorekeeping", color: NativeEventToolColors.trackStats)
-            NativeEventTrackerView(
-                event: event, teamName: teamName, athleteName: athleteName,
-                clerk: clerk, model: trackerModel, embedded: true, compact: true
-            )
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [NativeEventToolColors.trackStats.opacity(0.16), Color.white.opacity(0.035)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(NativeEventToolColors.trackStats.opacity(0.35), lineWidth: 1)
+            HStack {
+                SupporterEyebrow(text: "Stat tracker", color: NativeEventToolColors.trackStats)
+                Spacer(minLength: 8)
+                switchToolButton
             }
-            .accessibilityIdentifier("native-event-scorekeeping-card")
-
+            if hasVisitedStatTracker {
+                NativeEventTrackerView(
+                    event: event, teamName: teamName, athleteName: athleteName,
+                    clerk: clerk, model: trackerModel, embedded: true, compact: true
+                )
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    LinearGradient(
+                        colors: [NativeEventToolColors.trackStats.opacity(0.16), Color.white.opacity(0.035)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(NativeEventToolColors.trackStats.opacity(0.35), lineWidth: 1)
+                }
+                .accessibilityIdentifier("native-event-scorekeeping-card")
+            }
             NavigationLink {
                 NativeEventTrackerView(
                     event: event, teamName: teamName, athleteName: athleteName,
@@ -97,58 +261,46 @@ struct NativeEventTrackingPanel: View {
         .accessibilityIdentifier("native-event-scorekeeping-section")
     }
 
-    private var fanEngagementSection: some View {
+    private var liveTapsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SupporterEyebrow(text: "Fan engagement", color: NativeEventToolColors.trackStats)
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "hands.clap.fill")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(NativeEventToolColors.trackStats)
-                        .frame(width: 44, height: 44)
-                        .background(
-                            NativeEventToolColors.trackStats.opacity(0.15),
-                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        )
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Live Taps")
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(.white)
-                        Text("Give fans a cheer-only screen. It doesn’t change the score or player stats.")
-                            .font(.subheadline)
-                            .foregroundStyle(SupporterHomeColors.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                Button {
-                    tapsVisited = true
-                    showingTaps = true
-                } label: {
-                    HStack(spacing: 10) {
-                        Text("Open Live Taps")
-                            .font(.subheadline.weight(.bold))
-                        Spacer(minLength: 0)
-                        Image(systemName: "arrow.right")
-                            .font(.subheadline.weight(.bold))
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .padding(.horizontal, 12)
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("native-event-mode-live-taps")
+            HStack {
+                SupporterEyebrow(text: "Live Taps", color: NativeEventToolColors.trackStats)
+                Spacer(minLength: 8)
+                switchToolButton
             }
-            .padding(15)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+            if hasVisitedLiveTaps {
+                NativeEventFanAccessView(
+                    event: event,
+                    athleteName: athleteName,
+                    clerk: clerk,
+                    hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere
+                )
             }
-            .accessibilityIdentifier("native-event-live-taps-card")
         }
+        .accessibilityIdentifier("native-event-live-taps-section")
+    }
+
+    private var switchToolButton: some View {
+        Button(action: presentModePicker) {
+            Label("Switch tool", systemImage: "arrow.left.arrow.right")
+                .font(.caption.weight(.bold))
+                .frame(minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier("native-event-switch-tracking-mode")
+    }
+
+    private func selectMode(_ mode: TrackingMode) {
+        selectedMode = mode
+        if mode == .statTracker { hasVisitedStatTracker = true }
+        if mode == .liveTaps { hasVisitedLiveTaps = true }
+        expandedExplanation = nil
+        showingModePicker = false
+    }
+
+    private func presentModePicker() {
+        expandedExplanation = nil
+        showingModePicker = true
     }
 }
 

@@ -43,6 +43,12 @@ Within Track Stats, open score-only tracking directly in Content, with team and 
 
 **How to apply:** Compact and full tracking must use the same game state. Fan QR creation requires an active session and verified ownership. Existing family QR access lasts until revoked: explain this clearly and provide revocation, rather than implying that these codes expire at the end of a game.
 
+When Track Stats opens, ask the supporter to choose Stat Tracker or Live Taps in a modal. Give each choice a question-mark explanation and allow switching later.
+
+**Why:** The user explicitly asked for a mode choice before entering either tracking experience.
+
+**How to apply:** Keep the scorekeeping state and any Live Taps session/QR state alive while switching modes; do not start either tool until selected.
+
 All mounted event editors must share one workspace command/recovery owner, including Prep and both tracker presentations.
 
 **Why:** Separate controllers can overwrite or clear the same event-scoped pending-save journal. A tracker retry or discard must also never erase an unrelated unsaved Prep draft.

@@ -25,6 +25,53 @@ final class SupporterEventDetailUITests: XCTestCase {
         try checkSignedInPrepPersistence(dropFirstResponse: true)
     }
 
+    func testSignedInTrackStatsOffersExplainedToolChoices() throws {
+        guard let eventID = ProcessInfo.processInfo.environment["PIXL_TRACKING_TEST_EVENT_ID"],
+              !eventID.isEmpty else {
+            throw XCTSkip("Set PIXL_TRACKING_TEST_EVENT_ID to a dedicated upcoming game Event Card. Sign in and link its owner on this simulator first.")
+        }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-signed-in-prep"]
+        app.launch()
+        defer { app.terminate() }
+        openSignedInPrep(eventID: eventID, in: app)
+
+        let trackStats = app.buttons["event-card-track-stats"]
+        XCTAssertTrue(trackStats.isEnabled, "The dedicated Event Card must be a game.")
+        trackStats.tap()
+
+        let statTrackerChoice = app.buttons["native-event-choice-statTracker"]
+        let liveTapsChoice = app.buttons["native-event-choice-liveTaps"]
+        XCTAssertTrue(statTrackerChoice.waitForExistence(timeout: 10))
+        XCTAssertTrue(liveTapsChoice.exists)
+
+        app.buttons["native-event-mode-help-statTracker"].tap()
+        let statTrackerExplanation = app.staticTexts["native-event-mode-explanation-statTracker"]
+        XCTAssertTrue(statTrackerExplanation.waitForExistence(timeout: 5))
+        XCTAssertTrue(statTrackerExplanation.label.contains("team score"))
+
+        app.buttons["native-event-mode-help-liveTaps"].tap()
+        let liveTapsExplanation = app.staticTexts["native-event-mode-explanation-liveTaps"]
+        XCTAssertTrue(liveTapsExplanation.waitForExistence(timeout: 5))
+        XCTAssertTrue(liveTapsExplanation.label.contains("cheer-only"))
+
+        statTrackerChoice.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["native-event-scorekeeping-card"].waitForExistence(timeout: 10)
+        )
+        app.buttons["native-event-switch-tracking-mode"].tap()
+        XCTAssertTrue(liveTapsChoice.waitForExistence(timeout: 5))
+        liveTapsChoice.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["native-event-live-taps-section"].waitForExistence(timeout: 10)
+        )
+        let liveTapsIntro = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS %@", "Start a cheer-only session for fans at the game"
+        )).firstMatch
+        XCTAssertTrue(liveTapsIntro.waitForExistence(timeout: 10))
+    }
+
     private func checkSignedInPrepPersistence(dropFirstResponse: Bool) throws {
         let environment = ProcessInfo.processInfo.environment
         guard let eventID = environment["PIXL_PREP_TEST_EVENT_ID"], !eventID.isEmpty,
