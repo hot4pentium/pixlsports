@@ -12,6 +12,7 @@ struct NativeEventPrepView: View {
     @State private var notes = ""
     @State private var newItem = ""
     @State private var edited = false
+    @State private var prepAutosaveTask: Task<Void, Never>?
     @State private var recoveringPrepDraft = false
     @State private var confirmingLeave = false
     @State private var isManagingFullPrep = false
@@ -21,6 +22,7 @@ struct NativeEventPrepView: View {
     @State private var completionCelebrationID = 0
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     init(event: AthleteFanEvent, clerk: Clerk, model: NativeEventToolModel? = nil,
          embedded: Bool = false, compactContent: Bool = false,
@@ -114,12 +116,14 @@ struct NativeEventPrepView: View {
                                         let id = item.id
                                         items.removeAll { $0.id == id }
                                         edited = true
+                                        scheduleChecklistAutosave()
                                     }
                                 }
                             }
                             .onDelete { offsets in
                                 items.remove(atOffsets: offsets)
                                 edited = true
+                                scheduleChecklistAutosave()
                             }
                         }
                     }
@@ -486,6 +490,19 @@ struct NativeEventPrepView: View {
             // Discarding a failed tracker command must not discard an unrelated Prep draft.
             if recoveringPrepDraft || !hasUnsavedEdits { applySavedPrep() }
         }
+        .onChange(of: model.pendingCount) { _, count in
+            guard count == 0,
+                  let prep = model.workspace?.prep,
+                  prep.items == items,
+                  prep.notes == notes else { return }
+            edited = false
+            recoveringPrepDraft = false
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase != .active, prepAutosaveTask != nil else { return }
+            prepAutosaveTask?.cancel()
+            Task { await savePrepChanges() }
+        }
         .task(id: completionCelebrationID) {
             guard showCompletionCelebration else { return }
             try? await Task.sleep(for: .seconds(2.8))
@@ -558,23 +575,16 @@ struct NativeEventPrepView: View {
 
     private var saveFooter: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(model.busy ? "Updating prep…" : hasUnsavedEdits ? "Unsaved changes" : "Prep saved")
+            Text(
+                model.busy ? "Updating prep…" :
+                    prepAutosaveTask != nil ? "Saving Prep…" :
+                    hasUnsavedEdits ? "Unsaved changes" : "Prep saved"
+            )
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(SupporterHomeColors.muted)
+                .accessibilityIdentifier("native-prep-save-status")
             Button("Save Prep") {
-                Task {
-                    guard let clerk else {
-                        // Test workspaces must never send or pretend to save.
-                        model.errorMessage = "This UI-test workspace cannot save."
-                        return
-                    }
-                    recoveringPrepDraft = true
-                    await model.save("prep", clerk: clerk, items: items, notes: notes)
-                    if model.errorMessage == nil && model.pending == nil {
-                        edited = false
-                        recoveringPrepDraft = false
-                    }
-                }
+                Task { await savePrepChanges() }
             }
             .buttonStyle(SupporterPrimaryButtonStyle(fillColor: NativeEventToolColors.prep))
             .disabled(!canSave)
@@ -597,6 +607,7 @@ struct NativeEventPrepView: View {
         items.append(NativePrepItem(id: UUID().uuidString, label: label, completed: false))
         newItem = ""
         edited = true
+        scheduleChecklistAutosave()
         withAnimation(checklistAnimation) {
             isChecklistExpanded = true
             showCompletionCelebration = false
@@ -609,6 +620,7 @@ struct NativeEventPrepView: View {
         let wasComplete = isChecklistComplete
         items[index].completed.toggle()
         edited = true
+        scheduleChecklistAutosave()
 
         if !items[index].completed {
             withAnimation(checklistAnimation) {
@@ -634,6 +646,33 @@ struct NativeEventPrepView: View {
         if !hasInitializedChecklistExpansion {
             isChecklistExpanded = !isChecklistComplete
             hasInitializedChecklistExpansion = true
+        }
+    }
+
+    private func scheduleChecklistAutosave() {
+        guard clerk != nil, model.workspace != nil else { return }
+        prepAutosaveTask?.cancel()
+        prepAutosaveTask = Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+            await savePrepChanges()
+        }
+    }
+
+    private func savePrepChanges() async {
+        prepAutosaveTask?.cancel()
+        prepAutosaveTask = nil
+        guard let clerk else {
+            // Test workspaces must never send or pretend to save.
+            model.errorMessage = "This UI-test workspace cannot save."
+            return
+        }
+        guard edited, !model.busy, model.pending == nil else { return }
+        recoveringPrepDraft = true
+        await model.save("prep", clerk: clerk, items: items, notes: notes)
+        if model.errorMessage == nil && model.pending == nil {
+            edited = false
+            recoveringPrepDraft = false
         }
     }
 }

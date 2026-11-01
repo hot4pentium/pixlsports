@@ -140,12 +140,17 @@ test("native Prep updates the existing shared checklist, detects conflicts, and 
   const existing = (await pool.query(`INSERT INTO checklist_shares(owner_clerk_user_id,title,items,notes,selected_game)
     VALUES ($1,'Shared practice','[]','Old note',$2::jsonb) RETURNING id`, [a.owner, JSON.stringify({ id: a.eventId })])).rows[0].id;
   const initial = await nativeEventWorkspace(a.who, a.shareToken);
+  const items = [
+    { id: "water", label: "Bring water", completed: true },
+    { id: "custom-banner", label: "Pack the family banner", completed: true },
+  ];
   const command = a.command("prep", initial.prepRevision, {
-    items: [{ id: "water", label: "Bring water", completed: true }], notes: "Meet at entrance C",
+    items, notes: "Meet at entrance C",
   });
   const saved = await nativeEventWorkspace(a.who, a.shareToken, command);
   assert.equal(saved.prep.notes, "Meet at entrance C");
   assert.equal(saved.prep.items[0]?.completed, true);
+  assert.equal(saved.prep.items[1]?.completed, true, "a completed custom task must be saved with the default tasks");
   assert.equal(saved.prepRevision, initial.prepRevision + 1);
   const firstSaveRows = await pool.query(
     "SELECT id,revision,items FROM checklist_shares WHERE owner_clerk_user_id=$1 AND selected_game->>'id'=$2",
@@ -166,7 +171,7 @@ test("native Prep updates the existing shared checklist, detects conflicts, and 
   assert.equal(retryRows.rows[0].items[0]?.completed, true);
   const reopened = await nativeEventWorkspace(a.who, a.shareToken);
   assert.equal(reopened.prepRevision, committedRevision);
-  assert.equal(reopened.prep.items[0]?.completed, true, "the checkoff must remain saved when the workspace is reopened");
+  assert.deepEqual(reopened.prep.items, items, "the custom task and its checkoff must remain saved when reopened");
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("prep", 1, { items: [] })), denied(409));
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("start", 0)), denied(409));
 });

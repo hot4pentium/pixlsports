@@ -17,12 +17,54 @@ final class SupporterEventDetailUITests: XCTestCase {
     // Opt-in integration tests. Use a disposable development account already
     // signed in and linked on this simulator; never pass credentials to XCTest.
     // Unlike --ui-testing-prep-draft these use the real authenticated API.
-    func testSignedInQuickPrepCheckoffPersistsAfterSavingAndReopening() throws {
+    func testSignedInQuickPrepCheckoffAutosavesAndPersistsAfterReopening() throws {
         try checkSignedInPrepPersistence(dropFirstResponse: false)
     }
 
     func testSignedInQuickPrepLostResponseRetriesSameMutationAfterRelaunch() throws {
         try checkSignedInPrepPersistence(dropFirstResponse: true)
+    }
+
+    func testSignedInCustomPrepTaskAutosavesAndPersistsAfterRelaunch() throws {
+        guard let eventID = ProcessInfo.processInfo.environment["PIXL_PREP_TEST_EVENT_ID"],
+              !eventID.isEmpty else {
+            throw XCTSkip("Set PIXL_PREP_TEST_EVENT_ID to a dedicated development Event Card. Sign in and link its owner on this simulator first.")
+        }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-signed-in-prep"]
+        app.launch()
+        defer { app.terminate() }
+        openSignedInPrep(eventID: eventID, in: app)
+
+        let label = "Pack custom reminder \(UUID().uuidString.prefix(8))"
+        assertReachable("native-prep-manage-full", in: app).tap()
+        let taskField = assertReachable("native-prep-add-task", in: app)
+        taskField.tap()
+        taskField.typeText(label)
+        assertReachable("native-prep-add", in: app).tap()
+
+        let task = app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
+        XCTAssertTrue(task.waitForExistence(timeout: 10))
+        waitForPrepSavedAfterChange(in: app)
+        task.tap()
+        XCTAssertEqual(task.value as? String, "Ready")
+        waitForPrepSavedAfterChange(in: app)
+
+        app.terminate()
+        app.launch()
+        openSignedInPrep(eventID: eventID, in: app)
+        assertReachable("native-prep-manage-full", in: app).tap()
+        let restoredTask = app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
+        XCTAssertTrue(restoredTask.waitForExistence(timeout: 10))
+        XCTAssertEqual(restoredTask.value as? String, "Ready",
+                       "A custom task's completed state must survive a fresh app launch.")
+
+        restoredTask.press(forDuration: 1)
+        let removeTask = app.buttons["Remove task"].firstMatch
+        XCTAssertTrue(removeTask.waitForExistence(timeout: 5))
+        removeTask.tap()
+        waitForPrepSavedAfterChange(in: app)
     }
 
     func testSignedInTrackStatsOffersExplainedToolChoicesInLandscapeAtXXXL() throws {
@@ -278,8 +320,6 @@ final class SupporterEventDetailUITests: XCTestCase {
         let changedProgress = assertReachable("native-prep-checklist-toggle", in: app).value as? String ?? ""
         XCTAssertNotEqual(changedProgress, originalProgress)
         let save = assertReachable("native-prep-save", in: app)
-        XCTAssertTrue(save.isEnabled)
-        save.tap()
 
         if dropFirstResponse {
             let error = app.descendants(matching: .any)["native-tool-save-error"].firstMatch
@@ -303,14 +343,9 @@ final class SupporterEventDetailUITests: XCTestCase {
             app.launch()
             openSignedInPrep(eventID: eventID, in: app)
             XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, changedValue)
-            XCTAssertTrue(app.descendants(matching: .any)["native-tool-save-error"].exists)
-            let restoredRetry = assertReachable("native-tool-save-retry", in: app)
-            XCTAssertEqual(restoredRetry.value as? String, mutationID,
-                           "Relaunch must restore the same account/event-scoped mutation.")
-            restoredRetry.tap()
         }
 
-        waitForPrepSaved(in: app)
+        waitForPrepSavedAfterChange(in: app)
         reopenSignedInPrep(eventID: eventID, in: app)
         XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, changedValue,
                        "Fresh Event Details must load the server-confirmed checkoff.")
@@ -324,8 +359,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         // Restore the dedicated test item and verify that write too. Never
         // delete a card, clear all defaults, or modify a user's other tasks.
         reachableFromAbove(itemIdentifier, in: app).tap()
-        assertReachable("native-prep-save", in: app).tap()
-        waitForPrepSaved(in: app)
+        waitForPrepSavedAfterChange(in: app)
         reopenSignedInPrep(eventID: eventID, in: app)
         XCTAssertEqual(assertReachable(itemIdentifier, in: app).value as? String, originalValue)
         XCTAssertEqual(
@@ -539,7 +573,21 @@ final class SupporterEventDetailUITests: XCTestCase {
         app.buttons["event-card-share"].tap()
         assertSelectedStep("Share", in: app)
 
+        let sharePanel = app.descendants(matching: .any)["event-detail-tool-panel"].firstMatch
+        XCTAssertTrue(sharePanel.waitForExistence(timeout: 10))
+        XCTAssertFalse(sharePanel.staticTexts[fullShareDate(from: date)].exists,
+                       "Share should not repeat the date already shown in the hero.")
+        XCTAssertFalse(sharePanel.staticTexts[time].exists,
+                       "Share should not repeat the time already shown in the hero.")
+        XCTAssertFalse(sharePanel.staticTexts[location].exists,
+                       "Share should not repeat the location already shown in the hero.")
+
         var shareDetails = revealShareAction("native-event-share-details", in: app)
+        XCTAssertEqual(shareDetails.label, "Share event details")
+        if !accessibility {
+            XCTAssertLessThan(shareDetails.frame.height, 84,
+                              "The normal-size share action should stay compact.")
+        }
         XCTAssertTrue(shareDetails.isEnabled)
         XCTAssertGreaterThanOrEqual(shareDetails.frame.height, 44)
         var shareHypeCard = revealShareAction("native-event-share-hype-card", in: app)
@@ -698,6 +746,17 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Unsaved changes"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["native-tool-save-error"].exists)
         XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
+    }
+
+    private func waitForPrepSavedAfterChange(in app: XCUIApplication) {
+        let unsaved = app.staticTexts["Unsaved changes"]
+        let changesSettled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: unsaved
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [changesSettled], timeout: 30), .completed,
+                       "Checklist edits should save without requiring a manual Save Prep tap.")
+        waitForPrepSaved(in: app)
     }
 
     private func reopenSignedInPrep(eventID: String, in app: XCUIApplication) {

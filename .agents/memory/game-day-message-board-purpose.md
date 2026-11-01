@@ -15,6 +15,12 @@ For native iPhone, the Message Board should show event details beside the HYPE C
 
 **How to apply:** Use the PWA's behavior as the reference, preserve existing account-owned checklist and game history, and keep these actions inside the native journey.
 
+On the Share step, keep a compact “Share event details” action below the hero, without repeating the event title, date, time, or location. Keep the Athlete Showcase review action separate.
+
+**Why:** The user said the event information is redundant at the “Send the hype” stage because those details are already in the hero.
+
+**How to apply:** Keep the hero as the visible source of event details, but include the full details in the share-sheet payload. The compact action must remain easy to find and tap.
+
 Opened native Event Cards should use compact, organized details with Prep, Track Stats, and Share step buttons at the bottom. Each opens its native section, the recommended step is highlighted according to event timing, and the selected navigation step identifies the active tool. Do not add numbered step badges or repeat an event banner inside each tool.
 
 **Why:** The user requested less vertical detail layout and said the navigation already tells people which step is open; repeated event banners take space away from the task.

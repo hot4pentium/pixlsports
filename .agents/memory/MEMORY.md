@@ -135,3 +135,4 @@
 - [Draft HYPE Card section previews](draft-hype-card-section-preview.md) — onboarding uses local sample content for Replies, Stats, Taps, and Events without save or share requests.
 - [Public Showcase text reflow](public-showcase-text-reflow.md) — oversized error headings need breakable words and a constrained grid track to stay inside narrow screens.
 - [Game-day guidance and native event tools](game-day-message-board-purpose.md) — Message Board opens Event Details at the recommended step; each active native tool needs a distinct visual identity.
+- [Native Prep autosave](native-prep-autosave.md) — checklist task changes persist automatically; event notes remain on explicit save.

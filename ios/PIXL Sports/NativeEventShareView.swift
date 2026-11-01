@@ -30,66 +30,41 @@ struct NativeEventShareView: View {
     }
 
     private var eventShareCard: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(spacing: 9) {
+        ShareLink(item: shareText) {
+            HStack(spacing: 12) {
                 Image(systemName: "calendar")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(NativeEventToolColors.share)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        NativeEventToolColors.share.opacity(0.14),
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    )
                     .accessibilityHidden(true)
-                SupporterEyebrow(text: "Event details", color: NativeEventToolColors.share)
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(event.title)
-                    .font(.title3.weight(.black))
-                    .fontDesign(.rounded)
+                Text("Share event details")
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(event.formattedFullDate(timezone: zone)) · \(event.formattedTime(timezone: zone))")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SupporterHomeColors.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let location {
-                    Label(location, systemImage: "mappin.and.ellipse")
-                        .font(.subheadline)
-                        .foregroundStyle(SupporterHomeColors.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Spacer(minLength: 0)
+                Image(systemName: "square.and.arrow.up")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NativeEventToolColors.share)
+                    .accessibilityHidden(true)
             }
-
-            ShareLink(item: shareText) {
-                HStack(spacing: 9) {
-                    Image(systemName: "square.and.arrow.up")
-                    Text("Share event details")
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                    Image(systemName: "arrow.up.right")
-                }
-                .font(.subheadline.weight(.bold))
-                .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+            .background(SupporterCardBackground(cornerRadius: 17))
+            .overlay {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .strokeBorder(NativeEventToolColors.share.opacity(0.28), lineWidth: 1)
             }
-            .buttonStyle(SupporterPrimaryButtonStyle(fillColor: NativeEventToolColors.share))
-            .accessibilityIdentifier("native-event-share-details")
+            .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .accessibilityIdentifier("native-event-share-details-card")
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(red: 0.10, green: 0.20, blue: 0.34),
-                    SupporterHomeColors.panel
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(NativeEventToolColors.share.opacity(0.30), lineWidth: 1)
-        }
-        .supporterSurfaceShadow()
-        .accessibilityIdentifier("native-event-share-details-card")
+        .buttonStyle(.plain)
+        .accessibilityLabel("Share event details")
+        .accessibilityIdentifier("native-event-share-details")
     }
 
     private var hypeCardShareCard: some View {
