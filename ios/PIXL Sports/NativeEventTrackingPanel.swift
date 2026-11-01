@@ -3,6 +3,7 @@ import ClerkKit
 
 @MainActor
 struct NativeEventTrackingPanel: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let event: AthleteFanEvent
     let teamName: String
     let athleteName: String
@@ -118,7 +119,7 @@ struct NativeEventTrackingPanel: View {
             .frame(maxWidth: 560, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationBackground(SupporterHomeColors.background)
         .preferredColorScheme(.dark)
@@ -127,60 +128,18 @@ struct NativeEventTrackingPanel: View {
 
     private func modeChoice(_ mode: TrackingMode) -> some View {
         VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 8) {
-                Button {
-                    selectMode(mode)
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: mode.symbol)
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(NativeEventToolColors.trackStats)
-                            .frame(width: 42, height: 42)
-                            .background(
-                                NativeEventToolColors.trackStats.opacity(0.15),
-                                in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            )
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(mode.title)
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.white)
-                            Text(mode.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(SupporterHomeColors.muted)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "arrow.right")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(NativeEventToolColors.trackStats)
-                            .accessibilityHidden(true)
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) {
+                        modeChoiceButton(mode)
+                        modeHelpButton(mode)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(mode.title)
-                .accessibilityHint("Use \(mode.title) for this event.")
-                .accessibilityIdentifier("native-event-choice-\(mode.rawValue)")
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        expandedExplanation = expandedExplanation == mode ? nil : mode
+                } else {
+                    HStack(spacing: 8) {
+                        modeChoiceButton(mode)
+                        modeHelpButton(mode)
                     }
-                } label: {
-                    Image(systemName: expandedExplanation == mode ? "questionmark.circle.fill" : "questionmark.circle")
-                        .font(.title3.weight(.semibold))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(NativeEventToolColors.trackStats)
-                .accessibilityLabel("\(expandedExplanation == mode ? "Hide" : "Explain") \(mode.title)")
-                .accessibilityHint(
-                    "\(expandedExplanation == mode ? "Hide" : "Show") what \(mode.title) does."
-                )
-                .accessibilityIdentifier("native-event-mode-help-\(mode.rawValue)")
             }
 
             if expandedExplanation == mode {
@@ -198,6 +157,71 @@ struct NativeEventTrackingPanel: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(NativeEventToolColors.trackStats.opacity(0.32), lineWidth: 1)
         }
+    }
+
+    private func modeChoiceButton(_ mode: TrackingMode) -> some View {
+        Button {
+            selectMode(mode)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: mode.symbol)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(NativeEventToolColors.trackStats)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        NativeEventToolColors.trackStats.opacity(0.15),
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    )
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(mode.title)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text(mode.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "arrow.right")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NativeEventToolColors.trackStats)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(mode.title)
+        .accessibilityHint("Use \(mode.title) for this event.")
+        .accessibilityIdentifier("native-event-choice-\(mode.rawValue)")
+    }
+
+    private func modeHelpButton(_ mode: TrackingMode) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                expandedExplanation = expandedExplanation == mode ? nil : mode
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: expandedExplanation == mode ? "questionmark.circle.fill" : "questionmark.circle")
+                    .font(.title3.weight(.semibold))
+                if dynamicTypeSize.isAccessibilitySize {
+                    Text("\(expandedExplanation == mode ? "Hide" : "Explain") \(mode.title)")
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(NativeEventToolColors.trackStats)
+        .accessibilityLabel("\(expandedExplanation == mode ? "Hide" : "Explain") \(mode.title)")
+        .accessibilityValue(expandedExplanation == mode ? "Explanation shown" : "Explanation hidden")
+        .accessibilityHint(
+            "\(expandedExplanation == mode ? "Hide" : "Show") what \(mode.title) does."
+        )
+        .accessibilityIdentifier("native-event-mode-help-\(mode.rawValue)")
     }
 
     private var chooseTrackingToolPrompt: some View {

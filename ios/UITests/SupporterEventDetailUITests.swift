@@ -32,7 +32,11 @@ final class SupporterEventDetailUITests: XCTestCase {
         }
 
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing-signed-in-prep"]
+        app.launchArguments = [
+            "--ui-testing-signed-in-prep",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL"
+        ]
         app.launch()
         defer { app.terminate() }
         openSignedInPrep(eventID: eventID, in: app)
@@ -45,18 +49,41 @@ final class SupporterEventDetailUITests: XCTestCase {
         let liveTapsChoice = app.buttons["native-event-choice-liveTaps"]
         XCTAssertTrue(statTrackerChoice.waitForExistence(timeout: 10))
         XCTAssertTrue(liveTapsChoice.exists)
+        assertModeChoiceAndHelpReachable("statTracker", in: app)
+        assertModeChoiceAndHelpReachable("liveTaps", in: app)
 
-        app.buttons["native-event-mode-help-statTracker"].tap()
+        let statTrackerHelp = assertModeChooserReachable("native-event-mode-help-statTracker", in: app)
+        XCTAssertEqual(statTrackerHelp.label, "Explain Stat Tracker")
+        XCTAssertEqual(statTrackerHelp.value as? String, "Explanation hidden")
+        statTrackerHelp.tap()
         let statTrackerExplanation = app.staticTexts["native-event-mode-explanation-statTracker"]
         XCTAssertTrue(statTrackerExplanation.waitForExistence(timeout: 5))
+        XCTAssertTrue(statTrackerExplanation.isHittable)
         XCTAssertTrue(statTrackerExplanation.label.contains("team score"))
+        XCTAssertGreaterThan(statTrackerExplanation.frame.height, 0)
+        XCTAssertFalse(statTrackerExplanation.frame.intersects(statTrackerHelp.frame))
+        XCTAssertEqual(statTrackerHelp.label, "Hide Stat Tracker")
+        XCTAssertEqual(statTrackerHelp.value as? String, "Explanation shown")
 
-        app.buttons["native-event-mode-help-liveTaps"].tap()
+        let liveTapsHelp = assertModeChooserReachable("native-event-mode-help-liveTaps", in: app)
+        XCTAssertEqual(liveTapsHelp.label, "Explain Live Taps")
+        XCTAssertEqual(liveTapsHelp.value as? String, "Explanation hidden")
+        liveTapsHelp.tap()
         let liveTapsExplanation = app.staticTexts["native-event-mode-explanation-liveTaps"]
         XCTAssertTrue(liveTapsExplanation.waitForExistence(timeout: 5))
+        XCTAssertTrue(liveTapsExplanation.isHittable)
         XCTAssertTrue(liveTapsExplanation.label.contains("cheer-only"))
+        XCTAssertEqual(liveTapsHelp.label, "Hide Live Taps")
+        XCTAssertEqual(liveTapsHelp.value as? String, "Explanation shown")
+        XCTAssertFalse(liveTapsExplanation.frame.intersects(liveTapsHelp.frame))
+        let chooser = app.descendants(matching: .any)["native-event-mode-choice-sheet"]
+        XCTAssertTrue(chooser.exists)
+        try app.performAccessibilityAudit(for: [.textClipped, .hitRegion]) { issue in
+            guard let element = issue.element else { return false }
+            return !element.frame.intersects(chooser.frame)
+        }
 
-        statTrackerChoice.tap()
+        assertModeChooserReachable("native-event-choice-statTracker", in: app).tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["native-event-scorekeeping-card"].waitForExistence(timeout: 10)
         )
@@ -70,6 +97,33 @@ final class SupporterEventDetailUITests: XCTestCase {
             format: "label CONTAINS %@", "Start a cheer-only session for fans at the game"
         )).firstMatch
         XCTAssertTrue(liveTapsIntro.waitForExistence(timeout: 10))
+    }
+
+    private func assertModeChoiceAndHelpReachable(_ mode: String, in app: XCUIApplication) {
+        let choice = assertModeChooserReachable("native-event-choice-\(mode)", in: app)
+        let help = assertModeChooserReachable("native-event-mode-help-\(mode)", in: app)
+        XCTAssertGreaterThanOrEqual(choice.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(choice.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(help.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(help.frame.height, 44)
+        XCTAssertFalse(choice.frame.intersects(help.frame), "\(mode) choice and help hit targets must not overlap.")
+    }
+
+    @discardableResult
+    private func assertModeChooserReachable(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "Missing \(identifier)")
+        let chooser = app.descendants(matching: .any)["native-event-mode-choice-sheet"]
+        XCTAssertTrue(chooser.exists, "The tracking-mode chooser must remain open while scrolling.")
+        for _ in 0..<12 where !element.isHittable {
+            if element.frame.minY < chooser.frame.minY {
+                chooser.swipeDown()
+            } else {
+                chooser.swipeUp()
+            }
+        }
+        XCTAssertTrue(element.isHittable, "\(identifier) must remain reachable in the chooser")
+        return element
     }
 
     func testSignedInLiveTapsFanQRSurvivesTrackingToolSwitchAndCanBeRevoked() throws {
