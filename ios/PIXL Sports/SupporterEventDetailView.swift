@@ -169,7 +169,7 @@ struct SupporterEventDetailView: View {
                 if prepHasUnsavedChanges {
                     Label("Prep has unsaved edits", systemImage: "pencil.circle")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(SupporterHomeColors.accent)
+                        .foregroundStyle(SupporterHomeColors.accentText)
                 }
                 NativeEventToolPanel(
                     schedule: schedule, event: event,

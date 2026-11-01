@@ -573,9 +573,13 @@ async function recheckReminder(row: ReminderRow, now: Date) {
     || trackerRows.some((shareRow) => (shareRow.game as { status?: unknown })?.status === "final")) {
     return { eligible: false as const };
   }
+  const legacySubscriptionTimezone = settings.subscription?.timezone;
+  const fallbackTimezone = legacySubscriptionTimezone && isIanaTimezone(legacySubscriptionTimezone)
+    ? legacySubscriptionTimezone
+    : row.timezone;
   const timezone = preferences.timezone && isIanaTimezone(preferences.timezone)
     ? preferences.timezone
-    : isIanaTimezone(settings.subscription.timezone) ? settings.subscription.timezone : "UTC";
+    : fallbackTimezone;
   const enabled = row.reminderType === "day_of" ? preferences.dayOf : preferences.oneHourBefore;
   if (!enabled || timezone !== row.timezone) return { eligible: false as const };
 
@@ -956,7 +960,6 @@ export async function runScheduledGameOnReminders(now = new Date(), dependencies
       try {
         return await deliverClaimedReminder(item, now, send, maxSubscriptions);
       } catch (error) {
-        if (process.env["GAME_ON_REMINDER_TEST_DIAGNOSTICS"] === "1") console.error(error);
         // Unexpected local/database failures are not retried immediately. If
         // the process failed after contacting a provider, no blind resend is
         // safe; leave the claim to age into the uncertain state.

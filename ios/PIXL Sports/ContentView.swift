@@ -6,6 +6,8 @@ enum SupporterHomeColors {
     static let panel = Color(red: 0.075, green: 0.13, blue: 0.23)
     static let blue = Color(red: 0.16, green: 0.48, blue: 0.98)
     static let accent = Color(red: 0.72, green: 0.94, blue: 0.25)
+    // Darker brand-green for text placed directly on the white native canvas.
+    static let accentText = Color(red: 0.25, green: 0.38, blue: 0.02)
     static let muted = Color(red: 0.68, green: 0.75, blue: 0.86)
     static let lightMuted = Color(red: 0.34, green: 0.40, blue: 0.49)
 }
@@ -254,7 +256,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Capsule().fill(SupporterHomeColors.accent).frame(width: 22, height: 3)
-                    SupporterEyebrow(text: "Your season")
+                    SupporterEyebrow(text: "Your season", color: SupporterHomeColors.accentText)
                 }
                 Text("Your schedule")
                     .font(.largeTitle.weight(.black))

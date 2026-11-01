@@ -15,6 +15,12 @@ Use soft navy shadows beneath native blue containers and major cards to add sepa
 
 **How to apply:** Use a consistent, restrained shadow on section surfaces, large cards, and tool panels; do not add elevation to every button or badge.
 
+On the white native canvas, use a dark, contrast-checked green for text. Keep the bright lime for fills, icons, and text that sits on blue surfaces.
+
+**Why:** The user found lime-green text difficult to read against white.
+
+**How to apply:** Choose the semantic text color only for text on light surfaces; do not darken the brand fill or green accents on navy/blue cards.
+
 Keep the install action in the athlete overview header, not inside the Event Card. The paired mobile Event Card and HYPE Card should have equal face sizes and aligned top edges.
 
 **Why:** The user requested moving “How to install” to the header and making the Event Card and HYPE Card equal.

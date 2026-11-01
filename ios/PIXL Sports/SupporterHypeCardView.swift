@@ -22,7 +22,7 @@ struct SupporterHypeCardView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    SupporterEyebrow(text: "Player Showcase")
+                    SupporterEyebrow(text: "Player Showcase", color: SupporterHomeColors.accentText)
                     Text("HYPE Card")
                         .font(.largeTitle.weight(.black))
                         .fontDesign(.rounded)
@@ -126,7 +126,7 @@ struct SupporterHypeCardView: View {
         } else if let privateCard {
             Text("Private preview · only visible to your linked account")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(SupporterHomeColors.accent)
+                .foregroundStyle(SupporterHomeColors.accentText)
                 .accessibilityIdentifier("native-hype-card-private-preview")
             hypeCard(
                 athleteName: privateCard.athleteName,

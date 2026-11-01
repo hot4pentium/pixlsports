@@ -64,6 +64,7 @@
 - [Hosted video poster capture](hosted-video-poster-capture.md) — generate thumbnails from the finished clip; saved black posters need a viewer fallback.
 - [Clerk appearance stability](clerk-appearance-stability.md) — prefer theme variables and element classes over structural Clerk CSS selectors.
 - [Planner reminder preferences](planner-reminder-preferences.md) — day-of alerts use the saved account zone; one-hour alerts use the event zone, with subscription zone only as a legacy fallback.
+- [Native reminder timezone fallback](native-reminder-timezone-fallback.md) — native-only accounts use their saved alert zone, then the event zone; they have no browser subscription timezone.
 - [Planner subscription time zones](planner-subscription-timezones.md) — use account/event zones first; choose the latest subscription zone only when older preferences lack one.
 - [Push display receipts](push-display-receipts.md) — service-worker receipts confirm OS display acceptance, not that a user saw or read the alert.
 - [Cached startup browser timing](cached-startup-browser-timing.md) — compare cached readiness with delayed refresh completion instead of timing Vite dev-server startup tightly.

@@ -87,7 +87,7 @@ struct NativeCreateEventCardView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 7) {
-                        SupporterEyebrow(text: "YOUR SEASON")
+                        SupporterEyebrow(text: "YOUR SEASON", color: SupporterHomeColors.accentText)
                         Text(isEditing ? "Edit Event Card" : "Create an Event Card")
                             .font(.largeTitle.weight(.black))
                             .fontDesign(.rounded)
@@ -124,18 +124,18 @@ struct NativeCreateEventCardView: View {
                             displayedComponents: .date
                         )
                         .environment(\.timeZone, selectedTimeZone)
-                        .tint(SupporterHomeColors.accent)
+                        .tint(SupporterHomeColors.accentText)
 
                         DatePicker("Start time", selection: $eventTime, displayedComponents: .hourAndMinute)
                             .environment(\.timeZone, selectedTimeZone)
-                            .tint(SupporterHomeColors.accent)
+                            .tint(SupporterHomeColors.accentText)
 
                         Picker("Event time zone", selection: $timezone) {
                             ForEach(availableTimeZones, id: \.self) { zone in
                                 Text(zone).tag(zone)
                             }
                         }
-                        .tint(SupporterHomeColors.accent)
+                        .tint(SupporterHomeColors.accentText)
                         .onChange(of: timezone) { oldZone, newZone in
                             let selectedDate = Self.formatted(eventDate, pattern: "yyyy-MM-dd", timezone: oldZone)
                             let selectedTime = Self.formatted(eventTime, pattern: "HH:mm", timezone: oldZone)
