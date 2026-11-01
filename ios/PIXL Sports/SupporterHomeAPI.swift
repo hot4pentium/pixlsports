@@ -14,6 +14,38 @@ struct NativeHypeCardReference: Decodable {
     let status: String
     let inviteToken: String?
     let privatePreview: NativePrivateHypeCard?
+    let settings: NativeHypeCardSettings?
+}
+
+struct NativeHypeCardSettings: Decodable, Equatable {
+    let showHypeCard: Bool
+    let showStats: Bool
+    let showEvents: Bool
+    let paused: Bool
+    let favoriteMoment: String?
+}
+
+struct NativeHypeCardSettingsUpdate: Encodable {
+    let showHypeCard: Bool
+    let showStats: Bool
+    let showEvents: Bool
+    let paused: Bool
+    let favoriteMoment: String?
+    let confirmPublish: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case showHypeCard, showStats, showEvents, paused, favoriteMoment, confirmPublish
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(showHypeCard, forKey: .showHypeCard)
+        try container.encode(showStats, forKey: .showStats)
+        try container.encode(showEvents, forKey: .showEvents)
+        try container.encode(paused, forKey: .paused)
+        try container.encode(favoriteMoment, forKey: .favoriteMoment)
+        try container.encode(confirmPublish, forKey: .confirmPublish)
+    }
 }
 
 struct NativePrivateHypeCard: Decodable {
@@ -28,6 +60,7 @@ struct NativeSupporterHypeCardPreview {
     let publicCard: NativePublicHypeCard?
     let privateCard: NativePrivateHypeCard?
     let privatePhoto: Data?
+    let settings: NativeHypeCardSettings?
 }
 
 struct NativePublicHypeCard: Decodable {
@@ -38,8 +71,80 @@ struct NativePublicHypeCard: Decodable {
     let photoUrl: String?
     let cutoutUrl: String?
     let favoriteMoment: String?
+    let showEvents: Bool
+    let hypeCard: NativeHypeMedia?
+    let videos: [NativeHypeVideo]
+    let stats: NativeHypeStats?
+    let events: [NativeHypeEvent]
     var shareURL: URL? = nil
     var inviteToken: String? = nil
+}
+
+struct NativeHypeMedia: Decodable {
+    let shareToken: String
+    let title: String
+    let mediaName: String
+    let mediaType: String
+    let posterUrl: String?
+    let createdAt: String
+}
+
+struct NativeHypeVideo: Decodable, Identifiable {
+    let shareToken: String
+    let title: String
+    let mediaName: String
+    let jerseyNumber: String
+    let position: String
+    let videoUrl: String
+    let posterUrl: String?
+    let createdAt: String
+
+    var id: String { shareToken }
+}
+
+struct NativeHypeStats: Decodable {
+    struct Record: Decodable {
+        let wins: Int
+        let losses: Int
+        let ties: Int
+        let gamesPlayed: Int
+    }
+
+    struct Game: Decodable, Identifiable {
+        let date: String
+        let opponent: String
+        let score: Int
+        let opponentScore: Int
+        let scoreRecorded: Bool
+        let stats: [String: Int]
+        let athleteStats: [String: Int]
+
+        var id: String { "\(date)-\(opponent)" }
+    }
+
+    let athleteName: String
+    let sport: String
+    let gamesPlayed: Int
+    let score: Int
+    let record: Record
+    let games: [Game]
+    let stats: [String: Int]
+    let updatedAt: String
+}
+
+struct NativeHypeEvent: Decodable, Identifiable {
+    let shareToken: String
+    let eventId: String
+    let title: String
+    let date: String
+    let time: String
+    let type: String
+    let status: String
+    let opponent: String
+    let location: String
+    let timezone: String?
+
+    var id: String { shareToken }
 }
 
 struct AthleteFanEvent: Decodable, Identifiable {
@@ -267,17 +372,23 @@ enum SupporterHomeAPI {
 
         if reference.status == "available" {
             guard let inviteToken = reference.inviteToken,
+                  let settings = reference.settings,
+                  settings.showHypeCard,
+                  !settings.paused,
                   inviteToken.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil else {
                 throw SupporterHomeAPIError.invalidResponse
             }
             return NativeSupporterHypeCardPreview(
                 publicCard: try await fetchPublicHypeCard(inviteToken: inviteToken, client: client),
                 privateCard: nil,
-                privatePhoto: nil
+                privatePhoto: nil,
+                settings: settings
             )
         }
         if reference.status == "hidden" {
-            guard let privateCard = reference.privatePreview else {
+            guard let privateCard = reference.privatePreview,
+                  let settings = reference.settings,
+                  (!settings.showHypeCard || settings.paused) else {
                 throw SupporterHomeAPIError.invalidResponse
             }
             let privatePhoto = privateCard.hasPhoto
@@ -286,13 +397,31 @@ enum SupporterHomeAPI {
             return NativeSupporterHypeCardPreview(
                 publicCard: nil,
                 privateCard: privateCard,
-                privatePhoto: privatePhoto
+                privatePhoto: privatePhoto,
+                settings: settings
             )
         }
         guard reference.status == "unlinked" || reference.status == "no-card" else {
             throw SupporterHomeAPIError.invalidResponse
         }
-        return NativeSupporterHypeCardPreview(publicCard: nil, privateCard: nil, privatePhoto: nil)
+        return NativeSupporterHypeCardPreview(publicCard: nil, privateCard: nil, privatePhoto: nil, settings: nil)
+    }
+
+    static func updateNativeHypeCard(
+        settings: NativeHypeCardSettingsUpdate,
+        clerk: Clerk
+    ) async throws -> NativeHypeCardSettings {
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/hype-card",
+            body: settings,
+            method: "PATCH",
+            clerk: clerk
+        )
+        do {
+            return try JSONDecoder().decode(NativeHypeCardSettings.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
     }
 
     private static func fetchPublicHypeCard(

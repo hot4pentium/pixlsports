@@ -617,6 +617,15 @@ final class SupporterEventDetailUITests: XCTestCase {
                           "The preview is clearly marked as private.")
             XCTAssertFalse(app.buttons["native-hype-card-share"].exists,
                            "A private preview must not offer public sharing.")
+            XCTAssertFalse(app.buttons["native-hype-card-side-videos"].exists)
+            XCTAssertFalse(app.buttons["native-hype-card-side-stats"].exists)
+            XCTAssertFalse(app.buttons["native-hype-card-side-events"].exists)
+            XCTAssertTrue(app.descendants(matching: .any)["native-hype-card-owner-settings"].exists,
+                          "The linked owner can manage the selected HYPE Card.")
+            XCTAssertTrue(app.switches["native-hype-card-toggle-public"].exists,
+                          "Visibility controls are present for the owner, not the public card.")
+            XCTAssertTrue(app.textFields["native-hype-card-favorite-moment"].exists,
+                          "The owner can edit the card’s supported favorite-moment content.")
             let refresh = app.buttons["native-hype-card-refresh"]
             XCTAssertTrue(refresh.waitForExistence(timeout: 10),
                           "Families can refresh the private preview while it is open.")
@@ -635,6 +644,25 @@ final class SupporterEventDetailUITests: XCTestCase {
                           "The Event Card action must open the selected athlete’s HYPE Card.")
             XCTAssertTrue(app.buttons["native-hype-card-share"].exists,
                           "Sharing remains an explicit action after reviewing the card.")
+            XCTAssertTrue(app.buttons["native-hype-card-side-front"].exists)
+            XCTAssertTrue(app.buttons["native-hype-card-side-videos"].exists)
+            app.buttons["native-hype-card-side-videos"].tap()
+            XCTAssertTrue(app.descendants(matching: .any)["native-hype-card-videos"].waitForExistence(timeout: 5),
+                          "The HYPE Card exposes its native Videos side.")
+            XCTAssertTrue(app.descendants(matching: .any)["native-hype-card-owner-settings"].exists,
+                          "Owner settings stay available while reviewing a public card.")
+            for (side, content) in [
+                ("stats", "native-hype-card-stats"),
+                ("events", "native-hype-card-events"),
+            ] {
+                let tab = app.buttons["native-hype-card-side-\(side)"]
+                if tab.exists {
+                    tab.tap()
+                    XCTAssertTrue(app.descendants(matching: .any)[content].waitForExistence(timeout: 5),
+                                  "The enabled \(side) side should open in the native card.")
+                }
+            }
+            app.buttons["native-hype-card-side-front"].tap()
         }
         XCTAssertFalse(app.otherElements["ActivityListView"].exists,
                        "Opening the HYPE Card must not launch another share sheet.")

@@ -2921,6 +2921,62 @@ export interface AthleteInviteLiveScoreboard {
   teamName: string;
 }
 
+export type NativeSupporterHypeCardStatus = typeof NativeSupporterHypeCardStatus[keyof typeof NativeSupporterHypeCardStatus];
+
+
+export const NativeSupporterHypeCardStatus = {
+  unlinked: 'unlinked',
+  'no-card': 'no-card',
+  hidden: 'hidden',
+  available: 'available',
+} as const;
+
+export interface NativePrivateHypeCard {
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
+  hasPhoto: boolean;
+}
+
+export interface NativeSupporterHypeCardSettings {
+  showHypeCard: boolean;
+  showStats: boolean;
+  showEvents: boolean;
+  paused: boolean;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
+}
+
+export interface NativeSupporterHypeCard {
+  status: NativeSupporterHypeCardStatus;
+  /** Present only when the owner has enabled public HYPE Card access. */
+  inviteToken?: string;
+  privatePreview?: NativePrivateHypeCard;
+  settings?: NativeSupporterHypeCardSettings;
+}
+
+export interface NativeSupporterHypeCardUpdate {
+  showHypeCard: boolean;
+  showStats: boolean;
+  showEvents: boolean;
+  paused: boolean;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  favoriteMoment: string | null;
+  /** Must be true when an update makes a private or paused card public. */
+  confirmPublish: boolean;
+}
+
 export type PublicAthleteFanCardSport = typeof PublicAthleteFanCardSport[keyof typeof PublicAthleteFanCardSport];
 
 

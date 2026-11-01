@@ -4005,6 +4005,65 @@ export const GetAthleteFanCardResponse = zod.object({
 
 
 /**
+ * Returns a public card reference only when server-side visibility permits it; private previews never include a public token or private photo URL.
+ * @summary Load the selected athlete’s HYPE Card for its linked iPhone owner
+ */
+export const getNativeSupporterHypeCardResponsePrivatePreviewFavoriteMomentMax = 160;
+
+export const getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax = 160;
+
+
+
+export const GetNativeSupporterHypeCardResponse = zod.object({
+  "status": zod.enum(['unlinked', 'no-card', 'hidden', 'available']),
+  "inviteToken": zod.string().optional().describe('Present only when the owner has enabled public HYPE Card access.'),
+  "privatePreview": zod.object({
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
+  "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponsePrivatePreviewFavoriteMomentMax).nullable(),
+  "hasPhoto": zod.boolean()
+}).optional(),
+  "settings": zod.object({
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showEvents": zod.boolean(),
+  "paused": zod.boolean(),
+  "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax).nullable()
+}).optional()
+})
+
+
+/**
+ * @summary Update the selected athlete’s HYPE Card settings from its linked iPhone owner
+ */
+export const updateNativeSupporterHypeCardBodyFavoriteMomentMax = 160;
+
+
+
+export const UpdateNativeSupporterHypeCardBody = zod.object({
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showEvents": zod.boolean(),
+  "paused": zod.boolean(),
+  "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardBodyFavoriteMomentMax).nullable(),
+  "confirmPublish": zod.boolean().describe('Must be true when an update makes a private or paused card public.')
+})
+
+export const updateNativeSupporterHypeCardResponseFavoriteMomentMax = 160;
+
+
+
+export const UpdateNativeSupporterHypeCardResponse = zod.object({
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showEvents": zod.boolean(),
+  "paused": zod.boolean(),
+  "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardResponseFavoriteMomentMax).nullable()
+})
+
+
+/**
  * Returns only the earned equipment and selected jersey look. HYPE Card responses do not include gear.
  * @summary Get earned gear for the public jersey showcase
  */

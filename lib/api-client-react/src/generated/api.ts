@@ -103,6 +103,9 @@ import type {
   NativeLinkDecisionInput,
   NativeLinkProofInput,
   NativeLinkState,
+  NativeSupporterHypeCard,
+  NativeSupporterHypeCardSettings,
+  NativeSupporterHypeCardUpdate,
   NotFoundResponse,
   NotificationConfig,
   NotificationDisplayReceiptInput,
@@ -5551,6 +5554,172 @@ export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthlet
 
 
 
+
+export const getGetNativeSupporterHypeCardUrl = () => {
+
+
+
+
+  return `/api/native/supporter/hype-card`
+}
+
+/**
+ * Returns a public card reference only when server-side visibility permits it; private previews never include a public token or private photo URL.
+ * @summary Load the selected athlete’s HYPE Card for its linked iPhone owner
+ */
+export const getNativeSupporterHypeCard = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeSupporterHypeCard> => {
+
+  return customFetch<NativeSupporterHypeCard>(getGetNativeSupporterHypeCardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeSupporterHypeCardQueryKey = () => {
+    return [
+    `/api/native/supporter/hype-card`
+    ] as const;
+    }
+
+
+export const getGetNativeSupporterHypeCardQueryOptions = <TData = Awaited<ReturnType<typeof getNativeSupporterHypeCard>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterHypeCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeSupporterHypeCardQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeSupporterHypeCard>>> = ({ signal }) => getNativeSupporterHypeCard({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterHypeCard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeSupporterHypeCardQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeSupporterHypeCard>>>
+export type GetNativeSupporterHypeCardQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Load the selected athlete’s HYPE Card for its linked iPhone owner
+ */
+
+export function useGetNativeSupporterHypeCard<TData = Awaited<ReturnType<typeof getNativeSupporterHypeCard>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterHypeCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeSupporterHypeCardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateNativeSupporterHypeCardUrl = () => {
+
+
+
+
+  return `/api/native/supporter/hype-card`
+}
+
+/**
+ * @summary Update the selected athlete’s HYPE Card settings from its linked iPhone owner
+ */
+export const updateNativeSupporterHypeCard = async (nativeSupporterHypeCardUpdate: NativeSupporterHypeCardUpdate, options?: Parameters<typeof customFetch>[1]): Promise<NativeSupporterHypeCardSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeSupporterHypeCardSettings>(getUpdateNativeSupporterHypeCardUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeSupporterHypeCardUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateNativeSupporterHypeCardMutationKey = () => ['updateNativeSupporterHypeCard'] as const;
+
+export const getUpdateNativeSupporterHypeCardMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>, TError,UpdateNativeSupporterHypeCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>, TError,UpdateNativeSupporterHypeCardMutationVariables, TContext> => {
+
+const mutationKey = getUpdateNativeSupporterHypeCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>, UpdateNativeSupporterHypeCardMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateNativeSupporterHypeCard(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateNativeSupporterHypeCardMutationResult = NonNullable<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>>
+    export type UpdateNativeSupporterHypeCardMutationBody = BodyType<NativeSupporterHypeCardUpdate>
+    export type UpdateNativeSupporterHypeCardMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type UpdateNativeSupporterHypeCardMutationVariables = {data: BodyType<NativeSupporterHypeCardUpdate>}
+
+    /**
+ * @summary Update the selected athlete’s HYPE Card settings from its linked iPhone owner
+ */
+export const useUpdateNativeSupporterHypeCard = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>, TError,UpdateNativeSupporterHypeCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>,
+        TError,
+        UpdateNativeSupporterHypeCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateNativeSupporterHypeCardMutationOptions(options));
+    }
 
 export const getGetPublicJerseyShowcaseGearUrl = (inviteToken: string,) => {
 

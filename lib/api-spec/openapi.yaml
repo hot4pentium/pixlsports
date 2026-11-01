@@ -1369,6 +1369,46 @@ paths:
                 $ref: "#/components/schemas/PublicAthleteFanCard"
         "404":
           $ref: "#/components/responses/NotFound"
+  /native/supporter/hype-card:
+    get:
+      operationId: getNativeSupporterHypeCard
+      tags: [athlete-invites]
+      summary: Load the selected athlete’s HYPE Card for its linked iPhone owner
+      description: Returns a public card reference only when server-side visibility permits it; private previews never include a public token or private photo URL.
+      responses:
+        "200":
+          description: Owner-only HYPE Card preview and settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSupporterHypeCard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateNativeSupporterHypeCard
+      tags: [athlete-invites]
+      summary: Update the selected athlete’s HYPE Card settings from its linked iPhone owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NativeSupporterHypeCardUpdate"
+      responses:
+        "200":
+          description: Saved owner-only HYPE Card settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSupporterHypeCardSettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/jersey-showcase/gear:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -5128,6 +5168,44 @@ components:
         period: { type: ["number", "null"] }
         athleteName: { type: string, maxLength: 100 }
         teamName: { type: string, maxLength: 160 }
+    NativeSupporterHypeCard:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [unlinked, no-card, hidden, available] }
+        inviteToken: { type: string, description: Present only when the owner has enabled public HYPE Card access. }
+        privatePreview:
+          $ref: "#/components/schemas/NativePrivateHypeCard"
+        settings:
+          $ref: "#/components/schemas/NativeSupporterHypeCardSettings"
+    NativePrivateHypeCard:
+      type: object
+      required: [athleteName, teamName, seasonName, favoriteMoment, hasPhoto]
+      properties:
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        favoriteMoment: { type: ["string", "null"], maxLength: 160 }
+        hasPhoto: { type: boolean }
+    NativeSupporterHypeCardSettings:
+      type: object
+      required: [showHypeCard, showStats, showEvents, paused, favoriteMoment]
+      properties:
+        showHypeCard: { type: boolean }
+        showStats: { type: boolean }
+        showEvents: { type: boolean }
+        paused: { type: boolean }
+        favoriteMoment: { type: ["string", "null"], maxLength: 160 }
+    NativeSupporterHypeCardUpdate:
+      type: object
+      required: [showHypeCard, showStats, showEvents, paused, favoriteMoment, confirmPublish]
+      properties:
+        showHypeCard: { type: boolean }
+        showStats: { type: boolean }
+        showEvents: { type: boolean }
+        paused: { type: boolean }
+        favoriteMoment: { type: ["string", "null"], maxLength: 160 }
+        confirmPublish: { type: boolean, description: Must be true when an update makes a private or paused card public. }
     PublicAthleteFanCard:
       type: object
       required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveScoreboard, liveTaps, hypesEnabled, updatedAt, favoriteMoment]

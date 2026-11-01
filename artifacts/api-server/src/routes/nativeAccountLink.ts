@@ -4,7 +4,8 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import {
   BeginNativeAccountLinkBody, PollNativeAccountLinkBody,
   PreviewWebNativeAccountLinkBody, DecideWebNativeAccountLinkBody,
-  CreateScheduleShareBody,
+  CreateScheduleShareBody, GetNativeSupporterHypeCardResponse,
+  UpdateNativeSupporterHypeCardBody, UpdateNativeSupporterHypeCardResponse,
 } from "@workspace/api-zod";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
@@ -16,6 +17,7 @@ import {
 import {
   loadNativeSupporterHypeCard,
   loadNativeSupporterHypeCardPhoto,
+  updateNativeSupporterHypeCard,
 } from "../lib/nativeSupporterHypeCard";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
@@ -343,7 +345,13 @@ nativeAccountLinkRouter.patch("/supporter/event-cards/:shareToken", handle(async
   res.json({ shareToken: updated.shareToken, eventId: updated.eventId });
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
-  res.json(await loadNativeSupporterHypeCard(identity(res)));
+  res.json(GetNativeSupporterHypeCardResponse.parse(await loadNativeSupporterHypeCard(identity(res))));
+}));
+nativeAccountLinkRouter.patch("/supporter/hype-card", handle(async (req, res) => {
+  const parsed = UpdateNativeSupporterHypeCardBody.strict().safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Check the HYPE Card settings and try again.");
+  const updated = await updateNativeSupporterHypeCard(identity(res), parsed.data);
+  res.json(UpdateNativeSupporterHypeCardResponse.parse(updated));
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card/photo", handle(async (_req, res) => {
   const photo = await loadNativeSupporterHypeCardPhoto(identity(res), "photo");

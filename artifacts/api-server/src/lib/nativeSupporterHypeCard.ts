@@ -2,12 +2,25 @@ import { createClerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { ObjectNotFoundError, ObjectStorageService } from "./objectStorage";
-import type { NativeIdentity } from "./nativeIdentity";
+import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 
 export type NativeHypeCardReference = {
   status: "unlinked" | "no-card" | "hidden" | "available";
   inviteToken?: string;
   privatePreview?: NativePrivateHypeCard;
+  settings?: NativeHypeCardSettings;
+};
+
+export type NativeHypeCardSettings = {
+  showHypeCard: boolean;
+  showStats: boolean;
+  showEvents: boolean;
+  paused: boolean;
+  favoriteMoment: string | null;
+};
+
+export type NativeHypeCardSettingsUpdate = NativeHypeCardSettings & {
+  confirmPublish: boolean;
 };
 
 export type NativePrivateHypeCard = {
@@ -26,6 +39,23 @@ export type SelectedAthlete = {
 type ProfileLookup = (ownerClerkUserId: string) => Promise<SelectedAthlete>;
 type PhotoRole = "photo" | "cutout";
 const photoStorage = new ObjectStorageService();
+const normalize = (value: string) => value.trim().toLocaleLowerCase("en-US");
+
+function settingsFor(invite: {
+  show_hype_card: boolean;
+  show_stats: boolean;
+  show_events: boolean;
+  paused: boolean;
+  favorite_moment: string | null;
+}): NativeHypeCardSettings {
+  return {
+    showHypeCard: invite.show_hype_card,
+    showStats: invite.show_stats,
+    showEvents: invite.show_events,
+    paused: invite.paused,
+    favoriteMoment: invite.favorite_moment,
+  };
+}
 
 async function selectedProfile(ownerClerkUserId: string): Promise<SelectedAthlete> {
   const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -87,18 +117,20 @@ export async function loadNativeSupporterHypeCard(
       season_name: string;
       paused: boolean;
       show_hype_card: boolean;
+      show_stats: boolean;
+      show_events: boolean;
       favorite_moment: string | null;
       photo_object_path: string | null;
       cutout_object_path: string | null;
     }>(
       `SELECT public_token, athlete_name, team_name, season_name, paused, show_hype_card,
+              show_stats, show_events,
               favorite_moment, photo_object_path, cutout_object_path
        FROM athlete_invites
        WHERE owner_clerk_user_id=$1
        ORDER BY created_at DESC`,
       [owner],
     );
-    const normalize = (value: string) => value.trim().toLocaleLowerCase("en-US");
     const athlete = normalize(profile.athleteName);
     const team = normalize(profile.teamName);
     const matches = invites.rows.filter((candidate) =>
@@ -122,9 +154,148 @@ export async function loadNativeSupporterHypeCard(
           favoriteMoment: invite.favorite_moment,
           hasPhoto: Boolean(invite.cutout_object_path || invite.photo_object_path),
         },
+        settings: settingsFor(invite),
       };
     }
-    return { status: "available", inviteToken: invite.public_token };
+    return {
+      status: "available",
+      inviteToken: invite.public_token,
+      settings: settingsFor(invite),
+    };
+  } catch (error) {
+    await tx.query("ROLLBACK");
+    throw error;
+  } finally {
+    tx.release();
+  }
+}
+
+/**
+ * Update only the selected athlete's HYPE Card controls. A private or paused
+ * card requires an explicit confirmation before this write can make it public.
+ */
+export async function updateNativeSupporterHypeCard(
+  identity: NativeIdentity,
+  update: NativeHypeCardSettingsUpdate,
+  lookupProfile: ProfileLookup = selectedProfile,
+): Promise<NativeHypeCardSettings> {
+  const linked = await pool.query<{ owner_clerk_user_id: string }>(
+    `SELECT owner_clerk_user_id
+     FROM native_account_links
+     WHERE native_issuer=$1 AND native_subject=$2
+     LIMIT 1`,
+    [identity.issuer, identity.subject],
+  );
+  const owner = linked.rows[0]?.owner_clerk_user_id;
+  if (!owner) throw new NativeLinkError(404, "The linked PIXL account is unavailable.");
+
+  await assertLinkableWebAccount(
+    owner,
+    undefined,
+    "This PIXL account can’t manage HYPE Card privacy right now. Check its account status on PIXL Sports.",
+  );
+  const profile = await lookupProfile(owner);
+  if (!profile.athleteName) {
+    throw new NativeLinkError(404, "Select an athlete in the linked PIXL account first.");
+  }
+
+  const tx = await pool.connect();
+  try {
+    await tx.query("BEGIN");
+    const currentLink = await tx.query<{ owner_clerk_user_id: string }>(
+      `SELECT owner_clerk_user_id
+       FROM native_account_links
+       WHERE native_issuer=$1 AND native_subject=$2
+       FOR SHARE`,
+      [identity.issuer, identity.subject],
+    );
+    if (currentLink.rows[0]?.owner_clerk_user_id !== owner) {
+      throw new NativeLinkError(404, "The linked PIXL account is unavailable.");
+    }
+    await assertLinkableWebAccount(
+      owner,
+      tx,
+      "This PIXL account can’t manage HYPE Card privacy right now. Check its account status on PIXL Sports.",
+    );
+
+    const candidates = await tx.query<{
+      id: string;
+      athlete_name: string;
+      team_name: string;
+    }>(
+      `SELECT id, athlete_name, team_name
+       FROM athlete_invites
+       WHERE owner_clerk_user_id=$1
+       ORDER BY created_at DESC`,
+      [owner],
+    );
+    const athlete = normalize(profile.athleteName);
+    const team = normalize(profile.teamName);
+    const matches = candidates.rows.filter((candidate) =>
+      normalize(candidate.athlete_name) === athlete
+      && (!team || normalize(candidate.team_name) === team),
+    );
+    if (!team && new Set(matches.map((candidate) => normalize(candidate.team_name))).size > 1) {
+      throw new NativeLinkError(409, "Choose a team for the selected athlete before editing this HYPE Card.");
+    }
+    const match = matches[0];
+    if (!match) throw new NativeLinkError(404, "No HYPE Card matches the selected athlete and team.");
+
+    const selected = await tx.query<{
+      show_hype_card: boolean;
+      show_stats: boolean;
+      show_events: boolean;
+      paused: boolean;
+      favorite_moment: string | null;
+      live_tracker_share_token: string | null;
+    }>(
+      `SELECT show_hype_card, show_stats, show_events, paused,
+              favorite_moment, live_tracker_share_token
+       FROM athlete_invites
+       WHERE id=$1 AND owner_clerk_user_id=$2
+       FOR UPDATE`,
+      [match.id, owner],
+    );
+    const current = selected.rows[0];
+    if (!current) throw new NativeLinkError(404, "No HYPE Card matches the selected athlete and team.");
+
+    const becomesPublic = update.showHypeCard && !update.paused
+      && (!current.show_hype_card || current.paused);
+    if (becomesPublic && !update.confirmPublish) {
+      throw new NativeLinkError(400, "Confirm that you want to make this HYPE Card public.");
+    }
+
+    const favoriteMoment = update.favoriteMoment?.trim() || null;
+    await tx.query(
+      `UPDATE athlete_invites
+       SET show_hype_card=$1, show_stats=$2, show_events=$3, paused=$4,
+           favorite_moment=$5, live_tracker_share_token=CASE WHEN $4 THEN NULL ELSE live_tracker_share_token END,
+           updated_at=NOW()
+       WHERE id=$6 AND owner_clerk_user_id=$7`,
+      [
+        update.showHypeCard,
+        update.showStats,
+        update.showEvents,
+        update.paused,
+        favoriteMoment,
+        match.id,
+        owner,
+      ],
+    );
+    if (update.paused && current.live_tracker_share_token) {
+      await tx.query(
+        "DELETE FROM stat_tracker_shares WHERE id=$1 AND owner_clerk_user_id=$2",
+        [current.live_tracker_share_token, owner],
+      );
+    }
+    await tx.query("COMMIT");
+    return {
+      showHypeCard: update.showHypeCard,
+      showStats: update.showStats,
+      showEvents: update.showEvents,
+      paused: update.paused,
+      favoriteMoment,
+    };
   } catch (error) {
     await tx.query("ROLLBACK");
     throw error;
