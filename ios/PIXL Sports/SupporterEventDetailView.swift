@@ -408,7 +408,7 @@ struct SupporterEventDetailView: View {
             ? "Location to be announced"
             : event.location
 
-        Group {
+        return Group {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 10) {
                     detailRow(icon: "calendar", label: "DATE", value: date)
