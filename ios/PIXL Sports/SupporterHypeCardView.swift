@@ -776,7 +776,7 @@ struct SupporterHypeCardView: View {
     }
 
     private var photoURL: URL? {
-        guard let photo = card?.cutoutUrl ?? card?.photoUrl else { return nil }
+        guard let photo = card?.photoUrl ?? card?.cutoutUrl else { return nil }
         return publicMediaURL(photo)
     }
 
@@ -789,69 +789,11 @@ struct SupporterHypeCardView: View {
         privatePhoto: UIImage?
     ) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            GeometryReader { geometry in
-                ZStack(alignment: .bottomLeading) {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [SupporterHomeColors.blue.opacity(0.9), SupporterHomeColors.panel, SupporterHomeColors.background],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-
-                    if let privatePhoto {
-                        Image(uiImage: privatePhoto)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                            .clipped()
-                            .accessibilityLabel("\(athleteName)’s photo")
-                    } else if let url = photoURL {
-                        AsyncImage(url: url) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: {
-                            athleteSilhouette
-                        }
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
-                        .accessibilityLabel("\(athleteName)’s photo")
-                    } else {
-                        athleteSilhouette
-                    }
-
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.05), .black.opacity(0.82)],
-                        startPoint: .center,
-                        endPoint: .bottom
-                    )
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("PIXL SPORTS · HYPE CARD")
-                            .font(.caption2.weight(.black))
-                            .tracking(1.6)
-                            .foregroundStyle(SupporterHomeColors.accent)
-                        Text(athleteName)
-                            .font(.largeTitle.weight(.black))
-                            .fontDesign(.rounded)
-                            .foregroundStyle(.white)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.7)
-                        Text([teamName, seasonName].filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white.opacity(0.88))
-                            .lineLimit(2)
-                    }
-                    .padding(20)
-                }
-                .frame(width: geometry.size.width, height: geometry.size.height)
-            }
-            .aspectRatio(2.0 / 3.0, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(SupporterHomeColors.blue.opacity(0.85), lineWidth: 2)
-            }
+            NativeHypeCardFront(
+                athleteName: athleteName, teamName: teamName, seasonName: seasonName,
+                photoURL: photoURL, privatePhoto: privatePhoto,
+                identityDetails: athleteProfile?.displayDetails ?? ""
+            )
             .supporterSurfaceShadow()
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(athleteName), \(teamName), \(seasonName), HYPE Card")

@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import ClerkKit
+import UIKit
 
 enum SupporterEventTiming: Equatable {
     case upcoming
@@ -22,8 +23,10 @@ final class SupporterHomeViewModel: ObservableObject {
     }
 
     @Published private(set) var state: State = .loading
-    @Published private(set) var hypeCardPreview: NativePublicHypeCard?
+    @Published private(set) var hypeCardPreview: NativeSupporterHypeCardPreview?
+    @Published private(set) var hypeCardPrivatePhoto: UIImage?
     @Published private(set) var hypeCardPreviewError: String?
+    private var hypePreviewRequestID = UUID()
     @Published private(set) var athleteProfile: NativeSupporterProfile?
     @Published private(set) var athleteProfileError: String?
     @Published private(set) var hasResolvedAthleteProfile = false
@@ -132,8 +135,12 @@ final class SupporterHomeViewModel: ObservableObject {
     }
 
     func load(clerk: Clerk, forceProfileReload: Bool = false) async {
+        let previewRequestID = UUID()
+        let previewUserID = clerk.user?.id
+        hypePreviewRequestID = previewRequestID
         state = .loading
         hypeCardPreview = nil
+        hypeCardPrivatePhoto = nil
         hypeCardPreviewError = nil
         do {
             let page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
@@ -173,10 +180,31 @@ final class SupporterHomeViewModel: ObservableObject {
                 }
             }
             do {
-                hypeCardPreview = try await SupporterHomeAPI.fetchPublicHypeCard(clerk: clerk)
+                let preview = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
+                guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
+                      clerk.user?.id == previewUserID else { return }
+                let cardName = preview.publicCard?.athleteName ?? preview.privateCard?.athleteName
+                let cardTeam = preview.publicCard?.teamName ?? preview.privateCard?.teamName ?? ""
+                let expectedName = athleteProfile?.athleteName ?? page.athleteName ?? ""
+                let expectedTeam = athleteProfile?.teamName ?? page.teamName ?? ""
+                let normalize: (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                let identityMatches = cardName.map {
+                    !normalize(expectedName).isEmpty && normalize($0) == normalize(expectedName)
+                        && (normalize(expectedTeam).isEmpty || normalize(cardTeam) == normalize(expectedTeam))
+                } ?? true
+                if preview.identityMismatch || !identityMatches {
+                    hypeCardPreviewError = "Review the HYPE Card identity before showing its photo here."
+                } else {
+                    hypeCardPreview = preview
+                    hypeCardPrivatePhoto = preview.privatePhoto.flatMap(UIImage.init(data:))
+                    if preview.privatePhoto != nil && hypeCardPrivatePhoto == nil {
+                        hypeCardPreviewError = "The HYPE Card photo could not be displayed. Open the card to try again."
+                    }
+                }
             } catch is CancellationError {
                 return
             } catch {
+                guard hypePreviewRequestID == previewRequestID, clerk.user?.id == previewUserID else { return }
                 hypeCardPreviewError = error.localizedDescription
             }
             guard !Task.isCancelled else { return }

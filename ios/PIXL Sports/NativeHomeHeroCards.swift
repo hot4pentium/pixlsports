@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A compact, schedule-aware pair of supporter dashboard actions.
 struct NativeHomeHeroCards: View {
@@ -9,7 +10,9 @@ struct NativeHomeHeroCards: View {
     let scheduleTimezone: String?
     let nextEvent: AthleteFanEvent?
     let eventTiming: SupporterEventTiming?
+    let seasonName: String
     let hypePhotoURL: String?
+    let hypePrivatePhoto: UIImage?
     let hypePreviewFailed: Bool
     let onOpenEvent: () -> Void
     let onOpenHypeCard: () -> Void
@@ -42,8 +45,7 @@ struct NativeHomeHeroCards: View {
     }
 
     private var validHypePhotoURL: URL? {
-        guard let hypePhotoURL, let url = URL(string: hypePhotoURL), url.scheme == "https" else { return nil }
-        return url
+        NativeHypeCardFront.publicPhotoURL(hypePhotoURL)
     }
 
     var body: some View {
@@ -68,7 +70,7 @@ struct NativeHomeHeroCards: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(hypePreviewFailed
                 ? "HYPE Card preview did not load. Tap to open the HYPE Card and try again."
-                : "HYPE Card for \(athleteName)\(teamName.map { ", \($0)" } ?? "").")
+                : "HYPE Card for \(athleteName)\(teamName.map { ", \($0)" } ?? "")\(hypePrivatePhoto != nil || validHypePhotoURL != nil ? ", with athlete photo" : "").")
             .accessibilityHint("Opens the athlete’s HYPE Card.")
             .accessibilityIdentifier("dashboard-hype-card")
         }
@@ -176,106 +178,19 @@ struct NativeHomeHeroCards: View {
     }
 
     private var hypeCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("PIXL")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .tracking(1.3)
+        NativeHypeCardFront(
+            athleteName: athleteName, teamName: teamName ?? "", seasonName: seasonName,
+            photoURL: validHypePhotoURL, privatePhoto: hypePrivatePhoto,
+            identityDetails: athleteDetails
+        )
+        .frame(maxWidth: .infinity, minHeight: 284, alignment: .center)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            if hypePreviewFailed {
+                Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(SupporterHomeColors.accent)
-                Spacer(minLength: 0)
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(.white.opacity(0.78))
-                    .accessibilityHidden(true)
+                    .padding(12)
             }
-
-            Spacer(minLength: 2)
-
-            if validHypePhotoURL == nil {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(SupporterHomeColors.blue.opacity(0.25))
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .strokeBorder(SupporterHomeColors.accent.opacity(0.65), lineWidth: 1)
-                    if hypePreviewFailed {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(SupporterHomeColors.accent)
-                    } else {
-                        Text("H")
-                            .font(.system(size: 27, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-                            .overlay(alignment: .bottomTrailing) {
-                                Circle()
-                                    .fill(SupporterHomeColors.accent)
-                                    .frame(width: 7, height: 7)
-                                    .offset(x: 3, y: 2)
-                            }
-                    }
-                }
-                .frame(width: 42, height: 42)
-                .accessibilityHidden(true)
-            } else {
-                Spacer(minLength: 0)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(athleteName)
-                    .font(.system(.subheadline, design: .rounded).weight(.black))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let teamName, !teamName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(teamName)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(SupporterHomeColors.muted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-                if !athleteDetails.isEmpty {
-                    Text(athleteDetails)
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(SupporterHomeColors.muted.opacity(0.92))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 260, alignment: .leading)
-        .padding(12)
-        .background {
-            ZStack(alignment: .topTrailing) {
-                if let photoURL = validHypePhotoURL {
-                    AsyncImage(url: photoURL) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        SupporterHomeColors.panel
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                }
-                LinearGradient(
-                    colors: [
-                        SupporterHomeColors.background.opacity(0.32),
-                        SupporterHomeColors.background.opacity(0.10),
-                        SupporterHomeColors.background.opacity(0.93)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                RoundedRectangle(cornerRadius: 19, style: .continuous)
-                    .strokeBorder(.white.opacity(0.12), lineWidth: 1)
-                Circle()
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-                    .frame(width: 94, height: 94)
-                    .offset(x: 31, y: -39)
-                    .accessibilityHidden(true)
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 1)
         }
         .supporterSurfaceShadow()
         .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))

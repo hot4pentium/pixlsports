@@ -312,7 +312,11 @@ struct ContentView: View {
                     scheduleTimezone: page.timezone,
                     nextEvent: guide?.event,
                     eventTiming: guide?.timing,
-                    hypePhotoURL: viewModel.hypeCardPreview?.cutoutUrl ?? viewModel.hypeCardPreview?.photoUrl,
+                    seasonName: viewModel.hypeCardPreview?.publicCard?.seasonName
+                        ?? viewModel.hypeCardPreview?.privateCard?.seasonName ?? page.seasonName ?? "",
+                    hypePhotoURL: viewModel.hypeCardPreview?.publicCard?.photoUrl
+                        ?? viewModel.hypeCardPreview?.publicCard?.cutoutUrl,
+                    hypePrivatePhoto: viewModel.hypeCardPrivatePhoto,
                     hypePreviewFailed: viewModel.hypeCardPreviewError != nil,
                     onOpenEvent: {
                         if let token = guide?.event.shareToken {
