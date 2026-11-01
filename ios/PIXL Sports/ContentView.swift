@@ -254,24 +254,6 @@ struct ContentView: View {
 #endif
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Capsule().fill(SupporterHomeColors.accent).frame(width: 22, height: 3)
-                    SupporterEyebrow(text: "Your season", color: SupporterHomeColors.accentText)
-                }
-                Text("Your schedule")
-                    .font(.largeTitle.weight(.black))
-                    .fontDesign(.rounded)
-                    .tracking(-0.6)
-                    .foregroundStyle(SupporterHomeColors.background)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("dashboard-title")
-                Text("Your private schedule, at a glance.")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(SupporterHomeColors.lightMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
     }
 

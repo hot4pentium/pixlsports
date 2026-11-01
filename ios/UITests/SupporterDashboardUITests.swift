@@ -34,7 +34,9 @@ final class SupporterDashboardUITests: XCTestCase {
             ("error", "dashboard-retry")
         ] {
             let app = launch(state)
-            XCTAssertTrue(app.staticTexts["dashboard-title"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.buttons["dashboard-settings-button"].waitForExistence(timeout: 10))
+            XCTAssertFalse(app.staticTexts["Your schedule"].exists)
+            XCTAssertFalse(app.staticTexts["Your private schedule, at a glance."].exists)
             let element = reachable(identifier, in: app)
             if state == "loading" {
                 XCTAssertFalse(app.buttons["dashboard-connection-action"].exists)

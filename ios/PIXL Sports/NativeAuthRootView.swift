@@ -223,132 +223,75 @@ struct NativeLaunchSplashView: View {
     var errorMessage: String? = nil
     var isRetrying = false
     var onRetry: (() -> Void)? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var logoIsGrowing = false
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                backdrop
+                NativePageBackground()
 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 36)
-                        brand
-                        Spacer(minLength: 52)
-                        startupStatus
-                        Spacer(minLength: 44)
-                        Text("YOUR SEASON  ·  ONE EVENT AT A TIME")
-                            .font(.caption2.weight(.heavy))
-                            .tracking(2)
-                            .foregroundStyle(SupporterHomeColors.lightMuted)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 28)
-                    }
-                    .frame(maxWidth: 460)
-                    .frame(minHeight: geometry.size.height)
-                    .padding(.horizontal, 28)
-                    .frame(maxWidth: .infinity)
+                brand
+                    .frame(maxWidth: min(geometry.size.width - 48, 340))
+                    .scaleEffect(reduceMotion ? 1 : (logoIsGrowing ? 1.035 : 0.985))
+                    .animation(
+                        .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
+                        value: logoIsGrowing
+                    )
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+
+                VStack {
+                    Spacer()
+                    startupStatus
+                        .frame(maxWidth: 460)
+                        .padding(.horizontal, 28)
+                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 28) + 16)
                 }
-                .scrollIndicators(.hidden)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onAppear {
+                guard errorTitle == nil, !reduceMotion else { return }
+                logoIsGrowing = true
+            }
         }
-        .background { NativePageBackground() }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityIdentifier("native-launch-splash")
     }
 
-    private var backdrop: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    SupporterHomeColors.background,
-                    Color(red: 0.025, green: 0.11, blue: 0.22),
-                    Color(red: 0.025, green: 0.075, blue: 0.15)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.27), .clear],
-                center: .topTrailing,
-                startRadius: 0,
-                endRadius: 460
-            )
-            RadialGradient(
-                colors: [SupporterHomeColors.accent.opacity(0.09), .clear],
-                center: .bottomLeading,
-                startRadius: 0,
-                endRadius: 380
-            )
-            Image(systemName: "sportscourt.fill")
-                .font(.system(size: 260, weight: .regular))
-                .foregroundStyle(.white.opacity(0.025))
-                .rotationEffect(.degrees(-12))
-                .offset(x: 165, y: -240)
-            Canvas { context, size in
-                var grid = Path()
-                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(38)) {
-                    grid.move(to: CGPoint(x: x, y: 0))
-                    grid.addLine(to: CGPoint(x: x, y: size.height))
-                }
-                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(38)) {
-                    grid.move(to: CGPoint(x: 0, y: y))
-                    grid.addLine(to: CGPoint(x: size.width, y: y))
-                }
-                context.stroke(grid, with: .color(.white.opacity(0.028)), lineWidth: 0.5)
-            }
-        }
-        .ignoresSafeArea()
-        .accessibilityHidden(true)
-    }
-
     private var brand: some View {
-        VStack(spacing: 20) {
+        HStack(spacing: 18) {
             Image(systemName: "sportscourt.fill")
-                .font(.system(size: 30, weight: .black))
+                .font(.system(size: 44, weight: .black))
                 .foregroundStyle(SupporterHomeColors.background)
-                .frame(width: 76, height: 76)
+                .frame(width: 100, height: 100)
                 .background(
                     SupporterHomeColors.accent,
-                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: 29, style: .continuous)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(.white.opacity(0.32), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 29, style: .continuous)
+                        .strokeBorder(.white.opacity(0.58), lineWidth: 1)
                 }
-                .shadow(color: SupporterHomeColors.accent.opacity(0.2), radius: 26, y: 8)
+                .shadow(color: SupporterHomeColors.background.opacity(0.14), radius: 16, y: 6)
                 .accessibilityHidden(true)
 
-            VStack(spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text("PIXL")
-                    .font(.system(size: 31, weight: .black, design: .rounded))
-                    .tracking(4)
+                    .font(.system(size: 48, weight: .black, design: .rounded))
+                    .tracking(3.5)
                     .foregroundStyle(SupporterHomeColors.blue)
                 Text("SPORTS")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    .tracking(6)
-                    .foregroundStyle(SupporterHomeColors.background.opacity(0.9))
+                    .font(.system(size: 17, weight: .heavy, design: .rounded))
+                    .tracking(5)
+                    .foregroundStyle(SupporterHomeColors.background.opacity(0.88))
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("PIXL Sports")
-            .accessibilityIdentifier("native-launch-wordmark")
-
-            Text("YOUR SEASON STARTS HERE")
-                .font(.caption.weight(.heavy))
-                .tracking(2.4)
-                .foregroundStyle(SupporterHomeColors.accent)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 30)
-        .padding(.horizontal, 34)
-        .background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-        }
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("PIXL Sports")
+        .accessibilityIdentifier("native-launch-wordmark")
     }
 
     @ViewBuilder
@@ -387,21 +330,21 @@ struct NativeLaunchSplashView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(22)
-            .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(SupporterCardBackground(cornerRadius: 24))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(.white.opacity(0.09), lineWidth: 1)
+                    .strokeBorder(.white.opacity(0.12), lineWidth: 1)
             }
         } else {
             VStack(spacing: 17) {
                 ProgressView()
                     .controlSize(.large)
-                    .tint(SupporterHomeColors.accent)
+                    .tint(SupporterHomeColors.accentText)
                     .accessibilityHidden(true)
                 Text("Getting your season ready")
                     .font(.headline.weight(.semibold))
                     .fontDesign(.rounded)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SupporterHomeColors.background)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
