@@ -67,6 +67,22 @@ final class SupporterEventDetailUITests: XCTestCase {
         waitForPrepSavedAfterChange(in: app)
     }
 
+    func testEventCardCreationFormSupportsBlankTeamProfile() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-create-event-card"]
+        app.launch()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.staticTexts["Create an Event Card"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["SEASON · FALL 2026"].exists)
+        XCTAssertTrue(app.textFields["native-event-opponent"].exists)
+        XCTAssertTrue(app.textFields["native-event-location"].exists)
+        let submit = app.buttons["native-event-create-submit"]
+        XCTAssertTrue(submit.exists)
+        XCTAssertFalse(submit.isEnabled, "The fixture is signed out; team details must not be the reason creation is blocked.")
+        XCTAssertTrue(app.staticTexts["Sign in on this iPhone to create an Event Card."].exists)
+    }
+
     func testSignedInTrackStatsOffersExplainedToolChoicesInLandscapeAtXXXL() throws {
         guard let eventID = ProcessInfo.processInfo.environment["PIXL_TRACKING_TEST_EVENT_ID"],
               !eventID.isEmpty else {

@@ -1416,6 +1416,39 @@ paths:
           description: No verified PIXL account is linked
         "423":
           description: The linked PIXL account is not eligible for profile updates
+  /native/supporter/event-cards:
+    post:
+      operationId: createNativeSupporterEventCard
+      tags: [athlete-invites]
+      summary: Create an Event Card from the linked iPhone account
+      description: Creates one shared Event Card. A team name is optional; the server uses the linked athlete’s team for the share title when present, otherwise the athlete and season labels. The Event Card remains on the existing shared-card path.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NativeSupporterEventCardCreate"
+      responses:
+        "201":
+          description: Event Card created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSupporterEventCardCreateResponse"
+        "200":
+          description: Existing Event Card returned for an idempotent retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSupporterEventCardCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: No verified PIXL account or completed athlete setup is available
+        "423":
+          description: The linked PIXL account is not eligible to create Event Cards
   /native/supporter/hype-card:
     get:
       operationId: getNativeSupporterHypeCard
@@ -5230,7 +5263,10 @@ components:
       required: [athleteName, teamName, jerseyNumber, position]
       properties:
         athleteName: { type: string, maxLength: 100 }
-        teamName: { type: string, maxLength: 160 }
+        teamName:
+          type: string
+          maxLength: 160
+          description: Optional profile detail; an unset value is returned as an empty string.
         jerseyNumber: { type: string, maxLength: 40 }
         position: { type: string, maxLength: 100 }
     NativeSupporterProfileUpdate:
@@ -5241,6 +5277,34 @@ components:
         teamName: { type: string, maxLength: 160, description: "Optional; send an empty string when omitted." }
         jerseyNumber: { type: string, maxLength: 40, description: "Optional; a leading # is removed." }
         position: { type: string, maxLength: 100, description: "Optional." }
+    NativeSupporterEventCardCreateResponse:
+      type: object
+      required: [shareToken, eventId]
+      properties:
+        shareToken:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+    NativeSupporterEventCardCreate:
+      type: object
+      required: [title, teamSeason, purpose, events]
+      description: The title is required by the shared Event Card contract but is derived from the linked profile on the server. A blank team uses the athlete and season labels instead.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        teamSeason: { type: string, maxLength: 200, description: The server stores the existing Event Card marker instead of this display value. }
+        purpose: { type: string, enum: [game-on-card] }
+        events:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            allOf:
+              - $ref: "#/components/schemas/ScheduleEvent"
+              - type: object
+                properties:
+                  type: { type: string, enum: [game, practice] }
     NativePrivateHypeCard:
       type: object
       required: [athleteName, teamName, seasonName, favoriteMoment, hasPhoto]

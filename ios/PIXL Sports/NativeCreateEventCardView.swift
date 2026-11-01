@@ -5,6 +5,7 @@ struct NativeCreateEventCardView: View {
     @Environment(\.dismiss) private var dismiss
     let athleteName: String
     let teamName: String?
+    let seasonName: String?
     let initialTimezone: String?
     let clerk: Clerk?
     let existingEvent: AthleteFanEvent?
@@ -30,6 +31,7 @@ struct NativeCreateEventCardView: View {
     init(
         athleteName: String,
         teamName: String?,
+        seasonName: String?,
         initialTimezone: String?,
         clerk: Clerk?,
         existingEvent: AthleteFanEvent? = nil,
@@ -38,6 +40,7 @@ struct NativeCreateEventCardView: View {
     ) {
         self.athleteName = athleteName
         self.teamName = teamName
+        self.seasonName = seasonName
         self.initialTimezone = initialTimezone
         self.clerk = clerk
         self.existingEvent = existingEvent
@@ -81,13 +84,22 @@ struct NativeCreateEventCardView: View {
 
     private var isEditing: Bool { existingEvent != nil && shareToken != nil }
 
+    private var trimmedSeasonName: String? {
+        guard let seasonName else { return nil }
+        let trimmed = seasonName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     var body: some View {
         ZStack {
             NativePageBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 7) {
-                        SupporterEyebrow(text: "YOUR SEASON", color: SupporterHomeColors.accentText)
+                        SupporterEyebrow(
+                            text: trimmedSeasonName.map { "SEASON · \($0)" } ?? "YOUR SEASON",
+                            color: SupporterHomeColors.accentText
+                        )
                         Text(isEditing ? "Edit Event Card" : "Create an Event Card")
                             .font(.largeTitle.weight(.black))
                             .fontDesign(.rounded)
@@ -274,6 +286,8 @@ struct NativeCreateEventCardView: View {
                 token = try await SupporterHomeAPI.createEventCard(
                     draft: draft,
                     teamName: teamName,
+                    athleteName: athleteName,
+                    seasonName: trimmedSeasonName,
                     clerk: clerk
                 )
             }

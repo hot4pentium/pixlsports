@@ -295,6 +295,8 @@ enum SupporterHomeAPI {
     static func createEventCard(
         draft: NativeEventCardDraft,
         teamName: String?,
+        athleteName: String,
+        seasonName: String?,
         clerk: Clerk
     ) async throws -> String {
         let event = NativeEventCardCreateBody.Event(
@@ -313,7 +315,12 @@ enum SupporterHomeAPI {
         let body = NativeEventCardCreateBody(
             title: {
                 let trimmed = teamName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                return trimmed.isEmpty ? "PIXL Sports" : trimmed
+                if !trimmed.isEmpty { return trimmed }
+                let identity = [
+                    athleteName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    seasonName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                ].filter { !$0.isEmpty }
+                return identity.isEmpty ? "PIXL Sports" : identity.joined(separator: " · ")
             }(),
             teamSeason: "",
             purpose: "game-on-card",

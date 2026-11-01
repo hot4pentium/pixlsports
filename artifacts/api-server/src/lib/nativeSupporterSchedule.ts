@@ -83,15 +83,25 @@ export async function createNativeSupporterEventCard(
     // requests cannot both observe a missing card and insert duplicates.
     await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`native-event:${owner}`]);
 
-    const { rows: invites } = await tx.query<{ team_name: string }>(`SELECT team_name
+    const { rows: invites } = await tx.query<{
+      athlete_name: string;
+      team_name: string | null;
+      season_name: string | null;
+    }>(`SELECT athlete_name, team_name, season_name
       FROM athlete_invites
       WHERE owner_clerk_user_id=$1
       LIMIT 1
       FOR SHARE`, [owner]);
-    const teamName = invites[0]?.team_name?.trim();
-    if (!teamName) {
+    const invite = invites[0];
+    if (!invite) {
       throw new NativeLinkError(409, "Finish athlete setup on PIXL Sports before creating an Event Card.");
     }
+    const teamName = invite.team_name?.trim();
+    const athleteName = invite.athlete_name.trim();
+    const seasonName = invite.season_name?.trim();
+    const title = teamName
+      || [athleteName, seasonName].filter(Boolean).join(" · ")
+      || "PIXL Sports";
 
     const event = {
       id: draft.eventId,
@@ -140,7 +150,7 @@ export async function createNativeSupporterEventCard(
         VALUES ($1,$2,$3,$4::jsonb)
         RETURNING id::text AS id, owner_clerk_user_id AS "ownerClerkUserId",
           title, team_season AS "teamSeason", events`,
-      [owner, teamName, GAME_ON_CARD_MARKER, JSON.stringify(events)]);
+      [owner, title, GAME_ON_CARD_MARKER, JSON.stringify(events)]);
       const created = rows[0];
       if (!created) throw new Error("Event Card insert returned no row");
       result = {

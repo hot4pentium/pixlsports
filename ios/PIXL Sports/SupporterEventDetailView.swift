@@ -210,6 +210,7 @@ struct SupporterEventDetailView: View {
                         NativeCreateEventCardView(
                             athleteName: schedule.athleteName ?? "your athlete",
                             teamName: schedule.teamName,
+                            seasonName: schedule.seasonName,
                             initialTimezone: event.timezone ?? schedule.timezone,
                             clerk: clerk,
                             existingEvent: event,

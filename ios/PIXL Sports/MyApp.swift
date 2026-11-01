@@ -37,6 +37,17 @@ struct MyApp: App {
                 NativeLaunchSplashView()
             } else if SupporterDashboardFixtures.isRequested {
                 SupporterDashboardFixtureView()
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-create-event-card") {
+                NavigationStack {
+                    NativeCreateEventCardView(
+                        athleteName: "Jordan Example",
+                        teamName: "",
+                        seasonName: "Fall 2026",
+                        initialTimezone: "America/Los_Angeles",
+                        clerk: nil,
+                        onCreated: { _ in }
+                    )
+                }
             } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps") {
                 NavigationStack {
                     SupporterLiveTapsView(

@@ -67,6 +67,7 @@ test("native Event Card creation is account-scoped, redacts prep fields, and saf
 
   assert.notEqual(first.created, retry.created, "concurrent retries create only one card");
   assert.equal(retry.shareToken, first.shareToken);
+  assert.equal(first.share.title, "Tigers");
   assert.equal(first.share.teamSeason, GAME_ON_CARD_MARKER);
   const savedEvent = (first.share.events as Array<Record<string, unknown>>)[0];
   assert.equal(savedEvent?.id, draft.eventId);
@@ -137,6 +138,42 @@ test("native Event Card creation is account-scoped, redacts prep fields, and saf
   assert.equal(schedule.events[0]?.shareToken, first.shareToken);
   assert.equal(schedule.events[0]?.type, "practice");
   assert.equal(schedule.events[0]?.date, "2099-04-02");
+});
+
+test("native Event Card creation works without a team and keeps the season label", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await pool.query(`INSERT INTO athlete_invites
+    (owner_clerk_user_id,public_token,athlete_name,team_name,season_name,season_ends_at,sport,timezone)
+    VALUES ($1,$2,'Jordan','', 'Spring 2099','2099-06-01T00:00:00Z','soccer','America/New_York')`,
+  [linkedOwner, `native-event-${randomUUID()}`]);
+
+  const draft = {
+    eventId: randomUUID(),
+    type: "game" as const,
+    date: "2099-04-01",
+    time: "18:00",
+    timezone: "America/Chicago",
+    location: "Field 2",
+    opponent: "Bears",
+  };
+  const created = await createNativeSupporterEventCard(who, draft);
+
+  assert.equal(created.created, true);
+  assert.equal(created.share.title, "Jordan · Spring 2099");
+  assert.equal(created.share.teamSeason, GAME_ON_CARD_MARKER);
+  const event = (created.share.events as Array<Record<string, unknown>>)[0];
+  assert.equal(event?.id, draft.eventId);
+  assert.equal(event?.opponent, "Bears");
+  const schedule = await loadNativeSupporterSchedule(who);
+  assert.equal(schedule.status, "linked");
+  assert.equal(schedule.athleteName, "Jordan");
+  assert.equal(schedule.teamName, "");
+  assert.equal(schedule.seasonName, "Spring 2099");
+  assert.equal(schedule.events.length, 1);
+  assert.equal(schedule.events[0]?.shareToken, created.shareToken);
+  assert.equal(schedule.events[0]?.title, "Jordan · Spring 2099");
 });
 
 test("native Event Card creation rejects an unlinked iPhone identity", async () => {

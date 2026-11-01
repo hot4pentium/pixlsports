@@ -341,6 +341,7 @@ struct ContentView: View {
             NativeCreateEventCardView(
                 athleteName: schedulePage?.athleteName ?? "your athlete",
                 teamName: schedulePage?.teamName,
+                seasonName: schedulePage?.seasonName,
                 initialTimezone: schedulePage?.timezone,
                 clerk: clerk,
                 onCreated: { token in
