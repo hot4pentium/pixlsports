@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { loadNativeSupporterHypeCard } from "./nativeSupporterHypeCard";
+import {
+  loadNativeSupporterHypeCard,
+  loadNativeSupporterHypeCardPhoto,
+} from "./nativeSupporterHypeCard";
 import type { NativeIdentity } from "./nativeIdentity";
 
 const owners: string[] = [];
@@ -74,20 +77,43 @@ test("native HYPE card reference with no selected athlete exposes no saved invit
   assert.deepEqual(reference, { status: "no-card" });
 });
 
-test("native HYPE card reference does not return a card hidden by its owner", async () => {
+test("linked owners can preview a hidden HYPE Card without receiving its public token", async () => {
   const who = identity();
   const linkedOwner = await owner();
   await link(who, linkedOwner);
   const inviteToken = randomBytes(18).toString("base64url");
   await addInvite(linkedOwner, "Jordan", "Tigers", inviteToken);
-  await pool.query("UPDATE athlete_invites SET show_hype_card=false WHERE owner_clerk_user_id=$1", [linkedOwner]);
+  await pool.query(
+    "UPDATE athlete_invites SET show_hype_card=false, favorite_moment='A great team play' WHERE owner_clerk_user_id=$1",
+    [linkedOwner],
+  );
 
   const reference = await loadNativeSupporterHypeCard(who, async () => ({
     athleteName: "Jordan",
     teamName: "Tigers",
   }));
 
-  assert.deepEqual(reference, { status: "hidden" });
+  assert.deepEqual(reference, {
+    status: "hidden",
+    privatePreview: {
+      athleteName: "Jordan",
+      teamName: "Tigers",
+      seasonName: "Spring 2099",
+      favoriteMoment: "A great team play",
+      hasPhoto: false,
+    },
+  });
+  assert.equal("inviteToken" in reference, false, "a hidden card does not expose a public share token");
+  const persisted = await pool.query<{
+    show_hype_card: boolean;
+    public_token: string;
+    invite_count: string;
+  }>(`SELECT show_hype_card, public_token,
+        (SELECT COUNT(*)::text FROM athlete_invites WHERE owner_clerk_user_id=$1) AS invite_count
+      FROM athlete_invites WHERE owner_clerk_user_id=$1`, [linkedOwner]);
+  assert.equal(persisted.rows[0]?.show_hype_card, false, "previewing does not change visibility");
+  assert.equal(persisted.rows[0]?.public_token, inviteToken, "previewing does not rotate or create a share");
+  assert.equal(persisted.rows[0]?.invite_count, "1", "previewing does not create another invite");
 });
 
 test("unlinked native identities cannot resolve a HYPE card", async () => {
@@ -98,4 +124,20 @@ test("unlinked native identities cannot resolve a HYPE card", async () => {
   });
   assert.deepEqual(reference, { status: "unlinked" });
   assert.equal(profileRequested, false);
+});
+
+test("revoked native account links cannot load a private HYPE Card photo", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await pool.query("DELETE FROM native_account_links WHERE native_subject=$1", [who.subject]);
+  let profileRequested = false;
+
+  const photo = await loadNativeSupporterHypeCardPhoto(who, "cutout", async () => {
+    profileRequested = true;
+    return { athleteName: "Jordan", teamName: "Tigers" };
+  });
+
+  assert.equal(photo, null);
+  assert.equal(profileRequested, false, "the revoked link is checked before loading the selected athlete");
 });

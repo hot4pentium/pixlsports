@@ -12,7 +12,10 @@ import {
   loadNativeSupporterSchedule,
   updateNativeSupporterEventCard,
 } from "../lib/nativeSupporterSchedule";
-import { loadNativeSupporterHypeCard } from "../lib/nativeSupporterHypeCard";
+import {
+  loadNativeSupporterHypeCard,
+  loadNativeSupporterHypeCardPhoto,
+} from "../lib/nativeSupporterHypeCard";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
@@ -161,6 +164,16 @@ nativeAccountLinkRouter.patch("/supporter/event-cards/:shareToken", handle(async
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
   res.json(await loadNativeSupporterHypeCard(identity(res)));
+}));
+nativeAccountLinkRouter.get("/supporter/hype-card/photo", handle(async (_req, res) => {
+  const photo = await loadNativeSupporterHypeCardPhoto(identity(res), "photo");
+  if (!photo) { res.status(404).end(); return; }
+  res.type("image/webp").send(photo);
+}));
+nativeAccountLinkRouter.get("/supporter/hype-card/cutout-photo", handle(async (_req, res) => {
+  const photo = await loadNativeSupporterHypeCardPhoto(identity(res), "cutout");
+  if (!photo) { res.status(404).end(); return; }
+  res.type("image/webp").send(photo);
 }));
 nativeAccountLinkRouter.post("/link/requests", handle(async (req, res) => {
   const parsed = BeginNativeAccountLinkBody.strict().safeParse(req.body);

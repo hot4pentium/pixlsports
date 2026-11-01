@@ -1,5 +1,6 @@
 import SwiftUI
 import ClerkKit
+import UIKit
 
 @MainActor
 struct SupporterHypeCardView: View {
@@ -7,6 +8,8 @@ struct SupporterHypeCardView: View {
     let clerk: Clerk?
 
     @State private var card: NativePublicHypeCard?
+    @State private var privateCard: NativePrivateHypeCard?
+    @State private var privatePhoto: UIImage?
     @State private var unavailable = false
     @State private var errorMessage: String?
     @State private var loading = true
@@ -54,7 +57,14 @@ struct SupporterHypeCardView: View {
                 .foregroundStyle(SupporterHomeColors.muted)
                 .frame(maxWidth: .infinity, minHeight: 240)
         } else if let card {
-            hypeCard(card)
+            hypeCard(
+                athleteName: card.athleteName,
+                teamName: card.teamName,
+                seasonName: card.seasonName,
+                favoriteMoment: card.favoriteMoment,
+                photoURL: photoURL,
+                privatePhoto: nil
+            )
             if let shareURL = card.shareURL {
                 ShareLink(item: shareURL) {
                     Label("Share HYPE Card", systemImage: "square.and.arrow.up")
@@ -66,6 +76,19 @@ struct SupporterHypeCardView: View {
                 .foregroundStyle(SupporterHomeColors.background)
                 .accessibilityIdentifier("native-hype-card-share")
             }
+        } else if let privateCard {
+            Text("Private preview · only visible to your linked account")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(SupporterHomeColors.accent)
+                .accessibilityIdentifier("native-hype-card-private-preview")
+            hypeCard(
+                athleteName: privateCard.athleteName,
+                teamName: privateCard.teamName,
+                seasonName: privateCard.seasonName,
+                favoriteMoment: privateCard.favoriteMoment,
+                photoURL: nil,
+                privatePhoto: privatePhoto
+            )
         } else if let errorMessage {
             VStack(alignment: .leading, spacing: 12) {
                 Label("The HYPE Card couldn’t load", systemImage: "exclamationmark.triangle.fill")
@@ -89,7 +112,7 @@ struct SupporterHypeCardView: View {
             ContentUnavailableView(
                 "No HYPE Card is available",
                 systemImage: "sportscourt",
-                description: Text("The connected PIXL account doesn’t have a shared HYPE Card for this athlete.")
+                description: Text("The linked PIXL account doesn’t have a HYPE Card for its selected athlete yet.")
             )
             .foregroundStyle(SupporterHomeColors.muted)
             .padding(.vertical, 36)
@@ -105,7 +128,14 @@ struct SupporterHypeCardView: View {
         return url
     }
 
-    private func hypeCard(_ card: NativePublicHypeCard) -> some View {
+    private func hypeCard(
+        athleteName: String,
+        teamName: String,
+        seasonName: String,
+        favoriteMoment: String?,
+        photoURL: URL?,
+        privatePhoto: UIImage?
+    ) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             GeometryReader { geometry in
                 ZStack(alignment: .bottomLeading) {
@@ -118,7 +148,14 @@ struct SupporterHypeCardView: View {
                             )
                         )
 
-                    if let url = photoURL {
+                    if let privatePhoto {
+                        Image(uiImage: privatePhoto)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .clipped()
+                            .accessibilityLabel("\(athleteName)’s photo")
+                    } else if let url = photoURL {
                         AsyncImage(url: url) { image in
                             image.resizable().scaledToFill()
                         } placeholder: {
@@ -126,7 +163,7 @@ struct SupporterHypeCardView: View {
                         }
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
-                        .accessibilityLabel("\(card.athleteName)’s photo")
+                        .accessibilityLabel("\(athleteName)’s photo")
                     } else {
                         athleteSilhouette
                     }
@@ -142,13 +179,13 @@ struct SupporterHypeCardView: View {
                             .font(.caption2.weight(.black))
                             .tracking(1.6)
                             .foregroundStyle(SupporterHomeColors.accent)
-                        Text(card.athleteName)
+                        Text(athleteName)
                             .font(.largeTitle.weight(.black))
                             .fontDesign(.rounded)
                             .foregroundStyle(.white)
                             .lineLimit(2)
                             .minimumScaleFactor(0.7)
-                        Text([card.teamName, card.seasonName].filter { !$0.isEmpty }.joined(separator: " · "))
+                        Text([teamName, seasonName].filter { !$0.isEmpty }.joined(separator: " · "))
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.white.opacity(0.88))
                             .lineLimit(2)
@@ -164,10 +201,10 @@ struct SupporterHypeCardView: View {
                     .strokeBorder(SupporterHomeColors.blue.opacity(0.85), lineWidth: 2)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(card.athleteName), \(card.teamName), \(card.seasonName), HYPE Card")
+            .accessibilityLabel("\(athleteName), \(teamName), \(seasonName), HYPE Card")
             .accessibilityIdentifier("native-hype-card")
 
-            if let favoriteMoment = card.favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines),
+            if let favoriteMoment = favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines),
                !favoriteMoment.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     SupporterEyebrow(text: "Favorite moment", color: SupporterHomeColors.muted)
@@ -194,18 +231,26 @@ struct SupporterHypeCardView: View {
     }
 
     private func loadCard() async {
+        loading = true
+        errorMessage = nil
+        card = nil
+        privateCard = nil
+        privatePhoto = nil
+        unavailable = false
         guard let clerk else {
             loading = false
             unavailable = true
             return
         }
-        loading = true
-        errorMessage = nil
         do {
-            let result = try await SupporterHomeAPI.fetchPublicHypeCard(clerk: clerk)
+            let result = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
             guard !Task.isCancelled else { return }
-            card = result
-            unavailable = result == nil
+            card = result.publicCard
+            privateCard = result.privateCard
+            if let imageData = result.privatePhoto {
+                privatePhoto = UIImage(data: imageData)
+            }
+            unavailable = result.publicCard == nil && result.privateCard == nil
             loading = false
         } catch is CancellationError {
             return

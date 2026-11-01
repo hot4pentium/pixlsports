@@ -13,6 +13,21 @@ struct NativeSupporterSchedule: Decodable {
 struct NativeHypeCardReference: Decodable {
     let status: String
     let inviteToken: String?
+    let privatePreview: NativePrivateHypeCard?
+}
+
+struct NativePrivateHypeCard: Decodable {
+    let athleteName: String
+    let teamName: String
+    let seasonName: String
+    let favoriteMoment: String?
+    let hasPhoto: Bool
+}
+
+struct NativeSupporterHypeCardPreview {
+    let publicCard: NativePublicHypeCard?
+    let privateCard: NativePrivateHypeCard?
+    let privatePhoto: Data?
 }
 
 struct NativePublicHypeCard: Decodable {
@@ -237,6 +252,53 @@ enum SupporterHomeAPI {
             throw SupporterHomeAPIError.invalidResponse
         }
 
+        return try await fetchPublicHypeCard(inviteToken: inviteToken, client: client)
+    }
+
+    static func fetchOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
+        let client = NativeAccountLinkClient()
+        let data = try await client.getData("supporter/hype-card", clerk: clerk)
+        let reference: NativeHypeCardReference
+        do {
+            reference = try JSONDecoder().decode(NativeHypeCardReference.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+
+        if reference.status == "available" {
+            guard let inviteToken = reference.inviteToken,
+                  inviteToken.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
+            return NativeSupporterHypeCardPreview(
+                publicCard: try await fetchPublicHypeCard(inviteToken: inviteToken, client: client),
+                privateCard: nil,
+                privatePhoto: nil
+            )
+        }
+        if reference.status == "hidden" {
+            guard let privateCard = reference.privatePreview else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
+            let privatePhoto = privateCard.hasPhoto
+                ? try await client.getData("supporter/hype-card/cutout-photo", clerk: clerk)
+                : nil
+            return NativeSupporterHypeCardPreview(
+                publicCard: nil,
+                privateCard: privateCard,
+                privatePhoto: privatePhoto
+            )
+        }
+        guard reference.status == "unlinked" || reference.status == "no-card" else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        return NativeSupporterHypeCardPreview(publicCard: nil, privateCard: nil, privatePhoto: nil)
+    }
+
+    private static func fetchPublicHypeCard(
+        inviteToken: String,
+        client: NativeAccountLinkClient
+    ) async throws -> NativePublicHypeCard {
         let publicData = try await client.publicRequest("athlete-invites/\(inviteToken)/fan")
         do {
             var card = try JSONDecoder().decode(NativePublicHypeCard.self, from: publicData)

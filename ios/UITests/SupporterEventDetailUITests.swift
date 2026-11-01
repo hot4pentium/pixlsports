@@ -226,11 +226,13 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["HYPE Card"].waitForExistence(timeout: 15))
 
         if privateCard {
-            XCTAssertTrue(app.staticTexts["No HYPE Card is available"].waitForExistence(timeout: 15),
-                          "Reviewing a private card must not make it public.")
+            let card = app.descendants(matching: .any)["native-hype-card"]
+            XCTAssertTrue(card.waitForExistence(timeout: 15),
+                          "The linked owner can review the selected athlete’s private HYPE Card.")
+            XCTAssertTrue(app.staticTexts["native-hype-card-private-preview"].exists,
+                          "The preview is clearly marked as private.")
             XCTAssertFalse(app.buttons["native-hype-card-share"].exists,
-                           "A private card must not gain a public sharing action.")
-            XCTAssertFalse(app.descendants(matching: .any)["native-hype-card"].exists)
+                           "A private preview must not offer public sharing.")
         } else {
             let card = app.descendants(matching: .any)["native-hype-card"]
             XCTAssertTrue(card.waitForExistence(timeout: 15), "The selected athlete’s HYPE Card must load.")
