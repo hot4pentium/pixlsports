@@ -72,6 +72,90 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(liveTapsIntro.waitForExistence(timeout: 10))
     }
 
+    func testSignedInLiveTapsFanQRSurvivesTrackingToolSwitchAndCanBeRevoked() throws {
+        guard let eventID = ProcessInfo.processInfo.environment["PIXL_TRACKING_TEST_EVENT_ID"],
+              !eventID.isEmpty else {
+            throw XCTSkip("Set PIXL_TRACKING_TEST_EVENT_ID to a dedicated Event Card with an active Live Taps-only session. Sign in and link its owner on this iPhone first.")
+        }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-signed-in-prep"]
+        app.launch()
+        defer { app.terminate() }
+        openSignedInPrep(eventID: eventID, in: app)
+
+        assertReachable("event-card-track-stats", in: app).tap()
+        let liveTapsChoice = app.buttons["native-event-choice-liveTaps"]
+        XCTAssertTrue(liveTapsChoice.waitForExistence(timeout: 10))
+        liveTapsChoice.tap()
+
+        let activeSession = app.descendants(matching: .any)["live-taps-session-status"].firstMatch
+        XCTAssertTrue(activeSession.waitForExistence(timeout: 20),
+                      "Load the dedicated Event Card’s existing Live Taps session; this test must not start another session.")
+        let createQR = app.buttons["native-live-taps-create-qr"]
+        XCTAssertTrue(createQR.waitForExistence(timeout: 10))
+        let createQRReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == true"),
+            object: createQR
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [createQRReady], timeout: 15),
+            .completed,
+            "The dedicated Event Card must have an active Live Taps-only session before this test creates a QR."
+        )
+        createQR.tap()
+
+        let qr = app.images.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "native-live-taps-qr-"
+        )).firstMatch
+        XCTAssertTrue(qr.waitForExistence(timeout: 15), "The newly created fan QR must be visible.")
+        let originalQRIdentifier = qr.identifier
+        XCTAssertTrue(originalQRIdentifier.hasPrefix("native-live-taps-qr-"))
+        XCTAssertEqual(
+            assertReachable("native-live-taps-qr-status", in: app).label,
+            "QR ready to show or share"
+        )
+
+        assertReachable("native-event-switch-tracking-mode", in: app).tap()
+        XCTAssertTrue(app.buttons["native-event-choice-statTracker"].waitForExistence(timeout: 5))
+        app.buttons["native-event-choice-statTracker"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["native-event-scorekeeping-card"].waitForExistence(timeout: 10)
+        )
+
+        assertReachable("native-event-switch-tracking-mode", in: app).tap()
+        XCTAssertTrue(liveTapsChoice.waitForExistence(timeout: 5))
+        liveTapsChoice.tap()
+        XCTAssertTrue(
+            app.images[originalQRIdentifier].waitForExistence(timeout: 10),
+            "Returning to Live Taps must show the same QR grant, not create a replacement."
+        )
+        XCTAssertTrue(activeSession.exists, "Switching tools must keep the same Live Taps session loaded.")
+        XCTAssertFalse(app.buttons["native-live-taps-start"].exists,
+                       "Returning to the active session must not offer to start a second one.")
+        XCTAssertFalse(app.buttons["native-live-taps-create-qr"].exists,
+                       "A ready QR must not offer another create action after returning.")
+
+        assertReachable("native-live-taps-revoke-qr", in: app).tap()
+        let confirmRevoke = app.buttons["Revoke QR access"]
+        XCTAssertTrue(confirmRevoke.waitForExistence(timeout: 5))
+        confirmRevoke.tap()
+        let revokedQR = app.images[originalQRIdentifier]
+        let qrRemoved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: revokedQR
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [qrRemoved], timeout: 15), .completed,
+                       "Revoking the ready QR must remove that same grant from the view.")
+        XCTAssertTrue(activeSession.exists, "Revoking fan access must not end the Live Taps session.")
+        XCTAssertEqual(
+            assertReachable("native-live-taps-qr-status", in: app).label,
+            "No fan QR ready"
+        )
+        XCTAssertTrue(app.buttons["native-live-taps-create-qr"].exists,
+                      "The existing session should still allow a new QR after revoking the old one.")
+    }
+
     private func checkSignedInPrepPersistence(dropFirstResponse: Bool) throws {
         let environment = ProcessInfo.processInfo.environment
         guard let eventID = environment["PIXL_PREP_TEST_EVENT_ID"], !eventID.isEmpty,

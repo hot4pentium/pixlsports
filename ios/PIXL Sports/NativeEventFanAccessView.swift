@@ -127,7 +127,9 @@ struct NativeEventFanAccessView: View {
                         .frame(maxWidth: 250)
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("Fan Live Taps access QR. Show it to fans at the game.")
-                        .accessibilityIdentifier("native-live-taps-qr")
+                        // Keep a stable, grant-specific identity so UI checks can
+                        // confirm that switching tools did not create a new QR.
+                        .accessibilityIdentifier("native-live-taps-qr-\(grant.id)")
                     ShareLink(
                         item: Image(uiImage: image),
                         preview: SharePreview("PIXL Sports · Fan Live Taps QR", image: Image(uiImage: image))
