@@ -203,27 +203,15 @@ struct NativeAuthRootView: View {
     }
 
     private var startupView: some View {
-        VStack(spacing: 18) {
-            if loadingTimedOut || startupError != nil {
-                Image(systemName: "wifi.exclamationmark")
-                    .font(.largeTitle)
-                Text("Sign-in isn’t ready")
-                    .font(.title2.bold())
-                Text(startupError ?? "Check your connection. If this continues, check the iOS Clerk key and Native API settings.")
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                Button(retrying ? "Trying again…" : "Try again") {
-                    Task { await retryStartup() }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(retrying)
-            } else {
-                ProgressView()
-                Text("Preparing secure sign-in…")
-            }
-        }
-        .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        NativeLaunchSplashView(
+            errorTitle: loadingTimedOut || startupError != nil ? "We couldn’t get PIXL ready" : nil,
+            errorMessage: startupError
+                ?? (loadingTimedOut
+                    ? "Check your connection. If this continues, check the iOS Clerk key and Native API settings."
+                    : nil),
+            isRetrying: retrying,
+            onRetry: { Task { await retryStartup() } }
+        )
     }
 
     @MainActor
@@ -243,6 +231,200 @@ struct NativeAuthRootView: View {
         } catch {
             // Do not expose SDK responses or configuration values in error copy.
             startupError = "We couldn’t connect to sign-in. Check your connection and iOS Clerk settings, then try again."
+        }
+    }
+}
+
+struct NativeLaunchSplashView: View {
+    var errorTitle: String? = nil
+    var errorMessage: String? = nil
+    var isRetrying = false
+    var onRetry: (() -> Void)? = nil
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                backdrop
+
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 36)
+                        brand
+                        Spacer(minLength: 52)
+                        startupStatus
+                        Spacer(minLength: 44)
+                        Text("YOUR SEASON  ·  ONE EVENT AT A TIME")
+                            .font(.caption2.weight(.heavy))
+                            .tracking(2)
+                            .foregroundStyle(SupporterHomeColors.muted.opacity(0.78))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 28)
+                    }
+                    .frame(maxWidth: 460)
+                    .frame(minHeight: geometry.size.height)
+                    .padding(.horizontal, 28)
+                    .frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(SupporterHomeColors.background)
+        .ignoresSafeArea()
+        .preferredColorScheme(.dark)
+        .accessibilityIdentifier("native-launch-splash")
+    }
+
+    private var backdrop: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    SupporterHomeColors.background,
+                    Color(red: 0.025, green: 0.11, blue: 0.22),
+                    Color(red: 0.025, green: 0.075, blue: 0.15)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [SupporterHomeColors.blue.opacity(0.27), .clear],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 460
+            )
+            RadialGradient(
+                colors: [SupporterHomeColors.accent.opacity(0.09), .clear],
+                center: .bottomLeading,
+                startRadius: 0,
+                endRadius: 380
+            )
+            Image(systemName: "sportscourt.fill")
+                .font(.system(size: 260, weight: .regular))
+                .foregroundStyle(.white.opacity(0.025))
+                .rotationEffect(.degrees(-12))
+                .offset(x: 165, y: -240)
+            Canvas { context, size in
+                var grid = Path()
+                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(38)) {
+                    grid.move(to: CGPoint(x: x, y: 0))
+                    grid.addLine(to: CGPoint(x: x, y: size.height))
+                }
+                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(38)) {
+                    grid.move(to: CGPoint(x: 0, y: y))
+                    grid.addLine(to: CGPoint(x: size.width, y: y))
+                }
+                context.stroke(grid, with: .color(.white.opacity(0.028)), lineWidth: 0.5)
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+
+    private var brand: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "sportscourt.fill")
+                .font(.system(size: 30, weight: .black))
+                .foregroundStyle(SupporterHomeColors.background)
+                .frame(width: 76, height: 76)
+                .background(
+                    SupporterHomeColors.accent,
+                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(.white.opacity(0.32), lineWidth: 1)
+                }
+                .shadow(color: SupporterHomeColors.accent.opacity(0.2), radius: 26, y: 8)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 2) {
+                Text("PIXL")
+                    .font(.system(size: 31, weight: .black, design: .rounded))
+                    .tracking(4)
+                    .foregroundStyle(SupporterHomeColors.blue)
+                Text("SPORTS")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .tracking(6)
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("PIXL Sports")
+            .accessibilityIdentifier("native-launch-wordmark")
+
+            Text("YOUR SEASON STARTS HERE")
+                .font(.caption.weight(.heavy))
+                .tracking(2.4)
+                .foregroundStyle(SupporterHomeColors.accent)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 30)
+        .padding(.horizontal, 34)
+        .background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var startupStatus: some View {
+        if let errorTitle {
+            VStack(spacing: 16) {
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(SupporterHomeColors.accent)
+                    .accessibilityHidden(true)
+                Text(errorTitle)
+                    .font(.title2.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.body)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let onRetry {
+                    Button(action: onRetry) {
+                        Label(isRetrying ? "Trying again…" : "Try again", systemImage: "arrow.clockwise")
+                            .font(.body.weight(.bold))
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .contentShape(Rectangle())
+                    }
+                    .foregroundStyle(SupporterHomeColors.background)
+                    .background(SupporterHomeColors.accent, in: Capsule())
+                    .disabled(isRetrying)
+                    .accessibilityIdentifier("native-launch-retry")
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(22)
+            .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(.white.opacity(0.09), lineWidth: 1)
+            }
+        } else {
+            VStack(spacing: 17) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(SupporterHomeColors.accent)
+                    .accessibilityHidden(true)
+                Text("Getting your season ready")
+                    .font(.headline.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(24)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("native-launch-status")
         }
     }
 }

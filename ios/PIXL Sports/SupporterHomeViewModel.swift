@@ -24,6 +24,7 @@ final class SupporterHomeViewModel: ObservableObject {
     @Published private(set) var state: State = .loading
     @Published private(set) var hypeCardPreview: NativePublicHypeCard?
     @Published private(set) var hypeCardPreviewError: String?
+    @Published private(set) var hasResolvedInitialSchedule = false
 
     /// Chooses the game-day guide from scheduled time, not a saved game status.
     /// The home guide shares the detail-step phases, then advances after two hours.
@@ -112,9 +113,13 @@ final class SupporterHomeViewModel: ObservableObject {
         hypeCardPreviewError = nil
         do {
             let page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                finishCancelledScheduleLoad()
+                return
+            }
             guard page.status == "linked" else {
                 state = .notConnected
+                hasResolvedInitialSchedule = true
                 return
             }
             let now = Date()
@@ -123,6 +128,9 @@ final class SupporterHomeViewModel: ObservableObject {
                 events: upcomingEvents(in: page, now: now),
                 pastEvents: recentCompletedEvents(in: page, now: now)
             )
+            // The schedule is sufficient to render the dashboard; the optional
+            // HYPE Card preview can continue loading without holding the splash.
+            hasResolvedInitialSchedule = true
             do {
                 hypeCardPreview = try await SupporterHomeAPI.fetchPublicHypeCard(clerk: clerk)
             } catch is CancellationError {
@@ -132,19 +140,33 @@ final class SupporterHomeViewModel: ObservableObject {
             }
             guard !Task.isCancelled else { return }
         } catch is CancellationError {
+            finishCancelledScheduleLoad()
             return
         } catch let error as URLError {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                finishCancelledScheduleLoad()
+                return
+            }
             switch error.code {
             case .notConnectedToInternet, .networkConnectionLost, .timedOut:
                 state = .failed("Check your internet connection, then try again.")
             default:
                 state = .failed("We couldn’t reach PIXL Sports. Please try again.")
             }
+            hasResolvedInitialSchedule = true
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                finishCancelledScheduleLoad()
+                return
+            }
             state = .failed(error.localizedDescription)
+            hasResolvedInitialSchedule = true
         }
+    }
+
+    private func finishCancelledScheduleLoad() {
+        state = .failed("The schedule request was interrupted. Check your connection and try again.")
+        hasResolvedInitialSchedule = true
     }
 
     private func upcomingEvents(

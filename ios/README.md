@@ -301,6 +301,11 @@ fictional data, skip Clerk configuration and all schedule requests, and open
 only fictional destinations. They are excluded from Release builds. Remove the
 arguments to return to the real signed-in app.
 
+To preview the native launch screen without signing in, use
+`--ui-testing-launch-splash`; use `--ui-testing-launch-splash-error` to inspect
+its retry state. These Debug-only fixtures are visual checks and do not exercise
+live Clerk restoration or schedule requests.
+
 Debug connection screens show **Development API — installed app**, read from the
 bundled plist rather than the Xcode editor. Connection failures include the HTTP
 status and safe destination details, without tokens, keys, or raw response bodies.

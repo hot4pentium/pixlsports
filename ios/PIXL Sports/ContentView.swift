@@ -65,6 +65,13 @@ struct ContentView: View {
         return viewModel.state
     }
 
+    private var shouldShowInitialSplash: Bool {
+#if DEBUG
+        if fixtureState != nil { return false }
+#endif
+        return !viewModel.hasResolvedInitialSchedule
+    }
+
     private func loadSchedule() async {
 #if DEBUG
         if NativeScheduleRefreshUITestProbe.isRequested {
@@ -78,37 +85,41 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                backdrop
+            if shouldShowInitialSplash {
+                NativeLaunchSplashView()
+            } else {
+                ZStack {
+                    backdrop
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        header
-                            .modifier(SupporterDashboardSectionSurface())
-                            .accessibilityElement(children: .contain)
-                            .accessibilityIdentifier("dashboard-header-section")
-                        athleteHero
-                        accountSetupIfNeeded
-                        nextEventSection
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 22) {
+                            header
+                                .modifier(SupporterDashboardSectionSurface())
+                                .accessibilityElement(children: .contain)
+                                .accessibilityIdentifier("dashboard-header-section")
+                            athleteHero
+                            accountSetupIfNeeded
+                            nextEventSection
+                        }
+                        .frame(maxWidth: 560, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 40)
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: 560, alignment: .leading)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 40)
-                    .frame(maxWidth: .infinity)
-                }
-                .scrollIndicators(.hidden)
-                .refreshable {
-                    await loadSchedule()
-                }
-                .onAppear {
-                    dashboardVisible = true
-                    if eventToolsChanged {
-                        eventToolsChanged = false
-                        Task { await loadSchedule() }
+                    .scrollIndicators(.hidden)
+                    .refreshable {
+                        await loadSchedule()
                     }
+                    .onAppear {
+                        dashboardVisible = true
+                        if eventToolsChanged {
+                            eventToolsChanged = false
+                            Task { await loadSchedule() }
+                        }
+                    }
+                    .onDisappear { dashboardVisible = false }
                 }
-                .onDisappear { dashboardVisible = false }
             }
         }
         .fullScreenCover(item: $heroDestination, onDismiss: {
@@ -133,6 +144,7 @@ struct ContentView: View {
         .toolbar(.hidden, for: .navigationBar)
 #endif
         .preferredColorScheme(.dark)
+        .animation(.easeOut(duration: 0.22), value: viewModel.hasResolvedInitialSchedule)
         .task {
             await loadSchedule()
         }

@@ -2,6 +2,30 @@ import XCTest
 
 @MainActor
 final class SupporterDashboardUITests: XCTestCase {
+    func testNativeLaunchSplashShowsBrandWithoutAccountRetrievalCopy() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-launch-splash"]
+        app.launch()
+
+        XCTAssertTrue(app.descendants(matching: .any)["native-launch-wordmark"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["native-launch-status"].exists)
+        XCTAssertFalse(
+            app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", "retrieving account"))
+                .firstMatch.exists
+        )
+        app.terminate()
+    }
+
+    func testNativeLaunchSplashShowsRetryActionAfterStartupFailure() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-launch-splash-error"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["We couldn’t get PIXL ready"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["native-launch-retry"].exists)
+        app.terminate()
+    }
+
     func testDashboardStatesAtNarrowPhoneWidth() {
         for (state, identifier) in [
             ("empty", "dashboard-empty"),

@@ -28,6 +28,7 @@
 - [OpenAPI path nesting](openapi-path-nesting.md) — successful codegen does not guarantee operations stayed under the intended route.
 - [Landing responsive browser checks](landing-responsive-browser-checks.md) — distinguish page containment from intentional internal ticker scrolling across phone and desktop widths.
 - [Public landing first paint](public-landing-first-paint.md) — keep returning-session startup to one overlay while preserving public-first landing and the five-second splash floor.
+- [Native launch privacy](native-launch-privacy.md) — keep session restoration and the first schedule load behind one branded splash; routine refreshes stay in-dashboard.
 - [Centered Help content on phones](help-page-phone-width.md) — centered content in the flex-column page shell needs an explicit available width at small breakpoints.
 - [Supporter-only product boundary](supporter-only-product-boundary.md) — center the parent’s athlete journey; team stats stay advanced and meetings leave the product flow.
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.

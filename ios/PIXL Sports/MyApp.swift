@@ -9,6 +9,8 @@ struct MyApp: App {
         configuration = NativeClerkConfiguration.load()
 #if DEBUG
         if SupporterDashboardFixtures.isRequested
+            || ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash")
+            || ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash-error")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
             return
@@ -22,7 +24,15 @@ struct MyApp: App {
     var body: some Scene {
         WindowGroup {
 #if DEBUG
-            if SupporterDashboardFixtures.isRequested {
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash-error") {
+                NativeLaunchSplashView(
+                    errorTitle: "We couldn’t get PIXL ready",
+                    errorMessage: "Check your connection, then try again.",
+                    onRetry: {}
+                )
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash") {
+                NativeLaunchSplashView()
+            } else if SupporterDashboardFixtures.isRequested {
                 SupporterDashboardFixtureView()
             } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps") {
                 NavigationStack {
