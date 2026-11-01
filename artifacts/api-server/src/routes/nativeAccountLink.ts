@@ -48,12 +48,24 @@ import {
 } from "@workspace/db";
 import { getApnsConfig } from "../lib/apns";
 import { nativeAthletePhoto } from "../lib/nativeAthletePhoto";
+import { nativePhotoFailureResponse, type NativePhotoOperation } from "../lib/nativeAthletePhotoDiagnostics";
 import { GetNativeAthletePhotoStateResponse, RemoveNativeAthletePhotoBody } from "@workspace/api-zod";
 
-const handle: (fn: RequestHandler) => RequestHandler = (fn) => async (req, res, next) => {
+const handle: (fn: RequestHandler, photoOperation?: NativePhotoOperation) => RequestHandler = (fn, photoOperation) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Referrer-Policy", "no-referrer");
   try { await fn(req, res, next); } catch (error) {
+    if (photoOperation) {
+      const failure = nativePhotoFailureResponse(photoOperation, error);
+      if (failure.status === 429) res.setHeader("Retry-After", "600");
+      if (failure.diagnostic.category === "infrastructure") {
+        req.log.error(failure.diagnostic, "Native athlete photo operation failed");
+      } else {
+        req.log.warn(failure.diagnostic, "Native athlete photo operation rejected");
+      }
+      res.status(failure.status).json(failure.body);
+      return;
+    }
     if (error instanceof NativeLinkError) {
       if (error.status === 429) res.setHeader("Retry-After", "600");
       res.status(error.status).json({ error: error.message });
@@ -381,7 +393,7 @@ nativeAccountLinkRouter.post("/supporter/hype-card/identity", handle(async (req,
 const NativeAthletePhotoExpectation = RemoveNativeAthletePhotoBody.strict();
 nativeAccountLinkRouter.get("/supporter/hype-card/athlete-photo", handle(async (_req, res) => {
   res.json(GetNativeAthletePhotoStateResponse.parse(await nativeAthletePhoto.state(identity(res))));
-}));
+}, "state"));
 nativeAccountLinkRouter.get("/supporter/hype-card/athlete-photo/image", handle(async (req, res) => {
   const parsed = NativeAthletePhotoExpectation.safeParse({
     cardId: req.get("X-Hype-Card-ID"), revision: req.get("X-Photo-Revision"),
@@ -390,11 +402,18 @@ nativeAccountLinkRouter.get("/supporter/hype-card/athlete-photo/image", handle(a
   const contents = await nativeAthletePhoto.image(identity(res), parsed.data);
   if (!contents) { res.status(404).end(); return; }
   res.type("image/webp").send(contents);
-}));
+}, "image"));
 nativeAccountLinkRouter.put("/supporter/hype-card/athlete-photo",
-  raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: "5mb" }),
   handle(async (req, res) => {
     await limitNativeLinkAction(JSON.stringify(identity(res)), "athlete-photo", 20);
+    // Keep body-parser errors inside the safe photo boundary, too. Do not
+    // forward parser errors, which may carry the uploaded bytes, to logging.
+    await new Promise<void>((resolve, reject) => {
+      raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: "5mb" })(req, res, (error) => {
+        if (error) reject(new NativeLinkError(400, "Choose a valid photo up to 5 MB."));
+        else resolve();
+      });
+    });
     const parsed = NativeAthletePhotoExpectation.safeParse({
       cardId: req.get("X-Hype-Card-ID"), revision: req.get("X-Photo-Revision"),
     });
@@ -404,13 +423,13 @@ nativeAccountLinkRouter.put("/supporter/hype-card/athlete-photo",
     res.json(GetNativeAthletePhotoStateResponse.parse(
       await nativeAthletePhoto.save(identity(res), parsed.data, req.body, req.get("content-type")?.split(";")[0] ?? ""),
     ));
-  }),
+  }, "save"),
 );
 nativeAccountLinkRouter.delete("/supporter/hype-card/athlete-photo", handle(async (req, res) => {
   const parsed = NativeAthletePhotoExpectation.safeParse(req.body);
   if (!parsed.success) throw new NativeLinkError(400, "Refresh the athlete photo before removing it.");
   res.json(GetNativeAthletePhotoStateResponse.parse(await nativeAthletePhoto.remove(identity(res), parsed.data)));
-}));
+}, "remove"));
 nativeAccountLinkRouter.get("/supporter/hype-card/photo", handle(async (_req, res) => {
   const photo = await loadNativeSupporterHypeCardPhoto(identity(res), "photo");
   if (!photo) { res.status(404).end(); return; }

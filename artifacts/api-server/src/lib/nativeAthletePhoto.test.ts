@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { pool } from "@workspace/db";
 import { createNativeAthletePhotoService } from "./nativeAthletePhoto";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
+import { nativePhotoFailureResponse, type NativePhotoStage } from "./nativeAthletePhotoDiagnostics";
 
 const owners: string[] = [];
 const subjects: string[] = [];
@@ -12,6 +13,18 @@ const jpeg = () => sharp({ create: { width: 80, height: 120, channels: 3, backgr
   .jpeg().withMetadata().toBuffer();
 const rejectsStatus = (status: number) => (error: unknown) =>
   error instanceof NativeLinkError && error.status === status;
+const rejectsStage = (stage: NativePhotoStage, status: number, operation: "save" | "image" | "remove" | "state" = "save") =>
+  (error: unknown) => {
+    const failure = nativePhotoFailureResponse(operation, error);
+    assert.equal(failure.diagnostic.stage, stage);
+    assert.equal(failure.status, status);
+    return true;
+  };
+const privateDetails = "Bearer fixture-token /private/bucket/athlete.webp https://storage.invalid/photo?signature=fixture-secret athlete=PrivateName IMAGE_BYTES";
+const unsafeError = () => Object.assign(new Error(privateDetails), {
+  request: { headers: { authorization: privateDetails }, body: Buffer.from(privateDetails) },
+  metadata: { athleteName: privateDetails }, code: privateDetails, cause: { credentials: privateDetails },
+});
 
 async function fixture() {
   const owner = `user_nativePhoto${randomUUID().replaceAll("-", "")}`;
@@ -34,6 +47,8 @@ async function fixture() {
   const objects = new Map<string, Buffer>();
   const removed: string[] = [];
   let saveFails = false;
+  let readFails = false;
+  let cleanupFails = false;
   let saves = 0;
   const profile = { athleteName: "Jordan", teamName: "Tigers" };
   const newService = () => createNativeAthletePhotoService({
@@ -44,18 +59,22 @@ async function fixture() {
     storage: {
       save: async (contents, linkedOwner) => {
         assert.equal(linkedOwner, owner);
-        if (saveFails) throw new Error("Storage unavailable");
+        if (saveFails) throw unsafeError();
         saves++;
         const path = `/objects/photo-test/${randomUUID()}.webp`;
         objects.set(path, contents);
         return path;
       },
       read: async (path) => {
+        if (readFails) throw unsafeError();
         const bytes = objects.get(path);
         assert.ok(bytes, "Only stored photo objects may be read");
         return bytes;
       },
-      remove: async (path) => { removed.push(path); objects.delete(path); },
+      remove: async (path) => {
+        if (cleanupFails) throw unsafeError();
+        removed.push(path); objects.delete(path);
+      },
     },
   });
   return {
@@ -63,6 +82,9 @@ async function fixture() {
     get saves() { return saves; },
     failSave() { saveFails = true; },
     restoreSave() { saveFails = false; },
+    failRead() { readFails = true; },
+    restoreRead() { readFails = false; },
+    failCleanup() { cleanupFails = true; },
   };
 }
 
@@ -120,7 +142,7 @@ test("invalid, oversized, and mismatched-content images cannot alter the current
     [Buffer.alloc(5 * 1024 * 1024 + 1), "image/jpeg"],
     [await jpeg(), "image/png"],
   ] as const) {
-    await assert.rejects(f.service.save(f.identity, before, bytes, type), rejectsStatus(400));
+    await assert.rejects(f.service.save(f.identity, before, bytes, type), rejectsStage("validation", 400));
   }
   assert.equal(f.saves, 0);
   assert.deepEqual(await f.service.state(f.identity), before);
@@ -131,8 +153,8 @@ test("a stale replacement, stale removal, and another owner's card ID are reject
   const other = await fixture();
   const before = await f.service.state(f.identity);
   const current = await f.service.save(f.identity, before, await jpeg(), "image/jpeg");
-  await assert.rejects(f.service.save(f.identity, before, await jpeg(), "image/jpeg"), rejectsStatus(409));
-  await assert.rejects(f.service.remove(f.identity, before), rejectsStatus(409));
+  await assert.rejects(f.service.save(f.identity, before, await jpeg(), "image/jpeg"), rejectsStage("revision", 409));
+  await assert.rejects(f.service.remove(f.identity, before), rejectsStage("revision", 409, "remove"));
   await assert.rejects(f.service.remove(f.identity, { ...current, cardId: other.id }), rejectsStatus(409));
   assert.equal(f.saves, 1);
   assert.equal(f.removed.length, 0);
@@ -155,7 +177,7 @@ test("removal persists and does not change public sharing settings", async () =>
 test("unlinked, cancelled, and mismatched athletes cannot read or write the photo", async () => {
   const f = await fixture();
   const current = await f.service.state(f.identity);
-  await assert.rejects(f.service.state({ ...f.identity, subject: "user_unlinked_photo" }), rejectsStatus(404));
+  await assert.rejects(f.service.state({ ...f.identity, subject: "user_unlinked_photo" }), rejectsStage("ownership", 404, "state"));
   f.profile.athleteName = "Someone else";
   await assert.rejects(f.service.state(f.identity), rejectsStatus(409));
   await assert.rejects(f.service.remove(f.identity, current), rejectsStatus(409));
@@ -170,7 +192,7 @@ test("storage failure leaves the saved card and photo unchanged", async () => {
   const current = await f.service.save(f.identity, await f.service.state(f.identity), await jpeg(), "image/jpeg");
   const priorImage = await f.service.image(f.identity, current);
   f.failSave();
-  await assert.rejects(f.service.save(f.identity, current, await jpeg(), "image/jpeg"), /Storage unavailable/);
+  await assert.rejects(f.service.save(f.identity, current, await jpeg(), "image/jpeg"), rejectsStage("storage_write", 503));
   assert.deepEqual(await f.service.state(f.identity), current);
   assert.equal(f.objects.size, 1);
   assert.equal(f.removed.length, 0);
@@ -233,4 +255,52 @@ test("unlinking after loading the photo prevents reads, replacement, and removal
   await assert.rejects(f.service.save(f.identity, current, await jpeg(), "image/jpeg"), rejectsStatus(404));
   await assert.rejects(f.service.remove(f.identity, current), rejectsStatus(404));
   assert.equal(f.saves, 0);
+});
+
+test("storage reads fail safely and can retry with the same photo revision", async () => {
+  const f = await fixture();
+  const current = await f.service.save(f.identity, await f.service.state(f.identity), await jpeg(), "image/jpeg");
+  f.failRead();
+  await assert.rejects(f.service.image(f.identity, current), rejectsStage("storage_read", 503, "image"));
+  assert.deepEqual(await f.service.state(f.identity), current);
+  f.restoreRead();
+  assert.ok(await f.service.image(f.identity, current));
+});
+
+test("failed unreferenced-media cleanup does not turn a committed save or removal into a retry", async () => {
+  const f = await fixture();
+  const current = await f.service.save(f.identity, await f.service.state(f.identity), await jpeg(), "image/jpeg");
+  f.failCleanup();
+  const replacement = await f.service.save(f.identity, current, await jpeg(), "image/jpeg");
+  assert.notEqual(replacement.revision, current.revision);
+  const removed = await f.service.remove(f.identity, replacement);
+  assert.equal(removed.hasPhoto, false);
+  assert.deepEqual(await f.service.state(f.identity), removed);
+});
+
+test("database connection, update, and commit errors retain their stage and roll back the photo", async (t) => {
+  const f = await fixture();
+  const current = await f.service.save(f.identity, await f.service.state(f.identity), await jpeg(), "image/jpeg");
+  const connect = pool.connect.bind(pool);
+  const connectMock = t.mock.method(pool, "connect", async () => { throw unsafeError(); });
+  await assert.rejects(f.service.state(f.identity), rejectsStage("database_check", 503, "state"));
+  connectMock.mock.restore();
+  for (const statement of ["UPDATE athlete_invites", "COMMIT"]) {
+    const tx = await connect();
+    const query = tx.query.bind(tx);
+    const queryMock = t.mock.method(tx, "query", async (sql: string, values?: unknown[]) => {
+      if (sql.trim().startsWith(statement)) throw unsafeError();
+      return query(sql, values);
+    });
+    const mock = t.mock.method(pool, "connect", async () => tx);
+    try {
+      await assert.rejects(f.service.save(f.identity, current, await jpeg(), "image/jpeg"),
+        rejectsStage("database_persistence", 503));
+    } finally {
+      mock.mock.restore();
+      queryMock.mock.restore();
+    }
+    assert.deepEqual(await f.service.state(f.identity), current);
+    assert.equal(f.objects.size, 1, "The uncommitted new image is cleaned up, not the saved image");
+  }
 });

@@ -6,6 +6,7 @@ import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { ObjectStorageService } from "./objectStorage";
 import { athletePhotoRevision } from "./athletePhotoRevision";
 import { sanitizeAthleteInvitePhoto, InvalidAthleteInvitePhotoError } from "./athleteInvitePhoto";
+import { nativePhotoStep } from "./nativeAthletePhotoDiagnostics";
 
 type Profile = { athleteName: string; teamName: string };
 type Card = {
@@ -52,46 +53,50 @@ export function createNativeAthletePhotoService(dependencies: {
     identity: NativeIdentity,
     operation: (tx: PoolClient, card: Card, owner: string) => Promise<T>,
   ): Promise<T> {
-    const tx = await pool.connect();
+    const tx = await nativePhotoStep("database_check", () => pool.connect());
     try {
-      await tx.query("BEGIN");
-      // Serialize against unlink, profile updates, and other native photo edits.
-      const { rows: links } = await tx.query<{ owner_clerk_user_id: string }>(
-        `SELECT owner_clerk_user_id FROM native_account_links
-         WHERE native_issuer=$1 AND native_subject=$2 FOR UPDATE`,
-        [identity.issuer, identity.subject],
-      );
-      const owner = links[0]?.owner_clerk_user_id;
-      if (!owner) throw new NativeLinkError(404, "The linked PIXL account is unavailable.");
-      await assertLinkableWebAccount(owner, tx);
-      const profile = await loadProfile(owner);
-      if (!profile.athleteName.trim()) {
-        throw new NativeLinkError(409, "Save your athlete details before adding a photo.");
-      }
-      const { rows } = await tx.query<Card>(
-        `SELECT id, athlete_name, team_name, photo_object_path, cutout_object_path
-         FROM athlete_invites WHERE owner_clerk_user_id=$1 ORDER BY created_at DESC FOR UPDATE`,
-        [owner],
-      );
-      const matches = rows.filter((card) =>
-        normalize(card.athlete_name) === normalize(profile.athleteName)
-        && (!profile.teamName.trim() || normalize(card.team_name) === normalize(profile.teamName)),
-      );
-      if (!profile.teamName.trim() && new Set(matches.map((card) => normalize(card.team_name))).size > 1) {
-        throw new NativeLinkError(409, "Save a team name to identify the correct HYPE Card.");
-      }
-      const card = matches[0];
-      if (!card) throw new NativeLinkError(
-        rows.length ? 409 : 404,
-        rows.length
-          ? "Your saved HYPE Card doesn’t match this athlete. Review its identity in HYPE Card before changing the photo."
-          : "This athlete doesn’t have a HYPE Card yet. Set up the HYPE Card before adding its photo.",
-      );
+      await nativePhotoStep("database_check", () => tx.query("BEGIN"));
+      const { card, owner } = await nativePhotoStep("ownership", async () => {
+        // Serialize against unlink, profile updates, and other native photo edits.
+        const { rows: links } = await nativePhotoStep("database_check", () => tx.query<{ owner_clerk_user_id: string }>(
+          `SELECT owner_clerk_user_id FROM native_account_links
+           WHERE native_issuer=$1 AND native_subject=$2 FOR UPDATE`,
+          [identity.issuer, identity.subject],
+        ));
+        const owner = links[0]?.owner_clerk_user_id;
+        if (!owner) throw new NativeLinkError(404, "The linked PIXL account is unavailable.");
+        await assertLinkableWebAccount(owner, tx);
+        const profile = await loadProfile(owner);
+        if (!profile.athleteName.trim()) {
+          throw new NativeLinkError(409, "Save your athlete details before adding a photo.");
+        }
+        const { rows } = await nativePhotoStep("database_check", () => tx.query<Card>(
+          `SELECT id, athlete_name, team_name, photo_object_path, cutout_object_path
+           FROM athlete_invites WHERE owner_clerk_user_id=$1 ORDER BY created_at DESC FOR UPDATE`,
+          [owner],
+        ));
+        const matches = rows.filter((card) =>
+          normalize(card.athlete_name) === normalize(profile.athleteName)
+          && (!profile.teamName.trim() || normalize(card.team_name) === normalize(profile.teamName)),
+        );
+        if (!profile.teamName.trim() && new Set(matches.map((card) => normalize(card.team_name))).size > 1) {
+          throw new NativeLinkError(409, "Save a team name to identify the correct HYPE Card.");
+        }
+        const card = matches[0];
+        if (!card) throw new NativeLinkError(
+          rows.length ? 409 : 404,
+          rows.length
+            ? "Your saved HYPE Card doesn’t match this athlete. Review its identity in HYPE Card before changing the photo."
+            : "This athlete doesn’t have a HYPE Card yet. Set up the HYPE Card before adding its photo.",
+        );
+        return { card, owner };
+      });
       const result = await operation(tx, card, owner);
-      await tx.query("COMMIT");
+      await nativePhotoStep("database_persistence", () => tx.query("COMMIT"));
       return result;
     } catch (error) {
-      await tx.query("ROLLBACK");
+      // A rollback failure must not replace the useful original failure stage.
+      await tx.query("ROLLBACK").catch(() => undefined);
       throw error;
     } finally {
       tx.release();
@@ -99,9 +104,11 @@ export function createNativeAthletePhotoService(dependencies: {
   }
 
   function checkExpected(card: Card, expected: NativeAthletePhotoExpectation) {
-    if (card.id !== expected.cardId || snapshot(card).revision !== expected.revision) {
-      throw new NativeLinkError(409, "The athlete or photo changed. Refresh the photo before trying again.");
-    }
+    return nativePhotoStep("revision", async () => {
+      if (card.id !== expected.cardId || snapshot(card).revision !== expected.revision) {
+        throw new NativeLinkError(409, "The athlete or photo changed. Refresh the photo before trying again.");
+      }
+    });
   }
 
   async function cleanup(paths: (string | null)[]) {
@@ -115,8 +122,8 @@ export function createNativeAthletePhotoService(dependencies: {
     state: (identity: NativeIdentity) => withCard(identity, async (_tx, card) => snapshot(card)),
     image: (identity: NativeIdentity, expected: NativeAthletePhotoExpectation) =>
       withCard(identity, async (_tx, card) => {
-        checkExpected(card, expected);
-        return photoPath(card) ? media.read(photoPath(card)!) : null;
+        await checkExpected(card, expected);
+        return photoPath(card) ? nativePhotoStep("storage_read", () => media.read(photoPath(card)!)) : null;
       }),
     async save(identity: NativeIdentity, expected: NativeAthletePhotoExpectation, input: Buffer, contentType: string) {
       let newPath: string | null = null;
@@ -124,18 +131,19 @@ export function createNativeAthletePhotoService(dependencies: {
       let result: NativeAthletePhotoState;
       try {
         result = await withCard(identity, async (tx, card, owner) => {
-          checkExpected(card, expected);
-          let sanitized;
-          try { sanitized = await sanitizeAthleteInvitePhoto(input, contentType); } catch (error) {
-            if (error instanceof InvalidAthleteInvitePhotoError) throw new NativeLinkError(400, error.message);
-            throw error;
-          }
-          newPath = await media.save(sanitized.contents, owner);
-          await tx.query(
+          await checkExpected(card, expected);
+          const sanitized = await nativePhotoStep("validation", async () => {
+            try { return await sanitizeAthleteInvitePhoto(input, contentType); } catch (error) {
+              if (error instanceof InvalidAthleteInvitePhotoError) throw new NativeLinkError(400, error.message);
+              throw error;
+            }
+          });
+          newPath = await nativePhotoStep("storage_write", () => media.save(sanitized.contents, owner));
+          await nativePhotoStep("database_persistence", () => tx.query(
             `UPDATE athlete_invites SET photo_object_path=$1, cutout_object_path=NULL, updated_at=NOW()
              WHERE id=$2 AND owner_clerk_user_id=$3`,
             [newPath, card.id, owner],
-          );
+          ));
           oldPaths = [card.photo_object_path, card.cutout_object_path];
           return snapshot({ ...card, photo_object_path: newPath, cutout_object_path: null });
         });
@@ -149,11 +157,11 @@ export function createNativeAthletePhotoService(dependencies: {
     async remove(identity: NativeIdentity, expected: NativeAthletePhotoExpectation) {
       let oldPaths: (string | null)[] = [];
       const result = await withCard(identity, async (tx, card, owner) => {
-        checkExpected(card, expected);
-        await tx.query(
+        await checkExpected(card, expected);
+        await nativePhotoStep("database_persistence", () => tx.query(
           `UPDATE athlete_invites SET photo_object_path=NULL, cutout_object_path=NULL, updated_at=NOW()
            WHERE id=$1 AND owner_clerk_user_id=$2`, [card.id, owner],
-        );
+        ));
         oldPaths = [card.photo_object_path, card.cutout_object_path];
         return snapshot({ ...card, photo_object_path: null, cutout_object_path: null });
       });
