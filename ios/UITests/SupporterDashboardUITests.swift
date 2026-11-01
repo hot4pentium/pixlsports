@@ -192,14 +192,17 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertTrue(app.buttons["native-event-create-submit"].exists)
     }
 
-    func testDashboardUsesSeparateHeroUpcomingAndHistorySections() {
+    func testDashboardKeepsEventCardsAndHidesPastHistoryAndUpNextHeading() {
         let app = launch("upcoming")
         let hero = app.descendants(matching: .any)["dashboard-hero-section"].firstMatch
         let upcoming = app.descendants(matching: .any)["dashboard-upcoming-section"].firstMatch
         let history = app.descendants(matching: .any)["dashboard-history"].firstMatch
         XCTAssertTrue(hero.waitForExistence(timeout: 10))
         XCTAssertTrue(upcoming.exists)
-        XCTAssertTrue(history.exists)
+        XCTAssertFalse(history.exists)
+        XCTAssertTrue(app.staticTexts["Event Cards"].exists)
+        XCTAssertFalse(app.staticTexts["Up next"].exists)
+        XCTAssertFalse(app.staticTexts["Past Event Cards"].exists)
         XCTAssertFalse(hero.descendants(matching: .any)["dashboard-upcoming-section"].exists)
         XCTAssertFalse(upcoming.descendants(matching: .any)["dashboard-history"].exists)
     }

@@ -44,11 +44,11 @@ struct SupporterSectionHeader: View {
             : AnyLayout(HStackLayout(alignment: .lastTextBaseline, spacing: 12))
         layout {
             VStack(alignment: .leading, spacing: 4) {
-                SupporterEyebrow(text: eyebrow, color: SupporterHomeColors.muted)
+                SupporterEyebrow(text: eyebrow, color: SupporterHomeColors.lightMuted)
                 Text(title)
                     .font(.title2.weight(.black))
                     .fontDesign(.rounded)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SupporterHomeColors.background)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
             }
@@ -163,11 +163,12 @@ struct SupporterDashboardSectionSurface: ViewModifier {
             .padding(.vertical, 16)
             .background {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(Color(red: 0.94, green: 0.965, blue: 0.985).opacity(0.92))
                     .overlay {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                            .strokeBorder(SupporterHomeColors.background.opacity(0.12), lineWidth: 1)
                     }
+                    .shadow(color: SupporterHomeColors.background.opacity(0.045), radius: 9, x: 0, y: 4)
                     .padding(.horizontal, -12)
             }
     }

@@ -3,11 +3,11 @@ name: Approved dashboard visual direction
 description: The visual direction approved for future Pixl Sports supporter dashboard refinements.
 ---
 
-The supporter dashboard should retain its navy sports-editorial foundation, blue-to-navy gradients, connected chevron week path, bright current-step treatment, and responsive mobile hierarchy.
+The web/PWA supporter dashboard retains its navy sports-editorial foundation, blue-to-navy gradients, connected chevron week path, bright current-step treatment, and responsive mobile hierarchy. The native iPhone dashboard uses a white, lightly textured page canvas so its card surfaces stand out.
 
-**Why:** The user explicitly approved the completed dashboard direction as looking amazing.
+**Why:** The user later requested a white, lightly textured background for the native dashboard to make its boxes stand out.
 
-**How to apply:** Preserve this visual language when making later dashboard refinements; adjust spacing or behavior without replacing the established hierarchy.
+**How to apply:** Scope the light canvas to the native iOS dashboard. Preserve the established card design and the separate navy identity of the web/PWA dashboard unless the user asks to change it.
 
 Keep the install action in the athlete overview header, not inside the Event Card. The paired mobile Event Card and HYPE Card should have equal face sizes and aligned top edges.
 

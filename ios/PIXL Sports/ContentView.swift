@@ -7,6 +7,7 @@ enum SupporterHomeColors {
     static let blue = Color(red: 0.16, green: 0.48, blue: 0.98)
     static let accent = Color(red: 0.72, green: 0.94, blue: 0.25)
     static let muted = Color(red: 0.68, green: 0.75, blue: 0.86)
+    static let lightMuted = Color(red: 0.34, green: 0.40, blue: 0.49)
 }
 
 struct ContentView: View {
@@ -143,7 +144,7 @@ struct ContentView: View {
 #if os(iOS)
         .toolbar(.hidden, for: .navigationBar)
 #endif
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
         .animation(.easeOut(duration: 0.22), value: viewModel.hasResolvedInitialSchedule)
         .task {
             await loadSchedule()
@@ -180,18 +181,18 @@ struct ContentView: View {
     private var backdrop: some View {
         ZStack {
             LinearGradient(
-                colors: [SupporterHomeColors.background, Color(red: 0.035, green: 0.10, blue: 0.20)],
+                colors: [Color.white, Color(red: 0.95, green: 0.97, blue: 0.99)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             RadialGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.22), .clear],
+                colors: [SupporterHomeColors.blue.opacity(0.055), .clear],
                 center: .topTrailing,
                 startRadius: 8,
                 endRadius: 440
             )
             RadialGradient(
-                colors: [SupporterHomeColors.accent.opacity(0.05), .clear],
+                colors: [SupporterHomeColors.blue.opacity(0.025), .clear],
                 center: .bottomLeading,
                 startRadius: 8,
                 endRadius: 380
@@ -206,7 +207,7 @@ struct ContentView: View {
                     grid.move(to: CGPoint(x: 0, y: y))
                     grid.addLine(to: CGPoint(x: size.width, y: y))
                 }
-                context.stroke(grid, with: .color(.white.opacity(0.035)), lineWidth: 0.5)
+                context.stroke(grid, with: .color(SupporterHomeColors.background.opacity(0.035)), lineWidth: 0.5)
             }
         }
         .ignoresSafeArea()
@@ -239,7 +240,7 @@ struct ContentView: View {
                         .font(.caption2.weight(.heavy))
                         .fontDesign(.rounded)
                         .tracking(3)
-                        .foregroundStyle(.white.opacity(0.86))
+                        .foregroundStyle(SupporterHomeColors.background.opacity(0.78))
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("PIXL Sports")
@@ -250,11 +251,11 @@ struct ContentView: View {
                     Text("SUPPORTER HUB")
                         .font(.caption2.weight(.heavy))
                         .tracking(1.4)
-                        .foregroundStyle(SupporterHomeColors.muted)
+                        .foregroundStyle(SupporterHomeColors.lightMuted)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
-                        .background(.white.opacity(0.06), in: Capsule())
-                        .overlay { Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 1) }
+                        .background(SupporterHomeColors.background.opacity(0.045), in: Capsule())
+                        .overlay { Capsule().strokeBorder(SupporterHomeColors.background.opacity(0.1), lineWidth: 1) }
                         .lineLimit(1)
                         .accessibilityHidden(true)
                 }
@@ -269,13 +270,13 @@ struct ContentView: View {
                     .font(.largeTitle.weight(.black))
                     .fontDesign(.rounded)
                     .tracking(-0.6)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SupporterHomeColors.background)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("dashboard-title")
                 Text("Your private schedule, at a glance.")
                     .font(.body.weight(.medium))
-                    .foregroundStyle(SupporterHomeColors.muted)
+                    .foregroundStyle(SupporterHomeColors.lightMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -453,10 +454,10 @@ struct ContentView: View {
             .accessibilityIdentifier("dashboard-connection-action")
         }
         .padding(18)
-        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(SupporterCardBackground(cornerRadius: 20))
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(.white.opacity(0.09), lineWidth: 1)
+                .strokeBorder(SupporterHomeColors.blue.opacity(0.38), lineWidth: 1)
         }
     }
 
@@ -473,39 +474,34 @@ struct ContentView: View {
             )
         case .loading:
             loadingCard
-        case let .schedule(page, events, pastEvents):
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 14) {
-                    SupporterSectionHeader(
-                        eyebrow: "Event Cards",
-                        title: events.isEmpty ? "Coming up" : "Up next",
-                        trailing: events.isEmpty ? nil : "\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")"
-                    )
+        case let .schedule(page, events, _):
+            VStack(alignment: .leading, spacing: 14) {
+                SupporterSectionHeader(
+                    eyebrow: "Your season",
+                    title: "Event Cards",
+                    trailing: events.isEmpty ? nil : "\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")"
+                )
 
-                    if events.isEmpty {
-                        emptyScheduleCard()
-                    } else {
-                        eventGrid(page: page, events: events)
-                    }
-                    Button {
-                        heroDestination = .createEvent
-                    } label: {
-                        Label("Add an Event Card", systemImage: "plus")
-                            .font(.subheadline.bold())
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(SupporterHomeColors.accent)
-                    .foregroundStyle(SupporterHomeColors.background)
-                    .accessibilityIdentifier("dashboard-add-event-card")
+                if events.isEmpty {
+                    emptyScheduleCard()
+                } else {
+                    eventGrid(page: page, events: events)
                 }
-                .modifier(SupporterDashboardSectionSurface())
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("dashboard-upcoming-section")
-                if !pastEvents.isEmpty {
-                    pastEventsSection(page: page, events: pastEvents)
+                Button {
+                    heroDestination = .createEvent
+                } label: {
+                    Label("Add an Event Card", systemImage: "plus")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(SupporterHomeColors.accent)
+                .foregroundStyle(SupporterHomeColors.background)
+                .accessibilityIdentifier("dashboard-add-event-card")
             }
+            .modifier(SupporterDashboardSectionSurface())
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("dashboard-upcoming-section")
         case let .failed(message):
             VStack(alignment: .leading, spacing: 14) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -762,24 +758,6 @@ struct ContentView: View {
         .buttonStyle(SupporterCardPressStyle())
         .accessibilityIdentifier("dashboard-event-card-\(item.event.eventId)")
         .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : "")\(item.event.title), \(item.event.opponent.isEmpty ? "" : "versus \(item.event.opponent), ")\(item.event.formattedFullDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
-    }
-
-    private func pastEventsSection(
-        page: NativeSupporterSchedule,
-        events: [SupporterScheduleItem]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SupporterSectionHeader(
-                eyebrow: "Event history",
-                title: "Past Event Cards",
-                trailing: "\(events.count) \(events.count == 1 ? "CARD" : "CARDS")",
-                trailingColor: SupporterHomeColors.blue
-            )
-            eventGrid(page: page, events: events)
-        }
-        .modifier(SupporterDashboardSectionSurface())
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("dashboard-history")
     }
 
     private func eventDetail(icon: String, text: String) -> some View {
