@@ -192,6 +192,37 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertTrue(app.buttons["native-event-create-submit"].exists)
     }
 
+    func testEventCardFormControlsRemainReachableAtDefaultAndAccessibilityTextSizes() {
+        for accessibilityText in [false, true] {
+            let app = launch("empty", accessibilityText: accessibilityText)
+            reachable("dashboard-message-board-card", in: app).tap()
+
+            XCTAssertTrue(app.staticTexts["Create an Event Card"].waitForExistence(timeout: 5))
+            for (identifier, expectedLabel) in [
+                ("native-event-opponent", "Opponent"),
+                ("native-event-date", "Date"),
+                ("native-event-start-time", "Start time"),
+                ("native-event-time-zone", "Event time zone"),
+                ("native-event-location", "Location")
+            ] {
+                let control = reachable(identifier, in: app)
+                XCTAssertTrue(
+                    control.label.localizedCaseInsensitiveContains(expectedLabel),
+                    "\(identifier) should expose its complete label to VoiceOver: \(control.label)"
+                )
+                XCTAssertGreaterThan(control.frame.height, 0)
+            }
+
+            let save = reachable("native-event-create-submit", in: app)
+            XCTAssertTrue(save.label.contains("Create Event Card"))
+            retainScreenshot(
+                in: app,
+                name: "Create Event Card — \(accessibilityText ? "AX XXXL" : "default")"
+            )
+            app.terminate()
+        }
+    }
+
     func testDashboardKeepsEventCardsAndHidesPastHistoryAndUpNextHeading() {
         let app = launch("upcoming")
         let hero = app.descendants(matching: .any)["dashboard-hero-section"].firstMatch
@@ -218,6 +249,13 @@ final class SupporterDashboardUITests: XCTestCase {
         }
         app.launch()
         return app
+    }
+
+    private func retainScreenshot(in app: XCUIApplication, name: String) {
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = name
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
     }
 
     private func assertRecommendedStep(_ title: String, in app: XCUIApplication) {

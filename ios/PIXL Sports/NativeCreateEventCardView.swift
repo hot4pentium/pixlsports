@@ -107,11 +107,19 @@ struct NativeCreateEventCardView: View {
                         .accessibilityIdentifier("native-event-type")
 
                         if eventType == "game" {
-                            TextField("Opponent", text: $opponent)
+                            TextField(
+                                "Opponent",
+                                text: $opponent,
+                                prompt: Text("Opponent").foregroundColor(.white.opacity(0.76))
+                            )
                                 .textInputAutocapitalization(.words)
                                 .autocorrectionDisabled()
                                 .padding(14)
                                 .background(Color(red: 0.15, green: 0.27, blue: 0.42), in: RoundedRectangle(cornerRadius: 13))
+                                .foregroundStyle(.white)
+                                .tint(SupporterHomeColors.accent)
+                                .accessibilityLabel("Opponent")
+                                .accessibilityHint("Enter the opposing team.")
                                 .accessibilityIdentifier("native-event-opponent")
                                 .onChange(of: opponent) { _, value in
                                     if value.count > 200 { opponent = String(value.prefix(200)) }
@@ -125,10 +133,11 @@ struct NativeCreateEventCardView: View {
                         )
                         .environment(\.timeZone, selectedTimeZone)
                         .tint(SupporterHomeColors.accentText)
-
+                        .accessibilityIdentifier("native-event-date")
                         DatePicker("Start time", selection: $eventTime, displayedComponents: .hourAndMinute)
                             .environment(\.timeZone, selectedTimeZone)
                             .tint(SupporterHomeColors.accentText)
+                            .accessibilityIdentifier("native-event-start-time")
 
                         Picker("Event time zone", selection: $timezone) {
                             ForEach(availableTimeZones, id: \.self) { zone in
@@ -136,6 +145,7 @@ struct NativeCreateEventCardView: View {
                             }
                         }
                         .tint(SupporterHomeColors.accentText)
+                        .accessibilityIdentifier("native-event-time-zone")
                         .onChange(of: timezone) { oldZone, newZone in
                             let selectedDate = Self.formatted(eventDate, pattern: "yyyy-MM-dd", timezone: oldZone)
                             let selectedTime = Self.formatted(eventTime, pattern: "HH:mm", timezone: oldZone)
@@ -143,11 +153,19 @@ struct NativeCreateEventCardView: View {
                             eventTime = Self.dateValue(selectedDate, time: selectedTime, timezone: newZone) ?? eventTime
                         }
 
-                        TextField("Location (optional)", text: $location)
+                        TextField(
+                            "Location (optional)",
+                            text: $location,
+                            prompt: Text("Location (optional)").foregroundColor(.white.opacity(0.76))
+                        )
                             .textInputAutocapitalization(.words)
                             .autocorrectionDisabled()
                             .padding(14)
                             .background(Color(red: 0.15, green: 0.27, blue: 0.42), in: RoundedRectangle(cornerRadius: 13))
+                            .foregroundStyle(.white)
+                            .tint(SupporterHomeColors.accent)
+                            .accessibilityLabel("Location (optional)")
+                            .accessibilityHint("Enter the event location, if known.")
                             .accessibilityIdentifier("native-event-location")
                             .onChange(of: location) { _, value in
                                 if value.count > 300 { location = String(value.prefix(300)) }
@@ -168,8 +186,9 @@ struct NativeCreateEventCardView: View {
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.red.opacity(0.9))
+                            .foregroundStyle(Color(red: 0.58, green: 0.08, blue: 0.10))
                             .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityLabel("Event Card save error: \(errorMessage)")
                             .accessibilityIdentifier("native-event-create-error")
                     }
 

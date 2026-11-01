@@ -6,6 +6,7 @@ import ClerkKitUI
 
 struct NativeAuthRootView: View {
     @Environment(Clerk.self) private var clerk
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var loadingTimedOut = false
     @State private var retrying = false
     @State private var startupError: String?
@@ -48,16 +49,20 @@ struct NativeAuthRootView: View {
             } else {
                 ZStack {
                     signInBackdrop
-                    VStack(spacing: 0) {
-                        signInHeader
-                        // Keep Clerk's complete native flow (email, Google,
-                        // verification, and recovery) while applying PIXL's theme.
-                        AuthView(isDismissible: false)
-                            .environment(\.clerkTheme, clerkTheme)
-                            .padding(.horizontal, 14)
-                            .padding(.bottom, 16)
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            signInHeader
+                            // Keep Clerk's complete native flow (email, Google,
+                            // verification, and recovery) while applying PIXL's theme.
+                            AuthView(isDismissible: false)
+                                .environment(\.clerkTheme, clerkTheme)
+                                .padding(.horizontal, 14)
+                                .padding(.bottom, 16)
+                        }
+                        .frame(maxWidth: 560)
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: 560)
+                    .scrollIndicators(.hidden)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .preferredColorScheme(.light)
@@ -85,7 +90,10 @@ struct NativeAuthRootView: View {
 
     private var signInHeader: some View {
         VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 12) {
+            let brandLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 12))
+            brandLayout {
                 Image(systemName: "sportscourt.fill")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(SupporterHomeColors.background)
@@ -98,19 +106,24 @@ struct NativeAuthRootView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("PIXL")
-                        .font(.system(size: 19, weight: .black, design: .rounded))
+                        .font(.title3.weight(.black))
+                        .fontDesign(.rounded)
                         .tracking(2.2)
                         .foregroundStyle(.white)
                     Text("SPORTS")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.caption.weight(.bold))
+                        .fontDesign(.rounded)
                         .tracking(3.2)
                         .foregroundStyle(SupporterHomeColors.muted)
                 }
 
-                Spacer()
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Spacer(minLength: 0)
+                }
 
                 Text("FAMILY ACCESS")
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    .font(.caption2.weight(.heavy))
+                    .fontDesign(.rounded)
                     .tracking(1.5)
                     .foregroundStyle(SupporterHomeColors.muted)
                     .padding(.horizontal, 11)
@@ -124,19 +137,21 @@ struct NativeAuthRootView: View {
                         .fill(SupporterHomeColors.accent)
                         .frame(width: 23, height: 3)
                     Text("YOUR SEASON STARTS HERE")
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .font(.caption.weight(.heavy))
+                        .fontDesign(.rounded)
                         .tracking(2.1)
                         .foregroundStyle(SupporterHomeColors.accent)
                 }
 
                 Text("Game day,\nall in one place.")
-                    .font(.system(size: 32, weight: .black, design: .rounded))
+                    .font(.largeTitle.weight(.black))
+                    .fontDesign(.rounded)
                     .tracking(-0.7)
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text("Use email or Google to sign in. If you already use PIXL on the web, connect that account after sign-in.")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(SupporterHomeColors.muted)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
