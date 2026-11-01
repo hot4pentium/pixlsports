@@ -283,6 +283,9 @@ actions in the Event Details Share section:
 - `testSignedInShareChoicesAtNarrowWidthAndAccessibilitySizes` checks the
   event-detail share sheet and selected athlete HYPE Card at default and
   accessibility XXXL text sizes.
+- `testSignedInEventShareDraftContainsCompleteLongVenue` chooses Messages from
+  the native share sheet and verifies the unsent draft contains the full event
+  date, time, and exact long venue name.
 - `testSignedInReviewKeepsPrivateHypeCardUnpublished` checks that reviewing a
   private HYPE Card leaves it unavailable and does not expose a share action.
 
@@ -292,8 +295,11 @@ environment:
 
 - `PIXL_SHARE_TEST_EVENT_ID`: the upcoming Event Card's event ID.
 - `PIXL_SHARE_TEST_ATHLETE_NAME`: the selected athlete's exact display name.
+- `PIXL_SHARE_TEST_LOCATION`: the exact long venue name saved on that Event
+  Card; use at least 40 characters so the test can catch truncation.
 
-Use an Event Card with a saved date, time, and non-empty location.
+Use an Event Card with a saved date, time, and non-empty location. The draft
+test also needs the long venue configured above.
 For the first test, the selected athlete's HYPE Card must be available to
 supporters. For the private-card test, set that card to private/hidden before
 running the test. The test uses the same read-only native lookup as the app; it
@@ -307,6 +313,10 @@ xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
 
 xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInEventShareDraftContainsCompleteLongVenue
+
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
   -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInReviewKeepsPrivateHypeCardUnpublished
 ```
 
@@ -314,9 +324,12 @@ The Debug-only `--ui-testing-share-narrow` argument constrains Event Details to
 320 points; it does not replace Clerk authentication or use fixture data.
 The tests verify that both Share actions remain reachable, that the native iOS
 share sheet contains the event date, time, and location, and that the HYPE Card
-destination matches the selected athlete. Run on a small iPhone simulator and
-inspect the share sheet at both text sizes. These device tests have not been
-compiled or run in this Linux workspace.
+destination matches the selected athlete. The draft test checks that Messages
+receives the full date, time, and long venue in its draft body, confirms Send is
+disabled because no recipient was selected, and cancels the draft without
+sending it. Run on a small iPhone simulator and inspect the share sheet at both
+text sizes. These device tests have not been compiled or run in this Linux
+workspace.
 
 `SupporterDashboardUITests` also checks the dashboard at 320 points: connected
 empty, unlinked, loading, error, upcoming, and live states; large-text athlete

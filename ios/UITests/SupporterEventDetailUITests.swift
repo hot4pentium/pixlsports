@@ -154,6 +154,82 @@ final class SupporterEventDetailUITests: XCTestCase {
         }
     }
 
+    func testSignedInEventShareDraftContainsCompleteLongVenue() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let eventID = environment["PIXL_SHARE_TEST_EVENT_ID"], !eventID.isEmpty,
+              let expectedLocation = environment["PIXL_SHARE_TEST_LOCATION"], !expectedLocation.isEmpty else {
+            throw XCTSkip("Set PIXL_SHARE_TEST_EVENT_ID and PIXL_SHARE_TEST_LOCATION for a dedicated development Event Card with a long venue name. Sign in and link its owner on this simulator first.")
+        }
+        XCTAssertGreaterThanOrEqual(
+            expectedLocation.count, 40,
+            "Use a long venue name so this check can catch truncation."
+        )
+
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-share-narrow"]
+        app.launch()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.descendants(matching: .any)["dashboard-upcoming-section"].waitForExistence(timeout: 30),
+                      "Sign in and link the dedicated development owner before running this real-session test.")
+        let eventCard = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ OR identifier == %@",
+            "dashboard-event-tile-\(eventID)", "dashboard-event-card-\(eventID)"
+        )).firstMatch
+        for _ in 0..<20 where !eventCard.isHittable { app.swipeUp() }
+        XCTAssertTrue(eventCard.isHittable, "The configured development Event Card must be reachable.")
+        eventCard.tap()
+        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
+
+        let date = shareDetailValue("event-detail-date", in: app)
+        let time = shareDetailValue("event-detail-time", in: app)
+        let location = shareDetailValue("event-detail-location", in: app)
+        XCTAssertEqual(location, expectedLocation,
+                       "The dedicated Event Card must contain the exact long venue configured for this check.")
+
+        app.buttons["event-card-share"].tap()
+        assertSelectedStep("Share", in: app)
+        revealShareAction("native-event-share-details", in: app).tap()
+
+        let messagesActivity = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label ==[c] %@", "Messages")
+        ).firstMatch
+        XCTAssertTrue(messagesActivity.waitForExistence(timeout: 10),
+                      "Choose Messages from the native share sheet to inspect an unsent local draft.")
+        messagesActivity.tap()
+
+        let messages = XCUIApplication(bundleIdentifier: "com.apple.MobileSMS")
+        XCTAssertTrue(messages.navigationBars["New Message"].waitForExistence(timeout: 15),
+                      "Messages should open a draft without selecting a recipient.")
+        let shareTextPrefix = "PIXL SPORTS ·"
+        let messageBody = messages.textViews.matching(
+            NSPredicate(format: "value CONTAINS %@", shareTextPrefix)
+        ).firstMatch
+        XCTAssertTrue(messageBody.waitForExistence(timeout: 15),
+                      "Messages should receive the event share text in its draft body.")
+        let receivedDraft = (messageBody.value as? String) ?? messageBody.label
+        XCTAssertTrue(receivedDraft.contains(fullShareDate(from: date)),
+                      "The received draft must contain the full event date.")
+        XCTAssertTrue(receivedDraft.contains(time),
+                      "The received draft must contain the event time.")
+        XCTAssertTrue(receivedDraft.contains(expectedLocation),
+                      "The received draft must contain the complete long venue name.")
+
+        let sendButton = messages.buttons["Send"].firstMatch
+        XCTAssertTrue(sendButton.exists, "The Messages draft should expose its normal Send control.")
+        XCTAssertFalse(sendButton.isEnabled,
+                       "No recipient is selected, so the draft cannot be sent to anyone.")
+        retainShareScreenshot(in: messages, name: "Unsent event details draft with full venue")
+
+        let cancel = messages.buttons["Cancel"].firstMatch
+        XCTAssertTrue(cancel.exists)
+        cancel.tap()
+        let deleteDraft = messages.alerts.buttons["Delete Draft"].firstMatch
+        if deleteDraft.waitForExistence(timeout: 3) {
+            deleteDraft.tap()
+        }
+    }
+
     func testSignedInReviewKeepsPrivateHypeCardUnpublished() throws {
         try checkSignedInShareChoices(accessibility: true, privateCard: true)
     }
