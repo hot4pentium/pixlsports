@@ -46,6 +46,15 @@ struct SupporterEventDetailView: View {
         case unavailable(String)
     }
 
+    private var pageNavigationTitle: String {
+        switch state {
+        case .loading, .unavailable(_):
+            return "Event Details"
+        case .loaded(_, _):
+            return selectedStep.title
+        }
+    }
+
     var body: some View {
         ZStack {
             NativePageBackground()
@@ -123,7 +132,7 @@ struct SupporterEventDetailView: View {
             }
         }
 #endif
-        .navigationTitle("Event Details")
+        .navigationTitle(pageNavigationTitle)
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)

@@ -415,7 +415,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         for _ in 0..<20 where !eventCard.isHittable { app.swipeUp() }
         XCTAssertTrue(eventCard.isHittable, "The configured development Event Card must be reachable.")
         eventCard.tap()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 15))
 
         let date = shareDetailValue("event-detail-date", in: app)
         let time = shareDetailValue("event-detail-time", in: app)
@@ -487,7 +487,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         for _ in 0..<20 where !eventCard.isHittable { app.swipeUp() }
         XCTAssertTrue(eventCard.isHittable, "The configured development Event Card must be reachable.")
         eventCard.tap()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 15))
 
         let date = shareDetailValue("event-detail-date", in: app)
         let time = shareDetailValue("event-detail-time", in: app)
@@ -575,7 +575,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         for _ in 0..<20 where !eventCard.isHittable { app.swipeUp() }
         XCTAssertTrue(eventCard.isHittable, "The configured development Event Card must be reachable.")
         eventCard.tap()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 15))
 
         let detailsScroll = app.scrollViews["event-detail-scroll"]
         XCTAssertTrue(detailsScroll.waitForExistence(timeout: 10))
@@ -749,14 +749,14 @@ final class SupporterEventDetailUITests: XCTestCase {
         let close = app.buttons["Close"].firstMatch
         if close.waitForExistence(timeout: 3) {
             close.tap()
-            XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 5))
+            XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 5))
             return
         }
         let activityList = app.otherElements["ActivityListView"].firstMatch
         XCTAssertTrue(activityList.waitForExistence(timeout: 5),
                       "The native iOS share sheet should be open.")
         activityList.swipeDown()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 5))
     }
 
     private func retainShareScreenshot(in app: XCUIApplication, name: String) {
@@ -777,7 +777,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         for _ in 0..<20 where !card.isHittable { app.swipeUp() }
         XCTAssertTrue(card.isHittable, "The configured development Event Card must be reachable.")
         card.tap()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 15))
         app.buttons["event-card-prep"].tap()
         _ = assertReachable("native-prep-checklist-toggle", in: app)
         XCTAssertFalse(app.buttons["prep-test-open-event"].exists)
@@ -804,7 +804,7 @@ final class SupporterEventDetailUITests: XCTestCase {
     }
 
     private func reopenSignedInPrep(eventID: String, in app: XCUIApplication) {
-        app.navigationBars["Event Details"].buttons.firstMatch.tap()
+        eventNavigationBar(in: app).buttons.firstMatch.tap()
         XCTAssertFalse(app.buttons["Leave without saving"].exists,
                        "An acknowledged save must clear the dirty-navigation warning.")
         openSignedInPrep(eventID: eventID, in: app)
@@ -823,7 +823,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertEqual(recommendation.label, "Next: Prep")
         assertRecommendedStep("Prep", in: app)
         app.buttons["event-card-prep"].tap()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 10))
+        assertSelectedStep("Prep", in: app)
 
         let quickWater = assertReachable("native-prep-item-water", in: app)
         XCTAssertEqual(quickWater.value as? String, "Not ready")
@@ -892,24 +892,24 @@ final class SupporterEventDetailUITests: XCTestCase {
         assertRecommendedStep("Share", in: app)
         assertDraftRemains(in: app, notes: draftNotes, addedTask: addedTask)
 
-        app.navigationBars["Event Details"].buttons["Back"].tap()
+        eventNavigationBar(in: app).buttons["Back"].tap()
         let discard = app.buttons["Leave without saving"]
         XCTAssertTrue(discard.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Event Details"].exists, "Requesting Back must not pop the dirty editor")
+        XCTAssertTrue(eventNavigationBar(in: app).exists, "Requesting Back must not pop the dirty editor")
         app.buttons["Cancel"].tap()
         XCTAssertFalse(discard.exists)
         assertDraftRemains(in: app, notes: draftNotes, addedTask: addedTask)
 
-        app.navigationBars["Event Details"].buttons["Back"].tap()
+        eventNavigationBar(in: app).buttons["Back"].tap()
         XCTAssertTrue(discard.waitForExistence(timeout: 5))
         discard.tap()
         XCTAssertTrue(openEvent.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.navigationBars["Event Details"].exists)
+        XCTAssertFalse(eventNavigationBar(in: app).exists)
 
         // Discarding is not an implicit save. Reopening starts from the same
         // saved fixture, rather than the abandoned local draft.
         openEvent.tap()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 5))
         XCTAssertEqual(recommendation.label, "Next: Share")
         app.buttons["event-card-prep"].tap()
         _ = assertReachable("native-prep-item-water", in: app)
@@ -1138,7 +1138,7 @@ final class SupporterEventDetailUITests: XCTestCase {
     }
 
     private func assertDraftRemains(in app: XCUIApplication, notes: String, addedTask: XCUIElement) {
-        XCTAssertTrue(app.navigationBars["Event Details"].exists, "Recommendation/resume must not pop Event Details")
+        XCTAssertTrue(eventNavigationBar(in: app).exists, "Recommendation/resume must not pop Event Details")
         _ = assertReachable("native-prep-notes", in: app)
         XCTAssertEqual(app.descendants(matching: .any)["native-prep-notes"].value as? String, notes)
         let water = reachableFromAbove("native-prep-item-water", in: app)
@@ -1225,7 +1225,7 @@ final class SupporterEventDetailUITests: XCTestCase {
             // Disabled controls still expose their name and recommendation metadata.
             XCTAssertEqual(stats.label, "Track Stats")
             app.buttons["event-card-share"].tap()
-            XCTAssertTrue(app.navigationBars["Event Details"].exists)
+            XCTAssertTrue(app.navigationBars["Share"].exists)
             XCTAssertFalse(app.descendants(matching: .any)["event-detail-prep-summary"].exists)
             app.terminate()
             XCUIDevice.shared.orientation = .portrait
@@ -1424,7 +1424,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         assertSelectedStep("Prep", in: app)
         app.buttons["event-card-share"].tap()
         assertSelectedStep("Share", in: app)
-        XCTAssertTrue(app.navigationBars["Event Details"].exists)
+        XCTAssertTrue(eventNavigationBar(in: app).exists)
         XCTAssertFalse(app.descendants(matching: .any)["event-detail-prep-summary"].exists)
         app.buttons["event-card-track-stats"].tap()
         assertSelectedStep("Track Stats", in: app)
@@ -1452,7 +1452,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         let detail = app.buttons["dashboard-message-board-card"]
         XCTAssertTrue(detail.waitForExistence(timeout: 10))
         detail.tap()
-        XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 10))
+        XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 10))
         let detailCount = app.staticTexts["schedule-refresh-detail-count"]
         XCTAssertTrue(detailCount.waitForExistence(timeout: 10))
         waitForAtLeastOneRefresh(detailCount)
@@ -1469,7 +1469,7 @@ final class SupporterEventDetailUITests: XCTestCase {
             waitForRefreshCount(dashboardCount, expected: dashboardLoads)
 
             detail.tap()
-            XCTAssertTrue(app.navigationBars["Event Details"].waitForExistence(timeout: 10))
+            XCTAssertTrue(eventNavigationBar(in: app).waitForExistence(timeout: 10))
             detailLoads += 1
             waitForRefreshCount(detailCount, expected: detailLoads)
         }
@@ -1518,6 +1518,10 @@ final class SupporterEventDetailUITests: XCTestCase {
     private func assertSelectedStep(_ title: String, in app: XCUIApplication) {
         let panel = app.descendants(matching: .any)["event-detail-tool-panel"].firstMatch
         XCTAssertTrue(panel.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.navigationBars[title].waitForExistence(timeout: 5),
+            "The navigation title should identify the \(title) page."
+        )
         let stepIdentifier: String
         switch title {
         case "Prep": stepIdentifier = "event-card-prep"
@@ -1530,6 +1534,12 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertTrue(selectedStep.isSelected, "\(title) should be identified by the selected navigation step.")
         XCTAssertFalse(app.descendants(matching: .any)["event-tool-header"].exists,
                        "The selected step should not repeat an Event Card header.")
+    }
+
+    private func eventNavigationBar(in app: XCUIApplication) -> XCUIElement {
+        app.navigationBars.matching(
+            NSPredicate(format: "label IN %@", ["Prep", "Track Stats", "Share"])
+        ).firstMatch
     }
 
     func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {
