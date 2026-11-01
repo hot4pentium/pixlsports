@@ -1,6 +1,26 @@
 import Foundation
 import ClerkKit
 
+struct NativeSupporterProfile: Codable, Equatable {
+    let athleteName: String
+    let teamName: String
+    let jerseyNumber: String
+    let position: String
+
+    var displayDetails: String {
+        [
+            jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil
+                : "#\(jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines))",
+            position.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil
+                : position.trimmingCharacters(in: .whitespacesAndNewlines),
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
+    }
+}
+
 struct NativeSupporterSchedule: Decodable {
     let status: String
     let athleteName: String?
@@ -241,6 +261,32 @@ enum SupporterHomeAPI {
                 throw SupporterHomeAPIError.invalidResponse
             }
             return schedule
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func fetchAthleteProfile(clerk: Clerk) async throws -> NativeSupporterProfile {
+        let data = try await NativeAccountLinkClient().getData("supporter/profile", clerk: clerk)
+        do {
+            return try JSONDecoder().decode(NativeSupporterProfile.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func saveAthleteProfile(
+        _ profile: NativeSupporterProfile,
+        clerk: Clerk
+    ) async throws -> NativeSupporterProfile {
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/profile",
+            body: profile,
+            method: "PATCH",
+            clerk: clerk
+        )
+        do {
+            return try JSONDecoder().decode(NativeSupporterProfile.self, from: data)
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }

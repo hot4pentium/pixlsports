@@ -4,6 +4,8 @@ import SwiftUI
 struct NativeHomeHeroCards: View {
     let athleteName: String
     let teamName: String?
+    let jerseyNumber: String?
+    let position: String?
     let scheduleTimezone: String?
     let nextEvent: AthleteFanEvent?
     let eventTiming: SupporterEventTiming?
@@ -231,6 +233,13 @@ struct NativeHomeHeroCards: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
+                if !athleteDetails.isEmpty {
+                    Text(athleteDetails)
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(SupporterHomeColors.muted.opacity(0.92))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
             }
         }
         .frame(maxWidth: .infinity, minHeight: 260, alignment: .leading)
@@ -270,5 +279,16 @@ struct NativeHomeHeroCards: View {
         }
         .supporterSurfaceShadow()
         .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+    }
+
+    private var athleteDetails: String {
+        [
+            jerseyNumber?.trimmingCharacters(in: .whitespacesAndNewlines)
+                .flatMap { $0.isEmpty ? nil : "#\($0)" },
+            position?.trimmingCharacters(in: .whitespacesAndNewlines)
+                .flatMap { $0.isEmpty ? nil : $0 },
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
     }
 }

@@ -6,6 +6,7 @@ import {
   PreviewWebNativeAccountLinkBody, DecideWebNativeAccountLinkBody,
   CreateScheduleShareBody, GetNativeSupporterHypeCardResponse,
   UpdateNativeSupporterHypeCardBody, UpdateNativeSupporterHypeCardResponse,
+  UpdateNativeSupporterProfileBody,
 } from "@workspace/api-zod";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
@@ -19,6 +20,10 @@ import {
   loadNativeSupporterHypeCardPhoto,
   updateNativeSupporterHypeCard,
 } from "../lib/nativeSupporterHypeCard";
+import {
+  loadNativeSupporterProfile,
+  updateNativeSupporterProfile,
+} from "../lib/nativeSupporterProfile";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 import {
@@ -241,7 +246,6 @@ const NativeEventCardEditBody = z.object({
   location: z.string().max(300),
   opponent: z.string().max(200),
 }).strict();
-
 function isValidNativeEventDate(date: string) {
   const parsed = new Date(`${date}T00:00:00.000Z`);
   return /^\d{4}-\d{2}-\d{2}$/.test(date)
@@ -343,6 +347,16 @@ nativeAccountLinkRouter.patch("/supporter/event-cards/:shareToken", handle(async
     req.log.warn("Native Event Card updated; reminder scheduling needs reconciliation");
   }
   res.json({ shareToken: updated.shareToken, eventId: updated.eventId });
+}));
+nativeAccountLinkRouter.get("/supporter/profile", handle(async (_req, res) => {
+  res.json(await loadNativeSupporterProfile(identity(res)));
+}));
+nativeAccountLinkRouter.patch("/supporter/profile", handle(async (req, res) => {
+  const parsed = UpdateNativeSupporterProfileBody.strict().safeParse(req.body);
+  if (!parsed.success) {
+    throw new NativeLinkError(400, "Enter the athlete’s name and check the optional profile details.");
+  }
+  res.json(await updateNativeSupporterProfile(identity(res), parsed.data));
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
   res.json(GetNativeSupporterHypeCardResponse.parse(await loadNativeSupporterHypeCard(identity(res))));

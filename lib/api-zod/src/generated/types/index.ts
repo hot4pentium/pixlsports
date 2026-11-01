@@ -207,6 +207,8 @@ export * from './nativeSupporterHypeCard';
 export * from './nativeSupporterHypeCardSettings';
 export * from './nativeSupporterHypeCardStatus';
 export * from './nativeSupporterHypeCardUpdate';
+export * from './nativeSupporterProfile';
+export * from './nativeSupporterProfileUpdate';
 export * from './notFoundResponse';
 export * from './notificationConfig';
 export * from './notificationDisplayReceiptInput';

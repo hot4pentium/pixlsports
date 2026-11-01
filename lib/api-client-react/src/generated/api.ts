@@ -106,6 +106,8 @@ import type {
   NativeSupporterHypeCard,
   NativeSupporterHypeCardSettings,
   NativeSupporterHypeCardUpdate,
+  NativeSupporterProfile,
+  NativeSupporterProfileUpdate,
   NotFoundResponse,
   NotificationConfig,
   NotificationDisplayReceiptInput,
@@ -5554,6 +5556,173 @@ export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthlet
 
 
 
+
+export const getGetNativeSupporterProfileUrl = () => {
+
+
+
+
+  return `/api/native/supporter/profile`
+}
+
+/**
+ * Returns the athlete identity fields from the verified linked PIXL account. Optional values are empty strings when unset.
+ * @summary Load the linked iPhone owner’s athlete profile
+ */
+export const getNativeSupporterProfile = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeSupporterProfile> => {
+
+  return customFetch<NativeSupporterProfile>(getGetNativeSupporterProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeSupporterProfileQueryKey = () => {
+    return [
+    `/api/native/supporter/profile`
+    ] as const;
+    }
+
+
+export const getGetNativeSupporterProfileQueryOptions = <TData = Awaited<ReturnType<typeof getNativeSupporterProfile>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeSupporterProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeSupporterProfile>>> = ({ signal }) => getNativeSupporterProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeSupporterProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeSupporterProfile>>>
+export type GetNativeSupporterProfileQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>
+
+
+/**
+ * @summary Load the linked iPhone owner’s athlete profile
+ */
+
+export function useGetNativeSupporterProfile<TData = Awaited<ReturnType<typeof getNativeSupporterProfile>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeSupporterProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateNativeSupporterProfileUrl = () => {
+
+
+
+
+  return `/api/native/supporter/profile`
+}
+
+/**
+ * Updates only athleteName, teamName, jerseyNumber, and position in the linked PIXL account profile. Saving does not publish a HYPE Card or change its privacy settings.
+ * @summary Save the linked iPhone owner’s athlete profile
+ */
+export const updateNativeSupporterProfile = async (nativeSupporterProfileUpdate: NativeSupporterProfileUpdate, options?: Parameters<typeof customFetch>[1]): Promise<NativeSupporterProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeSupporterProfile>(getUpdateNativeSupporterProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeSupporterProfileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateNativeSupporterProfileMutationKey = () => ['updateNativeSupporterProfile'] as const;
+
+export const getUpdateNativeSupporterProfileMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterProfile>>, TError,UpdateNativeSupporterProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterProfile>>, TError,UpdateNativeSupporterProfileMutationVariables, TContext> => {
+
+const mutationKey = getUpdateNativeSupporterProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateNativeSupporterProfile>>, UpdateNativeSupporterProfileMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateNativeSupporterProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateNativeSupporterProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateNativeSupporterProfile>>>
+    export type UpdateNativeSupporterProfileMutationBody = BodyType<NativeSupporterProfileUpdate>
+    export type UpdateNativeSupporterProfileMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>
+    export type UpdateNativeSupporterProfileMutationVariables = {data: BodyType<NativeSupporterProfileUpdate>}
+
+    /**
+ * @summary Save the linked iPhone owner’s athlete profile
+ */
+export const useUpdateNativeSupporterProfile = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterProfile>>, TError,UpdateNativeSupporterProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateNativeSupporterProfile>>,
+        TError,
+        UpdateNativeSupporterProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateNativeSupporterProfileMutationOptions(options));
+    }
 
 export const getGetNativeSupporterHypeCardUrl = () => {
 

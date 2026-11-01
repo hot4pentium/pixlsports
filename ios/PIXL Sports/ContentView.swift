@@ -31,13 +31,20 @@ struct ContentView: View {
         case eventCard(String)
         case hypeCard
         case createEvent
+        case profileSetup
 
         var id: String {
             switch self {
             case let .eventCard(token): return "event-\(token)"
             case .hypeCard: return "hype-card"
             case .createEvent: return "create-event"
+            case .profileSetup: return "athlete-profile-setup"
             }
+        }
+
+        var showsDoneButton: Bool {
+            if case .profileSetup = self { return false }
+            return true
         }
     }
 #if DEBUG
@@ -82,7 +89,7 @@ struct ContentView: View {
         return !viewModel.hasResolvedInitialSchedule
     }
 
-    private func loadSchedule() async {
+    private func loadSchedule(forceProfileReload: Bool = false) async {
 #if DEBUG
         if NativeScheduleRefreshUITestProbe.isRequested {
             NativeScheduleRefreshUITestProbe.shared.recordDashboardRefresh()
@@ -90,7 +97,13 @@ struct ContentView: View {
         guard fixtureState == nil else { return }
 #endif
         guard let clerk else { return }
-        await viewModel.load(clerk: clerk)
+        await viewModel.load(clerk: clerk, forceProfileReload: forceProfileReload)
+        if viewModel.needsAthleteProfileSetup,
+           heroDestination == nil,
+           !showingAccountLink,
+           !showingSettings {
+            heroDestination = .profileSetup
+        }
     }
 
     var body: some View {
@@ -109,6 +122,7 @@ struct ContentView: View {
                                 .accessibilityIdentifier("dashboard-header-section")
                             athleteHero
                             accountSetupIfNeeded
+                            athleteProfileLoadIssue
                             nextEventSection
                         }
                         .frame(maxWidth: 560, alignment: .leading)
@@ -141,10 +155,12 @@ struct ContentView: View {
             NavigationStack {
                 heroDestinationView(destination)
                     .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { heroDestination = nil }
-                                .tint(.black)
-                                .shadow(color: .black.opacity(0.24), radius: 2, x: 0, y: 1)
+                        if destination.showsDoneButton {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") { heroDestination = nil }
+                                    .tint(.black)
+                                    .shadow(color: .black.opacity(0.24), radius: 2, x: 0, y: 1)
+                            }
                         }
                     }
             }
@@ -164,8 +180,20 @@ struct ContentView: View {
             Task { await loadSchedule() }
         }
         .onChange(of: showingAccountLink) { wasShowing, isShowing in
+            if isShowing {
+                viewModel.resetAthleteProfile()
+                return
+            }
+            guard wasShowing else { return }
+            Task { await loadSchedule(forceProfileReload: true) }
+        }
+        .onChange(of: showingSettings) { wasShowing, isShowing in
             guard wasShowing && !isShowing else { return }
-            Task { await loadSchedule() }
+            Task { await loadSchedule(forceProfileReload: true) }
+        }
+        .onChange(of: viewModel.needsAthleteProfileSetup) { _, needsSetup in
+            guard needsSetup, heroDestination == nil, !showingSettings, !showingAccountLink else { return }
+            heroDestination = .profileSetup
         }
         .onReceive(NotificationCenter.default.publisher(for: .nativeEventScheduleChanged)) { notification in
             guard let rawReason = notification.userInfo?[NativeEventScheduleChangeReason.userInfoKey] as? String,
@@ -277,8 +305,10 @@ struct ContentView: View {
                     now: guideReferenceDate(for: context.date)
                 )
                 NativeHomeHeroCards(
-                    athleteName: page.athleteName ?? "Your athlete",
-                    teamName: page.teamName,
+                    athleteName: profileValue(viewModel.athleteProfile?.athleteName, fallback: page.athleteName) ?? "Your athlete",
+                    teamName: profileValue(viewModel.athleteProfile?.teamName, fallback: page.teamName),
+                    jerseyNumber: profileValue(viewModel.athleteProfile?.jerseyNumber, fallback: nil),
+                    position: profileValue(viewModel.athleteProfile?.position, fallback: nil),
                     scheduleTimezone: page.timezone,
                     nextEvent: guide?.event,
                     eventTiming: guide?.timing,
@@ -320,7 +350,32 @@ struct ContentView: View {
                     }
                 }
             )
+        case .profileSetup:
+            if let clerk {
+                NativeAthleteProfileView(
+                    clerk: clerk,
+                    isInitialSetup: true,
+                    initialProfile: viewModel.athleteProfile,
+                    onSaved: { profile in
+                        viewModel.setAthleteProfile(profile)
+                        heroDestination = nil
+                        Task { await loadSchedule() }
+                    }
+                )
+            } else {
+                ContentUnavailableView("Athlete profile unavailable", systemImage: "person.crop.circle")
+            }
         }
+    }
+
+    private func profileValue(_ value: String?, fallback: String?) -> String? {
+        for candidate in [value, fallback] {
+            if let candidate {
+                let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+        return nil
     }
 
     private var schedulePage: NativeSupporterSchedule? {
@@ -433,6 +488,39 @@ struct ContentView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(SupporterHomeColors.blue.opacity(0.38), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var athleteProfileLoadIssue: some View {
+        if viewModel.athleteProfileError != nil {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Athlete details unavailable", systemImage: "person.crop.circle.badge.exclamationmark")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(SupporterHomeColors.background)
+                Text("We couldn’t load your profile from the linked PIXL account.")
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.lightMuted)
+                Button {
+                    Task { await loadSchedule(forceProfileReload: true) }
+                } label: {
+                    Label("Try again", systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.bold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(SupporterHomeColors.accent)
+                .foregroundStyle(SupporterHomeColors.background)
+                .accessibilityIdentifier("dashboard-athlete-profile-retry")
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(SupporterHomeColors.blue.opacity(0.2), lineWidth: 1)
+            }
+            .supporterSurfaceShadow()
+            .accessibilityIdentifier("dashboard-athlete-profile-error")
         }
     }
 

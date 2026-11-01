@@ -29,6 +29,7 @@ struct SupporterHypeCardView: View {
     @State private var card: NativePublicHypeCard?
     @State private var privateCard: NativePrivateHypeCard?
     @State private var privatePhoto: UIImage?
+    @State private var athleteProfile: NativeSupporterProfile?
     @State private var settings: NativeHypeCardSettings?
     @State private var draftShowHypeCard = false
     @State private var draftShowStats = false
@@ -210,8 +211,40 @@ struct SupporterHypeCardView: View {
         }
 
         if settings != nil {
+            if let athleteProfile {
+                athleteProfileSummary(athleteProfile)
+            }
             settingsEditor
         }
+    }
+
+    private func athleteProfileSummary(_ profile: NativeSupporterProfile) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SupporterEyebrow(text: "Linked athlete profile", color: SupporterHomeColors.accent)
+            Text(profile.athleteName)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+            let details = [profile.teamName, profile.displayDetails]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            if !details.isEmpty {
+                Text(details.joined(separator: " · "))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(SupporterHomeColors.muted)
+            }
+            Text("Edit these details in Settings. They do not change HYPE Card privacy.")
+                .font(.caption)
+                .foregroundStyle(SupporterHomeColors.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+        }
+        .supporterSurfaceShadow()
+        .accessibilityIdentifier("native-hype-card-athlete-profile")
     }
 
     private var availableSides: [NativeHypeCardSide] {
@@ -779,6 +812,7 @@ struct SupporterHypeCardView: View {
 
         guard let clerk else {
             loading = false
+            athleteProfile = nil
             if refresh {
                 card = nil
                 privateCard = nil
@@ -793,7 +827,9 @@ struct SupporterHypeCardView: View {
         }
         do {
             let result = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
+            let profile = try? await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
             guard !Task.isCancelled else { return }
+            athleteProfile = profile
             let preserveUnsavedDraft = hasUnsavedSettings
             card = result.publicCard
             privateCard = result.privateCard

@@ -4005,6 +4005,67 @@ export const GetAthleteFanCardResponse = zod.object({
 
 
 /**
+ * Returns the athlete identity fields from the verified linked PIXL account. Optional values are empty strings when unset.
+ * @summary Load the linked iPhone owner’s athlete profile
+ */
+export const getNativeSupporterProfileResponseAthleteNameMax = 100;
+
+export const getNativeSupporterProfileResponseTeamNameMax = 160;
+
+export const getNativeSupporterProfileResponseJerseyNumberMax = 40;
+
+export const getNativeSupporterProfileResponsePositionMax = 100;
+
+
+
+export const GetNativeSupporterProfileResponse = zod.object({
+  "athleteName": zod.string().max(getNativeSupporterProfileResponseAthleteNameMax),
+  "teamName": zod.string().max(getNativeSupporterProfileResponseTeamNameMax),
+  "jerseyNumber": zod.string().max(getNativeSupporterProfileResponseJerseyNumberMax),
+  "position": zod.string().max(getNativeSupporterProfileResponsePositionMax)
+})
+
+
+/**
+ * Updates only athleteName, teamName, jerseyNumber, and position in the linked PIXL account profile. Saving does not publish a HYPE Card or change its privacy settings.
+ * @summary Save the linked iPhone owner’s athlete profile
+ */
+export const updateNativeSupporterProfileBodyAthleteNameMax = 100;
+
+export const updateNativeSupporterProfileBodyTeamNameMax = 160;
+
+export const updateNativeSupporterProfileBodyJerseyNumberMax = 40;
+
+export const updateNativeSupporterProfileBodyPositionMax = 100;
+
+
+
+export const UpdateNativeSupporterProfileBody = zod.object({
+  "athleteName": zod.string().min(1).max(updateNativeSupporterProfileBodyAthleteNameMax),
+  "teamName": zod.string().max(updateNativeSupporterProfileBodyTeamNameMax).describe('Optional; send an empty string when omitted.'),
+  "jerseyNumber": zod.string().max(updateNativeSupporterProfileBodyJerseyNumberMax).describe('Optional; a leading # is removed.'),
+  "position": zod.string().max(updateNativeSupporterProfileBodyPositionMax).describe('Optional.')
+})
+
+export const updateNativeSupporterProfileResponseAthleteNameMax = 100;
+
+export const updateNativeSupporterProfileResponseTeamNameMax = 160;
+
+export const updateNativeSupporterProfileResponseJerseyNumberMax = 40;
+
+export const updateNativeSupporterProfileResponsePositionMax = 100;
+
+
+
+export const UpdateNativeSupporterProfileResponse = zod.object({
+  "athleteName": zod.string().max(updateNativeSupporterProfileResponseAthleteNameMax),
+  "teamName": zod.string().max(updateNativeSupporterProfileResponseTeamNameMax),
+  "jerseyNumber": zod.string().max(updateNativeSupporterProfileResponseJerseyNumberMax),
+  "position": zod.string().max(updateNativeSupporterProfileResponsePositionMax)
+})
+
+
+/**
  * Returns a public card reference only when server-side visibility permits it; private previews never include a public token or private photo URL.
  * @summary Load the selected athlete’s HYPE Card for its linked iPhone owner
  */

@@ -1369,6 +1369,53 @@ paths:
                 $ref: "#/components/schemas/PublicAthleteFanCard"
         "404":
           $ref: "#/components/responses/NotFound"
+  /native/supporter/profile:
+    get:
+      operationId: getNativeSupporterProfile
+      tags: [athlete-invites]
+      summary: Load the linked iPhone owner’s athlete profile
+      description: Returns the athlete identity fields from the verified linked PIXL account. Optional values are empty strings when unset.
+      responses:
+        "200":
+          description: Linked athlete profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSupporterProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: No verified PIXL account is linked
+    patch:
+      operationId: updateNativeSupporterProfile
+      tags: [athlete-invites]
+      summary: Save the linked iPhone owner’s athlete profile
+      description: Updates only athleteName, teamName, jerseyNumber, and position in the linked PIXL account profile. Saving does not publish a HYPE Card or change its privacy settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NativeSupporterProfileUpdate"
+      responses:
+        "200":
+          description: Saved linked athlete profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSupporterProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: No verified PIXL account is linked
+        "423":
+          description: The linked PIXL account is not eligible for profile updates
   /native/supporter/hype-card:
     get:
       operationId: getNativeSupporterHypeCard
@@ -5178,6 +5225,22 @@ components:
           $ref: "#/components/schemas/NativePrivateHypeCard"
         settings:
           $ref: "#/components/schemas/NativeSupporterHypeCardSettings"
+    NativeSupporterProfile:
+      type: object
+      required: [athleteName, teamName, jerseyNumber, position]
+      properties:
+        athleteName: { type: string, maxLength: 100 }
+        teamName: { type: string, maxLength: 160 }
+        jerseyNumber: { type: string, maxLength: 40 }
+        position: { type: string, maxLength: 100 }
+    NativeSupporterProfileUpdate:
+      type: object
+      required: [athleteName, teamName, jerseyNumber, position]
+      properties:
+        athleteName: { type: string, minLength: 1, maxLength: 100 }
+        teamName: { type: string, maxLength: 160, description: "Optional; send an empty string when omitted." }
+        jerseyNumber: { type: string, maxLength: 40, description: "Optional; a leading # is removed." }
+        position: { type: string, maxLength: 100, description: "Optional." }
     NativePrivateHypeCard:
       type: object
       required: [athleteName, teamName, seasonName, favoriteMoment, hasPhoto]

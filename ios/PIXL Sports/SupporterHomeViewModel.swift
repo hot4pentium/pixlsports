@@ -24,7 +24,31 @@ final class SupporterHomeViewModel: ObservableObject {
     @Published private(set) var state: State = .loading
     @Published private(set) var hypeCardPreview: NativePublicHypeCard?
     @Published private(set) var hypeCardPreviewError: String?
+    @Published private(set) var athleteProfile: NativeSupporterProfile?
+    @Published private(set) var athleteProfileError: String?
+    @Published private(set) var hasResolvedAthleteProfile = false
     @Published private(set) var hasResolvedInitialSchedule = false
+    private var hasLoadedAthleteProfile = false
+
+    var needsAthleteProfileSetup: Bool {
+        guard hasResolvedAthleteProfile, athleteProfileError == nil,
+              let athleteProfile else { return false }
+        return athleteProfile.athleteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func setAthleteProfile(_ profile: NativeSupporterProfile) {
+        athleteProfile = profile
+        athleteProfileError = nil
+        hasResolvedAthleteProfile = true
+        hasLoadedAthleteProfile = true
+    }
+
+    func resetAthleteProfile() {
+        athleteProfile = nil
+        athleteProfileError = nil
+        hasResolvedAthleteProfile = false
+        hasLoadedAthleteProfile = false
+    }
 
     /// Chooses the game-day guide from scheduled time, not a saved game status.
     /// The home guide shares the detail-step phases, then advances after two hours.
@@ -107,7 +131,7 @@ final class SupporterHomeViewModel: ObservableObject {
         }.first
     }
 
-    func load(clerk: Clerk) async {
+    func load(clerk: Clerk, forceProfileReload: Bool = false) async {
         state = .loading
         hypeCardPreview = nil
         hypeCardPreviewError = nil
@@ -119,6 +143,10 @@ final class SupporterHomeViewModel: ObservableObject {
             }
             guard page.status == "linked" else {
                 state = .notConnected
+                athleteProfile = nil
+                athleteProfileError = nil
+                hasResolvedAthleteProfile = true
+                hasLoadedAthleteProfile = true
                 hasResolvedInitialSchedule = true
                 return
             }
@@ -131,6 +159,19 @@ final class SupporterHomeViewModel: ObservableObject {
             // The schedule is sufficient to render the dashboard; the optional
             // HYPE Card preview can continue loading without holding the splash.
             hasResolvedInitialSchedule = true
+            if forceProfileReload || !hasLoadedAthleteProfile {
+                do {
+                    athleteProfile = try await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
+                    athleteProfileError = nil
+                    hasLoadedAthleteProfile = true
+                    hasResolvedAthleteProfile = true
+                } catch is CancellationError {
+                    return
+                } catch {
+                    athleteProfileError = error.localizedDescription
+                    hasResolvedAthleteProfile = true
+                }
+            }
             do {
                 hypeCardPreview = try await SupporterHomeAPI.fetchPublicHypeCard(clerk: clerk)
             } catch is CancellationError {

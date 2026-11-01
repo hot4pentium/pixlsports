@@ -7,7 +7,11 @@ Supporter profile athlete details should automatically seed new or local fan-too
 
 **Why:** A live card represents the athlete’s current identity, while saved and published content may represent a deliberate past design or a different game. Only the invite owner controls identity updates.
 
-**How to apply:** Read the normalized supporter profile at tool entry. On live-card routes, apply its name only after confirming invite ownership and persist any correction through an owner-only save. Preserve authored cloud/share data unless the user explicitly edits it.
+Native profile saves may update a live invite’s athlete/team identity only when it still matches the previous profile. They must not change HYPE Card visibility, pause, media, or publication settings.
+
+**Why:** Profile details and consent to publish are separate choices; completing athlete setup must never make a private card public.
+
+**How to apply:** Read the normalized supporter profile at tool entry. On live-card routes, apply identity only after confirming invite ownership and a match with the previous profile. Persist identity corrections through an owner-only write, update no publication controls, and preserve authored cloud/share data unless the user explicitly edits it.
 
 When the owner creates their first HYPE Card, automatically copy their saved Athlete Profile photo. Preserve the private original and publish only an independently stored, sanitized card copy. Do not backfill existing cards or replace their chosen photos when profile photos change.
 

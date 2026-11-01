@@ -2963,6 +2963,40 @@ export interface NativeSupporterHypeCard {
   settings?: NativeSupporterHypeCardSettings;
 }
 
+export interface NativeSupporterProfile {
+  /** @maxLength 100 */
+  athleteName: string;
+  /** @maxLength 160 */
+  teamName: string;
+  /** @maxLength 40 */
+  jerseyNumber: string;
+  /** @maxLength 100 */
+  position: string;
+}
+
+export interface NativeSupporterProfileUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  athleteName: string;
+  /**
+     * Optional; send an empty string when omitted.
+     * @maxLength 160
+     */
+  teamName: string;
+  /**
+     * Optional; a leading # is removed.
+     * @maxLength 40
+     */
+  jerseyNumber: string;
+  /**
+     * Optional.
+     * @maxLength 100
+     */
+  position: string;
+}
+
 export interface NativeSupporterHypeCardUpdate {
   showHypeCard: boolean;
   showStats: boolean;

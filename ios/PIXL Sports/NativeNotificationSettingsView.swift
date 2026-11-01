@@ -122,6 +122,20 @@ struct NativeNotificationSettingsView: View {
                     .accessibilityIdentifier("native-settings-sign-out")
                 }
 
+                Section("Athlete profile") {
+                    if model.isLinked {
+                        NavigationLink {
+                            NativeAthleteProfileView(clerk: clerk)
+                        } label: {
+                            Label("Edit athlete details", systemImage: "person.text.rectangle")
+                        }
+                        .accessibilityIdentifier("native-settings-athlete-profile")
+                    } else {
+                        Text("Connect your PIXL account from the home screen before editing athlete details.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section("Event Card alerts") {
                     if model.isLoading {
                         ProgressView("Loading alert settings")
