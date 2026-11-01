@@ -286,6 +286,9 @@ actions in the Event Details Share section:
 - `testSignedInEventShareDraftContainsCompleteLongVenue` chooses Messages from
   the native share sheet and verifies the unsent draft contains the full event
   date, time, and exact long venue name.
+- `testSignedInEventShareDraftWithoutVenueKeepsDateAndTime` chooses Messages
+  from the native share sheet and verifies the unsent draft keeps the event date
+  and time without an empty or previous-event location.
 - `testSignedInReviewKeepsPrivateHypeCardUnpublished` checks that reviewing a
   private HYPE Card leaves it unavailable and does not expose a share action.
 
@@ -297,9 +300,18 @@ environment:
 - `PIXL_SHARE_TEST_ATHLETE_NAME`: the selected athlete's exact display name.
 - `PIXL_SHARE_TEST_LOCATION`: the exact long venue name saved on that Event
   Card; use at least 40 characters so the test can catch truncation.
+- `PIXL_SHARE_TEST_NO_VENUE_EVENT_ID`: a separate upcoming Event Card with no
+  saved venue.
+- `PIXL_SHARE_TEST_STALE_LOCATION`: a distinctive venue from another Event Card
+  that must not appear in the no-venue draft.
 
 Use an Event Card with a saved date, time, and non-empty location. The draft
 test also needs the long venue configured above.
+The no-venue test uses the separate card configured above; it confirms the
+details view says “Location to be announced,” then checks that the Messages
+draft still contains the full date and time but neither a `Location:` line nor
+the configured stale venue. It confirms Send is disabled and cancels/deletes
+the local draft without entering a recipient.
 For the first test, the selected athlete's HYPE Card must be available to
 supporters. For the private-card test, set that card to private/hidden before
 running the test. The test uses the same read-only native lookup as the app; it
@@ -314,6 +326,10 @@ xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
 xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
   -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInEventShareDraftContainsCompleteLongVenue
+
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInEventShareDraftWithoutVenueKeepsDateAndTime
 
 xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \

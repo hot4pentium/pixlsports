@@ -49,8 +49,8 @@ struct NativeEventShareView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(SupporterHomeColors.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                if !event.location.isEmpty {
-                    Label(event.location, systemImage: "mappin.and.ellipse")
+                if let location {
+                    Label(location, systemImage: "mappin.and.ellipse")
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -145,8 +145,8 @@ struct NativeEventShareView: View {
                     Text("\(event.formattedFullDate(timezone: zone)) · \(event.formattedTime(timezone: zone))")
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
-                    if !event.location.isEmpty {
-                        Text(event.location).font(.subheadline)
+                    if let location {
+                        Text(location).font(.subheadline)
                     }
                 }
                 ShareLink(item: shareText) {
@@ -173,13 +173,18 @@ struct NativeEventShareView: View {
 
     private var zone: String? { event.timezone ?? schedule.timezone }
 
+    private var location: String? {
+        let value = event.location.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
     private var shareText: String {
         [
             "PIXL SPORTS · \(event.title)",
             "\(event.formattedFullDate(timezone: zone)) · \(event.formattedTime(timezone: zone))",
             zone.map { "Time zone: \($0)" },
             event.opponent.isEmpty ? nil : "Opponent: \(event.opponent)",
-            event.location.isEmpty ? nil : "Location: \(event.location)",
+            location.map { "Location: \($0)" },
         ].compactMap { $0 }.joined(separator: "\n")
     }
 }
