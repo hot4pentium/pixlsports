@@ -162,21 +162,16 @@ struct NativeEventPrepView: View {
                 compactReadinessSummary
 
                 if items.isEmpty {
-                    Text("No Prep tasks yet. Open the full list to add some.")
+                    Text("No Prep tasks yet. Add tasks or event notes in Manage.")
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
                 } else {
                     SupporterEyebrow(text: "Your checklist", color: NativeEventToolColors.prep)
                         .padding(.top, 2)
                     VStack(spacing: 8) {
-                        ForEach(Array(items.prefix(4))) { item in
+                        ForEach(items) { item in
                             quickChecklistItem(item)
                         }
-                    }
-                    if items.count > 4 {
-                        Text("\(items.count - 4) more tasks in the full list")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(SupporterHomeColors.muted)
                     }
                 }
             } else {
@@ -199,7 +194,7 @@ struct NativeEventPrepView: View {
             } label: {
                 HStack(spacing: 9) {
                     Image(systemName: "slider.horizontal.3")
-                    Text("Manage full Prep")
+                    Text("Manage tasks & notes")
                     Spacer(minLength: 0)
                     Image(systemName: "arrow.right")
                 }
@@ -207,8 +202,8 @@ struct NativeEventPrepView: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(SupporterPrimaryButtonStyle(fillColor: NativeEventToolColors.prep))
-            .accessibilityLabel("Manage full Prep")
-            .accessibilityHint("Open the full checklist and event notes.")
+            .accessibilityLabel("Manage tasks and event notes")
+            .accessibilityHint("Add or remove checklist tasks and edit event notes.")
             .accessibilityIdentifier("native-prep-manage-full")
         }
         .accessibilityIdentifier("native-prep-quick-content")
@@ -329,6 +324,17 @@ struct NativeEventPrepView: View {
                     if compactContent && !isManagingFullPrep {
                         compactPrepContent
                     } else {
+                        if compactContent {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Manage tasks & event notes")
+                                    .font(.headline.weight(.bold))
+                                    .foregroundStyle(.white)
+                                Text("Add or remove checklist tasks and keep event notes here.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(SupporterHomeColors.muted)
+                            }
+                            .accessibilityIdentifier("native-prep-management-title")
+                        }
                         prepSections
                         Text("Press and hold a task to remove it.")
                             .font(.caption)

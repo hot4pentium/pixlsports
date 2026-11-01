@@ -31,76 +31,11 @@ struct NativeEventTrackingPanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 12) {
-                SupporterEyebrow(text: "Scoreboard", color: NativeEventToolColors.trackStats)
-                VStack(alignment: .leading, spacing: 14) {
-                    NativeEventTrackerView(
-                        event: event, teamName: teamName, athleteName: athleteName,
-                        clerk: clerk, model: trackerModel, embedded: true, compact: true
-                    )
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    LinearGradient(
-                        colors: [NativeEventToolColors.trackStats.opacity(0.16), Color.white.opacity(0.035)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(NativeEventToolColors.trackStats.opacity(0.35), lineWidth: 1)
-                }
-                .accessibilityIdentifier("native-event-scorekeeping-card")
-
-                VStack(spacing: 9) {
-                    Button {
-                        tapsVisited = true
-                        showingTaps = true
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "hands.clap.fill")
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Open Live Taps")
-                                    .font(.subheadline.weight(.bold))
-                                Text("Let fans cheer from their phones")
-                                    .font(.caption.weight(.medium))
-                                    .opacity(0.86)
-                            }
-                            Spacer(minLength: 0)
-                            Image(systemName: "arrow.right")
-                                .font(.subheadline.weight(.bold))
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .padding(.horizontal, 12)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(NativeEventToolColors.trackStats)
-                    .accessibilityIdentifier("native-event-mode-live-taps")
-                    NavigationLink {
-                        NativeEventTrackerView(
-                            event: event, teamName: teamName, athleteName: athleteName,
-                            clerk: clerk, model: trackerModel
-                        )
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "chart.bar.xaxis")
-                            Text("Open full tracker")
-                            Spacer(minLength: 0)
-                            Image(systemName: "arrow.up.right")
-                        }
-                        .font(.subheadline.weight(.bold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .padding(.horizontal, 12)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("native-event-full-tracker")
-                }
+        VStack(alignment: .leading, spacing: 22) {
+            scorekeepingSection
                 .eventToolVisibility(!showingTaps)
-            }
+            fanEngagementSection
+                .eventToolVisibility(!showingTaps)
             if tapsVisited {
                 VStack(alignment: .leading, spacing: 14) {
                     Button {
@@ -119,6 +54,100 @@ struct NativeEventTrackingPanel: View {
                 }
                 .eventToolVisibility(showingTaps)
             }
+        }
+        .tint(NativeEventToolColors.trackStats)
+    }
+
+    private var scorekeepingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SupporterEyebrow(text: "Scorekeeping", color: NativeEventToolColors.trackStats)
+            NativeEventTrackerView(
+                event: event, teamName: teamName, athleteName: athleteName,
+                clerk: clerk, model: trackerModel, embedded: true, compact: true
+            )
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [NativeEventToolColors.trackStats.opacity(0.16), Color.white.opacity(0.035)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(NativeEventToolColors.trackStats.opacity(0.35), lineWidth: 1)
+            }
+            .accessibilityIdentifier("native-event-scorekeeping-card")
+
+            NavigationLink {
+                NativeEventTrackerView(
+                    event: event, teamName: teamName, athleteName: athleteName,
+                    clerk: clerk, model: trackerModel
+                )
+            } label: {
+                Label("Open full tracker", systemImage: "chart.bar.xaxis")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("native-event-full-tracker")
+        }
+        .accessibilityIdentifier("native-event-scorekeeping-section")
+    }
+
+    private var fanEngagementSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SupporterEyebrow(text: "Fan engagement", color: NativeEventToolColors.trackStats)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "hands.clap.fill")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(NativeEventToolColors.trackStats)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            NativeEventToolColors.trackStats.opacity(0.15),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Live Taps")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("Give fans a cheer-only screen. It doesn’t change the score or player stats.")
+                            .font(.subheadline)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Button {
+                    tapsVisited = true
+                    showingTaps = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Text("Open Live Taps")
+                            .font(.subheadline.weight(.bold))
+                        Spacer(minLength: 0)
+                        Image(systemName: "arrow.right")
+                            .font(.subheadline.weight(.bold))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(.horizontal, 12)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("native-event-mode-live-taps")
+            }
+            .padding(15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+            }
+            .accessibilityIdentifier("native-event-live-taps-card")
         }
     }
 }

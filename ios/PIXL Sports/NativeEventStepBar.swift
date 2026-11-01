@@ -57,12 +57,8 @@ struct NativeEventStepBar: View {
         let isSelected = step == selected
         let toolColor = NativeEventToolColors.color(for: step)
         return VStack(spacing: 5) {
-            HStack(spacing: 5) {
-                Text("\(step.number)")
-                    .font(.caption2.weight(.black))
-                Image(systemName: step.icon)
-                    .font(.caption.weight(.bold))
-            }
+            Image(systemName: step.icon)
+                .font(.subheadline.weight(.bold))
             Text(step.title)
                 .font(.caption.weight(.bold))
                 .multilineTextAlignment(.center)

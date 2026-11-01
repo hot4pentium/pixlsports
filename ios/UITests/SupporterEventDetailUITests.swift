@@ -295,13 +295,14 @@ final class SupporterEventDetailUITests: XCTestCase {
             XCTAssertEqual(row.value as? String, "Ready")
             XCTAssertEqual(app.staticTexts["native-prep-quick-progress"].label, "\(index + 1) of 5 ready")
         }
-        XCTAssertFalse(app.buttons["native-prep-item-snack"].exists,
-                       "Content should show only the first four tasks")
+        let fifthInContent = revealPrepControl("native-prep-item-snack", in: app)
+        XCTAssertEqual(fifthInContent.value as? String, "Not ready",
+                       "The full checklist should be available in Event Details.")
         let manage = revealPrepControl("native-prep-manage-full", in: app)
-        XCTAssertEqual(manage.label, "Manage full Prep")
-        XCTAssertLessThanOrEqual(app.buttons["native-prep-item-arrival"].frame.maxY, manage.frame.minY)
+        XCTAssertEqual(manage.label, "Manage tasks and event notes")
+        XCTAssertLessThanOrEqual(app.buttons["native-prep-item-snack"].frame.maxY, manage.frame.minY)
         try auditPrepControl(manage, in: app)
-        retainPrepScreenshot(in: app, name: "Manage full Prep — \(accessibility ? "AX XXXL" : "default")")
+        retainPrepScreenshot(in: app, name: "Manage tasks and notes — \(accessibility ? "AX XXXL" : "default")")
         manage.tap()
 
         // Both presentations edit the same in-memory draft, never a fixture save.
@@ -330,7 +331,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         for task in tasks {
             XCTAssertEqual(app.buttons["native-prep-item-\(task.0)"].value as? String, "Ready")
         }
-        XCTAssertFalse(app.buttons["native-prep-item-snack"].exists)
+        XCTAssertEqual(revealPrepControl("native-prep-item-snack", in: app).value as? String, "Ready")
         XCTAssertTrue(revealPrepControl("native-prep-save", in: app).isEnabled)
         revealPrepControl("native-prep-manage-full", in: app).tap()
         XCTAssertEqual(revealPrepControl("native-prep-item-snack", in: app).value as? String, "Ready")

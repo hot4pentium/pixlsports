@@ -14,14 +14,6 @@ enum NativeEventDetailStep: String, CaseIterable {
         }
     }
 
-    var number: Int {
-        switch self {
-        case .prep: return 1
-        case .trackStats: return 2
-        case .share: return 3
-        }
-    }
-
     var icon: String {
         switch self {
         case .prep: return "checklist"

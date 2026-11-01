@@ -15,7 +15,7 @@ For native iPhone, the Message Board should show event details beside the HYPE C
 
 **How to apply:** Use the PWA's behavior as the reference, preserve existing account-owned checklist and game history, and keep these actions inside the native journey.
 
-Opened native Event Cards should use compact, organized details with Prep, Track Stats, and Share step buttons at the bottom. Each opens its native section, and the recommended step is highlighted according to the event's timing.
+Opened native Event Cards should use compact, organized details with Prep, Track Stats, and Share step buttons at the bottom. Each opens its native section, and the recommended step is highlighted according to the event's timing. Do not add numbered step badges.
 
 **Why:** The user requested less vertical detail layout and a clear, time-aware sequence of actions.
 
@@ -31,13 +31,13 @@ Use the section beneath Event Details as the active native Prep, Track Stats, or
 
 **Why:** The user preferred using the same area for the selected task instead of opening another screen for every tool.
 
-**How to apply:** Keep the bottom steps available, initially select the time-recommended step, and do not force a different selection while the user works. Retain unfinished Prep and pending tracker changes when switching panels. Prep begins with a short interactive checklist and a control to open the full manager.
+**How to apply:** Keep the bottom steps available, initially select the time-recommended step, and do not force a different selection while the user works. Retain unfinished Prep and pending tracker changes when switching panels. Prep Content shows the entire interactive checklist; Manage is for adding/removing tasks and editing event notes.
 
-**Why:** The user chose a compact checklist with a separate full-list management action.
+**Why:** The user clarified that the entire checklist belongs in Content and Manage should focus on tasks and event notes.
 
-**How to apply:** Keep quick checklist changes in the same draft and save flow as the full Prep editor; the full editor remains responsible for adding, removing, and editing tasks and notes.
+**How to apply:** Keep checklist changes in the same draft and save flow as task and note management; allow the full list to scroll within Event Details.
 
-Within Track Stats, open score-only tracking directly in Content, with team and opponent scores, Start/End Game, Access Live Taps, and Open full tracker. Do not require a second stats-mode selection or put individual player-stat buttons in this compact panel.
+Within Track Stats, open score-only tracking directly in Content, with team and opponent scores, Start/End Game, Live Taps, and Open full tracker. Place scorekeeping and Live Taps in clearly separate sections, and explain that Live Taps are cheer-only.
 
 **Why:** The user wants supporters to be able to keep only the score, while retaining separate access to Live Taps and full stat tracking. Cheers must remain distinct from recorded stats.
 

@@ -106,22 +106,12 @@ struct NativeEventToolPanel: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 7) {
-                    Text("STEP \(selected.number)")
-                        .font(.caption2.weight(.black))
-                        .tracking(1.2)
-                        .foregroundStyle(toolAccent)
-                    Circle()
-                        .fill(toolAccent.opacity(0.7))
-                        .frame(width: 3, height: 3)
-                        .accessibilityHidden(true)
-                    Text(toolKicker)
-                        .font(.caption2.weight(.black))
-                        .tracking(1.1)
-                        .foregroundStyle(SupporterHomeColors.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("event-tool-context")
-                }
+                Text(toolKicker)
+                    .font(.caption2.weight(.black))
+                    .tracking(1.1)
+                    .foregroundStyle(toolAccent)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("event-tool-context")
 
                 Text(selected.title)
                     .font(.title2.weight(.black))

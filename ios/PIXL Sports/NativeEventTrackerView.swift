@@ -171,14 +171,7 @@ struct NativeEventTrackerView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(model.busy || model.pendingCount > 0 || model.conflictBlocked)
             }
-            Button(compact ? "End game" : "Finish game", role: .destructive) {
-                recordScore = compact || game.hasRecordedScore
-                outcome = ""
-                showingFinish = true
-            }
-            .buttonStyle(.bordered)
-            .disabled(model.busy || model.pendingCount > 0 || model.conflictBlocked)
-            .accessibilityIdentifier("native-event-end-game")
+            endGameControl(for: game)
             }
             if !compact && !game.events.isEmpty {
                 Text("RECENT STATS").font(.caption.bold())
@@ -192,6 +185,30 @@ struct NativeEventTrackerView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func endGameControl(for game: NativeEventWorkspace.Game) -> some View {
+        if compact {
+            HStack {
+                Spacer(minLength: 0)
+                endGameButton(for: game)
+                Spacer(minLength: 0)
+            }
+        } else {
+            endGameButton(for: game)
+        }
+    }
+
+    private func endGameButton(for game: NativeEventWorkspace.Game) -> some View {
+        Button(compact ? "End game" : "Finish game", role: .destructive) {
+            recordScore = compact || game.hasRecordedScore
+            outcome = ""
+            showingFinish = true
+        }
+        .buttonStyle(.bordered)
+        .disabled(model.busy || model.pendingCount > 0 || model.conflictBlocked)
+        .accessibilityIdentifier("native-event-end-game")
     }
 
     private func scoreboard(_ label: String, score: Int, opponent: Bool, editable: Bool) -> some View {
