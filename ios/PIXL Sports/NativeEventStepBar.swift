@@ -72,12 +72,19 @@ struct NativeEventStepBar: View {
         .contentShape(Rectangle())
         .foregroundStyle(isRecommended ? SupporterHomeColors.background : .white)
         .background(
-            isRecommended ? SupporterHomeColors.accent : Color.white.opacity(isSelected ? 0.13 : 0.06),
+            isRecommended
+                ? SupporterHomeColors.accent
+                : isSelected
+                    ? SupporterHomeColors.blue.opacity(0.42)
+                    : Color.white.opacity(0.055),
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.white.opacity(isRecommended ? 0 : (isSelected ? 0.48 : 0.12)), lineWidth: 1)
+                .strokeBorder(
+                    isRecommended ? Color.clear : isSelected ? SupporterHomeColors.blue.opacity(0.95) : Color.white.opacity(0.12),
+                    lineWidth: 1
+                )
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(step.title)

@@ -10,7 +10,10 @@ struct NativeEventShareView: View {
     var body: some View {
         Group {
             if embedded {
-                VStack(alignment: .leading, spacing: 18) { shareSections }
+                VStack(alignment: .leading, spacing: 12) {
+                    eventShareCard
+                    hypeCardShareCard
+                }
             } else {
                 Form { shareSections }
             }
@@ -20,6 +23,108 @@ struct NativeEventShareView: View {
         .preferredColorScheme(.dark)
         .navigationTitle(embedded ? "Event Details" : "Share")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var eventShareCard: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(spacing: 9) {
+                Image(systemName: "calendar")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(SupporterHomeColors.blue)
+                    .accessibilityHidden(true)
+                SupporterEyebrow(text: "Event details", color: SupporterHomeColors.blue)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(event.title)
+                    .font(.title3.weight(.black))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("\(event.formattedFullDate(timezone: zone)) · \(event.formattedTime(timezone: zone))")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !event.location.isEmpty {
+                    Label(event.location, systemImage: "mappin.and.ellipse")
+                        .font(.subheadline)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            ShareLink(item: shareText) {
+                HStack(spacing: 9) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Share event details")
+                    Spacer(minLength: 0)
+                    Image(systemName: "arrow.up.right")
+                }
+                .font(.subheadline.weight(.bold))
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(SupporterPrimaryButtonStyle())
+            .accessibilityIdentifier("native-event-share-details")
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [SupporterHomeColors.blue.opacity(0.16), Color.white.opacity(0.045)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(SupporterHomeColors.blue.opacity(0.28), lineWidth: 1)
+        }
+        .accessibilityIdentifier("native-event-share-details-card")
+    }
+
+    private var hypeCardShareCard: some View {
+        NavigationLink {
+            SupporterHypeCardView(clerk: clerk)
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.crop.rectangle")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(SupporterHomeColors.accent)
+                    .frame(width: 44, height: 44)
+                    .background(SupporterHomeColors.accent.opacity(0.13), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    SupporterEyebrow(text: "Athlete Showcase")
+                    Text("Review & share HYPE Card")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Review the card before sharing. A private HYPE Card stays private.")
+                        .font(.subheadline)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "arrow.right")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(SupporterHomeColors.accent)
+                    .padding(.top, 3)
+                    .accessibilityHidden(true)
+            }
+            .padding(15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 19, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.13), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("native-event-share-hype-card")
     }
 
     @ViewBuilder

@@ -774,6 +774,18 @@ final class SupporterEventDetailUITests: XCTestCase {
         let panel = app.descendants(matching: .any)["event-detail-tool-panel"].firstMatch
         XCTAssertTrue(panel.waitForExistence(timeout: 5))
         XCTAssertTrue(panel.staticTexts[title].exists, "The Event Details Content section should show \(title).")
+        XCTAssertEqual(panel.staticTexts["event-tool-title"].label, title)
+        XCTAssertFalse(panel.staticTexts["event-tool-summary"].label.isEmpty)
+        XCTAssertFalse(panel.staticTexts["event-tool-event-context"].label.isEmpty,
+                       "The selected tool should retain visible context for its Event Card.")
+        let expectedContext: String
+        switch title {
+        case "Prep": expectedContext = "BEFORE THE EVENT"
+        case "Track Stats": expectedContext = "GAME SCOREKEEPING"
+        case "Share": expectedContext = "SHARE THIS EVENT"
+        default: XCTFail("Unexpected Event Details tool \(title)"); return
+        }
+        XCTAssertEqual(panel.staticTexts["event-tool-context"].label, expectedContext)
     }
 
     func testLongScheduleCardsRemainReadableAndReachableAtNarrowAccessibilityWidth() {

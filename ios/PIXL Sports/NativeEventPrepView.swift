@@ -154,27 +154,24 @@ struct NativeEventPrepView: View {
 
     private var compactPrepContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Prep checklist", systemImage: "checklist")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(SupporterHomeColors.accent)
-
             if let clerk, model.busy || model.errorMessage != nil {
                 NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
             }
 
             if model.workspace != nil {
-                Text("\(readyCount) of \(items.count) ready")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SupporterHomeColors.muted)
-                    .accessibilityIdentifier("native-prep-quick-progress")
+                compactReadinessSummary
 
                 if items.isEmpty {
                     Text("No Prep tasks yet. Open the full list to add some.")
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
                 } else {
-                    ForEach(Array(items.prefix(4))) { item in
-                        quickChecklistItem(item)
+                    SupporterEyebrow(text: "Your checklist")
+                        .padding(.top, 2)
+                    VStack(spacing: 8) {
+                        ForEach(Array(items.prefix(4))) { item in
+                            quickChecklistItem(item)
+                        }
                     }
                     if items.count > 4 {
                         Text("\(items.count - 4) more tasks in the full list")
@@ -200,13 +197,70 @@ struct NativeEventPrepView: View {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { isManagingFullPrep = true }
             } label: {
-                prepNavigationLabel("Manage full Prep", systemImage: "slider.horizontal.3")
+                HStack(spacing: 9) {
+                    Image(systemName: "slider.horizontal.3")
+                    Text("Manage full Prep")
+                    Spacer(minLength: 0)
+                    Image(systemName: "arrow.right")
+                }
+                .font(.subheadline.weight(.bold))
+                .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(SupporterHomeColors.accent)
+            .buttonStyle(SupporterPrimaryButtonStyle())
+            .accessibilityLabel("Manage full Prep")
+            .accessibilityHint("Open the full checklist and event notes.")
             .accessibilityIdentifier("native-prep-manage-full")
         }
         .accessibilityIdentifier("native-prep-quick-content")
+    }
+
+    private var compactReadinessSummary: some View {
+        HStack(spacing: 13) {
+            ZStack {
+                Circle()
+                    .stroke(SupporterHomeColors.accent.opacity(0.18), lineWidth: 5)
+                Circle()
+                    .trim(from: 0, to: CGFloat(readyCount) / CGFloat(max(items.count, 1)))
+                    .stroke(SupporterHomeColors.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text("\(readyCount)")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 46, height: 46)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(event.type == "practice" ? "Practice prep" : "Game-day prep")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                Text("\(readyCount) of \(items.count) ready")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .accessibilityIdentifier("native-prep-quick-progress")
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Image(systemName: readyCount == items.count && !items.isEmpty ? "checkmark.seal.fill" : "checklist")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(SupporterHomeColors.accent)
+                .accessibilityHidden(true)
+        }
+        .padding(13)
+        .background(
+            LinearGradient(
+                colors: [SupporterHomeColors.accent.opacity(0.13), Color.white.opacity(0.035)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 17, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .strokeBorder(SupporterHomeColors.accent.opacity(0.24), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("native-prep-readiness-card")
     }
 
     private func quickChecklistItem(_ item: NativePrepItem) -> some View {
@@ -230,6 +284,19 @@ struct NativeEventPrepView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                item.completed ? SupporterHomeColors.accent.opacity(0.085) : Color.white.opacity(0.045),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(
+                        item.completed ? SupporterHomeColors.accent.opacity(0.26) : Color.white.opacity(0.07),
+                        lineWidth: 1
+                    )
+            }
         }
         .buttonStyle(.plain)
         .disabled(model.busy || model.pending != nil)
