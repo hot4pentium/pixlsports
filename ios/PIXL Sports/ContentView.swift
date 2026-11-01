@@ -139,7 +139,7 @@ struct ContentView: View {
                     }
             }
             .toolbar(.visible, for: .navigationBar)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
         }
 #if os(iOS)
         .toolbar(.hidden, for: .navigationBar)
@@ -179,39 +179,7 @@ struct ContentView: View {
     // MARK: - Backdrop
 
     private var backdrop: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color.white, Color(red: 0.95, green: 0.97, blue: 0.99)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.055), .clear],
-                center: .topTrailing,
-                startRadius: 8,
-                endRadius: 440
-            )
-            RadialGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.025), .clear],
-                center: .bottomLeading,
-                startRadius: 8,
-                endRadius: 380
-            )
-            Canvas { context, size in
-                var grid = Path()
-                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
-                    grid.move(to: CGPoint(x: x, y: 0))
-                    grid.addLine(to: CGPoint(x: x, y: size.height))
-                }
-                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
-                    grid.move(to: CGPoint(x: 0, y: y))
-                    grid.addLine(to: CGPoint(x: size.width, y: y))
-                }
-                context.stroke(grid, with: .color(SupporterHomeColors.background.opacity(0.035)), lineWidth: 0.5)
-            }
-        }
-        .ignoresSafeArea()
-        .accessibilityHidden(true)
+        NativePageBackground()
     }
 
     // MARK: - Header
@@ -240,7 +208,7 @@ struct ContentView: View {
                         .font(.caption2.weight(.heavy))
                         .fontDesign(.rounded)
                         .tracking(3)
-                        .foregroundStyle(SupporterHomeColors.background.opacity(0.78))
+                        .foregroundStyle(SupporterHomeColors.background.opacity(0.82))
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("PIXL Sports")
@@ -251,11 +219,11 @@ struct ContentView: View {
                     Text("SUPPORTER HUB")
                         .font(.caption2.weight(.heavy))
                         .tracking(1.4)
-                        .foregroundStyle(SupporterHomeColors.lightMuted)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
-                        .background(SupporterHomeColors.background.opacity(0.045), in: Capsule())
-                        .overlay { Capsule().strokeBorder(SupporterHomeColors.background.opacity(0.1), lineWidth: 1) }
+                        .background(SupporterHomeColors.panel, in: Capsule())
+                        .overlay { Capsule().strokeBorder(SupporterHomeColors.blue.opacity(0.3), lineWidth: 1) }
                         .lineLimit(1)
                         .accessibilityHidden(true)
                 }

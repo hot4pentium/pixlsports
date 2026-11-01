@@ -53,7 +53,7 @@ struct NativeAuthRootView: View {
                     .frame(maxWidth: 560)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
             }
         }
         .prefetchClerkImages()
@@ -138,51 +138,11 @@ struct NativeAuthRootView: View {
         .padding(.horizontal, 26)
         .padding(.top, 18)
         .padding(.bottom, 14)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     private var signInBackdrop: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    SupporterHomeColors.background,
-                    Color(red: 0.025, green: 0.11, blue: 0.22),
-                    Color(red: 0.025, green: 0.075, blue: 0.15)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.28), .clear],
-                center: .topTrailing,
-                startRadius: 0,
-                endRadius: 420
-            )
-            RadialGradient(
-                colors: [SupporterHomeColors.accent.opacity(0.08), .clear],
-                center: .bottomLeading,
-                startRadius: 0,
-                endRadius: 360
-            )
-            Image(systemName: "sportscourt.fill")
-                .font(.system(size: 250, weight: .regular))
-                .foregroundStyle(.white.opacity(0.025))
-                .rotationEffect(.degrees(-12))
-                .offset(x: 150, y: -240)
-            Canvas { context, size in
-                var grid = Path()
-                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(38)) {
-                    grid.move(to: CGPoint(x: x, y: 0))
-                    grid.addLine(to: CGPoint(x: x, y: size.height))
-                }
-                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(38)) {
-                    grid.move(to: CGPoint(x: 0, y: y))
-                    grid.addLine(to: CGPoint(x: size.width, y: y))
-                }
-                context.stroke(grid, with: .color(.white.opacity(0.028)), lineWidth: 0.5)
-            }
-        }
-        .ignoresSafeArea()
-        .accessibilityHidden(true)
+        NativePageBackground()
     }
 
     private var clerkTheme: ClerkTheme {
@@ -256,7 +216,7 @@ struct NativeLaunchSplashView: View {
                         Text("YOUR SEASON  ·  ONE EVENT AT A TIME")
                             .font(.caption2.weight(.heavy))
                             .tracking(2)
-                            .foregroundStyle(SupporterHomeColors.muted.opacity(0.78))
+                            .foregroundStyle(SupporterHomeColors.lightMuted)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 28)
@@ -270,9 +230,9 @@ struct NativeLaunchSplashView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(SupporterHomeColors.background)
+        .background { NativePageBackground() }
         .ignoresSafeArea()
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
         .accessibilityIdentifier("native-launch-splash")
     }
 
@@ -346,7 +306,7 @@ struct NativeLaunchSplashView: View {
                 Text("SPORTS")
                     .font(.system(size: 13, weight: .heavy, design: .rounded))
                     .tracking(6)
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(SupporterHomeColors.background.opacity(0.9))
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("PIXL Sports")

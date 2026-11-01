@@ -48,35 +48,7 @@ struct SupporterEventDetailView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [SupporterHomeColors.background, Color(red: 0.035, green: 0.10, blue: 0.20)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.16), .clear],
-                center: .topTrailing,
-                startRadius: 8,
-                endRadius: 420
-            )
-            .ignoresSafeArea()
-
-            Canvas { context, size in
-                var grid = Path()
-                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
-                    grid.move(to: CGPoint(x: x, y: 0))
-                    grid.addLine(to: CGPoint(x: x, y: size.height))
-                }
-                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
-                    grid.move(to: CGPoint(x: 0, y: y))
-                    grid.addLine(to: CGPoint(x: size.width, y: y))
-                }
-                context.stroke(grid, with: .color(.white.opacity(0.035)), lineWidth: 0.5)
-            }
-            .ignoresSafeArea()
-            .accessibilityHidden(true)
+            NativePageBackground()
 
             Group {
                 switch state {
@@ -228,7 +200,7 @@ struct SupporterEventDetailView: View {
                         }
                     }
                     .padding(12)
-                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                    .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 12))
                 }
 #endif
 
@@ -261,7 +233,7 @@ struct SupporterEventDetailView: View {
                             .padding(.vertical, 14)
                             .frame(minHeight: 44)
                             .fixedSize(horizontal: false, vertical: true)
-                            .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 15))
+                            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 15))
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("event-detail-edit")

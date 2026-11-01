@@ -100,10 +100,10 @@ struct NativeEventTrackingPanel: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Choose your game-day tool")
                         .font(.title2.weight(.black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SupporterHomeColors.background)
                     Text("Choose what you want to use for this event. You can switch tools later.")
                         .font(.subheadline)
-                        .foregroundStyle(SupporterHomeColors.muted)
+                        .foregroundStyle(SupporterHomeColors.lightMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 modeChoice(.statTracker)
@@ -112,7 +112,7 @@ struct NativeEventTrackingPanel: View {
                     showingModePicker = false
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(SupporterHomeColors.muted)
+                .foregroundStyle(SupporterHomeColors.lightMuted)
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
             .padding(20)
@@ -121,8 +121,9 @@ struct NativeEventTrackingPanel: View {
         }
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(SupporterHomeColors.background)
-        .preferredColorScheme(.dark)
+        .presentationBackground(.white)
+        .background(NativePageBackground())
+        .preferredColorScheme(.light)
         .accessibilityIdentifier("native-event-mode-choice-sheet")
     }
 
@@ -152,7 +153,7 @@ struct NativeEventTrackingPanel: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(NativeEventToolColors.trackStats.opacity(0.32), lineWidth: 1)
@@ -238,7 +239,7 @@ struct NativeEventTrackingPanel: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var scorekeepingSection: some View {

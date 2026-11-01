@@ -83,7 +83,7 @@ struct NativeCreateEventCardView: View {
 
     var body: some View {
         ZStack {
-            SupporterHomeColors.background.ignoresSafeArea()
+            NativePageBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 7) {
@@ -91,11 +91,11 @@ struct NativeCreateEventCardView: View {
                         Text(isEditing ? "Edit Event Card" : "Create an Event Card")
                             .font(.largeTitle.weight(.black))
                             .fontDesign(.rounded)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(SupporterHomeColors.background)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(isEditing ? "Update the details for \(athleteName)’s event." : "Add the next event for \(athleteName).")
                             .font(.body)
-                            .foregroundStyle(SupporterHomeColors.muted)
+                            .foregroundStyle(SupporterHomeColors.lightMuted)
                     }
 
                     VStack(alignment: .leading, spacing: 16) {
@@ -111,7 +111,7 @@ struct NativeCreateEventCardView: View {
                                 .textInputAutocapitalization(.words)
                                 .autocorrectionDisabled()
                                 .padding(14)
-                                .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 13))
+                                .background(Color(red: 0.15, green: 0.27, blue: 0.42), in: RoundedRectangle(cornerRadius: 13))
                                 .accessibilityIdentifier("native-event-opponent")
                                 .onChange(of: opponent) { _, value in
                                     if value.count > 200 { opponent = String(value.prefix(200)) }
@@ -147,7 +147,7 @@ struct NativeCreateEventCardView: View {
                             .textInputAutocapitalization(.words)
                             .autocorrectionDisabled()
                             .padding(14)
-                            .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 13))
+                            .background(Color(red: 0.15, green: 0.27, blue: 0.42), in: RoundedRectangle(cornerRadius: 13))
                             .accessibilityIdentifier("native-event-location")
                             .onChange(of: location) { _, value in
                                 if value.count > 300 { location = String(value.prefix(300)) }
@@ -162,7 +162,7 @@ struct NativeCreateEventCardView: View {
                          ? "Changes are saved to the Event Card on the schedule connected to your PIXL account."
                          : "This adds an Event Card to the schedule connected to your PIXL account.")
                         .font(.footnote)
-                        .foregroundStyle(SupporterHomeColors.muted)
+                        .foregroundStyle(SupporterHomeColors.lightMuted)
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -195,7 +195,7 @@ struct NativeCreateEventCardView: View {
                     if clerk == nil {
                         Text("Sign in on this iPhone to create an Event Card.")
                             .font(.footnote)
-                            .foregroundStyle(SupporterHomeColors.muted)
+                            .foregroundStyle(SupporterHomeColors.lightMuted)
                     }
                 }
                 .frame(maxWidth: 560, alignment: .leading)

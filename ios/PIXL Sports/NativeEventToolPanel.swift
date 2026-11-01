@@ -77,7 +77,10 @@ struct NativeEventToolPanel: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [toolAccent.opacity(0.12), Color.white.opacity(0.055)],
+                        colors: [
+                            Color(red: 0.10, green: 0.20, blue: 0.34),
+                            SupporterHomeColors.panel
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )

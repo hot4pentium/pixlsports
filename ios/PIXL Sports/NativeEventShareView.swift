@@ -15,12 +15,16 @@ struct NativeEventShareView: View {
                     hypeCardShareCard
                 }
             } else {
-                Form { shareSections }
+                ZStack {
+                    NativePageBackground()
+                    Form { shareSections }
+                        .foregroundStyle(.white)
+                }
             }
         }
         .scrollContentBackground(.hidden)
         .tint(NativeEventToolColors.share)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
         .navigationTitle(embedded ? "Event Details" : "Share")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -71,7 +75,10 @@ struct NativeEventShareView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(
-                colors: [NativeEventToolColors.share.opacity(0.15), Color.white.opacity(0.045)],
+                colors: [
+                    Color(red: 0.10, green: 0.20, blue: 0.34),
+                    SupporterHomeColors.panel
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ),
@@ -117,7 +124,7 @@ struct NativeEventShareView: View {
             }
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(NativeEventToolColors.share.opacity(0.075), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 19, style: .continuous)
                     .strokeBorder(NativeEventToolColors.share.opacity(0.30), lineWidth: 1)
@@ -135,7 +142,7 @@ struct NativeEventShareView: View {
                     Text(event.title).font(.headline)
                     Text("\(event.formattedFullDate(timezone: zone)) · \(event.formattedTime(timezone: zone))")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(SupporterHomeColors.muted)
                     if !event.location.isEmpty {
                         Text(event.location).font(.subheadline)
                     }

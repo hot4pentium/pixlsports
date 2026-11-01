@@ -16,12 +16,7 @@ struct SupporterHypeCardView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [SupporterHomeColors.background, Color(red: 0.035, green: 0.10, blue: 0.20)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            NativePageBackground()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -29,7 +24,7 @@ struct SupporterHypeCardView: View {
                     Text("HYPE Card")
                         .font(.largeTitle.weight(.black))
                         .fontDesign(.rounded)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SupporterHomeColors.background)
                         .accessibilityAddTraits(.isHeader)
 
                     content

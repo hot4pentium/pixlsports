@@ -44,11 +44,11 @@ struct SupporterSectionHeader: View {
             : AnyLayout(HStackLayout(alignment: .lastTextBaseline, spacing: 12))
         layout {
             VStack(alignment: .leading, spacing: 4) {
-                SupporterEyebrow(text: eyebrow, color: SupporterHomeColors.lightMuted)
+                SupporterEyebrow(text: eyebrow, color: SupporterHomeColors.muted)
                 Text(title)
                     .font(.title2.weight(.black))
                     .fontDesign(.rounded)
-                    .foregroundStyle(SupporterHomeColors.background)
+                    .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
             }
@@ -163,14 +163,52 @@ struct SupporterDashboardSectionSurface: ViewModifier {
             .padding(.vertical, 16)
             .background {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(red: 0.94, green: 0.965, blue: 0.985).opacity(0.92))
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(red: 0.10, green: 0.20, blue: 0.34), SupporterHomeColors.panel],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .overlay {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .strokeBorder(SupporterHomeColors.background.opacity(0.12), lineWidth: 1)
+                            .strokeBorder(SupporterHomeColors.blue.opacity(0.38), lineWidth: 1)
                     }
-                    .shadow(color: SupporterHomeColors.background.opacity(0.045), radius: 9, x: 0, y: 4)
+                    .shadow(color: SupporterHomeColors.background.opacity(0.12), radius: 10, x: 0, y: 5)
                     .padding(.horizontal, -12)
             }
+    }
+}
+
+struct NativePageBackground: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.white, Color(red: 0.95, green: 0.97, blue: 0.99)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [SupporterHomeColors.blue.opacity(0.055), .clear],
+                center: .topTrailing,
+                startRadius: 8,
+                endRadius: 440
+            )
+            Canvas { context, size in
+                var grid = Path()
+                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
+                    grid.move(to: CGPoint(x: x, y: 0))
+                    grid.addLine(to: CGPoint(x: x, y: size.height))
+                }
+                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
+                    grid.move(to: CGPoint(x: 0, y: y))
+                    grid.addLine(to: CGPoint(x: size.width, y: y))
+                }
+                context.stroke(grid, with: .color(SupporterHomeColors.background.opacity(0.035)), lineWidth: 0.5)
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
     }
 }
 

@@ -58,12 +58,12 @@ struct NativeEventPrepView: View {
                     .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("native-prep-date")
             }
-            .listRowBackground(Color.white.opacity(0.06))
+            .listRowBackground(SupporterHomeColors.panel)
             if let clerk, model.busy || model.errorMessage != nil {
                 Section {
                     NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
                 }
-                .listRowBackground(Color.white.opacity(0.06))
+                .listRowBackground(SupporterHomeColors.panel)
             }
             if model.workspace != nil {
                 if showCompletionCelebration {
@@ -76,7 +76,7 @@ struct NativeEventPrepView: View {
                 Section {
                     readinessSummary
                 }
-                .listRowBackground(Color.white.opacity(0.06))
+                .listRowBackground(SupporterHomeColors.panel)
                 Section {
                     if items.isEmpty {
                         Text("Add your first task below.")
@@ -145,7 +145,7 @@ struct NativeEventPrepView: View {
                         .font(.caption.weight(.heavy))
                         .foregroundStyle(NativeEventToolColors.prep)
                 }
-                .listRowBackground(Color.white.opacity(0.06))
+                .listRowBackground(SupporterHomeColors.panel)
                 .listRowSeparatorTint(Color.white.opacity(0.10))
                 .disabled(model.busy || model.pending != nil)
                 Section {
@@ -163,7 +163,7 @@ struct NativeEventPrepView: View {
                         .font(.caption.weight(.heavy))
                         .foregroundStyle(NativeEventToolColors.prep)
                 }
-                .listRowBackground(Color.white.opacity(0.06))
+                .listRowBackground(SupporterHomeColors.panel)
             }
     }
 
@@ -476,23 +476,18 @@ struct NativeEventPrepView: View {
                 Form { prepSections }
             }
         }
+        .foregroundStyle(.white)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .background {
-            if !embedded { LinearGradient(
-                colors: [SupporterHomeColors.background, SupporterHomeColors.panel],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            }
+            if !embedded { NativePageBackground() }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !embedded && model.workspace != nil {
                 saveFooter
             }
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
         .navigationTitle(embedded ? "Event Details" : "Prep")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(hasUnsavedEdits)

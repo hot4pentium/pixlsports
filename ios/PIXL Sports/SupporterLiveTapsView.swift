@@ -71,35 +71,7 @@ struct SupporterLiveTapsView: View {
                 inlineContent
             } else {
         ZStack {
-            LinearGradient(
-                colors: [SupporterHomeColors.background, Color(red: 0.04, green: 0.11, blue: 0.22)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [SupporterHomeColors.blue.opacity(0.16), .clear],
-                center: .topTrailing,
-                startRadius: 8,
-                endRadius: 420
-            )
-            .ignoresSafeArea()
-
-            Canvas { context, size in
-                var grid = Path()
-                for x in stride(from: CGFloat.zero, through: size.width, by: CGFloat(36)) {
-                    grid.move(to: CGPoint(x: x, y: 0))
-                    grid.addLine(to: CGPoint(x: x, y: size.height))
-                }
-                for y in stride(from: CGFloat.zero, through: size.height, by: CGFloat(36)) {
-                    grid.move(to: CGPoint(x: 0, y: y))
-                    grid.addLine(to: CGPoint(x: size.width, y: y))
-                }
-                context.stroke(grid, with: .color(.white.opacity(0.035)), lineWidth: 0.5)
-            }
-            .ignoresSafeArea()
-            .accessibilityHidden(true)
+            NativePageBackground()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -122,6 +94,13 @@ struct SupporterLiveTapsView: View {
                             .font(.system(size: bodySize))
                             .foregroundStyle(SupporterHomeColors.muted)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(SupporterHomeColors.blue.opacity(0.28), lineWidth: 1)
                     }
                     .accessibilityElement(children: .combine)
 
@@ -227,7 +206,7 @@ struct SupporterLiveTapsView: View {
                             systemImage: "qrcode.viewfinder",
                             description: Text("Use an iPhone with camera access to scan the owner’s private family QR.")
                         )
-                        .background(SupporterHomeColors.background)
+                        .background { NativePageBackground() }
                     }
                 }
                 .navigationTitle("Scan family QR")
@@ -261,7 +240,7 @@ struct SupporterLiveTapsView: View {
                 Text("SPORTS")
                     .font(.system(size: brandCaptionSize, weight: .heavy, design: .rounded))
                     .tracking(3.3)
-                    .foregroundStyle(.white.opacity(0.86))
+                    .foregroundStyle(SupporterHomeColors.background)
             }
 
             Spacer()
@@ -270,10 +249,10 @@ struct SupporterLiveTapsView: View {
                 Text("SUPPORTER HUB")
                     .font(.system(size: brandCaptionSize, weight: .heavy))
                     .tracking(1.5)
-                    .foregroundStyle(SupporterHomeColors.muted)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
-                    .background(.white.opacity(0.06), in: Capsule())
+                    .background(SupporterHomeColors.panel, in: Capsule())
             }
         }
         .accessibilityElement(children: .combine)
