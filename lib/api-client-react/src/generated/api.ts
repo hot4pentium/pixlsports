@@ -5650,7 +5650,7 @@ export const getUpdateNativeSupporterProfileUrl = () => {
 }
 
 /**
- * Updates only athleteName, teamName, jerseyNumber, and position in the linked PIXL account profile. Saving does not publish a HYPE Card or change its privacy settings.
+ * Saves linked athlete details and assigns a private starter HYPE Card when none exists. Setup retries reuse the existing owner's card identity, sport, and season without overwriting authored content. Later profile edits retain the established identity-update behavior. Never publishes a card, sends invitations, or changes existing privacy settings.
  * @summary Save the linked iPhone owner’s athlete profile
  */
 export const updateNativeSupporterProfile = async (nativeSupporterProfileUpdate: NativeSupporterProfileUpdate, options?: Parameters<typeof customFetch>[1]): Promise<NativeSupporterProfile> => {

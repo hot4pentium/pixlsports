@@ -7,6 +7,7 @@ import {
   type NativeSupporterProfile,
 } from "./nativeSupporterProfile";
 import type { NativeIdentity } from "./nativeIdentity";
+import { createNativeAthletePhotoService } from "./nativeAthletePhoto";
 
 const owners: string[] = [];
 const nativeSubjects: string[] = [];
@@ -246,4 +247,129 @@ test("unlinked or ineligible identities cannot read or update a web profile", as
     (error: any) => error.status === 423,
   );
   assert.equal(blocked.writes.length, 0);
+});
+
+test("first native setup assigns one private softball card using saved season and optional details", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  const metadata = new Map<string, Record<string, unknown>>([
+    [id, { sport: "softball", seasonName: "Family season", timezone: "America/New_York", unrelatedFlag: true }],
+  ]);
+  const { service } = createService(metadata);
+  const saved = await service.update(who, {
+    athleteName: " Jordan ", teamName: "", jerseyNumber: "#12", position: "Pitcher", completeSetup: true,
+  });
+  assert.deepEqual(saved, {
+    athleteName: "Jordan", teamName: "", jerseyNumber: "12", position: "Pitcher", sport: "softball",
+  });
+  const { rows } = await pool.query(`SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1`, [id]);
+  assert.equal(rows.length, 1);
+  const card = rows[0];
+  assert.equal(card.athlete_name, "Jordan");
+  assert.equal(card.team_name, "");
+  assert.equal(card.sport, "softball");
+  assert.equal(card.season_name, "Family season");
+  assert.equal(card.timezone, "America/New_York");
+  assert.ok(new Date(card.season_ends_at).getTime() > Date.now());
+  assert.deepEqual(
+    [card.show_hype_card, card.show_stats, card.show_schedule, card.show_events, card.paused],
+    [false, false, false, false, true],
+  );
+  assert.equal(card.photo_object_path, null);
+  assert.equal(card.live_tracker_share_token, null);
+  assert.equal(metadata.get(id)?.unrelatedFlag, true);
+  const photos = createNativeAthletePhotoService({
+    loadProfile: async () => ({ athleteName: saved.athleteName, teamName: saved.teamName }),
+  });
+  const photoState = await photos.state(who);
+  assert.equal(photoState.cardId, card.id);
+  assert.equal(photoState.hasPhoto, false);
+});
+
+test("setup retries reuse an authored public card without rewriting its identity, media, or settings", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  await invite(id, "Original athlete", "Original team");
+  await pool.query(`UPDATE athlete_invites SET photo_object_path='/objects/original',
+    cutout_object_path='/objects/legacy-cutout', card_appearance='{"name":"authored"}',
+    favorite_moment='Keep this', show_hype_card=true, paused=false WHERE owner_clerk_user_id=$1`, [id]);
+  const before = (await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rows;
+  const metadata = new Map<string, Record<string, unknown>>([
+    [id, { athleteName: "Original athlete", teamName: "Original team", jerseyNumber: "9", position: "Forward" }],
+  ]);
+  const { service } = createService(metadata);
+  const saved = await service.update(who, {
+    athleteName: "Different athlete", teamName: "Different team", jerseyNumber: "", position: "",
+    sport: "softball", completeSetup: true,
+  });
+  assert.deepEqual(saved, {
+    athleteName: "Original athlete", teamName: "Original team", jerseyNumber: "9", position: "Forward", sport: "soccer",
+  });
+  const afterRows = (await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rows;
+  assert.deepEqual(afterRows, before);
+  assert.equal(metadata.get(id)?.seasonName, "Spring 2099");
+});
+
+test("concurrent iPhone setup requests assign only one card", async () => {
+  const first = identity();
+  const id = await owner();
+  await link(first, id);
+  const metadata = new Map<string, Record<string, unknown>>();
+  const { service } = createService(metadata);
+  const results = await Promise.all([
+    service.update(first, {
+      athleteName: "First athlete", teamName: "Tigers", jerseyNumber: "7", position: "",
+      sport: "soccer", completeSetup: true,
+    }),
+    service.update(first, {
+      athleteName: "Other athlete", teamName: "Wolves", jerseyNumber: "8", position: "",
+      sport: "softball", completeSetup: true,
+    }),
+  ]);
+  const { rows } = await pool.query("SELECT athlete_name,team_name,sport FROM athlete_invites WHERE owner_clerk_user_id=$1", [id]);
+  assert.equal(rows.length, 1);
+  for (const result of results) {
+    assert.equal(result.athleteName, rows[0].athlete_name);
+    assert.equal(result.teamName, rows[0].team_name);
+    assert.equal(result.sport, rows[0].sport);
+  }
+  assert.equal(metadata.get(id)?.athleteName, rows[0].athlete_name);
+});
+
+test("a failed profile save rolls back starter creation and can be retried safely", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  let fail = true;
+  let metadata: Record<string, unknown> = {};
+  const service = createNativeSupporterProfileService({
+    getUser: async () => ({ unsafeMetadata: metadata }),
+    updateUser: async (_owner, value) => {
+      if (fail) throw new Error("Temporary Clerk failure");
+      metadata = value;
+    },
+  });
+  const input = { athleteName: "Jordan", teamName: "", jerseyNumber: "", position: "", sport: "volleyball", completeSetup: true };
+  await assert.rejects(service.update(who, input), (error: any) => error.status === 503);
+  assert.equal((await pool.query("SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rowCount, 0);
+  fail = false;
+  await service.update(who, input);
+  await service.update(who, input);
+  assert.equal((await pool.query("SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rowCount, 1);
+});
+
+test("interrupted setup with an authored card but no athlete profile keeps the card identity", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  await invite(id, "Saved athlete", "Saved team");
+  const { service } = createService(new Map());
+  const saved = await service.update(who, {
+    athleteName: "Retry athlete", teamName: "", jerseyNumber: "", position: "", completeSetup: true,
+  });
+  assert.equal(saved.athleteName, "Saved athlete");
+  assert.equal(saved.teamName, "Saved team");
+  assert.equal(saved.sport, "soccer");
 });

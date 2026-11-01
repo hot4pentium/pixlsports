@@ -4022,12 +4022,13 @@ export const GetNativeSupporterProfileResponse = zod.object({
   "athleteName": zod.string().max(getNativeSupporterProfileResponseAthleteNameMax),
   "teamName": zod.string().max(getNativeSupporterProfileResponseTeamNameMax).describe('Optional profile detail; an unset value is returned as an empty string.'),
   "jerseyNumber": zod.string().max(getNativeSupporterProfileResponseJerseyNumberMax),
-  "position": zod.string().max(getNativeSupporterProfileResponsePositionMax)
+  "position": zod.string().max(getNativeSupporterProfileResponsePositionMax),
+  "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional()
 })
 
 
 /**
- * Updates only athleteName, teamName, jerseyNumber, and position in the linked PIXL account profile. Saving does not publish a HYPE Card or change its privacy settings.
+ * Saves linked athlete details and assigns a private starter HYPE Card when none exists. Setup retries reuse the existing owner's card identity, sport, and season without overwriting authored content. Later profile edits retain the established identity-update behavior. Never publishes a card, sends invitations, or changes existing privacy settings.
  * @summary Save the linked iPhone owner’s athlete profile
  */
 export const updateNativeSupporterProfileBodyAthleteNameMax = 100;
@@ -4044,7 +4045,9 @@ export const UpdateNativeSupporterProfileBody = zod.object({
   "athleteName": zod.string().min(1).max(updateNativeSupporterProfileBodyAthleteNameMax),
   "teamName": zod.string().max(updateNativeSupporterProfileBodyTeamNameMax).describe('Optional; send an empty string when omitted.'),
   "jerseyNumber": zod.string().max(updateNativeSupporterProfileBodyJerseyNumberMax).describe('Optional; a leading # is removed.'),
-  "position": zod.string().max(updateNativeSupporterProfileBodyPositionMax).describe('Optional.')
+  "position": zod.string().max(updateNativeSupporterProfileBodyPositionMax).describe('Optional.'),
+  "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional(),
+  "completeSetup": zod.boolean().optional().describe('Initial native setup or its retry. Reuses an existing owner card\'s identity rather than overwriting it.')
 })
 
 export const updateNativeSupporterProfileResponseAthleteNameMax = 100;
@@ -4061,7 +4064,8 @@ export const UpdateNativeSupporterProfileResponse = zod.object({
   "athleteName": zod.string().max(updateNativeSupporterProfileResponseAthleteNameMax),
   "teamName": zod.string().max(updateNativeSupporterProfileResponseTeamNameMax).describe('Optional profile detail; an unset value is returned as an empty string.'),
   "jerseyNumber": zod.string().max(updateNativeSupporterProfileResponseJerseyNumberMax),
-  "position": zod.string().max(updateNativeSupporterProfileResponsePositionMax)
+  "position": zod.string().max(updateNativeSupporterProfileResponsePositionMax),
+  "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional()
 })
 
 

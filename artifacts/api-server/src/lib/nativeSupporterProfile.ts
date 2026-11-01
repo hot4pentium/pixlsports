@@ -2,15 +2,17 @@ import { pool, type PoolClient } from "@workspace/db";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { getAdminClerkClient } from "./adminAccess";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
+import { assignNativeStarterCard, findNativeOwnerCard, savedStarterSport } from "./nativeStarterHypeCard";
 
 export type NativeSupporterProfile = {
   athleteName: string;
   teamName: string;
   jerseyNumber: string;
   position: string;
+  sport?: string;
 };
 
-type ProfileInput = NativeSupporterProfile;
+type ProfileInput = NativeSupporterProfile & { completeSetup?: boolean };
 type ClerkUser = { unsafeMetadata?: unknown };
 
 type Dependencies = {
@@ -43,6 +45,7 @@ function profileFromMetadata(value: unknown): NativeSupporterProfile {
     teamName: metadataString(metadata, "teamName"),
     jerseyNumber: metadataString(metadata, "jerseyNumber").replace(/^#/, ""),
     position: metadataString(metadata, "position"),
+    ...(savedStarterSport(metadata.sport) ? { sport: savedStarterSport(metadata.sport) } : {}),
   };
 }
 
@@ -52,6 +55,7 @@ function normalizeProfile(input: ProfileInput): NativeSupporterProfile {
     teamName: input.teamName.trim(),
     jerseyNumber: input.jerseyNumber.trim().replace(/^#/, ""),
     position: input.position.trim(),
+    ...(input.sport !== undefined ? { sport: input.sport } : {}),
   };
 }
 
@@ -103,6 +107,9 @@ function assertValidProfile(profile: NativeSupporterProfile) {
   if (!profile.athleteName) {
     throw new NativeLinkError(400, "Enter the athlete’s name to save the profile.");
   }
+  if (profile.sport !== undefined && !savedStarterSport(profile.sport)) {
+    throw new NativeLinkError(400, "Choose a supported sport for your athlete.");
+  }
 }
 
 export function createNativeSupporterProfileService(dependencies: Dependencies = clerkDependencies) {
@@ -115,10 +122,12 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
     },
 
     async update(identity: NativeIdentity, input: ProfileInput): Promise<NativeSupporterProfile> {
-      const profile = normalizeProfile(input);
+      let profile = normalizeProfile(input);
       assertValidProfile(profile);
 
       return withLinkedOwner(identity, "UPDATE", async (tx, owner) => {
+        // The verified link is locked for update, serializing iPhone setup
+        // requests. The card's unique-owner constraint also covers web races.
         const user = await dependencies.getUser(owner);
         const oldMetadata = metadataRecord(user.unsafeMetadata);
         const oldProfile = profileFromMetadata(oldMetadata);
@@ -126,20 +135,21 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
         // Keep an existing live HYPE Card aligned only when its identity still
         // matches the saved profile. This changes identity fields alone; all
         // visibility, pause, media, and publication settings remain untouched.
-        const { rows: invites } = await tx.query<{
-          public_token: string;
-          athlete_name: string;
-          team_name: string;
-        }>(
-          `SELECT public_token, athlete_name, team_name
-           FROM athlete_invites
-           WHERE owner_clerk_user_id=$1
-           ORDER BY created_at DESC
-           LIMIT 1
-           FOR UPDATE`,
-          [owner],
-        );
-        const invite = invites[0];
+        const existingInvite = await findNativeOwnerCard(tx, owner);
+        const invite = existingInvite ?? await assignNativeStarterCard(tx, owner, profile, oldMetadata);
+        const completingSetup = input.completeSetup === true || !oldProfile.athleteName || !existingInvite;
+        if (completingSetup) {
+          // Existing cards win interrupted/concurrent setup, even if a retry
+          // submits a different athlete. This never changes the authored card.
+          profile = {
+            ...profile, athleteName: invite.athlete_name, teamName: invite.team_name,
+            sport: invite.sport,
+            ...(existingInvite
+              && normalizedIdentity(oldProfile.athleteName) === normalizedIdentity(invite.athlete_name)
+              ? { jerseyNumber: oldProfile.jerseyNumber || profile.jerseyNumber, position: oldProfile.position || profile.position }
+              : {}),
+          };
+        }
         const inviteMatchesSavedProfile = Boolean(
           invite
           && oldProfile.athleteName
@@ -147,7 +157,7 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
           && (!oldProfile.teamName
             || normalizedIdentity(invite.team_name) === normalizedIdentity(oldProfile.teamName)),
         );
-        if (invite && inviteMatchesSavedProfile) {
+        if (!completingSetup && inviteMatchesSavedProfile) {
           const nextInviteTeam = profile.teamName || invite.team_name;
           if (
             invite.athlete_name !== profile.athleteName
@@ -162,7 +172,10 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
           }
         }
 
-        const nextMetadata = { ...oldMetadata, ...profile };
+        const nextMetadata = {
+          ...oldMetadata, ...profile,
+          ...(completingSetup ? { seasonName: invite.season_name } : {}),
+        };
         try {
           await dependencies.updateUser(owner, nextMetadata);
         } catch {

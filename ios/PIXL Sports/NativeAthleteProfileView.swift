@@ -19,13 +19,15 @@ struct NativeAthleteProfileView: View {
     @State private var loadError: String?
     @State private var saveError: String?
     @State private var savedProfile: NativeSupporterProfile?
+    @State private var sport: String?
 
     private var editedProfile: NativeSupporterProfile {
         NativeSupporterProfile(
             athleteName: athleteName.trimmingCharacters(in: .whitespacesAndNewlines),
             teamName: teamName.trimmingCharacters(in: .whitespacesAndNewlines),
             jerseyNumber: jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines),
-            position: position.trimmingCharacters(in: .whitespacesAndNewlines)
+            position: position.trimmingCharacters(in: .whitespacesAndNewlines),
+            sport: sport
         )
     }
 
@@ -53,6 +55,20 @@ struct NativeAthleteProfileView: View {
                 }
             } else {
                 Section("Athlete information") {
+                    if isInitialSetup {
+                        Picker("Sport", selection: Binding(
+                            get: { sport ?? "soccer" },
+                            set: { sport = $0 }
+                        )) {
+                            Text("Soccer").tag("soccer")
+                            Text("Basketball").tag("basketball")
+                            Text("Volleyball").tag("volleyball")
+                            Text("Football").tag("football")
+                            Text("Baseball").tag("baseball")
+                            Text("Softball").tag("softball")
+                        }
+                        .accessibilityIdentifier("native-athlete-profile-sport")
+                    }
                     TextField("Athlete name", text: $athleteName)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
@@ -93,7 +109,9 @@ struct NativeAthleteProfileView: View {
                 }
 
                 Section {
-                    Text("These details are saved to your linked PIXL account and can be edited later in Settings. Saving your profile does not publish a private HYPE Card.")
+                    Text(isInitialSetup
+                        ? "Setup gives your athlete a private starter HYPE Card. If you already have a card, we keep its athlete, team, sport, and season. Add a photo later in Settings. Nothing is published until you choose to share."
+                        : "These details are saved to your linked PIXL account and can be edited later in Settings. Saving your profile does not publish a private HYPE Card.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -129,6 +147,7 @@ struct NativeAthleteProfileView: View {
         .task {
             if let initialProfile {
                 savedProfile = initialProfile
+                sport = initialProfile.sport
                 athleteName = initialProfile.athleteName
                 teamName = initialProfile.teamName
                 jerseyNumber = initialProfile.jerseyNumber
@@ -148,6 +167,7 @@ struct NativeAthleteProfileView: View {
         do {
             let profile = try await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
             savedProfile = profile
+            sport = profile.sport
             athleteName = profile.athleteName
             teamName = profile.teamName
             jerseyNumber = profile.jerseyNumber
@@ -168,10 +188,13 @@ struct NativeAthleteProfileView: View {
             athleteName: athleteName.trimmingCharacters(in: .whitespacesAndNewlines),
             teamName: teamName.trimmingCharacters(in: .whitespacesAndNewlines),
             jerseyNumber: jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines),
-            position: position.trimmingCharacters(in: .whitespacesAndNewlines)
+            position: position.trimmingCharacters(in: .whitespacesAndNewlines),
+            sport: isInitialSetup ? (sport ?? "soccer") : sport
         )
         do {
-            let saved = try await SupporterHomeAPI.saveAthleteProfile(profile, clerk: clerk)
+            let saved = try await SupporterHomeAPI.saveAthleteProfile(
+                profile, completeSetup: isInitialSetup, clerk: clerk
+            )
             isSaving = false
             didSave = true
             onSaved?(saved)

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { NativeSupporterProfileUpdateSport } from './nativeSupporterProfileUpdateSport';
 
 export interface NativeSupporterProfileUpdate {
   /**
@@ -27,4 +28,7 @@ export interface NativeSupporterProfileUpdate {
      * @maxLength 100
      */
   position: string;
+  sport?: NativeSupporterProfileUpdateSport;
+  /** Initial native setup or its retry. Reuses an existing owner card's identity rather than overwriting it. */
+  completeSetup?: boolean;
 }

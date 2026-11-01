@@ -2980,6 +2980,18 @@ export interface NativeHypeCardIdentityCorrectionResult {
   teamName: string;
 }
 
+export type NativeSupporterProfileSport = typeof NativeSupporterProfileSport[keyof typeof NativeSupporterProfileSport];
+
+
+export const NativeSupporterProfileSport = {
+  soccer: 'soccer',
+  basketball: 'basketball',
+  volleyball: 'volleyball',
+  football: 'football',
+  baseball: 'baseball',
+  softball: 'softball',
+} as const;
+
 export interface NativeSupporterProfile {
   /** @maxLength 100 */
   athleteName: string;
@@ -2992,7 +3004,20 @@ export interface NativeSupporterProfile {
   jerseyNumber: string;
   /** @maxLength 100 */
   position: string;
+  sport?: NativeSupporterProfileSport;
 }
+
+export type NativeSupporterProfileUpdateSport = typeof NativeSupporterProfileUpdateSport[keyof typeof NativeSupporterProfileUpdateSport];
+
+
+export const NativeSupporterProfileUpdateSport = {
+  soccer: 'soccer',
+  basketball: 'basketball',
+  volleyball: 'volleyball',
+  football: 'football',
+  baseball: 'baseball',
+  softball: 'softball',
+} as const;
 
 export interface NativeSupporterProfileUpdate {
   /**
@@ -3015,6 +3040,9 @@ export interface NativeSupporterProfileUpdate {
      * @maxLength 100
      */
   position: string;
+  sport?: NativeSupporterProfileUpdateSport;
+  /** Initial native setup or its retry. Reuses an existing owner card's identity rather than overwriting it. */
+  completeSetup?: boolean;
 }
 
 export interface NativeSupporterEventCardCreateResponse {

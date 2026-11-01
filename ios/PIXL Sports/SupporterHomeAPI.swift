@@ -6,6 +6,7 @@ struct NativeSupporterProfile: Codable, Equatable {
     let teamName: String
     let jerseyNumber: String
     let position: String
+    var sport: String? = nil
 
     var displayDetails: String {
         [
@@ -265,6 +266,15 @@ private struct NativeEventCardEditBody: Encodable {
     let opponent: String
 }
 
+private struct NativeAthleteProfileUpdate: Encodable {
+    let athleteName: String
+    let teamName: String
+    let jerseyNumber: String
+    let position: String
+    let sport: String?
+    let completeSetup: Bool
+}
+
 enum SupporterHomeAPI {
     static func fetchPrivateSchedule(clerk: Clerk) async throws -> NativeSupporterSchedule {
         let data = try await NativeAccountLinkClient().getData("supporter/schedule", clerk: clerk)
@@ -290,11 +300,16 @@ enum SupporterHomeAPI {
 
     static func saveAthleteProfile(
         _ profile: NativeSupporterProfile,
+        completeSetup: Bool = false,
         clerk: Clerk
     ) async throws -> NativeSupporterProfile {
         let data = try await NativeAccountLinkClient().postData(
             "supporter/profile",
-            body: profile,
+            body: NativeAthleteProfileUpdate(
+                athleteName: profile.athleteName, teamName: profile.teamName,
+                jerseyNumber: profile.jerseyNumber, position: profile.position,
+                sport: profile.sport, completeSetup: completeSetup
+            ),
             method: "PATCH",
             clerk: clerk
         )

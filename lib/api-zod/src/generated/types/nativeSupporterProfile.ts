@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { NativeSupporterProfileSport } from './nativeSupporterProfileSport';
 
 export interface NativeSupporterProfile {
   /** @maxLength 100 */
@@ -18,4 +19,5 @@ export interface NativeSupporterProfile {
   jerseyNumber: string;
   /** @maxLength 100 */
   position: string;
+  sport?: NativeSupporterProfileSport;
 }
