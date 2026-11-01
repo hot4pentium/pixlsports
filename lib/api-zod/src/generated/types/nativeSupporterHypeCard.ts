@@ -13,6 +13,8 @@ export interface NativeSupporterHypeCard {
   status: NativeSupporterHypeCardStatus;
   /** Present only when the owner has enabled public HYPE Card access. */
   inviteToken?: string;
+  /** Owner-only saved card identifier returned only when identity correction is available. */
+  correctionId?: string;
   privatePreview?: NativePrivateHypeCard;
   settings?: NativeSupporterHypeCardSettings;
 }

@@ -9,7 +9,10 @@
 export interface NativeSupporterProfile {
   /** @maxLength 100 */
   athleteName: string;
-  /** @maxLength 160 */
+  /**
+     * Optional profile detail; an unset value is returned as an empty string.
+     * @maxLength 160
+     */
   teamName: string;
   /** @maxLength 40 */
   jerseyNumber: string;

@@ -13,6 +13,12 @@ Native profile saves may update a live invite’s athlete/team identity only whe
 
 **How to apply:** Read the normalized supporter profile at tool entry. On live-card routes, apply identity only after confirming invite ownership and a match with the previous profile. Persist identity corrections through an owner-only write, update no publication controls, and preserve authored cloud/share data unless the user explicitly edits it.
 
+When an existing live HYPE Card identity does not match the selected profile, do not repair it during profile save. Show both identities and require an explicit owner confirmation; the repair changes only athlete/team identity, never artwork, media, visibility, pause, or published snapshots.
+
+**Why:** Legacy mismatches need a recovery path without silently claiming a card for a different athlete or changing the owner’s sharing choices.
+
+**How to apply:** Keep mismatch detection separate from profile updates. Bind the confirmation to the card shown to the owner, re-check that it is still mismatched, and leave authored artwork and share snapshots unchanged.
+
 When the owner creates their first HYPE Card, automatically copy their saved Athlete Profile photo. Preserve the private original and publish only an independently stored, sanitized card copy. Do not backfill existing cards or replace their chosen photos when profile photos change.
 
 **Why:** The user authorized automatic photo handoff during fresh onboarding, not ongoing photo synchronization or changes to existing cards.

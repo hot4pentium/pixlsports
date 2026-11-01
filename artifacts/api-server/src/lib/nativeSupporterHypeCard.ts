@@ -5,8 +5,9 @@ import { ObjectNotFoundError, ObjectStorageService } from "./objectStorage";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 
 export type NativeHypeCardReference = {
-  status: "unlinked" | "no-card" | "hidden" | "available";
+  status: "unlinked" | "no-card" | "hidden" | "mismatch" | "available";
   inviteToken?: string;
+  correctionId?: string;
   privatePreview?: NativePrivateHypeCard;
   settings?: NativeHypeCardSettings;
 };
@@ -32,6 +33,16 @@ export type NativePrivateHypeCard = {
 };
 
 export type SelectedAthlete = {
+  athleteName: string;
+  teamName: string;
+};
+
+export type NativeHypeCardIdentityCorrection = {
+  correctionId: string;
+  confirm: boolean;
+};
+
+export type NativeHypeCardIdentityCorrectionResult = {
   athleteName: string;
   teamName: string;
 };
@@ -111,6 +122,7 @@ export async function loadNativeSupporterHypeCard(
     );
 
     const invites = await tx.query<{
+      id: string;
       public_token: string;
       athlete_name: string;
       team_name: string;
@@ -123,7 +135,7 @@ export async function loadNativeSupporterHypeCard(
       photo_object_path: string | null;
       cutout_object_path: string | null;
     }>(
-      `SELECT public_token, athlete_name, team_name, season_name, paused, show_hype_card,
+      `SELECT id, public_token, athlete_name, team_name, season_name, paused, show_hype_card,
               show_stats, show_events,
               favorite_moment, photo_object_path, cutout_object_path
        FROM athlete_invites
@@ -138,12 +150,29 @@ export async function loadNativeSupporterHypeCard(
       && (!team || normalize(candidate.team_name) === team),
     );
 
-    await tx.query("COMMIT");
     if (!team && new Set(matches.map((candidate) => normalize(candidate.team_name))).size > 1) {
+      await tx.query("COMMIT");
       return { status: "no-card" };
     }
     const invite = matches[0];
-    if (!invite) return { status: "no-card" };
+    if (!invite) {
+      const latestInvite = invites.rows[0];
+      await tx.query("COMMIT");
+      if (!latestInvite) return { status: "no-card" };
+      return {
+        status: "mismatch",
+        correctionId: latestInvite.id,
+        privatePreview: {
+          athleteName: latestInvite.athlete_name,
+          teamName: latestInvite.team_name,
+          seasonName: latestInvite.season_name,
+          favoriteMoment: latestInvite.favorite_moment,
+          hasPhoto: Boolean(latestInvite.cutout_object_path || latestInvite.photo_object_path),
+        },
+        settings: settingsFor(latestInvite),
+      };
+    }
+    await tx.query("COMMIT");
     if (invite.paused || !invite.show_hype_card) {
       return {
         status: "hidden",
@@ -162,6 +191,94 @@ export async function loadNativeSupporterHypeCard(
       inviteToken: invite.public_token,
       settings: settingsFor(invite),
     };
+  } catch (error) {
+    await tx.query("ROLLBACK");
+    throw error;
+  } finally {
+    tx.release();
+  }
+}
+
+/**
+ * Correct only the newest saved HYPE Card's identity after an explicit owner
+ * confirmation. Artwork, snapshots, visibility, pause, and media are untouched.
+ */
+export async function correctNativeSupporterHypeCardIdentity(
+  identity: NativeIdentity,
+  correction: NativeHypeCardIdentityCorrection,
+  lookupProfile: ProfileLookup = selectedProfile,
+): Promise<NativeHypeCardIdentityCorrectionResult> {
+  if (!correction.confirm) {
+    throw new NativeLinkError(400, "Confirm that this HYPE Card belongs to the selected athlete.");
+  }
+
+  const linked = await pool.query<{ owner_clerk_user_id: string }>(
+    `SELECT owner_clerk_user_id
+     FROM native_account_links
+     WHERE native_issuer=$1 AND native_subject=$2
+     LIMIT 1`,
+    [identity.issuer, identity.subject],
+  );
+  const owner = linked.rows[0]?.owner_clerk_user_id;
+  if (!owner) throw new NativeLinkError(404, "The linked PIXL account is unavailable.");
+  await assertLinkableWebAccount(
+    owner,
+    undefined,
+    "This PIXL account can’t update HYPE Card identity right now. Check its account status on PIXL Sports.",
+  );
+  const profile = await lookupProfile(owner);
+  if (!profile.athleteName.trim()) {
+    throw new NativeLinkError(409, "Select an athlete in the linked PIXL account first.");
+  }
+
+  const tx = await pool.connect();
+  try {
+    await tx.query("BEGIN");
+    const currentLink = await tx.query<{ owner_clerk_user_id: string }>(
+      `SELECT owner_clerk_user_id
+       FROM native_account_links
+       WHERE native_issuer=$1 AND native_subject=$2
+       FOR SHARE`,
+      [identity.issuer, identity.subject],
+    );
+    if (currentLink.rows[0]?.owner_clerk_user_id !== owner) {
+      throw new NativeLinkError(404, "The linked PIXL account is unavailable.");
+    }
+    await assertLinkableWebAccount(
+      owner,
+      tx,
+      "This PIXL account can’t update HYPE Card identity right now. Check its account status on PIXL Sports.",
+    );
+    const { rows } = await tx.query<{
+      id: string;
+      athlete_name: string;
+      team_name: string;
+    }>(
+      `SELECT id, athlete_name, team_name
+       FROM athlete_invites
+       WHERE owner_clerk_user_id=$1 AND id=$2
+       FOR UPDATE`,
+      [owner, correction.correctionId],
+    );
+    const invite = rows[0];
+    if (!invite) throw new NativeLinkError(404, "No saved HYPE Card is available to correct.");
+    if (
+      normalize(invite.athlete_name) === normalize(profile.athleteName)
+      && (!profile.teamName.trim() || normalize(invite.team_name) === normalize(profile.teamName))
+    ) {
+      throw new NativeLinkError(409, "This HYPE Card already matches the selected athlete.");
+    }
+
+    const athleteName = profile.athleteName.trim();
+    const teamName = profile.teamName.trim() || invite.team_name;
+    await tx.query(
+      `UPDATE athlete_invites
+       SET athlete_name=$1, team_name=$2
+       WHERE id=$3 AND owner_clerk_user_id=$4`,
+      [athleteName, teamName, invite.id, owner],
+    );
+    await tx.query("COMMIT");
+    return { athleteName, teamName };
   } catch (error) {
     await tx.query("ROLLBACK");
     throw error;

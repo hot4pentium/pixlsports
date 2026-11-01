@@ -13,5 +13,6 @@ export const NativeSupporterHypeCardStatus = {
   unlinked: 'unlinked',
   'no-card': 'no-card',
   hidden: 'hidden',
+  mismatch: 'mismatch',
   available: 'available',
 } as const;

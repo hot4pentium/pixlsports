@@ -182,6 +182,33 @@ test("optional fields may be blank and do not erase a saved HYPE Card team", asy
   assert.equal(saved.rows[0]?.team_name, "Tigers");
 });
 
+test("profile updates do not silently replace an already mismatched HYPE Card identity", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await invite(linkedOwner, "Another athlete", "Wolves");
+  const metadata = new Map<string, Record<string, unknown>>([
+    [linkedOwner, { athleteName: "Jordan", teamName: "Tigers" }],
+  ]);
+  const { service } = createService(metadata);
+
+  await service.update(who, {
+    athleteName: "Jordan",
+    teamName: "Tigers 26",
+    jerseyNumber: "",
+    position: "",
+  });
+
+  const saved = await pool.query<{ athlete_name: string; team_name: string }>(
+    "SELECT athlete_name, team_name FROM athlete_invites WHERE owner_clerk_user_id=$1",
+    [linkedOwner],
+  );
+  assert.deepEqual(saved.rows[0], {
+    athlete_name: "Another athlete",
+    team_name: "Wolves",
+  });
+});
+
 test("unlinked or ineligible identities cannot read or update a web profile", async () => {
   const who = identity();
   const unlinkedStore = new Map<string, Record<string, unknown>>();

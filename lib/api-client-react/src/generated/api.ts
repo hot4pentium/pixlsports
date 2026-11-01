@@ -98,11 +98,15 @@ import type {
   MeetingWorkspace,
   MeetingWorkspaceConflict,
   MeetingWorkspaceUpdate,
+  NativeHypeCardIdentityCorrection,
+  NativeHypeCardIdentityCorrectionResult,
   NativeLinkChallengeInput,
   NativeLinkCodeInput,
   NativeLinkDecisionInput,
   NativeLinkProofInput,
   NativeLinkState,
+  NativeSupporterEventCardCreate,
+  NativeSupporterEventCardCreateResponse,
   NativeSupporterHypeCard,
   NativeSupporterHypeCardSettings,
   NativeSupporterHypeCardUpdate,
@@ -5724,6 +5728,95 @@ export const useUpdateNativeSupporterProfile = <TError = ErrorType<BadRequestRes
       return useMutation(getUpdateNativeSupporterProfileMutationOptions(options));
     }
 
+export const getCreateNativeSupporterEventCardUrl = () => {
+
+
+
+
+  return `/api/native/supporter/event-cards`
+}
+
+/**
+ * Creates one shared Event Card. A team name is optional; the server uses the linked athlete’s team for the share title when present, otherwise the athlete and season labels. The Event Card remains on the existing shared-card path.
+ * @summary Create an Event Card from the linked iPhone account
+ */
+export const createNativeSupporterEventCard = async (nativeSupporterEventCardCreate: NativeSupporterEventCardCreate, options?: Parameters<typeof customFetch>[1]): Promise<NativeSupporterEventCardCreateResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeSupporterEventCardCreateResponse>(getCreateNativeSupporterEventCardUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeSupporterEventCardCreate)
+  }
+);}
+
+
+
+
+
+export const getCreateNativeSupporterEventCardMutationKey = () => ['createNativeSupporterEventCard'] as const;
+
+export const getCreateNativeSupporterEventCardMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createNativeSupporterEventCard>>, TError,CreateNativeSupporterEventCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createNativeSupporterEventCard>>, TError,CreateNativeSupporterEventCardMutationVariables, TContext> => {
+
+const mutationKey = getCreateNativeSupporterEventCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createNativeSupporterEventCard>>, CreateNativeSupporterEventCardMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createNativeSupporterEventCard(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateNativeSupporterEventCardMutationResult = NonNullable<Awaited<ReturnType<typeof createNativeSupporterEventCard>>>
+    export type CreateNativeSupporterEventCardMutationBody = BodyType<NativeSupporterEventCardCreate>
+    export type CreateNativeSupporterEventCardMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>
+    export type CreateNativeSupporterEventCardMutationVariables = {data: BodyType<NativeSupporterEventCardCreate>}
+
+    /**
+ * @summary Create an Event Card from the linked iPhone account
+ */
+export const useCreateNativeSupporterEventCard = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createNativeSupporterEventCard>>, TError,CreateNativeSupporterEventCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createNativeSupporterEventCard>>,
+        TError,
+        CreateNativeSupporterEventCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateNativeSupporterEventCardMutationOptions(options));
+    }
+
 export const getGetNativeSupporterHypeCardUrl = () => {
 
 
@@ -5888,6 +5981,95 @@ export const useUpdateNativeSupporterHypeCard = <TError = ErrorType<BadRequestRe
         TContext
       > => {
       return useMutation(getUpdateNativeSupporterHypeCardMutationOptions(options));
+    }
+
+export const getCorrectNativeSupporterHypeCardIdentityUrl = () => {
+
+
+
+
+  return `/api/native/supporter/hype-card/identity`
+}
+
+/**
+ * Requires explicit owner confirmation and changes only the newest saved card's athlete and team identity. Artwork, published snapshots, media, visibility, and pause settings are unchanged.
+ * @summary Correct a mismatched saved HYPE Card identity
+ */
+export const correctNativeSupporterHypeCardIdentity = async (nativeHypeCardIdentityCorrection: NativeHypeCardIdentityCorrection, options?: Parameters<typeof customFetch>[1]): Promise<NativeHypeCardIdentityCorrectionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NativeHypeCardIdentityCorrectionResult>(getCorrectNativeSupporterHypeCardIdentityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nativeHypeCardIdentityCorrection)
+  }
+);}
+
+
+
+
+
+export const getCorrectNativeSupporterHypeCardIdentityMutationKey = () => ['correctNativeSupporterHypeCardIdentity'] as const;
+
+export const getCorrectNativeSupporterHypeCardIdentityMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof correctNativeSupporterHypeCardIdentity>>, TError,CorrectNativeSupporterHypeCardIdentityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof correctNativeSupporterHypeCardIdentity>>, TError,CorrectNativeSupporterHypeCardIdentityMutationVariables, TContext> => {
+
+const mutationKey = getCorrectNativeSupporterHypeCardIdentityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof correctNativeSupporterHypeCardIdentity>>, CorrectNativeSupporterHypeCardIdentityMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  correctNativeSupporterHypeCardIdentity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CorrectNativeSupporterHypeCardIdentityMutationResult = NonNullable<Awaited<ReturnType<typeof correctNativeSupporterHypeCardIdentity>>>
+    export type CorrectNativeSupporterHypeCardIdentityMutationBody = BodyType<NativeHypeCardIdentityCorrection>
+    export type CorrectNativeSupporterHypeCardIdentityMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>
+    export type CorrectNativeSupporterHypeCardIdentityMutationVariables = {data: BodyType<NativeHypeCardIdentityCorrection>}
+
+    /**
+ * @summary Correct a mismatched saved HYPE Card identity
+ */
+export const useCorrectNativeSupporterHypeCardIdentity = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof correctNativeSupporterHypeCardIdentity>>, TError,CorrectNativeSupporterHypeCardIdentityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof correctNativeSupporterHypeCardIdentity>>,
+        TError,
+        CorrectNativeSupporterHypeCardIdentityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCorrectNativeSupporterHypeCardIdentityMutationOptions(options));
     }
 
 export const getGetPublicJerseyShowcaseGearUrl = (inviteToken: string,) => {

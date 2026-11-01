@@ -33,6 +33,7 @@ struct NativeSupporterSchedule: Decodable {
 struct NativeHypeCardReference: Decodable {
     let status: String
     let inviteToken: String?
+    let correctionId: String?
     let privatePreview: NativePrivateHypeCard?
     let settings: NativeHypeCardSettings?
 }
@@ -68,6 +69,16 @@ struct NativeHypeCardSettingsUpdate: Encodable {
     }
 }
 
+private struct NativeHypeCardIdentityCorrectionBody: Encodable {
+    let correctionId: String
+    let confirm: Bool
+}
+
+struct NativeHypeCardIdentityCorrectionResult: Decodable {
+    let athleteName: String
+    let teamName: String
+}
+
 struct NativePrivateHypeCard: Decodable {
     let athleteName: String
     let teamName: String
@@ -81,6 +92,8 @@ struct NativeSupporterHypeCardPreview {
     let privateCard: NativePrivateHypeCard?
     let privatePhoto: Data?
     let settings: NativeHypeCardSettings?
+    let identityMismatch: Bool
+    let correctionId: String?
 }
 
 struct NativePublicHypeCard: Decodable {
@@ -435,29 +448,65 @@ enum SupporterHomeAPI {
                 publicCard: try await fetchPublicHypeCard(inviteToken: inviteToken, client: client),
                 privateCard: nil,
                 privatePhoto: nil,
-                settings: settings
+                settings: settings,
+                identityMismatch: false,
+                correctionId: nil
             )
         }
-        if reference.status == "hidden" {
+        if reference.status == "hidden" || reference.status == "mismatch" {
             guard let privateCard = reference.privatePreview,
-                  let settings = reference.settings,
-                  (!settings.showHypeCard || settings.paused) else {
+                  let settings = reference.settings else {
                 throw SupporterHomeAPIError.invalidResponse
             }
-            let privatePhoto = privateCard.hasPhoto
+            if reference.status == "mismatch" {
+                guard let correctionId = reference.correctionId,
+                      UUID(uuidString: correctionId) != nil else {
+                    throw SupporterHomeAPIError.invalidResponse
+                }
+            }
+            guard reference.status == "mismatch" || !settings.showHypeCard || settings.paused else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
+            let privatePhoto = reference.status == "hidden" && privateCard.hasPhoto
                 ? try await client.getData("supporter/hype-card/cutout-photo", clerk: clerk)
                 : nil
             return NativeSupporterHypeCardPreview(
                 publicCard: nil,
                 privateCard: privateCard,
                 privatePhoto: privatePhoto,
-                settings: settings
+                settings: settings,
+                identityMismatch: reference.status == "mismatch",
+                correctionId: reference.correctionId
             )
         }
         guard reference.status == "unlinked" || reference.status == "no-card" else {
             throw SupporterHomeAPIError.invalidResponse
         }
-        return NativeSupporterHypeCardPreview(publicCard: nil, privateCard: nil, privatePhoto: nil, settings: nil)
+        return NativeSupporterHypeCardPreview(
+            publicCard: nil,
+            privateCard: nil,
+            privatePhoto: nil,
+            settings: nil,
+            identityMismatch: false,
+            correctionId: nil
+        )
+    }
+
+    static func correctNativeHypeCardIdentity(
+        correctionId: String,
+        clerk: Clerk
+    ) async throws -> NativeHypeCardIdentityCorrectionResult {
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/hype-card/identity",
+            body: NativeHypeCardIdentityCorrectionBody(correctionId: correctionId, confirm: true),
+            method: "POST",
+            clerk: clerk
+        )
+        do {
+            return try JSONDecoder().decode(NativeHypeCardIdentityCorrectionResult.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
     }
 
     static func updateNativeHypeCard(

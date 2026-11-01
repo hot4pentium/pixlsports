@@ -2928,6 +2928,7 @@ export const NativeSupporterHypeCardStatus = {
   unlinked: 'unlinked',
   'no-card': 'no-card',
   hidden: 'hidden',
+  mismatch: 'mismatch',
   available: 'available',
 } as const;
 
@@ -2959,14 +2960,33 @@ export interface NativeSupporterHypeCard {
   status: NativeSupporterHypeCardStatus;
   /** Present only when the owner has enabled public HYPE Card access. */
   inviteToken?: string;
+  /** Owner-only saved card identifier returned only when identity correction is available. */
+  correctionId?: string;
   privatePreview?: NativePrivateHypeCard;
   settings?: NativeSupporterHypeCardSettings;
+}
+
+export interface NativeHypeCardIdentityCorrection {
+  /** Owner-only card identifier returned by the mismatch preview. */
+  correctionId: string;
+  /** Must be true to confirm the selected athlete identity correction. */
+  confirm: boolean;
+}
+
+export interface NativeHypeCardIdentityCorrectionResult {
+  /** @maxLength 100 */
+  athleteName: string;
+  /** @maxLength 160 */
+  teamName: string;
 }
 
 export interface NativeSupporterProfile {
   /** @maxLength 100 */
   athleteName: string;
-  /** @maxLength 160 */
+  /**
+     * Optional profile detail; an unset value is returned as an empty string.
+     * @maxLength 160
+     */
   teamName: string;
   /** @maxLength 40 */
   jerseyNumber: string;
@@ -2995,6 +3015,52 @@ export interface NativeSupporterProfileUpdate {
      * @maxLength 100
      */
   position: string;
+}
+
+export interface NativeSupporterEventCardCreateResponse {
+  shareToken: string;
+  eventId: string;
+}
+
+export type NativeSupporterEventCardCreatePurpose = typeof NativeSupporterEventCardCreatePurpose[keyof typeof NativeSupporterEventCardCreatePurpose];
+
+
+export const NativeSupporterEventCardCreatePurpose = {
+  'game-on-card': 'game-on-card',
+} as const;
+
+export type NativeSupporterEventCardCreateEventsItemType = typeof NativeSupporterEventCardCreateEventsItemType[keyof typeof NativeSupporterEventCardCreateEventsItemType];
+
+
+export const NativeSupporterEventCardCreateEventsItemType = {
+  game: 'game',
+  practice: 'practice',
+} as const;
+
+export type NativeSupporterEventCardCreateEventsItem = ScheduleEvent & {
+  type?: NativeSupporterEventCardCreateEventsItemType;
+};
+
+/**
+ * The title is required by the shared Event Card contract but is derived from the linked profile on the server. A blank team uses the athlete and season labels instead.
+ */
+export interface NativeSupporterEventCardCreate {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * The server stores the existing Event Card marker instead of this display value.
+     * @maxLength 200
+     */
+  teamSeason: string;
+  purpose: NativeSupporterEventCardCreatePurpose;
+  /**
+     * @minItems 1
+     * @maxItems 1
+     */
+  events: NativeSupporterEventCardCreateEventsItem[];
 }
 
 export interface NativeSupporterHypeCardUpdate {

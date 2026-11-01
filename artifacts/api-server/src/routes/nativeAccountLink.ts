@@ -6,6 +6,8 @@ import {
   PreviewWebNativeAccountLinkBody, DecideWebNativeAccountLinkBody,
   CreateScheduleShareBody, GetNativeSupporterHypeCardResponse,
   UpdateNativeSupporterHypeCardBody, UpdateNativeSupporterHypeCardResponse,
+  CorrectNativeSupporterHypeCardIdentityBody,
+  CorrectNativeSupporterHypeCardIdentityResponse,
   UpdateNativeSupporterProfileBody,
 } from "@workspace/api-zod";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
@@ -16,6 +18,7 @@ import {
   updateNativeSupporterEventCard,
 } from "../lib/nativeSupporterSchedule";
 import {
+  correctNativeSupporterHypeCardIdentity,
   loadNativeSupporterHypeCard,
   loadNativeSupporterHypeCardPhoto,
   updateNativeSupporterHypeCard,
@@ -366,6 +369,12 @@ nativeAccountLinkRouter.patch("/supporter/hype-card", handle(async (req, res) =>
   if (!parsed.success) throw new NativeLinkError(400, "Check the HYPE Card settings and try again.");
   const updated = await updateNativeSupporterHypeCard(identity(res), parsed.data);
   res.json(UpdateNativeSupporterHypeCardResponse.parse(updated));
+}));
+nativeAccountLinkRouter.post("/supporter/hype-card/identity", handle(async (req, res) => {
+  const parsed = CorrectNativeSupporterHypeCardIdentityBody.strict().safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Confirm that this HYPE Card belongs to the selected athlete.");
+  const updated = await correctNativeSupporterHypeCardIdentity(identity(res), parsed.data);
+  res.json(CorrectNativeSupporterHypeCardIdentityResponse.parse(updated));
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card/photo", handle(async (_req, res) => {
   const photo = await loadNativeSupporterHypeCardPhoto(identity(res), "photo");

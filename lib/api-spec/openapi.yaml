@@ -1489,6 +1489,35 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /native/supporter/hype-card/identity:
+    post:
+      operationId: correctNativeSupporterHypeCardIdentity
+      tags: [athlete-invites]
+      summary: Correct a mismatched saved HYPE Card identity
+      description: Requires explicit owner confirmation and changes only the newest saved card's athlete and team identity. Artwork, published snapshots, media, visibility, and pause settings are unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NativeHypeCardIdentityCorrection"
+      responses:
+        "200":
+          description: Corrected saved card identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeHypeCardIdentityCorrectionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The selected athlete is unavailable or the card already matches
+        "423":
+          description: The linked PIXL account is not eligible to update HYPE Card identity
   /athlete-invites/{inviteToken}/jersey-showcase/gear:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -5252,12 +5281,33 @@ components:
       type: object
       required: [status]
       properties:
-        status: { type: string, enum: [unlinked, no-card, hidden, available] }
+        status: { type: string, enum: [unlinked, no-card, hidden, mismatch, available] }
         inviteToken: { type: string, description: Present only when the owner has enabled public HYPE Card access. }
+        correctionId:
+          type: string
+          format: uuid
+          description: Owner-only saved card identifier returned only when identity correction is available.
         privatePreview:
           $ref: "#/components/schemas/NativePrivateHypeCard"
         settings:
           $ref: "#/components/schemas/NativeSupporterHypeCardSettings"
+    NativeHypeCardIdentityCorrection:
+      type: object
+      required: [correctionId, confirm]
+      properties:
+        correctionId:
+          type: string
+          format: uuid
+          description: Owner-only card identifier returned by the mismatch preview.
+        confirm:
+          type: boolean
+          description: Must be true to confirm the selected athlete identity correction.
+    NativeHypeCardIdentityCorrectionResult:
+      type: object
+      required: [athleteName, teamName]
+      properties:
+        athleteName: { type: string, maxLength: 100 }
+        teamName: { type: string, maxLength: 160 }
     NativeSupporterProfile:
       type: object
       required: [athleteName, teamName, jerseyNumber, position]

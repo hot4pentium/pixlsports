@@ -43,6 +43,11 @@ struct SupporterHypeCardView: View {
     @State private var settingsMessage: String?
     @State private var mediaErrorMessage: String?
     @State private var showPublishConfirmation = false
+    @State private var showIdentityCorrectionConfirmation = false
+    @State private var identityMismatch = false
+    @State private var identityCorrectionId: String?
+    @State private var isCorrectingIdentity = false
+    @State private var identityCorrectionMessage: String?
     @State private var unavailable = false
     @State private var errorMessage: String?
     @State private var refreshErrorMessage: String?
@@ -99,6 +104,18 @@ struct SupporterHypeCardView: View {
                         .accessibilityIdentifier("native-hype-card-refresh-error")
                     }
 
+                    if identityMismatch {
+                        identityMismatchRecovery
+                    }
+                    if let identityCorrectionMessage {
+                        Text(identityCorrectionMessage)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(identityCorrectionMessage.lowercased().contains("couldn’t")
+                                             || identityCorrectionMessage.lowercased().contains("unable")
+                                             ? .red : SupporterHomeColors.accentText)
+                            .accessibilityIdentifier("native-hype-card-identity-message")
+                    }
+
                     content
                 }
                 .frame(maxWidth: 520, alignment: .leading)
@@ -133,6 +150,18 @@ struct SupporterHypeCardView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Anyone with the HYPE Card link will be able to view the sections you have enabled.")
+        }
+        .confirmationDialog(
+            "Correct this HYPE Card identity?",
+            isPresented: $showIdentityCorrectionConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Update HYPE Card identity") {
+                Task { await correctHypeCardIdentity() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This updates only the saved card’s athlete and team name to match your linked profile. Privacy, pause, photo, media, saved artwork, and published snapshots stay unchanged.")
         }
         .task { await loadCard() }
         .onChange(of: scenePhase) { _, phase in
@@ -214,7 +243,72 @@ struct SupporterHypeCardView: View {
             if let athleteProfile {
                 athleteProfileSummary(athleteProfile)
             }
-            settingsEditor
+            if !identityMismatch {
+                settingsEditor
+            }
+        }
+    }
+
+    private var identityMismatchRecovery: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Saved HYPE Card doesn’t match", systemImage: "exclamationmark.triangle.fill")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+            if let privateCard, let athleteProfile {
+                Text("This saved card is for \(privateCard.athleteName)\(privateCard.teamName.isEmpty ? "" : " · \(privateCard.teamName)"), but your linked profile is \(athleteProfile.athleteName)\(athleteProfile.teamName.isEmpty ? "" : " · \(athleteProfile.teamName)"). It wasn’t changed automatically.")
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
+            } else {
+                Text("This saved card doesn’t match your linked athlete profile. It wasn’t changed automatically.")
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
+            }
+            Text("If this saved card is for the selected athlete, confirm to update its identity. The card’s other settings and saved work will stay unchanged.")
+                .font(.caption)
+                .foregroundStyle(SupporterHomeColors.muted)
+            Button {
+                showIdentityCorrectionConfirmation = true
+            } label: {
+                HStack {
+                    if isCorrectingIdentity { ProgressView().tint(SupporterHomeColors.background) }
+                    Text(isCorrectingIdentity ? "Updating…" : "Confirm identity update")
+                    Spacer()
+                    Image(systemName: "person.crop.circle.badge.checkmark")
+                }
+                .font(.headline.weight(.bold))
+                .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(SupporterHomeColors.accent)
+            .foregroundStyle(SupporterHomeColors.background)
+            .disabled(isCorrectingIdentity || athleteProfile == nil)
+            .accessibilityIdentifier("native-hype-card-correct-identity")
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(SupporterHomeColors.accent.opacity(0.6), lineWidth: 1)
+        }
+        .supporterSurfaceShadow()
+        .accessibilityIdentifier("native-hype-card-identity-mismatch")
+    }
+
+    private func correctHypeCardIdentity() async {
+        guard let clerk, let identityCorrectionId, !isCorrectingIdentity else { return }
+        isCorrectingIdentity = true
+        identityCorrectionMessage = nil
+        defer { isCorrectingIdentity = false }
+        do {
+            let corrected = try await SupporterHomeAPI.correctNativeHypeCardIdentity(
+                correctionId: identityCorrectionId,
+                clerk: clerk
+            )
+            await loadCard(refresh: true)
+            identityCorrectionMessage = "HYPE Card identity updated to \(corrected.athleteName)\(corrected.teamName.isEmpty ? "" : " · \(corrected.teamName)")."
+        } catch {
+            identityCorrectionMessage = error.localizedDescription
         }
     }
 
@@ -830,6 +924,8 @@ struct SupporterHypeCardView: View {
             let profile = try? await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
             guard !Task.isCancelled else { return }
             athleteProfile = profile
+            identityMismatch = result.identityMismatch
+            identityCorrectionId = result.correctionId
             let preserveUnsavedDraft = hasUnsavedSettings
             card = result.publicCard
             privateCard = result.privateCard

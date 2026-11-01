@@ -4020,7 +4020,7 @@ export const getNativeSupporterProfileResponsePositionMax = 100;
 
 export const GetNativeSupporterProfileResponse = zod.object({
   "athleteName": zod.string().max(getNativeSupporterProfileResponseAthleteNameMax),
-  "teamName": zod.string().max(getNativeSupporterProfileResponseTeamNameMax),
+  "teamName": zod.string().max(getNativeSupporterProfileResponseTeamNameMax).describe('Optional profile detail; an unset value is returned as an empty string.'),
   "jerseyNumber": zod.string().max(getNativeSupporterProfileResponseJerseyNumberMax),
   "position": zod.string().max(getNativeSupporterProfileResponsePositionMax)
 })
@@ -4059,9 +4059,64 @@ export const updateNativeSupporterProfileResponsePositionMax = 100;
 
 export const UpdateNativeSupporterProfileResponse = zod.object({
   "athleteName": zod.string().max(updateNativeSupporterProfileResponseAthleteNameMax),
-  "teamName": zod.string().max(updateNativeSupporterProfileResponseTeamNameMax),
+  "teamName": zod.string().max(updateNativeSupporterProfileResponseTeamNameMax).describe('Optional profile detail; an unset value is returned as an empty string.'),
   "jerseyNumber": zod.string().max(updateNativeSupporterProfileResponseJerseyNumberMax),
   "position": zod.string().max(updateNativeSupporterProfileResponsePositionMax)
+})
+
+
+/**
+ * Creates one shared Event Card. A team name is optional; the server uses the linked athlete’s team for the share title when present, otherwise the athlete and season labels. The Event Card remains on the existing shared-card path.
+ * @summary Create an Event Card from the linked iPhone account
+ */
+export const createNativeSupporterEventCardBodyTitleMax = 200;
+
+export const createNativeSupporterEventCardBodyTeamSeasonMax = 200;
+
+export const createNativeSupporterEventCardBodyEventsItemOneIdMax = 100;
+
+export const createNativeSupporterEventCardBodyEventsItemOneDateMax = 30;
+
+export const createNativeSupporterEventCardBodyEventsItemOneTimeMax = 30;
+
+export const createNativeSupporterEventCardBodyEventsItemOneLocationMax = 300;
+
+export const createNativeSupporterEventCardBodyEventsItemOneOpponentMax = 200;
+
+export const createNativeSupporterEventCardBodyEventsItemOneSnacksMax = 300;
+
+export const createNativeSupporterEventCardBodyEventsItemOneDrinksMax = 300;
+
+export const createNativeSupporterEventCardBodyEventsItemOneNotesMax = 1000;
+
+export const createNativeSupporterEventCardBodyEventsMax = 1;
+
+
+
+export const CreateNativeSupporterEventCardBody = zod.object({
+  "title": zod.string().min(1).max(createNativeSupporterEventCardBodyTitleMax),
+  "teamSeason": zod.string().max(createNativeSupporterEventCardBodyTeamSeasonMax).describe('The server stores the existing Event Card marker instead of this display value.'),
+  "purpose": zod.enum(['game-on-card']),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(createNativeSupporterEventCardBodyEventsItemOneIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
+  "date": zod.string().max(createNativeSupporterEventCardBodyEventsItemOneDateMax),
+  "time": zod.string().max(createNativeSupporterEventCardBodyEventsItemOneTimeMax),
+  "timezone": zod.string().optional().describe('Optional IANA time-zone identifier used to interpret the event\'s local date and start time.'),
+  "location": zod.string().max(createNativeSupporterEventCardBodyEventsItemOneLocationMax),
+  "opponent": zod.string().max(createNativeSupporterEventCardBodyEventsItemOneOpponentMax),
+  "snacks": zod.string().max(createNativeSupporterEventCardBodyEventsItemOneSnacksMax),
+  "drinks": zod.string().max(createNativeSupporterEventCardBodyEventsItemOneDrinksMax),
+  "notes": zod.string().max(createNativeSupporterEventCardBodyEventsItemOneNotesMax)
+}).and(zod.object({
+  "type": zod.enum(['game', 'practice'])
+}))).min(1).max(createNativeSupporterEventCardBodyEventsMax)
+}).describe('The title is required by the shared Event Card contract but is derived from the linked profile on the server. A blank team uses the athlete and season labels instead.')
+
+export const CreateNativeSupporterEventCardResponse = zod.object({
+  "shareToken": zod.string().uuid(),
+  "eventId": zod.string().uuid()
 })
 
 
@@ -4076,8 +4131,9 @@ export const getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax = 160;
 
 
 export const GetNativeSupporterHypeCardResponse = zod.object({
-  "status": zod.enum(['unlinked', 'no-card', 'hidden', 'available']),
+  "status": zod.enum(['unlinked', 'no-card', 'hidden', 'mismatch', 'available']),
   "inviteToken": zod.string().optional().describe('Present only when the owner has enabled public HYPE Card access.'),
+  "correctionId": zod.string().uuid().optional().describe('Owner-only saved card identifier returned only when identity correction is available.'),
   "privatePreview": zod.object({
   "athleteName": zod.string(),
   "teamName": zod.string(),
@@ -4121,6 +4177,27 @@ export const UpdateNativeSupporterHypeCardResponse = zod.object({
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
   "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardResponseFavoriteMomentMax).nullable()
+})
+
+
+/**
+ * Requires explicit owner confirmation and changes only the newest saved card's athlete and team identity. Artwork, published snapshots, media, visibility, and pause settings are unchanged.
+ * @summary Correct a mismatched saved HYPE Card identity
+ */
+export const CorrectNativeSupporterHypeCardIdentityBody = zod.object({
+  "correctionId": zod.string().uuid().describe('Owner-only card identifier returned by the mismatch preview.'),
+  "confirm": zod.boolean().describe('Must be true to confirm the selected athlete identity correction.')
+})
+
+export const correctNativeSupporterHypeCardIdentityResponseAthleteNameMax = 100;
+
+export const correctNativeSupporterHypeCardIdentityResponseTeamNameMax = 160;
+
+
+
+export const CorrectNativeSupporterHypeCardIdentityResponse = zod.object({
+  "athleteName": zod.string().max(correctNativeSupporterHypeCardIdentityResponseAthleteNameMax),
+  "teamName": zod.string().max(correctNativeSupporterHypeCardIdentityResponseTeamNameMax)
 })
 
 

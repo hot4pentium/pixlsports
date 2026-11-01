@@ -3,6 +3,7 @@ import { after, test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import {
+  correctNativeSupporterHypeCardIdentity,
   loadNativeSupporterHypeCard,
   loadNativeSupporterHypeCardPhoto,
   updateNativeSupporterHypeCard,
@@ -76,18 +77,122 @@ test("native HYPE card reference matches the linked account's selected athlete a
   });
 });
 
-test("native HYPE card reference with no selected athlete exposes no saved invite", async () => {
+test("native HYPE card reference reports a saved identity mismatch without exposing a public token", async () => {
   const who = identity();
   const linkedOwner = await owner();
   await link(who, linkedOwner);
   await addInvite(linkedOwner, "Jordan", "Wolves", randomBytes(18).toString("base64url"));
+  const savedInvite = await pool.query<{ id: string }>(
+    "SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1",
+    [linkedOwner],
+  );
 
   const reference = await loadNativeSupporterHypeCard(who, async () => ({
     athleteName: "Jordan",
     teamName: "Tigers",
   }));
 
-  assert.deepEqual(reference, { status: "no-card" });
+  assert.deepEqual(reference, {
+    status: "mismatch",
+    correctionId: savedInvite.rows[0]!.id,
+    privatePreview: {
+      athleteName: "Jordan",
+      teamName: "Wolves",
+      seasonName: "Spring 2099",
+      favoriteMoment: null,
+      hasPhoto: false,
+    },
+    settings: {
+      showHypeCard: true,
+      showStats: true,
+      showEvents: false,
+      paused: false,
+      favoriteMoment: null,
+    },
+  });
+  assert.equal("inviteToken" in reference, false);
+});
+
+test("owner can explicitly correct only the saved HYPE Card identity", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  const inviteToken = randomBytes(18).toString("base64url");
+  await addInvite(linkedOwner, "Jordan", "Wolves", inviteToken);
+  const selectedInvite = await pool.query<{ id: string }>(
+    "SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1 AND public_token=$2",
+    [linkedOwner, inviteToken],
+  );
+  await pool.query(
+    `UPDATE athlete_invites
+     SET show_hype_card=false, show_stats=false, show_events=true, paused=true,
+         favorite_moment='Saved favorite', photo_object_path='private/photo.webp',
+         cutout_object_path='private/cutout.webp'
+     WHERE owner_clerk_user_id=$1 AND public_token=$2`,
+    [linkedOwner, inviteToken],
+  );
+  const snapshotToken = randomBytes(18).toString("base64url");
+  await pool.query(
+    `INSERT INTO hype_card_shares
+       (owner_clerk_user_id, public_token, slug, title, manifest, share_mode, media_type, expires_at, athlete_name)
+     VALUES ($1, $2, 'saved-snapshot', 'Published snapshot', '{"headline":"Jordan"}'::jsonb,
+             'card', 'image', NOW() + INTERVAL '1 day', 'Jordan')`,
+    [linkedOwner, snapshotToken],
+  );
+  const lookup = async () => ({ athleteName: "Casey", teamName: "Tigers" });
+
+  await assert.rejects(
+    correctNativeSupporterHypeCardIdentity(who, {
+      correctionId: selectedInvite.rows[0]!.id,
+      confirm: false,
+    }, lookup),
+    (error: any) => error.status === 400,
+  );
+  const corrected = await correctNativeSupporterHypeCardIdentity(who, {
+    correctionId: selectedInvite.rows[0]!.id,
+    confirm: true,
+  }, lookup);
+  assert.deepEqual(corrected, { athleteName: "Casey", teamName: "Tigers" });
+
+  const invite = await pool.query<{
+    athlete_name: string;
+    team_name: string;
+    public_token: string;
+    show_hype_card: boolean;
+    show_stats: boolean;
+    show_events: boolean;
+    paused: boolean;
+    favorite_moment: string | null;
+    photo_object_path: string | null;
+    cutout_object_path: string | null;
+  }>(
+    `SELECT athlete_name, team_name, public_token, show_hype_card, show_stats, show_events,
+            paused, favorite_moment, photo_object_path, cutout_object_path
+     FROM athlete_invites WHERE owner_clerk_user_id=$1 AND public_token=$2`,
+    [linkedOwner, inviteToken],
+  );
+  assert.deepEqual(invite.rows[0], {
+    athlete_name: "Casey",
+    team_name: "Tigers",
+    public_token: inviteToken,
+    show_hype_card: false,
+    show_stats: false,
+    show_events: true,
+    paused: true,
+    favorite_moment: "Saved favorite",
+    photo_object_path: "private/photo.webp",
+    cutout_object_path: "private/cutout.webp",
+  });
+  const snapshot = await pool.query<{ athlete_name: string; title: string; manifest: unknown }>(
+    `SELECT athlete_name, title, manifest
+     FROM hype_card_shares WHERE owner_clerk_user_id=$1 AND public_token=$2`,
+    [linkedOwner, snapshotToken],
+  );
+  assert.deepEqual(snapshot.rows[0], {
+    athlete_name: "Jordan",
+    title: "Published snapshot",
+    manifest: { headline: "Jordan" },
+  });
 });
 
 test("linked owners can preview a hidden HYPE Card without receiving its public token", async () => {
