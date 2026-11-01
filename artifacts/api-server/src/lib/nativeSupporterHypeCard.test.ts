@@ -8,7 +8,7 @@ import {
   loadNativeSupporterHypeCardPhoto,
   updateNativeSupporterHypeCard,
 } from "./nativeSupporterHypeCard";
-import type { NativeIdentity } from "./nativeIdentity";
+import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 
 const owners: string[] = [];
 const nativeSubjects: string[] = [];
@@ -41,8 +41,56 @@ async function addInvite(ownerClerkUserId: string, athlete: string, team: string
   [ownerClerkUserId, token, athlete, team]);
 }
 
+async function savedCardState(ownerIds: string[]) {
+  const cards = await pool.query(
+    "SELECT * FROM athlete_invites WHERE owner_clerk_user_id=ANY($1::text[]) ORDER BY id",
+    [ownerIds],
+  );
+  const snapshots = await pool.query(
+    "SELECT * FROM hype_card_shares WHERE owner_clerk_user_id=ANY($1::text[]) ORDER BY id",
+    [ownerIds],
+  );
+  return { cards: cards.rows, snapshots: snapshots.rows };
+}
+
+async function staleRepairFixture() {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await addInvite(linkedOwner, "Jordan", "Wolves", randomBytes(18).toString("base64url"));
+  await pool.query(
+    `UPDATE athlete_invites
+     SET show_hype_card=false, show_stats=false, show_events=true, paused=true,
+         favorite_moment='Keep this favorite', photo_object_path='private/original.webp',
+         cutout_object_path='private/cutout.webp'
+     WHERE owner_clerk_user_id=$1`,
+    [linkedOwner],
+  );
+  await pool.query(
+    `INSERT INTO hype_card_shares
+       (owner_clerk_user_id, public_token, slug, title, manifest, share_mode, media_type, expires_at, athlete_name)
+     VALUES ($1, $2, 'stale-repair-snapshot', 'Keep this snapshot',
+             '{"headline":"Jordan","teamName":"Wolves"}'::jsonb,
+             'card', 'image', NOW() + INTERVAL '1 day', 'Jordan')`,
+    [linkedOwner, randomBytes(18).toString("base64url")],
+  );
+  let profile = { athleteName: "Casey", teamName: "Tigers" };
+  const lookup = async () => ({ ...profile });
+  const preview = await loadNativeSupporterHypeCard(who, lookup);
+  assert.equal(preview.status, "mismatch");
+  assert.ok(preview.correctionId);
+  return {
+    who,
+    linkedOwner,
+    correctionId: preview.correctionId,
+    lookup,
+    selectProfile(next: typeof profile) { profile = next; },
+  };
+}
+
 after(async () => {
   await pool.query("DELETE FROM athlete_editor_access WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
+  await pool.query("DELETE FROM hype_card_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_invites WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM native_account_links WHERE native_subject=ANY($1::text[])", [nativeSubjects]);
   await pool.query("DELETE FROM stat_tracker_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
@@ -194,6 +242,86 @@ test("owner can explicitly correct only the saved HYPE Card identity", async () 
     manifest: { headline: "Jordan" },
   });
 });
+
+for (const changedAfterPreview of ["card", "profile", "profile without team"] as const) {
+  test(`stale identity repair rejects an already matching ${changedAfterPreview} without changing saved data`, async () => {
+    const fixture = await staleRepairFixture();
+    if (changedAfterPreview === "card") {
+      await pool.query(
+        "UPDATE athlete_invites SET athlete_name='  CASEY ', team_name=' tIgErS ' WHERE id=$1",
+        [fixture.correctionId],
+      );
+    } else {
+      fixture.selectProfile({
+        athleteName: "  JORDAN ",
+        teamName: changedAfterPreview === "profile" ? " wOlVeS " : "  ",
+      });
+    }
+    const before = await savedCardState([fixture.linkedOwner]);
+    assert.equal(before.cards.length, 1);
+    assert.equal(before.snapshots.length, 1);
+
+    await assert.rejects(
+      correctNativeSupporterHypeCardIdentity(fixture.who, {
+        correctionId: fixture.correctionId,
+        confirm: true,
+      }, fixture.lookup),
+      (error: unknown) => error instanceof NativeLinkError
+        && error.status === 409
+        && error.message === "This HYPE Card already matches the selected athlete.",
+    );
+
+    assert.deepEqual(await savedCardState([fixture.linkedOwner]), before,
+      "rejection preserves newer identity, settings, photo paths, and published snapshots");
+  });
+}
+
+for (const staleIdentifier of ["deleted", "replaced", "another owner's"] as const) {
+  test(`identity repair cannot use a ${staleIdentifier} card identifier to update another card`, async () => {
+    const fixture = await staleRepairFixture();
+    let correctionId = fixture.correctionId;
+    const ownerIds = [fixture.linkedOwner];
+    if (staleIdentifier === "another owner's") {
+      const unrelatedOwner = await owner();
+      ownerIds.push(unrelatedOwner);
+      await addInvite(unrelatedOwner, "Taylor", "Bears", randomBytes(18).toString("base64url"));
+      const otherCard = await pool.query<{ id: string }>(
+        "SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1",
+        [unrelatedOwner],
+      );
+      correctionId = otherCard.rows[0]!.id;
+    } else {
+      await pool.query("DELETE FROM athlete_invites WHERE id=$1", [fixture.correctionId]);
+      if (staleIdentifier === "replaced") {
+        await addInvite(fixture.linkedOwner, "Morgan", "Falcons", randomBytes(18).toString("base64url"));
+        await pool.query(
+          `UPDATE athlete_invites SET show_stats=false, show_events=true,
+             favorite_moment='Replacement favorite', photo_object_path='private/replacement.webp',
+             cutout_object_path='private/replacement-cutout.webp'
+           WHERE owner_clerk_user_id=$1`,
+          [fixture.linkedOwner],
+        );
+      }
+    }
+    const before = await savedCardState(ownerIds);
+    assert.equal(before.cards.length, staleIdentifier === "deleted" ? 0
+      : staleIdentifier === "replaced" ? 1 : 2);
+    assert.equal(before.snapshots.length, 1);
+
+    await assert.rejects(
+      correctNativeSupporterHypeCardIdentity(fixture.who, {
+        correctionId,
+        confirm: true,
+      }, fixture.lookup),
+      (error: unknown) => error instanceof NativeLinkError
+        && error.status === 404
+        && error.message === "No saved HYPE Card is available to correct.",
+    );
+
+    assert.deepEqual(await savedCardState(ownerIds), before,
+      "rejection must not create a card or change any remaining card or published snapshot");
+  });
+}
 
 test("linked owners can preview a hidden HYPE Card without receiving its public token", async () => {
   const who = identity();
