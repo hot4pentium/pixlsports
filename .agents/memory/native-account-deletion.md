@@ -62,3 +62,16 @@ private content or discard proof that deletion was accepted.
 **How to apply:** Keep the receipt until the SDK confirms signed-out state, reset
 the sign-in presentation for the next account, and place retry errors beside the
 receipt action rather than in an off-screen overlay.
+
+After iOS deletion is accepted, a new iOS profile or connection using the same
+verified email must remain blocked until cleanup finishes. Email delivery or
+opening the completion email must not control release of that hold.
+
+**Why:** The user explicitly asked to prevent someone cancelling and signing up
+again faster than the deletion system can finish.
+
+**How to apply:** Enforce the hold server-side across signup and legacy linking,
+including when the old provider identity is already gone but cleanup is retrying.
+Use verified native emails only as temporary exclusions, never as ownership proof
+or a reason to connect PWA data. A completed deletion permits a fresh identity
+and empty profile; it never restores the deleted identity or data.

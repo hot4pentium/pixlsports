@@ -118,7 +118,8 @@ test("account removal HTTP boundary requires native auth, explicit confirmation 
       method: "POST", headers: { ...headers, authorization: `Bearer ${otherToken}` },
       body: JSON.stringify({ scope: preview.scope, target: preview.target, confirmation: "DELETE" }),
     })).status, 409);
-    const receipt = await requestNativeAccountDeletion(who, await previewNativeAccountDeletion(who));
+    const receipt = await requestNativeAccountDeletion(who, await previewNativeAccountDeletion(who),
+      async () => ({ verifiedEmails: ["native-notification@example.com"] }));
     const reference = receipt.supportReference;
     const otherHeaders = { ...headers, authorization: `Bearer ${otherToken}` };
     // Knowing the reference does not expose the request, even as a query parameter.

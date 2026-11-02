@@ -1,6 +1,7 @@
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { pool, type PoolClient } from "@workspace/db";
 import { loadNativeProviderIdentity } from "./nativeSignupIdentity";
+import { nativeSignupEmailHashes } from "./nativeSignupHold";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { logger } from "./logger";
 import { NATIVE_DELETION_EMAIL_RETENTION_DAYS, NATIVE_DELETION_EMAIL_RETRY_WINDOW_MS } from "./nativeDeletionEmailPolicy";
@@ -18,13 +19,13 @@ export class DeletionCompletionEmailError extends Error {
   }
 }
 
-async function verifiedNativeEmail(who: NativeIdentity): Promise<string | null> {
+async function verifiedNativeEmail(who: NativeIdentity): Promise<string[] | null> {
   try {
     const user = await loadNativeProviderIdentity(who);
     const addresses = user.email_addresses.filter(item => item.verification?.status === "verified");
     addresses.sort((a, b) =>
       Number(b.id === user.primary_email_address_id) - Number(a.id === user.primary_email_address_id));
-    return addresses[0]?.email_address.trim().toLowerCase() ?? null;
+    return [...new Set(addresses.map(address => address.email_address.trim().toLowerCase()))];
   } catch (error) {
     // Older requests may have already removed the provider identity.
     // Never infer a recipient from a PWA email or caller-supplied address.
@@ -36,16 +37,27 @@ async function verifiedNativeEmail(who: NativeIdentity): Promise<string | null> 
 /** Capture before deleting the native provider user, and preserve on retries. */
 export async function prepareNativeDeletionCompletionEmail(
   deletion: { id: string; native_issuer: string; native_subject: string },
-  resolveEmail: (who: NativeIdentity) => Promise<string | null> = verifiedNativeEmail,
+  resolveEmail: (who: NativeIdentity) => Promise<string | string[] | null> = verifiedNativeEmail,
   client: Pick<PoolClient, "query"> = pool,
 ) {
   const existing = await client.query(
-    "SELECT completion_email_resolved_at FROM native_account_deletions WHERE id=$1", [deletion.id]);
-  if (!existing.rows[0] || existing.rows[0].completion_email_resolved_at) return;
-  const email = await resolveEmail({ issuer: deletion.native_issuer, subject: deletion.native_subject });
+    "SELECT completion_email_resolved_at,completion_email,completed_at,signup_hold_email_hashes FROM native_account_deletions WHERE id=$1",
+    [deletion.id]);
+  const row = existing.rows[0];
+  if (!row || (row.completion_email_resolved_at && (row.signup_hold_email_hashes !== null || row.completed_at))) return;
+  const who = { issuer: deletion.native_issuer, subject: deletion.native_subject };
+  const resolved = await resolveEmail(who);
+  const addresses = (Array.isArray(resolved) ? resolved : resolved ? [resolved] : [])
+    .map(address => address.trim().toLowerCase()).filter(Boolean);
+  // Backfill older pending requests before provider removal. An already
+  // removed legacy identity can still retain its previously verified recipient.
+  const holdAddresses = [...addresses, ...(row.completion_email ? [row.completion_email as string] : [])];
   await client.query(`UPDATE native_account_deletions
-    SET completion_email=$2,completion_email_resolved_at=NOW()
-    WHERE id=$1 AND completion_email_resolved_at IS NULL`, [deletion.id, email]);
+    SET completion_email=CASE WHEN completion_email_resolved_at IS NULL THEN $2 ELSE completion_email END,
+        completion_email_resolved_at=COALESCE(completion_email_resolved_at,NOW()),
+        signup_hold_email_hashes=CASE WHEN completed_at IS NULL
+          THEN COALESCE(signup_hold_email_hashes,$3::text[]) ELSE NULL END
+    WHERE id=$1`, [deletion.id, addresses[0] ?? null, nativeSignupEmailHashes(who, holdAddresses)]);
 }
 
 export function deletionCompletionMessage(scope: string, supportReference: string) {

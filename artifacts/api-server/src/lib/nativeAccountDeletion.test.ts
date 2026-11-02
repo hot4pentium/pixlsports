@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, test } from "node:test";
 import { pool } from "@workspace/db";
-import { assertNativeNotDeleting, previewNativeAccountDeletion, requestNativeAccountDeletion } from "./nativeAccountDeletion";
+import { assertNativeNotDeleting, previewNativeAccountDeletion, requestNativeAccountDeletion as requestDeletion } from "./nativeAccountDeletion";
 import { createNativeAccountPreparation, nativeSignupExternalId } from "./nativeAccountPreparation";
 import { createNativeAccountLinkService } from "./nativeAccountLink";
 import { createNativeSupporterProfileService } from "./nativeSupporterProfile";
@@ -17,11 +17,18 @@ type Fixture = {
   prepare: ReturnType<typeof createNativeAccountPreparation>;
 };
 const fixtures: Fixture[] = [];
-function fixture(): Fixture {
-  const who = { issuer: "https://native-delete-fixture.clerk.accounts.dev", subject: `user_delete${randomUUID().replaceAll("-", "")}` };
+const fixtureEmail = (who: Fixture["who"]) => `native-delete-${who.subject}@example.com`;
+function requestNativeAccountDeletion(
+  who: Fixture["who"], confirmation: Parameters<typeof requestDeletion>[1],
+  loadIdentity = async (identity: Fixture["who"]) => ({ verifiedEmails: [fixtureEmail(identity)] }),
+) {
+  return requestDeletion(who, confirmation, loadIdentity);
+}
+function fixture(issuer = "https://native-delete-fixture.clerk.accounts.dev"): Fixture {
+  const who = { issuer, subject: `user_delete${randomUUID().replaceAll("-", "")}` };
   const owner = nativeSignupExternalId(who);
   const prepare = createNativeAccountPreparation({
-    loadIdentity: async () => ({ createdAt: Date.now(), verifiedEmails: ["native-delete@example.com"] }),
+    loadIdentity: async () => ({ createdAt: Date.now(), verifiedEmails: [fixtureEmail(who)] }),
     findOwners: async () => [],
   });
   const f = { who, owner, prepare };
@@ -66,6 +73,95 @@ test("review/cancel changes nothing; confirmations cannot target another account
   await assert.rejects(requestNativeAccountDeletion(a.who, { ...preview, scope: "iphone_access" }), (e: any) => e.status === 409);
   await assertNativeNotDeleting(a.who);
   await assertNativeNotDeleting(b.who);
+});
+
+test("same verified email and aliases stay held through cleanup failures, but not email delivery", async () => {
+  const old = fixture(), fresh = fixture(), unrelated = fixture();
+  const otherTenant = fixture("https://other-native-delete-fixture.clerk.accounts.dev");
+  const alias = `alias-${old.who.subject}@example.com`;
+  const verified = [fixtureEmail(old.who), ` ${alias.toUpperCase()} `];
+  const loadFreshIdentity = async () => ({ createdAt: Date.now(), verifiedEmails: [alias] });
+  fresh.prepare = createNativeAccountPreparation({ loadIdentity: loadFreshIdentity, findOwners: async () => [] });
+  otherTenant.prepare = createNativeAccountPreparation({ loadIdentity: loadFreshIdentity, findOwners: async () => [] });
+  await old.prepare(old.who);
+  const preview = await previewNativeAccountDeletion(old.who);
+  await requestNativeAccountDeletion(old.who, preview, async () => ({ verifiedEmails: verified }));
+  const held = await pool.query("SELECT * FROM native_account_deletions WHERE native_subject=$1", [old.who.subject]);
+  assert.equal(held.rows[0].signup_hold_email_hashes.length, 2);
+  assert.ok(held.rows[0].signup_hold_email_hashes.every((value: string) => /^[a-f0-9]{64}$/.test(value)));
+  assert.equal(held.rows[0].completion_email, fixtureEmail(old.who));
+  await assert.rejects(fresh.prepare(fresh.who), (e: any) => e.status === 423 && /still being deleted/.test(e.message));
+  assert.equal((await pool.query("SELECT 1 FROM native_accounts WHERE owner_id=$1", [fresh.owner])).rowCount, 0);
+  const links = createNativeAccountLinkService(undefined, loadFreshIdentity);
+  await assert.rejects(links.start(fresh.who, "x".repeat(43)), (e: any) => e.status === 423);
+  await assert.rejects(links.complete(fresh.who, randomUUID(), "x".repeat(43)), (e: any) => e.status === 423);
+  await unrelated.prepare(unrelated.who);
+  await otherTenant.prepare(otherTenant.who);
+  await runNativeAccountDeletions({
+    deleteIdentity: async () => { throw new Error("Fixture provider unavailable"); },
+    purgeOwner: async () => { assert.fail("Must not release before provider removal"); },
+  }, old.who);
+  await assert.rejects(fresh.prepare(fresh.who), (e: any) => e.status === 423);
+  // This is the critical race window: the old provider sign-in is gone,
+  // but remaining application data has not finished being purged.
+  let providerRemoved = false;
+  await runNativeAccountDeletions({
+    deleteIdentity: async () => { providerRemoved = true; },
+    purgeOwner: async () => { throw new Error("Fixture storage cleanup unavailable"); },
+  }, old.who);
+  assert.equal(providerRemoved, true);
+  await assert.rejects(fresh.prepare(fresh.who), (e: any) => e.status === 423);
+  await runNativeAccountDeletions({
+    deleteIdentity: async () => {},
+    purgeOwner: async owner => {
+      await runExpiredAccountPurge({ ownerClerkUserId: owner, dependencies: {
+        deleteClerkUser: async () => { assert.fail("Must not touch the PWA provider"); },
+        deleteNativeUser: async () => {}, deleteObject: async () => {},
+      } });
+    },
+  }, old.who);
+  const completed = (await pool.query("SELECT * FROM native_account_deletions WHERE id=$1", [held.rows[0].id])).rows[0];
+  assert.ok(completed.completed_at);
+  assert.equal(completed.signup_hold_email_hashes, null);
+  assert.equal(completed.completion_email_sent_at, null);
+  assert.deepEqual(await fresh.prepare(fresh.who), { status: "ready" });
+  assert.notEqual(fresh.owner, old.owner);
+  await assert.rejects(old.prepare(old.who), (e: any) => e.status === 423);
+  // A retry after the provider identity is gone needs no additional lookup.
+  await requestNativeAccountDeletion(old.who, preview, async () => { throw new Error("Identity already gone"); });
+});
+
+test("deletion acceptance wins an overlapping new-profile attempt under the shared lock", async () => {
+  const old = fixture(), fresh = fixture();
+  await old.prepare(old.who);
+  const preview = await previewNativeAccountDeletion(old.who);
+  fresh.prepare = createNativeAccountPreparation({
+    loadIdentity: async () => ({ createdAt: Date.now(), verifiedEmails: [fixtureEmail(old.who)] }),
+    findOwners: async () => [],
+  });
+  let captured!: () => void, release!: () => void;
+  const capturing = new Promise<void>(resolve => { captured = resolve; });
+  const continueCapture = new Promise<void>(resolve => { release = resolve; });
+  const deletion = requestNativeAccountDeletion(old.who, preview, async () => {
+    captured();
+    await continueCapture;
+    return { verifiedEmails: [fixtureEmail(old.who)] };
+  });
+  await capturing;
+  const signup = fresh.prepare(fresh.who).then(() => null, error => error);
+  release();
+  await deletion;
+  assert.equal((await signup)?.status, 423);
+  assert.equal((await pool.query("SELECT 1 FROM native_accounts WHERE owner_id=$1", [fresh.owner])).rowCount, 0);
+});
+
+test("a failed verified-address capture cannot partially accept deletion", async () => {
+  const f = fixture();
+  await f.prepare(f.who);
+  await assert.rejects(requestNativeAccountDeletion(f.who, await previewNativeAccountDeletion(f.who),
+    async () => { throw new Error("Fixture provider unavailable"); }), /provider unavailable/);
+  assert.equal((await pool.query("SELECT 1 FROM native_account_deletions WHERE native_subject=$1", [f.who.subject])).rowCount, 0);
+  assert.equal((await pool.query("SELECT lifecycle_status FROM account_access WHERE owner_clerk_user_id=$1", [f.owner])).rows[0].lifecycle_status, "active");
 });
 
 test("independent removal is terminal, idempotent, blocks setup/linking and retries provider and media cleanup", async () => {

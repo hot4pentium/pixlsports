@@ -62,7 +62,7 @@ export async function runNativeAccountDeletions(deps: Dependencies = {
         await tx.query("DELETE FROM native_accounts WHERE owner_id=$1 AND native_issuer=$2 AND native_subject=$3",
           [row.owner_id, row.native_issuer, row.native_subject]);
       }
-      await tx.query("UPDATE native_account_deletions SET completed_at=NOW() WHERE id=$1", [row.id]);
+      await tx.query("UPDATE native_account_deletions SET completed_at=NOW(),signup_hold_email_hashes=NULL WHERE id=$1", [row.id]);
       await tx.query("COMMIT");
     } catch {
       await tx.query("ROLLBACK");

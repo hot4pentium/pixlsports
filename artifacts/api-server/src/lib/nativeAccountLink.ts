@@ -5,6 +5,8 @@ import { getAccountLifecycleSnapshot } from "./accountLifecycle";
 import { getAthleteEditorAccessForUser } from "./athleteEditorAccess";
 import { NativeLinkError, nativeLinkWebOrigin, type NativeIdentity } from "./nativeIdentity";
 import { assertNativeNotDeleting } from "./nativeAccountDeletion";
+import { assertNativeLinkSignupAvailable } from "./nativeSignupHold";
+import { loadNativeSignupIdentity } from "./nativeSignupIdentity";
 
 const TTL = 10 * 60 * 1000;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -81,6 +83,7 @@ export async function limitNativeLinkAction(actor: string, action: string, maxim
 
 export function createNativeAccountLinkService(
   assertOwner: (owner: string, tx?: PoolClient) => Promise<void> = assertLinkableWebAccount,
+  loadIdentity: typeof loadNativeSignupIdentity = loadNativeSignupIdentity,
 ) {
   async function current(who: NativeIdentity): Promise<NativeLinkState> {
     const { rows } = await pool.query<LinkRow>(
@@ -105,6 +108,7 @@ export function createNativeAccountLinkService(
   async function start(who: NativeIdentity, challenge: string): Promise<NativeLinkState> {
     return transaction(async (tx) => {
       await assertNativeNotDeleting(who, tx);
+      await assertNativeLinkSignupAvailable(who, tx, loadIdentity);
       const existing = await tx.query<LinkRow>(
         "SELECT * FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2", nativeWhere(who),
       );
@@ -202,6 +206,7 @@ export function createNativeAccountLinkService(
   async function complete(who: NativeIdentity, id: string, verifier: string): Promise<NativeLinkState> {
     return transaction(async (tx) => {
       await assertNativeNotDeleting(who, tx);
+      await assertNativeLinkSignupAvailable(who, tx, loadIdentity);
       const row = await proof(tx, who, id, verifier);
       if (row.status === "completed") {
         const { rows } = await tx.query<LinkRow>("SELECT * FROM native_account_links WHERE id=$1", [row.completed_link_id]);

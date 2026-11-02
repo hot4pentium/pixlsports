@@ -13,6 +13,8 @@ export const nativeAccountDeletionsTable = pgTable("native_account_deletions", {
   requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
+  // Temporary pseudonymous email matches, cleared atomically with completion.
+  signupHoldEmailHashes: text("signup_hold_email_hashes").array(),
   completionEmail: text("completion_email"),
   completionEmailResolvedAt: timestamp("completion_email_resolved_at", { withTimezone: true }),
   completionEmailFirstAttemptAt: timestamp("completion_email_first_attempt_at", { withTimezone: true }),

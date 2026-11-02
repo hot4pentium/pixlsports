@@ -6,6 +6,7 @@ import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { loadNativeSignupIdentity } from "./nativeSignupIdentity";
 import { assertNativeNotDeleting } from "./nativeAccountDeletion";
+import { assertNativeSignupEmailsAvailable } from "./nativeSignupHold";
 
 type LegacyOwner = {
   id: string; externalId: string | null; createdAt: number;
@@ -61,6 +62,7 @@ export function createNativeAccountPreparation(deps: Dependencies = defaults) {
       if (!identity.verifiedEmails.length) {
         throw new NativeLinkError(423, "Verify your email address before setting up your iPhone profile.");
       }
+      await assertNativeSignupEmailsAvailable(who, identity.verifiedEmails, tx);
       const origins = (await deps.findOwners(owner)).filter(o => o.externalId === owner);
       if (origins.length > 1) throw new NativeLinkError(409, "Your iPhone account needs recovery.");
       if (origins[0]) {

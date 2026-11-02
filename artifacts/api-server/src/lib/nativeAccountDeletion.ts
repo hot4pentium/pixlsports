@@ -1,5 +1,7 @@
 import { pool, type PoolClient } from "@workspace/db";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
+import { loadNativeProviderIdentity } from "./nativeSignupIdentity";
+import { nativeSignupEmailHashes } from "./nativeSignupHold";
 
 export async function assertNativeNotDeleting(who: NativeIdentity, tx: Pick<PoolClient, "query"> = pool) {
   const result = await tx.query(
@@ -53,7 +55,19 @@ export async function previewNativeAccountDeletion(who: NativeIdentity) {
   } finally { tx.release(); }
 }
 
-export async function requestNativeAccountDeletion(who: NativeIdentity, confirmed: { scope: string; target: string }) {
+async function loadDeletionIdentity(who: NativeIdentity) {
+  // Locked/banned identities may still request deletion; unlike signup, this
+  // reads verified addresses without requiring eligibility to create a profile.
+  const user = await loadNativeProviderIdentity(who);
+  const addresses = user.email_addresses.filter(email => email.verification?.status === "verified");
+  addresses.sort((a, b) => Number(b.id === user.primary_email_address_id) - Number(a.id === user.primary_email_address_id));
+  return { verifiedEmails: [...new Set(addresses.map(email => email.email_address.trim().toLowerCase()))] };
+}
+
+export async function requestNativeAccountDeletion(
+  who: NativeIdentity, confirmed: { scope: string; target: string },
+  loadIdentity: (who: NativeIdentity) => Promise<{ verifiedEmails: string[] }> = loadDeletionIdentity,
+) {
   const tx = await pool.connect();
   try {
     await tx.query("BEGIN");
@@ -63,6 +77,11 @@ export async function requestNativeAccountDeletion(who: NativeIdentity, confirme
     if (current.scope !== confirmed.scope || current.target !== confirmed.target) {
       throw new NativeLinkError(409, "Your account changed. Review the removal details again.");
     }
+    const prior = await tx.query("SELECT id FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2",
+      [who.issuer, who.subject]);
+    // Capture from the server-verified provider BEFORE accepting deletion.
+    // A retry after provider removal must not need that removed identity again.
+    const verifiedEmails = prior.rowCount ? null : (await loadIdentity(who)).verifiedEmails;
     if (current.scope === "independent") {
       await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [current.target]);
       await tx.query(`UPDATE account_access SET lifecycle_status='deletion_pending',
@@ -71,9 +90,12 @@ export async function requestNativeAccountDeletion(who: NativeIdentity, confirme
       await tx.query("UPDATE athlete_invites SET paused=true WHERE owner_clerk_user_id=$1", [current.target]);
       await tx.query("UPDATE hype_card_shares SET revoked_at=COALESCE(revoked_at,NOW()) WHERE owner_clerk_user_id=$1", [current.target]);
     }
-    await tx.query(`INSERT INTO native_account_deletions(native_issuer,native_subject,owner_id,scope,target)
-      VALUES($1,$2,$3,$4,$5) ON CONFLICT(native_issuer,native_subject) DO NOTHING`,
-    [who.issuer, who.subject, current.scope === "independent" ? current.target : null, current.scope, current.target]);
+    await tx.query(`INSERT INTO native_account_deletions(
+        native_issuer,native_subject,owner_id,scope,target,signup_hold_email_hashes,completion_email,completion_email_resolved_at)
+      VALUES($1,$2,$3,$4,$5,$6,$7,NOW()) ON CONFLICT(native_issuer,native_subject) DO NOTHING`,
+    [who.issuer, who.subject, current.scope === "independent" ? current.target : null, current.scope, current.target,
+      verifiedEmails ? nativeSignupEmailHashes(who, verifiedEmails) : null,
+      verifiedEmails?.[0]?.trim().toLowerCase() || null]);
     await tx.query("DELETE FROM native_push_subscriptions WHERE native_issuer=$1 AND native_subject=$2",
       [who.issuer, who.subject]);
     await tx.query(`UPDATE native_link_requests SET status='cancelled'
