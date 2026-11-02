@@ -5,6 +5,7 @@ import { isEligibleForInitialAccountSetup } from "./accountProvisioning";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { loadNativeSignupIdentity } from "./nativeSignupIdentity";
+import { assertNativeNotDeleting } from "./nativeAccountDeletion";
 
 type LegacyOwner = {
   id: string; externalId: string | null; createdAt: number;
@@ -36,6 +37,7 @@ export function createNativeAccountPreparation(deps: Dependencies = defaults) {
       await tx.query("BEGIN");
       // Share the ordering used by explicit legacy link approval/disconnect.
       await tx.query("SELECT pg_advisory_xact_lock(761119995)");
+      await assertNativeNotDeleting(who, tx);
       const existing = await tx.query<{ owner_clerk_user_id: string }>(
         "SELECT owner_clerk_user_id FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2 FOR UPDATE",
         [who.issuer, who.subject],

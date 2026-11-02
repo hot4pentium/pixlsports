@@ -1,3 +1,4 @@
+export * from "./nativeAccountDeletions";
 export * from "./nativeAccounts";
 export * from "./nativeAccountLinks";
 export * from "./nativeLinkRequests";

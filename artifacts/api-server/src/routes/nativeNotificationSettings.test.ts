@@ -6,6 +6,7 @@ import express from "express";
 import { pool } from "@workspace/db";
 import { digest } from "../lib/nativeAccountLink";
 import { nativeAccountLinkRouter } from "./nativeAccountLink";
+import { previewNativeAccountDeletion, requestNativeAccountDeletion } from "../lib/nativeAccountDeletion";
 
 const issuer = "https://native-notification-fixture.clerk.accounts.dev";
 const ownerClerkUserId = `native-notification-owner-${randomUUID()}`;
@@ -59,10 +60,86 @@ after(async () => {
   await pool.query("DELETE FROM planner_notification_preferences WHERE owner_clerk_user_id=$1", [ownerClerkUserId]);
   await pool.query("DELETE FROM game_on_reminder_sync WHERE key=$1", [`owner:${ownerClerkUserId}`]);
   await pool.query("DELETE FROM native_account_links WHERE owner_clerk_user_id=$1", [ownerClerkUserId]);
+  await pool.query("DELETE FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2", [issuer, nativeSubject]);
   await pool.query("DELETE FROM native_link_rate_limits WHERE key=$1", [
     digest(`native-request:${JSON.stringify({ issuer, subject: nativeSubject })}`),
   ]);
   await pool.end();
+});
+
+test("account removal HTTP boundary requires native auth, explicit confirmation and the current identity's target", async () => {
+  const who = { issuer, subject: nativeSubject };
+  const link = await pool.query(`INSERT INTO native_account_links(native_issuer,native_subject,owner_clerk_user_id,account_label)
+    VALUES($1,$2,$3,'Deletion route fixture') RETURNING id`, [issuer, nativeSubject, ownerClerkUserId]);
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api/native", nativeAccountLinkRouter);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>(resolve => server.once("listening", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const url = `http://127.0.0.1:${address.port}/api/native`;
+    const token = await sessionToken("sess_nativeDelete");
+    const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+    const noToken = await originalFetch(`${url}/account/deletion`, { headers: { cookie: "__session=not-native-auth" } });
+    assert.equal(noToken.status, 401);
+    const now = Math.floor(Date.now() / 1000);
+    const pwaToken = await new SignJWT({ sid: "sess_web" })
+      .setProtectedHeader({ alg: "RS256", kid: "native-notification-fixture" })
+      .setIssuer("https://web-fixture.clerk.accounts.dev").setSubject(nativeSubject)
+      .setIssuedAt(now).setExpirationTime(now + 60).sign(privateKey);
+    assert.equal((await originalFetch(`${url}/account/deletion`, {
+      headers: { authorization: `Bearer ${pwaToken}` },
+    })).status, 401);
+    const preview = await (await originalFetch(`${url}/account/deletion`, { headers })).json();
+    assert.equal(preview.target, link.rows[0].id);
+    assert.equal(preview.status, "not_requested");
+    assert.equal((await pool.query("SELECT 1 FROM native_account_deletions WHERE native_subject=$1", [nativeSubject])).rowCount, 0);
+    for (const body of [
+      { scope: preview.scope, target: preview.target },
+      { scope: preview.scope, target: preview.target, confirmation: "DELETE", ownerId: "someone-else" },
+    ]) {
+      assert.equal((await originalFetch(`${url}/account/deletion`, { method: "POST", headers, body: JSON.stringify(body) })).status, 400);
+    }
+    assert.equal((await originalFetch(`${url}/account/deletion`, {
+      method: "POST", headers, body: JSON.stringify({ scope: preview.scope, target: randomUUID(), confirmation: "DELETE" }),
+    })).status, 409);
+    const otherToken = await new SignJWT({ sid: "sess_other" })
+      .setProtectedHeader({ alg: "RS256", kid: "native-notification-fixture" })
+      .setIssuer(issuer).setSubject(`user_other${randomUUID().replaceAll("-", "")}`)
+      .setIssuedAt(now).setExpirationTime(now + 60).sign(privateKey);
+    assert.equal((await originalFetch(`${url}/account/deletion`, {
+      method: "POST", headers: { ...headers, authorization: `Bearer ${otherToken}` },
+      body: JSON.stringify({ scope: preview.scope, target: preview.target, confirmation: "DELETE" }),
+    })).status, 409);
+    await requestNativeAccountDeletion(who, await previewNativeAccountDeletion(who));
+    for (const [path, method, body] of [
+      ["/supporter/account", "POST", "{}"],
+      ["/notifications/preferences", "GET", undefined],
+      ["/notifications/subscriptions", "POST", JSON.stringify({ deviceId: deviceIds[0], deviceToken: deviceTokens[0], environment: "sandbox" })],
+    ] as const) {
+      assert.equal((await originalFetch(`${url}${path}`, { method, headers, body })).status, 423);
+    }
+    assert.equal((await (await originalFetch(`${url}/account/deletion`, { headers })).json()).status, "pending");
+    // Simulate the already-verified worker's completion. A short-lived JWT
+    // retry is still accepted without creating work or contacting a provider.
+    await pool.query("UPDATE native_account_deletions SET completed_at=NOW() WHERE native_subject=$1", [nativeSubject]);
+    const repeated = await originalFetch(`${url}/account/deletion`, {
+      method: "POST", headers,
+      body: JSON.stringify({ scope: preview.scope, target: preview.target, confirmation: "DELETE" }),
+    });
+    assert.equal(repeated.status, 202);
+    assert.deepEqual(await repeated.json(), { status: "accepted" });
+  } finally {
+    await pool.query("DELETE FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2", [issuer, nativeSubject]);
+    await pool.query("DELETE FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2", [issuer, nativeSubject]);
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });
 
 async function sessionToken(sessionId: string) {

@@ -42,6 +42,56 @@ export interface NativeLinkDecisionInput {
   decision: NativeLinkDecisionInputDecision;
 }
 
+export type NativeAccountDeletionInputScope = typeof NativeAccountDeletionInputScope[keyof typeof NativeAccountDeletionInputScope];
+
+
+export const NativeAccountDeletionInputScope = {
+  independent: 'independent',
+  iphone_access: 'iphone_access',
+} as const;
+
+export type NativeAccountDeletionInputConfirmation = typeof NativeAccountDeletionInputConfirmation[keyof typeof NativeAccountDeletionInputConfirmation];
+
+
+export const NativeAccountDeletionInputConfirmation = {
+  DELETE: 'DELETE',
+} as const;
+
+export interface NativeAccountDeletionInput {
+  scope: NativeAccountDeletionInputScope;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  target: string;
+  confirmation: NativeAccountDeletionInputConfirmation;
+}
+
+export type NativeAccountDeletionPreviewScope = typeof NativeAccountDeletionPreviewScope[keyof typeof NativeAccountDeletionPreviewScope];
+
+
+export const NativeAccountDeletionPreviewScope = {
+  independent: 'independent',
+  iphone_access: 'iphone_access',
+} as const;
+
+export type NativeAccountDeletionPreviewStatus = typeof NativeAccountDeletionPreviewStatus[keyof typeof NativeAccountDeletionPreviewStatus];
+
+
+export const NativeAccountDeletionPreviewStatus = {
+  not_requested: 'not_requested',
+  pending: 'pending',
+  completed: 'completed',
+} as const;
+
+export interface NativeAccountDeletionPreview {
+  scope: NativeAccountDeletionPreviewScope;
+  target: string;
+  title: string;
+  explanation: string;
+  status: NativeAccountDeletionPreviewStatus;
+}
+
 export type NativeLinkStateStatus = typeof NativeLinkStateStatus[keyof typeof NativeLinkStateStatus];
 
 
@@ -3562,6 +3612,17 @@ export type UnauthorizedResponse = Error;
 export type NotFoundResponse = Error;
 
 export type SupportTicketAccessTokenParameter = string;
+
+export type RequestNativeAccountDeletion202Status = typeof RequestNativeAccountDeletion202Status[keyof typeof RequestNativeAccountDeletion202Status];
+
+
+export const RequestNativeAccountDeletion202Status = {
+  accepted: 'accepted',
+} as const;
+
+export type RequestNativeAccountDeletion202 = {
+  status: RequestNativeAccountDeletion202Status;
+};
 
 export type ListAdminSupportTicketsParams = {
 status?: ListAdminSupportTicketsStatusItem[];

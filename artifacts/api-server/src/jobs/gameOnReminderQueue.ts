@@ -660,7 +660,18 @@ async function attemptSubscription(
   let status: AttemptStatus;
   let category: string | null = null;
   try {
-    const result = await send(subscription, payloadForReminder(row, now), PUSH_TIMEOUT_MS);
+    // A queued worker may already have read a device before account removal.
+    // Recheck immediately before dispatch, not only when loading the batch.
+    const [registered] = subscription.kind === "native"
+      ? await db.select({ id: nativePushSubscriptionsTable.id }).from(nativePushSubscriptionsTable).where(and(
+        eq(nativePushSubscriptionsTable.id, subscription.id),
+        eq(nativePushSubscriptionsTable.ownerClerkUserId, row.ownerClerkUserId),
+        eq(nativePushSubscriptionsTable.deviceToken, subscription.deviceToken),
+      )).limit(1)
+      : [{ id: subscription.id }];
+    const result = registered
+      ? await send(subscription, payloadForReminder(row, now), PUSH_TIMEOUT_MS)
+      : { sent: false, stale: true, configured: true };
     if (result.sent) status = "sent";
     else if (result.stale) status = "stale";
     else if (result.failure === "temporary" || !result.configured) {

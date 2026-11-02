@@ -12,6 +12,7 @@ import {
   athleteInviteEventLinksTable,
   athleteInvitePhotoUploadClaimsTable,
   athleteInvitesTable,
+  athleteSportGearLooksTable,
   checklistSharesTable,
   cloudProjectsTable,
   db,
@@ -22,6 +23,8 @@ import {
   hypeCardShareUploadClaimsTable,
   meetingWorkspacesTable,
   nativeAccountLinksTable,
+  nativeAccountsTable,
+  nativePushSubscriptionsTable,
   nativeLinkRequestsTable,
   plannerNotificationPreferencesTable,
   plannerOwnerEventAlertClaimsTable,
@@ -37,6 +40,7 @@ import {
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { deleteNativeProviderIdentity } from "../lib/nativeSignupIdentity";
 
 const PURGE_BATCH_SIZE = 25;
 const PURGE_INTERVAL_MS = 60 * 60 * 1000;
@@ -46,6 +50,7 @@ const objectStorage = new ObjectStorageService();
 export type AccountPurgeDependencies = {
   deleteObject: (objectPath: string) => Promise<void>;
   deleteClerkUser: (clerkUserId: string) => Promise<void>;
+  deleteNativeUser?: typeof deleteNativeProviderIdentity;
 };
 
 function errorMessage(error: unknown) {
@@ -200,6 +205,7 @@ async function purgeAccount(
     await tx.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(soccerGearActivityTable).where(eq(soccerGearActivityTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(athleteSportGearLooksTable).where(eq(athleteSportGearLooksTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     if (inviteIds.length) {
@@ -233,13 +239,30 @@ async function purgeAccount(
       .where(eq(meetingWorkspacesTable.ownerClerkUserId, account.ownerClerkUserId));
   });
 
+  const [native] = await db.select().from(nativeAccountsTable)
+    .where(eq(nativeAccountsTable.ownerId, account.ownerClerkUserId)).limit(1);
   try {
-    await dependencies.deleteClerkUser(account.ownerClerkUserId);
+    if (native) {
+      await (dependencies.deleteNativeUser ?? deleteNativeProviderIdentity)({
+        issuer: native.nativeIssuer, subject: native.nativeSubject,
+      });
+    } else {
+      // A missing independent profile must never fall through to the managed
+      // web provider, even after an interrupted native cleanup.
+      if (account.ownerClerkUserId.startsWith("pixl-ios:")) throw new Error("Native deletion identity is missing");
+      await dependencies.deleteClerkUser(account.ownerClerkUserId);
+    }
   } catch (error) {
     if (!isClerkNotFound(error)) throw error;
   }
 
   await db.transaction(async (tx) => {
+    await tx.delete(nativePushSubscriptionsTable).where(eq(nativePushSubscriptionsTable.ownerClerkUserId, account.ownerClerkUserId));
+    if (native) {
+      // Keep the origin marker for cancellation purges too; clear the profile.
+      await tx.update(nativeAccountsTable).set({ profileMetadata: {}, updatedAt: new Date() })
+        .where(eq(nativeAccountsTable.ownerId, native.ownerId));
+    }
     if (account.adminDeletionActionId) {
       await tx.update(adminActionAuditTable).set({
         status: "completed",

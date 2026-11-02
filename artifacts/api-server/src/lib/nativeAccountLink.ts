@@ -4,6 +4,7 @@ import type { NativeLinkState } from "@workspace/api-zod";
 import { getAccountLifecycleSnapshot } from "./accountLifecycle";
 import { getAthleteEditorAccessForUser } from "./athleteEditorAccess";
 import { NativeLinkError, nativeLinkWebOrigin, type NativeIdentity } from "./nativeIdentity";
+import { assertNativeNotDeleting } from "./nativeAccountDeletion";
 
 const TTL = 10 * 60 * 1000;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -103,6 +104,7 @@ export function createNativeAccountLinkService(
   }
   async function start(who: NativeIdentity, challenge: string): Promise<NativeLinkState> {
     return transaction(async (tx) => {
+      await assertNativeNotDeleting(who, tx);
       const existing = await tx.query<LinkRow>(
         "SELECT * FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2", nativeWhere(who),
       );
@@ -199,6 +201,7 @@ export function createNativeAccountLinkService(
   }
   async function complete(who: NativeIdentity, id: string, verifier: string): Promise<NativeLinkState> {
     return transaction(async (tx) => {
+      await assertNativeNotDeleting(who, tx);
       const row = await proof(tx, who, id, verifier);
       if (row.status === "completed") {
         const { rows } = await tx.query<LinkRow>("SELECT * FROM native_account_links WHERE id=$1", [row.completed_link_id]);

@@ -8,6 +8,30 @@
 import * as zod from 'zod';
 
 
+export const GetNativeAccountDeletionResponse = zod.object({
+  "scope": zod.enum(['independent', 'iphone_access']),
+  "target": zod.string(),
+  "title": zod.string(),
+  "explanation": zod.string(),
+  "status": zod.enum(['not_requested', 'pending', 'completed'])
+})
+
+
+export const requestNativeAccountDeletionBodyTargetMax = 200;
+
+
+
+export const RequestNativeAccountDeletionBody = zod.object({
+  "scope": zod.enum(['independent', 'iphone_access']),
+  "target": zod.string().min(1).max(requestNativeAccountDeletionBodyTargetMax),
+  "confirmation": zod.enum(['DELETE'])
+})
+
+export const RequestNativeAccountDeletionResponse = zod.object({
+  "status": zod.enum(['accepted'])
+})
+
+
 export const GetNativeAccountLinkResponse = zod.object({
   "status": zod.enum(['unlinked', 'linked', 'pending', 'approved', 'denied', 'expired', 'cancelled', 'completed']),
   "requestId": zod.string().uuid().optional(),

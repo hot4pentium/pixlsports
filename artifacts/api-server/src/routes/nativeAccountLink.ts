@@ -1,6 +1,6 @@
 import { createClerkClient } from "@clerk/express";
 import { Router, raw, type RequestHandler } from "express";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import {
   BeginNativeAccountLinkBody, PollNativeAccountLinkBody,
   PreviewWebNativeAccountLinkBody, DecideWebNativeAccountLinkBody,
@@ -54,6 +54,9 @@ import { nativeAthletePhoto } from "../lib/nativeAthletePhoto";
 import { checkPhotoStorageReadiness, photoStorageUnavailableMessage } from "../lib/photoStorageReadiness";
 import { nativePhotoFailureResponse, type NativePhotoOperation } from "../lib/nativeAthletePhotoDiagnostics";
 import { GetNativeAthletePhotoStateResponse, RemoveNativeAthletePhotoBody } from "@workspace/api-zod";
+import { RequestNativeAccountDeletionBody, GetNativeAccountDeletionResponse } from "@workspace/api-zod";
+import { assertNativeNotDeleting, previewNativeAccountDeletion, requestNativeAccountDeletion } from "../lib/nativeAccountDeletion";
+import { runNativeAccountDeletions } from "../jobs/nativeAccountDeletions";
 
 const handle: (fn: RequestHandler, photoOperation?: NativePhotoOperation) => RequestHandler = (fn, photoOperation) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -91,9 +94,25 @@ nativeAccountLinkRouter.use(handle(async (req, res, next) => {
   const who = await verifyNativeIdentity(header.slice(7));
   res.locals.nativeIdentity = who;
   await limitNativeLinkAction(JSON.stringify(who), "native-request", 300);
+  // Only preview/retry of the removal request survives the terminal marker.
+  if (req.path !== "/account/deletion") await assertNativeNotDeleting(who);
   next();
 }));
 const identity = (res: { locals: Record<string, unknown> }) => res.locals.nativeIdentity as NativeIdentity;
+nativeAccountLinkRouter.get("/account/deletion", handle(async (_req, res) => {
+  res.json(GetNativeAccountDeletionResponse.parse(await previewNativeAccountDeletion(identity(res))));
+}));
+nativeAccountLinkRouter.post("/account/deletion", handle(async (req, res) => {
+  const parsed = RequestNativeAccountDeletionBody.strict().safeParse(req.body);
+  if (!parsed.success) throw new NativeLinkError(400, "Review and confirm account removal first.");
+  const result = await requestNativeAccountDeletion(identity(res), parsed.data);
+  // The committed request, not a provider response, is authoritative. Failures
+  // stay queued and are retried by the scheduled caller and startup worker.
+  res.status(202).json(result);
+  void runNativeAccountDeletions(undefined, identity(res)).catch(() => {
+    req.log.warn("iPhone account removal remains queued for retry");
+  });
+}));
 nativeAccountLinkRouter.post("/supporter/account", handle(async (req, res) => {
   if (!z.object({}).strict().safeParse(req.body ?? {}).success) {
     throw new NativeLinkError(400, "Account setup does not accept identity or permission fields.");
@@ -175,16 +194,23 @@ nativeAccountLinkRouter.patch("/notifications/preferences", handle(async (req, r
   if (!parsed.success) throw new NativeLinkError(400, "Choose valid Event Card reminder settings.");
   if (!isIanaTimezone(parsed.data.timezone)) throw new NativeLinkError(400, "Choose a valid time zone.");
   const ownerClerkUserId = await linkedOwner(identity(res));
-  const [preferences] = await db.insert(plannerNotificationPreferencesTable).values({
-    ownerClerkUserId,
-    ...parsed.data,
-  }).onConflictDoUpdate({
-    target: plannerNotificationPreferencesTable.ownerClerkUserId,
-    set: { ...parsed.data, updatedAt: new Date() },
-  }).returning({
-    oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
-    dayOf: plannerNotificationPreferencesTable.dayOf,
-    timezone: plannerNotificationPreferencesTable.timezone,
+  const who = identity(res);
+  const [preferences] = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(761119995)`);
+    const deleting = await tx.execute(sql`SELECT 1 FROM native_account_deletions
+      WHERE native_issuer=${who.issuer} AND native_subject=${who.subject}`);
+    if (deleting.rowCount) throw new NativeLinkError(423, "iPhone account removal has been requested.");
+    return tx.insert(plannerNotificationPreferencesTable).values({
+      ownerClerkUserId,
+      ...parsed.data,
+    }).onConflictDoUpdate({
+      target: plannerNotificationPreferencesTable.ownerClerkUserId,
+      set: { ...parsed.data, updatedAt: new Date() },
+    }).returning({
+      oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
+      dayOf: plannerNotificationPreferencesTable.dayOf,
+      timezone: plannerNotificationPreferencesTable.timezone,
+    });
   });
   try {
     await queueGameOnOwnerSync(ownerClerkUserId);
@@ -219,6 +245,10 @@ nativeAccountLinkRouter.post("/notifications/subscriptions", handle(async (req, 
   const who = identity(res);
   const ownerClerkUserId = await linkedOwner(who);
   await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(761119995)`);
+    const deleting = await tx.execute(sql`SELECT 1 FROM native_account_deletions
+      WHERE native_issuer=${who.issuer} AND native_subject=${who.subject}`);
+    if (deleting.rowCount) throw new NativeLinkError(423, "iPhone account removal has been requested.");
     await tx.delete(nativePushSubscriptionsTable).where(and(
       eq(nativePushSubscriptionsTable.deviceToken, parsed.data.deviceToken),
       eq(nativePushSubscriptionsTable.environment, parsed.data.environment),

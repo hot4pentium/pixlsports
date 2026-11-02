@@ -153,6 +153,14 @@ final class NativePushRegistrationCoordinator: ObservableObject {
                 clerk: clerk
             )
         } catch {
+            if let failure = error as? NativeAccountLinkError,
+               case let .serverStatus(status, _) = failure,
+               status == 423 {
+                // An already revoked/deletion-pending session cannot keep this
+                // device registered again. Allow local sign-out recovery.
+                clearAfterAccountRemoval()
+                return true
+            }
             errorMessage = error.localizedDescription
             return false
         }
@@ -167,6 +175,20 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
+    }
+
+    /// The server already removed every delivery target for this identity.
+    /// Do not attempt another authenticated unregister after session revocation.
+    func clearAfterAccountRemoval() {
+        UserDefaults.standard.set(false, forKey: Self.enabledKey)
+        UserDefaults.standard.removeObject(forKey: Self.tokenKey)
+        UserDefaults.standard.removeObject(forKey: Self.environmentKey)
+        isEnabled = false
+        clerk = nil
+        UIApplication.shared.unregisterForRemoteNotifications()
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        errorMessage = nil
     }
 
     private var authorizationIsGranted: Bool {

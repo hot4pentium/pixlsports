@@ -8,6 +8,7 @@ import {
   isValidGameOnAlertSignature,
 } from "../lib/gameOnAlertSchedulerAuth";
 import { getScheduledGameOnStatus, runScheduledGameOnReminders } from "../jobs/gameOnReminderQueue";
+import { runNativeAccountDeletions } from "../jobs/nativeAccountDeletions";
 
 const REPLAY_RETENTION_MS = 24 * 60 * 60 * 1000;
 
@@ -38,7 +39,11 @@ export function createInternalJobsRouter(dependencies: InternalJobDependencies =
   const getSecret = dependencies.getSecret ?? (() => process.env["GAME_ON_ALERTS_TRIGGER_SECRET"]);
   const getCronToken = dependencies.getCronToken ?? (() => process.env["GAME_ON_ALERTS_CRON_TOKEN"]);
   const claimNonce = dependencies.claimNonce ?? claimGameOnAlertNonce;
-  const runGameOnAlerts = dependencies.runGameOnAlerts ?? runScheduledGameOnReminders;
+  const runGameOnAlerts = dependencies.runGameOnAlerts ?? (async () => {
+    const result = await runScheduledGameOnReminders();
+    await runNativeAccountDeletions();
+    return result;
+  });
   const getStatus = dependencies.getStatus ?? getScheduledGameOnStatus;
   const now = dependencies.now ?? Date.now;
 

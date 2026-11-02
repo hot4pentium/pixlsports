@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startExpiredAccountPurgeSchedule } from "./jobs/purgeCancelledAccounts";
+import { runNativeAccountDeletions } from "./jobs/nativeAccountDeletions";
 import { startHypeCardSharePurgeSchedule } from "./jobs/purgeHypeCardShares";
 import { startSupporterPhotoUploadPurgeSchedule } from "./jobs/purgeSupporterPhotoUploads";
 import { startProjectMediaUploadClaimPurgeSchedule } from "./jobs/purgeProjectMediaUploadClaims";
@@ -43,6 +44,11 @@ async function startServer() {
 
     logger.info({ port }, "Server listening");
     startExpiredAccountPurgeSchedule();
+    const retryNativeDeletions = () => {
+      void runNativeAccountDeletions().catch(() => logger.warn("iPhone account cleanup needs retry"));
+    };
+    setTimeout(retryNativeDeletions, 10_000).unref();
+    setInterval(retryNativeDeletions, 60 * 60 * 1000).unref();
     startHypeCardSharePurgeSchedule();
     startSupporterPhotoUploadPurgeSchedule();
     startProjectMediaUploadClaimPurgeSchedule();

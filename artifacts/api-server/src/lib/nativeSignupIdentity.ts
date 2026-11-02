@@ -23,13 +23,13 @@ const Keys = z.object({
 });
 const connectors = new ReplitConnectors();
 
-async function nativeRead(path: string) {
+async function nativeRead(path: string, method: "GET" | "DELETE" = "GET") {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    // The connector SDK does not expose AbortSignal. Bound these read-only
-    // calls so a provider outage cannot hold the setup/link transaction open.
+    // The connector SDK does not expose AbortSignal. Bound calls; DELETE can
+    // have an uncertain outcome, but retrying the same subject is idempotent.
     return await Promise.race([
-      connectors.proxy("clerk", path, { method: "GET" }),
+      connectors.proxy("clerk", path, { method }),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new NativeLinkError(
           503, "Account setup is temporarily unavailable. Please try again.",
@@ -41,16 +41,21 @@ async function nativeRead(path: string) {
   }
 }
 
-/** Only server-to-server provider data may establish a new account's email. */
-export async function loadNativeProviderIdentity(who: NativeIdentity) {
+const providerDependencies = {
+  read: nativeRead,
+  issuerKeys: (issuer: string) => fetch(`${issuer}/.well-known/jwks.json`, {
+    redirect: "error", signal: AbortSignal.timeout(10000),
+  }),
+  remove: (subject: string) => nativeRead(`/v1/users/${encodeURIComponent(subject)}`, "DELETE"),
+};
+
+export async function assertNativeProviderConnection(who: NativeIdentity, deps = providerDependencies) {
   if (who.issuer !== nativeIssuer()) throw new NativeLinkError(401, "Sign in to the iPhone app again.");
   // Workspace connections can be replaced. Prove that the connected backend
   // belongs to the same instance that signed this app's verified JWT.
   const [backendKeys, issuerKeys] = await Promise.all([
-    nativeRead("/v1/jwks"),
-    fetch(`${nativeIssuer()}/.well-known/jwks.json`, {
-      redirect: "error", signal: AbortSignal.timeout(10000),
-    }),
+    deps.read("/v1/jwks"),
+    deps.issuerKeys(nativeIssuer()),
   ]);
   if (!backendKeys.ok || !issuerKeys.ok) {
     throw new NativeLinkError(503, "Account setup is temporarily unavailable. Please try again.");
@@ -61,6 +66,10 @@ export async function loadNativeProviderIdentity(who: NativeIdentity) {
     && b.keys.some(e => e.kid === k.kid && e.n === k.n && e.e === k.e && e.kty === k.kty))) {
     throw new NativeLinkError(503, "iPhone account setup needs attention. Please try again later.");
   }
+}
+
+export async function loadNativeProviderIdentity(who: NativeIdentity) {
+  await assertNativeProviderConnection(who);
   const response = await nativeRead(`/v1/users/${encodeURIComponent(who.subject)}`);
   if (response.status === 404) throw new NativeLinkError(401, "Sign in to the iPhone app again.");
   if (!response.ok) throw new NativeLinkError(503, "Account setup is temporarily unavailable. Please try again.");
@@ -70,6 +79,20 @@ export async function loadNativeProviderIdentity(who: NativeIdentity) {
   }
   return user;
 }
+
+/** Deleting the dedicated native user revokes all its sessions, never a web user.
+ * Recheck the connector/issuer match on every retry; a 404 is already deleted.
+ */
+export function createNativeProviderDeletion(deps = providerDependencies) {
+  return async (who: NativeIdentity) => {
+    await assertNativeProviderConnection(who, deps);
+    const response = await deps.remove(who.subject);
+    if (!response.ok && response.status !== 404) {
+      throw new NativeLinkError(503, "iPhone account deletion will be retried.");
+    }
+  };
+}
+export const deleteNativeProviderIdentity = createNativeProviderDeletion();
 
 export async function loadNativeSignupIdentity(who: NativeIdentity) {
   const user = await loadNativeProviderIdentity(who);

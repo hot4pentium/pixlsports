@@ -21,6 +21,22 @@ private struct NativeEventReminderPreferencesBody: Encodable {
     let timezone: String
 }
 
+private struct NativeAccountDeletionPreview: Decodable, Identifiable {
+    let scope: String
+    let target: String
+    let title: String
+    let explanation: String
+    let status: String
+    var id: String { target }
+    var actionTitle: String { scope == "independent" ? "Delete iPhone account" : "Remove iPhone access" }
+}
+
+private struct NativeAccountDeletionBody: Encodable {
+    let scope: String
+    let target: String
+    let confirmation = "DELETE"
+}
+
 @MainActor
 private final class NativeNotificationSettingsModel: ObservableObject {
     @Published var preferences = NativeEventReminderPreferences(
@@ -101,6 +117,10 @@ struct NativeNotificationSettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var pushCoordinator: NativePushRegistrationCoordinator
     @StateObject private var model = NativeNotificationSettingsModel()
+    @State private var deletionPreview: NativeAccountDeletionPreview?
+    @State private var removalBusy = false
+    @State private var removalAccepted = false
+    @State private var removalError: String?
 
     let clerk: Clerk
 
@@ -207,12 +227,48 @@ struct NativeNotificationSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                Section("Account removal") {
+                    Text("Review exactly what will be removed before confirming. Linked PWA accounts and their shared data are protected.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button(removalAccepted ? "Finish signing out" : "Delete account or remove iPhone access", role: .destructive) {
+                        Task {
+                            if removalAccepted { await finishRemoval() }
+                            else { await reviewRemoval() }
+                        }
+                    }
+                    .disabled(removalBusy)
+                    .accessibilityIdentifier("native-settings-delete-account")
+                    if removalBusy { ProgressView("Processing account removal") }
+                    if removalAccepted {
+                        Text("Your removal request was accepted. iPhone access is blocked now. Server cleanup will retry automatically if needed.")
+                            .font(.footnote)
+                    }
+                    if let removalError {
+                        Text(removalError)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("native-settings-delete-error")
+                    }
+                }
+            }
+            .disabled(removalBusy)
+            .alert(item: $deletionPreview) { preview in
+                Alert(
+                    title: Text(preview.title),
+                    message: Text(preview.explanation),
+                    primaryButton: .destructive(Text(preview.actionTitle)) {
+                        Task { await confirmRemoval(preview) }
+                    },
+                    secondaryButton: .cancel(Text("Keep my account"))
+                )
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .disabled(removalBusy)
                 }
             }
             .task {
@@ -220,10 +276,11 @@ struct NativeNotificationSettingsView: View {
                 await pushCoordinator.configure(clerk: clerk)
             }
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active else { return }
+                guard phase == .active, !removalBusy, !removalAccepted else { return }
                 Task { await pushCoordinator.configure(clerk: clerk) }
             }
             .preferredColorScheme(.light)
+            .interactiveDismissDisabled(removalBusy)
         }
     }
 
@@ -259,6 +316,52 @@ struct NativeNotificationSettingsView: View {
             dismiss()
         } catch {
             pushCoordinator.errorMessage = "Could not sign out right now. Try again."
+        }
+    }
+
+    private func reviewRemoval() async {
+        removalBusy = true
+        removalError = nil
+        defer { removalBusy = false }
+        do {
+            let data = try await NativeAccountLinkClient().getData("account/deletion", clerk: clerk)
+            let preview = try JSONDecoder().decode(NativeAccountDeletionPreview.self, from: data)
+            if preview.status != "not_requested" {
+                removalAccepted = true
+                await finishRemoval()
+            } else {
+                deletionPreview = preview
+            }
+        } catch {
+            removalError = error.localizedDescription
+        }
+    }
+
+    private func confirmRemoval(_ preview: NativeAccountDeletionPreview) async {
+        guard !removalBusy else { return }
+        removalBusy = true
+        removalError = nil
+        defer { removalBusy = false }
+        do {
+            _ = try await NativeAccountLinkClient().postData(
+                "account/deletion",
+                body: NativeAccountDeletionBody(scope: preview.scope, target: preview.target),
+                clerk: clerk
+            )
+            removalAccepted = true
+            await finishRemoval()
+        } catch {
+            removalError = "Could not confirm removal. Review and retry; repeating an accepted request will not delete anything twice. \(error.localizedDescription)"
+        }
+    }
+
+    private func finishRemoval() async {
+        pushCoordinator.clearAfterAccountRemoval()
+        do {
+            try await clerk.auth.signOut()
+            dismiss()
+        } catch {
+            removalError = "Your removal request was accepted, but this iPhone could not finish signing out. Tap Finish signing out to retry."
         }
     }
 }

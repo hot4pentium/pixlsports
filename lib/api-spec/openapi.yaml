@@ -41,6 +41,34 @@ tags:
   - name: notifications
     description: Authenticated browser push notifications
 paths:
+  /native/account/deletion:
+    get:
+      operationId: getNativeAccountDeletion
+      responses:
+        "200":
+          description: Read-only, native-session-authenticated removal scope and confirmation details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NativeAccountDeletionPreview" }
+    post:
+      operationId: requestNativeAccountDeletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NativeAccountDeletionInput" }
+      responses:
+        "202":
+          description: Removal committed and access blocked; cleanup retries automatically
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [accepted] }
+        "409":
+          description: Scope changed; review again before confirming
   /native/link:
     get:
       operationId: getNativeAccountLink
@@ -3633,6 +3661,23 @@ components:
         requestId: { type: string, format: uuid }
         userCode: { type: string, minLength: 8, maxLength: 16 }
         decision: { type: string, enum: [approve, deny] }
+    NativeAccountDeletionInput:
+      type: object
+      additionalProperties: false
+      required: [scope, target, confirmation]
+      properties:
+        scope: { type: string, enum: [independent, iphone_access] }
+        target: { type: string, minLength: 1, maxLength: 200 }
+        confirmation: { type: string, enum: [DELETE] }
+    NativeAccountDeletionPreview:
+      type: object
+      required: [scope, target, title, explanation, status]
+      properties:
+        scope: { type: string, enum: [independent, iphone_access] }
+        target: { type: string }
+        title: { type: string }
+        explanation: { type: string }
+        status: { type: string, enum: [not_requested, pending, completed] }
     NativeLinkState:
       type: object
       required: [status]
