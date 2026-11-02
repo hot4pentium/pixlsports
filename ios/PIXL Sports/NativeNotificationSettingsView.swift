@@ -52,6 +52,7 @@ private final class NativeNotificationSettingsModel: ObservableObject {
     )
     @Published var availability: NativeNotificationAvailability?
     @Published var isLoading = true
+    @Published private(set) var isSaving = false
     @Published var isLinked = true
     @Published var errorMessage: String?
 
@@ -94,6 +95,9 @@ private final class NativeNotificationSettingsModel: ObservableObject {
         timezone: String? = nil,
         clerk: Clerk
     ) async {
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         var next = preferences
         if let oneHourBefore { next.oneHourBefore = oneHourBefore }
         if let dayOf { next.dayOf = dayOf }
@@ -124,6 +128,7 @@ struct NativeNotificationSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var pushCoordinator: NativePushRegistrationCoordinator
+    @ObservedObject private var localReminders = NativeLocalEventReminderCoordinator.shared
     @StateObject private var model = NativeNotificationSettingsModel()
     @State private var deletionPreview: NativeAccountDeletionPreview?
     @State private var removalBusy = false
@@ -175,11 +180,40 @@ struct NativeNotificationSettingsView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         Toggle("Allow alerts on this iPhone", isOn: Binding(
-                            get: { pushCoordinator.isEnabled },
+                            get: { pushCoordinator.isEnabled || localReminders.isSelected },
                             set: { enabled in Task { await setDeviceAlerts(enabled) } }
                         ))
-                        .disabled(availabilityIsUnavailable)
+                        .disabled(model.isLoading || model.isSaving || !model.isLinked || pushCoordinator.isUpdating)
                         .accessibilityIdentifier("native-settings-device-alerts")
+
+                        Toggle("Remind me without reception", isOn: Binding(
+                            get: { localReminders.isSelected },
+                            set: { enabled in
+                                Task { await pushCoordinator.setLocalReminders(enabled, clerk: clerk) }
+                            }
+                        ))
+                        .disabled(model.isLoading || model.isSaving || !model.isLinked || pushCoordinator.isUpdating)
+                        .accessibilityIdentifier("native-settings-local-reminders")
+                        Text("Optional saved reminders replace server push on this iPhone only. Connect once to turn them on. Only downloaded, verified upcoming events are included, up to 7 days after the last check. Changes made elsewhere need a connection to refresh. Reminders due in the first two minutes after switching are skipped to prevent repeats.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if !localReminders.status.isEmpty {
+                            Text(localReminders.status).font(.footnote)
+                                .accessibilityIdentifier("native-settings-local-reminder-status")
+                        }
+                        if localReminders.isSelected {
+                            Button("Refresh saved reminders") {
+                                Task {
+                                    NativeOfflineRuntime.shared.resume(clerk: clerk, force: true)
+                                    await pushCoordinator.configure(clerk: clerk)
+                                }
+                            }
+                            .disabled(model.isSaving || pushCoordinator.isUpdating)
+                            .accessibilityIdentifier("native-settings-local-reminders-refresh")
+                        }
+                        if let error = localReminders.errorMessage {
+                            Text(error).font(.footnote).foregroundStyle(.red)
+                        }
 
                         if pushCoordinator.authorizationStatus == .denied {
                             Button("Open iPhone notification settings") {
@@ -191,13 +225,13 @@ struct NativeNotificationSettingsView: View {
                             get: { model.preferences.oneHourBefore },
                             set: { value in Task { await save(oneHourBefore: value) } }
                         ))
-                        .disabled(model.isLoading)
+                        .disabled(model.isLoading || model.isSaving || pushCoordinator.isUpdating)
 
                         Toggle("Event day", isOn: Binding(
                             get: { model.preferences.dayOf },
                             set: { value in Task { await save(dayOf: value) } }
                         ))
-                        .disabled(model.isLoading)
+                        .disabled(model.isLoading || model.isSaving || pushCoordinator.isUpdating)
 
                         Picker("Event-day time zone", selection: Binding(
                             get: { model.preferences.timezone ?? TimeZone.current.identifier },
@@ -208,17 +242,17 @@ struct NativeNotificationSettingsView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .disabled(model.isLoading)
+                        .disabled(model.isLoading || model.isSaving || pushCoordinator.isUpdating)
 
                         Text("Event-day alerts arrive at 7:00 a.m. in this time zone. One-hour alerts follow each event’s time zone.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
-                        if let availability = model.availability, !availability.available {
+                        if !localReminders.isSelected, let availability = model.availability, !availability.available {
                             Label("iPhone push delivery is not configured on this server yet.", systemImage: "info.circle")
                                 .font(.footnote)
                                 .foregroundStyle(.orange)
-                        } else if let availability = model.availability, !availability.scheduledDeliveryEnabled {
+                        } else if !localReminders.isSelected, let availability = model.availability, !availability.scheduledDeliveryEnabled {
                             Label("The scheduled reminder service is not active yet. These choices are saved but alerts will not arrive.", systemImage: "info.circle")
                                 .font(.footnote)
                                 .foregroundStyle(.orange)
@@ -308,7 +342,7 @@ struct NativeNotificationSettingsView: View {
 
     private func setDeviceAlerts(_ enabled: Bool) async {
         if enabled {
-            _ = await pushCoordinator.enable(clerk: clerk)
+            if !localReminders.isSelected { _ = await pushCoordinator.enable(clerk: clerk) }
         } else {
             _ = await pushCoordinator.disable(clerk: clerk)
         }
@@ -324,6 +358,12 @@ struct NativeNotificationSettingsView: View {
         )
         if model.errorMessage != nil {
             model.preferences = previous
+        } else {
+            do {
+                try await localReminders.updatePreferences(.init(
+                    oneHourBefore: model.preferences.oneHourBefore,
+                    dayOf: model.preferences.dayOf, timezone: model.preferences.timezone))
+            } catch { model.errorMessage = error.localizedDescription }
         }
     }
 

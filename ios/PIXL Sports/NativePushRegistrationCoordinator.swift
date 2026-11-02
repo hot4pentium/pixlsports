@@ -62,16 +62,20 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     @Published private(set) var isEnabled: Bool
     @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
     @Published var errorMessage: String?
+    @Published private(set) var isUpdating = false
 
     private static let enabledKey = "pixl.native-push.enabled"
     private static let deviceIdKey = "pixl.native-push.device-id"
     private static let tokenKey = "pixl.native-push.token"
     private static let environmentKey = "pixl.native-push.environment"
+    private static let registeredSubjectKey = "pixl.native-push.registered-subject"
 
     private let client = NativeAccountLinkClient()
     private var clerk: Clerk?
     private var tokenObserver: AnyCancellable?
     private var failureObserver: AnyCancellable?
+    private var registering = false
+    private var removing = false
 
     init() {
         isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
@@ -94,6 +98,17 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     func configure(clerk: Clerk) async {
         self.clerk = clerk
         await refreshAuthorizationStatus()
+        let local = NativeLocalEventReminderCoordinator.shared
+        local.restore()
+        if local.isSelected {
+            guard authorizationIsGranted else {
+                local.cancel()
+                errorMessage = "Allow PIXL Sports alerts in iPhone Settings to resume saved reminders."
+                return
+            }
+            await refreshLocalReminders(clerk: clerk)
+            return
+        }
         guard isEnabled else { return }
         guard authorizationIsGranted else {
             _ = await disable(clerk: clerk)
@@ -108,6 +123,25 @@ final class NativePushRegistrationCoordinator: ObservableObject {
 
     func enable(clerk: Clerk) async -> Bool {
         self.clerk = clerk
+        if let scope = NativeOfflineVault.shared.namespace,
+           let resume = UserDefaults.standard.object(forKey: NativeLocalEventReminderCoordinator.resumePushKey(scope: scope)) as? Date,
+           resume > Date() {
+            errorMessage = "To avoid repeating a saved reminder, push alerts can resume after \(resume.formatted(date: .abbreviated, time: .shortened)). You can use saved reminders again now."
+            return false
+        }
+        guard await requestPermission() else { return false }
+        errorMessage = nil
+        UserDefaults.standard.set(true, forKey: Self.enabledKey)
+        isEnabled = true
+        UIApplication.shared.registerForRemoteNotifications()
+        if let token = UserDefaults.standard.string(forKey: Self.tokenKey),
+           let environment = UserDefaults.standard.string(forKey: Self.environmentKey) {
+            await register(token, environment: environment, clerk: clerk)
+        }
+        return true
+    }
+
+    private func requestPermission() async -> Bool {
         await refreshAuthorizationStatus()
         if authorizationStatus == .notDetermined {
             do {
@@ -125,15 +159,67 @@ final class NativePushRegistrationCoordinator: ObservableObject {
             return false
         }
 
-        errorMessage = nil
-        UserDefaults.standard.set(true, forKey: Self.enabledKey)
-        isEnabled = true
-        UIApplication.shared.registerForRemoteNotifications()
-        if let token = UserDefaults.standard.string(forKey: Self.tokenKey),
-           let environment = UserDefaults.standard.string(forKey: Self.environmentKey) {
-            await register(token, environment: environment, clerk: clerk)
-        }
         return true
+    }
+
+    func setLocalReminders(_ enabled: Bool, clerk: Clerk) async {
+        guard !isUpdating else { return }
+        isUpdating = true
+        defer { isUpdating = false }
+        let local = NativeLocalEventReminderCoordinator.shared
+        if !enabled {
+            local.cancel(disable: true)
+            errorMessage = nil
+            return
+        }
+        guard NativeOfflineRuntime.shared.online else {
+            errorMessage = "Connect once to verify your events and prepare saved reminders."
+            return
+        }
+        guard await requestPermission() else { return }
+        let subject = clerk.user?.id
+        do {
+            if let registered = UserDefaults.standard.string(forKey: Self.registeredSubjectKey),
+               registered != subject {
+                throw NativeAccountLinkError.message(
+                    "Turn off alerts in the previous iPhone account before preparing saved reminders for this account."
+                )
+            }
+            _ = try await client.getData("supporter/schedule", clerk: clerk)
+            let scope = NativeOfflineVault.shared.namespace
+            let data = try await client.getData("notifications/preferences", clerk: clerk)
+            let preferences = try JSONDecoder().decode(NativeLocalReminderPreferences.self, from: data)
+            guard subject != nil, subject == clerk.user?.id,
+                  scope == NativeOfflineVault.shared.namespace,
+                  NativeOfflineVault.shared.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+            // DELETE is account-authenticated and idempotent, even when APNs is
+            // not configured. Never schedule on an uncertain server handoff.
+            guard await disable(clerk: clerk) else { return }
+            guard subject == clerk.user?.id, scope == NativeOfflineVault.shared.namespace,
+                  NativeOfflineVault.shared.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+            try await local.activate(preferences: preferences)
+            NativeOfflineRuntime.shared.resume(clerk: clerk, force: true)
+            errorMessage = nil
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func refreshLocalReminders(clerk: Clerk) async {
+        let subject = clerk.user?.id
+        do {
+            _ = try await client.getData("supporter/schedule", clerk: clerk)
+            let scope = NativeOfflineVault.shared.namespace
+            let data = try await client.getData("notifications/preferences", clerk: clerk)
+            guard subject != nil, subject == clerk.user?.id,
+                  scope == NativeOfflineVault.shared.namespace,
+                  NativeOfflineVault.shared.canContinue(subject: subject) else { return }
+            try await NativeLocalEventReminderCoordinator.shared.updatePreferences(
+                JSONDecoder().decode(NativeLocalReminderPreferences.self, from: data))
+            errorMessage = nil
+        } catch {
+            // A transient outage does not revoke the verified seven-day lease.
+            await NativeLocalEventReminderCoordinator.shared.reconcile()
+            errorMessage = "Using the last verified reminder settings. Reconnect to refresh them."
+        }
     }
 
     /// Removes the current device token before signing out. A failed removal
@@ -141,6 +227,15 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     /// alert destination registered on the old account.
     func disable(clerk: Clerk) async -> Bool {
         self.clerk = clerk
+        removing = true
+        defer { removing = false }
+        NativeLocalEventReminderCoordinator.shared.cancel(disable: true)
+        // Drain a token refresh already in flight before DELETE. Otherwise its
+        // late upsert could silently restore server push after the handoff.
+        while registering {
+            do { try await Task.sleep(for: .milliseconds(50)) }
+            catch { return false }
+        }
         do {
             let body = NativePushDeviceRemovalBody(
                 deviceId: deviceId,
@@ -166,6 +261,7 @@ final class NativePushRegistrationCoordinator: ObservableObject {
         }
 
         UserDefaults.standard.set(false, forKey: Self.enabledKey)
+        UserDefaults.standard.removeObject(forKey: Self.registeredSubjectKey)
         isEnabled = false
         UIApplication.shared.unregisterForRemoteNotifications()
         errorMessage = nil
@@ -180,9 +276,11 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     /// The server already removed every delivery target for this identity.
     /// Do not attempt another authenticated unregister after session revocation.
     func clearAfterAccountRemoval() {
+        NativeLocalEventReminderCoordinator.shared.cancel(disable: true, resetSelection: true)
         UserDefaults.standard.set(false, forKey: Self.enabledKey)
         UserDefaults.standard.removeObject(forKey: Self.tokenKey)
         UserDefaults.standard.removeObject(forKey: Self.environmentKey)
+        UserDefaults.standard.removeObject(forKey: Self.registeredSubjectKey)
         isEnabled = false
         clerk = nil
         UIApplication.shared.unregisterForRemoteNotifications()
@@ -222,11 +320,16 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     private func acceptToken(_ token: String, environment: String) async {
         UserDefaults.standard.set(token, forKey: Self.tokenKey)
         UserDefaults.standard.set(environment, forKey: Self.environmentKey)
-        guard isEnabled, let clerk else { return }
+        guard isEnabled, !NativeLocalEventReminderCoordinator.shared.isSelected, let clerk else { return }
         await register(token, environment: environment, clerk: clerk)
     }
 
     private func register(_ token: String, environment: String, clerk: Clerk) async {
+        guard isEnabled, !registering, !removing, !isUpdating,
+              !NativeLocalEventReminderCoordinator.shared.isSelected else { return }
+        registering = true
+        defer { registering = false }
+        let subject = clerk.user?.id
         do {
             let body = NativePushDeviceRegistrationBody(
                 deviceId: deviceId,
@@ -238,6 +341,8 @@ final class NativePushRegistrationCoordinator: ObservableObject {
                 body: body,
                 clerk: clerk
             )
+            guard subject == clerk.user?.id else { return }
+            UserDefaults.standard.set(subject, forKey: Self.registeredSubjectKey)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

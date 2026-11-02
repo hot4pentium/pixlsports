@@ -112,6 +112,34 @@ network transition.
 
 ## Workspace verification boundary
 
+### Optional local event reminders
+
+Settings → **Remind me without reception** uses the saved account's Event day and
+One hour before choices. It first verifies native access and acknowledges removal
+of this phone's server push destination. It does not change the PWA identity,
+other devices, or account-wide reminder preferences. Local mode does not require
+APNs credentials on the server.
+
+Only successfully downloaded game/practice workspaces from the verified schedule
+are eligible. Start times and notification fire times must both fit inside the
+existing seven-day offline lease. At most 48 earliest requests are installed.
+Changed verified schedules/preferences rebuild requests; unknown remote changes
+cannot be discovered while offline. iOS Focus, notification permission, and
+Scheduled Summary still control presentation.
+
+To prevent duplicate sources, local mode remains selected across reconnects and
+token refreshes without re-registering APNs. The two-minute handoff window skips
+imminent reminders. Turning local mode off cancels it but does not automatically
+restore push. If a local alert may already have fired, push remains blocked for
+that native account until the event's kickoff, when its server alert is no longer
+eligible. Re-enabling local mode retains consumed event/date/type identifiers.
+
+Locks, ownership replacement, confirmed sign-out, deletion, and 401/403/410/423
+access denial cancel pending requests. The OS schedule itself is bounded, so
+lease expiry does not depend on an app timer or a background network request.
+See `Tests/native-local-reminder-device-checks.md` for required Apple acceptance
+checks and the standalone timing executable. Apple execution remains outstanding.
+
 Linux can parse the Swift sources and run the API regression tests. The existing
 Swift 5.8 toolchain here cannot currently resolve its Foundation/SwiftGlibc module
 graph, and no Apple SDK or iPhone simulator is available. Consequently Apple

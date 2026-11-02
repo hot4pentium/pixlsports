@@ -140,3 +140,4 @@
 - [Embedded native navigation titles](native-embedded-navigation-titles.md) — retained tool panels must not override the event container’s selected-step title.
 - [Apple-native tooling boundary](apple-native-tooling-boundary.md) — a Linux xcodebuild executable is not proof of Apple SDKs; distinguish server, codec, and physical-iPhone checks.
 - [Native account deletion boundary](native-account-deletion.md) — independent profile purges and legacy iPhone-access removal must never share permission to delete PWA data.
+- [Native local reminder handoff](native-local-reminder-handoff.md) — local and APNs alerts need an acknowledged per-phone handoff; connectivity alone cannot prevent repeats.

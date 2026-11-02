@@ -70,6 +70,10 @@ struct NativeAuthRootView: View {
                             .environmentObject(notificationCoordinator)
                         }
                         .task(id: clerk.user?.id) {
+                            if let subject = clerk.user?.id, let saved = offline.vault.subject, subject != saved {
+                                NativeLocalEventReminderCoordinator.shared.cancel(resetSelection: true)
+                            }
+                            NativeLocalEventReminderCoordinator.shared.restore()
                             guard clerk.user != nil, offline.online else { return }
                             await notificationCoordinator.configure(clerk: clerk)
                         }
@@ -105,14 +109,30 @@ struct NativeAuthRootView: View {
             }
         }
         .onChange(of: offline.online) { _, connected in
-            if connected, clerk.isAuthFlowComplete { offline.resume(clerk: clerk, force: true) }
+            if connected, clerk.isAuthFlowComplete {
+                offline.resume(clerk: clerk, force: true)
+#if os(iOS)
+                Task { await notificationCoordinator.configure(clerk: clerk) }
+#endif
+            }
         }
         .onChange(of: offlineScenePhase) { _, phase in
-            if phase == .active, clerk.isAuthFlowComplete { offline.resume(clerk: clerk) }
+            if phase == .active, clerk.isAuthFlowComplete {
+                offline.resume(clerk: clerk)
+#if os(iOS)
+                Task { await notificationCoordinator.configure(clerk: clerk) }
+#endif
+            }
             else if phase != .active { offline.pause() }
         }
         .prefetchClerkImages()
         .onChange(of: clerk.user?.id) { previousUserID, currentUserID in
+#if os(iOS)
+            if (previousUserID != nil && previousUserID != currentUserID)
+                || (currentUserID != nil && offline.vault.subject != nil && currentUserID != offline.vault.subject) {
+                NativeLocalEventReminderCoordinator.shared.cancel(resetSelection: true)
+            }
+#endif
             guard previousUserID != nil, currentUserID == nil else { return }
             showingSettings = false
             showingAccountLink = false

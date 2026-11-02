@@ -181,6 +181,9 @@ final class NativeOfflineVault {
 
     /// Session expiry locks, rather than discards, uncertain mutations.
     func lock() throws {
+#if os(iOS)
+        NativeLocalEventReminderCoordinator.shared.cancel()
+#endif
         if let namespace { UserDefaults.standard.set(true, forKey: "pixl.native.offline.denied." + namespace) }
         lease?.locked = true
         try saveLease()
@@ -189,6 +192,9 @@ final class NativeOfflineVault {
     /// Explicit sign-out / accepted deletion / confirmed account revocation only.
     /// Deletion receipts and support references live elsewhere and are untouched.
     func clear() throws {
+#if os(iOS)
+        NativeLocalEventReminderCoordinator.shared.cancel(resetSelection: true)
+#endif
         // Deny continuation even if later file cleanup is interrupted.
         if let namespace { UserDefaults.standard.set(true, forKey: "pixl.native.offline.denied." + namespace) }
         if lease != nil {

@@ -135,6 +135,9 @@ export async function sendApnsPush(
         "apns-topic": config.topic!,
         "apns-push-type": "alert",
         "apns-priority": "10",
+        // Never replay an event alert after a phone reconnects. Native local
+        // reminders can take over after an acknowledged device unregister.
+        "apns-expiration": "0",
         "content-type": "application/json",
       });
       timer = setTimeout(() => {

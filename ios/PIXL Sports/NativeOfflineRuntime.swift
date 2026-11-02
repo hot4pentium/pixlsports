@@ -79,6 +79,9 @@ final class NativeOfflineRuntime: ObservableObject {
     func cache(_ data: Data, key: String) {
         do { try vault.write(data, key: key); storageError = nil }
         catch { storageError = error.localizedDescription }
+#if os(iOS)
+        Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
+#endif
     }
 
     func verified(token: String, subject: String, schedule: Data) {
@@ -94,11 +97,14 @@ final class NativeOfflineRuntime: ObservableObject {
             storageError = nil
             usingSavedContent = !online
             accessGeneration += 1
+#if os(iOS)
+            Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
+#endif
         } catch { storageError = error.localizedDescription }
     }
 
     func deny(status: Int, accountScope: Bool = false) {
-        guard [401, 403, 410].contains(status) else { return }
+        guard [401, 403, 410, 423].contains(status) else { return }
         cancelWorker()
         do {
             if status == 401 || !accountScope { try vault.lock() }
@@ -233,6 +239,9 @@ final class NativeOfflineRuntime: ObservableObject {
         }
         preparation = selected.isEmpty ? "Saved dashboard available offline" :
             "Ready offline: \(prepared) upcoming events" + (events.count > 24 ? " · open other events to prepare them" : "")
+#if os(iOS)
+        await NativeLocalEventReminderCoordinator.shared.reconcile()
+#endif
     }
 }
 
