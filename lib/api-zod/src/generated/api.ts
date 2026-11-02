@@ -4005,6 +4005,14 @@ export const GetAthleteFanCardResponse = zod.object({
 
 
 /**
+ * @summary Prepare a new iPhone user's private app account without merging existing accounts
+ */
+export const PrepareNativeSupporterAccountResponse = zod.object({
+  "status": zod.enum(['ready', 'link_required'])
+})
+
+
+/**
  * @summary Read the verified native account's private events and season record
  */
 export const getNativeSupporterScheduleResponseRecordOneWinsMin = 0;

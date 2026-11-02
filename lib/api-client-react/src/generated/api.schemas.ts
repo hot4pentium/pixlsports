@@ -2980,6 +2980,18 @@ export interface NativeHypeCardIdentityCorrectionResult {
   teamName: string;
 }
 
+export type NativeAccountPreparationStatus = typeof NativeAccountPreparationStatus[keyof typeof NativeAccountPreparationStatus];
+
+
+export const NativeAccountPreparationStatus = {
+  ready: 'ready',
+  link_required: 'link_required',
+} as const;
+
+export interface NativeAccountPreparation {
+  status: NativeAccountPreparationStatus;
+}
+
 export interface NativeSeasonRecord {
   /** @minimum 0 */
   wins: number;

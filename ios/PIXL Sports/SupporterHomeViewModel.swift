@@ -143,7 +143,21 @@ final class SupporterHomeViewModel: ObservableObject {
         hypeCardPrivatePhoto = nil
         hypeCardPreviewError = nil
         do {
-            let page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
+            var page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
+            guard !Task.isCancelled, clerk.user?.id == previewUserID else { return }
+            if page.status == "unlinked" {
+                let ready = try await SupporterHomeAPI.prepareAccount(clerk: clerk)
+                guard !Task.isCancelled, clerk.user?.id == previewUserID else { return }
+                if ready {
+                    // Only first-time unlinked startup prepares an account.
+                    // Navigation and stat taps never run account provisioning.
+                    hasLoadedAthleteProfile = false
+                    hasResolvedAthleteProfile = false
+                    athleteProfile = nil
+                    page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
+                }
+            }
+            guard clerk.user?.id == previewUserID else { return }
             guard !Task.isCancelled else {
                 finishCancelledScheduleLoad()
                 return
@@ -163,9 +177,6 @@ final class SupporterHomeViewModel: ObservableObject {
                 events: upcomingEvents(in: page, now: now),
                 pastEvents: recentCompletedEvents(in: page, now: now)
             )
-            // The schedule is sufficient to render the dashboard; the optional
-            // HYPE Card preview can continue loading without holding the splash.
-            hasResolvedInitialSchedule = true
             if forceProfileReload || !hasLoadedAthleteProfile {
                 do {
                     athleteProfile = try await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
@@ -179,6 +190,11 @@ final class SupporterHomeViewModel: ObservableObject {
                     hasResolvedAthleteProfile = true
                 }
             }
+            // Resolve first-time athlete setup behind the branded splash.
+            // A card does not exist yet, so do not delay the setup sheet by
+            // fetching its optional preview.
+            hasResolvedInitialSchedule = true
+            if needsAthleteProfileSetup { return }
             do {
                 let preview = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
                 guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,

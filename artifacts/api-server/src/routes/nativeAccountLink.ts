@@ -10,7 +10,9 @@ import {
   CorrectNativeSupporterHypeCardIdentityResponse,
   UpdateNativeSupporterProfileBody,
   GetNativeSupporterScheduleResponse,
+  PrepareNativeSupporterAccountResponse,
 } from "@workspace/api-zod";
+import { prepareNativeSupporterAccount } from "../lib/nativeAccountPreparation";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
 import {
@@ -92,6 +94,14 @@ nativeAccountLinkRouter.use(handle(async (req, res, next) => {
   next();
 }));
 const identity = (res: { locals: Record<string, unknown> }) => res.locals.nativeIdentity as NativeIdentity;
+nativeAccountLinkRouter.post("/supporter/account", handle(async (req, res) => {
+  if (!z.object({}).strict().safeParse(req.body ?? {}).success) {
+    throw new NativeLinkError(400, "Account setup does not accept identity or permission fields.");
+  }
+  const who = identity(res);
+  await limitNativeLinkAction(JSON.stringify(who), "native-account-setup", 10);
+  res.json(PrepareNativeSupporterAccountResponse.parse(await prepareNativeSupporterAccount(who)));
+}));
 const NativeDeviceSubscriptionBody = z.object({
   deviceId: z.uuid(),
   deviceToken: z.string().regex(/^[a-f0-9]{64}$/i),

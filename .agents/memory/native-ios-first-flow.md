@@ -33,6 +33,12 @@ The target family experience is explicit sign-up or sign-in after installation; 
 
 New iPhone signups must be able to create their backing PIXL account and reach athlete setup without first visiting the PWA. The user explicitly approved building this flow; keep existing-account ownership verification and PWA authentication intact.
 
+For genuinely new iPhone users, retain a managed-tenant backing owner rather than changing the owner identity used throughout the product. Verify the native user's email through the separate iOS provider connection; an email collision requires the existing explicit linking flow, never a merge.
+
+**Why:** native signup must work without a PWA visit while existing private-data and profile services still rely on managed-tenant owners. This avoids migrating ownership or treating matching email addresses as authorization.
+
+**How to apply:** keep native-provider credentials server-side, verify the connected instance against the configured native issuer, and commit app access and the native mapping atomically. An interrupted provider creation may resume only its unused, origin-tagged backing identity; do not recreate a deliberately disconnected mapping.
+
 **Why:** the user explicitly confirmed this sign-in experience and wants to avoid making returning families create a second PIXL account.
 
 **How to apply:** keep the current separate Clerk setup until a migration is reviewed and approved. Before any cutover, prove each existing user's identity-to-data mapping; never infer it from email. Preserve the existing web sign-in and records until users can securely access them through the shared identity.

@@ -472,7 +472,7 @@ struct ContentView: View {
             .tracking(1.3)
             .foregroundStyle(SupporterHomeColors.muted)
 
-            Text("Connect the PIXL account you already use. Approval is required on both devices.")
+            Text("You already have a PIXL sign-in or saved account. Connect it to keep your athlete and Event Cards. Approval is required on both devices; we never merge accounts automatically.")
                 .font(.footnote)
                 .foregroundStyle(SupporterHomeColors.muted)
                 .fixedSize(horizontal: false, vertical: true)

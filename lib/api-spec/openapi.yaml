@@ -1369,6 +1369,20 @@ paths:
                 $ref: "#/components/schemas/PublicAthleteFanCard"
         "404":
           $ref: "#/components/responses/NotFound"
+  /native/supporter/account:
+    post:
+      operationId: prepareNativeSupporterAccount
+      tags: [athlete-invites]
+      summary: Prepare a new iPhone user's private app account without merging existing accounts
+      responses:
+        "200":
+          description: Ready for athlete setup, or explicit existing-account verification required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeAccountPreparation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /native/supporter/schedule:
     get:
       operationId: getNativeSupporterSchedule
@@ -5427,6 +5441,11 @@ components:
       properties:
         athleteName: { type: string, maxLength: 100 }
         teamName: { type: string, maxLength: 160 }
+    NativeAccountPreparation:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ready, link_required] }
     NativeSeasonRecord:
       type: object
       required: [wins, losses, ties, gamesPlayed, sport, seasonName]

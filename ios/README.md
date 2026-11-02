@@ -449,6 +449,28 @@ After syncing code and configuring the publishable key:
    Also test denial, expiration, web approval withdrawal, offline retry,
    backgrounding during approval, and switching native accounts mid-flow.
 
+### First-time iPhone signup
+
+New users sign in through the native Clerk UI, then enter their athlete's name
+and sport. Team, jersey number, and position are optional and remain editable in
+Settings. Saving setup assigns a private, paused starter HYPE Card; nothing is
+published automatically. A PWA visit is not required.
+
+The API uses the server-side Clerk workspace connector for the dedicated iOS
+instance. Its public signing keys must match `NATIVE_IOS_CLERK_ISSUER`.
+Keep the iOS secret out of Xcode and leave the PWA's managed keys unchanged.
+The server creates a backing managed-tenant owner for a genuinely new verified
+email so the existing private-data and profile services retain their canonical
+owner. It never attaches an existing account by email. Existing sign-ins,
+cancelled or blocked accounts, and intentionally revoked links do not become
+new accounts through this endpoint.
+
+Device verification: use a fresh, verified development identity, confirm the
+athlete form opens without a PWA visit, save with optional fields blank, relaunch,
+and verify the same athlete and one private starter card remain. Confirm an
+existing web email instead offers the explicit account connection path.
+Development API checks do not replace an Xcode build or physical-iPhone check.
+
 ### HYPE Card photo checks
 
 See [native photo verification](Tests/native-athlete-photo-device-checks.md) for

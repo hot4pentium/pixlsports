@@ -286,6 +286,21 @@ private struct NativeAthleteProfileUpdate: Encodable {
 }
 
 enum SupporterHomeAPI {
+    private struct AccountPreparation: Decodable {
+        let status: String
+    }
+
+    static func prepareAccount(clerk: Clerk) async throws -> Bool {
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/account", body: [String: String](), clerk: clerk
+        )
+        let result = try JSONDecoder().decode(AccountPreparation.self, from: data)
+        guard result.status == "ready" || result.status == "link_required" else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        return result.status == "ready"
+    }
+
     static func fetchPrivateSchedule(clerk: Clerk) async throws -> NativeSupporterSchedule {
         let data = try await NativeAccountLinkClient().getData("supporter/schedule", clerk: clerk)
         do {

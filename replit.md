@@ -38,11 +38,12 @@ PIXL Sports helps youth-sports families manage schedules, game-day tools, athlet
 - Web and Android continue to use the Replit-managed Clerk tenant; the native iPhone app uses a separate Clerk instance.
 - Account linking requires explicit approval on the web and confirmation on the iPhone. Do not match accounts by email or silently replace a link.
 - Disconnecting removes the identity link only; it does not delete either account or its saved data.
+- First-time iPhone signup verifies the dedicated iOS Clerk user through the server-side Clerk connector. It creates a new backing managed-tenant owner only for an unused verified email, then commits free supporter access and its native mapping together. Existing or deliberately disconnected accounts still require explicit linking; email matching is never permission to attach existing data.
 - Development schema changes are applied to the development database. Production schema changes follow Replit's Publish flow.
 
 ## Product
 
-The web app supports youth-sports family planning and athlete tools. The native iPhone app has its own sign-in and Supporter Home; this branch adds a verified link to an existing PIXL web account. Private native schedule and athlete APIs remain separate future work.
+The web app supports youth-sports family planning and athlete tools. The native iPhone app has its own sign-in, Supporter Home, private Event Cards, and athlete tools. New iPhone users can create their PIXL account and complete athlete setup without visiting the PWA. Existing accounts retain the approved two-sided linking flow.
 
 ## User preferences
 

@@ -150,7 +150,7 @@ struct NativeAuthRootView: View {
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Use email or Google to sign in. If you already use PIXL on the web, connect that account after sign-in.")
+                Text("Sign in with email or Google. New to PIXL? Set up your athlete here. Already have a PIXL account? Connect it to keep your saved athlete and Event Cards.")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(SupporterHomeColors.muted)
                     .lineSpacing(3)
