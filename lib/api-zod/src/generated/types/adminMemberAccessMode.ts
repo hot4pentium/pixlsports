@@ -15,4 +15,5 @@ export type AdminMemberAccessMode = typeof AdminMemberAccessMode[keyof typeof Ad
 export const AdminMemberAccessMode = {
   full: 'full',
   guest: 'guest',
+  free: 'free',
 } as const;

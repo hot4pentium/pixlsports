@@ -2442,6 +2442,26 @@ export interface AdminMemberProfileUpdate {
 }
 
 /**
+ * The canonical account source. clerkUserId is a legacy field name containing the action owner ID, not necessarily a PWA Clerk ID.
+ */
+export type AdminMemberAccountSource = typeof AdminMemberAccountSource[keyof typeof AdminMemberAccountSource];
+
+
+export const AdminMemberAccountSource = {
+  pwa: 'pwa',
+  native_ios: 'native_ios',
+  legacy_linked: 'legacy_linked',
+} as const;
+
+export type AdminMemberProviderIdentityStatus = typeof AdminMemberProviderIdentityStatus[keyof typeof AdminMemberProviderIdentityStatus];
+
+
+export const AdminMemberProviderIdentityStatus = {
+  available: 'available',
+  unavailable: 'unavailable',
+} as const;
+
+/**
  * @nullable
  */
 export type AdminMemberRole = typeof AdminMemberRole[keyof typeof AdminMemberRole] | null;
@@ -2460,6 +2480,7 @@ export type AdminMemberAccessMode = typeof AdminMemberAccessMode[keyof typeof Ad
 export const AdminMemberAccessMode = {
   full: 'full',
   guest: 'guest',
+  free: 'free',
 } as const;
 
 export type AdminMemberLifecycleStatus = typeof AdminMemberLifecycleStatus[keyof typeof AdminMemberLifecycleStatus];
@@ -2479,6 +2500,9 @@ export interface AdminMember {
      * @maxLength 200
      */
   clerkUserId: string;
+  /** The canonical account source. clerkUserId is a legacy field name containing the action owner ID, not necessarily a PWA Clerk ID. */
+  accountSource?: AdminMemberAccountSource;
+  providerIdentityStatus?: AdminMemberProviderIdentityStatus;
   /**
      * @maxLength 320
      * @nullable

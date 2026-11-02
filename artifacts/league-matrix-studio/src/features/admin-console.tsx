@@ -24,6 +24,7 @@ import { useUser } from '@clerk/react';
 import { Link, useLocation } from 'wouter';
 
 import { AdminAuditMemberFilter, type AuditMemberOption } from './admin-audit-member-filter';
+import { accountSourceLabel } from './admin-account-source';
 import { AdminHelpDesk } from './admin-help-desk';
 import './admin-console.css';
 
@@ -452,9 +453,19 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
           <p className="admin-eyebrow">Member record</p>
           <h2 id="member-record-heading" className="admin-display admin-section-title mt-1">{fullName(member)}</h2>
           <p className="mt-2 break-all text-sm text-[#60778a]">{member.primaryEmailAddress || 'No email on record'}</p>
+          <p className="mt-2 text-xs font-bold">{accountSourceLabel(member)}</p>
         </div>
         <button className="admin-button !min-h-9 !px-2.5" type="button" onClick={onClose} aria-label="Close member record"><X className="h-4 w-4" /></button>
       </div>
+      {member.accountSource === 'native_ios' && (
+        <p className="mt-4 text-sm text-[#60778a]">This independent iPhone profile is separate from PWA accounts, including those with the same email. Access changes apply only to the account ID below.</p>
+      )}
+      {member.accountSource === 'legacy_linked' && (
+        <p className="mt-4 text-sm text-[#60778a]">This PWA owner has an existing verified iPhone link. Access changes apply to the shared account on both platforms.</p>
+      )}
+      {member.providerIdentityStatus === 'unavailable' && (
+        <p className="admin-error mt-4" role="status">iPhone provider identity details are temporarily unavailable. Saved profile and access controls remain available. Refresh to retry.</p>
+      )}
       <div className="mt-5 flex flex-wrap gap-2">
         <span className={`admin-chip ${member.adminSuspended ? 'admin-chip-danger' : ''}`}>{member.adminSuspended ? 'Admin suspended' : 'Access available'}</span>
         <span className="admin-chip">{statusLabel(member.lifecycleStatus)}</span>
@@ -498,7 +509,9 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
         <p className="admin-eyebrow">Administrator controls</p>
         <h3 id="administrator-access-heading" className="admin-display mt-1 text-2xl uppercase">Administrator access</h3>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#60778a]">Administrators can review and manage member records. Changes are recorded in the accountability log and are available only in Production.</p>
-        {member.clerkUserId === user?.id ? (
+        {member.accountSource === 'native_ios' ? (
+          <p className="mt-3 text-sm text-[#60778a]">Independent iPhone accounts cannot receive PWA administrator access.</p>
+        ) : member.clerkUserId === user?.id ? (
           <p className="mt-3 border border-[#ead2b7] bg-[#fff9ef] p-3 text-sm text-[#795327]">You cannot change your own administrator access. Ask another administrator to manage your role.</p>
         ) : (
           <>
@@ -571,14 +584,16 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
                   )}
                 </div>
               )}
-            <form className="mt-6 border-t border-[#e3e9e5] pt-5" onSubmit={deleteMember}>
+            {member.accountSource === 'native_ios' ? (
+              <p className="mt-6 border-t border-[#e3e9e5] pt-5 text-xs text-[#60778a]">Permanent iPhone account deletion is not available through the PWA cleanup control. Use reversible suspension to stop access without deleting saved data.</p>
+            ) : <form className="mt-6 border-t border-[#e3e9e5] pt-5" onSubmit={deleteMember}>
               <div className="flex items-center gap-2 text-[#a33e25]"><AlertTriangle className="h-4 w-4" /><p className="text-xs font-extrabold uppercase tracking-[.12em]">Permanent deletion</p></div>
               <p className="mt-2 max-w-2xl text-xs leading-relaxed text-[#60778a]">This permanently removes Pixl Sports data and also asks Clerk to delete the sign-in identity. If Clerk refuses deletion, stored app data may already be gone. To keep the sign-in but block Pixl Sports only, use the reversible app-only control instead. Enter the exact account ID and a reason of at least 3 characters.</p>
               <label className="mt-4 block"><span className="admin-label">Type exact account ID: {userId}</span><input className="admin-input admin-mono" autoComplete="off" spellCheck={false} value={confirmText} onChange={(event) => setConfirmText(event.target.value)} /></label>
               <button type="submit" className="admin-button admin-button-danger mt-3" disabled={deleteMutation.isPending || confirmText !== userId || reason.trim().length < 3}>
                 <Trash2 className="h-4 w-4" />{deleteMutation.isPending ? 'Submitting deletion…' : previousDeletionRequest?.status === 'failed' || member.lifecycleStatus === 'deletion_pending' ? 'Retry deletion cleanup' : 'Request permanent deletion'}
               </button>
-            </form>
+            </form>}
           </>
         )}
       </div>
@@ -648,7 +663,7 @@ export function AdminConsolePage() {
                       <tbody>
                         {list.data.items.map((member) => (
                           <tr key={member.clerkUserId} className={selectedId === member.clerkUserId ? 'bg-[#eef4ef]' : ''}>
-                            <td><button type="button" className="admin-row-button" onClick={() => setSelectedId(member.clerkUserId)}>{fullName(member)}</button><p className="mt-1 max-w-[250px] truncate text-xs text-[#60778a]">{member.primaryEmailAddress || 'No email'}</p></td>
+                            <td><button type="button" className="admin-row-button" onClick={() => setSelectedId(member.clerkUserId)}>{fullName(member)}</button><p className="mt-1 max-w-[250px] truncate text-xs text-[#60778a]">{member.providerIdentityStatus === 'unavailable' ? 'Provider details unavailable' : member.primaryEmailAddress || 'No email'}</p><p className="mt-1 text-xs font-bold">{accountSourceLabel(member)}</p></td>
                             <td><span>{member.profile.teamName || 'Team not set'}</span><p className="mt-1 text-xs text-[#60778a]">{member.profile.seasonName || 'Season not set'}</p></td>
                             <td>{member.isAdministrator ? <span className="admin-chip admin-chip-warn">Administrator</span> : <span className={`admin-chip ${member.adminSuspended ? 'admin-chip-danger' : ''}`}>{member.adminSuspended ? 'Suspended' : statusLabel(member.lifecycleStatus)}</span>}</td>
                             <td><button className="admin-button !min-h-8 !px-2.5" type="button" onClick={() => setSelectedId(member.clerkUserId)} aria-label={`View ${fullName(member)}`}><ArrowRight className="h-4 w-4" /></button></td>

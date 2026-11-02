@@ -18,9 +18,12 @@ import {
   adminIdentityBlocksTable,
   adminUsersTable,
   db,
+  nativeAccountsTable,
 } from "@workspace/db";
 import { ADMIN_MEMBERSHIP_LOCK_KEY, getAdminClerkClient, isAdminUser } from "./adminAccess";
 import { runExpiredAccountPurge } from "../jobs/purgeCancelledAccounts";
+import { getNativeAdminUser, memberAccountSource, nativeAdminUser, type AdminDirectoryUser } from "./nativeAdminMembers";
+import { isNativeProfileOwner, writeNativeOwnerMetadata } from "./nativeOwnerMetadata";
 
 const PROFILE_FIELDS = [
   "displayName",
@@ -106,7 +109,7 @@ function lifecycleStatus(value: string | undefined) {
 }
 
 function toAdminMember(
-  user: Awaited<ReturnType<ReturnType<typeof getAdminClerkClient>["users"]["getUser"]>>,
+  user: AdminDirectoryUser,
   access?: typeof accountAccessTable.$inferSelect,
   isAdministrator = false,
   identityBlocked = false,
@@ -115,12 +118,14 @@ function toAdminMember(
   const primaryEmail = user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)?.emailAddress ?? null;
   return {
     clerkUserId: user.id,
+    accountSource: user.accountSource ?? "pwa",
+    providerIdentityStatus: user.providerIdentityStatus ?? "available",
     primaryEmailAddress: primaryEmail,
     firstName: boundedString(user.firstName, 100),
     lastName: boundedString(user.lastName, 100),
     createdAt,
     role: access?.role === "fan" ? "fan" : null,
-    accessMode: access?.accessMode === "full" || access?.accessMode === "guest" ? access.accessMode : null,
+    accessMode: access?.accessMode === "full" || access?.accessMode === "guest" || access?.accessMode === "free" ? access.accessMode : null,
     lifecycleStatus: lifecycleStatus(access?.lifecycleStatus),
     deletionEligibleAt: access?.deletionEligibleAt?.toISOString() ?? null,
     adminSuspended: Boolean(access?.adminSuspendedAt),
@@ -137,7 +142,8 @@ function isClerkNotFound(error: unknown) {
     || candidate.code === "resource_not_found";
 }
 
-async function getClerkUser(clerkUserId: string) {
+async function getClerkUser(clerkUserId: string): Promise<AdminDirectoryUser | null> {
+  if (isNativeProfileOwner(clerkUserId)) return getNativeAdminUser(clerkUserId);
   try {
     return await getAdminClerkClient().users.getUser(clerkUserId);
   } catch (error) {
@@ -161,14 +167,42 @@ async function blockedIdentityIds(clerkUserIds: string[]) {
   return new Set(rows.map((row) => row.clerkUserId));
 }
 
-export async function listAdminMembers(options: { search?: string; limit: number; offset: number }) {
+export async function listAdminMembers(
+  options: { search?: string; limit: number; offset: number },
+  dependencies: {
+    listPwaUsers: (params: { limit: number; offset: number; query?: string }) => Promise<{ data: AdminDirectoryUser[]; totalCount: number }>;
+    nativeUser: typeof nativeAdminUser;
+  } = {
+    listPwaUsers: (params: { limit: number; offset: number; query?: string }) => getAdminClerkClient().users.getUserList(params),
+    nativeUser: nativeAdminUser,
+  },
+) {
   const query = options.search?.trim() || undefined;
-  const page = await getAdminClerkClient().users.getUserList({
+  const page = await dependencies.listPwaUsers({
     limit: options.limit,
     offset: options.offset,
     ...(query ? { query } : {}),
   });
-  const userIds = page.data.map((user) => user.id);
+  const nativeRows = await db.select().from(nativeAccountsTable).orderBy(nativeAccountsTable.ownerId);
+  const nativeUsers: AdminDirectoryUser[] = [];
+  const nativeOffset = Math.max(0, options.offset - page.totalCount);
+  const selectedRows = query ? nativeRows : nativeRows.slice(nativeOffset, nativeOffset + options.limit - page.data.length);
+  // Bound connector fan-out, including when searching provider-only names/email.
+  for (let i = 0; i < selectedRows.length; i += 5) {
+    nativeUsers.push(...await Promise.all(selectedRows.slice(i, i + 5).map(row => dependencies.nativeUser(row))));
+  }
+  const nativeMatches = nativeUsers.filter(user => !query || [
+    user.id, user.firstName, user.lastName,
+    ...user.emailAddresses.map(email => email.emailAddress),
+    ...Object.values(readMemberProfile(user.unsafeMetadata)),
+  ].some(value => value?.toLowerCase().includes(query.toLowerCase())));
+  const users: AdminDirectoryUser[] = [...page.data];
+  if (users.length < options.limit) {
+    const start = query ? nativeOffset : 0;
+    users.push(...nativeMatches.slice(start, start + options.limit - users.length));
+  }
+  const sources = await Promise.all(users.map(user => memberAccountSource(user.id)));
+  const userIds = users.map((user) => user.id);
   const [accounts, administrators, blockedIds] = await Promise.all([
     accountAccessByIds(userIds),
     userIds.length
@@ -180,13 +214,13 @@ export async function listAdminMembers(options: { search?: string; limit: number
   ]);
   const administratorIds = new Set(administrators.map((row) => row.clerkUserId));
   return {
-    items: page.data.map((user) => toAdminMember(
-      user,
+    items: users.map((user, index) => toAdminMember(
+      { ...user, accountSource: sources[index] },
       accounts.get(user.id),
       administratorIds.has(user.id),
       blockedIds.has(user.id),
     )),
-    totalCount: page.totalCount,
+    totalCount: page.totalCount + (query ? nativeMatches.length : nativeRows.length),
     limit: options.limit,
     offset: options.offset,
   };
@@ -207,7 +241,7 @@ export async function getAdminMember(clerkUserId: string) {
       .limit(1)
       .then(([row]) => row),
   ]);
-  return toAdminMember(user, access, administrator, Boolean(identityBlock));
+  return toAdminMember({ ...user, accountSource: await memberAccountSource(clerkUserId) }, access, administrator, Boolean(identityBlock));
 }
 
 async function writeAudit(
@@ -249,7 +283,7 @@ export async function updateAdminMemberProfile(
   } = {
     getUser: getClerkUser,
     updateUser: async (targetClerkUserId, unsafeMetadata) => {
-      await getAdminClerkClient().users.updateUser(targetClerkUserId, { unsafeMetadata });
+      await writeNativeOwnerMetadata(targetClerkUserId, unsafeMetadata);
     },
     getMember: getAdminMember,
   },
@@ -534,6 +568,9 @@ export async function updateAdminMemberAdministrator(
     getUser: getClerkUser,
   },
 ) {
+  if (isNativeProfileOwner(targetClerkUserId)) {
+    throw new AdminRequestError(409, "Administrator roles require a PWA sign-in, not an independent iPhone account.");
+  }
   if (process.env.NODE_ENV !== "production") {
     throw new AdminRequestError(409, "Administrator access can only be changed in Production.");
   }
@@ -619,6 +656,9 @@ export async function requestAdminMemberDeletion(
     runPurge: (ownerClerkUserId) => runExpiredAccountPurge({ ownerClerkUserId }),
   },
 ) {
+  if (isNativeProfileOwner(targetClerkUserId)) {
+    throw new AdminRequestError(409, "Independent iPhone account deletion is not supported by this PWA cleanup control. Use reversible suspension instead.");
+  }
   if (await isAdminUser(targetClerkUserId)) {
     throw new AdminRequestError(409, "Administrator accounts cannot be deleted from member management.");
   }

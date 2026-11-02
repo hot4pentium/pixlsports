@@ -97,3 +97,28 @@ test('the audit member suggestions can be selected with the keyboard', () => {
   });
   assert.equal(selectedId, 'user_stable_456');
 });
+
+test('same-email native and PWA audit choices show their source and keep separate owner IDs', () => {
+  let selectedId = '';
+  let renderer!: ReturnType<typeof create>;
+  const nativeId = `pixl-ios:${'a'.repeat(64)}`;
+  act(() => {
+    renderer = create(createElement(AdminAuditMemberFilter, {
+      searchText: 'Alex',
+      selectedMember: null,
+      members: [
+        { ...member, accountSource: 'pwa' },
+        { ...member, clerkUserId: nativeId, accountSource: 'native_ios' },
+      ],
+      isSearching: false, searchError: false,
+      onSearchTextChange: () => undefined,
+      onSelectMember: selected => { selectedId = selected.clerkUserId; },
+      onClearSelection: () => undefined,
+    }));
+  });
+  const options = renderer.root.findAllByProps({ role: 'option' });
+  assert.match(options[0]!.findAllByType('span').map(span => span.children.join('')).join(' '), /PWA account/);
+  assert.match(options[1]!.findAllByType('span').map(span => span.children.join('')).join(' '), /iPhone-only account/);
+  act(() => { options[1]!.props.onClick(); });
+  assert.equal(selectedId, nativeId);
+});

@@ -1,7 +1,10 @@
 import React, { useState, type KeyboardEvent } from 'react';
 import { X } from 'lucide-react';
+import { accountSourceLabel } from './admin-account-source';
+import type { AdminMember } from '@workspace/api-client-react';
 
 export type AuditMemberOption = {
+  accountSource?: AdminMember['accountSource'];
   clerkUserId: string;
   firstName: string | null;
   lastName: string | null;
@@ -78,6 +81,7 @@ export function AdminAuditMemberFilter({
           <span className="min-w-0">
             <span className="block truncate text-sm font-bold text-[#16334b]">{memberName(selectedMember)}</span>
             <span className="block truncate text-xs text-[#60778a]">{selectedMember.primaryEmailAddress || 'No email address'}</span>
+            <span className="block text-xs font-bold">{accountSourceLabel(selectedMember)}</span>
           </span>
           <button
             className="admin-button !min-h-8 !px-2"
@@ -136,6 +140,7 @@ export function AdminAuditMemberFilter({
                 >
                   <span className="block truncate text-sm font-bold text-[#16334b]">{memberName(member)}</span>
                   <span className="block truncate text-xs text-[#60778a]">{member.primaryEmailAddress || 'No email address'}</span>
+                  <span className="block text-xs font-bold">{accountSourceLabel(member)}</span>
                 </li>
               ))}
               {members.length > MAX_VISIBLE_MEMBERS && (

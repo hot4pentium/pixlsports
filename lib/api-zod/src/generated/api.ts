@@ -5648,12 +5648,14 @@ export const listAdminMembersResponseOffsetMin = 0;
 export const ListAdminMembersResponse = zod.object({
   "items": zod.array(zod.object({
   "clerkUserId": zod.string().min(1).max(listAdminMembersResponseItemsItemClerkUserIdMax),
+  "accountSource": zod.enum(['pwa', 'native_ios', 'legacy_linked']).optional().describe('The canonical account source. clerkUserId is a legacy field name containing the action owner ID, not necessarily a PWA Clerk ID.'),
+  "providerIdentityStatus": zod.enum(['available', 'unavailable']).optional(),
   "primaryEmailAddress": zod.string().max(listAdminMembersResponseItemsItemPrimaryEmailAddressMax).nullable(),
   "firstName": zod.string().max(listAdminMembersResponseItemsItemFirstNameMax).nullable(),
   "lastName": zod.string().max(listAdminMembersResponseItemsItemLastNameMax).nullable(),
   "createdAt": zod.coerce.date().nullable(),
   "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
-  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
+  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal('free'),zod.literal(null)]).nullable(),
   "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "adminSuspended": zod.boolean(),
@@ -5713,12 +5715,14 @@ export const getAdminMemberResponseProfileRelationshipMax = 60;
 
 export const GetAdminMemberResponse = zod.object({
   "clerkUserId": zod.string().min(1).max(getAdminMemberResponseClerkUserIdMax),
+  "accountSource": zod.enum(['pwa', 'native_ios', 'legacy_linked']).optional().describe('The canonical account source. clerkUserId is a legacy field name containing the action owner ID, not necessarily a PWA Clerk ID.'),
+  "providerIdentityStatus": zod.enum(['available', 'unavailable']).optional(),
   "primaryEmailAddress": zod.string().max(getAdminMemberResponsePrimaryEmailAddressMax).nullable(),
   "firstName": zod.string().max(getAdminMemberResponseFirstNameMax).nullable(),
   "lastName": zod.string().max(getAdminMemberResponseLastNameMax).nullable(),
   "createdAt": zod.coerce.date().nullable(),
   "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
-  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
+  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal('free'),zod.literal(null)]).nullable(),
   "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "adminSuspended": zod.boolean(),
@@ -5801,12 +5805,14 @@ export const updateAdminMemberProfileResponseProfileRelationshipMax = 60;
 
 export const UpdateAdminMemberProfileResponse = zod.object({
   "clerkUserId": zod.string().min(1).max(updateAdminMemberProfileResponseClerkUserIdMax),
+  "accountSource": zod.enum(['pwa', 'native_ios', 'legacy_linked']).optional().describe('The canonical account source. clerkUserId is a legacy field name containing the action owner ID, not necessarily a PWA Clerk ID.'),
+  "providerIdentityStatus": zod.enum(['available', 'unavailable']).optional(),
   "primaryEmailAddress": zod.string().max(updateAdminMemberProfileResponsePrimaryEmailAddressMax).nullable(),
   "firstName": zod.string().max(updateAdminMemberProfileResponseFirstNameMax).nullable(),
   "lastName": zod.string().max(updateAdminMemberProfileResponseLastNameMax).nullable(),
   "createdAt": zod.coerce.date().nullable(),
   "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
-  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
+  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal('free'),zod.literal(null)]).nullable(),
   "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "adminSuspended": zod.boolean(),

@@ -7,6 +7,8 @@ const NativeUser = z.object({
   created_at: z.number(),
   banned: z.boolean(),
   locked: z.boolean().optional(),
+  first_name: z.string().nullable().optional(),
+  last_name: z.string().nullable().optional(),
   primary_email_address_id: z.string().nullable(),
   email_addresses: z.array(z.object({
     id: z.string(),
@@ -40,7 +42,7 @@ async function nativeRead(path: string) {
 }
 
 /** Only server-to-server provider data may establish a new account's email. */
-export async function loadNativeSignupIdentity(who: NativeIdentity) {
+export async function loadNativeProviderIdentity(who: NativeIdentity) {
   if (who.issuer !== nativeIssuer()) throw new NativeLinkError(401, "Sign in to the iPhone app again.");
   // Workspace connections can be replaced. Prove that the connected backend
   // belongs to the same instance that signed this app's verified JWT.
@@ -63,7 +65,15 @@ export async function loadNativeSignupIdentity(who: NativeIdentity) {
   if (response.status === 404) throw new NativeLinkError(401, "Sign in to the iPhone app again.");
   if (!response.ok) throw new NativeLinkError(503, "Account setup is temporarily unavailable. Please try again.");
   const user = NativeUser.parse(await response.json());
-  if (user.id !== who.subject || user.banned || user.locked) {
+  if (user.id !== who.subject) {
+    throw new NativeLinkError(503, "The iPhone provider returned a different identity.");
+  }
+  return user;
+}
+
+export async function loadNativeSignupIdentity(who: NativeIdentity) {
+  const user = await loadNativeProviderIdentity(who);
+  if (user.banned || user.locked) {
     throw new NativeLinkError(423, "This sign-in cannot create a PIXL account right now.");
   }
   const emails = user.email_addresses.filter(e => e.verification?.status === "verified");

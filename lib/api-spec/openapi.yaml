@@ -5193,6 +5193,13 @@ components:
       required: [clerkUserId, primaryEmailAddress, firstName, lastName, createdAt, role, accessMode, lifecycleStatus, deletionEligibleAt, adminSuspended, identityBlocked, isAdministrator, profile]
       properties:
         clerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        accountSource:
+          type: string
+          enum: [pwa, native_ios, legacy_linked]
+          description: The canonical account source. clerkUserId is a legacy field name containing the action owner ID, not necessarily a PWA Clerk ID.
+        providerIdentityStatus:
+          type: string
+          enum: [available, unavailable]
         primaryEmailAddress: { type: ["string", "null"], maxLength: 320 }
         firstName: { type: ["string", "null"], maxLength: 100 }
         lastName: { type: ["string", "null"], maxLength: 100 }
@@ -5202,7 +5209,7 @@ components:
           enum: [fan, null]
         accessMode:
           type: ["string", "null"]
-          enum: [full, guest, null]
+          enum: [full, guest, free, null]
         lifecycleStatus:
           type: string
           enum: [active, paused, cancelled, deletion_pending, not_provisioned]

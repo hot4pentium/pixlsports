@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdminMemberAccessMode } from './adminMemberAccessMode';
+import type { AdminMemberAccountSource } from './adminMemberAccountSource';
 import type { AdminMemberLifecycleStatus } from './adminMemberLifecycleStatus';
 import type { AdminMemberProfile } from './adminMemberProfile';
+import type { AdminMemberProviderIdentityStatus } from './adminMemberProviderIdentityStatus';
 import type { AdminMemberRole } from './adminMemberRole';
 
 export interface AdminMember {
@@ -16,6 +18,9 @@ export interface AdminMember {
      * @maxLength 200
      */
   clerkUserId: string;
+  /** The canonical account source. clerkUserId is a legacy field name containing the action owner ID, not necessarily a PWA Clerk ID. */
+  accountSource?: AdminMemberAccountSource;
+  providerIdentityStatus?: AdminMemberProviderIdentityStatus;
   /**
      * @maxLength 320
      * @nullable
