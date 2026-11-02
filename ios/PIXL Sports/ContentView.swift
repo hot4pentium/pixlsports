@@ -26,6 +26,9 @@ struct ContentView: View {
     @State private var heroDestination: HeroDestination?
     @State private var eventToolsChanged = false
     @State private var dashboardVisible = false
+    @State private var heroCoverVisible = false
+    @State private var showingWeeklyWelcome = false
+    @State private var welcomeProgressForPresentation: NativeWeeklyWelcomeProgress?
 
     private enum HeroDestination: Identifiable {
         case eventCard(String)
@@ -98,12 +101,42 @@ struct ContentView: View {
 #endif
         guard let clerk else { return }
         await viewModel.load(clerk: clerk, forceProfileReload: forceProfileReload)
-        if viewModel.needsAthleteProfileSetup,
-           heroDestination == nil,
-           !showingAccountLink,
-           !showingSettings {
+        presentInitialGuidanceIfNeeded()
+    }
+
+    private var weeklyWelcomeProgress: NativeWeeklyWelcomeProgress? {
+        guard let userID = clerk?.user?.id,
+              let configuration = try? NativeClerkConfiguration.load().get() else { return nil }
+        return NativeWeeklyWelcomeProgress(instance: configuration.publishableKey, userID: userID)
+    }
+
+    private func presentInitialGuidanceIfNeeded() {
+#if DEBUG
+        guard fixtureState == nil else { return }
+#endif
+        guard !shouldShowInitialSplash, heroDestination == nil, !heroCoverVisible,
+              !showingAccountLink, !showingSettings, !showingWeeklyWelcome else { return }
+        if viewModel.needsAthleteProfileSetup {
+            weeklyWelcomeProgress?.beginInitialSetup()
             heroDestination = .profileSetup
+            return
         }
+        guard case .schedule = displayedState,
+              viewModel.hasResolvedAthleteProfile,
+              viewModel.athleteProfileError == nil,
+              viewModel.athleteProfile?.needsSetup == false,
+              let progress = weeklyWelcomeProgress, progress.isPending else { return }
+        welcomeProgressForPresentation = progress
+        showingWeeklyWelcome = true
+    }
+
+    private func acknowledgeWeeklyWelcome() {
+        // A session change must never acknowledge a different account's guide.
+        if let progress = welcomeProgressForPresentation,
+           progress.storageKey == weeklyWelcomeProgress?.storageKey {
+            progress.acknowledge()
+        }
+        showingWeeklyWelcome = false
     }
 
     var body: some View {
@@ -152,9 +185,12 @@ struct ContentView: View {
             }
         }
         .fullScreenCover(item: $heroDestination, onDismiss: {
+            heroCoverVisible = false
             if eventToolsChanged {
                 eventToolsChanged = false
                 Task { await loadSchedule() }
+            } else {
+                presentInitialGuidanceIfNeeded()
             }
         }) { destination in
             NavigationStack {
@@ -171,6 +207,16 @@ struct ContentView: View {
             }
             .toolbar(.visible, for: .navigationBar)
             .preferredColorScheme(.light)
+            .onAppear { heroCoverVisible = true }
+        }
+        .sheet(isPresented: $showingWeeklyWelcome, onDismiss: {
+            welcomeProgressForPresentation = nil
+        }) {
+            NativeWeeklyWelcomeView(onContinue: acknowledgeWeeklyWelcome)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+                .interactiveDismissDisabled()
+                .preferredColorScheme(.light)
         }
 #if os(iOS)
         .toolbar(.hidden, for: .navigationBar)
@@ -181,7 +227,8 @@ struct ContentView: View {
             await loadSchedule()
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, dashboardVisible, heroDestination == nil else { return }
+            guard phase == .active, dashboardVisible, heroDestination == nil,
+                  !heroCoverVisible, !showingWeeklyWelcome else { return }
             Task { await loadSchedule() }
         }
         .onChange(of: showingAccountLink) { wasShowing, isShowing in
@@ -196,9 +243,8 @@ struct ContentView: View {
             guard wasShowing && !isShowing else { return }
             Task { await loadSchedule(forceProfileReload: true) }
         }
-        .onChange(of: viewModel.needsAthleteProfileSetup) { _, needsSetup in
-            guard needsSetup, heroDestination == nil, !showingSettings, !showingAccountLink else { return }
-            heroDestination = .profileSetup
+        .onChange(of: viewModel.needsAthleteProfileSetup) { _, _ in
+            presentInitialGuidanceIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .nativeEventScheduleChanged)) { notification in
             guard let rawReason = notification.userInfo?[NativeEventScheduleChangeReason.userInfoKey] as? String,
@@ -368,8 +414,8 @@ struct ContentView: View {
                     initialProfile: viewModel.athleteProfile,
                     onSaved: { profile in
                         viewModel.setAthleteProfile(profile)
+                        eventToolsChanged = true
                         heroDestination = nil
-                        Task { await loadSchedule() }
                     }
                 )
             } else {

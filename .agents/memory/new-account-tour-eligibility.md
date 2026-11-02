@@ -14,3 +14,11 @@ An unfinished tour should remain on its current step when a supporter opens an e
 **Why:** Opening an example previously remounted the dashboard tour and returned the supporter to step one before they had finished.
 
 **How to apply:** Preserve per-account, per-tab progress across route and responsive-layout remounts without changing who is eligible to auto-start.
+
+## Native first-dashboard welcome
+
+When a new iPhone user first reaches their dashboard, show a modal explaining that the Message Board guides them through the week. Introduce the steps in order: Prep, Track Stats (including the Live Taps alternative), then Share.
+
+**Why:** The user wants families to know what to expect throughout the week and where to look for the next action.
+
+**How to apply:** Present after athlete setup and dashboard readiness, never over authentication or the setup form. Explicitly enroll during initial setup and remember acknowledgement separately for each account and native authentication instance on the device. Do not automatically enroll established accounts just because a preference is absent, and do not replay after ordinary navigation or refresh.
