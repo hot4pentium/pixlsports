@@ -20,3 +20,13 @@ The dashboard frame should show the complete portrait HYPE Card after an athlete
 **Why:** The user explicitly asked for the full card to load into the dashboard frame when they upload its image.
 
 **How to apply:** Keep the dashboard and dedicated HYPE Card front consistent, fit the entire portrait inside the available frame, refresh the owner preview after Settings changes, and include authenticated private-card photos without publishing the card.
+
+The user requires offline support in the native iOS app, including previously
+prepared dashboard/event access and local Prep/Tracker work across relaunch.
+
+**Why:** The user explicitly confirmed that the iOS app needs offline support;
+persisting pending writes alone does not provide offline app access.
+
+**How to apply:** Treat offline startup and local work as product requirements,
+while preserving verified native ownership, account isolation, and known access
+revocations. Distinguish work saved on the phone from server-acknowledged sync.
