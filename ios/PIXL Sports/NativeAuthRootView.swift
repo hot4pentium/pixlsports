@@ -59,7 +59,9 @@ struct NativeAuthRootView: View {
                                 AuthView(isDismissible: false)
                                     .id(authPresentationID)
                                     .environment(\.clerkTheme, clerkTheme)
-                                    .frame(height: max(560, geometry.size.height - 240))
+                                    .frame(height: geometry.size.height.isFinite
+                                        ? max(560, geometry.size.height - 240)
+                                        : 560)
                                     .padding(.horizontal, 14)
                                     .padding(.bottom, 16)
                             }
@@ -241,17 +243,21 @@ struct NativeLaunchSplashView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            // SwiftUI can propose a zero or non-finite size during startup
+            // and navigation transitions. Never pass it into a frame/position.
+            let width = geometry.size.width.isFinite ? max(0, geometry.size.width) : 0
+            let height = geometry.size.height.isFinite ? max(0, geometry.size.height) : 0
             ZStack {
                 NativePageBackground()
 
                 brand
-                    .frame(maxWidth: min(geometry.size.width - 48, 340))
+                    .frame(maxWidth: max(0, min(width - 48, 340)))
                     .scaleEffect(reduceMotion ? 1 : (logoIsGrowing ? 1.035 : 0.985))
                     .animation(
                         .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
                         value: logoIsGrowing
                     )
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    .position(x: width / 2, y: height / 2)
 
                 VStack {
                     Spacer()
