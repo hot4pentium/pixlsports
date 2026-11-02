@@ -31,6 +31,8 @@ Use subtle translucent white backgrounds to distinguish the native dashboard's s
 
 The target family experience is explicit sign-up or sign-in after installation; App Store ownership is not authentication. Returning families should use their existing PIXL account, and new families should create one account usable on iPhone and web. A separate iPhone-only account and repeated web-account linking are transitional, not the desired long-term journey.
 
+New iPhone signups must be able to create their backing PIXL account and reach athlete setup without first visiting the PWA. The user explicitly approved building this flow; keep existing-account ownership verification and PWA authentication intact.
+
 **Why:** the user explicitly confirmed this sign-in experience and wants to avoid making returning families create a second PIXL account.
 
 **How to apply:** keep the current separate Clerk setup until a migration is reviewed and approved. Before any cutover, prove each existing user's identity-to-data mapping; never infer it from email. Preserve the existing web sign-in and records until users can securely access them through the shared identity.
