@@ -4005,6 +4005,52 @@ export const GetAthleteFanCardResponse = zod.object({
 
 
 /**
+ * @summary Read the verified native account's private events and season record
+ */
+export const getNativeSupporterScheduleResponseRecordOneWinsMin = 0;
+
+export const getNativeSupporterScheduleResponseRecordOneLossesMin = 0;
+
+export const getNativeSupporterScheduleResponseRecordOneTiesMin = 0;
+
+export const getNativeSupporterScheduleResponseRecordOneGamesPlayedMin = 0;
+
+
+
+export const GetNativeSupporterScheduleResponse = zod.object({
+  "status": zod.enum(['linked', 'unlinked']),
+  "athleteName": zod.string().nullable(),
+  "teamName": zod.string().nullable(),
+  "seasonName": zod.string().nullable(),
+  "timezone": zod.string().nullable(),
+  "record": zod.union([zod.object({
+  "wins": zod.number().int().min(getNativeSupporterScheduleResponseRecordOneWinsMin),
+  "losses": zod.number().int().min(getNativeSupporterScheduleResponseRecordOneLossesMin),
+  "ties": zod.number().int().min(getNativeSupporterScheduleResponseRecordOneTiesMin),
+  "gamesPlayed": zod.number().int().min(getNativeSupporterScheduleResponseRecordOneGamesPlayedMin),
+  "sport": zod.string().nullable(),
+  "seasonName": zod.string().nullable()
+}),zod.null()]),
+  "events": zod.array(zod.object({
+  "shareToken": zod.string(),
+  "eventId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string(),
+  "time": zod.string(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "opponent": zod.string(),
+  "location": zod.string(),
+  "timezone": zod.string().nullish(),
+  "liveTapsActive": zod.boolean(),
+  "liveTapsOnly": zod.boolean(),
+  "liveTapsInviteToken": zod.string().nullable(),
+  "liveTapsSport": zod.string().nullable()
+}))
+})
+
+
+/**
  * Returns the athlete identity fields from the verified linked PIXL account. Optional values are empty strings when unset.
  * @summary Load the linked iPhone owner’s athlete profile
  */

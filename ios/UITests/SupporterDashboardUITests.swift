@@ -198,6 +198,24 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testSeasonRecordIsReadableAtDefaultAndAccessibilityTextSizes() {
+        for accessibilityText in [false, true] {
+            let app = launch("upcoming", accessibilityText: accessibilityText)
+            let card = reachable("dashboard-season-record", in: app)
+            XCTAssertGreaterThan(card.frame.width, 0)
+            XCTAssertLessThanOrEqual(card.frame.maxX, app.frame.maxX)
+            for label in ["2 wins", "1 loss", "1 tie"] {
+                XCTAssertTrue(
+                    card.descendants(matching: .any)
+                        .matching(NSPredicate(format: "label == %@", label))
+                        .firstMatch.exists,
+                    "The record must expose readable \(label)."
+                )
+            }
+            app.terminate()
+        }
+    }
+
     func testEmptyMessageBoardLeadsToNativeEventCardCreation() {
         let app = launch("empty")
         let messageBoard = reachable("dashboard-message-board-card", in: app)

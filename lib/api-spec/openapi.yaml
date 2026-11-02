@@ -1369,6 +1369,20 @@ paths:
                 $ref: "#/components/schemas/PublicAthleteFanCard"
         "404":
           $ref: "#/components/responses/NotFound"
+  /native/supporter/schedule:
+    get:
+      operationId: getNativeSupporterSchedule
+      tags: [athlete-invites]
+      summary: Read the verified native account's private events and season record
+      responses:
+        "200":
+          description: Private schedule and completed-game record, independent of public sharing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSupporterSchedule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /native/supporter/profile:
     get:
       operationId: getNativeSupporterProfile
@@ -5413,6 +5427,49 @@ components:
       properties:
         athleteName: { type: string, maxLength: 100 }
         teamName: { type: string, maxLength: 160 }
+    NativeSeasonRecord:
+      type: object
+      required: [wins, losses, ties, gamesPlayed, sport, seasonName]
+      properties:
+        wins: { type: integer, minimum: 0 }
+        losses: { type: integer, minimum: 0 }
+        ties: { type: integer, minimum: 0 }
+        gamesPlayed: { type: integer, minimum: 0 }
+        sport: { type: ["string", "null"] }
+        seasonName: { type: ["string", "null"] }
+    NativeSupporterSchedule:
+      type: object
+      required: [status, athleteName, teamName, seasonName, timezone, events, record]
+      properties:
+        status: { type: string, enum: [linked, unlinked] }
+        athleteName: { type: ["string", "null"] }
+        teamName: { type: ["string", "null"] }
+        seasonName: { type: ["string", "null"] }
+        timezone: { type: ["string", "null"] }
+        record:
+          anyOf:
+            - $ref: "#/components/schemas/NativeSeasonRecord"
+            - type: "null"
+        events:
+          type: array
+          items:
+            type: object
+            required: [shareToken, eventId, title, date, time, type, status, opponent, location, liveTapsActive, liveTapsOnly, liveTapsInviteToken, liveTapsSport]
+            properties:
+              shareToken: { type: string }
+              eventId: { type: string }
+              title: { type: string }
+              date: { type: string }
+              time: { type: string }
+              type: { type: string }
+              status: { type: string }
+              opponent: { type: string }
+              location: { type: string }
+              timezone: { type: ["string", "null"] }
+              liveTapsActive: { type: boolean }
+              liveTapsOnly: { type: boolean }
+              liveTapsInviteToken: { type: ["string", "null"] }
+              liveTapsSport: { type: ["string", "null"] }
     NativeSupporterProfile:
       type: object
       required: [athleteName, teamName, jerseyNumber, position]

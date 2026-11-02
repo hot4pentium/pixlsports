@@ -123,7 +123,11 @@ enum SupporterDashboardFixtures {
             teamName: "Northwest Regional Athletic Club",
             seasonName: "Autumn Championship Season",
             timezone: timezone,
-            events: events
+            events: events,
+            record: NativeSeasonRecord(
+                wins: 2, losses: 1, ties: 1, gamesPlayed: 4,
+                sport: "soccer", seasonName: "Autumn Championship Season"
+            )
         )
     }
 

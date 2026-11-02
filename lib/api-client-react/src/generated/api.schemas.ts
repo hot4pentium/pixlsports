@@ -2980,6 +2980,63 @@ export interface NativeHypeCardIdentityCorrectionResult {
   teamName: string;
 }
 
+export interface NativeSeasonRecord {
+  /** @minimum 0 */
+  wins: number;
+  /** @minimum 0 */
+  losses: number;
+  /** @minimum 0 */
+  ties: number;
+  /** @minimum 0 */
+  gamesPlayed: number;
+  /** @nullable */
+  sport: string | null;
+  /** @nullable */
+  seasonName: string | null;
+}
+
+export type NativeSupporterScheduleStatus = typeof NativeSupporterScheduleStatus[keyof typeof NativeSupporterScheduleStatus];
+
+
+export const NativeSupporterScheduleStatus = {
+  linked: 'linked',
+  unlinked: 'unlinked',
+} as const;
+
+export type NativeSupporterScheduleEventsItem = {
+  shareToken: string;
+  eventId: string;
+  title: string;
+  date: string;
+  time: string;
+  type: string;
+  status: string;
+  opponent: string;
+  location: string;
+  /** @nullable */
+  timezone?: string | null;
+  liveTapsActive: boolean;
+  liveTapsOnly: boolean;
+  /** @nullable */
+  liveTapsInviteToken: string | null;
+  /** @nullable */
+  liveTapsSport: string | null;
+};
+
+export interface NativeSupporterSchedule {
+  status: NativeSupporterScheduleStatus;
+  /** @nullable */
+  athleteName: string | null;
+  /** @nullable */
+  teamName: string | null;
+  /** @nullable */
+  seasonName: string | null;
+  /** @nullable */
+  timezone: string | null;
+  record: NativeSeasonRecord | null;
+  events: NativeSupporterScheduleEventsItem[];
+}
+
 export type NativeSupporterProfileSport = typeof NativeSupporterProfileSport[keyof typeof NativeSupporterProfileSport];
 
 

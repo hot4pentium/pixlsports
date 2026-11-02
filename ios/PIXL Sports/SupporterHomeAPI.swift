@@ -29,6 +29,16 @@ struct NativeSupporterSchedule: Decodable {
     let seasonName: String?
     let timezone: String?
     let events: [AthleteFanEvent]
+    var record: NativeSeasonRecord? = nil
+}
+
+struct NativeSeasonRecord: Decodable {
+    let wins: Int
+    let losses: Int
+    let ties: Int
+    let gamesPlayed: Int
+    let sport: String?
+    let seasonName: String?
 }
 
 struct NativeHypeCardReference: Decodable {

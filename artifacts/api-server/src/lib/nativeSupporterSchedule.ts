@@ -3,6 +3,7 @@ import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { AthleteEventShareRow, AthleteTrackerShareRow, gameIdsFromAthleteEventShares, mapAthleteEventSummaries } from "./athleteEventSummaries";
 import { GAME_ON_CARD_MARKER } from "./gameOnCard";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
+import { computeHypeCardShareStats, isHypeCardSport } from "./hypeCardShareStats";
 
 type NativeSupporterEvent = ReturnType<typeof mapAthleteEventSummaries>[number] & {
   liveTapsActive: boolean;
@@ -18,6 +19,16 @@ export interface NativeSupporterScheduleResponse {
   seasonName: string | null;
   timezone: string | null;
   events: NativeSupporterEvent[];
+  record: NativeSeasonRecord | null;
+}
+
+export interface NativeSeasonRecord {
+  wins: number;
+  losses: number;
+  ties: number;
+  gamesPlayed: number;
+  sport: string | null;
+  seasonName: string | null;
 }
 
 export interface NativeEventCardDraft {
@@ -52,6 +63,7 @@ interface InviteRow {
   sport: string;
   live_tracker_share_token: string | null;
   paused: boolean;
+  tracker_project_id: string | null;
 }
 
 interface LiveShareRow {
@@ -274,6 +286,7 @@ export async function loadNativeSupporterSchedule(
         seasonName: null,
         timezone: null,
         events: [],
+        record: null,
       };
     }
 
@@ -286,7 +299,7 @@ export async function loadNativeSupporterSchedule(
 
     const { rows: invites } = await tx.query<InviteRow>(`SELECT
         athlete_name, team_name, season_name, timezone, public_token, sport,
-        live_tracker_share_token, paused
+        live_tracker_share_token, paused, tracker_project_id
       FROM athlete_invites
       WHERE owner_clerk_user_id=$1
       LIMIT 1`, [owner]);
@@ -304,6 +317,36 @@ export async function loadNativeSupporterSchedule(
       : [];
 
     const invite = invites[0];
+    const projects = invite && isHypeCardSport(invite.sport)
+      ? (await tx.query<{ project: { tool?: string; games?: unknown[] }; updated_at: Date }>(
+        `SELECT project, updated_at FROM cloud_projects
+         WHERE owner_clerk_user_id=$1 AND project->>'tool'='stat-tracker'
+           AND ($2::text IS NULL OR id::text=$2)
+         ORDER BY updated_at DESC`,
+        [owner, invite.tracker_project_id],
+      )).rows
+      : [];
+    // Match the PWA's explicit project, or its latest same-sport final history.
+    // Do not combine independent saved projects and double-count the season.
+    const tracker = projects.find(({ project }) => Array.isArray(project.games)
+      && (invite?.tracker_project_id || project.games.some((game) => game
+        && typeof game === "object" && !Array.isArray(game)
+        && (game as { sport?: unknown }).sport === invite?.sport
+        && (game as { status?: unknown }).status === "final")));
+    const stats = tracker && invite && isHypeCardSport(invite.sport)
+      ? computeHypeCardShareStats({
+        ...tracker.project,
+        games: tracker.project.games?.filter((game) => game && typeof game === "object"
+          && !Array.isArray(game)
+          && (game as { liveTapsOnly?: unknown }).liveTapsOnly !== true
+          && (game as { type?: unknown }).type !== "practice"),
+      }, invite.athlete_name, invite.sport, tracker.updated_at)
+      : null;
+    const record: NativeSeasonRecord = {
+      ...(stats?.record ?? { wins: 0, losses: 0, ties: 0, gamesPlayed: 0 }),
+      sport: invite?.sport ?? null,
+      seasonName: invite?.season_name ?? null,
+    };
     const { rows: liveShares } = invite?.live_tracker_share_token
       ? await tx.query<LiveShareRow>(`SELECT game_id, game
           FROM stat_tracker_shares
@@ -339,6 +382,7 @@ export async function loadNativeSupporterSchedule(
       seasonName: invite?.season_name ?? null,
       timezone: invite?.timezone ?? null,
       events,
+      record,
     };
     await tx.query("COMMIT");
     return response;

@@ -3,6 +3,7 @@ import { after, test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import { loadNativeSupporterSchedule, updateNativeSupporterEventCard } from "./nativeSupporterSchedule";
+import { GetNativeSupporterScheduleResponse } from "@workspace/api-zod";
 import { nativeEventWorkspace } from "./nativeEventWorkspace";
 import type { NativeIdentity } from "./nativeIdentity";
 import { GAME_ON_CARD_MARKER } from "./gameOnCard";
@@ -38,6 +39,7 @@ after(async () => {
   await pool.query("DELETE FROM schedule_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM stat_tracker_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_invites WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
+  await pool.query("DELETE FROM cloud_projects WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM native_account_links WHERE native_subject=ANY($1::text[])", [nativeSubjects]);
   await pool.query("DELETE FROM account_access WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.end();
@@ -188,6 +190,49 @@ test("native schedule exposes only the invite for its matching active Live Taps 
   assert.equal(statsEvent?.liveTapsOnly, false);
 });
 
+test("private season records use the owner's selected history and intentional final results", async () => {
+  const who = identity();
+  const selectedOwner = await owner();
+  const unrelatedOwner = await owner();
+  await link(who, selectedOwner);
+  const games = [
+    { outcome: "win", scoreRecorded: false },
+    { outcome: "loss", score: 5, opponentScore: 1, scoreRecorded: true },
+    { score: 0, opponentScore: 0, scoreRecorded: true },
+    { score: 2, opponentScore: 1, scoreRecorded: true },
+    { score: 0, opponentScore: 0, scoreRecorded: false },
+    { outcome: "win", status: "live" },
+    { outcome: "win", type: "practice" },
+    { outcome: "win", liveTapsOnly: true },
+    { outcome: "win", sport: "basketball" },
+  ].map((game, i) => ({ id: `record-${i}`, sport: "soccer", status: "final", ...game }));
+  const insertProject = async (account: string, history: unknown[]) => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO cloud_projects(owner_clerk_user_id,name,project) VALUES ($1,'Record fixture',$2::jsonb) RETURNING id`,
+      [account, JSON.stringify({ tool: "stat-tracker", games: history })],
+    );
+    return result.rows[0]!.id;
+  };
+  const selectedProject = await insertProject(selectedOwner, games);
+  // A newer same-owner project must not override the explicitly selected one.
+  await insertProject(selectedOwner, [{ id: "other-history", sport: "soccer", status: "final", outcome: "win" }]);
+  const unrelatedProject = await insertProject(unrelatedOwner, games);
+  await pool.query(`INSERT INTO athlete_invites
+    (owner_clerk_user_id,public_token,athlete_name,team_name,season_name,season_ends_at,sport,timezone,tracker_project_id,paused,show_stats)
+    VALUES ($1,$2,'Jordan','Tigers','Spring 2099','2099-06-01T00:00:00Z','soccer','UTC',$3,true,false)`,
+  [selectedOwner, randomBytes(24).toString("base64url"), selectedProject]);
+  const schedule = GetNativeSupporterScheduleResponse.parse(await loadNativeSupporterSchedule(who));
+  assert.deepEqual(schedule.record, {
+    wins: 2, losses: 1, ties: 1, gamesPlayed: 4, sport: "soccer", seasonName: "Spring 2099",
+  });
+  assert.equal(schedule.events.length, 0, "Completed history does not require current Event Cards.");
+  await pool.query("UPDATE athlete_invites SET tracker_project_id=$1 WHERE owner_clerk_user_id=$2", [unrelatedProject, selectedOwner]);
+  assert.equal((await loadNativeSupporterSchedule(who)).record?.gamesPlayed, 0, "Never load another account's project.");
+  await pool.query("UPDATE athlete_invites SET tracker_project_id=NULL WHERE owner_clerk_user_id=$1", [selectedOwner]);
+  const fallback = await loadNativeSupporterSchedule(who);
+  assert.equal(fallback.record?.wins, 1, "Use the latest matching history without adding duplicate projects.");
+});
+
 test("unlinked native identities receive no account schedule", async () => {
   const schedule = await loadNativeSupporterSchedule(identity());
   assert.deepEqual(schedule, {
@@ -197,6 +242,7 @@ test("unlinked native identities receive no account schedule", async () => {
     seasonName: null,
     timezone: null,
     events: [],
+    record: null,
   });
 });
 

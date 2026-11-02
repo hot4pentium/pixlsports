@@ -121,6 +121,11 @@ struct ContentView: View {
                                 .accessibilityElement(children: .contain)
                                 .accessibilityIdentifier("dashboard-header-section")
                             athleteHero
+                            if case let .schedule(page, _, _) = displayedState {
+                                if let record = page.record {
+                                    NativeSeasonRecordView(record: record)
+                                }
+                            }
                             accountSetupIfNeeded
                             athleteProfileLoadIssue
                             nextEventSection

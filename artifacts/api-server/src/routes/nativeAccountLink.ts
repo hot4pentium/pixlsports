@@ -9,6 +9,7 @@ import {
   CorrectNativeSupporterHypeCardIdentityBody,
   CorrectNativeSupporterHypeCardIdentityResponse,
   UpdateNativeSupporterProfileBody,
+  GetNativeSupporterScheduleResponse,
 } from "@workspace/api-zod";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
 import { NativeLinkError, nativeIssuer, nativeLinkWebOrigin, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
@@ -280,7 +281,7 @@ nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
   res.json(result);
 }));
 nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
-  res.json(await loadNativeSupporterSchedule(identity(res)));
+  res.json(GetNativeSupporterScheduleResponse.parse(await loadNativeSupporterSchedule(identity(res))));
 }));
 nativeAccountLinkRouter.post("/supporter/live-taps-access", handle(async (req, res) => {
   const parsed = z.object({

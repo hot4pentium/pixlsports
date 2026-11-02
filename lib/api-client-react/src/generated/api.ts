@@ -114,6 +114,7 @@ import type {
   NativeSupporterHypeCardUpdate,
   NativeSupporterProfile,
   NativeSupporterProfileUpdate,
+  NativeSupporterSchedule,
   NotFoundResponse,
   NotificationConfig,
   NotificationDisplayReceiptInput,
@@ -5551,6 +5552,83 @@ export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthlet
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAthleteFanCardQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetNativeSupporterScheduleUrl = () => {
+
+
+
+
+  return `/api/native/supporter/schedule`
+}
+
+/**
+ * @summary Read the verified native account's private events and season record
+ */
+export const getNativeSupporterSchedule = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeSupporterSchedule> => {
+
+  return customFetch<NativeSupporterSchedule>(getGetNativeSupporterScheduleUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeSupporterScheduleQueryKey = () => {
+    return [
+    `/api/native/supporter/schedule`
+    ] as const;
+    }
+
+
+export const getGetNativeSupporterScheduleQueryOptions = <TData = Awaited<ReturnType<typeof getNativeSupporterSchedule>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeSupporterScheduleQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeSupporterSchedule>>> = ({ signal }) => getNativeSupporterSchedule({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterSchedule>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeSupporterScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeSupporterSchedule>>>
+export type GetNativeSupporterScheduleQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Read the verified native account's private events and season record
+ */
+
+export function useGetNativeSupporterSchedule<TData = Awaited<ReturnType<typeof getNativeSupporterSchedule>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeSupporterScheduleQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
