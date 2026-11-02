@@ -41,11 +41,10 @@ struct NativeAuthRootView: View {
                     onRetry: { Task { await finishLocalSignOut() } }
                 )
             } else if !accountRemovalReceiptScope.isEmpty {
-                NativeAccountRemovalReceiptView(scope: accountRemovalReceiptScope, supportReference: accountRemovalSupportReference) {
+                NativeAccountRemovalReceiptView(scope: accountRemovalReceiptScope,
+                                               supportReference: accountRemovalSupportReference,
+                                               isContinuing: retrying, errorMessage: startupError) {
                     Task { await finishRemovalReceipt() }
-                }
-                .overlay(alignment: .bottom) {
-                    if let startupError { Text(startupError).font(.footnote).foregroundStyle(.red).padding() }
                 }
                 .preferredColorScheme(.light)
             } else if currentAccountNeedsVerification ||
@@ -129,6 +128,11 @@ struct NativeAuthRootView: View {
             guard !clerk.isLoaded else {
                 loadingTimedOut = false
                 startupError = nil
+                if offline.online, !clerk.isAuthFlowComplete, offline.vault.subject != nil {
+                    // A confirmed empty SDK session is different from the SDK
+                    // still loading offline; keep unsent work locked for reauth.
+                    offline.deny(status: 401)
+                }
                 return
             }
             do {
@@ -279,19 +283,27 @@ struct NativeAuthRootView: View {
     private func finishRemovalReceipt() async {
         guard !retrying else { return }
         retrying = true
+        startupError = nil
         defer { retrying = false }
         do {
             try offline.clear()
             if !clerk.isLoaded {
                 try await clerk.refreshEnvironment()
-                try await clerk.refreshClient()
             }
+            // Deletion may already have revoked the cached session. Refresh it
+            // even when the SDK is loaded before attempting remote sign-out.
+            try await clerk.refreshClient()
             if clerk.isAuthFlowComplete { try await clerk.auth.signOut() }
+            guard !clerk.isAuthFlowComplete else {
+                startupError = "Sign-out is still finishing. Please tap Back to sign in again."
+                return
+            }
+            authPresentationID = UUID()
             accountRemovalReceiptScope = ""
             accountRemovalSupportReference = ""
             startupError = nil
         } catch {
-            startupError = "Your removal is still accepted. Reconnect to finish signing out."
+            startupError = "Your deletion request is still accepted and access stays blocked. Check your connection, then tap Back to sign in again."
         }
     }
 

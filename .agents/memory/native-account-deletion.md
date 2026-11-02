@@ -51,3 +51,14 @@ keeping athlete details or an email address on the device.
 
 **How to apply:** Support procedures must still verify identity independently;
 knowing or copying the reference does not establish account ownership.
+
+Receipt navigation must refresh cached native authentication before signing out,
+and show progress or a visible retry error while preserving the deletion receipt.
+
+**Why:** A deleted identity can leave a stale SDK session; silent remote sign-out
+made “Back to sign in” appear unresponsive. A failed transition must not reopen
+private content or discard proof that deletion was accepted.
+
+**How to apply:** Keep the receipt until the SDK confirms signed-out state, reset
+the sign-in presentation for the next account, and place retry errors beside the
+receipt action rather than in an off-screen overlay.

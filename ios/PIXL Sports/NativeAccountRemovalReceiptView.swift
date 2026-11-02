@@ -4,6 +4,8 @@ import UIKit
 struct NativeAccountRemovalReceiptView: View {
     let scope: String
     let supportReference: String
+    var isContinuing = false
+    var errorMessage: String? = nil
     let onContinue: () -> Void
     @State private var referenceCopied = false
 
@@ -68,14 +70,26 @@ struct NativeAccountRemovalReceiptView: View {
                     .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
                     .supporterSurfaceShadow()
 
+                    if let errorMessage {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("native-account-removal-continue-error")
+                    }
                     Button(action: onContinue) {
-                        Text("Back to sign in")
+                        HStack(spacing: 10) {
+                            if isContinuing { ProgressView().tint(SupporterHomeColors.background) }
+                            Text(isContinuing ? "Opening sign in…" : "Back to sign in")
+                        }
                             .font(.headline)
                             .foregroundStyle(SupporterHomeColors.background)
                             .padding(.vertical, 16)
                             .frame(maxWidth: .infinity)
                             .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 16))
                     }
+                    .disabled(isContinuing)
+                    .accessibilityValue(isContinuing ? "Signing out, please wait" : "Ready")
                     .accessibilityIdentifier("native-account-removal-receipt-continue")
                 }
                 .frame(maxWidth: 560, alignment: .leading)
