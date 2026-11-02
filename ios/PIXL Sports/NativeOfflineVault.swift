@@ -234,9 +234,14 @@ final class NativeOfflineVault {
         guard !denied, lease?.permits(origin: origin, subject: nil) == true else { throw NativeOfflineError.locked }
         if let data {
             if key.hasPrefix("outbox/") || key.hasPrefix("draft/") {
-                if !(lease?.pendingKeys ?? []).contains(key) {
-                    lease?.pendingKeys = (lease?.pendingKeys ?? []) + [key]
-                    try saveLease()
+                if var updatedLease = lease {
+                    var pendingKeys = updatedLease.pendingKeys ?? []
+                    if !pendingKeys.contains(key) {
+                        pendingKeys.append(key)
+                        updatedLease.pendingKeys = pendingKeys
+                        lease = updatedLease
+                        try saveLease()
+                    }
                 }
             }
             let files = (try? manager.contentsOfDirectory(at: directory(), includingPropertiesForKeys: [.fileSizeKey])) ?? []
