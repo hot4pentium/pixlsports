@@ -26,6 +26,7 @@ import { Link, useLocation } from 'wouter';
 import { AdminAuditMemberFilter, type AuditMemberOption } from './admin-audit-member-filter';
 import { accountSourceLabel } from './admin-account-source';
 import { AdminHelpDesk } from './admin-help-desk';
+import { AdminNativeDeletionEmails } from './admin-native-deletion-emails';
 import './admin-console.css';
 
 const PAGE_SIZE = 20;
@@ -692,6 +693,7 @@ export function AdminConsolePage() {
         </div>
         <div className="mt-6"><AdminHelpDesk /></div>
         <div className="mt-6"><AdminAuditHistory /></div>
+        <div className="mt-6"><AdminNativeDeletionEmails /></div>
         <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.13em] text-[#82939d]">Administrative actions are authorized and recorded by the Pixl Sports server.</p>
       </div>
     </main>

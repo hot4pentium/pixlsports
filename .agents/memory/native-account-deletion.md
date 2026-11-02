@@ -32,6 +32,17 @@ and require review rather than blindly retrying after its deduplication window.
 Remove the temporary contact address after provider acceptance or seven days
 after completed cleanup, so mail failures do not retain it indefinitely.
 
+Operator visibility into deletion mail is read-only and must not depend on a
+surviving profile or reveal the temporarily retained recipient.
+
+**Why:** The user requested mail-stage visibility separately from stuck-cleanup
+alerts, without recreating deleted identities or adding blind resend/reactivation
+controls. Provider acceptance must never be described as delivery or reading.
+
+**How to apply:** Present the minimal deletion reference and mail-stage evidence;
+keep uncertain sends distinct from definite rejections, and treat expired
+contact retention as a sending limit, not proof that an email was sent.
+
 Deletion support references are non-secret identifiers, never credentials for
 deletion, recovery, or private status access.
 

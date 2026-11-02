@@ -82,6 +82,11 @@ test('administrators can filter and page audit history while non-admins cannot v
       json(200, { ready: true });
       return;
     }
+    if (url.pathname === '/api/admin/native-deletion-emails' && request.method === 'GET') {
+      json(viewer === 'administrator' ? 200 : 403,
+        viewer === 'administrator' ? { items: [], total: 0, limit: 20, offset: 0 } : { error: 'Administrator access is required.' });
+      return;
+    }
     if (url.pathname === '/api/admin/session' && request.method === 'GET') {
       json(200, { isAdmin: viewer === 'administrator' });
       return;

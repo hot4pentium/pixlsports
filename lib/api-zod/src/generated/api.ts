@@ -5615,6 +5615,40 @@ export const ServeHypeCardShareMediaResponse = zod.unknown()
 
 
 /**
+ * @summary Read redacted native deletion completion-email stages
+ */
+export const listAdminNativeDeletionEmailsQueryLimitDefault = 20;
+export const listAdminNativeDeletionEmailsQueryLimitMax = 100;
+
+export const listAdminNativeDeletionEmailsQueryOffsetDefault = 0;
+export const listAdminNativeDeletionEmailsQueryOffsetMin = 0;
+export const listAdminNativeDeletionEmailsQueryOffsetMax = 1000000;
+
+
+
+export const ListAdminNativeDeletionEmailsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listAdminNativeDeletionEmailsQueryLimitMax).default(listAdminNativeDeletionEmailsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminNativeDeletionEmailsQueryOffsetMin).max(listAdminNativeDeletionEmailsQueryOffsetMax).default(listAdminNativeDeletionEmailsQueryOffsetDefault)
+})
+
+export const ListAdminNativeDeletionEmailsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "reference": zod.string().uuid(),
+  "scope": zod.enum(['independent', 'iphone_access']),
+  "stage": zod.enum(['awaiting_cleanup', 'waiting_to_send', 'provider_accepted', 'delivery_uncertain', 'review_required', 'contact_retention_expired', 'no_verified_contact']),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "firstAttemptAt": zod.coerce.date().nullable(),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "providerAcceptedAt": zod.coerce.date().nullable()
+})),
+  "total": zod.number().int(),
+  "limit": zod.number().int(),
+  "offset": zod.number().int()
+})
+
+
+/**
  * @summary Check whether the authenticated user has administrator access
  */
 export const GetAdminSessionResponse = zod.object({

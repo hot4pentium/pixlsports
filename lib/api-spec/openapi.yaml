@@ -2458,6 +2458,31 @@ paths:
             video/*: {}
         "404":
           $ref: "#/components/responses/NotFound"
+  /admin/native-deletion-emails:
+    get:
+      operationId: listAdminNativeDeletionEmails
+      tags: [Admin]
+      summary: Read redacted native deletion completion-email stages
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, maximum: 1000000, default: 0 }
+      responses:
+        "200":
+          description: Minimal deletion records without recipient or identity details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminNativeDeletionEmailList"
+        "400":
+          description: Invalid pagination
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator access required
   /admin/session:
     get:
       operationId: getAdminSession
@@ -5207,6 +5232,31 @@ components:
         identityBlocked:
           type: boolean
           description: Whether an administrator has blocked Pixl Sports access for this sign-in without deleting its Clerk identity.
+    AdminNativeDeletionEmail:
+      type: object
+      additionalProperties: false
+      required: [reference, scope, stage, requestedAt, completedAt, firstAttemptAt, lastAttemptAt, providerAcceptedAt]
+      properties:
+        reference: { type: string, format: uuid }
+        scope: { type: string, enum: [independent, iphone_access] }
+        stage:
+          type: string
+          enum: [awaiting_cleanup, waiting_to_send, provider_accepted, delivery_uncertain, review_required, contact_retention_expired, no_verified_contact]
+        requestedAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+        firstAttemptAt: { type: ["string", "null"], format: date-time }
+        lastAttemptAt: { type: ["string", "null"], format: date-time }
+        providerAcceptedAt: { type: ["string", "null"], format: date-time }
+    AdminNativeDeletionEmailList:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminNativeDeletionEmail" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
     AdminSession:
       type: object
       required: [isAdmin]

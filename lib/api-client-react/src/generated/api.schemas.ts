@@ -2384,6 +2384,49 @@ export interface AccountLifecycle {
   identityBlocked: boolean;
 }
 
+export type AdminNativeDeletionEmailScope = typeof AdminNativeDeletionEmailScope[keyof typeof AdminNativeDeletionEmailScope];
+
+
+export const AdminNativeDeletionEmailScope = {
+  independent: 'independent',
+  iphone_access: 'iphone_access',
+} as const;
+
+export type AdminNativeDeletionEmailStage = typeof AdminNativeDeletionEmailStage[keyof typeof AdminNativeDeletionEmailStage];
+
+
+export const AdminNativeDeletionEmailStage = {
+  awaiting_cleanup: 'awaiting_cleanup',
+  waiting_to_send: 'waiting_to_send',
+  provider_accepted: 'provider_accepted',
+  delivery_uncertain: 'delivery_uncertain',
+  review_required: 'review_required',
+  contact_retention_expired: 'contact_retention_expired',
+  no_verified_contact: 'no_verified_contact',
+} as const;
+
+export interface AdminNativeDeletionEmail {
+  reference: string;
+  scope: AdminNativeDeletionEmailScope;
+  stage: AdminNativeDeletionEmailStage;
+  requestedAt: string;
+  /** @nullable */
+  completedAt: string | null;
+  /** @nullable */
+  firstAttemptAt: string | null;
+  /** @nullable */
+  lastAttemptAt: string | null;
+  /** @nullable */
+  providerAcceptedAt: string | null;
+}
+
+export interface AdminNativeDeletionEmailList {
+  items: AdminNativeDeletionEmail[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface AdminSession {
   isAdmin: boolean;
 }
@@ -3687,6 +3730,19 @@ export const ListHypeCardSharesMediaType = {
   image: 'image',
   video: 'video',
 } as const;
+
+export type ListAdminNativeDeletionEmailsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 1000000
+ */
+offset?: number;
+};
 
 export type ListAdminMembersParams = {
 /**

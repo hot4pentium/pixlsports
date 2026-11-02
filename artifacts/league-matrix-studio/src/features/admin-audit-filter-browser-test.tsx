@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router } from 'wouter';
+import { ClerkProvider } from '@clerk/react';
 
 import { AdminConsolePage } from './admin-console';
 import '../index.css';
@@ -24,9 +25,11 @@ const queryClient = new QueryClient({
 });
 
 createRoot(document.getElementById('root')!).render(
-  <Router>
-    <QueryClientProvider client={queryClient}>
-      <AdminConsolePage />
-    </QueryClientProvider>
-  </Router>,
+  <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk'}>
+    <Router>
+      <QueryClientProvider client={queryClient}>
+        <AdminConsolePage />
+      </QueryClientProvider>
+    </Router>
+  </ClerkProvider>,
 );

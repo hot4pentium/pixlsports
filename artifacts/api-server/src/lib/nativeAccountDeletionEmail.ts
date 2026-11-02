@@ -3,6 +3,7 @@ import { pool, type PoolClient } from "@workspace/db";
 import { loadNativeProviderIdentity } from "./nativeSignupIdentity";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { logger } from "./logger";
+import { NATIVE_DELETION_EMAIL_RETENTION_DAYS, NATIVE_DELETION_EMAIL_RETRY_WINDOW_MS } from "./nativeDeletionEmailPolicy";
 
 type Receipt = {
   id: string;
@@ -113,7 +114,7 @@ export async function runNativeDeletionCompletionEmails(
   // Do not retain a deleted user's contact address indefinitely if delivery
   // is impossible. The permanent tombstone retains no email after this period.
   await pool.query(`UPDATE native_account_deletions SET completion_email=NULL
-    WHERE completed_at < NOW()-INTERVAL '7 days' AND completion_email IS NOT NULL
+    WHERE completed_at < NOW()-INTERVAL '${NATIVE_DELETION_EMAIL_RETENTION_DAYS} days' AND completion_email IS NOT NULL
     ${who ? `AND native_issuer=$1 ${who.subject ? "AND native_subject=$2" : ""}` : ""}`,
   who ? (who.subject ? [who.issuer, who.subject] : [who.issuer]) : []);
   const candidates = await pool.query<{ id: string }>(
@@ -144,7 +145,7 @@ export async function runNativeDeletionCompletionEmails(
       // Resend keys expire after 24 hours. Never blindly resend an uncertain
       // attempt outside that window; leave it for operator review.
       if (row.completion_email_first_attempt_at
-          && Date.now() - new Date(row.completion_email_first_attempt_at).getTime() >= 23 * 60 * 60 * 1000) {
+          && Date.now() - new Date(row.completion_email_first_attempt_at).getTime() >= NATIVE_DELETION_EMAIL_RETRY_WINDOW_MS) {
         logger.warn({ deletionId: row.id }, "Deletion confirmation needs delivery review");
         continue;
       }

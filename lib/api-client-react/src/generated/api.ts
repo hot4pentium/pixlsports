@@ -34,6 +34,7 @@ import type {
   AdminMemberList,
   AdminMemberProfileUpdate,
   AdminMemberSuspensionInput,
+  AdminNativeDeletionEmailList,
   AdminSession,
   AdminSupportEmailReplyRejectionList,
   AdminSupportTicketList,
@@ -88,6 +89,7 @@ import type {
   HypeCardShareUploadInput,
   ListAdminAuditParams,
   ListAdminMembersParams,
+  ListAdminNativeDeletionEmailsParams,
   ListAdminSupportTicketsParams,
   ListHypeCardSharesParams,
   Media,
@@ -9689,6 +9691,90 @@ export function useServeHypeCardShareMedia<TData = Awaited<ReturnType<typeof ser
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getServeHypeCardShareMediaQueryOptions(shareToken,mediaKind,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminNativeDeletionEmailsUrl = (params?: ListAdminNativeDeletionEmailsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/native-deletion-emails?${stringifiedParams}` : `/api/admin/native-deletion-emails`
+}
+
+/**
+ * @summary Read redacted native deletion completion-email stages
+ */
+export const listAdminNativeDeletionEmails = async (params?: ListAdminNativeDeletionEmailsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminNativeDeletionEmailList> => {
+
+  return customFetch<AdminNativeDeletionEmailList>(getListAdminNativeDeletionEmailsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminNativeDeletionEmailsQueryKey = (params?: ListAdminNativeDeletionEmailsParams,) => {
+    return [
+    `/api/admin/native-deletion-emails`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminNativeDeletionEmailsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminNativeDeletionEmails>>, TError = ErrorType<void>>(params?: ListAdminNativeDeletionEmailsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminNativeDeletionEmails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminNativeDeletionEmailsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminNativeDeletionEmails>>> = ({ signal }) => listAdminNativeDeletionEmails(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminNativeDeletionEmails>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminNativeDeletionEmailsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminNativeDeletionEmails>>>
+export type ListAdminNativeDeletionEmailsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read redacted native deletion completion-email stages
+ */
+
+export function useListAdminNativeDeletionEmails<TData = Awaited<ReturnType<typeof listAdminNativeDeletionEmails>>, TError = ErrorType<void>>(
+ params?: ListAdminNativeDeletionEmailsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminNativeDeletionEmails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminNativeDeletionEmailsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

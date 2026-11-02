@@ -6,6 +6,8 @@ import {
   GetAdminMemberParams,
   GetAdminMemberResponse,
   GetAdminSessionResponse,
+  ListAdminNativeDeletionEmailsQueryParams,
+  ListAdminNativeDeletionEmailsResponse,
   ListAdminAuditQueryParams,
   ListAdminAuditResponse,
   ListAdminMembersQueryParams,
@@ -28,6 +30,7 @@ import {
 } from "@workspace/api-zod";
 import { getRequiredClerkUserId, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { hasAdminAccess, requireAdmin } from "../lib/adminAccess";
+import { listAdminNativeDeletionEmails } from "../lib/adminNativeDeletionEmails";
 import {
   AdminRequestError,
   getAdminMember,
@@ -43,6 +46,20 @@ import {
 } from "../lib/memberAdmin";
 
 const router: IRouter = Router();
+
+router.get("/admin/native-deletion-emails", requireAdmin, async (req, res, next): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const parsed = ListAdminNativeDeletionEmailsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid deletion-email pagination." });
+    return;
+  }
+  try {
+    res.json(ListAdminNativeDeletionEmailsResponse.parse(await listAdminNativeDeletionEmails(parsed.data)));
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get("/admin/session", requireAuthenticatedIdentity, async (_req, res, next): Promise<void> => {
   try {
