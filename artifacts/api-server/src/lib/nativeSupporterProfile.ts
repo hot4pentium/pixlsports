@@ -10,6 +10,7 @@ export type NativeSupporterProfile = {
   jerseyNumber: string;
   position: string;
   sport?: string;
+  requiresSetup?: boolean;
 };
 
 type ProfileInput = NativeSupporterProfile & { completeSetup?: boolean };
@@ -115,7 +116,16 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
     async load(identity: NativeIdentity): Promise<NativeSupporterProfile> {
       return withLinkedOwner(identity, "SHARE", async (tx, owner) => {
         const user = await dependencies.getUser(owner, tx);
-        return profileFromMetadata(user.unsafeMetadata);
+        const profile = profileFromMetadata(user.unsafeMetadata);
+        // Legacy Clerk-backed owners can commit a profile write even when its
+        // response is lost and our card transaction rolls back. New native
+        // profiles save atomically, but a name alone is not proof of setup.
+        // Reads only report recovery state; Continue creates/reuses the card.
+        const { rows } = await tx.query<{ has_card: boolean }>(
+          "SELECT EXISTS(SELECT 1 FROM athlete_invites WHERE owner_clerk_user_id=$1) AS has_card",
+          [owner],
+        );
+        return { ...profile, requiresSetup: !profile.athleteName || !rows[0].has_card };
       });
     },
 

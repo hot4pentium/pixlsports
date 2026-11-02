@@ -36,7 +36,7 @@ final class SupporterHomeViewModel: ObservableObject {
     var needsAthleteProfileSetup: Bool {
         guard hasResolvedAthleteProfile, athleteProfileError == nil,
               let athleteProfile else { return false }
-        return athleteProfile.athleteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return athleteProfile.needsSetup
     }
 
     func setAthleteProfile(_ profile: NativeSupporterProfile) {

@@ -3073,6 +3073,8 @@ export interface NativeSupporterProfile {
   jerseyNumber: string;
   /** @maxLength 100 */
   position: string;
+  /** Returned on load. True when the athlete name or owner card is missing, including after an interrupted setup save. Reads do not create or publish cards. */
+  requiresSetup?: boolean;
   sport?: NativeSupporterProfileSport;
 }
 

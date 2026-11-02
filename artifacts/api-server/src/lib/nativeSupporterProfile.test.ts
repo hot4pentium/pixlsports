@@ -97,6 +97,7 @@ test("linked owner can load and update athlete profile without publishing a priv
     teamName: "Tigers",
     jerseyNumber: "",
     position: "",
+    requiresSetup: false,
   });
 
   const profile: NativeSupporterProfile = {
@@ -372,4 +373,54 @@ test("interrupted setup with an authored card but no athlete profile keeps the c
   assert.equal(saved.athleteName, "Saved athlete");
   assert.equal(saved.teamName, "Saved team");
   assert.equal(saved.sport, "soccer");
+});
+
+test("lost Clerk response leaves an authored card unchanged through relaunch and setup retry", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  await invite(id, "Authored athlete", "Authored team");
+  await pool.query(`UPDATE athlete_invites SET photo_object_path='/objects/authored',
+    card_appearance='{"name":"keep-authored"}', favorite_moment='Keep this',
+    show_hype_card=true, show_stats=false, show_schedule=false, show_events=true, paused=false
+    WHERE owner_clerk_user_id=$1`, [id]);
+  const before = (await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rows;
+  const metadata = new Map<string, Record<string, unknown>>([[id, { unrelatedFlag: true }]]);
+  const interrupted = createNativeSupporterProfileService({
+    getUser: async () => ({ unsafeMetadata: metadata.get(id) }),
+    updateUser: async (_owner, value) => {
+      metadata.set(id, structuredClone(value));
+      throw new Error("Response lost after managed profile save");
+    },
+  });
+  await assert.rejects(interrupted.update(who, {
+    athleteName: "Retry athlete", teamName: "Retry team", jerseyNumber: "8", position: "Forward",
+    sport: "softball", completeSetup: true,
+  }), (error: any) => error.status === 503);
+  assert.equal(metadata.get(id)?.athleteName, "Authored athlete");
+  assert.deepEqual((await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rows, before);
+  const { service } = createService(metadata);
+  const reloaded = await service.load(who);
+  assert.equal(reloaded.requiresSetup, false);
+  assert.equal(reloaded.athleteName, "Authored athlete");
+  assert.equal(reloaded.teamName, "Authored team");
+  assert.equal(reloaded.sport, "soccer");
+  await service.update(who, { ...reloaded, completeSetup: true });
+  assert.equal(metadata.get(id)?.unrelatedFlag, true);
+  assert.equal(metadata.get(id)?.seasonName, "Spring 2099");
+  assert.deepEqual((await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rows, before);
+});
+
+test("loading a saved profile with no committed card reports unfinished setup without creating a card", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  const { service, writes } = createService(new Map([[id, {
+    athleteName: "Saved athlete", teamName: "Saved team", sport: "volleyball",
+  }]]));
+  const profile = await service.load(who);
+  assert.equal(profile.athleteName, "Saved athlete");
+  assert.equal(profile.requiresSetup, true);
+  assert.equal(writes.length, 0);
+  assert.equal((await pool.query("SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rowCount, 0);
 });

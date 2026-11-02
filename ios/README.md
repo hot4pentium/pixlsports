@@ -476,6 +476,30 @@ email already registered in the PWA: it should open a blank iPhone profile
 without offering account connection or changing any PWA data.
 Development API checks do not replace an Xcode build or physical-iPhone check.
 
+Interrupted setup recovery: the profile endpoint reports `requiresSetup` when
+the owner card is missing, even if a legacy linked owner's managed Clerk profile
+already saved the athlete details. New independent native profiles save their
+details and starter cards atomically, so both roll back on a write failure.
+Relaunch reopens Athlete setup with those details filled in and a recovery
+message; Continue creates one private paused card. Profile reads never create
+cards, and existing authored cards remain unchanged. The standalone native
+policy checks run on a Mac:
+
+```sh
+swiftc -parse-as-library "ios/PIXL Sports/NativeSupporterProfile.swift" \
+  ios/Tests/NativeStarterSetupRecoveryChecks.swift -o /tmp/pixl-starter-recovery-checks
+/tmp/pixl-starter-recovery-checks
+```
+
+For legacy linked-owner device verification, interrupt a setup save after the managed profile write
+but before its response reaches the API, relaunch, and confirm the saved details
+and Continue action are visible. Continue, relaunch again, and confirm setup no
+longer opens and exactly one private paused card exists. Repeat with an authored
+card and confirm its identity, media, visibility, and publication are unchanged.
+For a new independent iPhone profile, interrupt a failed setup write, relaunch,
+and confirm setup is still offered; Continue must save both the profile and one
+private paused card.
+
 ### HYPE Card photo checks
 
 See [native photo verification](Tests/native-athlete-photo-device-checks.md) for

@@ -1,27 +1,6 @@
 import Foundation
 import ClerkKit
 
-struct NativeSupporterProfile: Codable, Equatable {
-    let athleteName: String
-    let teamName: String
-    let jerseyNumber: String
-    let position: String
-    var sport: String? = nil
-
-    var displayDetails: String {
-        [
-            jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? nil
-                : "#\(jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines))",
-            position.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? nil
-                : position.trimmingCharacters(in: .whitespacesAndNewlines),
-        ]
-        .compactMap { $0 }
-        .joined(separator: " · ")
-    }
-}
-
 struct NativeSupporterSchedule: Decodable {
     let status: String
     let athleteName: String?

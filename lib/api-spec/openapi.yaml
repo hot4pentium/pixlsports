@@ -5500,6 +5500,9 @@ components:
           description: Optional profile detail; an unset value is returned as an empty string.
         jerseyNumber: { type: string, maxLength: 40 }
         position: { type: string, maxLength: 100 }
+        requiresSetup:
+          type: boolean
+          description: Returned on load. True when the athlete name or owner card is missing, including after an interrupted setup save. Reads do not create or publish cards.
         sport:
           type: string
           enum: [soccer, basketball, volleyball, football, baseball, softball]

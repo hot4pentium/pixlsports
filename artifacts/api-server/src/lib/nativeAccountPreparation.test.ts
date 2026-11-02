@@ -82,6 +82,65 @@ test("new iPhone signup reaches athlete setup and creates only a private starter
   assert.equal(photo.hasPhoto, false);
 });
 
+test("legacy linked iPhone relaunch after a lost Clerk response resumes setup without duplicating the account or card", async () => {
+  const f = fixture();
+  // New native profiles now save atomically in PostgreSQL. Preserve coverage
+  // of partial remote success for existing managed-Clerk-backed iPhone owners.
+  await existingAccess(f.owner.id);
+  await pool.query(`INSERT INTO native_account_links(native_issuer,native_subject,owner_clerk_user_id,account_label)
+    VALUES($1,$2,$3,'Legacy iPhone')`, [f.who.issuer, f.who.subject, f.owner.id]);
+  assert.deepEqual(await f.prepare(f.who), { status: "ready" });
+  const input = {
+    athleteName: "Relaunch Star", teamName: "Falcons", jerseyNumber: "12", position: "Pitcher",
+    sport: "softball", completeSetup: true,
+  };
+  const interrupted = createNativeSupporterProfileService({
+    async getUser() { return { unsafeMetadata: f.owner.unsafeMetadata }; },
+    async updateUser(_owner, metadata) {
+      // Remote success is durable even though the caller sees a failed request.
+      f.owner.unsafeMetadata = structuredClone(metadata);
+      throw new Error("Managed Clerk response lost after commit");
+    },
+  });
+  await assert.rejects(interrupted.update(f.who, input), (error: any) => error.status === 503);
+  assert.equal(f.owner.unsafeMetadata.athleteName, input.athleteName);
+  assert.equal((await pool.query("SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1", [f.owner.id])).rowCount, 0);
+
+  // Cold launch: no previous service/UI state survives, just the verified link,
+  // persisted Clerk metadata and database rows.
+  assert.deepEqual(await f.prepare(f.who), { status: "ready" });
+  assert.equal(f.reads(), 0);
+  assert.equal(f.originReads(), 0);
+  assert.equal((await pool.query("SELECT 1 FROM native_accounts WHERE owner_id=$1", [f.nativeOwner])).rowCount, 0);
+  const relaunched = createNativeSupporterProfileService({
+    async getUser() { return { unsafeMetadata: f.owner.unsafeMetadata }; },
+    async updateUser(_owner, metadata) { f.owner.unsafeMetadata = structuredClone(metadata); },
+  });
+  const loaded = await relaunched.load(f.who);
+  assert.deepEqual(loaded, {
+    athleteName: input.athleteName, teamName: input.teamName, jerseyNumber: input.jerseyNumber,
+    position: input.position, sport: input.sport, requiresSetup: true,
+  });
+  // Repeated startup reads must not silently create or publish a card.
+  assert.equal((await relaunched.load(f.who)).requiresSetup, true);
+  assert.equal((await pool.query("SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1", [f.owner.id])).rowCount, 0);
+  await relaunched.update(f.who, { ...loaded, completeSetup: true });
+  const firstCard = (await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [f.owner.id])).rows;
+  assert.equal(firstCard.length, 1);
+  assert.deepEqual(
+    [firstCard[0].paused, firstCard[0].show_hype_card, firstCard[0].show_stats, firstCard[0].show_schedule, firstCard[0].show_events],
+    [true, false, false, false, false],
+  );
+  assert.equal(firstCard[0].sport, "softball");
+  assert.equal(firstCard[0].photo_object_path, null);
+  assert.equal(firstCard[0].live_tracker_share_token, null);
+  assert.equal((await relaunched.load(f.who)).requiresSetup, false);
+  // Continue retry and another launch keep the exact same private card.
+  await relaunched.update(f.who, { ...loaded, completeSetup: true });
+  assert.deepEqual((await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [f.owner.id])).rows, firstCard);
+  assert.equal((await relaunched.load(f.who)).requiresSetup, false);
+});
+
 test("simultaneous startup calls create one account and returning startup makes no provider lookup", async () => {
   const f = fixture();
   const result = await Promise.all([f.prepare(f.who), f.prepare(f.who)]);
@@ -206,10 +265,24 @@ test("native profile and starter creation roll back together after a write failu
   await assert.rejects(profile.update(f.who, {
     athleteName: "Must Roll Back", teamName: "", jerseyNumber: "", position: "", sport: "soccer", completeSetup: true,
   }), /could not be saved/);
-  assert.equal((await createNativeSupporterProfileService().load(f.who)).athleteName, "");
+  const relaunched = createNativeSupporterProfileService();
+  const incomplete = await relaunched.load(f.who);
+  assert.equal(incomplete.athleteName, "");
+  assert.equal(incomplete.requiresSetup, true);
   assert.equal((await pool.query("SELECT 1 FROM athlete_invites WHERE owner_clerk_user_id=$1", [f.nativeOwner])).rowCount, 0);
-  await createNativeSupporterProfileService().update(f.who, {
+  const recoveredInput = {
     athleteName: "Recovered", teamName: "", jerseyNumber: "", position: "", sport: "soccer", completeSetup: true,
-  });
-  assert.equal((await createNativeSupporterProfileService().load(f.who)).athleteName, "Recovered");
+  };
+  await relaunched.update(f.who, recoveredInput);
+  const completed = await createNativeSupporterProfileService().load(f.who);
+  assert.equal(completed.athleteName, "Recovered");
+  assert.equal(completed.requiresSetup, false);
+  const cards = (await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [f.nativeOwner])).rows;
+  assert.equal(cards.length, 1);
+  assert.deepEqual(
+    [cards[0].paused, cards[0].show_hype_card, cards[0].show_stats, cards[0].show_schedule, cards[0].show_events],
+    [true, false, false, false, false],
+  );
+  await relaunched.update(f.who, recoveredInput);
+  assert.deepEqual((await pool.query("SELECT * FROM athlete_invites WHERE owner_clerk_user_id=$1", [f.nativeOwner])).rows, cards);
 });

@@ -14,3 +14,19 @@ During interrupted or concurrent setup, retain the existing unique owner card's 
 **Why:** There is no durable provenance that safely distinguishes an automatic starter from a card the owner has already authored. Rewriting a card during recovery could destroy authored identity or settings; letting profile identity diverge would associate the account with the wrong athlete.
 
 **How to apply:** Explain the reuse policy in setup. Treat the owner card as authoritative for athlete, team, sport, and season during recovery; later explicit owner edits remain separate from automatic setup.
+
+Native setup completion must be based on both the saved profile and a committed
+owner card, not on a saved athlete name alone. Recovery should be visible and
+require Continue; ordinary startup reads must not create or publish a card.
+
+**Why:** Legacy linked owners' managed Clerk and PostgreSQL do not share a transaction. Clerk can
+persist the profile and lose its response while PostgreSQL rolls back starter
+creation. On a cold launch there is no local failed-save state to distinguish
+this from completed setup. Independent new iPhone profiles save their details
+and card in one database transaction; preserve that atomic boundary rather
+than reintroducing a managed Clerk backing identity.
+
+**How to apply:** Preserve the remotely saved details for the recovery form and
+check database card existence when resolving setup. Do not solve this by
+overwriting an existing card or by relying on another metadata completion flag
+written in the same remote operation.

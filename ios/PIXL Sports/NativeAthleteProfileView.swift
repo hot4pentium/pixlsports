@@ -27,7 +27,8 @@ struct NativeAthleteProfileView: View {
             teamName: teamName.trimmingCharacters(in: .whitespacesAndNewlines),
             jerseyNumber: jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines),
             position: position.trimmingCharacters(in: .whitespacesAndNewlines),
-            sport: sport
+            sport: sport,
+            requiresSetup: savedProfile?.requiresSetup
         )
     }
 
@@ -54,6 +55,13 @@ struct NativeAthleteProfileView: View {
                     .accessibilityIdentifier("native-athlete-profile-retry")
                 }
             } else {
+                if isInitialSetup, savedProfile?.requiresSetup == true,
+                   !athleteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Section {
+                        Text("Your athlete details were saved, but setup still needs to finish. Review them and tap Continue to finish your private HYPE Card setup. Any existing card will be kept.")
+                            .accessibilityIdentifier("native-athlete-profile-resume")
+                    }
+                }
                 Section("Athlete information") {
                     if isInitialSetup {
                         Picker("Sport", selection: Binding(

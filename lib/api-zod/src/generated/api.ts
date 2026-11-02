@@ -4077,6 +4077,7 @@ export const GetNativeSupporterProfileResponse = zod.object({
   "teamName": zod.string().max(getNativeSupporterProfileResponseTeamNameMax).describe('Optional profile detail; an unset value is returned as an empty string.'),
   "jerseyNumber": zod.string().max(getNativeSupporterProfileResponseJerseyNumberMax),
   "position": zod.string().max(getNativeSupporterProfileResponsePositionMax),
+  "requiresSetup": zod.boolean().optional().describe('Returned on load. True when the athlete name or owner card is missing, including after an interrupted setup save. Reads do not create or publish cards.'),
   "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional()
 })
 
@@ -4119,6 +4120,7 @@ export const UpdateNativeSupporterProfileResponse = zod.object({
   "teamName": zod.string().max(updateNativeSupporterProfileResponseTeamNameMax).describe('Optional profile detail; an unset value is returned as an empty string.'),
   "jerseyNumber": zod.string().max(updateNativeSupporterProfileResponseJerseyNumberMax),
   "position": zod.string().max(updateNativeSupporterProfileResponsePositionMax),
+  "requiresSetup": zod.boolean().optional().describe('Returned on load. True when the athlete name or owner card is missing, including after an interrupted setup save. Reads do not create or publish cards.'),
   "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional()
 })
 
