@@ -30,12 +30,15 @@ struct NativeEventToolCommand: Codable {
 /// sending a request or dropping an acknowledged command.
 final class NativeEventDurableQueue<Command: Codable> {
     private struct Snapshot: Codable {
+        var version: Int? = 1
         var commands: [Command]
         var conflictBlocked: Bool
     }
 
     private let storageKey: String
     private let defaults: UserDefaults
+    private let protectedRead: (() throws -> Data?)?
+    private let protectedWrite: ((Data?) throws -> Void)?
     private(set) var commands: [Command]
     private(set) var conflictBlocked: Bool
     private(set) var storageError: Error?
@@ -44,21 +47,52 @@ final class NativeEventDurableQueue<Command: Codable> {
         storageKey: String,
         defaults: UserDefaults = .standard,
         initialCommands: [Command] = [],
-        initialConflictBlocked: Bool = false
+        initialConflictBlocked: Bool = false,
+        protectedRead: (() throws -> Data?)? = nil,
+        protectedWrite: ((Data?) throws -> Void)? = nil,
+        validateLegacy: ((Data) throws -> Void)? = nil
     ) {
         self.storageKey = storageKey
         self.defaults = defaults
-        if let data = defaults.data(forKey: storageKey),
-           let saved = try? JSONDecoder().decode(Snapshot.self, from: data) {
+        self.protectedRead = protectedRead
+        self.protectedWrite = protectedWrite
+        let data: Data?
+        let readProtected: Bool
+        do {
+            if let protectedData = try protectedRead?() { data = protectedData; readProtected = true }
+            else {
+                readProtected = false
+                data = defaults.data(forKey: storageKey)
+                if let data { try validateLegacy?(data) }
+            }
+        }
+        catch {
+            commands = []
+            conflictBlocked = true
+            storageError = error
+            return
+        }
+        if let data,
+           let saved = try? JSONDecoder().decode(Snapshot.self, from: data),
+           saved.version == nil || saved.version == 1 {
             commands = saved.commands
             conflictBlocked = saved.conflictBlocked
+            if protectedWrite != nil {
+                do {
+                    try persist()
+                    defaults.removeObject(forKey: storageKey)
+                } catch { storageError = error }
+            }
         } else {
             commands = initialCommands
             conflictBlocked = initialConflictBlocked
-            if defaults.data(forKey: storageKey) != nil && initialCommands.isEmpty {
+            if data != nil && (readProtected || initialCommands.isEmpty) {
                 storageError = NativeEventDurableQueueError.unreadableQueue
             } else if !commands.isEmpty {
-                do { try persist() } catch { storageError = error }
+                do {
+                    try persist()
+                    if protectedWrite != nil { defaults.removeObject(forKey: storageKey) }
+                } catch { storageError = error }
             }
         }
     }
@@ -77,15 +111,13 @@ final class NativeEventDurableQueue<Command: Codable> {
         }
     }
 
-    func removeAll() {
-        commands.removeAll()
-        conflictBlocked = false
-        defaults.removeObject(forKey: storageKey)
-        storageError = nil
+    func removeAll() throws {
+        try save(commands: [], conflictBlocked: false)
     }
 
     private func persist() throws {
         guard !commands.isEmpty || conflictBlocked else {
+            if let protectedWrite { try protectedWrite(nil) }
             defaults.removeObject(forKey: storageKey)
             storageError = nil
             return
@@ -93,6 +125,11 @@ final class NativeEventDurableQueue<Command: Codable> {
         let data = try JSONEncoder().encode(
             Snapshot(commands: commands, conflictBlocked: conflictBlocked)
         )
+        if let protectedWrite {
+            try protectedWrite(data)
+            storageError = nil
+            return
+        }
         defaults.set(data, forKey: storageKey)
         guard defaults.data(forKey: storageKey) == data else {
             throw NativeEventDurableQueueError.writeFailed

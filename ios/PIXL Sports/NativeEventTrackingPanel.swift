@@ -67,8 +67,8 @@ struct NativeEventTrackingPanel: View {
         self.clerk = clerk
         self.isActive = isActive
         self.hasActiveLiveTapsElsewhere = hasActiveLiveTapsElsewhere
-        _trackerModel = StateObject(wrappedValue: model ?? NativeEventToolModel(
-            shareToken: event.shareToken, accountID: clerk.user?.id ?? "signed-out"
+        _trackerModel = StateObject(wrappedValue: model ?? NativeEventToolModel.shared(
+            shareToken: event.shareToken, accountID: clerk.user?.id ?? NativeOfflineRuntime.shared.accountID
         ))
     }
 

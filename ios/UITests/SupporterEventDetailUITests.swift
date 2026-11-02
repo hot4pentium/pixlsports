@@ -318,7 +318,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         }
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-signed-in-prep"]
-        if dropFirstResponse { app.launchArguments.append("--prep-save-lost-response-once") }
+        if dropFirstResponse { app.launchArguments += ["--prep-save-lost-response-once", "--prep-hold-auto-retry"] }
         app.launch()
         defer { app.terminate() }
 
@@ -342,10 +342,11 @@ final class SupporterEventDetailUITests: XCTestCase {
             XCTAssertTrue(error.waitForExistence(timeout: 10))
             XCTAssertTrue(error.label.contains("Test server committed Prep"))
             XCTAssertTrue(error.label.contains("response dropped before acknowledgement"))
-            XCTAssertTrue(error.label.contains("kept on this iPhone"))
-            XCTAssertTrue(app.staticTexts["Unsaved changes"].exists)
+            XCTAssertTrue(error.label.contains("saved on this iPhone"))
+            XCTAssertTrue(app.descendants(matching: .any)["native-tool-pending"].exists)
             XCTAssertFalse(save.isEnabled, "Use the retained-command retry, not a new save.")
-            XCTAssertFalse(reachableFromAbove(itemIdentifier, in: app).isEnabled)
+            XCTAssertTrue(reachableFromAbove(itemIdentifier, in: app).isEnabled,
+                          "Durably queued work must not prevent another local checklist edit.")
             XCTAssertEqual(item.value as? String, changedValue, "Failure must retain the checkoff.")
             let pendingMutation = assertReachable("native-tool-save-retry", in: app)
             XCTAssertTrue(pendingMutation.isEnabled)

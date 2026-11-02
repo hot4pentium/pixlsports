@@ -129,6 +129,8 @@ struct NativeNotificationSettingsView: View {
     @State private var removalBusy = false
     @State private var removalAccepted = false
     @State private var removalError: String?
+    @State private var confirmingPendingSignOut = false
+    @AppStorage("pixl.native.signout-pending") private var localSignOutPending = false
 
     let clerk: Clerk
 
@@ -145,7 +147,8 @@ struct NativeNotificationSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Button("Sign out of iPhone account", role: .destructive) {
-                        Task { await signOut() }
+                        if NativeOfflineRuntime.shared.hasPending { confirmingPendingSignOut = true }
+                        else { Task { await signOut() } }
                     }
                     .accessibilityIdentifier("native-settings-sign-out")
                 }
@@ -272,6 +275,13 @@ struct NativeNotificationSettingsView: View {
                 )
             }
             .navigationTitle("Settings")
+            .confirmationDialog("Discard unsynced iPhone changes and sign out?", isPresented: $confirmingPendingSignOut,
+                                titleVisibility: .visible) {
+                Button("Discard local changes & sign out", role: .destructive) { Task { await signOut() } }
+                Button("Keep my changes", role: .cancel) {}
+            } message: {
+                Text("Pending Prep, notes, and Tracker changes will be removed from this iPhone. Reconnect and sync first to keep them.")
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -318,9 +328,18 @@ struct NativeNotificationSettingsView: View {
     }
 
     private func signOut() async {
+        guard NativeOfflineRuntime.shared.online else {
+            pushCoordinator.errorMessage = "Reconnect before signing out. Your unsynced changes are still saved on this iPhone."
+            return
+        }
         guard await pushCoordinator.disable(clerk: clerk) else { return }
         do {
+            // A denial marker cannot grant access. Keep the privacy curtain up if
+            // remote sign-out fails after local data has been removed.
+            localSignOutPending = true
+            try NativeOfflineRuntime.shared.clear()
             try await clerk.auth.signOut()
+            localSignOutPending = false
             dismiss()
         } catch {
             pushCoordinator.errorMessage = "Could not sign out right now. Try again."
@@ -371,6 +390,7 @@ struct NativeNotificationSettingsView: View {
     private func finishRemoval() async {
         pushCoordinator.clearAfterAccountRemoval()
         do {
+            try NativeOfflineRuntime.shared.clear()
             try await clerk.auth.signOut()
             dismiss()
         } catch {

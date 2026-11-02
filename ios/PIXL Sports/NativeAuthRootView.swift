@@ -7,6 +7,7 @@ import ClerkKitUI
 struct NativeAuthRootView: View {
     @AppStorage("pixl.native.account-removal-receipt") private var accountRemovalReceiptScope = ""
     @AppStorage("pixl.native.account-removal-reference") private var accountRemovalSupportReference = ""
+    @AppStorage("pixl.native.signout-pending") private var localSignOutPending = false
     @Environment(Clerk.self) private var clerk
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var loadingTimedOut = false
@@ -15,6 +16,16 @@ struct NativeAuthRootView: View {
     @State private var showingAccountLink = false
     @State private var showingSettings = false
     @State private var authPresentationID = UUID()
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
+    @Environment(\.scenePhase) private var offlineScenePhase
+
+    private var allowsSavedDashboard: Bool {
+        accountRemovalReceiptScope.isEmpty && offline.vault.canContinue(subject: clerk.user?.id)
+            && (!offline.online || (!clerk.isLoaded && loadingTimedOut))
+    }
+    private var currentAccountNeedsVerification: Bool {
+        clerk.isAuthFlowComplete && offline.vault.subject == clerk.user?.id && offline.needsRevalidation
+    }
 #if os(iOS)
     @StateObject private var notificationCoordinator = NativePushRegistrationCoordinator()
 #endif
@@ -22,9 +33,25 @@ struct NativeAuthRootView: View {
     var body: some View {
 #if os(iOS) || os(macOS)
         Group {
-            if !clerk.isLoaded {
+            if localSignOutPending {
+                NativeLaunchSplashView(
+                    errorTitle: "Finish signing out",
+                    errorMessage: startupError ?? "Your private dashboard is locked. Connect to finish signing out.",
+                    isRetrying: retrying,
+                    onRetry: { Task { await finishLocalSignOut() } }
+                )
+            } else if !accountRemovalReceiptScope.isEmpty {
+                NativeAccountRemovalReceiptView(scope: accountRemovalReceiptScope, supportReference: accountRemovalSupportReference) {
+                    Task { await finishRemovalReceipt() }
+                }
+                .overlay(alignment: .bottom) {
+                    if let startupError { Text(startupError).font(.footnote).foregroundStyle(.red).padding() }
+                }
+                .preferredColorScheme(.light)
+            } else if currentAccountNeedsVerification ||
+                ((!clerk.isLoaded || !offline.online || (offline.usingSavedContent && !offline.canContinue)) && !allowsSavedDashboard) {
                 startupView
-            } else if clerk.isAuthFlowComplete {
+            } else if clerk.isAuthFlowComplete || allowsSavedDashboard {
                 NavigationStack {
                     ContentView(
                         clerk: clerk,
@@ -32,7 +59,7 @@ struct NativeAuthRootView: View {
                         showingSettings: $showingSettings
                     )
                         // Tear down previous user's screen state on account switches.
-                        .id(clerk.user?.id)
+                        .id((clerk.user?.id ?? offline.vault.subject ?? "signed-out") + ":\(offline.revocationGeneration)")
                         .sheet(isPresented: $showingAccountLink) {
                             NativeAccountLinkView().id(clerk.user?.id)
                         }
@@ -44,17 +71,11 @@ struct NativeAuthRootView: View {
                             .environmentObject(notificationCoordinator)
                         }
                         .task(id: clerk.user?.id) {
-                            guard clerk.user != nil else { return }
+                            guard clerk.user != nil, offline.online else { return }
                             await notificationCoordinator.configure(clerk: clerk)
                         }
 #endif
                 }
-            } else if !accountRemovalReceiptScope.isEmpty {
-                NativeAccountRemovalReceiptView(scope: accountRemovalReceiptScope, supportReference: accountRemovalSupportReference) {
-                    accountRemovalReceiptScope = ""
-                    accountRemovalSupportReference = ""
-                }
-                .preferredColorScheme(.light)
             } else {
                 ZStack {
                     signInBackdrop
@@ -84,11 +105,22 @@ struct NativeAuthRootView: View {
                 .preferredColorScheme(.light)
             }
         }
+        .onChange(of: offline.online) { _, connected in
+            if connected, clerk.isAuthFlowComplete { offline.resume(clerk: clerk, force: true) }
+        }
+        .onChange(of: offlineScenePhase) { _, phase in
+            if phase == .active, clerk.isAuthFlowComplete { offline.resume(clerk: clerk) }
+            else if phase != .active { offline.pause() }
+        }
         .prefetchClerkImages()
         .onChange(of: clerk.user?.id) { previousUserID, currentUserID in
             guard previousUserID != nil, currentUserID == nil else { return }
             showingSettings = false
             showingAccountLink = false
+            if offline.online {
+                // A session expiring is not permission to discard pending work.
+                offline.deny(status: 401)
+            }
             // A completed auth flow must not be reused for the next sign-in.
             // Do not reset during sign-in or pending verification/MFA steps.
             authPresentationID = UUID()
@@ -211,14 +243,56 @@ struct NativeAuthRootView: View {
 
     private var startupView: some View {
         NativeLaunchSplashView(
-            errorTitle: loadingTimedOut || startupError != nil ? "We couldn’t get PIXL ready" : nil,
+            errorTitle: currentAccountNeedsVerification ? "Verify your account again" :
+                !offline.online ? "Connect to get ready" :
+                loadingTimedOut || startupError != nil ? "We couldn’t get PIXL ready" : nil,
             errorMessage: startupError
-                ?? (loadingTimedOut
-                    ? "Check your connection. If this continues, check the iOS Clerk key and Native API settings."
+                ?? (currentAccountNeedsVerification ? "Reconnect and tap Try again. Your pending changes are locked, not deleted." :
+                    !offline.online
+                    ? "Open the app online first. Saved offline access must be verified again at least every 7 days."
+                    : loadingTimedOut
+                    ? "Check your connection, then try again. Your pending iPhone changes have not been deleted."
                     : nil),
             isRetrying: retrying,
             onRetry: { Task { await retryStartup() } }
         )
+    }
+
+    @MainActor
+    private func finishLocalSignOut() async {
+        guard !retrying else { return }
+        retrying = true
+        defer { retrying = false }
+        do {
+            try offline.clear()
+            if !clerk.isLoaded {
+                try await clerk.refreshEnvironment()
+                try await clerk.refreshClient()
+            }
+            if clerk.isAuthFlowComplete { try await clerk.auth.signOut() }
+            localSignOutPending = false
+            startupError = nil
+        } catch { startupError = "Connect and tap Try again to finish signing out." }
+    }
+
+    @MainActor
+    private func finishRemovalReceipt() async {
+        guard !retrying else { return }
+        retrying = true
+        defer { retrying = false }
+        do {
+            try offline.clear()
+            if !clerk.isLoaded {
+                try await clerk.refreshEnvironment()
+                try await clerk.refreshClient()
+            }
+            if clerk.isAuthFlowComplete { try await clerk.auth.signOut() }
+            accountRemovalReceiptScope = ""
+            accountRemovalSupportReference = ""
+            startupError = nil
+        } catch {
+            startupError = "Your removal is still accepted. Reconnect to finish signing out."
+        }
     }
 
     @MainActor
@@ -232,6 +306,7 @@ struct NativeAuthRootView: View {
             // the SDK or discarding a previously persisted device session.
             _ = try await clerk.refreshEnvironment()
             _ = try await clerk.refreshClient()
+            if clerk.isAuthFlowComplete { _ = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk) }
             if !clerk.isLoaded {
                 startupError = "Sign-in could not finish loading. Check the iOS Clerk application settings and try again."
             }

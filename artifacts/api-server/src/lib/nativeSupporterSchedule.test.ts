@@ -45,6 +45,20 @@ after(async () => {
   await pool.end();
 });
 
+test("native schedule carries a verified link identity that changes when ownership is relinked", async () => {
+  const who = identity();
+  const firstOwner = await owner();
+  await link(who, firstOwner);
+  const first = GetNativeSupporterScheduleResponse.parse(await loadNativeSupporterSchedule(who));
+  assert.match(first.linkId!, /^[0-9a-f-]{36}$/i);
+  assert.equal((await loadNativeSupporterSchedule(who)).linkId, first.linkId);
+  await pool.query("DELETE FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2", [who.issuer, who.subject]);
+  assert.equal((await loadNativeSupporterSchedule(who)).linkId, null);
+  await link(who, await owner());
+  const second = await loadNativeSupporterSchedule(who);
+  assert.notEqual(second.linkId, first.linkId, "a new verified owner/link must not reuse an old offline namespace");
+});
+
 test("native schedule is scoped to the explicitly linked active account", async () => {
   const who = identity();
   const linkedOwner = await owner();
@@ -237,6 +251,7 @@ test("unlinked native identities receive no account schedule", async () => {
   const schedule = await loadNativeSupporterSchedule(identity());
   assert.deepEqual(schedule, {
     status: "unlinked",
+    linkId: null,
     athleteName: null,
     teamName: null,
     seasonName: null,

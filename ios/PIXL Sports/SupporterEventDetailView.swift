@@ -593,6 +593,8 @@ struct SupporterEventDetailView: View {
         } catch is CancellationError {
         } catch {
             guard !Task.isCancelled else { return }
+            let status = (error as? NativeAccountLinkError)?.statusCode
+            if case .loaded = state, status == nil || (status ?? 0) >= 500 { return }
             state = .unavailable(error.localizedDescription)
         }
     }

@@ -60,8 +60,30 @@ final class NativeAccountLinkClient {
     }
 
     func getData(_ path: String, headers: [String: String] = [:], clerk: Clerk) async throws -> Data {
+        let offline = NativeOfflineRuntime.shared
+        let key = offline.cacheKey(path, headers: headers)
+        if !offline.online || (!clerk.isLoaded && offline.canContinue) {
+            guard let key, let data = try offline.saved(key, subject: clerk.user?.id) else {
+                throw NativeOfflineError.notPrepared
+            }
+            return data
+        }
+        do { return try await networkGetData(path, headers: headers, clerk: clerk) }
+        catch {
+            let status = (error as? NativeAccountLinkError)?.statusCode
+            if error is URLError || (status.map { $0 >= 500 } ?? false),
+               let key, let saved = try? offline.saved(key, subject: clerk.user?.id) {
+                return saved
+            }
+            throw error
+        }
+    }
+
+    private func networkGetData(_ path: String, headers: [String: String], clerk: Clerk) async throws -> Data {
         let origin = try Self.apiOrigin()
-        guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
+        let requestScope = NativeOfflineVault.shared.namespace
+        guard clerk.isAuthFlowComplete, let subject = clerk.user?.id,
+              let token = try await clerk.session?.getToken() else {
             throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
         }
 
@@ -79,6 +101,7 @@ final class NativeAccountLinkClient {
         }
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = 8
         request.httpMethod = "GET"
         request.cachePolicy = .reloadIgnoringLocalCacheData
         for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
@@ -87,12 +110,15 @@ final class NativeAccountLinkClient {
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         request.setValue("no-cache", forHTTPHeaderField: "Pragma")
         let (data, response) = try await session.data(for: request)
+        guard clerk.user?.id == subject, origin == (try Self.apiOrigin()),
+              requestScope == NativeOfflineVault.shared.namespace else { throw NativeOfflineError.locked }
         guard let response = response as? HTTPURLResponse else {
             throw NativeAccountLinkError.message("The PIXL Sports schedule could not be checked.")
         }
         guard response.statusCode == 200 else {
+            NativeOfflineRuntime.shared.deny(status: response.statusCode, accountScope: path == "supporter/schedule")
             if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
-                throw NativeAccountLinkError.message(failure.error)
+                throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
             }
             let host = origin.host ?? "the configured server"
             if (300...399).contains(response.statusCode) {
@@ -100,9 +126,21 @@ final class NativeAccountLinkClient {
                     "\(host) redirected the request (HTTP \(response.statusCode)). Check the API address."
                 )
             }
-            throw NativeAccountLinkError.message(
+            throw NativeAccountLinkError.serverStatus(response.statusCode,
                 "The PIXL Sports schedule request failed on \(host) (HTTP \(response.statusCode))."
             )
+        }
+        let offline = NativeOfflineRuntime.shared
+        if path == "supporter/schedule" {
+            let schedule = try JSONDecoder().decode(NativeSupporterSchedule.self, from: data)
+            if schedule.status == "linked" {
+                offline.verified(token: token, subject: subject, schedule: data)
+            } else if schedule.status == "unlinked", offline.vault.subject == subject {
+                try offline.clear()
+            }
+        } else if offline.vault.canContinue(subject: subject),
+                  let key = offline.cacheKey(path, headers: headers) {
+            offline.cache(data, key: key)
         }
         return data
     }
@@ -110,6 +148,7 @@ final class NativeAccountLinkClient {
     func uploadAthletePhoto(
         _ contents: Data, cardID: String, revision: String, clerk: Clerk
     ) async throws -> Data {
+        guard NativeOfflineRuntime.shared.online else { throw NativeOfflineError.onlineOnly }
         guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
             throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
         }
@@ -151,10 +190,48 @@ final class NativeAccountLinkClient {
         body: T,
         method: String = "POST",
         apiRoot: Bool = false,
-        clerk: Clerk
+        clerk: Clerk,
+        allowCachedWorkspace: Bool = true
+    ) async throws -> Data {
+        let offline = NativeOfflineRuntime.shared
+        let encoded = try JSONEncoder().encode(body)
+        let requestScope = offline.vault.namespace
+        let requestSubject = clerk.user?.id
+        let object = (try? JSONSerialization.jsonObject(with: encoded)) as? [String: Any]
+        let shareToken = object?["shareToken"] as? String
+        let isWorkspace = !apiRoot && path == "supporter/event-workspace"
+        if !offline.online || (!clerk.isLoaded && offline.canContinue) {
+            if isWorkspace, allowCachedWorkspace, let shareToken,
+               let data = try offline.saved("workspace/" + shareToken, subject: clerk.user?.id) { return data }
+            throw isWorkspace ? NativeOfflineError.notPrepared : NativeOfflineError.onlineOnly
+        }
+        do {
+            let data = try await networkPostData(path, body: body, method: method, apiRoot: apiRoot, clerk: clerk)
+            guard requestScope == offline.vault.namespace, requestSubject == clerk.user?.id else {
+                throw NativeOfflineError.locked
+            }
+            if (isWorkspace || path == "supporter/event-workspace-save"), let shareToken,
+               offline.vault.canContinue(subject: clerk.user?.id),
+               (try? JSONDecoder().decode(NativeEventWorkspace.self, from: data)) != nil {
+                offline.cache(data, key: "workspace/" + shareToken)
+                offline.receivedFreshContent()
+            }
+            return data
+        } catch {
+            let status = (error as? NativeAccountLinkError)?.statusCode
+            if isWorkspace, allowCachedWorkspace, error is URLError || (status.map { $0 >= 500 } ?? false),
+               let shareToken, let data = try? offline.saved("workspace/" + shareToken, subject: clerk.user?.id) { return data }
+            throw error
+        }
+    }
+
+    private func networkPostData<T: Encodable>(
+        _ path: String, body: T, method: String, apiRoot: Bool, clerk: Clerk
     ) async throws -> Data {
         let origin = try Self.apiOrigin()
-        guard clerk.isAuthFlowComplete, let token = try await clerk.session?.getToken() else {
+        let requestScope = NativeOfflineVault.shared.namespace
+        guard clerk.isAuthFlowComplete, let subject = clerk.user?.id,
+              let token = try await clerk.session?.getToken() else {
             throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
         }
 
@@ -175,6 +252,7 @@ final class NativeAccountLinkClient {
         }
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = 10
         request.httpMethod = method
         request.httpBody = try JSONEncoder().encode(body)
         request.cachePolicy = .reloadIgnoringLocalCacheData
@@ -184,10 +262,13 @@ final class NativeAccountLinkClient {
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         request.setValue("no-cache", forHTTPHeaderField: "Pragma")
         let (data, response) = try await session.data(for: request)
+        guard clerk.user?.id == subject, origin == (try Self.apiOrigin()),
+              requestScope == NativeOfflineVault.shared.namespace else { throw NativeOfflineError.locked }
         guard let response = response as? HTTPURLResponse else {
             throw NativeAccountLinkError.message("The Event Card could not be saved.")
         }
         guard (200...299).contains(response.statusCode) else {
+            NativeOfflineRuntime.shared.deny(status: response.statusCode)
             if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
                 throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
             }
@@ -207,6 +288,7 @@ final class NativeAccountLinkClient {
     }
 
     func publicRequest(_ path: String, method: String = "GET", body: [String: String]? = nil) async throws -> Data {
+        guard NativeOfflineRuntime.shared.online else { throw NativeOfflineError.onlineOnly }
         let origin = try Self.apiOrigin()
         let components = path.split(separator: "/", omittingEmptySubsequences: false)
         guard !components.isEmpty,

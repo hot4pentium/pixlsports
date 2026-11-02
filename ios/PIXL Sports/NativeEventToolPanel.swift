@@ -29,8 +29,8 @@ struct NativeEventToolPanel: View {
             return
         }
 #endif
-        _workspaceModel = StateObject(wrappedValue: NativeEventToolModel(
-            shareToken: event.shareToken, accountID: clerk?.user?.id ?? "signed-out"
+        _workspaceModel = StateObject(wrappedValue: NativeEventToolModel.shared(
+            shareToken: event.shareToken, accountID: clerk?.user?.id ?? NativeOfflineRuntime.shared.accountID
         ))
     }
 

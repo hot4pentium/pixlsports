@@ -138,9 +138,34 @@ final class SupporterHomeViewModel: ObservableObject {
         let previewRequestID = UUID()
         let previewUserID = clerk.user?.id
         hypePreviewRequestID = previewRequestID
-        state = .loading
-        hypeCardPreview = nil
-        hypeCardPrivatePhoto = nil
+        let offline = NativeOfflineRuntime.shared
+        if let data = try? offline.vault.read("get/supporter/schedule", subject: previewUserID),
+           let saved = try? JSONDecoder().decode(NativeSupporterSchedule.self, from: data),
+           saved.status == "linked" {
+            state = .schedule(page: saved, events: upcomingEvents(in: saved, now: Date()),
+                              pastEvents: recentCompletedEvents(in: saved, now: Date()))
+            if let data = try? offline.vault.read("get/supporter/profile", subject: previewUserID),
+               let savedProfile = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data) {
+                athleteProfile = savedProfile
+                hasLoadedAthleteProfile = true
+                hasResolvedAthleteProfile = true
+                hasResolvedInitialSchedule = true
+            }
+            if let data = try? offline.vault.read("dashboard-preview", subject: previewUserID),
+               let savedPreview = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: data) {
+                let normalize: (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                let name = savedPreview.publicCard?.athleteName ?? savedPreview.privateCard?.athleteName
+                let team = savedPreview.publicCard?.teamName ?? savedPreview.privateCard?.teamName ?? ""
+                let expectedName = athleteProfile?.athleteName ?? saved.athleteName ?? ""
+                let expectedTeam = athleteProfile?.teamName ?? saved.teamName ?? ""
+                if !savedPreview.identityMismatch,
+                   name.map({ normalize($0) == normalize(expectedName) &&
+                       (normalize(expectedTeam).isEmpty || normalize(team) == normalize(expectedTeam)) }) ?? true {
+                    hypeCardPreview = savedPreview
+                    hypeCardPrivatePhoto = savedPreview.privatePhoto.flatMap(UIImage.init(data:))
+                } else { hypeCardPreview = nil; hypeCardPrivatePhoto = nil }
+            }
+        } else if !hasResolvedInitialSchedule { state = .loading }
         hypeCardPreviewError = nil
         do {
             var page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
@@ -171,6 +196,7 @@ final class SupporterHomeViewModel: ObservableObject {
                 hasResolvedInitialSchedule = true
                 return
             }
+            let verifiedScope = offline.vault.namespace
             let now = Date()
             state = .schedule(
                 page: page,
@@ -198,7 +224,7 @@ final class SupporterHomeViewModel: ObservableObject {
             do {
                 let preview = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
                 guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
-                      clerk.user?.id == previewUserID else { return }
+                      clerk.user?.id == previewUserID, verifiedScope == offline.vault.namespace else { return }
                 let cardName = preview.publicCard?.athleteName ?? preview.privateCard?.athleteName
                 let cardTeam = preview.publicCard?.teamName ?? preview.privateCard?.teamName ?? ""
                 let expectedName = athleteProfile?.athleteName ?? page.athleteName ?? ""
@@ -213,6 +239,7 @@ final class SupporterHomeViewModel: ObservableObject {
                 } else {
                     hypeCardPreview = preview
                     hypeCardPrivatePhoto = preview.privatePhoto.flatMap(UIImage.init(data:))
+                    if let data = try? JSONEncoder().encode(preview) { offline.cache(data, key: "dashboard-preview") }
                     if preview.privatePhoto != nil && hypeCardPrivatePhoto == nil {
                         hypeCardPreviewError = "The HYPE Card photo could not be displayed. Open the card to try again."
                     }
@@ -224,6 +251,7 @@ final class SupporterHomeViewModel: ObservableObject {
                 hypeCardPreviewError = error.localizedDescription
             }
             guard !Task.isCancelled else { return }
+            offline.resume(clerk: clerk)
         } catch is CancellationError {
             finishCancelledScheduleLoad()
             return
@@ -232,6 +260,7 @@ final class SupporterHomeViewModel: ObservableObject {
                 finishCancelledScheduleLoad()
                 return
             }
+            if case .schedule = state { hasResolvedInitialSchedule = true; return }
             switch error.code {
             case .notConnectedToInternet, .networkConnectionLost, .timedOut:
                 state = .failed("Check your internet connection, then try again.")
@@ -242,6 +271,11 @@ final class SupporterHomeViewModel: ObservableObject {
         } catch {
             guard !Task.isCancelled else {
                 finishCancelledScheduleLoad()
+                return
+            }
+            let status = (error as? NativeAccountLinkError)?.statusCode
+            if case .schedule = state, status == nil || (status ?? 0) >= 500 {
+                hasResolvedInitialSchedule = true
                 return
             }
             state = .failed(error.localizedDescription)
@@ -258,19 +292,22 @@ final class SupporterHomeViewModel: ObservableObject {
         in page: NativeSupporterSchedule,
         now: Date
     ) -> [SupporterScheduleItem] {
-        let zone = TimeZone(identifier: page.timezone ?? "") ?? .current
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = zone
         dateFormatter.dateFormat = "yyyy-MM-dd"
-        let today = dateFormatter.string(from: now)
 
         let candidates = page.events.compactMap { event -> SupporterScheduleItem? in
             guard event.status != "final" else { return nil }
-            let start = event.parsedStart(timezone: page.timezone)
-
-            if event.status == "live" {
-                return SupporterScheduleItem(event: event, timing: .live, start: start)
+            let zone = TimeZone(identifier: event.timezone ?? page.timezone ?? "") ?? .current
+            dateFormatter.timeZone = zone
+            let today = dateFormatter.string(from: now)
+            let start = event.parsedStart(timezone: zone.identifier)
+            if event.type == "game" {
+                let recommendation = NativeEventGuideTiming.gameRecommendation(
+                    eventDate: event.date, start: start, timeZone: zone, now: now)
+                if recommendation == .share { return nil }
+                return SupporterScheduleItem(event: event,
+                    timing: recommendation == .trackStats ? .live : .upcoming, start: start)
             }
 
             guard event.date >= today else { return nil }

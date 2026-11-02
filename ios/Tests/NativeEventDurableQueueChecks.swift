@@ -36,7 +36,7 @@ struct NativeEventDurableQueueChecks {
         let conflictRelaunch = NativeEventDurableQueue<QueueCommand>(storageKey: key, defaults: defaults)
         precondition(conflictRelaunch.conflictBlocked)
         precondition(conflictRelaunch.commands.first?.attempted == true)
-        conflictRelaunch.removeAll()
+        try conflictRelaunch.removeAll()
         precondition(conflictRelaunch.commands.isEmpty)
         precondition(!conflictRelaunch.conflictBlocked)
         print("Native Event durable queue interruption checks passed.")

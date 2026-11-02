@@ -6,52 +6,6 @@ extension Notification.Name {
     static let nativeEventScheduleChanged = Notification.Name("pixl.nativeEventScheduleChanged")
 }
 
-struct NativeEventWorkspace: Decodable {
-    struct Prep: Decodable {
-        let items: [NativePrepItem]
-        let notes: String
-    }
-    struct Rules: Decodable {
-        struct Stat: Decodable, Identifiable {
-            let id: String
-            let label: String
-            let points: Int
-        }
-        let phaseLabel: String
-        let stats: [Stat]
-    }
-    struct Game: Decodable {
-        struct Play: Decodable, Identifiable {
-            let id: String
-            let statId: String
-            let attribution: String?
-            let possessionSide: String?
-            let period: Int
-            let yards: Int?
-        }
-        let id: String
-        let sport: String
-        let status: String
-        let period: Int
-        let soccerPeriodFormat: String?
-        var score: Int
-        var opponentScore: Int
-        var scoreRecorded: Bool?
-        let outcome: String?
-        var stats: [String: Int]
-        var opponentStats: [String: Int]?
-        var events: [Play]
-        var hasRecordedScore: Bool { scoreRecorded ?? (score != 0 || opponentScore != 0) }
-    }
-    let linkId: String
-    let prepRevision: Int
-    let trackerRevision: Int
-    let sport: String
-    let prep: Prep
-    let rules: Rules
-    let game: Game?
-}
-
 #if DEBUG
 /// Local UI-test data only. No Clerk identity, network requests, or persistent
 /// pending-command storage are used by this workspace.
@@ -119,12 +73,6 @@ final class NativeScheduleRefreshUITestProbe: ObservableObject {
 }
 #endif
 
-struct NativeQueuedEventToolCommand: Codable {
-    var command: NativeEventToolCommand
-    var attempted: Bool
-    var displayOptimistically: Bool
-}
-
 /// Stat taps update the local display immediately and persist in an account-scoped
 /// queue. The server processes each mutation in order with one stable ID per tap.
 @MainActor
@@ -138,8 +86,12 @@ final class NativeEventToolModel: ObservableObject {
     @Published var reloadGeneration = 0
     private let shareToken: String
     private let storageKey: String
-    private let durableQueue: NativeEventDurableQueue<NativeQueuedEventToolCommand>
+    private var durableQueue: NativeEventDurableQueue<NativeQueuedEventToolCommand>
     private var drainingQueue = false
+    private var acknowledgedWorkspace: NativeEventWorkspace?
+    private var scheduledDrain: Task<Void, Never>?
+    private let offline = NativeOfflineRuntime.shared
+    private var scope: String?
     private static let maximumPendingCommands = 1_000
 
     var pending: NativeEventToolCommand? { pendingQueue.first?.command }
@@ -156,44 +108,22 @@ final class NativeEventToolModel: ObservableObject {
             : "\(pendingCount) \(noun) waiting to sync"
     }
 
-    var canQueueStat: Bool {
-        guard !unreadablePendingData, !conflictBlocked,
-              workspace?.game?.status == "live",
-              !pendingQueue.contains(where: { $0.command.kind != "stat" }) else { return false }
-        return !busy || !pendingQueue.isEmpty
+    var ownsCurrentScope: Bool { scope == offline.vault.namespace && offline.canContinue }
+    var canEditLocally: Bool {
+#if DEBUG
+        if NativeEventWorkspaceUITestFixture.isRequested { return workspace != nil }
+#endif
+        return workspace != nil && !unreadablePendingData && !conflictBlocked && ownsCurrentScope
+    }
+    var canQueueStat: Bool { canEditLocally && workspace?.game?.status == "live" }
+    var pendingFinal: Bool { pendingQueue.contains { $0.command.kind == "finish" } }
+
+    static func shared(shareToken: String, accountID: String) -> NativeEventToolModel {
+        NativeOfflineRuntime.shared.eventModel(token: shareToken, accountID: accountID)
     }
 
     var displayedGame: NativeEventWorkspace.Game? {
-        guard var game = workspace?.game else { return nil }
-        for queued in pendingQueue where queued.displayOptimistically && queued.command.kind == "stat" {
-            let command = queued.command
-            guard let statID = command.statId,
-                  let stat = workspace?.rules.stats.first(where: { $0.id == statID }) else { continue }
-            let opponentTeam = game.sport == "football" && command.opponent == true
-            if opponentTeam {
-                var stats = game.opponentStats ?? [:]
-                stats[statID, default: 0] += 1
-                game.opponentStats = stats
-            } else {
-                game.stats[statID, default: 0] += 1
-            }
-            let points = opponentTeam || command.athlete != true ? stat.points : 0
-            if opponentTeam {
-                game.opponentScore += points
-            } else {
-                game.score += points
-            }
-            game.scoreRecorded = game.scoreRecorded == true || points > 0
-            game.events.append(.init(
-                id: command.mutationId,
-                statId: statID,
-                attribution: opponentTeam ? "team" : command.athlete == true ? "athlete" : "team",
-                possessionSide: game.sport == "football" ? (opponentTeam ? "opponent" : "athlete") : nil,
-                period: game.period,
-                yards: game.sport == "football" ? command.yards ?? 0 : nil
-            ))
-        }
-        return game
+        workspace?.game
     }
 #if DEBUG
     var uiTestPendingMutationID: String? {
@@ -204,16 +134,10 @@ final class NativeEventToolModel: ObservableObject {
 
     init(shareToken: String, accountID: String) {
         self.shareToken = shareToken
+        let capturedScope = offline.vault.namespace
+        scope = capturedScope
         storageKey = "pixl-native-event-pending:\(accountID):\(shareToken)"
-        let legacyCommand = UserDefaults.standard.data(forKey: storageKey)
-            .flatMap { try? JSONDecoder().decode(NativeEventToolCommand.self, from: $0) }
-        let legacyQueue = legacyCommand.map {
-            [NativeQueuedEventToolCommand(command: $0, attempted: true, displayOptimistically: false)]
-        } ?? []
-        durableQueue = NativeEventDurableQueue(
-            storageKey: storageKey,
-            initialCommands: legacyQueue
-        )
+        durableQueue = Self.openQueue(storageKey: storageKey, token: shareToken, accountID: accountID, scope: capturedScope)
         pendingQueue = durableQueue.commands
         conflictBlocked = durableQueue.conflictBlocked
         if durableQueue.storageError != nil {
@@ -224,9 +148,49 @@ final class NativeEventToolModel: ObservableObject {
         } else if !pendingQueue.isEmpty {
             errorMessage = "Checking your saved tracker changes…"
         }
-        for index in pendingQueue.indices where pendingQueue[index].attempted {
-            pendingQueue[index].displayOptimistically = false
+        if let data = try? offline.vault.read("workspace/" + shareToken, subject: accountID),
+           let saved = try? JSONDecoder().decode(NativeEventWorkspace.self, from: data) {
+            acknowledgedWorkspace = saved
+            reconcileRestoredStatQueue()
+            rebuildProjection()
         }
+        offline.register(self, token: shareToken)
+    }
+
+    private static func openQueue(storageKey: String, token: String, accountID: String, scope: String?)
+        -> NativeEventDurableQueue<NativeQueuedEventToolCommand> {
+        let legacyData = UserDefaults.standard.data(forKey: storageKey)
+        let single = legacyData.flatMap { try? JSONDecoder().decode(NativeEventToolCommand.self, from: $0) }
+        return NativeEventDurableQueue(
+            storageKey: storageKey,
+            initialCommands: single.map { [.init(command: $0, attempted: true, displayOptimistically: false)] } ?? [],
+            protectedRead: {
+                guard NativeOfflineVault.shared.namespace == scope else { throw NativeOfflineError.locked }
+                return try NativeOfflineVault.shared.read("outbox/" + token, subject: accountID)
+            },
+            protectedWrite: {
+                guard NativeOfflineVault.shared.namespace == scope,
+                      NativeOfflineVault.shared.subject == accountID else { throw NativeOfflineError.locked }
+                try NativeOfflineVault.shared.write($0, key: "outbox/" + token)
+            },
+            validateLegacy: { data in
+                // Old preferences were subject-scoped only. Adopt them only
+                // after this issuer/subject has an authorized matching workspace.
+                guard let bytes = try NativeOfflineVault.shared.read("workspace/" + token, subject: accountID),
+                      let saved = try? JSONDecoder().decode(NativeEventWorkspace.self, from: bytes) else {
+                    throw NativeOfflineError.notPrepared
+                }
+                if let single {
+                    guard single.linkId == saved.linkId else { throw NativeOfflineError.locked }
+                } else {
+                    struct Legacy: Decodable { let commands: [NativeQueuedEventToolCommand] }
+                    let legacy = try JSONDecoder().decode(Legacy.self, from: data)
+                    guard legacy.commands.allSatisfy({ $0.command.linkId == saved.linkId }) else {
+                        throw NativeOfflineError.locked
+                    }
+                }
+            }
+        )
     }
 
 #if DEBUG
@@ -236,19 +200,33 @@ final class NativeEventToolModel: ObservableObject {
         storageKey = "unused-ui-test-prep-draft"
         durableQueue = NativeEventDurableQueue(storageKey: storageKey)
         workspace = uiTestFixture.workspace
+        acknowledgedWorkspace = workspace
     }
 #endif
 
     func load(clerk: Clerk) async {
-        guard !busy else { return }
+        guard !busy, !drainingQueue else { return }
         busy = true
+        defer { busy = false }
         var shouldDrain = false
         do {
             let data = try await NativeAccountLinkClient().postData(
                 "supporter/event-workspace", body: ["shareToken": shareToken], clerk: clerk
             )
-            workspace = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+            guard scope == offline.vault.namespace else { return }
+            let next = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+            if (durableQueue.storageError as? NativeOfflineError) == .notPrepared {
+                durableQueue = Self.openQueue(storageKey: storageKey, token: shareToken,
+                                              accountID: offline.accountID, scope: scope)
+                pendingQueue = durableQueue.commands
+                conflictBlocked = durableQueue.conflictBlocked
+                unreadablePendingData = durableQueue.storageError != nil
+            }
+            if NativeOfflineOutboxPolicy.conflicts(pendingQueue, with: next) { conflictBlocked = true }
+            acknowledgedWorkspace = next
             reconcileRestoredStatQueue()
+            rebuildProjection()
+            await recoverChecklistDraft(clerk: clerk)
             if unreadablePendingData {
                 errorMessage = "A saved tracker change could not be read. It has not been removed."
             } else if conflictBlocked {
@@ -262,6 +240,37 @@ final class NativeEventToolModel: ObservableObject {
         if shouldDrain { await drainQueue(clerk: clerk) }
     }
 
+    private func recoverChecklistDraft(clerk: Clerk) async {
+        guard ownsCurrentScope, !conflictBlocked, !unreadablePendingData else { return }
+        var draft: NativeOfflinePrepDraft
+        do {
+            guard let data = try offline.vault.read("draft/" + shareToken) else { return }
+            draft = try JSONDecoder().decode(NativeOfflinePrepDraft.self, from: data)
+        } catch {
+            unreadablePendingData = true
+            errorMessage = "Saved Prep changes could not be read. They have not been removed."
+            return
+        }
+        if !pendingQueue.contains(where: { $0.command.kind == "prep" }),
+           draft.baseRevision != workspace?.prepRevision {
+            conflictBlocked = true
+            errorMessage = "Prep changed elsewhere. Your on-device draft is retained; review it before choosing the server version."
+            try? persistPendingQueue()
+            return
+        }
+        guard draft.checklistDirty else { return }
+        if workspace?.prep.items != draft.items {
+            await save("prep", clerk: clerk, items: draft.items, notes: workspace?.prep.notes ?? "")
+            guard workspace?.prep.items == draft.items else { return }
+        }
+        draft.checklistDirty = false
+        do {
+            let retained = draft.notesDirty ? try JSONEncoder().encode(draft) : nil
+            try offline.vault.write(retained, key: "draft/" + shareToken)
+            offline.storageChanged()
+        } catch { errorMessage = "Prep is retained on this iPhone. Reconnect and retry to finish saving." }
+    }
+
     func save(
         _ kind: String, clerk: Clerk, statID: String? = nil,
         athlete: Bool? = nil, opponent: Bool? = nil, yards: Int? = nil,
@@ -270,15 +279,21 @@ final class NativeEventToolModel: ObservableObject {
         items: [NativePrepItem]? = nil, notes: String? = nil
     ) async {
         guard !unreadablePendingData, !conflictBlocked, let workspace else { return }
+        guard canEditLocally else { return }
         if kind == "stat" {
             guard canQueueStat else { return }
-            guard pendingQueue.count < Self.maximumPendingCommands else {
-                errorMessage = "Sync the pending stats before recording more. The on-device queue is full."
-                return
-            }
-        } else {
-            guard !busy, pendingQueue.isEmpty else { return }
         }
+        guard pendingQueue.count < Self.maximumPendingCommands else {
+            errorMessage = "Sync your saved changes before recording more. The on-device queue is full."
+            return
+        }
+        do {
+            var needsBase = pendingQueue.isEmpty
+            if !needsBase { needsBase = try offline.vault.read("workspace/" + shareToken) == nil }
+            if needsBase, let acknowledgedWorkspace {
+                try offline.vault.write(JSONEncoder().encode(acknowledgedWorkspace), key: "workspace/" + shareToken)
+            }
+        } catch { errorMessage = error.localizedDescription; return }
 
         var command = NativeEventToolCommand(
             shareToken: shareToken, mutationId: UUID().uuidString,
@@ -296,20 +311,26 @@ final class NativeEventToolModel: ObservableObject {
         command.outcome = outcome
         command.items = items
         command.notes = notes
-        pendingQueue.append(.init(
-            command: command,
-            attempted: false,
-            displayOptimistically: kind == "stat"
-        ))
+        let previousQueue = pendingQueue
+        let queued = NativeQueuedEventToolCommand(command: command, attempted: false, displayOptimistically: true)
+        if kind == "prep", let last = pendingQueue.last, !last.attempted, last.command.kind == "prep" {
+            pendingQueue[pendingQueue.count - 1] = queued
+        } else { pendingQueue.append(queued) }
         do {
             try persistPendingQueue()
         } catch {
-            pendingQueue.removeLast()
+            pendingQueue = previousQueue
             errorMessage = "The pending change could not be saved on this iPhone. Nothing was sent."
             return
         }
+        rebuildProjection()
         errorMessage = nil
-        await drainQueue(clerk: clerk)
+        scheduledDrain?.cancel()
+        scheduledDrain = Task {
+            do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
+            scheduledDrain = nil
+            await drainQueue(clerk: clerk)
+        }
     }
 
     func retry(clerk: Clerk) async {
@@ -324,17 +345,24 @@ final class NativeEventToolModel: ObservableObject {
     private func drainQueue(clerk: Clerk) async {
         guard !busy, !drainingQueue, !conflictBlocked, !unreadablePendingData,
               !pendingQueue.isEmpty, workspace != nil else { return }
+        guard offline.online, clerk.isAuthFlowComplete, scope == offline.vault.namespace,
+              offline.vault.canContinue(subject: clerk.user?.id), offline.claim(shareToken) else { return }
         drainingQueue = true
         busy = true
         errorMessage = nil
+        var scheduleChange: NativeEventToolCommand?
         defer {
             busy = false
             drainingQueue = false
+            offline.release(shareToken)
+            if let scheduleChange { postScheduleChange(for: scheduleChange) }
         }
 
         while !pendingQueue.isEmpty {
+            guard !Task.isCancelled, offline.online, scope == offline.vault.namespace,
+                  offline.vault.canContinue(subject: clerk.user?.id) else { return }
             if !pendingQueue[0].attempted {
-                guard let workspace else { return }
+                guard let workspace = acknowledgedWorkspace else { return }
                 pendingQueue[0].command.expectedRevision =
                     pendingQueue[0].command.kind == "prep" ? workspace.prepRevision : workspace.trackerRevision
                 pendingQueue[0].attempted = true
@@ -365,19 +393,55 @@ final class NativeEventToolModel: ObservableObject {
                 }
             }
 #endif
-                self.workspace = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
-                pendingQueue.removeFirst()
+                guard scope == offline.vault.namespace else { return }
+                let next = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+                guard next.linkId == command.linkId else {
+                    throw NativeAccountLinkError.serverStatus(409, "The verified Event Card connection changed.")
+                }
+                // Persist the acknowledgement before removing its outbox entry.
+                try offline.vault.write(data, key: "workspace/" + shareToken)
+                let receivedRevision = command.kind == "prep" ? next.prepRevision : next.trackerRevision
+                let concurrentChange = receivedRevision != command.expectedRevision + 1
+                if command.kind == "prep", !concurrentChange,
+                   let data = try offline.vault.read("draft/" + shareToken) {
+                    var draft = try JSONDecoder().decode(NativeOfflinePrepDraft.self, from: data)
+                    if draft.baseRevision == command.expectedRevision {
+                        draft.baseRevision = receivedRevision
+                        try offline.vault.write(JSONEncoder().encode(draft), key: "draft/" + shareToken)
+                    }
+                }
+                acknowledgedWorkspace = next
+                let acknowledged = pendingQueue.removeFirst()
+                if !concurrentChange {
+                    // Only our acknowledged operation may advance never-attempted
+                    // commands. A fresh remote revision alone must never rebase them.
+                    NativeOfflineOutboxPolicy.acknowledge(&pendingQueue, command: command, revision: receivedRevision)
+                }
                 do { try persistPendingQueue() }
                 catch {
+                    pendingQueue.insert(acknowledged, at: 0)
+                    reconcileRestoredStatQueue()
+                    rebuildProjection()
                     errorMessage = "The server saved this change, but the local queue could not be updated. Retrying is safe."
                     return
                 }
+                if concurrentChange && !pendingQueue.isEmpty {
+                    conflictBlocked = true
+                    try persistPendingQueue()
+                    rebuildProjection()
+                    errorMessage = "This event also changed elsewhere. Remaining changes are saved here for your review."
+                    return
+                }
+                rebuildProjection()
 #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep") {
                     UserDefaults.standard.removeObject(forKey: "\(storageKey):debug-drop-response:\(command.mutationId)")
             }
 #endif
-                postScheduleChange(for: command)
+                if scheduleChange == nil || ["start", "finish"].contains(command.kind)
+                    || !(scheduleChange.map { ["start", "finish"].contains($0.kind) } ?? false) {
+                    scheduleChange = command
+                }
             } catch {
                 if (error as? NativeAccountLinkError)?.statusCode == 409 {
                     conflictBlocked = true
@@ -385,6 +449,10 @@ final class NativeEventToolModel: ObservableObject {
                     errorMessage = "\(error.localizedDescription) Your queued changes are still saved on this iPhone. Discard them only if you want to use the server version."
                 } else {
                     errorMessage = "\(error.localizedDescription) \(pendingCount) pending changes remain saved on this iPhone. Retry when connected."
+#if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("--prep-hold-auto-retry") { return }
+#endif
+                    offline.resume(clerk: clerk, force: true)
                 }
                 return
             }
@@ -392,29 +460,53 @@ final class NativeEventToolModel: ObservableObject {
     }
 
     func discardAndReload(clerk: Clerk) async {
-        guard !busy else { return }
-        pendingQueue.removeAll()
-        conflictBlocked = false
-        unreadablePendingData = false
-        durableQueue.removeAll()
-        errorMessage = nil
-        await load(clerk: clerk)
-        reloadGeneration += 1
+        guard !busy, !drainingQueue, offline.online else {
+            errorMessage = "Reconnect before choosing the server version. Your pending changes are still saved."
+            return
+        }
+        do {
+            let data = try await NativeAccountLinkClient().postData(
+                "supporter/event-workspace", body: ["shareToken": shareToken], clerk: clerk, allowCachedWorkspace: false)
+            guard ownsCurrentScope else { throw NativeOfflineError.locked }
+            let saved = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+            guard saved.linkId == offline.vault.lease?.linkId else { throw NativeOfflineError.locked }
+            try offline.vault.write(data, key: "workspace/" + shareToken)
+            try offline.vault.write(nil, key: "draft/" + shareToken)
+            try durableQueue.removeAll()
+            pendingQueue.removeAll()
+            conflictBlocked = false
+            unreadablePendingData = false
+            acknowledgedWorkspace = saved
+            rebuildProjection()
+            errorMessage = nil
+            reloadGeneration += 1
+        } catch { errorMessage = error.localizedDescription }
     }
 
     private func persistPendingQueue() throws {
+        guard scope == offline.vault.namespace else { throw NativeOfflineError.locked }
         try durableQueue.save(commands: pendingQueue, conflictBlocked: conflictBlocked)
+        offline.storageChanged()
     }
 
     private func reconcileRestoredStatQueue() {
         guard !unreadablePendingData,
-              let trackerRevision = workspace?.trackerRevision else { return }
+              let saved = acknowledgedWorkspace else { return }
         for index in pendingQueue.indices
-        where pendingQueue[index].attempted && pendingQueue[index].command.kind == "stat" {
+        where pendingQueue[index].attempted {
+            let revision = pendingQueue[index].command.kind == "prep" ? saved.prepRevision : saved.trackerRevision
             pendingQueue[index].displayOptimistically =
-                pendingQueue[index].command.expectedRevision >= trackerRevision
+                pendingQueue[index].command.expectedRevision >= revision
         }
         if !pendingQueue.isEmpty { try? persistPendingQueue() }
+    }
+
+    private func rebuildProjection() {
+        guard var projected = acknowledgedWorkspace else { return }
+        for queued in pendingQueue where queued.displayOptimistically {
+            projected = NativeEventProjection.apply(queued.command, to: projected)
+        }
+        workspace = projected
     }
 
     private func postScheduleChange(for command: NativeEventToolCommand) {
@@ -430,23 +522,29 @@ final class NativeEventToolModel: ObservableObject {
 
 struct NativeToolSaveNotice: View {
     @ObservedObject var model: NativeEventToolModel
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
     let clerk: Clerk
     var hasUnsavedChanges = false
     @State private var confirmingDiscard = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if !offline.online {
+                Label("Offline · changes stay on this iPhone. Live Taps and sharing need a connection.",
+                      systemImage: "wifi.slash").font(.caption)
+            }
             if model.busy {
                 HStack { ProgressView(); Text(model.pendingCount > 0 ? model.pendingDescription : "Loading from PIXL…") }
             } else if model.pendingCount > 0 {
                 Label(model.pendingDescription, systemImage: "clock.arrow.circlepath")
                     .font(.caption)
+                    .accessibilityIdentifier("native-tool-pending")
             }
             if let message = model.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .accessibilityIdentifier("native-tool-save-error")
-                if model.pendingCount > 0 {
+                if model.pendingCount > 0 || model.conflictBlocked {
                     if !model.conflictBlocked {
                         Button(model.pendingCount == 1 ? "Retry pending save" : "Retry pending saves") {
                             Task { await model.retry(clerk: clerk) }
@@ -468,7 +566,9 @@ struct NativeToolSaveNotice: View {
                     Button("Try again") { Task { await model.load(clerk: clerk) } }
                 }
             } else if model.workspace != nil && !model.busy {
-                Label(hasUnsavedChanges ? "Unsaved prep changes" : "Connected to your PIXL account",
+                Label(hasUnsavedChanges ? "Unsaved prep changes" :
+                        model.pendingCount > 0 ? "Saved here · waiting to sync" :
+                        offline.usingSavedContent ? "Saved copy on this iPhone" : "Changes synced",
                       systemImage: hasUnsavedChanges ? "pencil.circle" : "checkmark.shield")
                     .font(.caption)
             }

@@ -14,6 +14,8 @@ type NativeSupporterEvent = ReturnType<typeof mapAthleteEventSummaries>[number] 
 
 export interface NativeSupporterScheduleResponse {
   status: "unlinked" | "linked";
+  /** Verified native link, never an email-derived owner identifier. */
+  linkId?: string | null;
   athleteName: string | null;
   teamName: string | null;
   seasonName: string | null;
@@ -271,8 +273,9 @@ export async function loadNativeSupporterSchedule(
   try {
     await tx.query("BEGIN");
     const { rows: links } = await tx.query<{
+      id: string;
       owner_clerk_user_id: string;
-    }>(`SELECT owner_clerk_user_id
+    }>(`SELECT id, owner_clerk_user_id
       FROM native_account_links
       WHERE native_issuer=$1 AND native_subject=$2
       FOR SHARE`, [identity.issuer, identity.subject]);
@@ -281,6 +284,7 @@ export async function loadNativeSupporterSchedule(
       await tx.query("COMMIT");
       return {
         status: "unlinked",
+        linkId: null,
         athleteName: null,
         teamName: null,
         seasonName: null,
@@ -377,6 +381,7 @@ export async function loadNativeSupporterSchedule(
     });
     const response: NativeSupporterScheduleResponse = {
       status: "linked",
+      linkId: links[0]!.id,
       athleteName: invite?.athlete_name ?? null,
       teamName: invite?.team_name ?? null,
       seasonName: invite?.season_name ?? null,

@@ -10,6 +10,7 @@ struct NativeEventPrepView: View {
     @StateObject private var model: NativeEventToolModel
     @State private var items: [NativePrepItem] = []
     @State private var notes = ""
+    @State private var notesDirty = false
     @State private var newItem = ""
     @State private var edited = false
     @State private var prepAutosaveTask: Task<Void, Never>?
@@ -32,8 +33,8 @@ struct NativeEventPrepView: View {
         self.embedded = embedded
         self.compactContent = compactContent
         self.onDirtyChange = onDirtyChange
-        _model = StateObject(wrappedValue: model ?? NativeEventToolModel(
-            shareToken: event.shareToken, accountID: clerk.user?.id ?? "signed-out"
+        _model = StateObject(wrappedValue: model ?? NativeEventToolModel.shared(
+            shareToken: event.shareToken, accountID: clerk.user?.id ?? NativeOfflineRuntime.shared.accountID
         ))
     }
 
@@ -65,7 +66,7 @@ struct NativeEventPrepView: View {
                     .accessibilityIdentifier("native-prep-date")
             }
             .listRowBackground(SupporterHomeColors.panel)
-            if let clerk, model.busy || model.errorMessage != nil {
+            if let clerk, model.busy || model.errorMessage != nil || model.pendingCount > 0 {
                 Section {
                     NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
                 }
@@ -116,7 +117,7 @@ struct NativeEventPrepView: View {
                                 .accessibilityIdentifier("native-prep-item-\(item.id)")
                                 .contextMenu {
                                     Button("Remove task", role: .destructive) {
-                                        guard !model.busy, model.pending == nil else { return }
+                                        guard model.canEditLocally else { return }
                                         let id = item.id
                                         items.removeAll { $0.id == id }
                                         edited = true
@@ -171,11 +172,14 @@ struct NativeEventPrepView: View {
                 }
                 .listRowBackground(SupporterHomeColors.panel)
                 .listRowSeparatorTint(Color.white.opacity(0.10))
-                .disabled(model.busy || model.pending != nil)
+                .disabled(!model.canEditLocally)
                 Section {
                     TextField(
                         "Anything to remember?",
-                        text: Binding(get: { notes }, set: { notes = $0; edited = true }),
+                        text: Binding(get: { notes }, set: {
+                            notes = $0; notesDirty = true; edited = true
+                            persistDraft()
+                        }),
                         prompt: Text("Anything to remember?").foregroundColor(.white.opacity(0.76)),
                         axis: .vertical
                     )
@@ -189,7 +193,7 @@ struct NativeEventPrepView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .strokeBorder(.white.opacity(0.22), lineWidth: 1)
                         }
-                        .disabled(model.busy || model.pending != nil)
+                        .disabled(!model.canEditLocally)
                         .accessibilityIdentifier("native-prep-notes")
                     if notes.count > 4000 {
                         Text("Keep notes under 4,000 characters to save.").foregroundStyle(.red)
@@ -205,7 +209,7 @@ struct NativeEventPrepView: View {
 
     private var compactPrepContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let clerk, model.busy || model.errorMessage != nil {
+            if let clerk, model.busy || model.errorMessage != nil || model.pendingCount > 0 {
                 NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
             }
 
@@ -364,7 +368,7 @@ struct NativeEventPrepView: View {
             }
         }
         .buttonStyle(.plain)
-        .disabled(model.busy || model.pending != nil)
+        .disabled(!model.canEditLocally)
         .accessibilityLabel(item.label)
         .accessibilityValue(item.completed ? "Ready" : "Not ready")
         .accessibilityHint("Mark this task ready or not ready.")
@@ -489,7 +493,7 @@ struct NativeEventPrepView: View {
         .onChange(of: scenePhase) { _, phase in
             guard phase != .active, prepAutosaveTask != nil else { return }
             prepAutosaveTask?.cancel()
-            Task { await savePrepChanges() }
+            Task { await savePrepChanges(includeNotes: false) }
         }
         .task(id: completionCelebrationID) {
             guard showCompletionCelebration else { return }
@@ -584,7 +588,7 @@ struct NativeEventPrepView: View {
     }
 
     private var canSave: Bool {
-        edited && !model.busy && model.pending == nil && notes.count <= 4000
+        edited && model.canEditLocally && notes.count <= 4000
     }
 
     private var saveFooter: some View {
@@ -592,7 +596,8 @@ struct NativeEventPrepView: View {
             Text(
                 model.busy ? "Updating prep…" :
                     prepAutosaveTask != nil ? "Saving Prep…" :
-                    hasUnsavedEdits ? "Unsaved changes" : "Prep saved"
+                    hasUnsavedEdits ? "Unsaved changes" :
+                    model.pendingCount > 0 ? "Prep saved on this iPhone · waiting to sync" : "Prep saved"
             )
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(SupporterHomeColors.muted)
@@ -606,7 +611,7 @@ struct NativeEventPrepView: View {
 
     private func addTask() {
         let label = String(newItem.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
-        guard !model.busy, model.pending == nil, !label.isEmpty, items.count < 100 else { return }
+        guard model.canEditLocally, !label.isEmpty, items.count < 100 else { return }
         items.append(NativePrepItem(id: UUID().uuidString, label: label, completed: false))
         newItem = ""
         edited = true
@@ -618,10 +623,14 @@ struct NativeEventPrepView: View {
     }
 
     private func toggleItem(id: String) {
-        guard !model.busy, model.pending == nil,
+        guard model.canEditLocally,
               let index = items.firstIndex(where: { $0.id == id }) else { return }
         let wasComplete = isChecklistComplete
         items[index].completed.toggle()
+        if clerk != nil && !persistDraft() {
+            items[index].completed.toggle()
+            return
+        }
         edited = true
         scheduleChecklistAutosave()
 
@@ -642,9 +651,16 @@ struct NativeEventPrepView: View {
     private func applySavedPrep() {
         guard let prep = model.workspace?.prep else { return }
         // A failed save may be newer than the server; keep its exact draft.
-        items = model.pending?.items ?? prep.items
-        notes = model.pending?.notes ?? prep.notes
-        recoveringPrepDraft = model.pending?.items != nil || model.pending?.notes != nil
+        items = prep.items
+        notes = prep.notes
+        notesDirty = false
+        if let data = try? NativeOfflineVault.shared.read("draft/" + event.shareToken),
+           let draft = try? JSONDecoder().decode(PrepDraft.self, from: data) {
+            if draft.checklistDirty { items = draft.items }
+            if draft.notesDirty { notes = draft.notes; notesDirty = true }
+            recoveringPrepDraft = draft.checklistDirty || draft.notesDirty
+            if draft.checklistDirty { scheduleChecklistAutosave() }
+        } else { recoveringPrepDraft = false }
         edited = recoveringPrepDraft
         if !hasInitializedChecklistExpansion {
             isChecklistExpanded = !isChecklistComplete
@@ -654,15 +670,16 @@ struct NativeEventPrepView: View {
 
     private func scheduleChecklistAutosave() {
         guard clerk != nil, model.workspace != nil else { return }
+        guard persistDraft() else { return }
         prepAutosaveTask?.cancel()
         prepAutosaveTask = Task {
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
-            await savePrepChanges()
+            await savePrepChanges(includeNotes: false)
         }
     }
 
-    private func savePrepChanges() async {
+    private func savePrepChanges(includeNotes: Bool = true) async {
         prepAutosaveTask?.cancel()
         prepAutosaveTask = nil
         guard let clerk else {
@@ -670,12 +687,36 @@ struct NativeEventPrepView: View {
             model.errorMessage = "This UI-test workspace cannot save."
             return
         }
-        guard edited, !model.busy, model.pending == nil else { return }
+        guard edited, model.canEditLocally else { return }
         recoveringPrepDraft = true
-        await model.save("prep", clerk: clerk, items: items, notes: notes)
-        if model.errorMessage == nil && model.pending == nil {
-            edited = false
-            recoveringPrepDraft = false
+        let submittedItems = items
+        let submittedNotes = includeNotes ? notes : (model.workspace?.prep.notes ?? "")
+        await model.save("prep", clerk: clerk, items: submittedItems, notes: submittedNotes)
+        if model.errorMessage == nil {
+            if includeNotes && notes == submittedNotes { notesDirty = false }
+            edited = notesDirty || items != model.workspace?.prep.items
+            recoveringPrepDraft = edited
+            persistDraft()
+        }
+    }
+
+    private typealias PrepDraft = NativeOfflinePrepDraft
+
+    @discardableResult
+    private func persistDraft() -> Bool {
+        guard clerk != nil else { return true }
+        guard model.ownsCurrentScope else { return false }
+        do {
+            let dirty = items != model.workspace?.prep.items
+            let data = dirty || notesDirty ? try JSONEncoder().encode(
+                PrepDraft(items: items, notes: notes, notesDirty: notesDirty, checklistDirty: dirty,
+                          baseRevision: model.workspace?.prepRevision)) : nil
+            try NativeOfflineVault.shared.write(data, key: "draft/" + event.shareToken)
+            NativeOfflineRuntime.shared.storageChanged()
+            return true
+        } catch {
+            model.errorMessage = "These edits are not saved on this iPhone. \(error.localizedDescription)"
+            return false
         }
     }
 }

@@ -5571,6 +5571,9 @@ components:
       required: [status, athleteName, teamName, seasonName, timezone, events, record]
       properties:
         status: { type: string, enum: [linked, unlinked] }
+        linkId:
+          type: ["string", "null"]
+          description: Server-verified native account link used to isolate protected iPhone offline data.
         athleteName: { type: ["string", "null"] }
         teamName: { type: ["string", "null"] }
         seasonName: { type: ["string", "null"] }

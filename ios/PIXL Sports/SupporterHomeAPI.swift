@@ -1,7 +1,7 @@
 import Foundation
 import ClerkKit
 
-struct NativeSupporterSchedule: Decodable {
+struct NativeSupporterSchedule: Codable {
     let status: String
     let athleteName: String?
     let teamName: String?
@@ -9,9 +9,10 @@ struct NativeSupporterSchedule: Decodable {
     let timezone: String?
     let events: [AthleteFanEvent]
     var record: NativeSeasonRecord? = nil
+    var linkId: String? = nil
 }
 
-struct NativeSeasonRecord: Decodable {
+struct NativeSeasonRecord: Codable {
     let wins: Int
     let losses: Int
     let ties: Int
@@ -28,7 +29,7 @@ struct NativeHypeCardReference: Decodable {
     let settings: NativeHypeCardSettings?
 }
 
-struct NativeHypeCardSettings: Decodable, Equatable {
+struct NativeHypeCardSettings: Codable, Equatable {
     let showHypeCard: Bool
     let showStats: Bool
     let showEvents: Bool
@@ -69,7 +70,7 @@ struct NativeHypeCardIdentityCorrectionResult: Decodable {
     let teamName: String
 }
 
-struct NativePrivateHypeCard: Decodable {
+struct NativePrivateHypeCard: Codable {
     let athleteName: String
     let teamName: String
     let seasonName: String
@@ -77,7 +78,7 @@ struct NativePrivateHypeCard: Decodable {
     let hasPhoto: Bool
 }
 
-struct NativeSupporterHypeCardPreview {
+struct NativeSupporterHypeCardPreview: Codable {
     let publicCard: NativePublicHypeCard?
     let privateCard: NativePrivateHypeCard?
     let privatePhoto: Data?
@@ -86,7 +87,7 @@ struct NativeSupporterHypeCardPreview {
     let correctionId: String?
 }
 
-struct NativePublicHypeCard: Decodable {
+struct NativePublicHypeCard: Codable {
     let athleteName: String
     let teamName: String
     let seasonName: String
@@ -103,7 +104,7 @@ struct NativePublicHypeCard: Decodable {
     var inviteToken: String? = nil
 }
 
-struct NativeHypeMedia: Decodable {
+struct NativeHypeMedia: Codable {
     let shareToken: String
     let title: String
     let mediaName: String
@@ -112,7 +113,7 @@ struct NativeHypeMedia: Decodable {
     let createdAt: String
 }
 
-struct NativeHypeVideo: Decodable, Identifiable {
+struct NativeHypeVideo: Codable, Identifiable {
     let shareToken: String
     let title: String
     let mediaName: String
@@ -125,15 +126,15 @@ struct NativeHypeVideo: Decodable, Identifiable {
     var id: String { shareToken }
 }
 
-struct NativeHypeStats: Decodable {
-    struct Record: Decodable {
+struct NativeHypeStats: Codable {
+    struct Record: Codable {
         let wins: Int
         let losses: Int
         let ties: Int
         let gamesPlayed: Int
     }
 
-    struct Game: Decodable, Identifiable {
+    struct Game: Codable, Identifiable {
         let date: String
         let opponent: String
         let score: Int
@@ -155,7 +156,7 @@ struct NativeHypeStats: Decodable {
     let updatedAt: String
 }
 
-struct NativeHypeEvent: Decodable, Identifiable {
+struct NativeHypeEvent: Codable, Identifiable {
     let shareToken: String
     let eventId: String
     let title: String
@@ -170,7 +171,7 @@ struct NativeHypeEvent: Decodable, Identifiable {
     var id: String { shareToken }
 }
 
-struct AthleteFanEvent: Decodable, Identifiable {
+struct AthleteFanEvent: Codable, Identifiable {
     let shareToken: String
     let eventId: String
     let title: String
@@ -446,6 +447,21 @@ enum SupporterHomeAPI {
     }
 
     static func fetchOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
+        let offline = NativeOfflineRuntime.shared
+        if !offline.online,
+           let data = try offline.vault.read("dashboard-preview", subject: clerk.user?.id),
+           let saved = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: data) { return saved }
+        do { return try await fetchOnlineOwnerHypeCardPreview(clerk: clerk) }
+        catch {
+            let status = (error as? NativeAccountLinkError)?.statusCode
+            if error is URLError || (status.map { $0 >= 500 } ?? false),
+               let data = try? offline.vault.read("dashboard-preview", subject: clerk.user?.id),
+               let saved = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: data) { return saved }
+            throw error
+        }
+    }
+
+    private static func fetchOnlineOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
         let client = NativeAccountLinkClient()
         let data = try await client.getData("supporter/hype-card", clerk: clerk)
         let reference: NativeHypeCardReference
@@ -463,10 +479,15 @@ enum SupporterHomeAPI {
                   inviteToken.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil else {
                 throw SupporterHomeAPIError.invalidResponse
             }
+            let card = try await fetchPublicHypeCard(inviteToken: inviteToken, client: client)
+            // The same owner-authenticated small photo endpoint also works for
+            // published cards; never download video as part of offline warmup.
+            let photo = card.photoUrl != nil || card.cutoutUrl != nil
+                ? try? await client.getData("supporter/hype-card/cutout-photo", clerk: clerk) : nil
             return NativeSupporterHypeCardPreview(
-                publicCard: try await fetchPublicHypeCard(inviteToken: inviteToken, client: client),
+                publicCard: card,
                 privateCard: nil,
-                privatePhoto: nil,
+                privatePhoto: photo,
                 settings: settings,
                 identityMismatch: false,
                 correctionId: nil

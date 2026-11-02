@@ -4053,6 +4053,7 @@ export const getNativeSupporterScheduleResponseRecordOneGamesPlayedMin = 0;
 
 export const GetNativeSupporterScheduleResponse = zod.object({
   "status": zod.enum(['linked', 'unlinked']),
+  "linkId": zod.string().nullish().describe('Server-verified native account link used to isolate protected iPhone offline data.'),
   "athleteName": zod.string().nullable(),
   "teamName": zod.string().nullable(),
   "seasonName": zod.string().nullable(),

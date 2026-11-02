@@ -3159,6 +3159,11 @@ export type NativeSupporterScheduleEventsItem = {
 
 export interface NativeSupporterSchedule {
   status: NativeSupporterScheduleStatus;
+  /**
+     * Server-verified native account link used to isolate protected iPhone offline data.
+     * @nullable
+     */
+  linkId?: string | null;
   /** @nullable */
   athleteName: string | null;
   /** @nullable */
