@@ -111,7 +111,7 @@ struct NativeAthleteProfileView: View {
                 Section {
                     Text(isInitialSetup
                         ? "Setup gives your athlete a private starter HYPE Card. If you already have a card, we keep its athlete, team, sport, and season. Add a photo later in Settings. Nothing is published until you choose to share."
-                        : "These details are saved to your linked PIXL account and can be edited later in Settings. Saving your profile does not publish a private HYPE Card.")
+                        : "These details are saved to your iPhone account and can be edited later in Settings. Saving your profile does not publish a private HYPE Card.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

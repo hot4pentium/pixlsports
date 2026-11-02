@@ -1,15 +1,15 @@
 ---
-name: Cross-platform account path
-description: The selected client and shared-auth direction for PIXL Sports.
+name: iOS-first account boundaries
+description: Independent native profiles, preservation of legacy linked data, and native authentication setup.
 ---
 
-Prioritize the native SwiftUI iPhone app as the mobile development target, using the existing PWA as the reference for product behavior and visual direction. Do not plan a separate native Android client now; this focus choice does not itself decide whether web or PWA access should be removed. The user approved a dedicated external Clerk app for iOS-only authentication, with Sign in with Apple and the prebuilt native UI. It must securely link to existing PIXL account/data. Replit-managed Clerk supports the web app but not native ClerkKit/Native API, and its accounts are not designed for direct export. Existing records are keyed to Clerk user IDs, so the API needs a verified identity-linking strategy.
+Prioritize the native SwiftUI iPhone app as the mobile development target, using the existing PWA as a reference for product behavior. Do not plan a separate native Android client now; this focus choice does not itself decide whether web or PWA access should be removed. The user approved a dedicated external Clerk app for iOS-only authentication, with Sign in with Apple and the prebuilt native UI. Legacy iPhone accounts already using PWA data must retain their verified ownership bindings. New signups receive separate iOS profiles without connecting to the PWA.
 
 Do not replace PWA auth, migrate production accounts, or connect the SwiftUI project to the generic personal “My Application” Clerk project. The user chose a new dedicated iOS Clerk app instead. The native SwiftUI prototype remains part of the product; the PWA is not replacing it.
 
 The iOS `ClerkConfig.plist` publishable key must belong to the dedicated iOS Clerk instance, not the Replit-managed web app. **Why:** the API verifies the native token against the separately configured iOS issuer, so a web-instance token can return HTTP 401. **How to apply:** when restoring the plist, pair the iOS app key with the server's native issuer configuration; never ask the user to paste a key into chat.
 
-Linking must prove the native identity and existing web owner independently, with explicit approval on both sides. Never infer ownership from matching emails or silently replace a connection. Disconnect preserves both accounts and their saved data.
+Legacy linking, when used for recovery, must prove the native identity and existing web owner independently, with explicit approval on both sides. Never infer ownership from matching emails or silently replace a connection. Disconnect preserves both accounts and their saved data.
 
 Do not show a “PIXL account connected” card or connection-management section on the native dashboard.
 
@@ -23,21 +23,17 @@ The native Prep screen's top content should show only the event date, without a 
 
 **How to apply:** Keep actionable save, retry, and error feedback; omit redundant event metadata and routine account-status panels from Prep.
 
-Use subtle translucent white backgrounds to distinguish the native dashboard's sections.
-
-**Why:** The user said the sections otherwise blend together as one large section.
-
-**How to apply:** Group the hero, upcoming events, and history into separate surfaces while preserving the navy backdrop and existing card layout.
-
 The family experience is explicit sign-up or sign-in after installation; App Store ownership is not authentication. The user stated that profiles will only be iOS and that users do not need to connect a PIXL/PWA account. Native welcome and onboarding messaging should describe iPhone sign-in and athlete setup, not web-account connection.
 
 New iPhone signups must be able to create their backing PIXL account and reach athlete setup without first visiting the PWA. The user explicitly approved building this flow; keep existing-account ownership verification and PWA authentication intact.
 
-For genuinely new iPhone users, retain a managed-tenant backing owner rather than changing the owner identity used throughout the product. Verify the native user's email through the separate iOS provider connection; an email collision requires the existing explicit linking flow, never a merge.
+New iPhone signups receive independent iOS profiles, including when the same email already exists in the PWA. Email must never select, copy, link, or merge a PWA profile. Do not create a PWA authentication identity merely to hold a new iOS athlete's details.
 
-**Why:** native signup must work without a PWA visit while existing private-data and profile services still rely on managed-tenant owners. This avoids migrating ownership or treating matching email addresses as authorization.
+**Why:** the user explicitly chose separate iOS profiles and said profiles will only be iOS, without a PIXL/PWA connection step.
 
-**How to apply:** keep native-provider credentials server-side, verify the connected instance against the configured native issuer, and commit app access and the native mapping atomically. An interrupted provider creation may resume only its unused, origin-tagged backing identity; do not recreate a deliberately disconnected mapping.
+The managed Clerk tenant requires an authentication identifier and rejected identifier-less shadow users. Do not fabricate email addresses or verified identifiers to create native backing users in that tenant.
+
+**How to apply:** derive new profile ownership from the verified native issuer and subject, keep credentials server-side, and commit profile setup and access atomically. Preserve already-linked iOS owners and their saved data unchanged; do not migrate or detach them as part of new signup. Revocation and lifecycle restrictions must not be bypassed by creating a replacement profile.
 
 **Why:** the user said, “No need to connect a pixl account as profiles will only be iOS.”
 

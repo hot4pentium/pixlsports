@@ -1,4 +1,4 @@
-import { createClerkClient } from "@clerk/express";
+import { readNativeOwnerMetadata } from "./nativeOwnerMetadata";
 import { pool } from "@workspace/db";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { ObjectNotFoundError, ObjectStorageService } from "./objectStorage";
@@ -69,8 +69,7 @@ function settingsFor(invite: {
 }
 
 async function selectedProfile(ownerClerkUserId: string): Promise<SelectedAthlete> {
-  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-  const user = await clerk.users.getUser(ownerClerkUserId);
+  const user = await readNativeOwnerMetadata(ownerClerkUserId);
   const metadata = user.unsafeMetadata;
   return {
     athleteName: typeof metadata.athleteName === "string" ? metadata.athleteName.trim() : "",

@@ -459,16 +459,21 @@ published automatically. A PWA visit is not required.
 The API uses the server-side Clerk workspace connector for the dedicated iOS
 instance. Its public signing keys must match `NATIVE_IOS_CLERK_ISSUER`.
 Keep the iOS secret out of Xcode and leave the PWA's managed keys unchanged.
-The server creates a backing managed-tenant owner for a genuinely new verified
-email so the existing private-data and profile services retain their canonical
-owner. It never attaches an existing account by email. Existing sign-ins,
-cancelled or blocked accounts, and intentionally revoked links do not become
-new accounts through this endpoint.
+New iPhone signups receive independent database-backed profiles in
+`native_accounts`, with owners namespaced by the verified issuer and subject.
+The server does not create a PWA Clerk user, copy a PWA profile, or select an
+account by email—even when the same email was used in the PWA. Profile metadata
+and the private starter card save in one transaction.
+Existing linked iPhone accounts retain their original owner and data. Cancelled
+or blocked accounts and revoked native profiles cannot restart onboarding to
+replace their existing profile. An exact former native-signup origin is checked
+only to preserve recovery protections; it is never an email-based lookup.
 
 Device verification: use a fresh, verified development identity, confirm the
 athlete form opens without a PWA visit, save with optional fields blank, relaunch,
-and verify the same athlete and one private starter card remain. Confirm an
-existing web email instead offers the explicit account connection path.
+and verify the same athlete and one private starter card remain. Also use an
+email already registered in the PWA: it should open a blank iPhone profile
+without offering account connection or changing any PWA data.
 Development API checks do not replace an Xcode build or physical-iPhone check.
 
 ### HYPE Card photo checks

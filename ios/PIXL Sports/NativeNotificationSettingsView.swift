@@ -113,7 +113,7 @@ struct NativeNotificationSettingsView: View {
             Form {
                 Section("iPhone sign-in") {
                     Label("PIXL Sports account", systemImage: "person.crop.circle")
-                    Text("Your iPhone sign-in is managed by Clerk. Event Card alert choices are saved separately to your linked PIXL account.")
+                    Text("Your account keeps your athlete profile, Event Cards, and alert preferences together.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Button("Sign out of iPhone account", role: .destructive) {

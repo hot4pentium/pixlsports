@@ -127,7 +127,7 @@
 - [Installed offline priorities](installed-offline-priorities.md) — preload day-of tools; cache other tools on use rather than downloading every feature at installation.
 - [Fixed paired-card content](fixed-paired-card-content.md) — preserve equal 3:4 card sizing by keeping required text from flex-shrinking and reclaiming space inside the card.
 - [Tracker attribution boundaries](tracker-attribution-boundaries.md) — recipient scoreboards name the team; athlete snapshots and opponent possession stats stay distinct.
-- [Cross-platform account path](native-ios-first-flow.md) — preserve PWA auth; SwiftUI reads private Event Card schedules through verified account links.
+- [iOS account boundaries](native-ios-first-flow.md) — new iOS profiles are separate from PWA data; preserve existing linked owners and never infer ownership from email.
 - [Native supporter event source](native-supporter-event-source.md) — private iPhone schedules, Event Cards, and hidden HYPE Card previews stay behind the verified account link.
 - [Landing install section](landing-install-section.md) — keep PWA install guidance in its own prominent, energetic, graphics-led section.
 - [Patch batch recovery](patch-batch-recovery.md) — after any failed multi-file patch, inspect every targeted file because partial application is possible.

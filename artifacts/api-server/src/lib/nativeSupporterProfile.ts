@@ -1,6 +1,6 @@
 import { pool, type PoolClient } from "@workspace/db";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
-import { getAdminClerkClient } from "./adminAccess";
+import { readNativeOwnerMetadata, writeNativeOwnerMetadata } from "./nativeOwnerMetadata";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { assignNativeStarterCard, findNativeOwnerCard, savedStarterSport } from "./nativeStarterHypeCard";
 
@@ -16,15 +16,13 @@ type ProfileInput = NativeSupporterProfile & { completeSetup?: boolean };
 type ClerkUser = { unsafeMetadata?: unknown };
 
 type Dependencies = {
-  getUser: (owner: string) => Promise<ClerkUser>;
-  updateUser: (owner: string, metadata: Record<string, unknown>) => Promise<void>;
+  getUser: (owner: string, tx?: PoolClient) => Promise<ClerkUser>;
+  updateUser: (owner: string, metadata: Record<string, unknown>, tx?: PoolClient) => Promise<void>;
 };
 
 const clerkDependencies: Dependencies = {
-  getUser: async (owner) => getAdminClerkClient().users.getUser(owner),
-  updateUser: async (owner, unsafeMetadata) => {
-    await getAdminClerkClient().users.updateUser(owner, { unsafeMetadata });
-  },
+  getUser: readNativeOwnerMetadata,
+  updateUser: writeNativeOwnerMetadata,
 };
 
 function metadataRecord(value: unknown): Record<string, unknown> {
@@ -115,8 +113,8 @@ function assertValidProfile(profile: NativeSupporterProfile) {
 export function createNativeSupporterProfileService(dependencies: Dependencies = clerkDependencies) {
   return {
     async load(identity: NativeIdentity): Promise<NativeSupporterProfile> {
-      return withLinkedOwner(identity, "SHARE", async (_tx, owner) => {
-        const user = await dependencies.getUser(owner);
+      return withLinkedOwner(identity, "SHARE", async (tx, owner) => {
+        const user = await dependencies.getUser(owner, tx);
         return profileFromMetadata(user.unsafeMetadata);
       });
     },
@@ -128,7 +126,7 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
       return withLinkedOwner(identity, "UPDATE", async (tx, owner) => {
         // The verified link is locked for update, serializing iPhone setup
         // requests. The card's unique-owner constraint also covers web races.
-        const user = await dependencies.getUser(owner);
+        const user = await dependencies.getUser(owner, tx);
         const oldMetadata = metadataRecord(user.unsafeMetadata);
         const oldProfile = profileFromMetadata(oldMetadata);
 
@@ -177,7 +175,7 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
           ...(completingSetup ? { seasonName: invite.season_name } : {}),
         };
         try {
-          await dependencies.updateUser(owner, nextMetadata);
+          await dependencies.updateUser(owner, nextMetadata, tx);
         } catch {
           throw new NativeLinkError(503, "Your athlete profile could not be saved. Please try again.");
         }

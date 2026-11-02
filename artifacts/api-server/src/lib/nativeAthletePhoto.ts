@@ -1,6 +1,6 @@
 import { pool, type PoolClient } from "@workspace/db";
 import type { GetNativeAthletePhotoStateResponse, RemoveNativeAthletePhotoBody } from "@workspace/api-zod";
-import { getAdminClerkClient } from "./adminAccess";
+import { readNativeOwnerMetadata } from "./nativeOwnerMetadata";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { ObjectStorageService } from "./objectStorage";
@@ -43,7 +43,7 @@ export function createNativeAthletePhotoService(dependencies: {
 } = {}) {
   const media = dependencies.storage ?? storage;
   const loadProfile = dependencies.loadProfile ?? (async (owner: string) => {
-    const user = await getAdminClerkClient().users.getUser(owner);
+    const user = await readNativeOwnerMetadata(owner);
     return {
       athleteName: typeof user.unsafeMetadata.athleteName === "string" ? user.unsafeMetadata.athleteName : "",
       teamName: typeof user.unsafeMetadata.teamName === "string" ? user.unsafeMetadata.teamName : "",
