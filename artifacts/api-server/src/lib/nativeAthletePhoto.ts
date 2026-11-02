@@ -7,6 +7,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { athletePhotoRevision } from "./athletePhotoRevision";
 import { sanitizeAthleteInvitePhoto, InvalidAthleteInvitePhotoError } from "./athleteInvitePhoto";
 import { nativePhotoStep } from "./nativeAthletePhotoDiagnostics";
+import { checkPhotoStorageReadiness, photoStorageUnavailableMessage } from "./photoStorageReadiness";
 
 type Profile = { athleteName: string; teamName: string };
 type Card = {
@@ -126,6 +127,9 @@ export function createNativeAthletePhotoService(dependencies: {
         return photoPath(card) ? nativePhotoStep("storage_read", () => media.read(photoPath(card)!)) : null;
       }),
     async save(identity: NativeIdentity, expected: NativeAthletePhotoExpectation, input: Buffer, contentType: string) {
+      if (!dependencies.storage && (await checkPhotoStorageReadiness()).status !== "ready") {
+        throw new NativeLinkError(503, photoStorageUnavailableMessage);
+      }
       let newPath: string | null = null;
       let oldPaths: (string | null)[] = [];
       let result: NativeAthletePhotoState;

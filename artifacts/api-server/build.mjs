@@ -19,6 +19,7 @@ async function buildAll() {
       path.resolve(artifactDir, "src/index.ts"),
       path.resolve(artifactDir, "src/jobs/gameOnAlertsCli.ts"),
       path.resolve(artifactDir, "src/jobs/gameOnAlertsTriggerCli.ts"),
+      path.resolve(artifactDir, "src/jobs/photoStorageSmokeCli.ts"),
     ],
     platform: "node",
     bundle: true,

@@ -49,6 +49,7 @@ import {
 } from "@workspace/db";
 import { getApnsConfig } from "../lib/apns";
 import { nativeAthletePhoto } from "../lib/nativeAthletePhoto";
+import { checkPhotoStorageReadiness, photoStorageUnavailableMessage } from "../lib/photoStorageReadiness";
 import { nativePhotoFailureResponse, type NativePhotoOperation } from "../lib/nativeAthletePhotoDiagnostics";
 import { GetNativeAthletePhotoStateResponse, RemoveNativeAthletePhotoBody } from "@workspace/api-zod";
 
@@ -392,6 +393,11 @@ nativeAccountLinkRouter.post("/supporter/hype-card/identity", handle(async (req,
   res.json(CorrectNativeSupporterHypeCardIdentityResponse.parse(updated));
 }));
 const NativeAthletePhotoExpectation = RemoveNativeAthletePhotoBody.strict();
+nativeAccountLinkRouter.get("/supporter/hype-card/athlete-photo/readiness", handle(async (_req, res) => {
+  const result = await checkPhotoStorageReadiness();
+  res.set("Cache-Control", "no-store").status(result.status === "ready" ? 200 : 503)
+    .json(result.status === "ready" ? result : { ...result, error: photoStorageUnavailableMessage });
+}));
 nativeAccountLinkRouter.get("/supporter/hype-card/athlete-photo", handle(async (_req, res) => {
   res.json(GetNativeAthletePhotoStateResponse.parse(await nativeAthletePhoto.state(identity(res))));
 }, "state"));

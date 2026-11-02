@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "run:game-on-alerts": "node --enable-source-maps ./dist/gameOnAlertsCli.mjs",
     "run:game-on-alerts-trigger": "node --enable-source-maps ./dist/gameOnAlertsTriggerCli.mjs",
+    "smoke:photo-storage": "node --enable-source-maps ./dist/photoStorageSmokeCli.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

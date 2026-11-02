@@ -62,6 +62,7 @@ struct NativeAthletePhotoSection: View {
     @State private var selection: PhotosPickerItem?
     @State private var isLoading = true
     @State private var isWorking = false
+    @State private var storageIsReady = false
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var confirmingRemoval = false
@@ -100,7 +101,7 @@ struct NativeAthletePhotoSection: View {
                                 .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 13))
                         }
                         .buttonStyle(.plain)
-                        .disabled(isWorking || !profileIsSaved)
+                        .disabled(isWorking || !profileIsSaved || !storageIsReady)
                         .accessibilityIdentifier("native-athlete-photo-choose")
                         if photoState.hasPhoto {
                             Button(role: .destructive) { confirmingRemoval = true } label: {
@@ -167,10 +168,15 @@ struct NativeAthletePhotoSection: View {
         errorMessage = nil
         successMessage = nil
         photoState = nil
+        storageIsReady = false
         photo = nil
         defer { isLoading = false }
         do {
             photoState = try await SupporterHomeAPI.fetchAthletePhotoState(clerk: clerk)
+            _ = try await NativeAccountLinkClient().getData(
+                "supporter/hype-card/athlete-photo/readiness", clerk: clerk
+            )
+            storageIsReady = true
             try await loadPreview()
         } catch {
             errorMessage = error.localizedDescription
@@ -191,7 +197,7 @@ struct NativeAthletePhotoSection: View {
 
     @MainActor
     private func upload(_ item: PhotosPickerItem) async {
-        guard let expected = photoState, profileIsSaved, !isWorking else { selection = nil; return }
+        guard let expected = photoState, profileIsSaved, storageIsReady, !isWorking else { selection = nil; return }
         isWorking = true
         errorMessage = nil
         successMessage = nil
@@ -212,6 +218,7 @@ struct NativeAthletePhotoSection: View {
                 errorMessage = "Your photo was saved, but its preview couldn’t load. Refresh to try again."
             }
         } catch {
+            storageIsReady = false
             errorMessage = error.localizedDescription
         }
     }
