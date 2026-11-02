@@ -51,9 +51,9 @@ final class NativeOfflineRuntime: ObservableObject {
             let connected = path.status == .satisfied
 #endif
             Task { @MainActor in
-                guard let self, online != connected else { return }
-                online = connected
-                if !connected { cancelWorker(); usingSavedContent = true }
+                guard let self, self.online != connected else { return }
+                self.online = connected
+                if !connected { self.cancelWorker(); self.usingSavedContent = true }
                 NotificationCenter.default.post(name: .nativeOfflineConnectionChanged, object: nil)
             }
         }
