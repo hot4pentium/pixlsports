@@ -23,6 +23,7 @@ final class NativeOfflineRuntime: ObservableObject {
     private var lastRefresh = Date.distantPast
     private var activeDrains = Set<String>()
     private var models: [String: NativeEventToolModel] = [:]
+    private var downloadEpochs = NativeOfflineDownloadEpochs()
     private var workerID = UUID()
     private var expiryClock: AnyCancellable?
 
@@ -77,7 +78,13 @@ final class NativeOfflineRuntime: ObservableObject {
     }
 
     func cache(_ data: Data, key: String) {
-        do { try vault.write(data, key: key); storageError = nil }
+        do {
+            try vault.write(data, key: key)
+            if key.hasPrefix("workspace/") {
+                try vault.allowAutomaticDownload(String(key.dropFirst(10)), subject: vault.subject)
+            }
+            storageError = nil
+        }
         catch { storageError = error.localizedDescription }
 #if os(iOS)
         Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
@@ -116,6 +123,7 @@ final class NativeOfflineRuntime: ObservableObject {
 
     func clear() throws {
         cancelWorker()
+        downloadEpochs.invalidate(event: nil)
         try vault.clear()
         models.removeAll()
         activeDrains.removeAll()
@@ -134,6 +142,48 @@ final class NativeOfflineRuntime: ObservableObject {
     func claim(_ token: String) -> Bool { activeDrains.insert(token).inserted }
     func release(_ token: String) { activeDrains.remove(token) }
     func storageChanged() { objectWillChange.send() }
+    func workspaceDownloadStamp(for token: String) -> NativeOfflineDownloadEpochs.Stamp {
+        downloadEpochs.stamp(for: token)
+    }
+    func acceptsWorkspaceDownload(_ stamp: NativeOfflineDownloadEpochs.Stamp, for token: String) -> Bool {
+        downloadEpochs.accepts(stamp, for: token)
+    }
+    func removeDownloads(event token: String?, subject: String?, namespace: String) throws {
+        guard vault.namespace == namespace, vault.canContinue(subject: subject) else {
+            throw NativeOfflineError.locked
+        }
+        cancelWorker()
+        defer { storageChanged() }
+        let removed = try vault.storageSnapshot(subject: subject).events.filter {
+            !$0.protected && (token == nil || $0.id == token)
+        }
+        // Invalidate before filesystem work: even partially successful cleanup
+        // must reject ordinary Event Card responses started before removal.
+        downloadEpochs.invalidate(event: token)
+        defer {
+            // Partial filesystem failure may already have removed a download.
+            // Do not keep serving its old in-memory model after cleanup.
+            for event in removed { models.removeValue(forKey: modelKey(event.id)) }
+        }
+        try vault.removeDisposableContent(event: token, subject: subject)
+        preparation = "Downloads removed. Open an event online to download it again."
+        storageError = nil
+    }
+
+    func downloadEvent(_ token: String, clerk: Clerk, namespace: String) async throws {
+        guard online, vault.namespace == namespace, vault.canContinue(subject: clerk.user?.id) else {
+            throw NativeOfflineError.onlineOnly
+        }
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/event-workspace", body: ["shareToken": token], clerk: clerk,
+            allowCachedWorkspace: false)
+        guard vault.namespace == namespace, vault.canContinue(subject: clerk.user?.id),
+              try vault.read("workspace/" + token, subject: clerk.user?.id) == data else {
+            throw NativeOfflineError.protectedStorage
+        }
+        try vault.allowAutomaticDownload(token, subject: clerk.user?.id)
+        storageChanged()
+    }
     func receivedFreshContent() { usingSavedContent = false }
     private func cancelWorker() {
         worker?.cancel()
@@ -221,8 +271,18 @@ final class NativeOfflineRuntime: ObservableObject {
         // Serial requests and a fixed budget keep first dashboard paint independent.
         let selected = Array(events.prefix(24))
         var prepared = 0
+        var removed = 0
         for event in selected {
             guard !Task.isCancelled, online, vault.namespace == scope else { return }
+            do {
+                if try vault.skipsAutomaticDownload(event.shareToken) {
+                    removed += 1
+                    continue
+                }
+            } catch {
+                storageError = error.localizedDescription
+                return
+            }
             if vault.date("workspace/" + event.shareToken).map({ Date().timeIntervalSince($0) < 300 }) == true {
                 prepared += 1
                 continue
@@ -235,10 +295,15 @@ final class NativeOfflineRuntime: ObservableObject {
                 }
                 prepared += 1
                 preparation = "Ready offline: \(prepared) of \(selected.count) upcoming events"
-            } catch { preparation = "Ready offline: \(prepared) of \(selected.count). Tap Retry to finish."; return }
+            } catch {
+                guard !Task.isCancelled, vault.namespace == scope else { return }
+                preparation = "Ready offline: \(prepared) of \(selected.count - removed). Tap Retry to finish."
+                return
+            }
         }
         preparation = selected.isEmpty ? "Saved dashboard available offline" :
             "Ready offline: \(prepared) upcoming events" + (events.count > 24 ? " · open other events to prepare them" : "")
+        if removed > 0 { preparation += " · \(removed) removed downloads need an online download" }
 #if os(iOS)
         await NativeLocalEventReminderCoordinator.shared.reconcile()
 #endif

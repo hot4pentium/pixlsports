@@ -3,15 +3,16 @@ import CryptoKit
 import Security
 
 enum NativeOfflineError: LocalizedError, Equatable {
-    case locked, notPrepared, protectedStorage, corrupt, full, onlineOnly
+    case locked, notPrepared, protectedStorage, corrupt, full, onlineOnly, pendingWork
     var errorDescription: String? {
         switch self {
         case .locked: "Reconnect and sign in to unlock your saved iPhone data."
         case .notPrepared: "Open this event with a connection first to prepare it for offline use."
         case .protectedStorage: "This iPhone could not securely save your changes. Nothing was sent."
         case .corrupt: "Saved data could not be read. Pending changes have not been deleted."
-        case .full: "Offline storage is full. Reconnect to sync your saved changes."
+        case .full: "Offline storage is full. Remove disposable downloads in Settings or free iPhone space. Reconnect to sync your saved changes."
         case .onlineOnly: "This action needs a connection. Your saved Prep and Tracker remain available offline."
+        case .pendingWork: "This event contains protected work or recovery data. Sync pending changes and save Prep drafts online before removing its download."
         }
     }
 }
@@ -68,6 +69,104 @@ final class NativeOfflineVault {
     }
     var preparedEvents: [String] {
         index.entries.keys.filter { $0.hasPrefix("workspace/") }.map { String($0.dropFirst(10)) }
+    }
+
+    private var knownKeys: Set<String> {
+        Set(Array(index.entries.keys) + (lease?.pendingKeys ?? []))
+    }
+
+    // Download preferences never confer authentication or extend the lease.
+    private struct CacheSettings: Codable {
+        var removedEvents = Set<String>()
+    }
+    private func cacheSettings() throws -> CacheSettings {
+        guard let data = try read("cache/settings") else { return CacheSettings() }
+        return try JSONDecoder().decode(CacheSettings.self, from: data)
+    }
+    func skipsAutomaticDownload(_ token: String) throws -> Bool {
+        try cacheSettings().removedEvents.contains(token)
+    }
+
+    func storageSnapshot(subject: String?) throws -> NativeOfflineStorageSnapshot {
+        guard canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        let settings = try cacheSettings()
+        let keys = knownKeys
+        let files = try manager.contentsOfDirectory(at: directory(), includingPropertiesForKeys: [.fileSizeKey])
+        let total = try files.reduce(0) { try $0 + ($1.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) }
+        func size(_ key: String) -> Int {
+            (try? file(key).resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        }
+        let removable = index.entries.keys.filter {
+            NativeOfflineStoragePolicy.isDisposable($0, knownKeys: keys)
+        }.reduce(0) { $0 + size($1) }
+        let schedule = try read("get/supporter/schedule", subject: subject).map {
+            try JSONDecoder().decode(NativeSupporterSchedule.self, from: $0)
+        }
+        let pending = NativeOfflineStoragePolicy.pendingEvents(keys: keys)
+        let tokens = Set(preparedEvents).union(pending).union(settings.removedEvents)
+            .union(schedule?.events.map(\.shareToken) ?? [])
+        let events = tokens.sorted().map { token in
+            let event = schedule?.events.first { $0.shareToken == token }
+            let ready: Bool
+            do {
+                if let bytes = try read("workspace/" + token, subject: subject) {
+                    _ = try JSONDecoder().decode(NativeEventWorkspace.self, from: bytes)
+                    ready = true
+                } else { ready = false }
+            } catch { ready = false }
+            return NativeOfflineStorageSnapshot.Event(
+                id: token, title: event?.title ?? "Saved event",
+                detail: event.map { $0.date + " " + $0.time } ?? "Not in the current saved schedule",
+                bytes: size("workspace/" + token), ready: ready,
+                protected: pending.contains(token)
+                    || (index.entries["workspace/" + token] == nil && size("workspace/" + token) > 0))
+        }
+        var available: Int64?
+#if os(iOS)
+        available = try? directory().resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+            .volumeAvailableCapacityForImportantUsage
+#endif
+        return .init(totalBytes: total, removableBytes: removable,
+                     deviceAvailableBytes: available, events: events.sorted {
+                         ($0.detail, $0.title, $0.id) < ($1.detail, $1.title, $1.id)
+                     })
+    }
+
+    /// Synchronous on MainActor: recheck live pending keys immediately before
+    /// deleting. No await can race a newly queued command or Prep draft.
+    func removeDisposableContent(event token: String? = nil, subject: String?) throws {
+        guard canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        let keys = knownKeys
+        let candidates = index.entries.keys.filter { key in
+            (token.map { key == "workspace/" + $0 } ?? true)
+                && NativeOfflineStoragePolicy.isDisposable(key, knownKeys: keys)
+        }
+        if let token {
+            let exists = manager.fileExists(atPath: try file("workspace/" + token).path)
+            if NativeOfflineStoragePolicy.pendingEvents(keys: keys).contains(token)
+                || (index.entries["workspace/" + token] == nil && exists) {
+                throw NativeOfflineError.pendingWork
+            }
+        }
+        var settings = try cacheSettings()
+        for key in candidates where key.hasPrefix("workspace/") {
+            settings.removedEvents.insert(String(key.dropFirst(10)))
+        }
+        // Free disposable bytes before writing preferences so a full device can
+        // recover space. Runtime has cancelled preparation; this is synchronous.
+        // A failure is surfaced even if part of the cleanup already succeeded.
+        for key in candidates {
+            try write(nil, key: key)
+        }
+        try write(JSONEncoder().encode(settings), key: "cache/settings")
+    }
+
+    func allowAutomaticDownload(_ token: String, subject: String?) throws {
+        guard canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        var settings = try cacheSettings()
+        guard settings.removedEvents.contains(token) else { return }
+        settings.removedEvents.remove(token)
+        try write(JSONEncoder().encode(settings), key: "cache/settings")
     }
 
     private init() {
@@ -145,17 +244,16 @@ final class NativeOfflineVault {
             let previous = (try? file(key).resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
             let total = occupied - previous + data.count + 28
             let isPending = key.hasPrefix("outbox/") || key.hasPrefix("draft/")
-            let budget = ((isPending ? 80 : 60) * 1_024 * 1_024) - 1_024 * 1_024
+            // Small management metadata can use the reserve too, so cleanup can
+            // finish while protected pending work exceeds the normal cache cap.
+            let budget = (isPending || key == "cache/settings")
+                ? NativeOfflineStoragePolicy.pendingBudget : NativeOfflineStoragePolicy.cacheBudget
             if total > budget {
                 var remaining = total
                 for (candidate, entry) in index.entries.sorted(by: { $0.value.date < $1.value.date }) {
                     guard remaining > budget else { break }
-                    guard candidate != key, !candidate.hasPrefix("outbox/"), !candidate.hasPrefix("draft/"),
-                          candidate != "get/supporter/schedule", candidate != "get/supporter/profile" else { continue }
-                    if candidate.hasPrefix("workspace/") {
-                        let token = String(candidate.dropFirst(10))
-                        if index.entries["outbox/" + token] != nil || index.entries["draft/" + token] != nil { continue }
-                    }
+                    guard candidate != key,
+                          NativeOfflineStoragePolicy.isDisposable(candidate, knownKeys: knownKeys) else { continue }
                     if manager.fileExists(atPath: try file(candidate).path) { try manager.removeItem(at: file(candidate)) }
                     index.entries.removeValue(forKey: candidate)
                     remaining -= entry.bytes

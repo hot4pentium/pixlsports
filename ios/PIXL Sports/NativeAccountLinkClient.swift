@@ -200,6 +200,7 @@ final class NativeAccountLinkClient {
         let object = (try? JSONSerialization.jsonObject(with: encoded)) as? [String: Any]
         let shareToken = object?["shareToken"] as? String
         let isWorkspace = !apiRoot && path == "supporter/event-workspace"
+        let downloadStamp = isWorkspace ? shareToken.map { offline.workspaceDownloadStamp(for: $0) } : nil
         if !offline.online || (!clerk.isLoaded && offline.canContinue) {
             if isWorkspace, allowCachedWorkspace, let shareToken,
                let data = try offline.saved("workspace/" + shareToken, subject: clerk.user?.id) { return data }
@@ -209,6 +210,16 @@ final class NativeAccountLinkClient {
             let data = try await networkPostData(path, body: body, method: method, apiRoot: apiRoot, clerk: clerk)
             guard requestScope == offline.vault.namespace, requestSubject == clerk.user?.id else {
                 throw NativeOfflineError.locked
+            }
+            if isWorkspace {
+                try Task.checkCancellation()
+                // Ordinary Event Card loads are independent of the preparation
+                // worker. Reject their pre-removal responses too, before either
+                // caching them or returning them to an in-memory event model.
+                if let shareToken, let downloadStamp,
+                   !offline.acceptsWorkspaceDownload(downloadStamp, for: shareToken) {
+                    throw NativeOfflineError.notPrepared
+                }
             }
             if (isWorkspace || path == "supporter/event-workspace-save"), let shareToken,
                offline.vault.canContinue(subject: clerk.user?.id),

@@ -27,6 +27,32 @@ an explicit choice before discarding it for the current server version.
 
 ## Privacy / recovery
 
+### Manage saved content
+
+In **Settings → Saved iPhone content**, review encrypted file usage, the protected
+recovery portion, removable downloads, free device space, and each saved schedule
+event's offline readiness. These are actual encrypted file sizes (including the
+index and encryption overhead), not an estimate of media streamed elsewhere.
+Unknown/unindexed files are conservatively counted as protected. Low space shows
+a warning; failed writes/removals remain explicit and never claim a save succeeded.
+
+Remove an individual clean event or all disposable downloads after confirmation.
+This keeps the schedule/profile, queued Tracker commands, every Prep draft
+(including unsaved notes), and any pending event's base workspace. Both manual
+cleanup and budget eviction consult the index **and** the Keychain recovery
+catalog, even when pending bytes cannot be decoded. An event that acquires pending
+work while confirmation is open is protected at execution time.
+
+Removed events say **Needs an online download**. Open one online or choose
+**Download again** before using Prep/Tracker offline. Successfully removed events
+stay excluded from routine automatic preparation until explicitly downloaded
+again; removal cancels background preparation and invalidates older downloads,
+including independent Event Card loads, so a late response cannot undo it.
+Removing content never deletes server records or authenticates a session. Download
+preferences are encrypted, account/link scoped, and cannot grant access or change
+the seven-day lease. Sign-out, revocation, and account switching retain the
+existing privacy rules.
+
 - The protected lease is issued only after the API accepts the native Clerk token
   and returns the verified native link. It is bound to issuer, subject, API origin,
   and that link—not email or PWA identity.
@@ -52,6 +78,12 @@ an explicit choice before discarding it for the current server version.
 From the repository root:
 
 ```sh
+swiftc -parse-as-library \
+  "ios/PIXL Sports/NativeOfflineStoragePolicy.swift" \
+  ios/Tests/NativeOfflineStoragePolicyChecks.swift \
+  -o /tmp/pixl-native-storage-checks &&
+/tmp/pixl-native-storage-checks
+
 swiftc -parse-as-library \
   "ios/PIXL Sports/NativeEventDurableQueue.swift" \
   "ios/PIXL Sports/NativeEventWorkspaceSnapshot.swift" \
@@ -145,3 +177,9 @@ Swift 5.8 toolchain here cannot currently resolve its Foundation/SwiftGlibc modu
 graph, and no Apple SDK or iPhone simulator is available. Consequently Apple
 compilation, the Foundation executables above, Keychain behavior on a signed app,
 and device UI tests must not be described as executed in this workspace.
+
+The storage-policy executable above uses only Swift's standard library and can
+run without Foundation. It covers conservative removal, pending/recovery catalog
+protection, per-account key sets, and low-storage thresholds. This does not replace
+the signed-app acceptance checks in
+`Tests/native-offline-storage-device-checks.md`.

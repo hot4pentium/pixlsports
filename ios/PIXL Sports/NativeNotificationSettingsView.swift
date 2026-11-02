@@ -172,6 +172,15 @@ struct NativeNotificationSettingsView: View {
                     }
                 }
 
+                Section("Saved content") {
+                    NavigationLink {
+                        NativeOfflineStorageView(clerk: clerk)
+                    } label: {
+                        Label("Saved iPhone content", systemImage: "internaldrive")
+                    }
+                    .accessibilityIdentifier("native-settings-saved-content")
+                }
+
                 Section("Event Card alerts") {
                     if model.isLoading {
                         ProgressView("Loading alert settings")
