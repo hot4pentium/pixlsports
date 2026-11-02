@@ -2,6 +2,22 @@
 
 This SwiftUI app uses the separate **PIXL Sports iOS** external Clerk app.
 The web/Android PWA keeps its existing Replit-managed Clerk configuration.
+
+## Account deletion notices
+
+An accepted removal request stores a non-sensitive receipt on the device before
+sign-out. The signed-out screen distinguishes the accepted request from completed
+cleanup, and the receipt remains available after relaunch until dismissed.
+
+The native cleanup job captures only a verified email from the native provider
+before deleting that identity. After cleanup is committed, it sends completion
+mail through the **Resend workspace API connection**, using the existing
+`support@pixlsports.com` sender. Resend must be connected and that sending domain
+verified before delivery can work. Email failures do not reopen account access.
+The recipient is erased after provider acceptance, or seven days after cleanup.
+Uncertain attempts older than the provider's idempotency window require review
+rather than an automatic duplicate send. Legacy access-removal notices explicitly
+state that the linked PWA account and data were preserved.
 Never copy the PWA's Clerk keys into the iPhone app or put a Clerk secret key
 in any native source, plist, or build setting.
 

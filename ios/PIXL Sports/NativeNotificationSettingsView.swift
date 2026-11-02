@@ -113,6 +113,7 @@ private final class NativeNotificationSettingsModel: ObservableObject {
 }
 
 struct NativeNotificationSettingsView: View {
+    @AppStorage("pixl.native.account-removal-receipt") private var accountRemovalReceiptScope = ""
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var pushCoordinator: NativePushRegistrationCoordinator
@@ -328,6 +329,7 @@ struct NativeNotificationSettingsView: View {
             let preview = try JSONDecoder().decode(NativeAccountDeletionPreview.self, from: data)
             if preview.status != "not_requested" {
                 removalAccepted = true
+                accountRemovalReceiptScope = preview.scope
                 await finishRemoval()
             } else {
                 deletionPreview = preview
@@ -349,6 +351,7 @@ struct NativeNotificationSettingsView: View {
                 clerk: clerk
             )
             removalAccepted = true
+            accountRemovalReceiptScope = preview.scope
             await finishRemoval()
         } catch {
             removalError = "Could not confirm removal. Review and retry; repeating an accepted request will not delete anything twice. \(error.localizedDescription)"

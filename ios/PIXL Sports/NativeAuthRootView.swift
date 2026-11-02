@@ -5,6 +5,7 @@ import ClerkKitUI
 #endif
 
 struct NativeAuthRootView: View {
+    @AppStorage("pixl.native.account-removal-receipt") private var accountRemovalReceiptScope = ""
     @Environment(Clerk.self) private var clerk
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var loadingTimedOut = false
@@ -47,6 +48,11 @@ struct NativeAuthRootView: View {
                         }
 #endif
                 }
+            } else if !accountRemovalReceiptScope.isEmpty {
+                NativeAccountRemovalReceiptView(scope: accountRemovalReceiptScope) {
+                    accountRemovalReceiptScope = ""
+                }
+                .preferredColorScheme(.light)
             } else {
                 ZStack {
                     signInBackdrop

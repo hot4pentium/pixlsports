@@ -3,15 +3,25 @@ import { deleteNativeProviderIdentity } from "../lib/nativeSignupIdentity";
 import { logger } from "../lib/logger";
 import { runExpiredAccountPurge } from "./purgeCancelledAccounts";
 import type { NativeIdentity } from "../lib/nativeIdentity";
+import { prepareNativeDeletionCompletionEmail, runNativeDeletionCompletionEmails } from "../lib/nativeAccountDeletionEmail";
 
 type Deletion = { id: string; native_issuer: string; native_subject: string; owner_id: string | null; scope: string };
 
 /** Durable queue; retries work after provider/object failures and process exits.
  * A session advisory lock prevents two Autoscale workers processing one entry.
  */
-export async function runNativeAccountDeletions(deps = {
+type Dependencies = {
+  deleteIdentity: typeof deleteNativeProviderIdentity;
+  purgeOwner: (owner: string) => Promise<void>;
+  prepareReceipt?: typeof prepareNativeDeletionCompletionEmail;
+  deliverReceipts?: typeof runNativeDeletionCompletionEmails;
+};
+
+export async function runNativeAccountDeletions(deps: Dependencies = {
   deleteIdentity: deleteNativeProviderIdentity,
   purgeOwner: async (owner: string) => { await runExpiredAccountPurge({ ownerClerkUserId: owner }); },
+  prepareReceipt: prepareNativeDeletionCompletionEmail,
+  deliverReceipts: runNativeDeletionCompletionEmails,
 }, who?: Pick<NativeIdentity, "issuer"> & Partial<Pick<NativeIdentity, "subject">>) {
   const pending = await pool.query<Deletion>(
     `WITH candidates AS (
@@ -35,6 +45,7 @@ export async function runNativeAccountDeletions(deps = {
       if (!locked) continue;
       const current = await tx.query("SELECT 1 FROM native_account_deletions WHERE id=$1 AND completed_at IS NULL", [row.id]);
       if (!current.rowCount) continue;
+      if (deps.prepareReceipt) await deps.prepareReceipt(row, undefined, tx);
       // Provider deletion revokes every native session. A 404 is success; the
       // provider helper still proves the connection matches the native issuer.
       await deps.deleteIdentity({ issuer: row.native_issuer, subject: row.native_subject });
@@ -61,4 +72,7 @@ export async function runNativeAccountDeletions(deps = {
       tx.release();
     }
   }
+  // completed_at is committed before this queue can send anything. Failed
+  // email attempts remain retryable independently of the finished deletion.
+  if (deps.deliverReceipts) await deps.deliverReceipts(undefined, who);
 }

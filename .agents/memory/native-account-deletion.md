@@ -18,3 +18,16 @@ access. Provider or storage failures must remain retryable without reopening
 access or changing the deletion scope. Bounded retry batches must rotate even
 failed or locked requests; selecting only the oldest unfinished requests can
 permanently exclude newer requests when a full batch keeps failing.
+
+Account-removal receipts must distinguish accepted requests from completed
+cleanup. Completion email must use the verified native sign-in address, captured
+before deleting that identity, never an inferred PWA address.
+
+**Why:** The user requested immediate acknowledgement and a final email only
+after deletion really finishes; a provider timeout can also hide a successful send.
+
+**How to apply:** Keep deletion completion independent of email delivery.
+Retry delivery without reopening access, use a stable provider idempotency key,
+and require review rather than blindly retrying after its deduplication window.
+Remove the temporary contact address after provider acceptance or seven days
+after completed cleanup, so mail failures do not retain it indefinitely.
