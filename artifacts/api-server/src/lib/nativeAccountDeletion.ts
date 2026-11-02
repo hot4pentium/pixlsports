@@ -35,11 +35,12 @@ export async function previewNativeAccountDeletion(who: NativeIdentity) {
     await tx.query("BEGIN");
     await tx.query("SELECT pg_advisory_xact_lock(761119995)");
     const target = await targetFor(who, tx);
-    const deletion = await tx.query("SELECT completed_at FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2",
+    const deletion = await tx.query("SELECT id,completed_at FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2",
       [who.issuer, who.subject]);
     await tx.query("COMMIT");
     return {
       ...target,
+      supportReference: (deletion.rows[0]?.id as string | undefined) ?? null,
       status: deletion.rows[0] ? (deletion.rows[0].completed_at ? "completed" : "pending") : "not_requested",
       title: target.scope === "independent" ? "Delete iPhone account?" : "Remove iPhone access?",
       explanation: target.scope === "independent"
@@ -79,8 +80,14 @@ export async function requestNativeAccountDeletion(who: NativeIdentity, confirme
       WHERE native_issuer=$1 AND native_subject=$2 AND status IN ('pending','approved')`, [who.issuer, who.subject]);
     await tx.query("DELETE FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2",
       [who.issuer, who.subject]);
+    // A reference identifies a receipt only; never use it to resolve authority.
+    const receipt = await tx.query<{ id: string }>(
+      "SELECT id FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2",
+      [who.issuer, who.subject],
+    );
+    if (!receipt.rows[0]) throw new Error("Committed removal receipt is missing");
     await tx.query("COMMIT");
-    return { status: "accepted" as const };
+    return { status: "accepted" as const, supportReference: receipt.rows[0].id };
   } catch (error) {
     await tx.query("ROLLBACK");
     throw error;

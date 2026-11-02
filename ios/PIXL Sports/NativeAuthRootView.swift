@@ -6,6 +6,7 @@ import ClerkKitUI
 
 struct NativeAuthRootView: View {
     @AppStorage("pixl.native.account-removal-receipt") private var accountRemovalReceiptScope = ""
+    @AppStorage("pixl.native.account-removal-reference") private var accountRemovalSupportReference = ""
     @Environment(Clerk.self) private var clerk
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var loadingTimedOut = false
@@ -49,8 +50,9 @@ struct NativeAuthRootView: View {
 #endif
                 }
             } else if !accountRemovalReceiptScope.isEmpty {
-                NativeAccountRemovalReceiptView(scope: accountRemovalReceiptScope) {
+                NativeAccountRemovalReceiptView(scope: accountRemovalReceiptScope, supportReference: accountRemovalSupportReference) {
                     accountRemovalReceiptScope = ""
+                    accountRemovalSupportReference = ""
                 }
                 .preferredColorScheme(.light)
             } else {

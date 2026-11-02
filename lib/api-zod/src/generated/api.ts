@@ -13,7 +13,8 @@ export const GetNativeAccountDeletionResponse = zod.object({
   "target": zod.string(),
   "title": zod.string(),
   "explanation": zod.string(),
-  "status": zod.enum(['not_requested', 'pending', 'completed'])
+  "status": zod.enum(['not_requested', 'pending', 'completed']),
+  "supportReference": zod.string().uuid().nullable().describe('Existing request reference for this authenticated native identity, or null before acceptance. Never authorizes access or recovery.')
 })
 
 
@@ -28,7 +29,8 @@ export const RequestNativeAccountDeletionBody = zod.object({
 })
 
 export const RequestNativeAccountDeletionResponse = zod.object({
-  "status": zod.enum(['accepted'])
+  "status": zod.enum(['accepted']),
+  "supportReference": zod.string().uuid().describe('Non-secret receipt reference, not authorization for deletion, recovery, or private status access.')
 })
 
 

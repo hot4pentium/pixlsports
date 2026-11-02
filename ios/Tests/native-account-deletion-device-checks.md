@@ -46,6 +46,18 @@ verify ClerkKit's local-session teardown.
   local sign-out without attempting to unregister an already revoked identity.
 - Use the largest accessibility text size and VoiceOver. Check the scope message,
   destructive action, cancellation and error/retry controls remain reachable.
+- After acceptance, check the signed-out receipt shows a support reference UUID
+  and **Copy support reference** copies exactly that value (not an email, athlete
+  name, target or sign-in token). Repeat for independent and legacy-linked removal.
+- Relaunch before dismissing the receipt; the same reference must remain visible.
+  Confirm **Back to sign in** clears both the receipt and its reference, and an
+  older device receipt without a reference still renders without a blank copy action.
+- With a simulated lost POST response, reopen Settings using the still-valid
+  session. The authenticated preview must restore the same reference before
+  local sign-out. Retry a failed local sign-out and confirm it is not lost.
+- Compare the eventual completion email with the device receipt: both must use
+  the exact same UUID, and neither receipt should retain athlete details or a
+  recipient address on the signed-out device.
 - Automated server tests cover invalid/PWA authentication, cross-account
   confirmation denial, changed targets, duplicate requests, lifecycle terminal
   states, provider-connection mismatch, provider 404 retries, media failures and

@@ -47,7 +47,7 @@ export async function prepareNativeDeletionCompletionEmail(
     WHERE id=$1 AND completion_email_resolved_at IS NULL`, [deletion.id, email]);
 }
 
-export function deletionCompletionMessage(scope: string) {
+export function deletionCompletionMessage(scope: string, supportReference: string) {
   const independent = scope === "independent";
   return {
     subject: independent
@@ -65,6 +65,8 @@ export function deletionCompletionMessage(scope: string) {
       "",
       "You can create a new iPhone account with the same email address. It will be a fresh account; deleted iPhone data will not return.",
       "",
+      `Support reference: ${supportReference}`,
+      "This reference identifies your request only. It cannot restore an account or grant access to private information.",
       "Questions? Contact support@pixlsports.com.",
     ].join("\n"),
   };
@@ -84,7 +86,7 @@ export async function sendNativeDeletionCompletionEmail(input: {
           body: {
             from: "PIXL Sports <support@pixlsports.com>",
             to: [input.email],
-            ...deletionCompletionMessage(input.scope),
+            ...deletionCompletionMessage(input.scope, input.id),
           },
         });
         if (!response.ok) {

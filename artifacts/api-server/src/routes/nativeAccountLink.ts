@@ -54,7 +54,7 @@ import { nativeAthletePhoto } from "../lib/nativeAthletePhoto";
 import { checkPhotoStorageReadiness, photoStorageUnavailableMessage } from "../lib/photoStorageReadiness";
 import { nativePhotoFailureResponse, type NativePhotoOperation } from "../lib/nativeAthletePhotoDiagnostics";
 import { GetNativeAthletePhotoStateResponse, RemoveNativeAthletePhotoBody } from "@workspace/api-zod";
-import { RequestNativeAccountDeletionBody, GetNativeAccountDeletionResponse } from "@workspace/api-zod";
+import { RequestNativeAccountDeletionBody, RequestNativeAccountDeletionResponse, GetNativeAccountDeletionResponse } from "@workspace/api-zod";
 import { assertNativeNotDeleting, previewNativeAccountDeletion, requestNativeAccountDeletion } from "../lib/nativeAccountDeletion";
 import { runNativeAccountDeletions } from "../jobs/nativeAccountDeletions";
 
@@ -108,7 +108,7 @@ nativeAccountLinkRouter.post("/account/deletion", handle(async (req, res) => {
   const result = await requestNativeAccountDeletion(identity(res), parsed.data);
   // The committed request, not a provider response, is authoritative. Failures
   // stay queued and are retried by the scheduled caller and startup worker.
-  res.status(202).json(result);
+  res.status(202).json(RequestNativeAccountDeletionResponse.parse(result));
   void runNativeAccountDeletions(undefined, identity(res)).catch(() => {
     req.log.warn("iPhone account removal remains queued for retry");
   });

@@ -14,4 +14,9 @@ export interface NativeAccountDeletionPreview {
   title: string;
   explanation: string;
   status: NativeAccountDeletionPreviewStatus;
+  /**
+     * Existing request reference for this authenticated native identity, or null before acceptance. Never authorizes access or recovery.
+     * @nullable
+     */
+  supportReference: string | null;
 }

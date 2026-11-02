@@ -9,4 +9,6 @@ import type { RequestNativeAccountDeletion202Status } from './requestNativeAccou
 
 export type RequestNativeAccountDeletion202 = {
   status: RequestNativeAccountDeletion202Status;
+  /** Non-secret receipt reference, not authorization for deletion, recovery, or private status access. */
+  supportReference: string;
 };

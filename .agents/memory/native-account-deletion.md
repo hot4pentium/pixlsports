@@ -31,3 +31,12 @@ Retry delivery without reopening access, use a stable provider idempotency key,
 and require review rather than blindly retrying after its deduplication window.
 Remove the temporary contact address after provider acceptance or seven days
 after completed cleanup, so mail failures do not retain it indefinitely.
+
+Deletion support references are non-secret identifiers, never credentials for
+deletion, recovery, or private status access.
+
+**Why:** A signed-out user must be able to identify their removal request without
+keeping athlete details or an email address on the device.
+
+**How to apply:** Support procedures must still verify identity independently;
+knowing or copying the reference does not establish account ownership.

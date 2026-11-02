@@ -146,11 +146,16 @@ test("no verified native email does not invent a recipient or use a PWA email", 
 });
 
 test("access-only completion wording explicitly preserves PWA accounts and data", () => {
-  const message = deletionCompletionMessage("iphone_access");
+  const reference = randomUUID();
+  const message = deletionCompletionMessage("iphone_access", reference);
+  assert.match(message.text, new RegExp(`Support reference: ${reference}`));
+  assert.match(message.text, /cannot restore an account or grant access/);
   assert.match(message.subject, /access has been removed/);
   assert.match(message.text, /web\/PWA account and its data were not deleted/);
   assert.doesNotMatch(message.subject, /account has been deleted/);
-  assert.match(deletionCompletionMessage("independent").subject, /account has been deleted/);
+  const independent = deletionCompletionMessage("independent", reference);
+  assert.match(independent.subject, /account has been deleted/);
+  assert.ok(independent.text.includes(reference));
 });
 
 test("Resend transport uses the configured connector and a stable idempotency key", async () => {
@@ -161,6 +166,7 @@ test("Resend transport uses the configured connector and a stable idempotency ke
     assert.equal(path, "/emails");
     assert.equal(options?.headers?.["Idempotency-Key"], "stable-fixture-key");
     assert.deepEqual((options?.body as { to: string[] }).to, ["verified@example.com"]);
+    assert.match((options?.body as { text: string }).text, /Support reference: receipt-fixture/);
     return new Response(JSON.stringify({ id: "email-fixture" }), { status: 200 });
   });
 });

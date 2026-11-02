@@ -99,6 +99,7 @@ test("account removal HTTP boundary requires native auth, explicit confirmation 
     const preview = await (await originalFetch(`${url}/account/deletion`, { headers })).json();
     assert.equal(preview.target, link.rows[0].id);
     assert.equal(preview.status, "not_requested");
+    assert.equal(preview.supportReference, null);
     assert.equal((await pool.query("SELECT 1 FROM native_account_deletions WHERE native_subject=$1", [nativeSubject])).rowCount, 0);
     for (const body of [
       { scope: preview.scope, target: preview.target },
@@ -117,7 +118,28 @@ test("account removal HTTP boundary requires native auth, explicit confirmation 
       method: "POST", headers: { ...headers, authorization: `Bearer ${otherToken}` },
       body: JSON.stringify({ scope: preview.scope, target: preview.target, confirmation: "DELETE" }),
     })).status, 409);
-    await requestNativeAccountDeletion(who, await previewNativeAccountDeletion(who));
+    const receipt = await requestNativeAccountDeletion(who, await previewNativeAccountDeletion(who));
+    const reference = receipt.supportReference;
+    const otherHeaders = { ...headers, authorization: `Bearer ${otherToken}` };
+    // Knowing the reference does not expose the request, even as a query parameter.
+    const otherPreview = await (await originalFetch(`${url}/account/deletion?supportReference=${reference}`, {
+      headers: otherHeaders,
+    })).json();
+    assert.equal(otherPreview.status, "not_requested");
+    assert.equal(otherPreview.supportReference, null);
+    assert.notEqual(otherPreview.target, preview.target);
+    for (const foreignHeaders of [headers, otherHeaders, { "content-type": "application/json" }]) {
+      const response = await originalFetch(`${url}/account/deletion`, {
+        method: "POST", headers: foreignHeaders,
+        body: JSON.stringify({ scope: preview.scope, target: preview.target, confirmation: "DELETE", supportReference: reference }),
+      });
+      assert.equal(response.status, "authorization" in foreignHeaders ? 400 : 401);
+    }
+    assert.equal((await originalFetch(`${url}/account/deletion`, {
+      method: "POST", headers: otherHeaders,
+      body: JSON.stringify({ scope: preview.scope, target: reference, confirmation: "DELETE" }),
+    })).status, 409);
+    assert.equal((await originalFetch(`${url}/account/deletion?supportReference=${reference}`)).status, 401);
     for (const [path, method, body] of [
       ["/supporter/account", "POST", "{}"],
       ["/notifications/preferences", "GET", undefined],
@@ -125,7 +147,9 @@ test("account removal HTTP boundary requires native auth, explicit confirmation 
     ] as const) {
       assert.equal((await originalFetch(`${url}${path}`, { method, headers, body })).status, 423);
     }
-    assert.equal((await (await originalFetch(`${url}/account/deletion`, { headers })).json()).status, "pending");
+    const pending = await (await originalFetch(`${url}/account/deletion`, { headers })).json();
+    assert.equal(pending.status, "pending");
+    assert.equal(pending.supportReference, reference);
     // Simulate the already-verified worker's completion. A short-lived JWT
     // retry is still accepted without creating work or contacting a provider.
     await pool.query("UPDATE native_account_deletions SET completed_at=NOW() WHERE native_subject=$1", [nativeSubject]);
@@ -134,7 +158,7 @@ test("account removal HTTP boundary requires native auth, explicit confirmation 
       body: JSON.stringify({ scope: preview.scope, target: preview.target, confirmation: "DELETE" }),
     });
     assert.equal(repeated.status, 202);
-    assert.deepEqual(await repeated.json(), { status: "accepted" });
+    assert.deepEqual(await repeated.json(), receipt);
   } finally {
     await pool.query("DELETE FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2", [issuer, nativeSubject]);
     await pool.query("DELETE FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2", [issuer, nativeSubject]);

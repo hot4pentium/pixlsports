@@ -90,6 +90,11 @@ export interface NativeAccountDeletionPreview {
   title: string;
   explanation: string;
   status: NativeAccountDeletionPreviewStatus;
+  /**
+     * Existing request reference for this authenticated native identity, or null before acceptance. Never authorizes access or recovery.
+     * @nullable
+     */
+  supportReference: string | null;
 }
 
 export type NativeLinkStateStatus = typeof NativeLinkStateStatus[keyof typeof NativeLinkStateStatus];
@@ -3622,6 +3627,8 @@ export const RequestNativeAccountDeletion202Status = {
 
 export type RequestNativeAccountDeletion202 = {
   status: RequestNativeAccountDeletion202Status;
+  /** Non-secret receipt reference, not authorization for deletion, recovery, or private status access. */
+  supportReference: string;
 };
 
 export type ListAdminSupportTicketsParams = {

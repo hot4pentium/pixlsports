@@ -1,8 +1,11 @@
 import SwiftUI
+import UIKit
 
 struct NativeAccountRemovalReceiptView: View {
     let scope: String
+    let supportReference: String
     let onContinue: () -> Void
+    @State private var referenceCopied = false
 
     private var independent: Bool { scope == "independent" }
 
@@ -32,6 +35,28 @@ struct NativeAccountRemovalReceiptView: View {
                             .foregroundStyle(SupporterHomeColors.muted)
                         Text("Need help? Contact support@pixlsports.com.")
                             .foregroundStyle(SupporterHomeColors.muted)
+                        if !supportReference.isEmpty {
+                            Text("Support reference")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                            Text(supportReference)
+                                .font(.body.monospaced())
+                                .foregroundStyle(.white)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("native-account-removal-reference")
+                            Button {
+                                UIPasteboard.general.string = supportReference
+                                referenceCopied = true
+                            } label: {
+                                Label(referenceCopied ? "Reference copied" : "Copy support reference",
+                                      systemImage: referenceCopied ? "checkmark" : "doc.on.doc")
+                            }
+                            .foregroundStyle(SupporterHomeColors.accent)
+                            .accessibilityIdentifier("native-account-removal-copy-reference")
+                            Text("Share this reference with support to identify your request. It cannot restore your account or grant access to private information.")
+                                .foregroundStyle(SupporterHomeColors.muted)
+                        }
                         if !independent {
                             Text("Your linked web/PWA account and its data remain unchanged.")
                                 .foregroundStyle(.white)

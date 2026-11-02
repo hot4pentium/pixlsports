@@ -57,6 +57,7 @@ test("review/cancel changes nothing; confirmations cannot target another account
   const preview = await previewNativeAccountDeletion(a.who);
   assert.equal(preview.scope, "independent");
   assert.equal(preview.status, "not_requested");
+  assert.equal(preview.supportReference, null);
   assert.match(preview.explanation, /photos and videos/);
   // Cancel is simply closing the native alert: preview has no write side effects.
   assert.equal((await pool.query("SELECT 1 FROM native_account_deletions WHERE native_subject=$1", [a.who.subject])).rowCount, 0);
@@ -80,7 +81,20 @@ test("independent removal is terminal, idempotent, blocks setup/linking and retr
   await pool.query("UPDATE athlete_invites SET photo_object_path=$2,cutout_object_path=$3 WHERE owner_clerk_user_id=$1", [f.owner, ...paths]);
   const preview = await previewNativeAccountDeletion(f.who);
   const results = await Promise.all([requestNativeAccountDeletion(f.who, preview), requestNativeAccountDeletion(f.who, preview)]);
-  assert.deepEqual(results, [{ status: "accepted" }, { status: "accepted" }]);
+  assert.deepEqual(results[0], results[1]);
+  assert.equal(results[0].status, "accepted");
+  assert.match(results[0].supportReference, /^[0-9a-f-]{36}$/);
+  const stored = (await pool.query("SELECT id FROM native_account_deletions WHERE native_issuer=$1 AND native_subject=$2",
+    [f.who.issuer, f.who.subject])).rows[0];
+  assert.equal(results[0].supportReference, stored.id);
+  assert.equal((await previewNativeAccountDeletion(f.who)).supportReference, stored.id);
+  assert.equal((await previewNativeAccountDeletion(other.who)).supportReference, null);
+  // Neither another subject nor another issuer gains authority from the UUID.
+  for (const who of [other.who, { ...f.who, issuer: "https://other-native.clerk.accounts.dev" }]) {
+    await assert.rejects(requestNativeAccountDeletion(who, { scope: preview.scope, target: stored.id }),
+      (e: any) => e.status === 409);
+    assert.equal((await previewNativeAccountDeletion(who)).supportReference, null);
+  }
   assert.equal((await pool.query("SELECT 1 FROM native_account_deletions WHERE native_subject=$1", [f.who.subject])).rowCount, 1);
   assert.equal((await previewNativeAccountDeletion(f.who)).status, "pending");
   assert.equal((await pool.query("SELECT 1 FROM native_push_subscriptions WHERE native_subject=$1", [f.who.subject])).rowCount, 0);
@@ -122,6 +136,8 @@ test("independent removal is terminal, idempotent, blocks setup/linking and retr
   await runNativeAccountDeletions({ deleteIdentity, purgeOwner }, f.who);
   assert.deepEqual(deleted.sort(), paths.sort());
   assert.equal((await previewNativeAccountDeletion(f.who)).status, "completed");
+  assert.equal((await previewNativeAccountDeletion(f.who)).supportReference, stored.id);
+  assert.deepEqual(await requestNativeAccountDeletion(f.who, preview), results[0]);
   for (const table of ["account_access", "athlete_invites", "native_push_subscriptions"]) {
     assert.equal((await pool.query(`SELECT 1 FROM ${table} WHERE owner_clerk_user_id=$1`, [f.owner])).rowCount, 0);
   }

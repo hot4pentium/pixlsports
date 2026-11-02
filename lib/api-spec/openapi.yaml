@@ -64,9 +64,13 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [status]
+                required: [status, supportReference]
                 properties:
                   status: { type: string, enum: [accepted] }
+                  supportReference:
+                    type: string
+                    format: uuid
+                    description: Non-secret receipt reference, not authorization for deletion, recovery, or private status access.
         "409":
           description: Scope changed; review again before confirming
   /native/link:
@@ -3671,13 +3675,17 @@ components:
         confirmation: { type: string, enum: [DELETE] }
     NativeAccountDeletionPreview:
       type: object
-      required: [scope, target, title, explanation, status]
+      required: [scope, target, title, explanation, status, supportReference]
       properties:
         scope: { type: string, enum: [independent, iphone_access] }
         target: { type: string }
         title: { type: string }
         explanation: { type: string }
         status: { type: string, enum: [not_requested, pending, completed] }
+        supportReference:
+          type: [string, "null"]
+          format: uuid
+          description: Existing request reference for this authenticated native identity, or null before acceptance. Never authorizes access or recovery.
     NativeLinkState:
       type: object
       required: [status]

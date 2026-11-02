@@ -27,6 +27,7 @@ private struct NativeAccountDeletionPreview: Decodable, Identifiable {
     let title: String
     let explanation: String
     let status: String
+    let supportReference: String?
     var id: String { target }
     var actionTitle: String { scope == "independent" ? "Delete iPhone account" : "Remove iPhone access" }
 }
@@ -35,6 +36,11 @@ private struct NativeAccountDeletionBody: Encodable {
     let scope: String
     let target: String
     let confirmation = "DELETE"
+}
+
+private struct NativeAccountDeletionReceipt: Decodable {
+    let status: String
+    let supportReference: String
 }
 
 @MainActor
@@ -114,6 +120,7 @@ private final class NativeNotificationSettingsModel: ObservableObject {
 
 struct NativeNotificationSettingsView: View {
     @AppStorage("pixl.native.account-removal-receipt") private var accountRemovalReceiptScope = ""
+    @AppStorage("pixl.native.account-removal-reference") private var accountRemovalSupportReference = ""
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var pushCoordinator: NativePushRegistrationCoordinator
@@ -329,6 +336,7 @@ struct NativeNotificationSettingsView: View {
             let preview = try JSONDecoder().decode(NativeAccountDeletionPreview.self, from: data)
             if preview.status != "not_requested" {
                 removalAccepted = true
+                accountRemovalSupportReference = preview.supportReference ?? ""
                 accountRemovalReceiptScope = preview.scope
                 await finishRemoval()
             } else {
@@ -345,12 +353,14 @@ struct NativeNotificationSettingsView: View {
         removalError = nil
         defer { removalBusy = false }
         do {
-            _ = try await NativeAccountLinkClient().postData(
+            let data = try await NativeAccountLinkClient().postData(
                 "account/deletion",
                 body: NativeAccountDeletionBody(scope: preview.scope, target: preview.target),
                 clerk: clerk
             )
+            let receipt = try JSONDecoder().decode(NativeAccountDeletionReceipt.self, from: data)
             removalAccepted = true
+            accountRemovalSupportReference = receipt.supportReference
             accountRemovalReceiptScope = preview.scope
             await finishRemoval()
         } catch {
