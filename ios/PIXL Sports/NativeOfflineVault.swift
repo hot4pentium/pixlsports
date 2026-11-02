@@ -172,8 +172,12 @@ final class NativeOfflineVault {
             if manager.fileExists(atPath: try file(key).path) { try manager.removeItem(at: file(key)) }
             index.entries.removeValue(forKey: key)
             try saveIndex()
-            if lease?.pendingKeys?.contains(key) == true {
-                lease?.pendingKeys?.removeAll { $0 == key }
+            if var updatedLease = lease,
+               var pendingKeys = updatedLease.pendingKeys,
+               pendingKeys.contains(key) {
+                pendingKeys.removeAll { $0 == key }
+                updatedLease.pendingKeys = pendingKeys
+                lease = updatedLease
                 try saveLease()
             }
         }
