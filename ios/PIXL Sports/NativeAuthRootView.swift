@@ -12,6 +12,7 @@ struct NativeAuthRootView: View {
     @State private var startupError: String?
     @State private var showingAccountLink = false
     @State private var showingSettings = false
+    @State private var authPresentationID = UUID()
 #if os(iOS)
     @StateObject private var notificationCoordinator = NativePushRegistrationCoordinator()
 #endif
@@ -49,26 +50,38 @@ struct NativeAuthRootView: View {
             } else {
                 ZStack {
                     signInBackdrop
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            signInHeader
-                            // Keep Clerk's complete native flow (email, Google,
-                            // verification, and recovery) while applying PIXL's theme.
-                            AuthView(isDismissible: false)
-                                .environment(\.clerkTheme, clerkTheme)
-                                .padding(.horizontal, 14)
-                                .padding(.bottom, 16)
+                    GeometryReader { geometry in
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                signInHeader
+                                // AuthView owns a NavigationStack. Give it a finite
+                                // viewport rather than an unconstrained scroll height.
+                                AuthView(isDismissible: false)
+                                    .id(authPresentationID)
+                                    .environment(\.clerkTheme, clerkTheme)
+                                    .frame(height: max(560, geometry.size.height - 240))
+                                    .padding(.horizontal, 14)
+                                    .padding(.bottom, 16)
+                            }
+                            .frame(maxWidth: 560)
+                            .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: 560)
-                        .frame(maxWidth: .infinity)
+                        .scrollIndicators(.hidden)
                     }
-                    .scrollIndicators(.hidden)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .preferredColorScheme(.light)
             }
         }
         .prefetchClerkImages()
+        .onChange(of: clerk.user?.id) { previousUserID, currentUserID in
+            guard previousUserID != nil, currentUserID == nil else { return }
+            showingSettings = false
+            showingAccountLink = false
+            // A completed auth flow must not be reused for the next sign-in.
+            // Do not reset during sign-in or pending verification/MFA steps.
+            authPresentationID = UUID()
+        }
         .task(id: clerk.isLoaded) {
             guard !clerk.isLoaded else {
                 loadingTimedOut = false
@@ -150,7 +163,7 @@ struct NativeAuthRootView: View {
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Sign in with email or Google. New to PIXL? Set up your athlete here. Already have a PIXL account? Connect it to keep your saved athlete and Event Cards.")
+                Text("Sign in or create an account with email or Google. Set up your athlete and manage your Event Cards right here on your iPhone.")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(SupporterHomeColors.muted)
                     .lineSpacing(3)

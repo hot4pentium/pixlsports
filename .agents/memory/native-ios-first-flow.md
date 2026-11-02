@@ -29,7 +29,7 @@ Use subtle translucent white backgrounds to distinguish the native dashboard's s
 
 **How to apply:** Group the hero, upcoming events, and history into separate surfaces while preserving the navy backdrop and existing card layout.
 
-The target family experience is explicit sign-up or sign-in after installation; App Store ownership is not authentication. Returning families should use their existing PIXL account, and new families should create one account usable on iPhone and web. A separate iPhone-only account and repeated web-account linking are transitional, not the desired long-term journey.
+The family experience is explicit sign-up or sign-in after installation; App Store ownership is not authentication. The user stated that profiles will only be iOS and that users do not need to connect a PIXL/PWA account. Native welcome and onboarding messaging should describe iPhone sign-in and athlete setup, not web-account connection.
 
 New iPhone signups must be able to create their backing PIXL account and reach athlete setup without first visiting the PWA. The user explicitly approved building this flow; keep existing-account ownership verification and PWA authentication intact.
 
@@ -39,9 +39,9 @@ For genuinely new iPhone users, retain a managed-tenant backing owner rather tha
 
 **How to apply:** keep native-provider credentials server-side, verify the connected instance against the configured native issuer, and commit app access and the native mapping atomically. An interrupted provider creation may resume only its unused, origin-tagged backing identity; do not recreate a deliberately disconnected mapping.
 
-**Why:** the user explicitly confirmed this sign-in experience and wants to avoid making returning families create a second PIXL account.
+**Why:** the user said, “No need to connect a pixl account as profiles will only be iOS.”
 
-**How to apply:** keep the current separate Clerk setup until a migration is reviewed and approved. Before any cutover, prove each existing user's identity-to-data mapping; never infer it from email. Preserve the existing web sign-in and records until users can securely access them through the shared identity.
+**How to apply:** keep user-facing iPhone profile setup independent of the PWA. Preserve existing web sign-in and records; do not silently detach, reassign, or delete existing account data while implementing this direction.
 
 Native development must not silently fall back to the published server when development configuration is missing. Safe troubleshooting should show the installed app's destination and HTTP status, never keys, tokens, or raw response bodies.
 
