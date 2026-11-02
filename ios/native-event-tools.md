@@ -9,7 +9,7 @@ native sharing—not embedded web tools.
 - Every private request verifies the native Clerk identity and resolves its
   explicit PIXL account link. Matching email addresses are never authority.
 - Prep reads and updates the existing account/event checklist record, including
-  an already shared checklist. Save Prep is explicit; unsaved edits have a back
+  an already shared checklist. Save is explicit; unsaved edits have a back
   confirmation.
 - Tracking reads the existing Stat Tracker cloud project and updates only the
   selected game's session. Other games and unrelated payload fields are retained.

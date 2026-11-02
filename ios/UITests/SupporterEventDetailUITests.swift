@@ -369,7 +369,13 @@ final class SupporterEventDetailUITests: XCTestCase {
             assertReachable("native-prep-checklist-toggle", in: app).value as? String,
             changedProgress
         )
-        XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
+        let saveButton = assertReachable("native-prep-save", in: app)
+        XCTAssertEqual(saveButton.label, "Save")
+        let header = app.buttons["native-prep-checklist-toggle"]
+        XCTAssertTrue(header.exists)
+        XCTAssertEqual(saveButton.frame.midY, header.frame.midY, accuracy: 2,
+                       "Save must stay in the prep header beside the checklist chevron.")
+        XCTAssertFalse(saveButton.isEnabled)
         XCTAssertFalse(app.descendants(matching: .any)["native-tool-save-error"].exists)
 
         // Restore the dedicated test item and verify that write too. Never
@@ -799,7 +805,7 @@ final class SupporterEventDetailUITests: XCTestCase {
             object: unsaved
         )
         XCTAssertEqual(XCTWaiter.wait(for: [changesSettled], timeout: 30), .completed,
-                       "Checklist edits should save without requiring a manual Save Prep tap.")
+                       "Checklist edits should save without requiring a manual Save tap.")
         waitForPrepSaved(in: app)
     }
 

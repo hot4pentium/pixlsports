@@ -227,7 +227,7 @@ and Apple's text-clipping/hit-region audits for each visible task and the
 **Manage full Prep** / **Back to Content** controls. Screenshots are retained
 for every task and both navigation actions. The full editor changes a fifth
 task and notes; returning to Content and reopening must preserve all edits
-and keep Save Prep enabled without making a save request.
+and keep Save enabled without making a save request.
 
 `--prep-long-labels` only changes the Debug workspace used with both
 `--ui-testing-event-detail` and `--ui-testing-prep-draft`. It omits the
@@ -270,7 +270,7 @@ xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInQuickPrepLostResponseRetriesSameMutationAfterRelaunch
 ```
 
-Each test changes one compact checklist task, presses Save Prep, closes Event
+Each test changes one compact checklist task, presses Save, closes Event
 Details, reopens the same card, and checks the fresh server state and readiness
 count. It then restores and verifies the original task state. A failed test may
 leave that dedicated task changed or a pending command: inspect/retry or discard
