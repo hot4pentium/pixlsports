@@ -62,10 +62,11 @@ struct NativeAuthRootView: View {
                                     .frame(height: geometry.size.height.isFinite
                                         ? max(560, geometry.size.height - 240)
                                         : 560)
-                                    .padding(.horizontal, 14)
                                     .padding(.bottom, 16)
                             }
                             .frame(maxWidth: 560)
+                            // Apply the same outer gutter to the header and form.
+                            .padding(.horizontal, 14)
                             .frame(maxWidth: .infinity)
                         }
                         .scrollIndicators(.hidden)
