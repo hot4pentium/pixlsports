@@ -4217,6 +4217,7 @@ export const getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax = 160;
 
 
 
+
 export const GetNativeSupporterHypeCardResponse = zod.object({
   "status": zod.enum(['unlinked', 'no-card', 'hidden', 'mismatch', 'available']),
   "inviteToken": zod.string().optional().describe('Present only when the owner has enabled public HYPE Card access.'),
@@ -4233,7 +4234,8 @@ export const GetNativeSupporterHypeCardResponse = zod.object({
   "showStats": zod.boolean(),
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
-  "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax).nullable()
+  "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax).nullable(),
+  "revision": zod.string().min(1).describe('Server version for the current HYPE Card settings.')
 }).optional()
 })
 
@@ -4245,16 +4247,19 @@ export const updateNativeSupporterHypeCardBodyFavoriteMomentMax = 160;
 
 
 
+
 export const UpdateNativeSupporterHypeCardBody = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
   "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardBodyFavoriteMomentMax).nullable(),
+  "expectedRevision": zod.string().min(1).describe('The server version observed when these settings were loaded.'),
   "confirmPublish": zod.boolean().describe('Must be true when an update makes a private or paused card public.')
 })
 
 export const updateNativeSupporterHypeCardResponseFavoriteMomentMax = 160;
+
 
 
 
@@ -4263,7 +4268,8 @@ export const UpdateNativeSupporterHypeCardResponse = zod.object({
   "showStats": zod.boolean(),
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
-  "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardResponseFavoriteMomentMax).nullable()
+  "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardResponseFavoriteMomentMax).nullable(),
+  "revision": zod.string().min(1).describe('Server version for the current HYPE Card settings.')
 })
 
 

@@ -3076,6 +3076,11 @@ export interface NativeSupporterHypeCardSettings {
      * @nullable
      */
   favoriteMoment: string | null;
+  /**
+     * Server version for the current HYPE Card settings.
+     * @minLength 1
+     */
+  revision: string;
 }
 
 export interface NativeSupporterHypeCard {
@@ -3318,6 +3323,11 @@ export interface NativeSupporterHypeCardUpdate {
      * @nullable
      */
   favoriteMoment: string | null;
+  /**
+     * The server version observed when these settings were loaded.
+     * @minLength 1
+     */
+  expectedRevision: string;
   /** Must be true when an update makes a private or paused card public. */
   confirmPublish: boolean;
 }

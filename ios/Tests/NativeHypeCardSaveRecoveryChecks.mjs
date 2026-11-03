@@ -50,6 +50,10 @@ test("restart recovery checks authoritative settings and keeps a retry when PIXL
   assert.match(load, /await checkSavedSettingsStatus\(\)/);
   assert.match(recovery, /fetchAuthoritativeNativeHypeCardSettings/);
   assert.match(recovery, /settingsStatusUnknown = true/);
+  assert.match(recovery, /applySettingsDraft\(preservedDraft\)/);
+  assert.match(recovery, /preservedDraft\.revision != saved\.revision/);
+  assert.doesNotMatch(recovery, /if\s+markerFound\s*\{\s*try client\.clearHypeCardSettingsDraft/);
+  assert.doesNotMatch(recovery, /settingsRecoveryMarkerFound\s*\|\|\s*\(try/);
   assert.match(view, /settingsStatusRecoveryNotice/);
   assert.match(view, /Check saved status/);
   assert.match(view, /!settingsStatusUnknown/);
@@ -61,4 +65,15 @@ test("authoritative settings fetch refreshes the linked account before clearing 
     api.indexOf("private static func fetchPublicHypeCard"),
   );
   assert.ok(fetch.indexOf('getAuthoritativeData("supporter/schedule"') < fetch.indexOf('getAuthoritativeData("supporter/hype-card"'));
+});
+
+test("cross-device settings conflicts preserve the iPhone draft and require an explicit PIXL choice", () => {
+  assert.match(api, /let expectedRevision: String/);
+  assert.match(view, /expectedRevision: expectedRevision/);
+  assert.match(view, /error\.statusCode == 409/);
+  assert.match(view, /settingsRevisionConflict = latest/);
+  assert.match(view, /settingsConflictNotice\(settingsRevisionConflict\)/);
+  assert.match(view, /Text\(isCheckingSettings \? "Loading PIXL version…" : "Use PIXL version"\)/);
+  assert.match(view, /settingsDraftRevision != saved\.revision/);
+  assert.match(view, /guard clerk != nil, !isSaving, !isCheckingSettings else \{ return \}/);
 });

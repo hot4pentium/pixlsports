@@ -7,6 +7,9 @@ import {
   loadNativeSupporterHypeCard,
   loadNativeSupporterHypeCardPhoto,
   updateNativeSupporterHypeCard,
+  type NativeHypeCardSettings,
+  type NativeHypeCardSettingsUpdate,
+  type SelectedAthlete,
 } from "./nativeSupporterHypeCard";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 
@@ -51,6 +54,24 @@ async function savedCardState(ownerIds: string[]) {
     [ownerIds],
   );
   return { cards: cards.rows, snapshots: snapshots.rows };
+}
+
+function settingsValues(settings: NativeHypeCardSettings | undefined) {
+  assert.ok(settings);
+  assert.match(settings.revision, /^[a-f0-9]{64}$/);
+  const { revision, ...values } = settings;
+  return values;
+}
+
+async function updateCurrentSettings(
+  who: NativeIdentity,
+  update: Omit<NativeHypeCardSettingsUpdate, "expectedRevision">,
+  lookup: (ownerClerkUserId: string) => Promise<SelectedAthlete>,
+) {
+  const current = await loadNativeSupporterHypeCard(who, lookup);
+  const expectedRevision = current.settings?.revision;
+  assert.ok(expectedRevision, "the current card settings include a server revision");
+  return updateNativeSupporterHypeCard(who, { ...update, expectedRevision }, lookup);
 }
 
 async function staleRepairFixture() {
@@ -112,7 +133,10 @@ test("native HYPE card reference matches the linked account's selected athlete a
     return { athleteName: "jordan", teamName: "tigers" };
   });
 
-  assert.deepEqual(reference, {
+  assert.deepEqual({
+    ...reference,
+    settings: settingsValues(reference.settings),
+  }, {
     status: "available",
     inviteToken: selectedToken,
     settings: {
@@ -140,7 +164,10 @@ test("native HYPE card reference reports a saved identity mismatch without expos
     teamName: "Tigers",
   }));
 
-  assert.deepEqual(reference, {
+  assert.deepEqual({
+    ...reference,
+    settings: settingsValues(reference.settings),
+  }, {
     status: "mismatch",
     correctionId: savedInvite.rows[0]!.id,
     privatePreview: {
@@ -339,7 +366,10 @@ test("linked owners can preview a hidden HYPE Card without receiving its public 
     teamName: "Tigers",
   }));
 
-  assert.deepEqual(reference, {
+  assert.deepEqual({
+    ...reference,
+    settings: settingsValues(reference.settings),
+  }, {
     status: "hidden",
     privatePreview: {
       athleteName: "Jordan",
@@ -390,7 +420,7 @@ test("native owner edits require confirmation before publishing and close live t
   };
 
   await assert.rejects(
-    updateNativeSupporterHypeCard(who, { ...base, confirmPublish: false }, lookup),
+    updateCurrentSettings(who, { ...base, confirmPublish: false }, lookup),
     (error: any) => error.status === 400,
   );
   const stillPrivate = await loadNativeSupporterHypeCard(who, lookup);
@@ -399,8 +429,8 @@ test("native owner edits require confirmation before publishing and close live t
   assert.equal(stillPrivate.settings?.favoriteMoment, "Before");
   assert.equal("inviteToken" in stillPrivate, false);
 
-  const saved = await updateNativeSupporterHypeCard(who, { ...base, confirmPublish: true }, lookup);
-  assert.deepEqual(saved, {
+  const saved = await updateCurrentSettings(who, { ...base, confirmPublish: true }, lookup);
+  assert.deepEqual(settingsValues(saved), {
     showHypeCard: true,
     showStats: true,
     showEvents: false,
@@ -423,7 +453,7 @@ test("native owner edits require confirmation before publishing and close live t
     "UPDATE athlete_invites SET live_tracker_share_token=$2 WHERE owner_clerk_user_id=$1",
     [linkedOwner, liveShare.rows[0]!.id],
   );
-  const pausedSettings = await updateNativeSupporterHypeCard(who, {
+  const pausedSettings = await updateCurrentSettings(who, {
     showHypeCard: true,
     showStats: true,
     showEvents: false,
@@ -442,7 +472,7 @@ test("native owner edits require confirmation before publishing and close live t
     "pausing also closes the active live tracker share",
   );
   await assert.rejects(
-    updateNativeSupporterHypeCard(who, {
+    updateCurrentSettings(who, {
       showHypeCard: true,
       showStats: true,
       showEvents: false,
@@ -453,7 +483,7 @@ test("native owner edits require confirmation before publishing and close live t
     (error: any) => error.status === 400,
     "resuming a public card requires explicit confirmation",
   );
-  const resumed = await updateNativeSupporterHypeCard(who, {
+  const resumed = await updateCurrentSettings(who, {
     showHypeCard: true,
     showStats: true,
     showEvents: false,
@@ -486,18 +516,59 @@ test("native HYPE Card settings can be confirmed after the update response is lo
   };
 
   await assert.rejects(async () => {
-    await updateNativeSupporterHypeCard(who, requested, lookup);
+    await updateCurrentSettings(who, requested, lookup);
     throw new Error("connection closed before the response reached the iPhone");
   }, /connection closed before the response reached the iPhone/);
 
   const authoritative = await loadNativeSupporterHypeCard(who, lookup);
-  assert.deepEqual(authoritative.settings, {
+  assert.deepEqual(settingsValues(authoritative.settings), {
     showHypeCard: false,
     showStats: true,
     showEvents: false,
     paused: true,
     favoriteMoment: "A great play",
   });
+});
+
+test("native HYPE Card updates reject a stale revision without overwriting newer PIXL settings", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await addInvite(linkedOwner, "Jordan", "Tigers", randomBytes(18).toString("base64url"));
+  const lookup = async () => ({ athleteName: "Jordan", teamName: "Tigers" });
+  const opened = await loadNativeSupporterHypeCard(who, lookup);
+  const staleRevision = opened.settings?.revision;
+  assert.ok(staleRevision);
+
+  await pool.query(
+    `UPDATE athlete_invites
+     SET show_stats=false, favorite_moment='Changed on PIXL'
+     WHERE owner_clerk_user_id=$1`,
+    [linkedOwner],
+  );
+
+  await assert.rejects(
+    updateNativeSupporterHypeCard(who, {
+      showHypeCard: true,
+      showStats: true,
+      showEvents: false,
+      paused: false,
+      favoriteMoment: "Older iPhone choice",
+      expectedRevision: staleRevision,
+      confirmPublish: false,
+    }, lookup),
+    (error: any) => error.status === 409,
+  );
+
+  const latest = await loadNativeSupporterHypeCard(who, lookup);
+  assert.deepEqual(settingsValues(latest.settings), {
+    showHypeCard: true,
+    showStats: false,
+    showEvents: false,
+    paused: false,
+    favoriteMoment: "Changed on PIXL",
+  });
+  assert.notEqual(latest.settings?.revision, staleRevision);
 });
 
 test("native HYPE Card publishing controls reject a dedicated athlete editor identity", async () => {
@@ -517,7 +588,7 @@ test("native HYPE Card publishing controls reject a dedicated athlete editor ide
   );
 
   await assert.rejects(
-    updateNativeSupporterHypeCard(who, {
+    updateCurrentSettings(who, {
       showHypeCard: false,
       showStats: true,
       showEvents: true,

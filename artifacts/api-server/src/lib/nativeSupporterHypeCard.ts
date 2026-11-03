@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readNativeOwnerMetadata } from "./nativeOwnerMetadata";
 import { pool } from "@workspace/db";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
@@ -18,9 +19,11 @@ export type NativeHypeCardSettings = {
   showEvents: boolean;
   paused: boolean;
   favoriteMoment: string | null;
+  revision: string;
 };
 
-export type NativeHypeCardSettingsUpdate = NativeHypeCardSettings & {
+export type NativeHypeCardSettingsUpdate = Omit<NativeHypeCardSettings, "revision"> & {
+  expectedRevision: string;
   confirmPublish: boolean;
 };
 
@@ -59,13 +62,26 @@ function settingsFor(invite: {
   paused: boolean;
   favorite_moment: string | null;
 }): NativeHypeCardSettings {
-  return {
+  const values = {
     showHypeCard: invite.show_hype_card,
     showStats: invite.show_stats,
     showEvents: invite.show_events,
     paused: invite.paused,
     favoriteMoment: invite.favorite_moment,
   };
+  return { ...values, revision: revisionFor(values) };
+}
+
+function revisionFor(settings: Omit<NativeHypeCardSettings, "revision">): string {
+  return createHash("sha256")
+    .update(JSON.stringify([
+      settings.showHypeCard,
+      settings.showStats,
+      settings.showEvents,
+      settings.paused,
+      settings.favoriteMoment,
+    ]))
+    .digest("hex");
 }
 
 async function selectedProfile(ownerClerkUserId: string): Promise<SelectedAthlete> {
@@ -374,6 +390,13 @@ export async function updateNativeSupporterHypeCard(
     );
     const current = selected.rows[0];
     if (!current) throw new NativeLinkError(404, "No HYPE Card matches the selected athlete and team.");
+    const currentSettings = settingsFor(current);
+    if (update.expectedRevision !== currentSettings.revision) {
+      throw new NativeLinkError(
+        409,
+        "This HYPE Card changed in PIXL. Your iPhone choices are still here; review the PIXL version before saving again.",
+      );
+    }
 
     const becomesPublic = update.showHypeCard && !update.paused
       && (!current.show_hype_card || current.paused);
@@ -405,13 +428,13 @@ export async function updateNativeSupporterHypeCard(
       );
     }
     await tx.query("COMMIT");
-    return {
-      showHypeCard: update.showHypeCard,
-      showStats: update.showStats,
-      showEvents: update.showEvents,
+    return settingsFor({
+      show_hype_card: update.showHypeCard,
+      show_stats: update.showStats,
+      show_events: update.showEvents,
       paused: update.paused,
-      favoriteMoment,
-    };
+      favorite_moment: favoriteMoment,
+    });
   } catch (error) {
     await tx.query("ROLLBACK");
     throw error;

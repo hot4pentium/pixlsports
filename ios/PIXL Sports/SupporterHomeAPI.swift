@@ -35,6 +35,15 @@ struct NativeHypeCardSettings: Codable, Equatable {
     let showEvents: Bool
     let paused: Bool
     let favoriteMoment: String?
+    var revision: String? = nil
+
+    static func == (lhs: NativeHypeCardSettings, rhs: NativeHypeCardSettings) -> Bool {
+        lhs.showHypeCard == rhs.showHypeCard
+            && lhs.showStats == rhs.showStats
+            && lhs.showEvents == rhs.showEvents
+            && lhs.paused == rhs.paused
+            && lhs.favoriteMoment == rhs.favoriteMoment
+    }
 }
 
 struct NativeHypeCardSettingsUpdate: Encodable {
@@ -43,10 +52,11 @@ struct NativeHypeCardSettingsUpdate: Encodable {
     let showEvents: Bool
     let paused: Bool
     let favoriteMoment: String?
+    let expectedRevision: String
     let confirmPublish: Bool
 
     private enum CodingKeys: String, CodingKey {
-        case showHypeCard, showStats, showEvents, paused, favoriteMoment, confirmPublish
+        case showHypeCard, showStats, showEvents, paused, favoriteMoment, expectedRevision, confirmPublish
     }
 
     func encode(to encoder: Encoder) throws {
@@ -56,6 +66,7 @@ struct NativeHypeCardSettingsUpdate: Encodable {
         try container.encode(showEvents, forKey: .showEvents)
         try container.encode(paused, forKey: .paused)
         try container.encode(favoriteMoment, forKey: .favoriteMoment)
+        try container.encode(expectedRevision, forKey: .expectedRevision)
         try container.encode(confirmPublish, forKey: .confirmPublish)
     }
 }
@@ -598,7 +609,7 @@ enum SupporterHomeAPI {
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }
-        guard let settings = reference.settings else {
+        guard let settings = reference.settings, settings.revision?.isEmpty == false else {
             throw SupporterHomeAPIError.invalidResponse
         }
         return settings

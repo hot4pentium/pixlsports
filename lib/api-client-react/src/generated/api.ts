@@ -6250,7 +6250,7 @@ return customFetch<NativeSupporterHypeCardSettings>(getUpdateNativeSupporterHype
 
 export const getUpdateNativeSupporterHypeCardMutationKey = () => ['updateNativeSupporterHypeCard'] as const;
 
-export const getUpdateNativeSupporterHypeCardMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+export const getUpdateNativeSupporterHypeCardMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>, TError,UpdateNativeSupporterHypeCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>, TError,UpdateNativeSupporterHypeCardMutationVariables, TContext> => {
 
@@ -6279,13 +6279,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateNativeSupporterHypeCardMutationResult = NonNullable<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>>
     export type UpdateNativeSupporterHypeCardMutationBody = BodyType<NativeSupporterHypeCardUpdate>
-    export type UpdateNativeSupporterHypeCardMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type UpdateNativeSupporterHypeCardMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>
     export type UpdateNativeSupporterHypeCardMutationVariables = {data: BodyType<NativeSupporterHypeCardUpdate>}
 
     /**
  * @summary Update the selected athlete’s HYPE Card settings from its linked iPhone owner
  */
-export const useUpdateNativeSupporterHypeCard = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+export const useUpdateNativeSupporterHypeCard = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>, TError,UpdateNativeSupporterHypeCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateNativeSupporterHypeCard>>,

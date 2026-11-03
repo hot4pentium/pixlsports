@@ -16,4 +16,9 @@ export interface NativeSupporterHypeCardSettings {
      * @nullable
      */
   favoriteMoment: string | null;
+  /**
+     * Server version for the current HYPE Card settings.
+     * @minLength 1
+     */
+  revision: string;
 }
