@@ -98,3 +98,15 @@ test("dashboard message board labels the green action as the next step", () => {
   assert.ok(nextStep >= 0 && greenAction > nextStep, "Next Step must appear before the green action.");
   assert.match(hero, /Next step: \\\(timingTitle\.lowercased\(\)\)/);
 });
+
+test("expired games do not keep the Up Next label from future Event Cards", () => {
+  const homeModel = readFileSync(new URL("../PIXL Sports/SupporterHomeViewModel.swift", import.meta.url), "utf8");
+  const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
+  assert.match(homeModel, /guard let recommendation = NativeEventGuideTiming\.gameRecommendation\([\s\S]*?now: now\s*\) else \{\s*return nil\s*\}/);
+  assert.match(content, /let nextUpcomingID = events\.first\(where: \{ \$0\.timing == \.upcoming \}\)\?\.id/);
+});
+
+test("dashboard does not show the large offline status card", () => {
+  const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
+  assert.doesNotMatch(content, /NativeOfflineStatusView\s*\{/);
+});

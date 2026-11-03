@@ -303,8 +303,9 @@ final class SupporterHomeViewModel: ObservableObject {
             let today = dateFormatter.string(from: now)
             let start = event.parsedStart(timezone: zone.identifier)
             if event.type == "game" {
-                let recommendation = NativeEventGuideTiming.gameRecommendation(
-                    eventDate: event.date, start: start, timeZone: zone, now: now)
+                guard let recommendation = NativeEventGuideTiming.gameRecommendation(
+                    eventDate: event.date, start: start, timeZone: zone, now: now
+                ) else { return nil }
                 if recommendation == .share { return nil }
                 return SupporterScheduleItem(event: event,
                     timing: recommendation == .trackStats ? .live : .upcoming, start: start)

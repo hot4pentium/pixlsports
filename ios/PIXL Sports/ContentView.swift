@@ -162,9 +162,6 @@ struct ContentView: View {
                             accountSetupIfNeeded
                             athleteProfileLoadIssue
                             nextEventSection
-                            NativeOfflineStatusView {
-                                if let clerk { NativeOfflineRuntime.shared.resume(clerk: clerk, force: true) }
-                            }
                         }
                         .frame(maxWidth: 560, alignment: .leading)
                         .padding(.horizontal, 20)
