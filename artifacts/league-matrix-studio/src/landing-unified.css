@@ -38,6 +38,7 @@
 .new-landing .header-inner { min-height: 74px; display: flex; align-items: center; justify-content: space-between; gap: 30px; }
 .new-landing .brand { display: inline-flex; align-items: baseline; font-family: "Barlow Condensed", Impact, sans-serif; font-size: 27px; line-height: 1; font-weight: 900; letter-spacing: -.035em; color: #eef5ee; white-space: nowrap; }
 .new-landing .brand span { color: var(--pixl-lime); margin-left: 4px; }
+.new-landing .landing-brand-logo { display: block; width: 104px; height: auto; }
 .new-landing .desktop-nav { display: flex; align-items: center; gap: clamp(20px, 3vw, 45px); }
 .new-landing .desktop-nav > a:not(.pill), .new-landing .mobile-nav a:not(.pill) { color: #d4e0e2; font-size: 12px; font-weight: 700; transition: color .2s ease; }
 .new-landing .desktop-nav > a:not(.pill):hover, .new-landing .mobile-nav a:not(.pill):hover { color: var(--pixl-lime); }

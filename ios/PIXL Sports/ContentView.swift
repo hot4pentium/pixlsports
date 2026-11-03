@@ -279,30 +279,11 @@ struct ContentView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center, spacing: 11) {
-                Image(systemName: "sportscourt.fill")
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(SupporterHomeColors.background)
-                    .frame(width: 40, height: 40)
-                    .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(.white.opacity(0.3), lineWidth: 1)
-                    }
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("PIXL")
-                        .font(.headline.weight(.black))
-                        .fontDesign(.rounded)
-                        .tracking(1.4)
-                        .foregroundStyle(SupporterHomeColors.blue)
-                    Text("SPORTS")
-                        .font(.caption2.weight(.heavy))
-                        .fontDesign(.rounded)
-                        .tracking(3)
-                        .foregroundStyle(SupporterHomeColors.background.opacity(0.82))
-                }
-                .accessibilityElement(children: .combine)
+                Image("PixlSportsLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 112, height: 46)
+                    .accessibilityElement()
                 .accessibilityLabel("PIXL Sports")
 
                 Spacer(minLength: 8)

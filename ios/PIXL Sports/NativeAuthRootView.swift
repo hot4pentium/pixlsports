@@ -165,28 +165,11 @@ struct NativeAuthRootView: View {
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
                 : AnyLayout(HStackLayout(spacing: 12))
             brandLayout {
-                Image(systemName: "sportscourt.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SupporterHomeColors.background)
-                    .frame(width: 46, height: 46)
-                    .background(
-                        SupporterHomeColors.accent,
-                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    )
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("PIXL")
-                        .font(.title3.weight(.black))
-                        .fontDesign(.rounded)
-                        .tracking(2.2)
-                        .foregroundStyle(.white)
-                    Text("SPORTS")
-                        .font(.caption.weight(.bold))
-                        .fontDesign(.rounded)
-                        .tracking(3.2)
-                        .foregroundStyle(SupporterHomeColors.muted)
-                }
+                Image("PixlSportsLogoOnDark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 132, height: 54)
+                    .accessibilityLabel("PIXL Sports")
 
                 if !dynamicTypeSize.isAccessibilitySize {
                     Spacer(minLength: 0)
@@ -396,35 +379,11 @@ struct NativeLaunchSplashView: View {
     }
 
     private var brand: some View {
-        HStack(spacing: 18) {
-            Image(systemName: "sportscourt.fill")
-                .font(.system(size: 44, weight: .black))
-                .foregroundStyle(SupporterHomeColors.background)
-                .frame(width: 100, height: 100)
-                .background(
-                    SupporterHomeColors.accent,
-                    in: RoundedRectangle(cornerRadius: 29, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 29, style: .continuous)
-                        .strokeBorder(.white.opacity(0.58), lineWidth: 1)
-                }
-                .shadow(color: SupporterHomeColors.background.opacity(0.14), radius: 16, y: 6)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text("PIXL")
-                    .font(.system(size: 48, weight: .black, design: .rounded))
-                    .tracking(3.5)
-                    .foregroundStyle(SupporterHomeColors.blue)
-                Text("SPORTS")
-                    .font(.system(size: 17, weight: .heavy, design: .rounded))
-                    .tracking(5)
-                    .foregroundStyle(SupporterHomeColors.background.opacity(0.88))
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .accessibilityElement(children: .combine)
+        Image("PixlSportsLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: 330)
+            .accessibilityElement()
         .accessibilityLabel("PIXL Sports")
         .accessibilityIdentifier("native-launch-wordmark")
     }

@@ -9,6 +9,7 @@ import { getSportRule, isSport } from './stat-tracker';
 import { trackEvent } from '../lib/analytics';
 import { PublicSupportLink } from './public-support-link';
 import { BackNavigationLink } from '@/components/back-navigation-link';
+import { BrandLogo } from './brand-logo';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const reactions = ['🔥', '👏', '💪', '⭐', '❤️'] as const;
@@ -90,7 +91,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white">
       <header className="border-b border-white/10 bg-[#11141b]">
         <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
-          <Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" /></Link>
+          <Link href="/"><BrandLogo variant="on-dark" className="h-11 w-auto max-w-[176px] object-contain" /></Link>
           <div className="flex items-center gap-2 sm:gap-4">
             <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />
             <PublicSupportLink variant="dark" placement="header" />
@@ -303,7 +304,7 @@ function PublicHypeCardStatsPage({ share }: { share: HypeCardShare }) {
       <header className="border-b border-white/10 bg-[#11141b]">
         <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
           <Link href="/">
-            <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" />
+            <BrandLogo variant="on-dark" className="h-11 w-auto max-w-[176px] object-contain" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
             <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />
@@ -411,7 +412,7 @@ function formatHypeCardGameDate(value: string) {
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white">
-      <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex min-h-[72px] max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><div className="flex items-center gap-2"><BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" /><PublicSupportLink variant="dark" placement="header" /></div></div></header>
+      <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex min-h-[72px] max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8"><Link href="/"><BrandLogo variant="on-dark" className="h-11 w-auto" /></Link><div className="flex items-center gap-2"><BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" /><PublicSupportLink variant="dark" placement="header" /></div></div></header>
       <main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main>
       <PublicSupportLink variant="dark" />
     </div>

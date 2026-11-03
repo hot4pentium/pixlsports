@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import './account-loading-screen.css';
+import { BrandLogo } from './brand-logo';
 
 export function AccountLoadingScreen({ onRetry, error = false }: { onRetry?: () => void; error?: boolean }) {
   const [slow, setSlow] = useState(false);
@@ -22,7 +23,7 @@ export function AccountLoadingScreen({ onRetry, error = false }: { onRetry?: () 
     <div className="account-loading-screen" data-error={error || !online ? 'true' : undefined} role={error ? 'alert' : 'status'} aria-live="polite">
       <div className="account-loading-content">
         <div className="account-loading-brand">
-          <img className="account-loading-logo" src="/pixlsports-logo.png" alt="PIXL SPORTS" />
+          <BrandLogo className="account-loading-logo" alt="PIXL Sports" />
         </div>
         <div className="account-loading-kicker" aria-hidden="true">
           <span className="account-loading-kicker-line" />

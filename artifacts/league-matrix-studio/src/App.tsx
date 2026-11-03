@@ -35,6 +35,7 @@ import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, use
 import { ErrorBoundary } from '@/components/error-boundary';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { AccountLoadingScreen } from '@/features/account-loading-screen';
+import { BrandLogo } from '@/features/brand-logo';
 import { rememberPrivateSession } from '@/features/previous-private-session';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -445,9 +446,8 @@ const landingRoleCopy: Record<string, LandingRoleCopy> = {
 function BrandMark({ inverse = false }: { inverse?: boolean }) {
   return (
     <span className="flex items-center" data-testid="brand-pixlsports">
-      <img
-        src={`${basePath}/pixlsports-logo.png`}
-        alt="Pixl Sports"
+      <BrandLogo
+        variant={inverse ? 'on-dark' : 'on-light'}
         className="h-11 w-auto max-w-[176px] object-contain sm:h-12 sm:max-w-[190px]"
       />
     </span>

@@ -4,6 +4,7 @@ import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { BackNavigationLink } from '@/components/back-navigation-link';
+import { BrandLogo } from './brand-logo';
 import {
   getListAthleteInvitesQueryKey,
   useListAthleteInvites,
@@ -463,7 +464,7 @@ export function AthleteStudioShell({ children }: { children: ReactNode }) {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-5 sm:px-8">
           <Link href={location.startsWith('/card-editor') ? '/card-editor' : '/studio/player-showcase'} className="inline-flex items-center" aria-label="Athlete showcase home">
-            <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-10 w-auto max-w-[160px] object-contain" />
+            <BrandLogo variant="on-dark" className="h-10 w-auto max-w-[160px] object-contain" />
           </Link>
           <button type="button" onClick={() => void signOut({ redirectUrl: basePath || '/' })} className="min-h-10 border border-border px-4 text-[10px] font-bold uppercase tracking-widest hover:border-primary hover:text-primary">Sign out</button>
         </div>

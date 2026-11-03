@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useUser } from '@clerk/react';
+import { BrandLogo } from './brand-logo';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft,
@@ -2012,10 +2013,10 @@ function OwnerToggle({ label, detail, checked, disabled, onChange }: { label: st
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-white/15 pt-4"><div><p className="text-sm font-bold text-white">{label}</p><p className="mt-1 text-xs leading-relaxed text-white/50">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={label} /></div>;
 }
 function InviteShell({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-dvh bg-background text-foreground"><header className="border-b border-border bg-card"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between gap-3 px-5 sm:px-8"><Link href="/studio"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><BackNavigationLink href="/studio" label="Back to Studio" testId="link-invite-shell-studio" className="shrink-0" /></div></header>{children}</div>;
+  return <div className="min-h-dvh bg-background text-foreground"><header className="border-b border-border bg-card"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between gap-3 px-5 sm:px-8"><Link href="/studio"><BrandLogo variant="on-dark" className="h-11 w-auto" /></Link><BackNavigationLink href="/studio" label="Back to Studio" testId="link-invite-shell-studio" className="shrink-0" /></div></header>{children}</div>;
 }
 function PublicHeader() {
-  return <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/35">Athlete Hype Page</span></div></header>;
+  return <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><BrandLogo variant="on-dark" className="h-11 w-auto" /></Link><span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/35">Athlete Hype Page</span></div></header>;
 }
 function PublicShell({ children }: { children: React.ReactNode }) {
   return <div className="noise min-h-dvh bg-[#0B1F3A] text-white"><PublicHeader /><main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main></div>;

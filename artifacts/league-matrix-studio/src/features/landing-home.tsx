@@ -7,13 +7,14 @@ import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
 import teenFootballHero from '@/assets/landing-american-football-player.jpg';
 import { useAppInstallPrompt } from './app-install-prompt';
+import { BrandLogo } from './brand-logo';
 
 const LandingToolDemo = lazy(() => import('./landing-tool-demo').then(
   ({ LandingToolDemo }) => ({ default: LandingToolDemo }),
 ));
 
 function Brand() {
-  return <span className="brand" aria-label="Pixl Sports">PIXL<span>SPORTS</span></span>;
+  return <BrandLogo variant="on-dark" className="landing-brand-logo" />;
 }
 
 function LandingNav({ isSignedIn }: { isSignedIn: boolean }) {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 // Cheap structural guards only. Actual first paint requires the normal-launch
@@ -35,8 +35,12 @@ test("first-paint splash centers without observing geometry", () => {
   assert.doesNotMatch(splash, /\bGeometryReader\s*[{(]/);
   assert.doesNotMatch(splash, /\.position\s*\(/);
   assert.match(splash, /NativePageBackground\(\)/);
+  assert.match(splash, /Image\("PixlSportsLogo"\)/);
   assert.match(splash, /reduceMotion/);
   assert.match(splash, /native-launch-retry/);
+  const assets = new URL("../PIXL Sports/Assets.xcassets/", import.meta.url);
+  assert.ok(existsSync(new URL("PixlSportsLogo.imageset/pixlsports-logo.png", assets)));
+  assert.ok(existsSync(new URL("PixlSportsLogoOnDark.imageset/pixlsports-logo-on-dark.png", assets)));
 });
 
 test("startup diagnostic preserves Clerk configuration and normal authorization", () => {

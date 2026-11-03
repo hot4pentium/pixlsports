@@ -11,7 +11,7 @@ export const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${appOrigin}${basePath}/pixlsports-logo.png`,
+    logoImageUrl: `${appOrigin}${basePath}/pixlsports-logo-on-dark.png`,
   },
   variables: {
     colorPrimary: "#55A4FF",

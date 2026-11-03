@@ -4,6 +4,7 @@ import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Radio, RotateCcw, 
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
+import { BrandLogo } from './brand-logo';
 import {
   getGetAthleteFanCardQueryKey,
   getListAthleteInviteHypesQueryKey,
@@ -72,7 +73,7 @@ function Shell({ children, inviteToken, embedded = false, ownerView = false }: {
       {!embedded && <header className="living-card-header">
         <div className="living-card-header-inner">
           <Link href="/" className="living-card-brand" data-testid="link-living-card-home">
-            <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports home" />
+            <BrandLogo variant="on-dark" alt="Pixl Sports home" />
           </Link>
           <span className="living-card-header-label">A season worth keeping / Pixl Sports</span>
           <BackNavigationLink {...backNavigation} variant="public" />
