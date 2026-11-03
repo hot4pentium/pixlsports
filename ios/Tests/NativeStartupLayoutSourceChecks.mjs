@@ -66,6 +66,12 @@ test("routine Prep saves do not insert a changing status panel", () => {
   assert.match(prep, /Text\(saveStatusText\)[\s\S]*?\.frame\(minHeight: 16, alignment: \.leading\)/);
 });
 
+test("Event Card editing is hidden while Prep is selected", () => {
+  const detail = readFileSync(new URL("../PIXL Sports/SupporterEventDetailView.swift", import.meta.url), "utf8");
+  assert.match(detail, /if let clerk, selectedStep != \.prep\s*\{\s*NavigationLink/);
+  assert.match(detail, /accessibilityIdentifier\("event-detail-edit"\)/);
+});
+
 test("dashboard header uses the white Sports logo on its dark panel", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   const start = content.indexOf("private var header: some View");

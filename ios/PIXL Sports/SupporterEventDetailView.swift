@@ -214,7 +214,7 @@ struct SupporterEventDetailView: View {
                 }
 #endif
 
-                if let clerk {
+                if let clerk, selectedStep != .prep {
                     NavigationLink {
                         NativeCreateEventCardView(
                             athleteName: schedule.athleteName ?? "your athlete",
