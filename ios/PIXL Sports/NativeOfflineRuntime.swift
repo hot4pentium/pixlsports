@@ -51,7 +51,7 @@ final class NativeOfflineRuntime: ObservableObject {
 #else
             let connected = path.status == .satisfied
 #endif
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self, self.online != connected else { return }
                 self.online = connected
                 if !connected { self.cancelWorker(); self.usingSavedContent = true }
