@@ -1551,6 +1551,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: The HYPE Card settings changed since the iPhone last loaded them
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /native/supporter/hype-card/athlete-photo:
     get:
       operationId: getNativeAthletePhotoState
@@ -5694,22 +5698,22 @@ components:
       type: object
       required: [showHypeCard, showStats, showEvents, paused, favoriteMoment, revision]
       properties:
+        revision: { type: string, pattern: "^[a-f0-9]{64}$", description: Server version for the current HYPE Card settings. }
         showHypeCard: { type: boolean }
         showStats: { type: boolean }
         showEvents: { type: boolean }
         paused: { type: boolean }
         favoriteMoment: { type: ["string", "null"], maxLength: 160 }
-        revision: { type: string, minLength: 1, description: Server version for the current HYPE Card settings. }
     NativeSupporterHypeCardUpdate:
       type: object
       required: [showHypeCard, showStats, showEvents, paused, favoriteMoment, expectedRevision, confirmPublish]
       properties:
+        expectedRevision: { type: string, pattern: "^[a-f0-9]{64}$", description: Revision returned with the HYPE Card settings last loaded by the iPhone. }
         showHypeCard: { type: boolean }
         showStats: { type: boolean }
         showEvents: { type: boolean }
         paused: { type: boolean }
         favoriteMoment: { type: ["string", "null"], maxLength: 160 }
-        expectedRevision: { type: string, minLength: 1, description: The server version observed when these settings were loaded. }
         confirmPublish: { type: boolean, description: Must be true when an update makes a private or paused card public. }
     PublicAthleteFanCard:
       type: object

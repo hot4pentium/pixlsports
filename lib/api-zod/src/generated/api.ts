@@ -4213,8 +4213,8 @@ export const CreateNativeSupporterEventCardResponse = zod.object({
  */
 export const getNativeSupporterHypeCardResponsePrivatePreviewFavoriteMomentMax = 160;
 
+export const getNativeSupporterHypeCardResponseSettingsRevisionRegExp = new RegExp('^[a-f0-9]{64}$');
 export const getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax = 160;
-
 
 
 
@@ -4230,12 +4230,12 @@ export const GetNativeSupporterHypeCardResponse = zod.object({
   "hasPhoto": zod.boolean()
 }).optional(),
   "settings": zod.object({
+  "revision": zod.string().regex(getNativeSupporterHypeCardResponseSettingsRevisionRegExp).describe('Server version for the current HYPE Card settings.'),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
-  "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax).nullable(),
-  "revision": zod.string().min(1).describe('Server version for the current HYPE Card settings.')
+  "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax).nullable()
 }).optional()
 })
 
@@ -4243,33 +4243,33 @@ export const GetNativeSupporterHypeCardResponse = zod.object({
 /**
  * @summary Update the selected athlete’s HYPE Card settings from its linked iPhone owner
  */
+export const updateNativeSupporterHypeCardBodyExpectedRevisionRegExp = new RegExp('^[a-f0-9]{64}$');
 export const updateNativeSupporterHypeCardBodyFavoriteMomentMax = 160;
 
 
 
-
 export const UpdateNativeSupporterHypeCardBody = zod.object({
+  "expectedRevision": zod.string().regex(updateNativeSupporterHypeCardBodyExpectedRevisionRegExp).describe('Revision returned with the HYPE Card settings last loaded by the iPhone.'),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
   "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardBodyFavoriteMomentMax).nullable(),
-  "expectedRevision": zod.string().min(1).describe('The server version observed when these settings were loaded.'),
   "confirmPublish": zod.boolean().describe('Must be true when an update makes a private or paused card public.')
 })
 
+export const updateNativeSupporterHypeCardResponseRevisionRegExp = new RegExp('^[a-f0-9]{64}$');
 export const updateNativeSupporterHypeCardResponseFavoriteMomentMax = 160;
 
 
 
-
 export const UpdateNativeSupporterHypeCardResponse = zod.object({
+  "revision": zod.string().regex(updateNativeSupporterHypeCardResponseRevisionRegExp).describe('Server version for the current HYPE Card settings.'),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
-  "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardResponseFavoriteMomentMax).nullable(),
-  "revision": zod.string().min(1).describe('Server version for the current HYPE Card settings.')
+  "favoriteMoment": zod.string().max(updateNativeSupporterHypeCardResponseFavoriteMomentMax).nullable()
 })
 
 

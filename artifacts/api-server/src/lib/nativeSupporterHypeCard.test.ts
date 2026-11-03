@@ -411,6 +411,8 @@ test("native owner edits require confirmation before publishing and close live t
     [linkedOwner, inviteToken],
   );
   const lookup = async () => ({ athleteName: "Jordan", teamName: "Tigers" });
+  const initial = await loadNativeSupporterHypeCard(who, lookup);
+  assert.ok(initial.settings);
   const base = {
     showHypeCard: true,
     showStats: true,
@@ -437,6 +439,7 @@ test("native owner edits require confirmation before publishing and close live t
     paused: false,
     favoriteMoment: "A great team play",
   });
+  assert.notEqual(saved.revision, initial.settings.revision);
   const published = await loadNativeSupporterHypeCard(who, lookup);
   assert.equal(published.status, "available");
   assert.equal(published.inviteToken, inviteToken);
@@ -506,6 +509,8 @@ test("native HYPE Card settings can be confirmed after the update response is lo
     [linkedOwner],
   );
   const lookup = async () => ({ athleteName: "Jordan", teamName: "Tigers" });
+  const initial = await loadNativeSupporterHypeCard(who, lookup);
+  assert.ok(initial.settings);
   const requested = {
     showHypeCard: false,
     showStats: true,
@@ -528,6 +533,46 @@ test("native HYPE Card settings can be confirmed after the update response is lo
     paused: true,
     favoriteMoment: "A great play",
   });
+});
+
+test("native HYPE Card settings reject an older revision without overwriting newer privacy choices", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await addInvite(linkedOwner, "Jordan", "Tigers", randomBytes(18).toString("base64url"));
+  const lookup = async () => ({ athleteName: "Jordan", teamName: "Tigers" });
+  const loaded = await loadNativeSupporterHypeCard(who, lookup);
+  assert.ok(loaded.settings);
+
+  await pool.query(
+    `UPDATE athlete_invites
+     SET show_events=true, updated_at=GREATEST(clock_timestamp(), updated_at + INTERVAL '1 microsecond')
+     WHERE owner_clerk_user_id=$1`,
+    [linkedOwner],
+  );
+  const changed = await loadNativeSupporterHypeCard(who, lookup);
+  assert.ok(changed.settings);
+  assert.notEqual(changed.settings.revision, loaded.settings.revision);
+
+  await assert.rejects(
+    updateNativeSupporterHypeCard(who, {
+      showHypeCard: loaded.settings.showHypeCard,
+      showStats: false,
+      showEvents: loaded.settings.showEvents,
+      paused: loaded.settings.paused,
+      favoriteMoment: loaded.settings.favoriteMoment,
+      expectedRevision: loaded.settings.revision,
+      confirmPublish: false,
+    }, lookup),
+    (error: unknown) => error instanceof NativeLinkError
+      && error.status === 409
+      && error.message.includes("changed on another device"),
+  );
+
+  const stillCurrent = await loadNativeSupporterHypeCard(who, lookup);
+  assert.equal(stillCurrent.settings?.showEvents, true);
+  assert.equal(stillCurrent.settings?.showStats, true);
+  assert.equal(stillCurrent.settings?.revision, changed.settings.revision);
 });
 
 test("native HYPE Card updates reject a stale revision without overwriting newer PIXL settings", async () => {
@@ -580,6 +625,11 @@ test("native HYPE Card publishing controls reject a dedicated athlete editor ide
     "SELECT id FROM athlete_invites WHERE owner_clerk_user_id=$1",
     [linkedOwner],
   );
+  const current = await loadNativeSupporterHypeCard(who, async () => ({
+    athleteName: "Jordan",
+    teamName: "Tigers",
+  }));
+  assert.ok(current.settings);
   await pool.query(
     `INSERT INTO athlete_editor_access
       (owner_clerk_user_id, athlete_invite_id, athlete_email, athlete_clerk_user_id, existing_account, status)
@@ -588,12 +638,13 @@ test("native HYPE Card publishing controls reject a dedicated athlete editor ide
   );
 
   await assert.rejects(
-    updateCurrentSettings(who, {
+    updateNativeSupporterHypeCard(who, {
       showHypeCard: false,
       showStats: true,
       showEvents: true,
       paused: false,
       favoriteMoment: null,
+      expectedRevision: current.settings.revision,
       confirmPublish: false,
     }, async () => ({ athleteName: "Jordan", teamName: "Tigers" })),
     (error: any) => error.status === 423,

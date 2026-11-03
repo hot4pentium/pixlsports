@@ -7,6 +7,11 @@
  */
 
 export interface NativeSupporterHypeCardSettings {
+  /**
+     * Server version for the current HYPE Card settings.
+     * @pattern ^[a-f0-9]{64}$
+     */
+  revision: string;
   showHypeCard: boolean;
   showStats: boolean;
   showEvents: boolean;
@@ -16,9 +21,4 @@ export interface NativeSupporterHypeCardSettings {
      * @nullable
      */
   favoriteMoment: string | null;
-  /**
-     * Server version for the current HYPE Card settings.
-     * @minLength 1
-     */
-  revision: string;
 }

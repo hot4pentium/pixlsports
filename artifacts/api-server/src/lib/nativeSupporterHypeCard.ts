@@ -14,12 +14,12 @@ export type NativeHypeCardReference = {
 };
 
 export type NativeHypeCardSettings = {
+  revision: string;
   showHypeCard: boolean;
   showStats: boolean;
   showEvents: boolean;
   paused: boolean;
   favoriteMoment: string | null;
-  revision: string;
 };
 
 export type NativeHypeCardSettingsUpdate = Omit<NativeHypeCardSettings, "revision"> & {
@@ -394,7 +394,7 @@ export async function updateNativeSupporterHypeCard(
     if (update.expectedRevision !== currentSettings.revision) {
       throw new NativeLinkError(
         409,
-        "This HYPE Card changed in PIXL. Your iPhone choices are still here; review the PIXL version before saving again.",
+        "This HYPE Card changed on another device. Your iPhone choices are still here; review the PIXL version or keep your draft before saving again.",
       );
     }
 
@@ -409,7 +409,7 @@ export async function updateNativeSupporterHypeCard(
       `UPDATE athlete_invites
        SET show_hype_card=$1, show_stats=$2, show_events=$3, paused=$4,
            favorite_moment=$5, live_tracker_share_token=CASE WHEN $4 THEN NULL ELSE live_tracker_share_token END,
-           updated_at=NOW()
+           updated_at=GREATEST(clock_timestamp(), updated_at + INTERVAL '1 microsecond')
        WHERE id=$6 AND owner_clerk_user_id=$7`,
       [
         update.showHypeCard,

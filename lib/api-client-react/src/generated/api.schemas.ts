@@ -3067,6 +3067,11 @@ export interface NativePrivateHypeCard {
 }
 
 export interface NativeSupporterHypeCardSettings {
+  /**
+     * Server version for the current HYPE Card settings.
+     * @pattern ^[a-f0-9]{64}$
+     */
+  revision: string;
   showHypeCard: boolean;
   showStats: boolean;
   showEvents: boolean;
@@ -3076,11 +3081,6 @@ export interface NativeSupporterHypeCardSettings {
      * @nullable
      */
   favoriteMoment: string | null;
-  /**
-     * Server version for the current HYPE Card settings.
-     * @minLength 1
-     */
-  revision: string;
 }
 
 export interface NativeSupporterHypeCard {
@@ -3314,6 +3314,11 @@ export interface NativeAthletePhotoExpectation {
 export type NativeAthletePhotoUpload = Blob;
 
 export interface NativeSupporterHypeCardUpdate {
+  /**
+     * Revision returned with the HYPE Card settings last loaded by the iPhone.
+     * @pattern ^[a-f0-9]{64}$
+     */
+  expectedRevision: string;
   showHypeCard: boolean;
   showStats: boolean;
   showEvents: boolean;
@@ -3323,11 +3328,6 @@ export interface NativeSupporterHypeCardUpdate {
      * @nullable
      */
   favoriteMoment: string | null;
-  /**
-     * The server version observed when these settings were loaded.
-     * @minLength 1
-     */
-  expectedRevision: string;
   /** Must be true when an update makes a private or paused card public. */
   confirmPublish: boolean;
 }

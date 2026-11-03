@@ -702,6 +702,20 @@ struct SupporterHypeCardView: View {
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
             Button {
+                keepSettingsDraft(using: latest)
+            } label: {
+                HStack {
+                    Text("Keep my iPhone draft")
+                    Spacer()
+                }
+                .frame(minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(SupporterHomeColors.accent)
+            .foregroundStyle(SupporterHomeColors.background)
+            .disabled(isSaving || isCheckingSettings || settingsStatusUnknown)
+            .accessibilityIdentifier("native-hype-card-review-settings-draft")
+            Button {
                 Task { await usePIXLSettingsVersion() }
             } label: {
                 HStack {
@@ -754,12 +768,12 @@ struct SupporterHypeCardView: View {
     private var currentSettingsDraft: NativeHypeCardSettings {
         let favorite = draftFavoriteMoment.trimmingCharacters(in: .whitespacesAndNewlines)
         return NativeHypeCardSettings(
+            revision: settingsDraftRevision,
             showHypeCard: draftShowHypeCard,
             showStats: draftShowStats,
             showEvents: draftShowEvents,
             paused: draftPaused,
-            favoriteMoment: favorite.isEmpty ? nil : favorite,
-            revision: settingsDraftRevision
+            favoriteMoment: favorite.isEmpty ? nil : favorite
         )
     }
 
@@ -767,6 +781,7 @@ struct SupporterHypeCardView: View {
         !settingsDraftRecoveryBlocked && settingsRevisionConflict == nil
             && settingsDraftRevision != nil && settingsAccountSubject != nil
             && settingsAccountSubject == clerk?.user?.id
+            && settings?.revision?.isEmpty == false
             && !isSaving && !isCheckingSettings && !settingsStatusUnknown
     }
 
@@ -852,9 +867,9 @@ struct SupporterHypeCardView: View {
         )
         do {
             let saved = try await SupporterHomeAPI.updateNativeHypeCard(settings: update, clerk: clerk)
-            if saved == submittedDraft {
+            if saved.hasSameSettings(as: submittedDraft) {
                 settings = saved
-                if currentSettingsDraft == submittedDraft {
+                if currentSettingsDraft.hasSameSettings(as: submittedDraft) {
                     do {
                         try NativeAccountLinkClient().clearHypeCardSettingsDraft(subject: subject)
                     } catch {
@@ -864,7 +879,7 @@ struct SupporterHypeCardView: View {
                 }
                 await loadCard(refresh: true)
                 settings = saved
-                if currentSettingsDraft == submittedDraft {
+                if currentSettingsDraft.hasSameSettings(as: submittedDraft) {
                     applySettings(saved)
                     settingsMessage = "HYPE Card settings saved in PIXL."
                 } else {
@@ -880,6 +895,33 @@ struct SupporterHypeCardView: View {
             await reconcileSettingsRevisionConflict(subject: subject)
         } catch {
             await reconcileSettingsAfterSaveFailure()
+        }
+    }
+
+    private func keepSettingsDraft(using latest: NativeHypeCardSettings) {
+        guard let subject = settingsAccountSubject,
+              subject == clerk?.user?.id,
+              settings?.revision == latest.revision,
+              settingsRevisionConflict?.revision == latest.revision else {
+            settingsMessage = "Reload the current PIXL settings before reviewing this draft."
+            return
+        }
+        let favorite = draftFavoriteMoment.trimmingCharacters(in: .whitespacesAndNewlines)
+        let reviewedDraft = NativeHypeCardSettings(
+            revision: latest.revision,
+            showHypeCard: draftShowHypeCard,
+            showStats: draftShowStats,
+            showEvents: draftShowEvents,
+            paused: draftPaused,
+            favoriteMoment: favorite.isEmpty ? nil : favorite
+        )
+        do {
+            try NativeAccountLinkClient().saveHypeCardSettingsDraft(reviewedDraft, subject: subject)
+            settingsDraftRevision = latest.revision
+            settingsRevisionConflict = nil
+            settingsMessage = "Your iPhone draft is ready. Review the settings above before saving them to PIXL."
+        } catch {
+            settingsMessage = "Your draft couldn’t be updated on this iPhone. It hasn’t been deleted."
         }
     }
 
@@ -921,7 +963,7 @@ struct SupporterHypeCardView: View {
                 }
                 await loadCard(refresh: true)
                 settings = saved
-                if currentSettingsDraft == confirmedDraft {
+                if currentSettingsDraft.hasSameSettings(as: confirmedDraft) {
                     applySettings(saved)
                     settingsMessage = "HYPE Card settings saved in PIXL."
                 } else {
@@ -1492,7 +1534,7 @@ struct SupporterHypeCardView: View {
                     applySettings(saved)
                     do {
                         if let recovered = try NativeAccountLinkClient().loadHypeCardSettingsDraft(subject: requestSubject) {
-                            if recovered == saved {
+                            if recovered.hasSameSettings(as: saved) {
                                 try NativeAccountLinkClient().clearHypeCardSettingsDraft(subject: requestSubject)
                                 settingsRevisionConflict = nil
                             } else {

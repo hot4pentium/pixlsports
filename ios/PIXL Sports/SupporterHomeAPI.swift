@@ -30,19 +30,23 @@ struct NativeHypeCardReference: Decodable {
 }
 
 struct NativeHypeCardSettings: Codable, Equatable {
+    let revision: String?
     let showHypeCard: Bool
     let showStats: Bool
     let showEvents: Bool
     let paused: Bool
     let favoriteMoment: String?
-    var revision: String? = nil
-
     static func == (lhs: NativeHypeCardSettings, rhs: NativeHypeCardSettings) -> Bool {
-        lhs.showHypeCard == rhs.showHypeCard
-            && lhs.showStats == rhs.showStats
-            && lhs.showEvents == rhs.showEvents
-            && lhs.paused == rhs.paused
-            && lhs.favoriteMoment == rhs.favoriteMoment
+        lhs.hasSameSettings(as: rhs)
+    }
+
+    func hasSameSettings(as other: NativeHypeCardSettings) -> Bool {
+        showHypeCard == other.showHypeCard
+            && showStats == other.showStats
+            && showEvents == other.showEvents
+            && paused == other.paused
+            && favoriteMoment == other.favoriteMoment
+    }
     }
 }
 
@@ -572,6 +576,7 @@ enum SupporterHomeAPI {
         // while the request is in flight, the next editor visit must check PIXL.
         try client.markHypeCardSettingsConfirmationPending(
             NativeHypeCardSettings(
+                revision: settings.expectedRevision,
                 showHypeCard: settings.showHypeCard,
                 showStats: settings.showStats,
                 showEvents: settings.showEvents,
