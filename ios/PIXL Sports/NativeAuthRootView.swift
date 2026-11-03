@@ -87,9 +87,8 @@ struct NativeAuthRootView: View {
                 // measurements back into a NavigationStack inside a ScrollView.
                 VStack(spacing: 0) {
                     signInHeader
-                    AuthView(isDismissible: false)
+                    NativeClerkSignInForm()
                         .id(authPresentationID)
-                        .environment(\.clerkTheme, clerkTheme)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(maxWidth: 560)
@@ -240,23 +239,6 @@ struct NativeAuthRootView: View {
         NativePageBackground()
     }
 
-    private var clerkTheme: ClerkTheme {
-        var theme = ClerkTheme()
-        theme.colors.background = SupporterHomeColors.panel
-        theme.colors.border = .white.opacity(0.14)
-        theme.colors.foreground = .white
-        theme.colors.input = .white.opacity(0.07)
-        theme.colors.inputForeground = .white
-        theme.colors.muted = .white.opacity(0.06)
-        theme.colors.mutedForeground = SupporterHomeColors.muted
-        theme.colors.primary = SupporterHomeColors.accent
-        theme.colors.primaryForeground = SupporterHomeColors.background
-        theme.colors.ring = SupporterHomeColors.blue
-        theme.fonts = .init(fontFamily: "Avenir Next")
-        theme.design = .init(borderRadius: 16)
-        return theme
-    }
-
     private var startupView: some View {
         NativeLaunchSplashView(
             errorTitle: currentAccountNeedsVerification ? "Verify your account again" :
@@ -340,6 +322,37 @@ struct NativeAuthRootView: View {
         }
     }
 }
+
+#if os(iOS) || os(macOS)
+/// Keep SDK form construction out of the root's observation scope. AuthView
+/// eagerly constructs observable AuthState in its initializer; creating it
+/// directly in a body that also reads Clerk and AppStorage couples that work
+/// to unrelated root invalidations. This leaf has no changing input properties.
+/// The root's explicit .id still resets it after a real sign-out.
+struct NativeClerkSignInForm: View {
+    var body: some View {
+        AuthView(isDismissible: false)
+            .environment(\.clerkTheme, Self.theme)
+    }
+
+    private static let theme: ClerkTheme = {
+        var theme = ClerkTheme()
+        theme.colors.background = SupporterHomeColors.panel
+        theme.colors.border = .white.opacity(0.14)
+        theme.colors.foreground = .white
+        theme.colors.input = .white.opacity(0.07)
+        theme.colors.inputForeground = .white
+        theme.colors.muted = .white.opacity(0.06)
+        theme.colors.mutedForeground = SupporterHomeColors.muted
+        theme.colors.primary = SupporterHomeColors.accent
+        theme.colors.primaryForeground = SupporterHomeColors.background
+        theme.colors.ring = SupporterHomeColors.blue
+        theme.fonts = .init(fontFamily: "Avenir Next")
+        theme.design = .init(borderRadius: 16)
+        return theme
+    }()
+}
+#endif
 
 struct NativeLaunchSplashView: View {
     var errorTitle: String? = nil

@@ -10,6 +10,7 @@ struct NativeStartupDiagnosticView: View {
         case configured = "SDK configured"
         case state = "Reading sign-in state"
         case signIn = "Clerk sign-in screen"
+        case themedSignIn = "App sign-in form"
         case app = "Normal app"
     }
 
@@ -26,6 +27,12 @@ struct NativeStartupDiagnosticView: View {
                     Button("Read state") { select(.state) }
                         .accessibilityIdentifier("startup-check-read-state")
                     Button("Sign-in UI") { select(.signIn) }
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                HStack {
+                    Button("App sign-in") { select(.themedSignIn) }
+                        .accessibilityIdentifier("startup-check-app-sign-in")
                     Button("Normal app") { select(.app) }
                 }
                 .buttonStyle(.bordered)
@@ -58,6 +65,8 @@ struct NativeStartupDiagnosticView: View {
                 case .signIn:
                     // Isolate SDK UI from app wrappers, theme, and offline state.
                     AuthView(isDismissible: false)
+                case .themedSignIn:
+                    NativeClerkSignInForm()
                 case .app:
                     // Same authorization/lifecycle gates as ordinary startup.
                     NativeAuthRootView()

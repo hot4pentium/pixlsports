@@ -11,6 +11,12 @@ final class SupporterDashboardUITests: XCTestCase {
         app.buttons["startup-check-read-state"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["startup-check-state"]
             .waitForExistence(timeout: 10))
+        app.buttons["startup-check-app-sign-in"].tap()
+        XCTAssertTrue(app.textFields.firstMatch.waitForExistence(timeout: 15),
+                      "The themed SDK sign-in form should render.")
+        app.buttons["startup-check-read-state"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["startup-check-state"]
+            .waitForExistence(timeout: 5), "The diagnostic must remain responsive.")
         app.terminate()
     }
 

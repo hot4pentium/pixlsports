@@ -66,3 +66,15 @@ The diagnostic does not reset any saved data and is compiled out of Release.
 Remove the argument afterward; it intentionally does not automatically enter
 the dashboard. XCTest coverage for the first two stages is available as
 `testStartupDiagnosticRendersAfterSDKConfiguration`, requiring Apple tooling.
+
+The device subsequently rendered the configured screen, observable sign-in
+state (loaded, authentication incomplete), and default SDK form. Selecting
+Normal app froze the UI. This narrows investigation to the normal root and its
+additional presentation/state work; it does not establish a specific cause.
+
+The root now delegates SDK form construction to a stable leaf, with a static
+theme, rather than constructing AuthView inside the root observation scope.
+The new **App sign-in** button checks that exact themed leaf independently.
+Test it on a fresh diagnostic launch, then test **Normal app**. A successful
+leaf alone is not a completed fix: normal launch without the diagnostic
+argument must also work before closing the issue.

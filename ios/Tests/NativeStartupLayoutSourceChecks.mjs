@@ -14,9 +14,21 @@ const splash = withoutComments.slice(withoutComments.indexOf("struct NativeLaunc
 
 test("authentication root does not wrap child navigation in another stack or scroll viewport", () => {
   assert.ok(authBody.includes("ContentView("));
-  assert.ok(authBody.includes("AuthView(isDismissible: false)"));
+  assert.ok(authBody.includes("NativeClerkSignInForm()"));
+  assert.doesNotMatch(authBody, /\bAuthView\(/);
   assert.doesNotMatch(authBody, /\b(?:NavigationStack|GeometryReader|ScrollView)\s*[{(]/);
   assert.match(authBody, /accessibilityIdentifier\("native-sign-in-screen"\)/);
+});
+
+test("Clerk form construction has a stable observation boundary and theme", () => {
+  const form = withoutComments.slice(
+    withoutComments.indexOf("struct NativeClerkSignInForm"),
+    withoutComments.indexOf("struct NativeLaunchSplashView"),
+  );
+  assert.match(form, /AuthView\(isDismissible: false\)/);
+  assert.match(form, /private static let theme: ClerkTheme/);
+  assert.doesNotMatch(form, /@(?:AppStorage|ObservedObject|Environment)\b/);
+  assert.match(authBody, /NativeClerkSignInForm\(\)\s*\.id\(authPresentationID\)/);
 });
 
 test("first-paint splash centers without observing geometry", () => {
