@@ -34,7 +34,8 @@ test("Clerk form construction has a stable observation boundary and theme", () =
 test("first-paint splash centers without observing geometry", () => {
   assert.doesNotMatch(splash, /\bGeometryReader\s*[{(]/);
   assert.doesNotMatch(splash, /\.position\s*\(/);
-  assert.match(splash, /NativePageBackground\(\)/);
+  assert.doesNotMatch(splash, /NativePageBackground\(\)/);
+  assert.match(splash, /Color\.white\.ignoresSafeArea\(\)/);
   assert.match(splash, /Image\("PixlSportsLogo"\)/);
   assert.match(splash, /reduceMotion/);
   assert.match(splash, /native-launch-retry/);

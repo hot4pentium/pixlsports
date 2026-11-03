@@ -349,7 +349,7 @@ struct NativeLaunchSplashView: View {
         // First paint must not depend on a GeometryReader observation/layout
         // pass. Center with normal layout; keep status independent of the logo.
         ZStack {
-            NativePageBackground()
+            Color.white.ignoresSafeArea()
 
             brand
                 .frame(maxWidth: 340)
