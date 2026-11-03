@@ -111,15 +111,22 @@ test("dashboard does not show the large offline status card", () => {
   assert.doesNotMatch(content, /NativeOfflineStatusView\s*\{/);
 });
 
-test("save conflicts explain the choice without technical wording", () => {
+test("Prep save conflicts use simple copy and confirm before replacing local changes", () => {
   const tools = readFileSync(new URL("../PIXL Sports/NativeEventTools.swift", import.meta.url), "utf8");
   const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
-  const tracker = readFileSync(new URL("../PIXL Sports/NativeEventTrackerView.swift", import.meta.url), "utf8");
   const notice = tools.slice(tools.indexOf("struct NativeToolSaveNotice: View"));
-  assert.match(notice, /This change may not be in PIXL yet\. It's still saved on this iPhone\./);
-  assert.match(notice, /Button\("Use PIXL version", role: \.destructive\)/);
-  assert.match(notice, /Anything not saved to PIXL will be removed from this iPhone\./);
-  assert.doesNotMatch(notice, /Discard pending change and reload|waiting to sync|changed elsewhere|reload before choosing what to keep/);
-  assert.doesNotMatch(prep, /waiting to sync/);
-  assert.doesNotMatch(tracker, /waiting to sync/);
+  const pendingDescription = tools.slice(tools.indexOf("var pendingDescription"), tools.indexOf("var ownsCurrentScope"));
+  assert.match(prep, /hasUnsavedChanges: edited, savedContentName: "Prep"/);
+  assert.match(notice, /Your Prep update wasn't saved\. It's still on this iPhone\./);
+  const savedAction = 'Button("Use saved \\(savedContentName)", role: .destructive)';
+  assert.ok(notice.includes(savedAction));
+  assert.ok(notice.includes('.confirmationDialog(\n            "Use saved \\(savedContentName) instead?"'));
+  assert.match(notice, /Changes not saved yet will be removed from this iPhone\. The saved copy will stay\./);
+  assert.ok(notice.includes(`${savedAction} {\n                Task { await model.discardAndReload`));
+  assert.doesNotMatch(notice, /waiting to sync|Use PIXL version|changed elsewhere|server version|revision/);
+  assert.doesNotMatch(pendingDescription, /PIXL|sync|revision/);
+  assert.match(pendingDescription, /still need/);
+  assert.doesNotMatch(prep, /Needs attention|not yet saved to PIXL|waiting to sync/);
+  assert.match(prep, /if model\.workspace != nil && !shouldShowSaveNotice \{ saveFooter \}/);
+  assert.match(prep, /if !embedded && model\.workspace != nil && !shouldShowSaveNotice \{\s*saveFooter\s*\}/);
 });

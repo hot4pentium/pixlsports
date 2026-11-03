@@ -7,4 +7,4 @@ The patch tool can partially apply a batch before reporting a failure; do not as
 
 **Why:** A retry based on stale file contents can undo a successfully applied hunk or place it in the wrong scope.
 
-**How to apply:** After any failed patch batch, inspect repository status and reread each targeted file before preparing a new patch.
+**How to apply:** After any failed patch batch, inspect repository status and reread each targeted file before preparing a new patch. For nested SwiftUI blocks, retry with small hunks anchored to the exact current braces rather than replacing a large view block.

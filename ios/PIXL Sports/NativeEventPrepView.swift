@@ -103,7 +103,9 @@ struct NativeEventPrepView: View {
             .listRowBackground(SupporterHomeColors.panel)
             if let clerk, shouldShowSaveNotice {
                 Section {
-                    NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
+                    NativeToolSaveNotice(
+                        model: model, clerk: clerk, hasUnsavedChanges: edited, savedContentName: "Prep"
+                    )
                 }
                 .listRowBackground(SupporterHomeColors.panel)
             }
@@ -260,7 +262,9 @@ struct NativeEventPrepView: View {
     private var compactPrepContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let clerk, shouldShowSaveNotice {
-                NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
+                NativeToolSaveNotice(
+                    model: model, clerk: clerk, hasUnsavedChanges: edited, savedContentName: "Prep"
+                )
             }
 
             if model.workspace != nil {
@@ -474,7 +478,7 @@ struct NativeEventPrepView: View {
                             .accessibilityIdentifier("native-prep-back-to-content")
                         }
                     }
-                    if model.workspace != nil { saveFooter }
+                    if model.workspace != nil && !shouldShowSaveNotice { saveFooter }
                 }
             } else {
                 Form { prepSections }
@@ -487,7 +491,7 @@ struct NativeEventPrepView: View {
             if !embedded { NativePageBackground() }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !embedded && model.workspace != nil {
+            if !embedded && model.workspace != nil && !shouldShowSaveNotice {
                 saveFooter
             }
         }
@@ -643,9 +647,10 @@ struct NativeEventPrepView: View {
     }
 
     private var saveStatusText: String {
-        if model.errorMessage != nil { return "Needs attention" }
+        if model.conflictBlocked { return "Prep update wasn't saved" }
+        if model.errorMessage != nil { return "See the message above" }
         if prepAutosaveTask != nil || model.busy { return "Saving…" }
-        if model.pendingCount > 0 { return "Saved on this iPhone · not yet saved to PIXL" }
+        if model.pendingCount > 0 { return "Changes still need saving" }
         if !offline.online { return "Offline · saved copy on this iPhone" }
         if hasUnsavedEdits { return "Unsaved changes" }
         return "Prep saved"

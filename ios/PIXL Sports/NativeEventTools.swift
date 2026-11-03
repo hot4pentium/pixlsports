@@ -104,8 +104,8 @@ final class NativeEventToolModel: ObservableObject {
             ? (pendingCount == 1 ? "stat" : "stats")
             : (pendingCount == 1 ? "change" : "changes")
         return busy
-            ? "Saving \(pendingCount) \(noun) to PIXL…"
-            : "\(pendingCount) \(noun) not yet saved to PIXL"
+            ? "Saving \(pendingCount) \(noun)…"
+            : "\(pendingCount) \(noun) \(pendingCount == 1 ? "still needs" : "still need") saving"
     }
 
     var ownsCurrentScope: Bool { scope == offline.vault.namespace && offline.canContinue }
@@ -525,48 +525,64 @@ struct NativeToolSaveNotice: View {
     @ObservedObject private var offline = NativeOfflineRuntime.shared
     let clerk: Clerk
     var hasUnsavedChanges = false
+    var savedContentName = "version"
     @State private var confirmingDiscard = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !offline.online {
-                Label("Offline · changes stay on this iPhone. Live Taps and sharing need a connection.",
+                Label(savedContentName == "Prep"
+                      ? "You're offline. Your Prep changes stay on this iPhone."
+                      : "Offline · changes stay on this iPhone. Live Taps and sharing need a connection.",
                       systemImage: "wifi.slash").font(.caption)
             }
             if model.busy {
-                HStack { ProgressView(); Text(model.pendingCount > 0 ? model.pendingDescription : "Loading from PIXL…") }
-            } else if model.pendingCount > 0 {
+                HStack {
+                    ProgressView()
+                    Text(model.pendingCount > 0 ? model.pendingDescription : "Loading your event…")
+                }
+            } else if model.pendingCount > 0,
+                      !model.conflictBlocked,
+                      !model.unreadablePendingData,
+                      model.errorMessage == nil {
                 Label(model.pendingDescription, systemImage: "clock.arrow.circlepath")
                     .font(.caption)
                     .accessibilityIdentifier("native-tool-pending")
             }
             if model.conflictBlocked {
-                Label(model.pendingCount == 1
-                      ? "This change may not be in PIXL yet. It's still saved on this iPhone."
-                      : "These changes may not be in PIXL yet. They're still saved on this iPhone.",
+                Label(savedContentName == "Prep"
+                      ? "Your Prep update wasn't saved. It's still on this iPhone."
+                      : model.pendingCount == 1
+                          ? "Your change wasn't saved. It's still on this iPhone."
+                          : "Some changes weren't saved. They're still on this iPhone.",
                       systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .accessibilityIdentifier("native-tool-save-error")
-                Button("Use PIXL version", role: .destructive) {
+                Button("Use saved \(savedContentName)", role: .destructive) {
                     confirmingDiscard = true
                 }
-            } else if let message = model.errorMessage {
-                Label(message, systemImage: "exclamationmark.triangle")
+            } else if let _ = model.errorMessage {
+                Label(model.unreadablePendingData
+                      ? "We couldn't open your saved change. It hasn't been removed."
+                      : model.pendingCount > 0
+                          ? "We couldn't confirm that your changes were saved. They're still on this iPhone."
+                          : "We couldn't load this event. Try again.",
+                      systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .accessibilityIdentifier("native-tool-save-error")
                 if model.pendingCount > 0 {
-                    Button("Try saving again") {
+                    Button("Try again") {
                         Task { await model.retry(clerk: clerk) }
                     }
                     .accessibilityIdentifier("native-tool-save-retry")
 #if DEBUG
                     .accessibilityValue(model.uiTestPendingMutationID ?? "")
 #endif
-                    Button("Use PIXL version", role: .destructive) {
+                    Button("Use saved \(savedContentName)", role: .destructive) {
                         confirmingDiscard = true
                     }
                 } else if model.unreadablePendingData {
-                    Button("Use PIXL version", role: .destructive) {
+                    Button("Use saved \(savedContentName)", role: .destructive) {
                         confirmingDiscard = true
                     }
                 } else {
@@ -574,26 +590,26 @@ struct NativeToolSaveNotice: View {
                 }
             } else if model.workspace != nil && !model.busy {
                 Label(hasUnsavedChanges ? "Unsaved prep changes" :
-                        model.pendingCount > 0 ? "Saved here · not yet saved to PIXL" :
-                        offline.usingSavedContent ? "Saved copy on this iPhone" : "All changes saved to PIXL",
+                        model.pendingCount > 0 ? "Changes still need saving" :
+                        offline.usingSavedContent ? "Saved copy on this iPhone" : "All changes saved",
                       systemImage: hasUnsavedChanges ? "pencil.circle" : "checkmark.shield")
                     .font(.caption)
             }
         }
         .disabled(model.busy)
         .confirmationDialog(
-            "Use the PIXL version instead?",
+            "Use saved \(savedContentName) instead?",
             isPresented: $confirmingDiscard,
             titleVisibility: .visible
         ) {
-            Button("Use PIXL version", role: .destructive) {
+            Button("Use saved \(savedContentName)", role: .destructive) {
                 Task { await model.discardAndReload(clerk: clerk) }
             }
         } message: {
             if model.unreadablePendingData {
-                Text("This removes the saved copy on this iPhone and uses the version in PIXL.")
+                Text("The unreadable copy on this iPhone will be removed. The saved copy will stay.")
             } else {
-                Text("Anything not saved to PIXL will be removed from this iPhone. Anything already saved to PIXL will stay.")
+                Text("Changes not saved yet will be removed from this iPhone. The saved copy will stay.")
             }
         }
     }
