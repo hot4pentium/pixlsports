@@ -665,11 +665,16 @@ final class SupporterEventDetailUITests: XCTestCase {
             XCTAssertTrue(card.waitForExistence(timeout: 15), "The selected athlete’s HYPE Card must load.")
             XCTAssertTrue(card.label.contains(athleteName),
                           "The Event Card action must open the selected athlete’s HYPE Card.")
+            let flipContainer = app.descendants(matching: .any)["native-hype-card-flip-container"]
+            XCTAssertTrue(flipContainer.exists, "The card and its section tabs form one connected surface.")
             XCTAssertTrue(app.buttons["native-hype-card-share"].exists,
                           "Sharing remains an explicit action after reviewing the card.")
             XCTAssertTrue(app.buttons["native-hype-card-side-front"].exists)
-            XCTAssertTrue(app.buttons["native-hype-card-side-videos"].exists)
-            app.buttons["native-hype-card-side-videos"].tap()
+            let videosTab = app.buttons["native-hype-card-side-videos"]
+            XCTAssertTrue(videosTab.exists)
+            XCTAssertGreaterThanOrEqual(videosTab.frame.minY, card.frame.maxY - 1,
+                                        "Section tabs sit below the HYPE Card.")
+            videosTab.tap()
             XCTAssertTrue(app.descendants(matching: .any)["native-hype-card-videos"].waitForExistence(timeout: 5),
                           "The HYPE Card exposes its native Videos side.")
             XCTAssertTrue(app.descendants(matching: .any)["native-hype-card-owner-settings"].exists,
@@ -680,12 +685,24 @@ final class SupporterEventDetailUITests: XCTestCase {
             ] {
                 let tab = app.buttons["native-hype-card-side-\(side)"]
                 if tab.exists {
+                    let ready = XCTNSPredicateExpectation(
+                        predicate: NSPredicate(format: "isEnabled == true"),
+                        object: tab
+                    )
+                    XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed,
+                                   "Wait for the previous card flip to finish.")
                     tab.tap()
                     XCTAssertTrue(app.descendants(matching: .any)[content].waitForExistence(timeout: 5),
-                                  "The enabled \(side) side should open in the native card.")
+                                  "The enabled \(side) side should appear on the flipped card.")
                 }
             }
-            app.buttons["native-hype-card-side-front"].tap()
+            let frontTab = app.buttons["native-hype-card-side-front"]
+            let frontReady = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "isEnabled == true"),
+                object: frontTab
+            )
+            XCTAssertEqual(XCTWaiter.wait(for: [frontReady], timeout: 5), .completed)
+            frontTab.tap()
         }
         XCTAssertFalse(app.otherElements["ActivityListView"].exists,
                        "Opening the HYPE Card must not launch another share sheet.")

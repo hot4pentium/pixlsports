@@ -26,3 +26,9 @@ Keep the public HYPE Card free of the “Manage this athletic card” banner, in
 **Why:** The user explicitly requested removing the management text and extending the card vertically so more content is visible.
 
 **How to apply:** Preserve side navigation and scrolling for longer content rather than shrinking the card when it flips. Browser checks should allow the 2:3 frame to exceed the old viewport-fit height cap.
+
+For the native iOS public HYPE Card, let the athlete photo fill the entire front face. Keep Front, Videos, Stats, and Events controls attached beneath the face as one card surface; selecting a section flips the card horizontally, and Front returns to the photo. Private previews remain front-only.
+
+**Why:** The user requested full-bleed photo coverage and section tabs integrated below the native card, with a horizontal flip for section changes.
+
+**How to apply:** Preserve this interaction on future native HYPE Card layout changes. Keep the owner’s sharing/privacy settings authoritative for which public sections are available.

@@ -94,8 +94,9 @@ struct NativeHypeCardFront: View {
 
     private func fullPhoto(_ image: Image, size: CGSize) -> some View {
         image.resizable()
-            .scaledToFit()
+            .scaledToFill()
             .frame(width: size.width, height: size.height)
+            .clipped()
     }
 
     private var silhouette: some View {

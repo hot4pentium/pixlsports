@@ -128,6 +128,22 @@ test("HYPE Card and photo screens do not show raw server errors", () => {
   assert.match(hypeCard, /We couldn’t confirm that your HYPE Card settings were saved\. Please check and try again if needed\./);
 });
 
+test("HYPE Card photo fills its frame and section tabs attach below a flipping face", () => {
+  const front = readFileSync(new URL("../PIXL Sports/NativeHypeCardFront.swift", import.meta.url), "utf8");
+  const hypeCard = readFileSync(new URL("../PIXL Sports/SupporterHypeCardView.swift", import.meta.url), "utf8");
+  const publicContentStart = hypeCard.indexOf("private func publicCardContent");
+  const frontFacePosition = hypeCard.indexOf("frontCardFace(card)", publicContentStart);
+  const tabsPosition = hypeCard.indexOf("cardSectionTabs", frontFacePosition);
+  assert.match(front, /\.scaledToFill\(\)/);
+  assert.match(front, /\.clipped\(\)/);
+  assert.match(hypeCard, /rotation3DEffect\(/);
+  assert.match(hypeCard, /cardRotation - 180/);
+  assert.ok(frontFacePosition >= 0 && tabsPosition > frontFacePosition,
+            "The selector is placed after the card face in the connected card layout.");
+  assert.match(hypeCard, /native-hype-card-flip-container/);
+  assert.match(hypeCard, /selectCardSide\(side\)/);
+});
+
 test("Settings alert failures use plain language without exposing server details", () => {
   const client = readFileSync(new URL("../PIXL Sports/NativeAccountLinkClient.swift", import.meta.url), "utf8");
   const copy = client.slice(client.indexOf("private static func requestFailureMessage"), client.indexOf("static func apiOrigin"));

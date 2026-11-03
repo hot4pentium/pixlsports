@@ -37,6 +37,9 @@ struct SupporterHypeCardView: View {
     @State private var draftPaused = false
     @State private var draftFavoriteMoment = ""
     @State private var selectedSide: NativeHypeCardSide = .front
+    @State private var cardRotation = 0.0
+    @State private var isFlipping = false
+    @State private var flipTask: Task<Void, Never>?
     @State private var selectedVideoToken: String?
     @State private var videoPlayer: AVPlayer?
     @State private var isSaving = false
@@ -169,6 +172,11 @@ struct SupporterHypeCardView: View {
             Task { await loadCard() }
         }
         .onDisappear {
+            flipTask?.cancel()
+            flipTask = nil
+            isFlipping = false
+            selectedSide = .front
+            cardRotation = 0
             videoPlayer?.pause()
             videoPlayer = nil
         }
@@ -357,53 +365,199 @@ struct SupporterHypeCardView: View {
 
     @ViewBuilder
     private func publicCardContent(_ card: NativePublicHypeCard) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 8) {
-                ForEach(availableSides) { side in
-                    Button {
-                        selectedSide = side
-                    } label: {
-                        Label(side.rawValue, systemImage: side.symbol)
-                            .font(.caption.weight(.bold))
-                            .frame(maxWidth: .infinity, minHeight: 40)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(selectedSide == side ? SupporterHomeColors.blue : SupporterHomeColors.accent)
-                    .accessibilityAddTraits(selectedSide == side ? .isSelected : [])
-                    .accessibilityIdentifier("native-hype-card-side-\(side.rawValue.lowercased())")
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("HYPE Card sections")
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(spacing: 0) {
+                ZStack {
+                    frontCardFace(card)
+                        .rotation3DEffect(
+                            .degrees(cardRotation),
+                            axis: (x: 0, y: 1, z: 0),
+                            perspective: 0.65
+                        )
+                        .opacity(cardRotation < 90 ? 1 : 0)
+                        .accessibilityHidden(cardRotation >= 90)
+                        .allowsHitTesting(cardRotation < 90)
 
-            switch selectedSide {
-            case .front:
-                hypeCard(
-                    athleteName: card.athleteName,
-                    teamName: card.teamName,
-                    seasonName: card.seasonName,
-                    favoriteMoment: card.favoriteMoment,
-                    photoURL: photoURL,
-                    privatePhoto: nil
-                )
-            case .stats:
-                if settings?.showStats == true, let stats = card.stats {
-                    statsSide(stats)
-                } else {
-                    emptySide(title: "Stats are unavailable", detail: "The card owner has not enabled finalized stats.")
+                    ScrollView {
+                        cardSideContent(selectedSide, card: card)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .scrollIndicators(.hidden)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SupporterHomeColors.background)
+                    .rotation3DEffect(
+                        .degrees(cardRotation - 180),
+                        axis: (x: 0, y: 1, z: 0),
+                        perspective: 0.65
+                    )
+                    .opacity(cardRotation >= 90 ? 1 : 0)
+                    .accessibilityHidden(cardRotation < 90)
+                    .allowsHitTesting(cardRotation >= 90)
                 }
-            case .videos:
-                videosSide(card)
-            case .events:
-                if settings?.showEvents == true, card.showEvents {
-                    eventsSide(card)
-                } else {
-                    emptySide(title: "Events are private", detail: "The card owner has turned off Event Card sharing.")
-                }
+                .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                .accessibilityIdentifier("native-hype-card-flip-face")
+
+                Rectangle()
+                    .fill(.white.opacity(0.12))
+                    .frame(height: 1)
+                cardSectionTabs
+            }
+            .background(SupporterHomeColors.panel)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(SupporterHomeColors.blue.opacity(0.85), lineWidth: 1.5)
+            }
+            .supporterSurfaceShadow()
+            .accessibilityElement(children: .contain)
+            .accessibilityValue(selectedSide.rawValue)
+            .accessibilityIdentifier("native-hype-card-flip-container")
+
+            if selectedSide == .front,
+               let moment = card.favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !moment.isEmpty {
+                favoriteMomentPanel(moment)
             }
         }
         .onChange(of: availableSides) { _, sides in
-            if !sides.contains(selectedSide) { selectedSide = .front }
+            guard !sides.contains(selectedSide) else { return }
+            flipTask?.cancel()
+            flipTask = nil
+            isFlipping = false
+            selectedSide = .front
+            cardRotation = 0
+        }
+    }
+
+    private var cardSectionTabs: some View {
+        HStack(spacing: 4) {
+            ForEach(availableSides) { side in
+                Button {
+                    selectCardSide(side)
+                } label: {
+                    Label(side.rawValue, systemImage: side.symbol)
+                        .font(.caption.weight(.bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .foregroundStyle(
+                            selectedSide == side ? .white : SupporterHomeColors.muted
+                        )
+                        .background {
+                            if selectedSide == side {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(SupporterHomeColors.blue)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .disabled(isFlipping)
+                .accessibilityAddTraits(selectedSide == side ? .isSelected : [])
+                .accessibilityHint("Flip the HYPE Card to show this section.")
+                .accessibilityIdentifier("native-hype-card-side-\(side.rawValue.lowercased())")
+            }
+        }
+        .padding(8)
+        .background(SupporterHomeColors.panel)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("HYPE Card sections")
+    }
+
+    private func frontCardFace(_ card: NativePublicHypeCard) -> some View {
+        NativeHypeCardFront(
+            athleteName: card.athleteName,
+            teamName: card.teamName,
+            seasonName: card.seasonName,
+            photoURL: photoURL,
+            privatePhoto: nil,
+            identityDetails: athleteProfile?.displayDetails ?? ""
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(card.athleteName), \(card.teamName), \(card.seasonName), HYPE Card")
+        .accessibilityIdentifier("native-hype-card")
+    }
+
+    @ViewBuilder
+    private func cardSideContent(_ side: NativeHypeCardSide, card: NativePublicHypeCard) -> some View {
+        switch side {
+        case .front:
+            emptySide(title: "HYPE Card", detail: "Choose Front to return to the athlete’s card.")
+        case .stats:
+            if settings?.showStats == true, let stats = card.stats {
+                statsSide(stats)
+            } else {
+                emptySide(title: "Stats are unavailable", detail: "The card owner has not enabled finalized stats.")
+            }
+        case .videos:
+            videosSide(card)
+        case .events:
+            if settings?.showEvents == true, card.showEvents {
+                eventsSide(card)
+            } else {
+                emptySide(title: "Events are private", detail: "The card owner has turned off Event Card sharing.")
+            }
+        }
+    }
+
+    private func selectCardSide(_ side: NativeHypeCardSide) {
+        guard availableSides.contains(side), side != selectedSide, !isFlipping else { return }
+        flipTask?.cancel()
+        isFlipping = true
+        let duration: Double = 0.44
+        let delay: UInt64 = 440_000_000
+
+        if side == .front {
+            withAnimation(.easeInOut(duration: duration)) {
+                cardRotation = 0
+            }
+            flipTask = Task { @MainActor in
+                do {
+                    try await Task.sleep(nanoseconds: delay)
+                    selectedSide = .front
+                    isFlipping = false
+                    flipTask = nil
+                } catch {
+                    return
+                }
+            }
+            return
+        }
+
+        if selectedSide == .front {
+            selectedSide = side
+            withAnimation(.easeInOut(duration: duration)) {
+                cardRotation = 180
+            }
+            flipTask = Task { @MainActor in
+                do {
+                    try await Task.sleep(nanoseconds: delay)
+                    isFlipping = false
+                    flipTask = nil
+                } catch {
+                    return
+                }
+            }
+            return
+        }
+
+        withAnimation(.easeInOut(duration: duration)) {
+            cardRotation = 0
+        }
+        flipTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: delay)
+                selectedSide = side
+                withAnimation(.easeInOut(duration: duration)) {
+                    cardRotation = 180
+                }
+                try await Task.sleep(nanoseconds: delay)
+                isFlipping = false
+                flipTask = nil
+            } catch {
+                return
+            }
         }
     }
 
@@ -801,19 +955,23 @@ struct SupporterHypeCardView: View {
 
             if let favoriteMoment = favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines),
                !favoriteMoment.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    SupporterEyebrow(text: "Favorite moment", color: SupporterHomeColors.muted)
-                    Text(favoriteMoment)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
-                .supporterSurfaceShadow()
+                favoriteMomentPanel(favoriteMoment)
             }
         }
+    }
+
+    private func favoriteMomentPanel(_ favoriteMoment: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SupporterEyebrow(text: "Favorite moment", color: SupporterHomeColors.muted)
+            Text(favoriteMoment)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
+        .supporterSurfaceShadow()
     }
 
     private var athleteSilhouette: some View {
