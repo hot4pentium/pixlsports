@@ -536,7 +536,7 @@ struct SupporterHypeCardView: View {
             await loadCard(refresh: true)
             settingsMessage = "HYPE Card settings saved."
         } catch {
-            settingsMessage = "Your HYPE Card settings couldn’t be saved. Please try again."
+            settingsMessage = "We couldn’t finish saving your HYPE Card settings. Please try again."
         }
     }
 
