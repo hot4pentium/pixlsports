@@ -51,7 +51,9 @@ struct NativeAuthRootView: View {
                 ((!clerk.isLoaded || !offline.online || (offline.usingSavedContent && !offline.canContinue)) && !allowsSavedDashboard) {
                 startupView
             } else if clerk.isAuthFlowComplete || allowsSavedDashboard {
-                NavigationStack {
+                // ContentView owns the dashboard NavigationStack. A second
+                // stack here competes for the same hosting/navigation surface.
+                Group {
                     ContentView(
                         clerk: clerk,
                         showingAccountLink: $showingAccountLink,
@@ -80,32 +82,22 @@ struct NativeAuthRootView: View {
 #endif
                 }
             } else {
-                ZStack {
-                    signInBackdrop
-                    GeometryReader { geometry in
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                signInHeader
-                                // AuthView owns a NavigationStack. Give it a finite
-                                // viewport rather than an unconstrained scroll height.
-                                AuthView(isDismissible: false)
-                                    .id(authPresentationID)
-                                    .environment(\.clerkTheme, clerkTheme)
-                                    .frame(height: geometry.size.height.isFinite
-                                        ? max(560, geometry.size.height - 240)
-                                        : 560)
-                                    .padding(.bottom, 16)
-                            }
-                            .frame(maxWidth: 560)
-                            // Apply the same outer gutter to the header and form.
-                            .padding(.horizontal, 14)
-                            .frame(maxWidth: .infinity)
-                        }
-                        .scrollIndicators(.hidden)
-                    }
+                // AuthView owns navigation and scrolling. Let the window offer
+                // its remaining finite height, rather than feeding GeometryReader
+                // measurements back into a NavigationStack inside a ScrollView.
+                VStack(spacing: 0) {
+                    signInHeader
+                    AuthView(isDismissible: false)
+                        .id(authPresentationID)
+                        .environment(\.clerkTheme, clerkTheme)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .frame(maxWidth: 560)
+                .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background { signInBackdrop }
                 .preferredColorScheme(.light)
+                .accessibilityIdentifier("native-sign-in-screen")
             }
         }
         .onChange(of: offline.online) { _, connected in
@@ -358,39 +350,34 @@ struct NativeLaunchSplashView: View {
     @State private var logoIsGrowing = false
 
     var body: some View {
-        GeometryReader { geometry in
-            // SwiftUI can propose a zero or non-finite size during startup
-            // and navigation transitions. Never pass it into a frame/position.
-            let width = geometry.size.width.isFinite ? max(0, geometry.size.width) : 0
-            let height = geometry.size.height.isFinite ? max(0, geometry.size.height) : 0
-            ZStack {
-                NativePageBackground()
+        // First paint must not depend on a GeometryReader observation/layout
+        // pass. Center with normal layout; keep status independent of the logo.
+        ZStack {
+            NativePageBackground()
 
-                brand
-                    .frame(maxWidth: max(0, min(width - 48, 340)))
-                    .scaleEffect(reduceMotion ? 1 : (logoIsGrowing ? 1.035 : 0.985))
-                    .animation(
-                        .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
-                        value: logoIsGrowing
-                    )
-                    .position(x: width / 2, y: height / 2)
+            brand
+                .frame(maxWidth: 340)
+                .padding(.horizontal, 24)
+                .scaleEffect(reduceMotion ? 1 : (logoIsGrowing ? 1.035 : 0.985))
+                .animation(
+                    .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
+                    value: logoIsGrowing
+                )
 
-                VStack {
-                    Spacer()
-                    startupStatus
-                        .frame(maxWidth: 460)
-                        .padding(.horizontal, 28)
-                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 28) + 16)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack {
+                Spacer()
+                startupStatus
+                    .frame(maxWidth: 460)
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 28)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onAppear {
-                guard errorTitle == nil, !reduceMotion else { return }
-                logoIsGrowing = true
-            }
         }
-        .ignoresSafeArea()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            guard errorTitle == nil, !reduceMotion else { return }
+            logoIsGrowing = true
+        }
         .preferredColorScheme(.light)
         .accessibilityIdentifier("native-launch-splash")
     }

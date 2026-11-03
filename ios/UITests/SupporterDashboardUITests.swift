@@ -2,6 +2,41 @@ import XCTest
 
 @MainActor
 final class SupporterDashboardUITests: XCTestCase {
+    /// Runs the real Clerk/bootstrap path, not a forced splash/dashboard fixture.
+    /// Requires the test target's installed Clerk configuration. Does not sign
+    /// out, delete the account, or modify the device's saved athlete data.
+    func testConfiguredColdLaunchReachesVisibleAndActionableContent() {
+        let app = XCUIApplication()
+        app.launchArguments = []
+        app.launch()
+
+        let splash = app.descendants(matching: .any)["native-launch-wordmark"]
+        let signIn = app.descendants(matching: .any)["native-sign-in-screen"]
+        let dashboard = app.buttons["dashboard-settings-button"]
+        let retry = app.buttons["native-launch-retry"]
+        let visible = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                splash.exists || signIn.exists || dashboard.exists || retry.exists
+            },
+            object: nil
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 10), .completed,
+                       "Normal startup must paint content instead of staying black.")
+
+        let actionable = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                signIn.exists || dashboard.exists || retry.exists
+            },
+            object: nil
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [actionable], timeout: 30), .completed,
+                       "Startup must reach sign-in, the dashboard, or an explicit retry.")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.terminate()
+    }
+
     func testNativeLaunchSplashShowsBrandWithoutAccountRetrievalCopy() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-launch-splash"]
