@@ -310,19 +310,20 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
-    func testDashboardKeepsEventCardsAndHidesPastHistoryAndUpNextHeading() {
+    func testDashboardKeepsPastEventCardsAlongsideSeasonMarkers() {
         let app = launch("upcoming")
         let hero = app.descendants(matching: .any)["dashboard-hero-section"].firstMatch
         let upcoming = app.descendants(matching: .any)["dashboard-upcoming-section"].firstMatch
-        let history = app.descendants(matching: .any)["dashboard-history"].firstMatch
         XCTAssertTrue(hero.waitForExistence(timeout: 10))
         XCTAssertTrue(upcoming.exists)
-        XCTAssertFalse(history.exists)
         XCTAssertTrue(app.staticTexts["Event Cards"].exists)
         XCTAssertFalse(app.staticTexts["Up next"].exists)
-        XCTAssertFalse(app.staticTexts["Past Event Cards"].exists)
         XCTAssertFalse(hero.descendants(matching: .any)["dashboard-upcoming-section"].exists)
-        XCTAssertFalse(upcoming.descendants(matching: .any)["dashboard-history"].exists)
+
+        let passedCard = reachable("dashboard-event-tile-fictional-past", in: app)
+        XCTAssertTrue(passedCard.label.contains("COMPLETE"), "A passed Event Card remains available as a season marker.")
+        XCTAssertTrue(reachable("dashboard-event-tile-fictional-next", in: app).label.contains("UP NEXT"),
+                      "The nearest future Event Card stays labeled Up Next.")
     }
 
     private func launch(_ state: String, accessibilityText: Bool = false) -> XCUIApplication {

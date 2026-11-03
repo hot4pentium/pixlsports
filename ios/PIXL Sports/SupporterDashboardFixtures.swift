@@ -61,15 +61,16 @@ enum SupporterDashboardFixtures {
                 event("later", day: "21", status: "upcoming"),
                 event("third", day: "28", status: "upcoming")
             ]
+            let past = event("past", day: "31", date: "2025-10-31", status: "upcoming")
             return .schedule(
-                page: page(events: events),
+                page: page(events: events + [past]),
                 events: [
                     SupporterScheduleItem(event: events[0], timing: timing, start: nil),
                     SupporterScheduleItem(event: events[1], timing: .upcoming, start: nil),
                     SupporterScheduleItem(event: events[2], timing: .upcoming, start: nil)
                 ],
                 pastEvents: [
-                    SupporterScheduleItem(event: event("past", day: "07", status: "final"), timing: .complete, start: nil)
+                    SupporterScheduleItem(event: past, timing: .complete, start: past.parsedStart(timezone: past.timezone))
                 ]
             )
         }
@@ -134,6 +135,7 @@ enum SupporterDashboardFixtures {
     private static func event(
         _ id: String,
         day: String,
+        date: String? = nil,
         status: String,
         type: String = "game"
     ) -> AthleteFanEvent {
@@ -141,7 +143,7 @@ enum SupporterDashboardFixtures {
             shareToken: "fictional-\(id)",
             eventId: "fictional-\(id)",
             title: "Championship Showcase With a Long Event Name",
-            date: "2026-11-\(day)",
+            date: date ?? "2026-11-\(day)",
             time: "18:30",
             type: type,
             status: status,

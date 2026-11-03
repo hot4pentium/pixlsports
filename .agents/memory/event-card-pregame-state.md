@@ -19,7 +19,7 @@ Event Cards stop being active two hours after their scheduled start in the saved
 
 **Why:** The user reported a passed 9 AM production event still recommending Prep and explicitly requested the create-event guidance after two hours when no future card exists.
 
-**How to apply:** Bound Event Card display and guidance without automatically finalizing tracker data or changing the tracker's independent capture rules. Keep passed cards available for review.
+**How to apply:** Bound active Event Card guidance without automatically finalizing tracker data or changing the tracker's independent capture rules. Keep every passed Event Card in the season list as a completed calendar marker, regardless of age or stale saved status; only the nearest future card may say “Up Next.”
 
 For games, highlight Stat Tracker starting one hour before kickoff and through the first hour after it starts; highlight Share from +1 hour until +2 hours. At +2 hours, advance to the next upcoming Event Card and highlight Prep, or show Create Event Card if none remains.
 

@@ -574,18 +574,21 @@ struct ContentView: View {
             )
         case .loading:
             loadingCard
-        case let .schedule(page, events, _):
+        case let .schedule(page, events, pastEvents):
+            let allEventCards = events + pastEvents
             VStack(alignment: .leading, spacing: 14) {
                 SupporterSectionHeader(
                     eyebrow: "Your season",
                     title: "Event Cards",
-                    trailing: events.isEmpty ? nil : "\(events.count) \(events.count == 1 ? "EVENT" : "EVENTS")"
+                    trailing: allEventCards.isEmpty
+                        ? nil
+                        : "\(allEventCards.count) \(allEventCards.count == 1 ? "EVENT" : "EVENTS")"
                 )
 
-                if events.isEmpty {
+                if allEventCards.isEmpty {
                     emptyScheduleCard()
                 } else {
-                    eventGrid(page: page, events: events)
+                    eventGrid(page: page, events: allEventCards)
                 }
                 Button {
                     heroDestination = .createEvent

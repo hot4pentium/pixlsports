@@ -106,6 +106,16 @@ test("expired games do not keep the Up Next label from future Event Cards", () =
   assert.match(content, /let nextUpcomingID = events\.first\(where: \{ \$0\.timing == \.upcoming \}\)\?\.id/);
 });
 
+test("passed Event Cards stay in the season list without an age cutoff", () => {
+  const homeModel = readFileSync(new URL("../PIXL Sports/SupporterHomeViewModel.swift", import.meta.url), "utf8");
+  const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
+  const pastCards = homeModel.slice(homeModel.indexOf("private func pastEventCards"));
+  assert.match(pastCards, /guard event\.date <= today else \{ return nil \}/);
+  assert.doesNotMatch(pastCards, /\bcutoff\b|30 \* 24/);
+  assert.doesNotMatch(homeModel, /guard event\.status != "final" else \{ return nil \}/);
+  assert.match(content, /let allEventCards = events \+ pastEvents/);
+});
+
 test("dashboard does not show the large offline status card", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   assert.doesNotMatch(content, /NativeOfflineStatusView\s*\{/);

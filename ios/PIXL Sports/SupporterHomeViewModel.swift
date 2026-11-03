@@ -143,7 +143,7 @@ final class SupporterHomeViewModel: ObservableObject {
            let saved = try? JSONDecoder().decode(NativeSupporterSchedule.self, from: data),
            saved.status == "linked" {
             state = .schedule(page: saved, events: upcomingEvents(in: saved, now: Date()),
-                              pastEvents: recentCompletedEvents(in: saved, now: Date()))
+                              pastEvents: pastEventCards(in: saved, now: Date()))
             if let data = try? offline.vault.read("get/supporter/profile", subject: previewUserID),
                let savedProfile = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data) {
                 athleteProfile = savedProfile
@@ -201,7 +201,7 @@ final class SupporterHomeViewModel: ObservableObject {
             state = .schedule(
                 page: page,
                 events: upcomingEvents(in: page, now: now),
-                pastEvents: recentCompletedEvents(in: page, now: now)
+                pastEvents: pastEventCards(in: page, now: now)
             )
             if forceProfileReload || !hasLoadedAthleteProfile {
                 do {
@@ -297,7 +297,6 @@ final class SupporterHomeViewModel: ObservableObject {
         dateFormatter.dateFormat = "yyyy-MM-dd"
 
         let candidates = page.events.compactMap { event -> SupporterScheduleItem? in
-            guard event.status != "final" else { return nil }
             let zone = TimeZone(identifier: event.timezone ?? page.timezone ?? "") ?? .current
             dateFormatter.timeZone = zone
             let today = dateFormatter.string(from: now)
@@ -332,7 +331,14 @@ final class SupporterHomeViewModel: ObservableObject {
         return candidates
             .sorted { left, right in
                 if left.timing != right.timing {
-                    return left.timing == .live
+                    func priority(_ timing: SupporterEventTiming) -> Int {
+                        switch timing {
+                        case .live: return 0
+                        case .upcoming: return 1
+                        case .complete: return 2
+                        }
+                    }
+                    return priority(left.timing) < priority(right.timing)
                 }
                 if let leftStart = left.start, let rightStart = right.start {
                     return leftStart < rightStart
@@ -345,38 +351,32 @@ final class SupporterHomeViewModel: ObservableObject {
             }
     }
 
-    private func recentCompletedEvents(
+    private func pastEventCards(
         in page: NativeSupporterSchedule,
         now: Date
     ) -> [SupporterScheduleItem] {
-        let zone = TimeZone(identifier: page.timezone ?? "") ?? .current
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = zone
-
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = zone
         dateFormatter.dateFormat = "yyyy-MM-dd"
 
-        guard
-            let today = dateFormatter.date(from: dateFormatter.string(from: now)),
-            let cutoff = calendar.date(byAdding: .day, value: -30, to: today)
-        else {
-            return []
-        }
-
         let candidates = page.events.compactMap { event -> SupporterScheduleItem? in
-            guard event.status == "final",
-                  let eventDate = dateFormatter.date(from: event.date),
-                  eventDate >= cutoff,
-                  eventDate <= today
-            else {
-                return nil
+            let zone = TimeZone(identifier: event.timezone ?? page.timezone ?? "") ?? .current
+            dateFormatter.timeZone = zone
+            let today = dateFormatter.string(from: now)
+            let start = event.parsedStart(timezone: zone.identifier)
+            guard event.date <= today else { return nil }
+            if event.date == today {
+                if let start {
+                    let settledAfter: TimeInterval = event.type == "game" ? 2 * 60 * 60 : 3 * 60 * 60
+                    guard now.timeIntervalSince(start) >= settledAfter else { return nil }
+                } else {
+                    guard event.status == "final" else { return nil }
+                }
             }
             return SupporterScheduleItem(
                 event: event,
                 timing: .complete,
-                start: event.parsedStart(timezone: event.timezone ?? page.timezone)
+                start: start
             )
         }
 
