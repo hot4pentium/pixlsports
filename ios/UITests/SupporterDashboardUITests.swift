@@ -2,6 +2,18 @@ import XCTest
 
 @MainActor
 final class SupporterDashboardUITests: XCTestCase {
+    func testStartupDiagnosticRendersAfterSDKConfiguration() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--diagnose-startup"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["startup-check-configured"]
+            .waitForExistence(timeout: 10))
+        app.buttons["startup-check-read-state"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["startup-check-state"]
+            .waitForExistence(timeout: 10))
+        app.terminate()
+    }
+
     /// Runs the real Clerk/bootstrap path, not a forced splash/dashboard fixture.
     /// Requires the test target's installed Clerk configuration. Does not sign
     /// out, delete the account, or modify the device's saved athlete data.

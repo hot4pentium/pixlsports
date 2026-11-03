@@ -145,8 +145,20 @@ struct MyApp: App {
     private var configuredRoot: some View {
         switch configuration {
         case .success:
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--diagnose-startup") {
+                // Unlike the forced splash fixture, normal Clerk.configure
+                // has already run. Do not construct the app root until asked.
+                NativeStartupDiagnosticView()
+                    .environment(Clerk.shared)
+            } else {
+                NativeAuthRootView()
+                    .environment(Clerk.shared)
+            }
+#else
             NativeAuthRootView()
                 .environment(Clerk.shared)
+#endif
         case let .failure(error):
             NativeAuthSetupView(message: error.localizedDescription)
         }

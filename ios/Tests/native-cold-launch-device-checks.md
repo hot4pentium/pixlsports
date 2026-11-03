@@ -43,3 +43,26 @@ Existing forced-splash and dashboard fixture tests are supplemental, not substit
 If black screen persists, pause and capture `thread backtrace -c 50` again,
 including any messages before it. Do not interpret fatal-error strings in a
 disassembly listing as proof that those instructions executed.
+
+## Debug-only staged diagnosis
+
+The initial layout changes did not resolve the reported physical-device hang.
+A second paused trace remained in Observation cancellation/SwiftUI body updates.
+These snapshots do not identify the responsible view.
+
+Use only `--diagnose-startup` in Run → Arguments Passed On Launch.
+Do not combine it with fixture flags. This flag does **not** skip Clerk.configure.
+
+1. The first white screen says “SDK configured”. If it never renders, report
+   that instead of assuming the normal app root ran.
+2. Tap **Read state**. Report whether the state panel appears and remains responsive.
+3. Tap **Normal app**. Report the last button tapped if rendering freezes.
+4. On a fresh diagnostic launch, **Sign-in UI** isolates the default SDK form
+   from the app's custom theme, offline coordinator, and root routing. Do not
+   submit credentials for this rendering check.
+
+The normal-app step retains all existing authorization and deletion gates.
+The diagnostic does not reset any saved data and is compiled out of Release.
+Remove the argument afterward; it intentionally does not automatically enter
+the dashboard. XCTest coverage for the first two stages is available as
+`testStartupDiagnosticRendersAfterSDKConfiguration`, requiring Apple tooling.

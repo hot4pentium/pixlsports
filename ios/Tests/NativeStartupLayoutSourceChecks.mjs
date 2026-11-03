@@ -26,3 +26,17 @@ test("first-paint splash centers without observing geometry", () => {
   assert.match(splash, /reduceMotion/);
   assert.match(splash, /native-launch-retry/);
 });
+
+test("startup diagnostic preserves Clerk configuration and normal authorization", () => {
+  const app = readFileSync(new URL("../PIXL Sports/MyApp.swift", import.meta.url), "utf8");
+  const probe = readFileSync(new URL("../PIXL Sports/NativeStartupDiagnosticView.swift", import.meta.url), "utf8");
+  const initialization = app.slice(app.indexOf("init()"), app.indexOf("var body: some Scene"));
+  assert.doesNotMatch(initialization, /--diagnose-startup/);
+  assert.match(initialization, /Clerk\.configure\(/);
+  assert.match(app, /#if DEBUG\s+if ProcessInfo\.processInfo\.arguments\.contains\("--diagnose-startup"\)/);
+  assert.match(probe, /^#if DEBUG &&/);
+  assert.match(probe, /case \.app:\s*\/\/[^\n]*\n\s*NativeAuthRootView\(\)/);
+  assert.doesNotMatch(probe, /signOut\(|\.clear\(|\.removeItem|\.getToken\(/);
+  const initialBody = probe.slice(probe.indexOf("var body:"), probe.indexOf("private func select"));
+  assert.doesNotMatch(initialBody, /clerk\.(isLoaded|user|session|isAuthFlowComplete)/);
+});
