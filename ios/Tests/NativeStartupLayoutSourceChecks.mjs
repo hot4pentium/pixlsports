@@ -125,7 +125,7 @@ test("HYPE Card and photo screens do not show raw server errors", () => {
   assert.match(photo, /NavigationLink\("Review HYPE Card"\)/);
   assert.doesNotMatch(hypeCard, /error\.localizedDescription/);
   assert.match(hypeCard, /We couldn’t load your HYPE Card right now\. Please try again\./);
-  assert.match(hypeCard, /We couldn’t finish saving your HYPE Card settings\. Please try again\./);
+  assert.match(hypeCard, /We couldn’t confirm that your HYPE Card settings were saved\. Please check and try again if needed\./);
 });
 
 test("Settings alert failures use plain language without exposing server details", () => {
@@ -134,7 +134,7 @@ test("Settings alert failures use plain language without exposing server details
   assert.match(copy, /notifications\/subscriptions/);
   assert.match(copy, /Alerts on this iPhone couldn’t be connected right now\. Please try again\./);
   assert.match(copy, /Your alert settings couldn’t be loaded right now\. Please try again\./);
-  assert.match(copy, /Your HYPE Card settings couldn’t be saved right now\. Please try again\./);
+  assert.match(copy, /We couldn’t confirm that your HYPE Card settings were saved\. Please check and try again if needed\./);
   assert.doesNotMatch(client, /The Event Card request failed on|schedule request failed on|redirected the request \(HTTP/);
   assert.match(client, /if response\.statusCode < 500/);
 });

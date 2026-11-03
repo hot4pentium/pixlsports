@@ -70,7 +70,7 @@ final class NativeAccountLinkClient {
             return "Your Event Cards couldn’t be refreshed right now. Please try again."
         }
         if path == "supporter/hype-card", method != "GET" {
-            return "Your HYPE Card settings couldn’t be saved right now. Please try again."
+            return "We couldn’t confirm that your HYPE Card settings were saved. Please check and try again if needed."
         }
         if path == "supporter/hype-card" || path.hasPrefix("supporter/hype-card/") {
             return "Your HYPE Card details couldn’t be loaded right now. Please try again."
