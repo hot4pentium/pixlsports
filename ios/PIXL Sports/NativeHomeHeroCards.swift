@@ -35,13 +35,13 @@ struct NativeHomeHeroCards: View {
 
     private var eventAccessibilityDescription: String {
         guard let nextEvent else {
-            return "Game-day message board. No upcoming Event Card is available. Tap to create one."
+            return "Game-day message board. Next step: create an Event Card. No upcoming Event Card is available. Tap to create one."
         }
         let status = eventTiming == .live ? "Live now" : eventTiming == .complete ? "After the event" : "Upcoming"
         let action = eventTiming == .upcoming
             ? "Tap to open \(nextEvent.type == "practice" ? "practice" : "game") prep for this Event Card."
             : "Tap to open the Event Card."
-        return "Game-day message board, \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.opponent), \(nextEvent.location). \(action)"
+        return "Game-day message board. Next step: \(timingTitle.lowercased()). \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.opponent), \(nextEvent.location). \(action)"
     }
 
     private var validHypePhotoURL: URL? {
@@ -132,6 +132,11 @@ struct NativeHomeHeroCards: View {
             }
 
             Spacer(minLength: 0)
+
+            Text("Next Step")
+                .font(.title3.weight(.black))
+                .fontDesign(.rounded)
+                .foregroundStyle(SupporterHomeColors.background)
 
             HStack(alignment: .center, spacing: 4) {
                 Text(nextEvent == nil ? "CREATE EVENT" : timingTitle)

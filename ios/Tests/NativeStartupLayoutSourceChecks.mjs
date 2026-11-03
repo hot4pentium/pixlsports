@@ -56,3 +56,11 @@ test("startup diagnostic preserves Clerk configuration and normal authorization"
   const initialBody = probe.slice(probe.indexOf("var body:"), probe.indexOf("private func select"));
   assert.doesNotMatch(initialBody, /clerk\.(isLoaded|user|session|isAuthFlowComplete)/);
 });
+
+test("dashboard message board labels the green action as the next step", () => {
+  const hero = readFileSync(new URL("../PIXL Sports/NativeHomeHeroCards.swift", import.meta.url), "utf8");
+  const nextStep = hero.indexOf('Text("Next Step")');
+  const greenAction = hero.indexOf(".background(SupporterHomeColors.accent, in: Capsule())");
+  assert.ok(nextStep >= 0 && greenAction > nextStep, "Next Step must appear before the green action.");
+  assert.match(hero, /Next step: \\\(timingTitle\.lowercased\(\)\)/);
+});
