@@ -66,6 +66,17 @@ test("routine Prep saves do not insert a changing status panel", () => {
   assert.match(prep, /Text\(saveStatusText\)[\s\S]*?\.frame\(minHeight: 16, alignment: \.leading\)/);
 });
 
+test("long-press edit updates the selected Prep task in place", () => {
+  const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
+  assert.match(prep, /\.contextMenu\s*\{\s*Button\s*\{\s*beginEditingTask\(item\)\s*\}\s*label:\s*\{\s*Label\("Edit task", systemImage: "pencil"\)/);
+  const editBlock = prep.slice(prep.indexOf("private func saveTaskEntry()"), prep.indexOf("private func beginEditingTask"));
+  assert.match(editBlock, /items\[index\]\.label = label[\s\S]*?scheduleChecklistAutosave\(\)/);
+  assert.doesNotMatch(editBlock, /items\[index\]\s*=\s*NativePrepItem/);
+  assert.match(prep, /Button\(action: saveTaskEntry\)/);
+  assert.doesNotMatch(prep, /\baddTask\(/);
+  assert.match(prep, /Label\(editingTaskID == nil \? "Add" : "Update"/);
+});
+
 test("Event Card editing is hidden while Prep is selected", () => {
   const detail = readFileSync(new URL("../PIXL Sports/SupporterEventDetailView.swift", import.meta.url), "utf8");
   assert.match(detail, /if let clerk, selectedStep != \.prep\s*\{\s*NavigationLink/);

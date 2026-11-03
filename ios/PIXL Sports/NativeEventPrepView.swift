@@ -13,6 +13,8 @@ struct NativeEventPrepView: View {
     @State private var notes = ""
     @State private var notesDirty = false
     @State private var newItem = ""
+    @State private var editingTaskID: String?
+    @State private var editingTaskText = ""
     @State private var edited = false
     @State private var prepAutosaveTask: Task<Void, Never>?
     @State private var recoveringPrepDraft = false
@@ -25,6 +27,7 @@ struct NativeEventPrepView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @FocusState private var isTaskEditorFocused: Bool
 
     init(event: AthleteFanEvent, clerk: Clerk, model: NativeEventToolModel? = nil,
          embedded: Bool = false, compactContent: Bool = false,
@@ -53,8 +56,35 @@ struct NativeEventPrepView: View {
     }
 #endif
 
-    private var canAddTask: Bool {
-        !newItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && items.count < 100
+    private var taskEntryText: String {
+        editingTaskID == nil ? newItem : editingTaskText
+    }
+
+    private var taskEntryBinding: Binding<String> {
+        Binding(
+            get: { editingTaskID == nil ? newItem : editingTaskText },
+            set: { value in
+                if editingTaskID == nil { newItem = value }
+                else { editingTaskText = value }
+            }
+        )
+    }
+
+    private var canSubmitTaskEntry: Bool {
+        let label = taskEntryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard model.canEditLocally, !label.isEmpty else { return false }
+        if let editingTaskID {
+            return items.contains { $0.id == editingTaskID }
+        }
+        return items.count < 100
+    }
+
+    private var hasUnsavedTaskEntry: Bool {
+        let label = taskEntryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let editingTaskID, let original = items.first(where: { $0.id == editingTaskID }) {
+            return label != original.label
+        }
+        return editingTaskID == nil && !label.isEmpty
     }
 
     private var shouldShowSaveNotice: Bool {
@@ -121,26 +151,32 @@ struct NativeEventPrepView: View {
                                 .accessibilityHint("Mark this task ready or not ready.")
                                 .accessibilityIdentifier("native-prep-item-\(item.id)")
                                 .contextMenu {
+                                     Button {
+                                         beginEditingTask(item)
+                                     } label: {
+                                         Label("Edit task", systemImage: "pencil")
+                                     }
                                     Button("Remove task", role: .destructive) {
-                                        guard model.canEditLocally else { return }
-                                        let id = item.id
-                                        items.removeAll { $0.id == id }
-                                        edited = true
-                                        scheduleChecklistAutosave()
+                                         removeTask(id: item.id)
                                     }
                                 }
                             }
                             .onDelete { offsets in
+                                 if let editingTaskID,
+                                    offsets.contains(where: { items.indices.contains($0) && items[$0].id == editingTaskID }) {
+                                     cancelTaskEdit()
+                                 }
                                 items.remove(atOffsets: offsets)
                                 edited = true
                                 scheduleChecklistAutosave()
                             }
                         }
                     }
-                    HStack {
+                    HStack(spacing: 8) {
+                        let taskEntryPlaceholder = editingTaskID == nil ? "Add a task" : "Edit task"
                         TextField(
-                            "Add a task", text: $newItem,
-                            prompt: Text("Add a task").foregroundColor(.white.opacity(0.76))
+                            taskEntryPlaceholder, text: taskEntryBinding,
+                            prompt: Text(taskEntryPlaceholder).foregroundColor(.white.opacity(0.76))
                         )
                             .textInputAutocapitalization(.sentences)
                             .submitLabel(.done)
@@ -153,22 +189,31 @@ struct NativeEventPrepView: View {
                                 RoundedRectangle(cornerRadius: 12)
                                     .strokeBorder(.white.opacity(0.22), lineWidth: 1)
                             }
-                            .onSubmit { addTask() }
-                            .accessibilityIdentifier("native-prep-add-task")
-                        Button(action: addTask) {
-                            Label("Add", systemImage: "plus")
+                            .onSubmit { saveTaskEntry() }
+                            .focused($isTaskEditorFocused)
+                            .accessibilityIdentifier(editingTaskID == nil ? "native-prep-add-task" : "native-prep-edit-task")
+                        if editingTaskID != nil {
+                            Button("Cancel", action: cancelTaskEdit)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(SupporterHomeColors.muted)
+                                .frame(minHeight: 44)
+                                .accessibilityIdentifier("native-prep-cancel-edit")
+                        }
+                        Button(action: saveTaskEntry) {
+                            Label(editingTaskID == nil ? "Add" : "Update",
+                                  systemImage: editingTaskID == nil ? "plus" : "checkmark")
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(canAddTask ? SupporterHomeColors.background : .white.opacity(0.78))
+                                .foregroundStyle(canSubmitTaskEntry ? SupporterHomeColors.background : .white.opacity(0.78))
                                 .padding(.horizontal, 12)
                                 .frame(minHeight: 44)
                                 .background(
-                                    canAddTask ? NativeEventToolColors.prep : .white.opacity(0.12),
+                                    canSubmitTaskEntry ? NativeEventToolColors.prep : .white.opacity(0.12),
                                     in: RoundedRectangle(cornerRadius: 12)
                                 )
                         }
                         .buttonStyle(.plain)
-                        .disabled(!canAddTask)
-                        .accessibilityIdentifier("native-prep-add")
+                        .disabled(!canSubmitTaskEntry)
+                        .accessibilityIdentifier(editingTaskID == nil ? "native-prep-add" : "native-prep-update-task")
                     }
                 } header: {
                     Label("Checklist", systemImage: "checklist")
@@ -518,6 +563,7 @@ struct NativeEventPrepView: View {
 
     private var hasUnsavedEdits: Bool {
         edited || !newItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || (editingTaskID != nil && hasUnsavedTaskEntry)
     }
 
     private var readinessSummary: some View {
@@ -622,9 +668,25 @@ struct NativeEventPrepView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func addTask() {
-        let label = String(newItem.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
-        guard model.canEditLocally, !label.isEmpty, items.count < 100 else { return }
+    private func saveTaskEntry() {
+        let label = String(taskEntryText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
+        guard model.canEditLocally, !label.isEmpty else { return }
+
+        if let editingTaskID {
+            guard let index = items.firstIndex(where: { $0.id == editingTaskID }) else {
+                cancelTaskEdit()
+                return
+            }
+            if items[index].label != label {
+                items[index].label = label
+                edited = true
+                scheduleChecklistAutosave()
+            }
+            cancelTaskEdit()
+            return
+        }
+
+        guard items.count < 100 else { return }
         items.append(NativePrepItem(id: UUID().uuidString, label: label, completed: false))
         newItem = ""
         edited = true
@@ -633,6 +695,27 @@ struct NativeEventPrepView: View {
             isChecklistExpanded = true
             showCompletionCelebration = false
         }
+    }
+
+    private func beginEditingTask(_ item: NativePrepItem) {
+        guard model.canEditLocally else { return }
+        editingTaskID = item.id
+        editingTaskText = item.label
+        isTaskEditorFocused = true
+    }
+
+    private func cancelTaskEdit() {
+        editingTaskID = nil
+        editingTaskText = ""
+        isTaskEditorFocused = false
+    }
+
+    private func removeTask(id: String) {
+        guard model.canEditLocally else { return }
+        if editingTaskID == id { cancelTaskEdit() }
+        items.removeAll { $0.id == id }
+        edited = true
+        scheduleChecklistAutosave()
     }
 
     private func toggleItem(id: String) {
