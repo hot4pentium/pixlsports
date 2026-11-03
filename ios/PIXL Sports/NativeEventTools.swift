@@ -80,6 +80,7 @@ final class NativeEventToolModel: ObservableObject {
     @Published var workspace: NativeEventWorkspace?
     @Published var busy = false
     @Published var errorMessage: String?
+    @Published private(set) var prepRecoveryMessage: String?
     @Published private(set) var pendingQueue: [NativeQueuedEventToolCommand] = []
     @Published private(set) var conflictBlocked = false
     @Published private(set) var unreadablePendingData = false
@@ -109,6 +110,11 @@ final class NativeEventToolModel: ObservableObject {
     }
 
     var ownsCurrentScope: Bool { scope == offline.vault.namespace && offline.canContinue }
+    var hasPendingPrepCommand: Bool { pendingQueue.contains { $0.command.kind == "prep" } }
+    var canKeepLocalPrep: Bool {
+        conflictBlocked && !unreadablePendingData && ownsCurrentScope
+            && pendingQueue.allSatisfy { $0.command.kind == "prep" }
+    }
     var canEditLocally: Bool {
 #if DEBUG
         if NativeEventWorkspaceUITestFixture.isRequested { return workspace != nil }
@@ -479,8 +485,82 @@ final class NativeEventToolModel: ObservableObject {
             acknowledgedWorkspace = saved
             rebuildProjection()
             errorMessage = nil
+            prepRecoveryMessage = nil
             reloadGeneration += 1
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    func keepLocalPrep(
+        clerk: Clerk,
+        items: [NativePrepItem],
+        notes: String,
+        notesDirty: Bool
+    ) async {
+        guard canKeepLocalPrep, !busy, !drainingQueue else { return }
+        prepRecoveryMessage = nil
+        guard offline.online else {
+            prepRecoveryMessage = "Reconnect before keeping this Prep. Your iPhone copy is still here."
+            return
+        }
+        guard let current = acknowledgedWorkspace ?? workspace else {
+            prepRecoveryMessage = "Your iPhone copy is still here. Try opening Prep again."
+            return
+        }
+
+        busy = true
+        do {
+            let currentNotes = notesDirty ? notes : current.prep.notes
+            let localDraft = NativeOfflinePrepDraft(
+                items: items, notes: currentNotes, notesDirty: notesDirty,
+                checklistDirty: true, baseRevision: current.prepRevision
+            )
+            try offline.vault.write(
+                JSONEncoder().encode(localDraft), key: "draft/" + shareToken
+            )
+            offline.storageChanged()
+
+            let data = try await NativeAccountLinkClient().postData(
+                "supporter/event-workspace", body: ["shareToken": shareToken],
+                clerk: clerk, allowCachedWorkspace: false
+            )
+            guard ownsCurrentScope else { throw NativeOfflineError.locked }
+            let latest = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+            guard latest.linkId == current.linkId,
+                  latest.linkId == offline.vault.lease?.linkId else {
+                throw NativeOfflineError.locked
+            }
+
+            let savedNotes = notesDirty ? notes : latest.prep.notes
+            let retainedDraft = NativeOfflinePrepDraft(
+                items: items, notes: savedNotes, notesDirty: notesDirty,
+                checklistDirty: true, baseRevision: latest.prepRevision
+            )
+            try offline.vault.write(
+                JSONEncoder().encode(retainedDraft), key: "draft/" + shareToken
+            )
+            try offline.vault.write(data, key: "workspace/" + shareToken)
+
+            guard let replacementQueue = NativeOfflineOutboxPolicy.queueForUserConfirmedPrepReplacement(
+                pendingQueue, saved: latest, shareToken: shareToken,
+                mutationID: UUID().uuidString, items: items, notes: savedNotes
+            ) else {
+                throw NativeOfflineError.locked
+            }
+            try durableQueue.save(commands: replacementQueue, conflictBlocked: false)
+            pendingQueue = replacementQueue
+            conflictBlocked = false
+            acknowledgedWorkspace = latest
+            rebuildProjection()
+            errorMessage = nil
+            prepRecoveryMessage = nil
+            reloadGeneration += 1
+            offline.storageChanged()
+            busy = false
+            await drainQueue(clerk: clerk)
+        } catch {
+            busy = false
+            prepRecoveryMessage = "Couldn't update the saved Prep. Your iPhone copy is still here. Try again."
+        }
     }
 
     private func persistPendingQueue() throws {
@@ -526,7 +606,15 @@ struct NativeToolSaveNotice: View {
     let clerk: Clerk
     var hasUnsavedChanges = false
     var savedContentName = "version"
-    @State private var confirmingDiscard = false
+    var onKeepLocalPrep: (() async -> Void)? = nil
+    private enum RecoveryChoice: Equatable { case keepLocalPrep, useSaved }
+    @State private var confirmingRecovery: RecoveryChoice?
+
+    private var canOfferKeepLocalPrep: Bool {
+        savedContentName == "Prep" && model.canKeepLocalPrep
+            && (hasUnsavedChanges || model.hasPendingPrepCommand)
+            && onKeepLocalPrep != nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -558,8 +646,19 @@ struct NativeToolSaveNotice: View {
                       systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .accessibilityIdentifier("native-tool-save-error")
-                Button("Use saved \(savedContentName)", role: .destructive) {
-                    confirmingDiscard = true
+                if let message = model.prepRecoveryMessage {
+                    Text(message)
+                        .font(.caption)
+                        .accessibilityIdentifier("native-tool-prep-recovery-message")
+                }
+                if canOfferKeepLocalPrep {
+                    Button("Keep this Prep") {
+                        confirmingRecovery = .keepLocalPrep
+                    }
+                    .accessibilityIdentifier("native-tool-keep-prep")
+                }
+                Button("Use saved \(savedContentName)") {
+                    confirmingRecovery = .useSaved
                 }
             } else if let _ = model.errorMessage {
                 Label(model.unreadablePendingData
@@ -578,12 +677,12 @@ struct NativeToolSaveNotice: View {
 #if DEBUG
                     .accessibilityValue(model.uiTestPendingMutationID ?? "")
 #endif
-                    Button("Use saved \(savedContentName)", role: .destructive) {
-                        confirmingDiscard = true
+                    Button("Use saved \(savedContentName)") {
+                        confirmingRecovery = .useSaved
                     }
                 } else if model.unreadablePendingData {
-                    Button("Use saved \(savedContentName)", role: .destructive) {
-                        confirmingDiscard = true
+                    Button("Use saved \(savedContentName)") {
+                        confirmingRecovery = .useSaved
                     }
                 } else {
                     Button("Try again") { Task { await model.load(clerk: clerk) } }
@@ -598,15 +697,28 @@ struct NativeToolSaveNotice: View {
         }
         .disabled(model.busy)
         .confirmationDialog(
-            "Use saved \(savedContentName) instead?",
-            isPresented: $confirmingDiscard,
+            confirmingRecovery == .keepLocalPrep
+                ? "Replace saved Prep?"
+                : "Use saved \(savedContentName) instead?",
+            isPresented: Binding(
+                get: { confirmingRecovery != nil },
+                set: { if !$0 { confirmingRecovery = nil } }
+            ),
             titleVisibility: .visible
         ) {
-            Button("Use saved \(savedContentName)", role: .destructive) {
-                Task { await model.discardAndReload(clerk: clerk) }
+            if confirmingRecovery == .keepLocalPrep {
+                Button("Replace saved Prep", role: .destructive) {
+                    Task { await onKeepLocalPrep?() }
+                }
+            } else {
+                Button("Use saved \(savedContentName)", role: .destructive) {
+                    Task { await model.discardAndReload(clerk: clerk) }
+                }
             }
         } message: {
-            if model.unreadablePendingData {
+            if confirmingRecovery == .keepLocalPrep {
+                Text("The saved Prep list will be replaced with the one on this iPhone.")
+            } else if model.unreadablePendingData {
                 Text("The unreadable copy on this iPhone will be removed. The saved copy will stay.")
             } else {
                 Text("Changes not saved yet will be removed from this iPhone. The saved copy will stay.")

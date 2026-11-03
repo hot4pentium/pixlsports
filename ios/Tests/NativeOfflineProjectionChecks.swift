@@ -8,8 +8,8 @@ struct NativeOfflineProjectionChecks {
         NativeEventToolCommand(shareToken: "event", mutationId: UUID().uuidString,
                                linkId: "verified-link", expectedRevision: revision, kind: kind)
     }
-    static func workspace(revision: Int = 0) -> NativeEventWorkspace {
-        .init(linkId: "verified-link", prepRevision: 0, trackerRevision: revision, sport: "soccer",
+    static func workspace(revision: Int = 0, prepRevision: Int = 0) -> NativeEventWorkspace {
+        .init(linkId: "verified-link", prepRevision: prepRevision, trackerRevision: revision, sport: "soccer",
               prep: .init(items: [], notes: ""), rules: .init(phaseLabel: "Half", stats: [
                 .init(id: "goal", label: "Goal", points: 1)
               ]), game: nil)
@@ -98,6 +98,21 @@ struct NativeOfflineProjectionChecks {
         precondition(queue[1].command.expectedRevision == 1 && queue[2].command.expectedRevision == 0)
         precondition(NativeOfflineOutboxPolicy.conflicts([queue[1]], with: workspace(revision: 2)))
         precondition(!NativeOfflineOutboxPolicy.conflicts([queue[1]], with: workspace(revision: 1)))
+        let replacementItems = [NativePrepItem(id: "local", label: "Bring water", completed: true)]
+        let replacement = NativeOfflineOutboxPolicy.queueForUserConfirmedPrepReplacement(
+            [queue[2]], saved: workspace(prepRevision: 7), shareToken: "event",
+            mutationID: "confirmed-phone-copy", items: replacementItems, notes: "Phone note"
+        )
+        precondition(replacement?.count == 1)
+        precondition(replacement?.first?.command.expectedRevision == 7)
+        precondition(replacement?.first?.command.mutationId == "confirmed-phone-copy")
+        precondition(replacement?.first?.command.items == replacementItems)
+        precondition(replacement?.first?.command.notes == "Phone note")
+        precondition(replacement?.first?.attempted == false && replacement?.first?.displayOptimistically == true)
+        precondition(NativeOfflineOutboxPolicy.queueForUserConfirmedPrepReplacement(
+            [queue[1], queue[2]], saved: workspace(prepRevision: 7), shareToken: "event",
+            mutationID: "must-not-drop-stat", items: replacementItems, notes: ""
+        ) == nil, "Keeping Prep must not discard a different queued event change.")
 
         let suite = "pixl-offline-checks-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!

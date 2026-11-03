@@ -104,7 +104,8 @@ struct NativeEventPrepView: View {
             if let clerk, shouldShowSaveNotice {
                 Section {
                     NativeToolSaveNotice(
-                        model: model, clerk: clerk, hasUnsavedChanges: edited, savedContentName: "Prep"
+                        model: model, clerk: clerk, hasUnsavedChanges: edited,
+                        savedContentName: "Prep", onKeepLocalPrep: { await keepLocalPrepChanges() }
                     )
                 }
                 .listRowBackground(SupporterHomeColors.panel)
@@ -263,7 +264,8 @@ struct NativeEventPrepView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let clerk, shouldShowSaveNotice {
                 NativeToolSaveNotice(
-                    model: model, clerk: clerk, hasUnsavedChanges: edited, savedContentName: "Prep"
+                    model: model, clerk: clerk, hasUnsavedChanges: edited,
+                    savedContentName: "Prep", onKeepLocalPrep: { await keepLocalPrepChanges() }
                 )
             }
 
@@ -799,6 +801,23 @@ struct NativeEventPrepView: View {
             recoveringPrepDraft = edited
             persistDraft()
         }
+    }
+
+    private func keepLocalPrepChanges() async {
+        guard let clerk else { return }
+        edited = true
+        recoveringPrepDraft = true
+        await model.keepLocalPrep(clerk: clerk, items: items, notes: notes, notesDirty: notesDirty)
+        if !notesDirty, let savedNotes = model.workspace?.prep.notes { notes = savedNotes }
+        guard model.pendingCount == 0,
+              model.errorMessage == nil,
+              let savedPrep = model.workspace?.prep,
+              savedPrep.items == items,
+              savedPrep.notes == notes else { return }
+        notesDirty = false
+        edited = false
+        recoveringPrepDraft = false
+        persistDraft()
     }
 
     private typealias PrepDraft = NativeOfflinePrepDraft

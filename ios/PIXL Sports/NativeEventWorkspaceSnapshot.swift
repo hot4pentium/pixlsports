@@ -26,6 +26,27 @@ enum NativeOfflineOutboxPolicy {
         return false
     }
 
+    static func queueForUserConfirmedPrepReplacement(
+        _ queue: [NativeQueuedEventToolCommand],
+        saved: NativeEventWorkspace,
+        shareToken: String,
+        mutationID: String,
+        items: [NativePrepItem],
+        notes: String
+    ) -> [NativeQueuedEventToolCommand]? {
+        guard queue.allSatisfy({ $0.command.kind == "prep" }) else { return nil }
+        var command = NativeEventToolCommand(
+            shareToken: shareToken,
+            mutationId: mutationID,
+            linkId: saved.linkId,
+            expectedRevision: saved.prepRevision,
+            kind: "prep"
+        )
+        command.items = items
+        command.notes = notes
+        return [.init(command: command, attempted: false, displayOptimistically: true)]
+    }
+
     static func acknowledge(_ queue: inout [NativeQueuedEventToolCommand],
                             command: NativeEventToolCommand, revision: Int) {
         for index in queue.indices where !queue[index].attempted
