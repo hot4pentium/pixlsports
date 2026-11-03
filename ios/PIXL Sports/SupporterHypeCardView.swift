@@ -21,6 +21,11 @@ private enum NativeHypeCardSide: String, CaseIterable, Identifiable, Equatable {
     }
 }
 
+private struct NativeHypeCardSideTransition {
+    let from: NativeHypeCardSide
+    let to: NativeHypeCardSide
+}
+
 @MainActor
 struct SupporterHypeCardView: View {
     @Environment(\.scenePhase) private var scenePhase
@@ -38,6 +43,7 @@ struct SupporterHypeCardView: View {
     @State private var draftPaused = false
     @State private var draftFavoriteMoment = ""
     @State private var selectedSide: NativeHypeCardSide = .front
+    @State private var backSideTransition: NativeHypeCardSideTransition?
     @State private var cardRotation = 0.0
     @State private var isFlipping = false
     @State private var flipTask: Task<Void, Never>?
@@ -188,6 +194,7 @@ struct SupporterHypeCardView: View {
             flipTask?.cancel()
             flipTask = nil
             isFlipping = false
+            backSideTransition = nil
             selectedSide = .front
             cardRotation = 0
             videoPlayer?.pause()
@@ -381,7 +388,7 @@ struct SupporterHypeCardView: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(spacing: 0) {
                 ZStack {
-                    frontCardFace(card)
+                    flipFrontContent(card)
                         .rotation3DEffect(
                             .degrees(cardRotation),
                             axis: (x: 0, y: 1, z: 0),
@@ -391,22 +398,15 @@ struct SupporterHypeCardView: View {
                         .accessibilityHidden(cardRotation >= 90)
                         .allowsHitTesting(cardRotation < 90)
 
-                    ScrollView {
-                        cardSideContent(selectedSide, card: card)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .scrollIndicators(.hidden)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(SupporterHomeColors.background)
-                    .rotation3DEffect(
-                        .degrees(cardRotation - 180),
-                        axis: (x: 0, y: 1, z: 0),
-                        perspective: 0.65
-                    )
-                    .opacity(cardRotation >= 90 ? 1 : 0)
-                    .accessibilityHidden(cardRotation < 90)
-                    .allowsHitTesting(cardRotation >= 90)
+                    sectionFace(backSideTransition?.to ?? selectedSide, card: card)
+                        .rotation3DEffect(
+                            .degrees(cardRotation - 180),
+                            axis: (x: 0, y: 1, z: 0),
+                            perspective: 0.65
+                        )
+                        .opacity(cardRotation >= 90 ? 1 : 0)
+                        .accessibilityHidden(cardRotation < 90)
+                        .allowsHitTesting(cardRotation >= 90)
                 }
                 .aspectRatio(2.0 / 3.0, contentMode: .fit)
                 .accessibilityIdentifier("native-hype-card-flip-face")
@@ -434,10 +434,12 @@ struct SupporterHypeCardView: View {
             }
         }
         .onChange(of: availableSides) { _, sides in
-            guard !sides.contains(selectedSide) else { return }
+            let transitionTargetUnavailable = backSideTransition.map { !sides.contains($0.to) } ?? false
+            guard transitionTargetUnavailable || !sides.contains(selectedSide) else { return }
             flipTask?.cancel()
             flipTask = nil
             isFlipping = false
+            backSideTransition = nil
             selectedSide = .front
             cardRotation = 0
         }
@@ -490,6 +492,26 @@ struct SupporterHypeCardView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(card.athleteName), \(card.teamName), \(card.seasonName), HYPE Card")
         .accessibilityIdentifier("native-hype-card")
+    }
+
+    @ViewBuilder
+    private func flipFrontContent(_ card: NativePublicHypeCard) -> some View {
+        if let backSideTransition {
+            sectionFace(backSideTransition.from, card: card)
+        } else {
+            frontCardFace(card)
+        }
+    }
+
+    private func sectionFace(_ side: NativeHypeCardSide, card: NativePublicHypeCard) -> some View {
+        ScrollView {
+            cardSideContent(side, card: card)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollIndicators(.hidden)
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(SupporterHomeColors.background)
     }
 
     @ViewBuilder
@@ -555,17 +577,25 @@ struct SupporterHypeCardView: View {
             return
         }
 
-        withAnimation(.easeInOut(duration: duration)) {
+        // Use the current reverse section as the outgoing face and the new
+        // section as the incoming face, so the flip never passes through Front.
+        let transition = NativeHypeCardSideTransition(from: selectedSide, to: side)
+        var resetTransaction = Transaction()
+        resetTransaction.disablesAnimations = true
+        withTransaction(resetTransaction) {
+            backSideTransition = transition
+            selectedSide = side
             cardRotation = 0
         }
         flipTask = Task { @MainActor in
             do {
-                try await Task.sleep(nanoseconds: delay)
-                selectedSide = side
+                await Task.yield()
+                try Task.checkCancellation()
                 withAnimation(.easeInOut(duration: duration)) {
                     cardRotation = 180
                 }
                 try await Task.sleep(nanoseconds: delay)
+                backSideTransition = nil
                 isFlipping = false
                 flipTask = nil
             } catch {

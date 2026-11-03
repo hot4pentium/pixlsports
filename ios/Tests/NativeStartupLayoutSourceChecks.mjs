@@ -132,7 +132,7 @@ test("HYPE Card photo fills its frame and section tabs attach below a flipping f
   const front = readFileSync(new URL("../PIXL Sports/NativeHypeCardFront.swift", import.meta.url), "utf8");
   const hypeCard = readFileSync(new URL("../PIXL Sports/SupporterHypeCardView.swift", import.meta.url), "utf8");
   const publicContentStart = hypeCard.indexOf("private func publicCardContent");
-  const frontFacePosition = hypeCard.indexOf("frontCardFace(card)", publicContentStart);
+  const frontFacePosition = hypeCard.indexOf("flipFrontContent(card)", publicContentStart);
   const tabsPosition = hypeCard.indexOf("cardSectionTabs", frontFacePosition);
   assert.match(front, /\.scaledToFill\(\)/);
   assert.match(front, /\.clipped\(\)/);
@@ -142,6 +142,25 @@ test("HYPE Card photo fills its frame and section tabs attach below a flipping f
             "The selector is placed after the card face in the connected card layout.");
   assert.match(hypeCard, /native-hype-card-flip-container/);
   assert.match(hypeCard, /selectCardSide\(side\)/);
+});
+
+test("switching between non-Front HYPE Card tabs flips directly to the selected section", () => {
+  const hypeCard = readFileSync(new URL("../PIXL Sports/SupporterHypeCardView.swift", import.meta.url), "utf8");
+  const selection = hypeCard.slice(
+    hypeCard.indexOf("private func selectCardSide"),
+    hypeCard.indexOf("private var settingsEditor"),
+  );
+  const frontSelection = selection.slice(
+    selection.indexOf("if side == .front"),
+    selection.indexOf("if selectedSide == .front"),
+  );
+  const reverseSelection = selection.slice(selection.indexOf("let transition = NativeHypeCardSideTransition"));
+  assert.match(frontSelection, /cardRotation = 0/);
+  assert.match(reverseSelection, /NativeHypeCardSideTransition\(from: selectedSide, to: side\)/);
+  assert.match(reverseSelection, /selectedSide = side/);
+  assert.doesNotMatch(reverseSelection, /selectedSide = \.front/);
+  assert.match(hypeCard, /sectionFace\(backSideTransition\.from, card: card\)/);
+  assert.match(hypeCard, /sectionFace\(backSideTransition\?\.to \?\? selectedSide, card: card\)/);
 });
 
 test("Settings alert failures use plain language without exposing server details", () => {
