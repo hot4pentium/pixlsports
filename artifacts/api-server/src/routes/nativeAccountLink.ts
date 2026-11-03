@@ -418,6 +418,7 @@ nativeAccountLinkRouter.patch("/supporter/profile", handle(async (req, res) => {
   res.json(await updateNativeSupporterProfile(identity(res), parsed.data));
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate").set("Pragma", "no-cache");
   res.json(GetNativeSupporterHypeCardResponse.parse(await loadNativeSupporterHypeCard(identity(res))));
 }));
 nativeAccountLinkRouter.patch("/supporter/hype-card", handle(async (req, res) => {

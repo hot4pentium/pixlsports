@@ -465,6 +465,41 @@ test("native owner edits require confirmation before publishing and close live t
   assert.equal((await loadNativeSupporterHypeCard(who, lookup)).status, "available");
 });
 
+test("native HYPE Card settings can be confirmed after the update response is lost", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await addInvite(linkedOwner, "Jordan", "Tigers", randomBytes(18).toString("base64url"));
+  await pool.query(
+    `UPDATE athlete_invites SET show_hype_card=false, show_stats=false, show_events=true,
+       favorite_moment='Before' WHERE owner_clerk_user_id=$1`,
+    [linkedOwner],
+  );
+  const lookup = async () => ({ athleteName: "Jordan", teamName: "Tigers" });
+  const requested = {
+    showHypeCard: false,
+    showStats: true,
+    showEvents: false,
+    paused: true,
+    favoriteMoment: "A great play",
+    confirmPublish: false,
+  };
+
+  await assert.rejects(async () => {
+    await updateNativeSupporterHypeCard(who, requested, lookup);
+    throw new Error("connection closed before the response reached the iPhone");
+  }, /connection closed before the response reached the iPhone/);
+
+  const authoritative = await loadNativeSupporterHypeCard(who, lookup);
+  assert.deepEqual(authoritative.settings, {
+    showHypeCard: false,
+    showStats: true,
+    showEvents: false,
+    paused: true,
+    favoriteMoment: "A great play",
+  });
+});
+
 test("native HYPE Card publishing controls reject a dedicated athlete editor identity", async () => {
   const who = identity();
   const linkedOwner = await owner();

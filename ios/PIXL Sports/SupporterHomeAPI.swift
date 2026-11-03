@@ -566,6 +566,20 @@ enum SupporterHomeAPI {
         }
     }
 
+    static func fetchAuthoritativeNativeHypeCardSettings(clerk: Clerk) async throws -> NativeHypeCardSettings {
+        let data = try await NativeAccountLinkClient().getAuthoritativeData("supporter/hype-card", clerk: clerk)
+        let reference: NativeHypeCardReference
+        do {
+            reference = try JSONDecoder().decode(NativeHypeCardReference.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        guard let settings = reference.settings else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        return settings
+    }
+
     private static func fetchPublicHypeCard(
         inviteToken: String,
         client: NativeAccountLinkClient

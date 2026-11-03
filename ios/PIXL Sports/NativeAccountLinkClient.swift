@@ -108,6 +108,14 @@ final class NativeAccountLinkClient {
         }
     }
 
+    func getAuthoritativeData(
+        _ path: String,
+        headers: [String: String] = [:],
+        clerk: Clerk
+    ) async throws -> Data {
+        try await networkGetData(path, headers: headers, clerk: clerk)
+    }
+
     private func networkGetData(_ path: String, headers: [String: String], clerk: Clerk) async throws -> Data {
         let origin = try Self.apiOrigin()
         let requestScope = NativeOfflineVault.shared.namespace

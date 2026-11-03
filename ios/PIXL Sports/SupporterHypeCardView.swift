@@ -43,6 +43,8 @@ struct SupporterHypeCardView: View {
     @State private var selectedVideoToken: String?
     @State private var videoPlayer: AVPlayer?
     @State private var isSaving = false
+    @State private var isCheckingSettings = false
+    @State private var settingsStatusUnknown = false
     @State private var settingsMessage: String?
     @State private var mediaErrorMessage: String?
     @State private var showPublishConfirmation = false
@@ -613,8 +615,23 @@ struct SupporterHypeCardView: View {
             .buttonStyle(.borderedProminent)
             .tint(SupporterHomeColors.accent)
             .foregroundStyle(SupporterHomeColors.background)
-            .disabled(isSaving || !hasUnsavedSettings)
+            .disabled(isSaving || isCheckingSettings || settingsStatusUnknown || !hasUnsavedSettings)
             .accessibilityIdentifier("native-hype-card-save-settings")
+
+            if settingsStatusUnknown {
+                Button {
+                    Task { await checkSavedSettingsStatus() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if isCheckingSettings { ProgressView().controlSize(.small) }
+                        Text(isCheckingSettings ? "Checking saved status…" : "Check saved status")
+                    }
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(SupporterHomeColors.accent)
+                .disabled(isSaving || isCheckingSettings)
+                .accessibilityIdentifier("native-hype-card-check-saved-status")
+            }
 
             if let settingsMessage {
                 Text(settingsMessage)
@@ -666,9 +683,10 @@ struct SupporterHypeCardView: View {
     }
 
     private func saveSettings(confirmPublish: Bool) async {
-        guard let clerk, !isSaving else { return }
+        guard let clerk, !isSaving, !isCheckingSettings else { return }
         isSaving = true
         settingsMessage = nil
+        settingsStatusUnknown = false
         defer { isSaving = false }
         let favorite = draftFavoriteMoment.trimmingCharacters(in: .whitespacesAndNewlines)
         let update = NativeHypeCardSettingsUpdate(
@@ -681,17 +699,62 @@ struct SupporterHypeCardView: View {
         )
         do {
             let saved = try await SupporterHomeAPI.updateNativeHypeCard(settings: update, clerk: clerk)
-            settings = saved
-            draftShowHypeCard = saved.showHypeCard
-            draftShowStats = saved.showStats
-            draftShowEvents = saved.showEvents
-            draftPaused = saved.paused
-            draftFavoriteMoment = saved.favoriteMoment ?? ""
             await loadCard(refresh: true)
+            applySettings(saved)
             settingsMessage = "HYPE Card settings saved."
         } catch {
-            settingsMessage = "We couldn’t confirm that your HYPE Card settings were saved. Please check and try again if needed."
+            await reconcileSettingsAfterSaveFailure()
         }
+    }
+
+    private func checkSavedSettingsStatus() async {
+        guard let clerk, !isSaving, !isCheckingSettings else { return }
+        isCheckingSettings = true
+        defer { isCheckingSettings = false }
+        await reconcileSettingsAfterSaveFailure()
+    }
+
+    private func reconcileSettingsAfterSaveFailure() async {
+        guard let clerk else {
+            settingsStatusUnknown = true
+            settingsMessage = "We couldn’t confirm that your HYPE Card settings were saved. Your choices are still here. Check saved status when you can."
+            return
+        }
+        do {
+            let saved = try await SupporterHomeAPI.fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
+            settings = saved
+            settingsStatusUnknown = false
+            if draftMatches(saved) {
+                await loadCard(refresh: true)
+                applySettings(saved)
+                settingsMessage = "HYPE Card settings saved."
+            } else {
+                await loadCard(refresh: true)
+                settings = saved
+                settingsMessage = "PIXL has different saved settings. Your choices are still here; review them before saving again."
+            }
+        } catch {
+            settingsStatusUnknown = true
+            settingsMessage = "We couldn’t confirm that your HYPE Card settings were saved. Your choices are still here. Check saved status before trying again."
+        }
+    }
+
+    private func applySettings(_ saved: NativeHypeCardSettings) {
+        settings = saved
+        draftShowHypeCard = saved.showHypeCard
+        draftShowStats = saved.showStats
+        draftShowEvents = saved.showEvents
+        draftPaused = saved.paused
+        draftFavoriteMoment = saved.favoriteMoment ?? ""
+    }
+
+    private func draftMatches(_ saved: NativeHypeCardSettings) -> Bool {
+        let favorite = draftFavoriteMoment.trimmingCharacters(in: .whitespacesAndNewlines)
+        return saved.showHypeCard == draftShowHypeCard
+            && saved.showStats == draftShowStats
+            && saved.showEvents == draftShowEvents
+            && saved.paused == draftPaused
+            && saved.favoriteMoment == (favorite.isEmpty ? nil : favorite)
     }
 
     private func statsSide(_ stats: NativeHypeStats) -> some View {
