@@ -103,7 +103,7 @@ struct NativeEventTrackerView: View {
             }
             if game.status == "final" {
                 if model.pendingFinal {
-                    Text("Final saved on this iPhone · waiting to sync")
+                    Text("Final saved on this iPhone · not yet saved to PIXL")
                         .font(.subheadline.bold()).foregroundStyle(.orange)
                         .accessibilityIdentifier("native-event-final-pending")
                 }

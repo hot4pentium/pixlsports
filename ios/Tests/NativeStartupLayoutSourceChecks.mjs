@@ -110,3 +110,16 @@ test("dashboard does not show the large offline status card", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   assert.doesNotMatch(content, /NativeOfflineStatusView\s*\{/);
 });
+
+test("save conflicts explain the choice without technical wording", () => {
+  const tools = readFileSync(new URL("../PIXL Sports/NativeEventTools.swift", import.meta.url), "utf8");
+  const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
+  const tracker = readFileSync(new URL("../PIXL Sports/NativeEventTrackerView.swift", import.meta.url), "utf8");
+  const notice = tools.slice(tools.indexOf("struct NativeToolSaveNotice: View"));
+  assert.match(notice, /This change may not be in PIXL yet\. It's still saved on this iPhone\./);
+  assert.match(notice, /Button\("Use PIXL version", role: \.destructive\)/);
+  assert.match(notice, /Anything not saved to PIXL will be removed from this iPhone\./);
+  assert.doesNotMatch(notice, /Discard pending change and reload|waiting to sync|changed elsewhere|reload before choosing what to keep/);
+  assert.doesNotMatch(prep, /waiting to sync/);
+  assert.doesNotMatch(tracker, /waiting to sync/);
+});

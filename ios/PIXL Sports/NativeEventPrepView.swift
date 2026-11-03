@@ -645,7 +645,7 @@ struct NativeEventPrepView: View {
     private var saveStatusText: String {
         if model.errorMessage != nil { return "Needs attention" }
         if prepAutosaveTask != nil || model.busy { return "Saving…" }
-        if model.pendingCount > 0 { return "Saved here · waiting to sync" }
+        if model.pendingCount > 0 { return "Saved on this iPhone · not yet saved to PIXL" }
         if !offline.online { return "Offline · saved copy on this iPhone" }
         if hasUnsavedEdits { return "Unsaved changes" }
         return "Prep saved"
