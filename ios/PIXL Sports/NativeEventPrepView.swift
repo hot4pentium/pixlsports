@@ -8,6 +8,7 @@ struct NativeEventPrepView: View {
     let compactContent: Bool
     let onDirtyChange: (Bool) -> Void
     @StateObject private var model: NativeEventToolModel
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
     @State private var items: [NativePrepItem] = []
     @State private var notes = ""
     @State private var notesDirty = false
@@ -56,6 +57,10 @@ struct NativeEventPrepView: View {
         !newItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && items.count < 100
     }
 
+    private var shouldShowSaveNotice: Bool {
+        model.errorMessage != nil || model.conflictBlocked || model.unreadablePendingData || !offline.online
+    }
+
     @ViewBuilder
     private var prepSections: some View {
             Section {
@@ -66,7 +71,7 @@ struct NativeEventPrepView: View {
                     .accessibilityIdentifier("native-prep-date")
             }
             .listRowBackground(SupporterHomeColors.panel)
-            if let clerk, model.busy || model.errorMessage != nil || model.pendingCount > 0 {
+            if let clerk, shouldShowSaveNotice {
                 Section {
                     NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
                 }
@@ -209,7 +214,7 @@ struct NativeEventPrepView: View {
 
     private var compactPrepContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let clerk, model.busy || model.errorMessage != nil || model.pendingCount > 0 {
+            if let clerk, shouldShowSaveNotice {
                 NativeToolSaveNotice(model: model, clerk: clerk, hasUnsavedChanges: edited)
             }
 
@@ -591,17 +596,25 @@ struct NativeEventPrepView: View {
         edited && model.canEditLocally && notes.count <= 4000
     }
 
+    private var saveStatusText: String {
+        if model.errorMessage != nil { return "Needs attention" }
+        if prepAutosaveTask != nil || model.busy { return "Saving…" }
+        if model.pendingCount > 0 { return "Saved here · waiting to sync" }
+        if !offline.online { return "Offline · saved copy on this iPhone" }
+        if hasUnsavedEdits { return "Unsaved changes" }
+        return "Prep saved"
+    }
+
     private var saveFooter: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(
-                model.busy ? "Updating prep…" :
-                    prepAutosaveTask != nil ? "Saving Prep…" :
-                    hasUnsavedEdits ? "Unsaved changes" :
-                    model.pendingCount > 0 ? "Prep saved on this iPhone · waiting to sync" : "Prep saved"
-            )
-                .font(.caption.weight(.semibold))
+            Text(saveStatusText)
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(SupporterHomeColors.muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(minHeight: 16, alignment: .leading)
                 .accessibilityIdentifier("native-prep-save-status")
+                .transaction { $0.animation = nil }
         }
         .frame(maxWidth: 560)
         .padding(.horizontal, 20)

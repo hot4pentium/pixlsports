@@ -58,6 +58,14 @@ test("startup diagnostic preserves Clerk configuration and normal authorization"
   assert.doesNotMatch(initialBody, /clerk\.(isLoaded|user|session|isAuthFlowComplete)/);
 });
 
+test("routine Prep saves do not insert a changing status panel", () => {
+  const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
+  assert.match(prep, /private var shouldShowSaveNotice: Bool/);
+  assert.match(prep, /model\.errorMessage != nil \|\| model\.conflictBlocked \|\| model\.unreadablePendingData \|\| !offline\.online/);
+  assert.equal((prep.match(/if let clerk, shouldShowSaveNotice/g) || []).length, 2);
+  assert.match(prep, /Text\(saveStatusText\)[\s\S]*?\.frame\(minHeight: 16, alignment: \.leading\)/);
+});
+
 test("dashboard header uses the white Sports logo on its dark panel", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   const start = content.indexOf("private var header: some View");
