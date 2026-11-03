@@ -31,6 +31,7 @@ struct SupporterHypeCardView: View {
     @State private var privatePhoto: UIImage?
     @State private var athleteProfile: NativeSupporterProfile?
     @State private var settings: NativeHypeCardSettings?
+    @State private var settingsAccountSubject: String?
     @State private var draftShowHypeCard = false
     @State private var draftShowStats = false
     @State private var draftShowEvents = false
@@ -45,6 +46,7 @@ struct SupporterHypeCardView: View {
     @State private var isSaving = false
     @State private var isCheckingSettings = false
     @State private var settingsStatusUnknown = false
+    @State private var settingsDraftRecoveryBlocked = false
     @State private var settingsMessage: String?
     @State private var mediaErrorMessage: String?
     @State private var showPublishConfirmation = false
@@ -574,33 +576,33 @@ struct SupporterHypeCardView: View {
                 .foregroundStyle(SupporterHomeColors.muted)
 
             VStack(alignment: .leading, spacing: 12) {
-                TextField("Favorite moment", text: $draftFavoriteMoment)
+                TextField("Favorite moment", text: favoriteMomentBinding)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityLabel("Favorite moment")
                     .accessibilityIdentifier("native-hype-card-favorite-moment")
-                    .onChange(of: draftFavoriteMoment) { _, value in
-                        if value.count > 160 {
-                            draftFavoriteMoment = String(value.prefix(160))
-                        }
-                    }
+                    .disabled(!canEditSettingsDraft)
                 Text("\(draftFavoriteMoment.count) / 160")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(SupporterHomeColors.muted)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
 
-            Toggle("Show HYPE Card", isOn: $draftShowHypeCard)
+            Toggle("Show HYPE Card", isOn: showHypeCardBinding)
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-public")
-            Toggle("Share finalized stats", isOn: $draftShowStats)
+                .disabled(!canEditSettingsDraft)
+            Toggle("Share finalized stats", isOn: showStatsBinding)
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-stats")
-            Toggle("Share Event Cards", isOn: $draftShowEvents)
+                .disabled(!canEditSettingsDraft)
+            Toggle("Share Event Cards", isOn: showEventsBinding)
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-events")
-            Toggle("Pause public page", isOn: $draftPaused)
+                .disabled(!canEditSettingsDraft)
+            Toggle("Pause public page", isOn: pausedBinding)
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-paused")
+                .disabled(!canEditSettingsDraft)
 
             Button(action: requestSettingsSave) {
                 HStack {
@@ -615,7 +617,8 @@ struct SupporterHypeCardView: View {
             .buttonStyle(.borderedProminent)
             .tint(SupporterHomeColors.accent)
             .foregroundStyle(SupporterHomeColors.background)
-            .disabled(isSaving || isCheckingSettings || settingsStatusUnknown || !hasUnsavedSettings)
+            .disabled(isSaving || isCheckingSettings || settingsStatusUnknown
+                      || !canEditSettingsDraft || !hasUnsavedSettings)
             .accessibilityIdentifier("native-hype-card-save-settings")
 
             if settingsStatusUnknown {
@@ -671,8 +674,66 @@ struct SupporterHypeCardView: View {
                                            : draftFavoriteMoment.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
+    private var currentSettingsDraft: NativeHypeCardSettings {
+        let favorite = draftFavoriteMoment.trimmingCharacters(in: .whitespacesAndNewlines)
+        return NativeHypeCardSettings(
+            showHypeCard: draftShowHypeCard,
+            showStats: draftShowStats,
+            showEvents: draftShowEvents,
+            paused: draftPaused,
+            favoriteMoment: favorite.isEmpty ? nil : favorite
+        )
+    }
+
+    private var canEditSettingsDraft: Bool {
+        !settingsDraftRecoveryBlocked && settingsAccountSubject != nil
+            && settingsAccountSubject == clerk?.user?.id
+    }
+
+    private var favoriteMomentBinding: Binding<String> {
+        Binding(
+            get: { draftFavoriteMoment },
+            set: {
+                draftFavoriteMoment = String($0.prefix(160))
+                persistSettingsDraft()
+            }
+        )
+    }
+
+    private var showHypeCardBinding: Binding<Bool> {
+        Binding(get: { draftShowHypeCard }, set: { draftShowHypeCard = $0; persistSettingsDraft() })
+    }
+
+    private var showStatsBinding: Binding<Bool> {
+        Binding(get: { draftShowStats }, set: { draftShowStats = $0; persistSettingsDraft() })
+    }
+
+    private var showEventsBinding: Binding<Bool> {
+        Binding(get: { draftShowEvents }, set: { draftShowEvents = $0; persistSettingsDraft() })
+    }
+
+    private var pausedBinding: Binding<Bool> {
+        Binding(get: { draftPaused }, set: { draftPaused = $0; persistSettingsDraft() })
+    }
+
+    private func persistSettingsDraft() {
+        guard canEditSettingsDraft, let subject = settingsAccountSubject else {
+            settingsMessage = "Sign in to the same iPhone account to save these HYPE Card changes."
+            return
+        }
+        do {
+            try NativeAccountLinkClient().saveHypeCardSettingsDraft(currentSettingsDraft, subject: subject)
+            settingsMessage = "Your changes are saved on this iPhone. Save them to PIXL when you’re ready."
+        } catch {
+            settingsMessage = "These HYPE Card changes couldn’t be saved on this iPhone. Reconnect and try again."
+        }
+    }
+
     private func requestSettingsSave() {
-        guard let settings else { return }
+        guard let settings, canEditSettingsDraft else {
+            settingsMessage = "Sign in to the same iPhone account before saving these HYPE Card changes."
+            return
+        }
         let becomesPublic = draftShowHypeCard && !draftPaused
             && (!settings.showHypeCard || settings.paused)
         if becomesPublic {
@@ -683,12 +744,17 @@ struct SupporterHypeCardView: View {
     }
 
     private func saveSettings(confirmPublish: Bool) async {
-        guard let clerk, !isSaving, !isCheckingSettings else { return }
+        guard let clerk, let subject = settingsAccountSubject,
+              subject == clerk.user?.id, !isSaving, !isCheckingSettings else {
+            settingsMessage = "Sign in to the same iPhone account before saving these HYPE Card changes."
+            return
+        }
         isSaving = true
         settingsMessage = nil
         settingsStatusUnknown = false
         defer { isSaving = false }
         let favorite = draftFavoriteMoment.trimmingCharacters(in: .whitespacesAndNewlines)
+        let submittedDraft = currentSettingsDraft
         let update = NativeHypeCardSettingsUpdate(
             showHypeCard: draftShowHypeCard,
             showStats: draftShowStats,
@@ -699,9 +765,29 @@ struct SupporterHypeCardView: View {
         )
         do {
             let saved = try await SupporterHomeAPI.updateNativeHypeCard(settings: update, clerk: clerk)
-            await loadCard(refresh: true)
-            applySettings(saved)
-            settingsMessage = "HYPE Card settings saved."
+            if saved == submittedDraft {
+                settings = saved
+                if currentSettingsDraft == submittedDraft {
+                    do {
+                        try NativeAccountLinkClient().clearHypeCardSettingsDraft(subject: subject)
+                    } catch {
+                        // PIXL has confirmed the save; a retained local copy will
+                        // be reconciled against the authoritative settings on reopening.
+                    }
+                }
+                await loadCard(refresh: true)
+                settings = saved
+                if currentSettingsDraft == submittedDraft {
+                    applySettings(saved)
+                    settingsMessage = "HYPE Card settings saved in PIXL."
+                } else {
+                    settingsMessage = "PIXL saved these settings. Your newer choices remain on this iPhone; review them before saving again."
+                }
+            } else {
+                settings = saved
+                settingsStatusUnknown = false
+                settingsMessage = "PIXL saved different settings. Your choices are still saved on this iPhone; review them before saving again."
+            }
         } catch {
             await reconcileSettingsAfterSaveFailure()
         }
@@ -720,14 +806,31 @@ struct SupporterHypeCardView: View {
             settingsMessage = "We couldn’t confirm that your HYPE Card settings were saved. Your choices are still here. Check saved status when you can."
             return
         }
+        guard let subject = settingsAccountSubject, subject == clerk.user?.id else {
+            settingsStatusUnknown = true
+            settingsMessage = "Sign in to the same iPhone account to check whether these HYPE Card settings were saved."
+            return
+        }
         do {
             let saved = try await SupporterHomeAPI.fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
             settings = saved
             settingsStatusUnknown = false
             if draftMatches(saved) {
+                let confirmedDraft = currentSettingsDraft
+                do {
+                    try NativeAccountLinkClient().clearHypeCardSettingsDraft(subject: subject)
+                } catch {
+                    // Keep the view usable; the server-confirmed match allows
+                    // the stale local copy to be cleared the next time it loads.
+                }
                 await loadCard(refresh: true)
-                applySettings(saved)
-                settingsMessage = "HYPE Card settings saved."
+                settings = saved
+                if currentSettingsDraft == confirmedDraft {
+                    applySettings(saved)
+                    settingsMessage = "HYPE Card settings saved in PIXL."
+                } else {
+                    settingsMessage = "PIXL saved these settings. Your newer choices remain on this iPhone; review them before saving again."
+                }
             } else {
                 await loadCard(refresh: true)
                 settings = saved
@@ -746,6 +849,14 @@ struct SupporterHypeCardView: View {
         draftShowEvents = saved.showEvents
         draftPaused = saved.paused
         draftFavoriteMoment = saved.favoriteMoment ?? ""
+    }
+
+    private func applySettingsDraft(_ draft: NativeHypeCardSettings) {
+        draftShowHypeCard = draft.showHypeCard
+        draftShowStats = draft.showStats
+        draftShowEvents = draft.showEvents
+        draftPaused = draft.paused
+        draftFavoriteMoment = draft.favoriteMoment ?? ""
     }
 
     private func draftMatches(_ saved: NativeHypeCardSettings) -> Bool {
@@ -1070,6 +1181,7 @@ struct SupporterHypeCardView: View {
         guard let clerk else {
             loading = false
             athleteProfile = nil
+            settingsAccountSubject = nil
             if refresh {
                 card = nil
                 privateCard = nil
@@ -1082,23 +1194,57 @@ struct SupporterHypeCardView: View {
             }
             return
         }
+        guard let requestSubject = clerk.user?.id else {
+            loading = false
+            unavailable = true
+            settingsAccountSubject = nil
+            return
+        }
         do {
             let result = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
             let profile = try? await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, clerk.user?.id == requestSubject else { return }
             athleteProfile = profile
             identityMismatch = result.identityMismatch
             identityCorrectionId = result.correctionId
-            let preserveUnsavedDraft = hasUnsavedSettings
+            let sameSettingsAccount = settingsAccountSubject == requestSubject
+            let preserveUnsavedDraft = sameSettingsAccount && hasUnsavedSettings
             card = result.publicCard
             privateCard = result.privateCard
             settings = result.settings
+            settingsAccountSubject = requestSubject
+            if !sameSettingsAccount {
+                settingsDraftRecoveryBlocked = false
+                settingsStatusUnknown = false
+                settingsMessage = nil
+            }
             if !preserveUnsavedDraft {
-                draftShowHypeCard = result.settings?.showHypeCard ?? false
-                draftShowStats = result.settings?.showStats ?? false
-                draftShowEvents = result.settings?.showEvents ?? false
-                draftPaused = result.settings?.paused ?? false
-                draftFavoriteMoment = result.settings?.favoriteMoment ?? ""
+                settingsDraftRecoveryBlocked = false
+                if let saved = result.settings {
+                    applySettings(saved)
+                    do {
+                        if let recovered = try NativeAccountLinkClient().loadHypeCardSettingsDraft(subject: requestSubject) {
+                            if recovered == saved {
+                                try NativeAccountLinkClient().clearHypeCardSettingsDraft(subject: requestSubject)
+                            } else {
+                                applySettingsDraft(recovered)
+                                settingsMessage = "Your previous choices are saved on this iPhone. Review and save them to PIXL."
+                            }
+                        }
+                    } catch NativeOfflineError.corrupt {
+                        settingsDraftRecoveryBlocked = true
+                        settingsMessage = "Saved HYPE Card choices couldn’t be opened on this iPhone. They haven’t been deleted."
+                    } catch {
+                        // The online settings remain available even when this
+                        // device cannot currently access its offline vault.
+                    }
+                } else {
+                    draftShowHypeCard = false
+                    draftShowStats = false
+                    draftShowEvents = false
+                    draftPaused = false
+                    draftFavoriteMoment = ""
+                }
             }
             privatePhoto = result.privatePhoto.flatMap(UIImage.init(data:))
             unavailable = result.publicCard == nil && result.privateCard == nil

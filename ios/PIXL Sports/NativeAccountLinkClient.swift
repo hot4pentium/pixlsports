@@ -45,6 +45,7 @@ private final class NativeLinkRedirectGuard: NSObject, URLSessionTaskDelegate, @
 @MainActor
 final class NativeAccountLinkClient {
     private let session: URLSession
+    private static let hypeCardSettingsDraftKey = "pending/hype-card-settings"
 
     init() {
         let configuration = URLSessionConfiguration.ephemeral
@@ -53,6 +54,33 @@ final class NativeAccountLinkClient {
         configuration.urlCache = nil
         configuration.timeoutIntervalForRequest = 20
         session = URLSession(configuration: configuration, delegate: NativeLinkRedirectGuard(), delegateQueue: nil)
+    }
+
+    func saveHypeCardSettingsDraft(_ draft: NativeHypeCardSettings, subject: String) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        try offline.vault.write(JSONEncoder().encode(draft), key: Self.hypeCardSettingsDraftKey)
+        offline.storageChanged()
+    }
+
+    func loadHypeCardSettingsDraft(subject: String) throws -> NativeHypeCardSettings? {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        guard let data = try offline.vault.read(Self.hypeCardSettingsDraftKey, subject: subject) else {
+            return nil
+        }
+        do {
+            return try JSONDecoder().decode(NativeHypeCardSettings.self, from: data)
+        } catch {
+            throw NativeOfflineError.corrupt
+        }
+    }
+
+    func clearHypeCardSettingsDraft(subject: String) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        try offline.vault.write(nil, key: Self.hypeCardSettingsDraftKey)
+        offline.storageChanged()
     }
 
     private static func requestFailureMessage(for path: String, method: String) -> String {

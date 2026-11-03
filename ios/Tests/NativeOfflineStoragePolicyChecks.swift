@@ -5,10 +5,12 @@ struct NativeOfflineStoragePolicyChecks {
         let keys: Set<String> = [
             "get/supporter/schedule", "get/supporter/profile", "cache/settings",
             "workspace/queued", "workspace/draft", "workspace/clean",
-            "get/supporter/hype-card", "outbox/queued", "draft/draft"
+            "get/supporter/hype-card", "outbox/queued", "draft/draft",
+            "pending/hype-card-settings"
         ]
         for key in ["get/supporter/schedule", "get/supporter/profile", "cache/settings",
-                    "outbox/queued", "draft/draft", "workspace/queued", "workspace/draft",
+                    "outbox/queued", "draft/draft", "pending/hype-card-settings",
+                    "workspace/queued", "workspace/draft",
                     "unknown/future-recovery", "get/supporter/schedule?variant=1"] {
             precondition(!Policy.isDisposable(key, knownKeys: keys), "Recovery record must survive: \(key)")
         }
@@ -35,6 +37,9 @@ struct NativeOfflineStoragePolicyChecks {
         precondition(Policy.isDisposable("workspace/same-token", knownKeys: accountB))
         precondition(Policy.pendingEvents(keys: accountA) == ["same-token"])
         precondition(Policy.pendingEvents(keys: accountB).isEmpty)
+        precondition(Policy.isPending("pending/hype-card-settings"))
+        precondition(Policy.pendingEvents(keys: ["pending/hype-card-settings"]).isEmpty,
+                     "Account settings drafts must not be mistaken for an Event Card draft.")
         precondition(Policy.pendingBudget > Policy.cacheBudget)
 
         let lowSpace = NativeOfflineStorageSnapshot(totalBytes: 100, removableBytes: 20,

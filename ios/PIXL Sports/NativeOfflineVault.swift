@@ -61,7 +61,7 @@ final class NativeOfflineVault {
     }
     var hasPending: Bool {
         !(lease?.pendingKeys ?? []).isEmpty
-            || index.entries.keys.contains { $0.hasPrefix("outbox/") || $0.hasPrefix("draft/") }
+            || index.entries.keys.contains { NativeOfflineStoragePolicy.isPending($0) }
     }
     var queuedEvents: [String] {
         Set(Array(index.entries.keys) + (lease?.pendingKeys ?? []))
@@ -233,7 +233,7 @@ final class NativeOfflineVault {
     func write(_ data: Data?, key: String) throws {
         guard !denied, lease?.permits(origin: origin, subject: nil) == true else { throw NativeOfflineError.locked }
         if let data {
-            if key.hasPrefix("outbox/") || key.hasPrefix("draft/") {
+            if NativeOfflineStoragePolicy.isPending(key) {
                 if var updatedLease = lease {
                     var pendingKeys = updatedLease.pendingKeys ?? []
                     if !pendingKeys.contains(key) {
@@ -248,7 +248,7 @@ final class NativeOfflineVault {
             let occupied = files.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
             let previous = (try? file(key).resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
             let total = occupied - previous + data.count + 28
-            let isPending = key.hasPrefix("outbox/") || key.hasPrefix("draft/")
+            let isPending = NativeOfflineStoragePolicy.isPending(key)
             // Small management metadata can use the reserve too, so cleanup can
             // finish while protected pending work exceeds the normal cache cap.
             let budget = (isPending || key == "cache/settings")

@@ -125,7 +125,7 @@ test("HYPE Card and photo screens do not show raw server errors", () => {
   assert.match(photo, /NavigationLink\("Review HYPE Card"\)/);
   assert.doesNotMatch(hypeCard, /error\.localizedDescription/);
   assert.match(hypeCard, /We couldn’t load your HYPE Card right now\. Please try again\./);
-  assert.match(hypeCard, /We couldn’t confirm that your HYPE Card settings were saved\. Please check and try again if needed\./);
+  assert.match(hypeCard, /We couldn’t confirm that your HYPE Card settings were saved\. Your choices are still here\. Check saved status when you can\./);
 });
 
 test("HYPE Card photo fills its frame and section tabs attach below a flipping face", () => {

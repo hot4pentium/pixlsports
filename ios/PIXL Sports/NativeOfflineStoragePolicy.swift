@@ -3,6 +3,10 @@ enum NativeOfflineStoragePolicy {
     static let cacheBudget = 59 * 1_024 * 1_024
     static let pendingBudget = 79 * 1_024 * 1_024
 
+    static func isPending(_ key: String) -> Bool {
+        key.hasPrefix("outbox/") || key.hasPrefix("draft/") || key.hasPrefix("pending/")
+    }
+
     static func pendingEvents(keys: Set<String>) -> Set<String> {
         Set(keys.compactMap { key in
             if key.hasPrefix("outbox/") { return String(key.dropFirst(7)) }
