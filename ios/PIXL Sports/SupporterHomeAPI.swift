@@ -553,21 +553,45 @@ enum SupporterHomeAPI {
         settings: NativeHypeCardSettingsUpdate,
         clerk: Clerk
     ) async throws -> NativeHypeCardSettings {
-        let data = try await NativeAccountLinkClient().postData(
+        guard let subject = clerk.user?.id else {
+            throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
+        }
+        let client = NativeAccountLinkClient()
+        // Record uncertainty before sending the mutation. If the process ends
+        // while the request is in flight, the next editor visit must check PIXL.
+        try client.markHypeCardSettingsConfirmationPending(
+            NativeHypeCardSettings(
+                showHypeCard: settings.showHypeCard,
+                showStats: settings.showStats,
+                showEvents: settings.showEvents,
+                paused: settings.paused,
+                favoriteMoment: settings.favoriteMoment
+            ),
+            subject: subject
+        )
+        let data = try await client.postData(
             "supporter/hype-card",
             body: settings,
             method: "PATCH",
             clerk: clerk
         )
+        let saved: NativeHypeCardSettings
         do {
-            return try JSONDecoder().decode(NativeHypeCardSettings.self, from: data)
+            saved = try JSONDecoder().decode(NativeHypeCardSettings.self, from: data)
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }
+        try client.clearHypeCardSettingsConfirmation(subject: subject)
+        return saved
     }
 
     static func fetchAuthoritativeNativeHypeCardSettings(clerk: Clerk) async throws -> NativeHypeCardSettings {
-        let data = try await NativeAccountLinkClient().getAuthoritativeData("supporter/hype-card", clerk: clerk)
+        let client = NativeAccountLinkClient()
+        // A fresh linked schedule response renews the offline vault lease so
+        // account-scoped recovery markers can be read and cleared after a long
+        // interval between app launches.
+        _ = try await client.getAuthoritativeData("supporter/schedule", clerk: clerk)
+        let data = try await client.getAuthoritativeData("supporter/hype-card", clerk: clerk)
         let reference: NativeHypeCardReference
         do {
             reference = try JSONDecoder().decode(NativeHypeCardReference.self, from: data)

@@ -46,6 +46,7 @@ private final class NativeLinkRedirectGuard: NSObject, URLSessionTaskDelegate, @
 final class NativeAccountLinkClient {
     private let session: URLSession
     private static let hypeCardSettingsDraftKey = "pending/hype-card-settings"
+    private static let hypeCardSettingsConfirmationKey = "pending/hype-card-settings-confirmation"
 
     init() {
         let configuration = URLSessionConfiguration.ephemeral
@@ -80,6 +81,42 @@ final class NativeAccountLinkClient {
         let offline = NativeOfflineRuntime.shared
         guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
         try offline.vault.write(nil, key: Self.hypeCardSettingsDraftKey)
+        offline.storageChanged()
+    }
+
+    func markHypeCardSettingsConfirmationPending(
+        _ settings: NativeHypeCardSettings,
+        subject: String
+    ) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        try offline.vault.write(JSONEncoder().encode(settings), key: Self.hypeCardSettingsConfirmationKey)
+        offline.storageChanged()
+    }
+
+    func hasPendingHypeCardSettingsConfirmation(subject: String) throws -> Bool {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        return try offline.vault.read(Self.hypeCardSettingsConfirmationKey, subject: subject) != nil
+    }
+
+    func loadPendingHypeCardSettingsConfirmation(subject: String) throws -> NativeHypeCardSettings? {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        guard let data = try offline.vault.read(Self.hypeCardSettingsConfirmationKey, subject: subject) else {
+            return nil
+        }
+        do {
+            return try JSONDecoder().decode(NativeHypeCardSettings.self, from: data)
+        } catch {
+            throw NativeOfflineError.corrupt
+        }
+    }
+
+    func clearHypeCardSettingsConfirmation(subject: String) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        try offline.vault.write(nil, key: Self.hypeCardSettingsConfirmationKey)
         offline.storageChanged()
     }
 

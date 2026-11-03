@@ -47,6 +47,9 @@ struct SupporterHypeCardView: View {
     @State private var isCheckingSettings = false
     @State private var settingsStatusUnknown = false
     @State private var settingsDraftRecoveryBlocked = false
+    @State private var settingsRecoveryAfterRestart = false
+    @State private var settingsRecoveryMarkerFound = false
+    @State private var settingsRecoverySnapshot: NativeHypeCardSettings?
     @State private var settingsMessage: String?
     @State private var mediaErrorMessage: String?
     @State private var showPublishConfirmation = false
@@ -124,6 +127,9 @@ struct SupporterHypeCardView: View {
                     }
 
                     content
+                    if settingsStatusUnknown && settings == nil {
+                        settingsStatusRecoveryNotice
+                    }
                 }
                 .frame(maxWidth: 520, alignment: .leading)
                 .padding(20)
@@ -140,7 +146,7 @@ struct SupporterHypeCardView: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
-                .disabled(loading || isRefreshing || hasUnsavedSettings)
+                .disabled(loading || isRefreshing || isSaving || isCheckingSettings || hasUnsavedSettings)
                 .accessibilityLabel("Refresh HYPE Card")
                 .accessibilityHint("Reload the preview from your linked PIXL account.")
                 .accessibilityIdentifier("native-hype-card-refresh")
@@ -172,7 +178,8 @@ struct SupporterHypeCardView: View {
         }
         .task { await loadCard() }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, !loading, !isRefreshing, !hasUnsavedSettings else { return }
+            guard phase == .active, !loading, !isRefreshing, !isSaving,
+                  !isCheckingSettings, !hasUnsavedSettings else { return }
             Task { await loadCard() }
         }
         .onDisappear {
@@ -622,18 +629,7 @@ struct SupporterHypeCardView: View {
             .accessibilityIdentifier("native-hype-card-save-settings")
 
             if settingsStatusUnknown {
-                Button {
-                    Task { await checkSavedSettingsStatus() }
-                } label: {
-                    HStack(spacing: 8) {
-                        if isCheckingSettings { ProgressView().controlSize(.small) }
-                        Text(isCheckingSettings ? "Checking saved status…" : "Check saved status")
-                    }
-                }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(SupporterHomeColors.accent)
-                .disabled(isSaving || isCheckingSettings)
-                .accessibilityIdentifier("native-hype-card-check-saved-status")
+                settingsStatusCheckButton
             }
 
             if let settingsMessage {
@@ -651,6 +647,40 @@ struct SupporterHypeCardView: View {
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 22))
         .supporterSurfaceShadow()
         .accessibilityIdentifier("native-hype-card-owner-settings")
+    }
+
+    private var settingsStatusCheckButton: some View {
+        Button {
+            Task { await checkSavedSettingsStatus() }
+        } label: {
+            HStack(spacing: 8) {
+                if isCheckingSettings { ProgressView().controlSize(.small) }
+                Text(isCheckingSettings ? "Checking saved status…" : "Check saved status")
+            }
+        }
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(SupporterHomeColors.accent)
+        .disabled(isSaving || isCheckingSettings)
+        .accessibilityIdentifier("native-hype-card-check-saved-status")
+    }
+
+    private var settingsStatusRecoveryNotice: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("HYPE Card save status needs checking", systemImage: "exclamationmark.triangle.fill")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+            if let settingsMessage {
+                Text(settingsMessage)
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
+            }
+            settingsStatusCheckButton
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+        .supporterSurfaceShadow()
+        .accessibilityIdentifier("native-hype-card-settings-status-recovery")
     }
 
     private var publicationDescription: String {
@@ -688,6 +718,7 @@ struct SupporterHypeCardView: View {
     private var canEditSettingsDraft: Bool {
         !settingsDraftRecoveryBlocked && settingsAccountSubject != nil
             && settingsAccountSubject == clerk?.user?.id
+            && !isSaving && !isCheckingSettings && !settingsStatusUnknown
     }
 
     private var favoriteMomentBinding: Binding<String> {
@@ -797,7 +828,11 @@ struct SupporterHypeCardView: View {
         guard let clerk, !isSaving, !isCheckingSettings else { return }
         isCheckingSettings = true
         defer { isCheckingSettings = false }
-        await reconcileSettingsAfterSaveFailure()
+        if settingsRecoveryAfterRestart, let subject = settingsAccountSubject {
+            await reconcileSettingsAfterRestart(subject: subject, pendingSnapshot: settingsRecoverySnapshot)
+        } else {
+            await reconcileSettingsAfterSaveFailure()
+        }
     }
 
     private func reconcileSettingsAfterSaveFailure() async {
@@ -813,6 +848,8 @@ struct SupporterHypeCardView: View {
         }
         do {
             let saved = try await SupporterHomeAPI.fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
+            guard clerk.user?.id == subject else { return }
+            try NativeAccountLinkClient().clearHypeCardSettingsConfirmation(subject: subject)
             settings = saved
             settingsStatusUnknown = false
             if draftMatches(saved) {
@@ -835,6 +872,49 @@ struct SupporterHypeCardView: View {
                 await loadCard(refresh: true)
                 settings = saved
                 settingsMessage = "PIXL has different saved settings. Your choices are still here; review them before saving again."
+            }
+        } catch {
+            settingsStatusUnknown = true
+            settingsMessage = "We couldn’t confirm that your HYPE Card settings were saved. Your choices are still here. Check saved status before trying again."
+        }
+    }
+
+    private func reconcileSettingsAfterRestart(
+        subject: String,
+        pendingSnapshot: NativeHypeCardSettings?
+    ) async {
+        guard let clerk, clerk.user?.id == subject else {
+            settingsStatusUnknown = true
+            settingsMessage = "Sign in to the same iPhone account to check whether these HYPE Card settings were saved."
+            return
+        }
+        do {
+            let saved = try await SupporterHomeAPI.fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
+            guard clerk.user?.id == subject else { return }
+            let client = NativeAccountLinkClient()
+            let markerFound = settingsRecoveryMarkerFound
+                || (try client.hasPendingHypeCardSettingsConfirmation(subject: subject))
+            let confirmedSnapshot = pendingSnapshot
+                ?? (markerFound ? try? client.loadPendingHypeCardSettingsConfirmation(subject: subject) : nil)
+            if markerFound {
+                try client.clearHypeCardSettingsDraft(subject: subject)
+            }
+            try client.clearHypeCardSettingsConfirmation(subject: subject)
+            settings = saved
+            applySettings(saved)
+            settingsStatusUnknown = false
+            settingsRecoveryAfterRestart = false
+            settingsRecoveryMarkerFound = false
+            settingsRecoverySnapshot = nil
+            await loadCard(refresh: true)
+            settings = saved
+            applySettings(saved)
+            if let confirmedSnapshot = confirmedSnapshot, confirmedSnapshot == saved {
+                settingsMessage = "HYPE Card settings saved in PIXL."
+            } else if confirmedSnapshot != nil {
+                settingsMessage = "Current PIXL settings are shown. The previous changes weren’t saved; make any needed changes again."
+            } else {
+                settingsMessage = "Current PIXL settings are shown. Review them before making another change."
             }
         } catch {
             settingsStatusUnknown = true
@@ -1200,6 +1280,37 @@ struct SupporterHypeCardView: View {
             settingsAccountSubject = nil
             return
         }
+        let sameSettingsAccount = settingsAccountSubject == requestSubject
+        if !sameSettingsAccount {
+            settingsDraftRecoveryBlocked = false
+            settingsStatusUnknown = false
+            settingsRecoveryAfterRestart = false
+            settingsRecoveryMarkerFound = false
+            settingsRecoverySnapshot = nil
+            settingsMessage = nil
+        }
+        settingsAccountSubject = requestSubject
+        do {
+            let client = NativeAccountLinkClient()
+            let markerFound = try client.hasPendingHypeCardSettingsConfirmation(subject: requestSubject)
+            settingsRecoveryMarkerFound = markerFound
+            settingsRecoveryAfterRestart = markerFound
+            settingsStatusUnknown = markerFound
+            if markerFound {
+                settingsRecoverySnapshot = try? client.loadPendingHypeCardSettingsConfirmation(subject: requestSubject)
+                settingsMessage = "A previous HYPE Card save needs confirmation before you can save again."
+            } else {
+                settingsRecoverySnapshot = nil
+            }
+        } catch {
+            // A locked vault cannot tell us whether a prior request was in flight.
+            // Check PIXL before allowing another settings save.
+            settingsRecoveryMarkerFound = false
+            settingsRecoveryAfterRestart = true
+            settingsRecoverySnapshot = nil
+            settingsStatusUnknown = true
+            settingsMessage = "A previous HYPE Card save needs confirmation before you can save again."
+        }
         do {
             let result = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
             let profile = try? await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
@@ -1207,18 +1318,15 @@ struct SupporterHypeCardView: View {
             athleteProfile = profile
             identityMismatch = result.identityMismatch
             identityCorrectionId = result.correctionId
-            let sameSettingsAccount = settingsAccountSubject == requestSubject
             let preserveUnsavedDraft = sameSettingsAccount && hasUnsavedSettings
             card = result.publicCard
             privateCard = result.privateCard
             settings = result.settings
-            settingsAccountSubject = requestSubject
-            if !sameSettingsAccount {
-                settingsDraftRecoveryBlocked = false
-                settingsStatusUnknown = false
-                settingsMessage = nil
-            }
-            if !preserveUnsavedDraft {
+            if settingsRecoveryAfterRestart {
+                if let saved = result.settings {
+                    applySettings(saved)
+                }
+            } else if !preserveUnsavedDraft {
                 settingsDraftRecoveryBlocked = false
                 if let saved = result.settings {
                     applySettings(saved)
@@ -1261,6 +1369,9 @@ struct SupporterHypeCardView: View {
             } else {
                 errorMessage = "We couldn’t load your HYPE Card right now. Please try again."
             }
+        }
+        if settingsRecoveryAfterRestart, settingsAccountSubject == requestSubject {
+            await checkSavedSettingsStatus()
         }
     }
 }
