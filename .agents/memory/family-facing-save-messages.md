@@ -3,8 +3,8 @@ name: Family-facing save messages
 description: Plain-language iOS notices for offline saves and Prep conflicts.
 ---
 
-Family-facing iOS save notices should omit implementation details such as revision mismatches and sync queues. State whether the change is saved on the iPhone or in PIXL, and explain any action that could remove a local change.
+Family-facing iOS notices should omit implementation details such as revision mismatches, sync queues, server hostnames, and HTTP codes. For saves, state whether the change is saved on the iPhone or in PIXL, and explain any action that could remove a local change. For failures, describe the affected action and what to try next.
 
-**Why:** The user said families do not need behind-the-scenes details and found the save notice confusing.
+**Why:** The user said families do not need behind-the-scenes details and found technical save and request errors confusing.
 
-**How to apply:** Keep messages concise and action-focused. Preserve explicit confirmation before discarding local changes or replacing saved content.
+**How to apply:** Map request failures to concise, operation-specific messages at the app boundary; do not display raw server data. Preserve explicit confirmation before discarding local changes or replacing saved content.

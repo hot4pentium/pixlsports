@@ -308,7 +308,7 @@ struct SupporterHypeCardView: View {
             await loadCard(refresh: true)
             identityCorrectionMessage = "HYPE Card identity updated to \(corrected.athleteName)\(corrected.teamName.isEmpty ? "" : " · \(corrected.teamName)")."
         } catch {
-            identityCorrectionMessage = error.localizedDescription
+            identityCorrectionMessage = "We couldn’t update the HYPE Card details. Please try again."
         }
     }
 
@@ -536,7 +536,7 @@ struct SupporterHypeCardView: View {
             await loadCard(refresh: true)
             settingsMessage = "HYPE Card settings saved."
         } catch {
-            settingsMessage = error.localizedDescription
+            settingsMessage = "Your HYPE Card settings couldn’t be saved. Please try again."
         }
     }
 
@@ -890,9 +890,9 @@ struct SupporterHypeCardView: View {
             guard !Task.isCancelled else { return }
             loading = false
             if refresh {
-                refreshErrorMessage = error.localizedDescription
+                refreshErrorMessage = "Your HYPE Card preview couldn’t refresh right now. Please try again."
             } else {
-                errorMessage = error.localizedDescription
+                errorMessage = "We couldn’t load your HYPE Card right now. Please try again."
             }
         }
     }

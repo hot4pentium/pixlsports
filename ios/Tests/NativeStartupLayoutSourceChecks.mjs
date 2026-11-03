@@ -116,6 +116,27 @@ test("passed Event Cards stay in the season list without an age cutoff", () => {
   assert.match(content, /let allEventCards = events \+ pastEvents/);
 });
 
+test("HYPE Card and photo screens do not show raw server errors", () => {
+  const photo = readFileSync(new URL("../PIXL Sports/NativeAthletePhotoSection.swift", import.meta.url), "utf8");
+  const hypeCard = readFileSync(new URL("../PIXL Sports/SupporterHypeCardView.swift", import.meta.url), "utf8");
+  assert.doesNotMatch(photo, /error\.localizedDescription/);
+  assert.match(photo, /Your HYPE Card hasn’t changed\. Photo details couldn’t load right now\./);
+  assert.match(photo, /Button\("Refresh photo"\)/);
+  assert.match(photo, /NavigationLink\("Review HYPE Card"\)/);
+  assert.doesNotMatch(hypeCard, /error\.localizedDescription/);
+  assert.match(hypeCard, /We couldn’t load your HYPE Card right now\. Please try again\./);
+});
+
+test("Settings alert failures use plain language without exposing server details", () => {
+  const client = readFileSync(new URL("../PIXL Sports/NativeAccountLinkClient.swift", import.meta.url), "utf8");
+  const copy = client.slice(client.indexOf("private static func requestFailureMessage"), client.indexOf("static func apiOrigin"));
+  assert.match(copy, /notifications\/subscriptions/);
+  assert.match(copy, /Alerts on this iPhone couldn’t be connected right now\. Please try again\./);
+  assert.match(copy, /Your alert settings couldn’t be loaded right now\. Please try again\./);
+  assert.doesNotMatch(client, /The Event Card request failed on|schedule request failed on|redirected the request \(HTTP/);
+  assert.match(client, /if response\.statusCode < 500/);
+});
+
 test("dashboard does not show the large offline status card", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   assert.doesNotMatch(content, /NativeOfflineStatusView\s*\{/);

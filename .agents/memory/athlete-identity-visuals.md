@@ -16,3 +16,9 @@ Describe the upload as the photo for the public HYPE Card, not a separate athlet
 **Why:** The user found the athlete-photo description contradictory and said the only photo uploaded should be for the public HYPE Card.
 
 **How to apply:** Use HYPE Card photo terminology throughout upload guidance and status messages. Do not imply that uploading also changes the card's privacy.
+
+The native HYPE Card and athlete-photo screens must not show raw server hosts, HTTP status codes, or backend response text. Use brief, operation-specific messages and keep retry or review actions available.
+
+**Why:** The user said families should not see technical server errors while viewing their HYPE Card.
+
+**How to apply:** Map errors from card preview, photo loading, upload, removal, settings, and identity actions to plain-language status copy at the UI boundary.

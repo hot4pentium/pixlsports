@@ -55,6 +55,32 @@ final class NativeAccountLinkClient {
         session = URLSession(configuration: configuration, delegate: NativeLinkRedirectGuard(), delegateQueue: nil)
     }
 
+    private static func requestFailureMessage(for path: String, method: String) -> String {
+        if path == "notifications/subscriptions" {
+            return method == "DELETE"
+                ? "Alerts couldn’t be turned off on this iPhone. Please try again."
+                : "Alerts on this iPhone couldn’t be connected right now. Please try again."
+        }
+        if path.hasPrefix("notifications/") {
+            return method == "GET"
+                ? "Your alert settings couldn’t be loaded right now. Please try again."
+                : "Your iPhone alerts couldn’t be updated right now. Please try again."
+        }
+        if path == "supporter/schedule" {
+            return "Your Event Cards couldn’t be refreshed right now. Please try again."
+        }
+        if path.hasPrefix("supporter/hype-card/") {
+            return "Your HYPE Card details couldn’t be loaded right now. Please try again."
+        }
+        if path == "supporter/event-workspace-save" {
+            return "This Event Card couldn’t be updated right now. Please try again."
+        }
+        if path == "supporter/event-workspace" {
+            return "This Event Card couldn’t be opened right now. Please try again."
+        }
+        return "We couldn’t complete that request right now. Please try again."
+    }
+
     static func apiOrigin(bundle: Bundle = .main) throws -> URL {
         try NativeAccountLinkEndpoint.load(bundle: bundle)
     }
@@ -113,21 +139,18 @@ final class NativeAccountLinkClient {
         guard clerk.user?.id == subject, origin == (try Self.apiOrigin()),
               requestScope == NativeOfflineVault.shared.namespace else { throw NativeOfflineError.locked }
         guard let response = response as? HTTPURLResponse else {
-            throw NativeAccountLinkError.message("The PIXL Sports schedule could not be checked.")
+            throw NativeAccountLinkError.message(Self.requestFailureMessage(for: path, method: "GET"))
         }
         guard response.statusCode == 200 else {
             NativeOfflineRuntime.shared.deny(status: response.statusCode, accountScope: path == "supporter/schedule")
             if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
-                throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
+                if response.statusCode < 500 {
+                    throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
+                }
             }
-            let host = origin.host ?? "the configured server"
-            if (300...399).contains(response.statusCode) {
-                throw NativeAccountLinkError.message(
-                    "\(host) redirected the request (HTTP \(response.statusCode)). Check the API address."
-                )
-            }
-            throw NativeAccountLinkError.serverStatus(response.statusCode,
-                "The PIXL Sports schedule request failed on \(host) (HTTP \(response.statusCode))."
+            throw NativeAccountLinkError.serverStatus(
+                response.statusCode,
+                Self.requestFailureMessage(for: path, method: "GET")
             )
         }
         let offline = NativeOfflineRuntime.shared
@@ -276,23 +299,18 @@ final class NativeAccountLinkClient {
         guard clerk.user?.id == subject, origin == (try Self.apiOrigin()),
               requestScope == NativeOfflineVault.shared.namespace else { throw NativeOfflineError.locked }
         guard let response = response as? HTTPURLResponse else {
-            throw NativeAccountLinkError.message("The Event Card could not be saved.")
+            throw NativeAccountLinkError.message(Self.requestFailureMessage(for: path, method: method))
         }
         guard (200...299).contains(response.statusCode) else {
             NativeOfflineRuntime.shared.deny(status: response.statusCode)
             if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
-                throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
-            }
-            let host = origin.host ?? "the configured server"
-            if (300...399).contains(response.statusCode) {
-                throw NativeAccountLinkError.serverStatus(
-                    response.statusCode,
-                    "\(host) redirected the request (HTTP \(response.statusCode)). Check the API address."
-                )
+                if response.statusCode < 500 {
+                    throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
+                }
             }
             throw NativeAccountLinkError.serverStatus(
                 response.statusCode,
-                "The Event Card request failed on \(host) (HTTP \(response.statusCode))."
+                Self.requestFailureMessage(for: path, method: method)
             )
         }
         return data

@@ -179,7 +179,7 @@ struct NativeAthletePhotoSection: View {
             storageIsReady = true
             try await loadPreview()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Your HYPE Card hasn’t changed. Photo details couldn’t load right now."
         }
     }
 
@@ -219,7 +219,7 @@ struct NativeAthletePhotoSection: View {
             }
         } catch {
             storageIsReady = false
-            errorMessage = error.localizedDescription
+            errorMessage = "We couldn’t save that photo. Please try again."
         }
     }
 
@@ -235,7 +235,7 @@ struct NativeAthletePhotoSection: View {
             photo = nil
             successMessage = "Athlete photo removed."
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "We couldn’t remove that photo. Please try again."
         }
     }
 }
