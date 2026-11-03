@@ -57,6 +57,14 @@ test("startup diagnostic preserves Clerk configuration and normal authorization"
   assert.doesNotMatch(initialBody, /clerk\.(isLoaded|user|session|isAuthFlowComplete)/);
 });
 
+test("dashboard header uses the white Sports logo on its dark panel", () => {
+  const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
+  const start = content.indexOf("private var header: some View");
+  const end = content.indexOf("private var ", start + 1);
+  const dashboardHeader = content.slice(start, end);
+  assert.match(dashboardHeader, /Image\("PixlSportsLogoOnDark"\)/);
+});
+
 test("dashboard message board labels the green action as the next step", () => {
   const hero = readFileSync(new URL("../PIXL Sports/NativeHomeHeroCards.swift", import.meta.url), "utf8");
   const nextStep = hero.indexOf('Text("Next Step")');

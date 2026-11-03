@@ -279,7 +279,7 @@ struct ContentView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center, spacing: 11) {
-                Image("PixlSportsLogo")
+                Image("PixlSportsLogoOnDark")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 112, height: 46)
