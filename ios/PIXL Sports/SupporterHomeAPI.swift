@@ -482,6 +482,16 @@ enum SupporterHomeAPI {
         return try await fetchPublicHypeCard(inviteToken: inviteToken, client: client)
     }
 
+    static func fetchPublicHypeCard(inviteToken: String) async throws -> NativePublicHypeCard {
+        guard inviteToken.range(of: "^[A-Za-z0-9_-]{1,128}$", options: .regularExpression) != nil else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        return try await fetchPublicHypeCard(
+            inviteToken: inviteToken,
+            client: NativeAccountLinkClient()
+        )
+    }
+
     static func fetchOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
         let offline = NativeOfflineRuntime.shared
         if !offline.online,

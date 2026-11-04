@@ -30,6 +30,10 @@ private struct NativeHypeCardSideTransition {
 struct SupporterHypeCardView: View {
     @Environment(\.scenePhase) private var scenePhase
     let clerk: Clerk?
+    let publicInviteToken: String?
+#if DEBUG
+    private let fixturePublicCard: NativePublicHypeCard?
+#endif
 
     @State private var card: NativePublicHypeCard?
     @State private var privateCard: NativePrivateHypeCard?
@@ -72,13 +76,34 @@ struct SupporterHypeCardView: View {
     @State private var loading = true
     @State private var isRefreshing = false
 
+    init(clerk: Clerk?, publicInviteToken: String? = nil) {
+        self.clerk = clerk
+        self.publicInviteToken = publicInviteToken
+#if DEBUG
+        self.fixturePublicCard = nil
+#endif
+    }
+
+#if DEBUG
+    init(publicInviteToken: String, fixturePublicCard: NativePublicHypeCard) {
+        self.clerk = nil
+        self.publicInviteToken = publicInviteToken
+        self.fixturePublicCard = fixturePublicCard
+    }
+#endif
+
+    private var isPublicRecipient: Bool { publicInviteToken != nil }
+
     var body: some View {
         ZStack {
             NativePageBackground()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    SupporterEyebrow(text: "Player Showcase", color: SupporterHomeColors.accentText)
+                    SupporterEyebrow(
+                        text: isPublicRecipient ? "Shared HYPE Card" : "Player Showcase",
+                        color: SupporterHomeColors.accentText
+                    )
                     Text("HYPE Card")
                         .font(.largeTitle.weight(.black))
                         .fontDesign(.rounded)
@@ -100,7 +125,10 @@ struct SupporterHypeCardView: View {
 
                     if let refreshErrorMessage {
                         VStack(alignment: .leading, spacing: 10) {
-                            Label("The preview couldn’t refresh", systemImage: "exclamationmark.triangle.fill")
+                            Label(
+                                isPublicRecipient ? "This HYPE Card couldn’t refresh" : "The preview couldn’t refresh",
+                                systemImage: "exclamationmark.triangle.fill"
+                            )
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.white)
                             Text(refreshErrorMessage)
@@ -122,10 +150,10 @@ struct SupporterHypeCardView: View {
                         .accessibilityIdentifier("native-hype-card-refresh-error")
                     }
 
-                    if identityMismatch {
+                    if !isPublicRecipient, identityMismatch {
                         identityMismatchRecovery
                     }
-                    if let identityCorrectionMessage {
+                    if !isPublicRecipient, let identityCorrectionMessage {
                         Text(identityCorrectionMessage)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(identityCorrectionMessage.lowercased().contains("couldn’t")
@@ -157,7 +185,11 @@ struct SupporterHypeCardView: View {
                 }
                 .disabled(loading || isRefreshing || isSaving || isCheckingSettings || hasUnsavedSettings)
                 .accessibilityLabel("Refresh HYPE Card")
-                .accessibilityHint("Reload the preview from your linked PIXL account.")
+                .accessibilityHint(
+                    isPublicRecipient
+                        ? "Check for the latest shared HYPE Card."
+                        : "Reload the preview from your linked PIXL account."
+                )
                 .accessibilityIdentifier("native-hype-card-refresh")
             }
         }
@@ -213,8 +245,7 @@ struct SupporterHypeCardView: View {
         } else if let card {
             publicCardContent(card)
             if let shareURL = card.shareURL,
-               settings?.showHypeCard == true,
-               settings?.paused == false {
+               (isPublicRecipient || (settings?.showHypeCard == true && settings?.paused == false)) {
                 ShareLink(item: shareURL) {
                     Label("Share HYPE Card", systemImage: "square.and.arrow.up")
                         .font(.headline)
@@ -225,7 +256,7 @@ struct SupporterHypeCardView: View {
                 .foregroundStyle(SupporterHomeColors.background)
                 .accessibilityIdentifier("native-hype-card-share")
             }
-        } else if let privateCard {
+        } else if !isPublicRecipient, let privateCard {
             Text("Private preview · only visible to your linked account")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(SupporterHomeColors.accentText)
@@ -239,10 +270,15 @@ struct SupporterHypeCardView: View {
             )
         } else if let errorMessage {
             VStack(alignment: .leading, spacing: 12) {
-                Label("The HYPE Card couldn’t load", systemImage: "exclamationmark.triangle.fill")
+                Label(
+                    isPublicRecipient ? "This HYPE Card couldn’t load" : "The HYPE Card couldn’t load",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
                     .font(.headline.weight(.bold))
                     .foregroundStyle(.white)
-                Text(errorMessage)
+                Text(isPublicRecipient
+                     ? "Please check your connection and try again."
+                     : errorMessage)
                     .font(.body)
                     .foregroundStyle(SupporterHomeColors.muted)
                 Button("Try again") {
@@ -259,15 +295,19 @@ struct SupporterHypeCardView: View {
             .supporterSurfaceShadow()
         } else if unavailable {
             ContentUnavailableView(
-                "No HYPE Card is available",
+                isPublicRecipient ? "This HYPE Card isn’t available" : "No HYPE Card is available",
                 systemImage: "sportscourt",
-                description: Text("The linked PIXL account doesn’t have a HYPE Card for its selected athlete yet.")
+                description: Text(
+                    isPublicRecipient
+                        ? "The owner may have paused sharing or this link may no longer be active."
+                        : "The linked PIXL account doesn’t have a HYPE Card for its selected athlete yet."
+                )
             )
             .foregroundStyle(SupporterHomeColors.muted)
             .padding(.vertical, 36)
         }
 
-        if settings != nil {
+        if !isPublicRecipient, settings != nil {
             if let athleteProfile {
                 athleteProfileSummary(athleteProfile)
             }
@@ -370,6 +410,17 @@ struct SupporterHypeCardView: View {
     }
 
     private var availableSides: [NativeHypeCardSide] {
+        if isPublicRecipient {
+            guard let card else { return [.front] }
+            var sides: [NativeHypeCardSide] = [.front, .videos]
+            if card.stats != nil {
+                sides.append(.stats)
+            }
+            if card.showEvents {
+                sides.append(.events)
+            }
+            return sides
+        }
         guard let card, settings?.showHypeCard == true, settings?.paused == false else {
             return [.front]
         }
@@ -515,7 +566,7 @@ struct SupporterHypeCardView: View {
         case .front:
             emptySide(title: "HYPE Card", detail: "Choose Front to return to the athlete’s card.")
         case .stats:
-            if settings?.showStats == true, let stats = card.stats {
+            if (isPublicRecipient || settings?.showStats == true), let stats = card.stats {
                 statsSide(stats)
             } else {
                 emptySide(title: "Stats are unavailable", detail: "The card owner has not enabled finalized stats.")
@@ -523,7 +574,7 @@ struct SupporterHypeCardView: View {
         case .videos:
             videosSide(card)
         case .events:
-            if settings?.showEvents == true, card.showEvents {
+            if (isPublicRecipient || settings?.showEvents == true), card.showEvents {
                 eventsSide(card)
             } else {
                 emptySide(title: "Events are private", detail: "The card owner has turned off Event Card sharing.")
@@ -1413,6 +1464,10 @@ struct SupporterHypeCardView: View {
     }
 
     private func loadCard(refresh: Bool = false) async {
+        if let publicInviteToken {
+            await loadPublicCard(inviteToken: publicInviteToken, refresh: refresh)
+            return
+        }
         if refresh {
             guard !loading, !isRefreshing else { return }
             isRefreshing = true
@@ -1566,6 +1621,64 @@ struct SupporterHypeCardView: View {
         }
         if settingsRecoveryAfterRestart, settingsAccountSubject == requestSubject {
             await checkSavedSettingsStatus()
+        }
+    }
+
+    private func loadPublicCard(inviteToken: String, refresh: Bool) async {
+        if refresh {
+            guard !loading, !isRefreshing else { return }
+            isRefreshing = true
+            refreshErrorMessage = nil
+        } else {
+            guard !isRefreshing else { return }
+            loading = true
+            errorMessage = nil
+            refreshErrorMessage = nil
+            card = nil
+            unavailable = false
+        }
+        defer {
+            if refresh { isRefreshing = false }
+        }
+
+        do {
+#if DEBUG
+            let result: NativePublicHypeCard
+            if let fixturePublicCard {
+                result = fixturePublicCard
+            } else {
+                result = try await SupporterHomeAPI.fetchPublicHypeCard(inviteToken: inviteToken)
+            }
+#else
+            let result = try await SupporterHomeAPI.fetchPublicHypeCard(inviteToken: inviteToken)
+#endif
+            guard !Task.isCancelled else { return }
+            card = result
+            privateCard = nil
+            privatePhoto = nil
+            athleteProfile = nil
+            settings = nil
+            identityMismatch = false
+            identityCorrectionId = nil
+            unavailable = false
+            loading = false
+            errorMessage = nil
+            refreshErrorMessage = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else { return }
+            loading = false
+            if (error as? NativeAccountLinkError)?.statusCode == 404 {
+                card = nil
+                unavailable = true
+                errorMessage = nil
+                refreshErrorMessage = nil
+            } else if refresh {
+                refreshErrorMessage = "Please try again when your connection is available."
+            } else {
+                errorMessage = "We couldn’t load this HYPE Card right now."
+            }
         }
     }
 }

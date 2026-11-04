@@ -4,6 +4,11 @@ modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
 router = "application"
 deploymentTarget = "autoscale"
 
+[[deployment.responseHeaders]]
+path = "/.well-known/apple-app-site-association"
+name = "Content-Type"
+value = "application/json"
+
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
 env = { "CI" = "true" }

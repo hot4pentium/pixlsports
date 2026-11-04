@@ -1,12 +1,18 @@
 import SwiftUI
 import ClerkKit
 
+private struct NativePublicHypeCardRoute: Identifiable {
+    let id = UUID()
+    let inviteToken: String
+}
+
 @main
 struct MyApp: App {
 #if os(iOS)
     @UIApplicationDelegateAdaptor(NativePushAppDelegate.self) private var pushAppDelegate
 #endif
     private let configuration: Result<NativeClerkConfiguration, NativeClerkConfiguration.ConfigurationError>
+    @State private var publicHypeCardRoute: NativePublicHypeCardRoute?
 
     init() {
         configuration = NativeClerkConfiguration.load()
@@ -15,7 +21,8 @@ struct MyApp: App {
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash-error")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps")
-            || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
+            || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail")
+            || ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card") {
             return
         }
 #endif
@@ -26,61 +33,97 @@ struct MyApp: App {
 
     var body: some Scene {
         WindowGroup {
+            Group {
 #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash-error") {
-                NativeLaunchSplashView(
-                    errorTitle: "We couldn’t get PIXL ready",
-                    errorMessage: "Check your connection, then try again.",
-                    onRetry: {}
-                )
-            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash") {
-                NativeLaunchSplashView()
-            } else if SupporterDashboardFixtures.isRequested {
-                SupporterDashboardFixtureView()
-            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-create-event-card") {
-                NavigationStack {
-                    NativeCreateEventCardView(
-                        athleteName: "Jordan Example",
-                        teamName: "",
-                        seasonName: "Fall 2026",
-                        initialTimezone: "America/Los_Angeles",
-                        clerk: nil,
-                        onCreated: { _ in }
+                if ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash-error") {
+                    NativeLaunchSplashView(
+                        errorTitle: "We couldn’t get PIXL ready",
+                        errorMessage: "Check your connection, then try again.",
+                        onRetry: {}
                     )
-                }
-            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps") {
-                NavigationStack {
-                    SupporterLiveTapsView(
-                        inviteToken: "ui-test-invite",
-                        sport: "softball",
-                        athleteName: "Jordan Example",
-                        eventTitle: "Championship Showcase",
-                        fixture: liveTapsFixture
-                    )
-                    .frame(maxWidth: 320)
-                }
-            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
-                NavigationStack {
-                    if NativeEventWorkspaceUITestFixture.isRequested {
-                        NavigationLink("Open test Event Card") {
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash") {
+                    NativeLaunchSplashView()
+                } else if SupporterDashboardFixtures.isRequested {
+                    SupporterDashboardFixtureView()
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card") {
+                    NativePublicHypeCardRecipientView(fixtureCard: sharedHypeCardFixture, onClose: {})
+                } else if let publicHypeCardRoute {
+                    NativePublicHypeCardRecipientView(inviteToken: publicHypeCardRoute.inviteToken) {
+                        self.publicHypeCardRoute = nil
+                    }
+                    .id(publicHypeCardRoute.id)
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-create-event-card") {
+                    NavigationStack {
+                        NativeCreateEventCardView(
+                            athleteName: "Jordan Example",
+                            teamName: "",
+                            seasonName: "Fall 2026",
+                            initialTimezone: "America/Los_Angeles",
+                            clerk: nil,
+                            onCreated: { _ in }
+                        )
+                    }
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps") {
+                    NavigationStack {
+                        SupporterLiveTapsView(
+                            inviteToken: "ui-test-invite",
+                            sport: "softball",
+                            athleteName: "Jordan Example",
+                            eventTitle: "Championship Showcase",
+                            fixture: liveTapsFixture
+                        )
+                        .frame(maxWidth: 320)
+                    }
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail") {
+                    NavigationStack {
+                        if NativeEventWorkspaceUITestFixture.isRequested {
+                            NavigationLink("Open test Event Card") {
+                                eventDetailFixture
+                            }
+                            .accessibilityIdentifier("prep-test-open-event")
+                            .navigationTitle("Test workspace")
+                        } else {
                             eventDetailFixture
                         }
-                        .accessibilityIdentifier("prep-test-open-event")
-                        .navigationTitle("Test workspace")
-                    } else {
-                        eventDetailFixture
                     }
+                } else {
+                    configuredRoot
                 }
-            } else {
-                configuredRoot
-            }
 #else
-            configuredRoot
+                if let publicHypeCardRoute {
+                    NativePublicHypeCardRecipientView(inviteToken: publicHypeCardRoute.inviteToken) {
+                        self.publicHypeCardRoute = nil
+                    }
+                    .id(publicHypeCardRoute.id)
+                } else {
+                    configuredRoot
+                }
 #endif
+            }
+            .onOpenURL(perform: handleIncomingURL)
         }
     }
 
 #if DEBUG
+    private var sharedHypeCardFixture: NativePublicHypeCard {
+        NativePublicHypeCard(
+            athleteName: "Jordan Example",
+            teamName: "PIXL Test Team",
+            seasonName: "Fall 2026",
+            sport: "soccer",
+            photoUrl: nil,
+            cutoutUrl: nil,
+            favoriteMoment: nil,
+            showEvents: false,
+            hypeCard: nil,
+            videos: [],
+            stats: nil,
+            events: [],
+            shareURL: nil,
+            inviteToken: "ui-test-shared-card"
+        )
+    }
+
     private var eventDetailFixture: some View {
                     SupporterEventDetailView(
                         clerk: nil,
@@ -140,6 +183,14 @@ struct MyApp: App {
         )
     }
 #endif
+
+    private func handleIncomingURL(_ url: URL) {
+        guard let origin = try? NativeAccountLinkClient.apiOrigin(),
+              let token = NativeHypeCardUniversalLink.inviteToken(from: url, allowedOrigin: origin) else {
+            return
+        }
+        publicHypeCardRoute = NativePublicHypeCardRoute(inviteToken: token)
+    }
 
     @ViewBuilder
     private var configuredRoot: some View {

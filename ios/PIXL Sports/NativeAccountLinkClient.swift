@@ -423,7 +423,7 @@ final class NativeAccountLinkClient {
         }
         guard (200..<300).contains(response.statusCode) else {
             if let failure = try? JSONDecoder().decode(NativeAccountLinkFailure.self, from: data) {
-                throw NativeAccountLinkError.message(failure.error)
+                throw NativeAccountLinkError.serverStatus(response.statusCode, failure.error)
             }
             throw NativeAccountLinkError.message(
                 NativeAccountLinkEndpoint.responseFailure(

@@ -162,7 +162,7 @@ test('HYPE Card events use one persistent all-or-none setting', () => {
   assert.ok(allowEventsToggle > visibleSectionsStart && allowEventsToggle < visibleSectionsEnd, 'event visibility belongs in the Visible Sections card');
   assert.doesNotMatch(source, /OwnerEventLinks|Link game days/);
   assert.match(athleteApiSource, /async function availableAthleteEvents/);
-  assert.match(athleteApiSource, /invite\.showEvents \? availableAthleteEvents\(invite\) : Promise\.resolve\(\[\]\)/);
+  assert.match(athleteApiSource, /invite\.showEvents \? availableAthleteEvents\(invite\.ownerClerkUserId\) : Promise\.resolve\(\[\]\)/);
   assert.match(livingCardSource, /The card owner has turned off event sharing/);
   assert.match(livingCardSource, /All eligible Event Cards saved by/);
   assert.match(eventNotificationsSource, /Turn on “Allow events” in Visible Sections/);

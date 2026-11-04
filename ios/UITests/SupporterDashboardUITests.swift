@@ -20,6 +20,25 @@ final class SupporterDashboardUITests: XCTestCase {
         app.terminate()
     }
 
+    func testSharedHypeCardRecipientIsReadOnlyAndHidesUnavailableSections() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-shared-hype-card"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Shared HYPE Card"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["native-hype-card-side-front"].exists)
+        let videos = app.buttons["native-hype-card-side-videos"]
+        XCTAssertTrue(videos.exists)
+        XCTAssertFalse(app.buttons["native-hype-card-side-stats"].exists)
+        XCTAssertFalse(app.buttons["native-hype-card-side-events"].exists)
+        XCTAssertFalse(app.staticTexts["Owner controls"].exists)
+        XCTAssertFalse(app.buttons["native-hype-card-toggle-public"].exists)
+
+        videos.tap()
+        XCTAssertTrue(app.buttons["native-public-hype-card-done"].exists)
+        app.terminate()
+    }
+
     /// Runs the real Clerk/bootstrap path, not a forced splash/dashboard fixture.
     /// Requires the test target's installed Clerk configuration. Does not sign
     /// out, delete the account, or modify the device's saved athlete data.

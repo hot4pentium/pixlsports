@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "4A3BQUR9MQ.com.pixlsports"
+        ],
+        "components": [
+          {
+            "/": "/fan/*",
+            "comment": "Open shared PIXL HYPE Cards in the iOS app."
+          }
+        ]
+      }
+    ]
+  }
+}
