@@ -77,10 +77,11 @@ test("long-press edit updates the selected Prep task in place", () => {
   assert.match(prep, /Label\(editingTaskID == nil \? "Add" : "Update"/);
 });
 
-test("Event Card editing is hidden while Prep is selected", () => {
+test("event-step tools omit the Edit Event Card button", () => {
   const detail = readFileSync(new URL("../PIXL Sports/SupporterEventDetailView.swift", import.meta.url), "utf8");
-  assert.match(detail, /if let clerk, selectedStep != \.prep\s*\{\s*NavigationLink/);
-  assert.match(detail, /accessibilityIdentifier\("event-detail-edit"\)/);
+  assert.doesNotMatch(detail, /Label\("Edit Event Card"/);
+  assert.doesNotMatch(detail, /accessibilityIdentifier\("event-detail-edit"\)/);
+  assert.doesNotMatch(detail, /NativeCreateEventCardView\(/);
 });
 
 test("dashboard header uses the white Sports logo on its dark panel", () => {

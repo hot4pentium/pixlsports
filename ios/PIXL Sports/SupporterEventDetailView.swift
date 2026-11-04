@@ -214,43 +214,6 @@ struct SupporterEventDetailView: View {
                 }
 #endif
 
-                if let clerk, selectedStep != .prep {
-                    NavigationLink {
-                        NativeCreateEventCardView(
-                            athleteName: schedule.athleteName ?? "your athlete",
-                            teamName: schedule.teamName,
-                            seasonName: schedule.seasonName,
-                            initialTimezone: event.timezone ?? schedule.timezone,
-                            clerk: clerk,
-                            existingEvent: event,
-                            shareToken: event.shareToken,
-                            onCreated: { _ in
-                                Task {
-                                    await load()
-                                    let reason = NativeEventScheduleChangeReason.eventCardEdited
-                                    NotificationCenter.default.post(
-                                        name: .nativeEventScheduleChanged,
-                                        object: nil,
-                                        userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
-                                    )
-                                }
-                            }
-                        )
-                    } label: {
-                        Label("Edit Event Card", systemImage: "pencil")
-                            .font(.system(size: buttonPointSize, weight: .bold))
-                            .foregroundStyle(SupporterHomeColors.accent)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .frame(minHeight: 44)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 15))
-                            .supporterSurfaceShadow()
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("event-detail-edit")
-                }
-
             }
             .frame(maxWidth: detailContentMaxWidth, alignment: .leading)
             .padding(.top, 4)
