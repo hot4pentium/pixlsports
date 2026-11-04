@@ -277,6 +277,26 @@ struct SupporterCardPressStyle: ButtonStyle {
     }
 }
 
+/// Pad the label itself so the native toolbar container includes breathing room.
+private struct NativeToolbarLabelModifier: ViewModifier {
+    let iconOnly: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, iconOnly ? 10 : 14)
+            .padding(.vertical, 6)
+            .frame(minWidth: iconOnly ? 44 : 68, minHeight: 44)
+            .fixedSize(horizontal: true, vertical: false)
+            .contentShape(Rectangle())
+    }
+}
+
+extension View {
+    func nativeToolbarLabel(iconOnly: Bool = false) -> some View {
+        modifier(NativeToolbarLabelModifier(iconOnly: iconOnly))
+    }
+}
+
 /// Skeleton placeholder block used while the schedule loads.
 struct SupporterSkeletonBar: View {
     var width: CGFloat? = nil

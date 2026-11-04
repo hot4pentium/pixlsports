@@ -141,11 +141,14 @@ struct NativeAthleteProfileView: View {
                 Button {
                     Task { await saveProfile() }
                 } label: {
-                    if isSaving {
-                        ProgressView()
-                    } else {
-                        Text(isInitialSetup ? "Continue" : "Save")
+                    Group {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text(isInitialSetup ? "Continue" : "Save")
+                        }
                     }
+                    .nativeToolbarLabel()
                 }
                 .disabled(!canSave)
                 .accessibilityIdentifier("native-athlete-profile-save")

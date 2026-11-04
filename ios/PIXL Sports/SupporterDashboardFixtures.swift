@@ -176,7 +176,11 @@ struct SupporterDashboardFixtureView: View {
                     .navigationTitle("PIXL connection preview")
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showingConnection = false }
+                            Button {
+                                showingConnection = false
+                            } label: {
+                                Text("Done").nativeToolbarLabel()
+                            }
                         }
                     }
             }

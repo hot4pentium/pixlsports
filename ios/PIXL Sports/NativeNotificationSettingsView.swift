@@ -328,7 +328,11 @@ struct NativeNotificationSettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Done").nativeToolbarLabel()
+                    }
                         .disabled(removalBusy)
                 }
             }

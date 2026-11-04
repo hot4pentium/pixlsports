@@ -205,7 +205,11 @@ struct ContentView: View {
                     .toolbar {
                         if destination.showsDoneButton {
                             ToolbarItem(placement: .topBarTrailing) {
-                                Button("Done") { heroDestination = nil }
+                                Button {
+                                    heroDestination = nil
+                                } label: {
+                                    Text("Done").nativeToolbarLabel()
+                                }
                                     .tint(.black)
                                     .shadow(color: .black.opacity(0.24), radius: 2, x: 0, y: 1)
                             }

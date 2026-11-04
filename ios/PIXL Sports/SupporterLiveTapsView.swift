@@ -215,7 +215,11 @@ struct SupporterLiveTapsView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") { isScanning = false }
+                        Button {
+                            isScanning = false
+                        } label: {
+                            Text("Done").nativeToolbarLabel()
+                        }
                     }
                 }
             }

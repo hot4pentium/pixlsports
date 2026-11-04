@@ -84,6 +84,20 @@ test("event-step tools omit the Edit Event Card button", () => {
   assert.doesNotMatch(detail, /NativeCreateEventCardView\(/);
 });
 
+test("trailing toolbar labels reserve padding inside their native containers", () => {
+  const components = readFileSync(new URL("../PIXL Sports/SupporterHomeComponents.swift", import.meta.url), "utf8");
+  assert.match(components, /\.padding\(\.horizontal, iconOnly \? 10 : 14\)/);
+  assert.match(components, /\.frame\(minWidth: iconOnly \? 44 : 68, minHeight: 44\)/);
+  assert.match(components, /\.fixedSize\(horizontal: true, vertical: false\)/);
+  for (const file of [
+    "ContentView.swift", "NativeNotificationSettingsView.swift", "NativeAthleteProfileView.swift",
+    "NativeAccountLinkView.swift", "SupporterLiveTapsView.swift", "SupporterHypeCardView.swift",
+  ]) {
+    const source = readFileSync(new URL(`../PIXL Sports/${file}`, import.meta.url), "utf8");
+    assert.match(source, /\.nativeToolbarLabel\(/, `${file} must size its toolbar label`);
+  }
+});
+
 test("dashboard header uses the white Sports logo on its dark panel", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   const start = content.indexOf("private var header: some View");

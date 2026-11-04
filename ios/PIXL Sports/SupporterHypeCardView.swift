@@ -153,6 +153,7 @@ struct SupporterHypeCardView: View {
                     Task { await loadCard(refresh: true) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
+                        .nativeToolbarLabel(iconOnly: true)
                 }
                 .disabled(loading || isRefreshing || isSaving || isCheckingSettings || hasUnsavedSettings)
                 .accessibilityLabel("Refresh HYPE Card")
