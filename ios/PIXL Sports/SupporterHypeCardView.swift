@@ -76,9 +76,24 @@ struct SupporterHypeCardView: View {
     @State private var loading = true
     @State private var isRefreshing = false
 
-    init(clerk: Clerk?, publicInviteToken: String? = nil) {
+    init(
+        clerk: Clerk?,
+        publicInviteToken: String? = nil,
+        cachedOwnerPreview: NativeSupporterHypeCardPreview? = nil
+    ) {
         self.clerk = clerk
         self.publicInviteToken = publicInviteToken
+        let canUseCachedPreview = publicInviteToken == nil
+            && cachedOwnerPreview != nil
+            && NativeOfflineRuntime.shared.vault.canContinue(subject: clerk?.user?.id)
+        let preview = canUseCachedPreview ? cachedOwnerPreview : nil
+        _card = State(initialValue: preview?.publicCard)
+        _privateCard = State(initialValue: preview?.privateCard)
+        _privatePhoto = State(initialValue: preview?.privatePhoto.flatMap(UIImage.init(data:)))
+        _settings = State(initialValue: preview?.settings)
+        _settingsAccountSubject = State(initialValue: preview == nil ? nil : clerk?.user?.id)
+        _loading = State(initialValue: preview == nil)
+        _unavailable = State(initialValue: false)
 #if DEBUG
         self.fixturePublicCard = nil
 #endif
@@ -1468,9 +1483,58 @@ struct SupporterHypeCardView: View {
             await loadPublicCard(inviteToken: publicInviteToken, refresh: refresh)
             return
         }
+        guard let clerk else {
+            loading = false
+            athleteProfile = nil
+            settingsAccountSubject = nil
+            card = nil
+            privateCard = nil
+            privatePhoto = nil
+            settings = nil
+            unavailable = true
+            errorMessage = "Sign in to the iPhone app again."
+            return
+        }
+        guard let requestSubject = clerk.user?.id else {
+            loading = false
+            unavailable = true
+            card = nil
+            privateCard = nil
+            privatePhoto = nil
+            settings = nil
+            settingsAccountSubject = nil
+            return
+        }
+        let sameSettingsAccount = settingsAccountSubject == requestSubject
+        if !sameSettingsAccount {
+            card = nil
+            privateCard = nil
+            privatePhoto = nil
+            settings = nil
+            unavailable = false
+            errorMessage = nil
+            refreshErrorMessage = nil
+            loading = true
+            isRefreshing = false
+            settingsDraftRecoveryBlocked = false
+            settingsRevisionConflict = nil
+            settingsDraftRevision = nil
+            settingsStatusUnknown = false
+            settingsRecoveryAfterRestart = false
+            settingsRecoveryMarkerFound = false
+            settingsRecoverySnapshot = nil
+            settingsMessage = nil
+        }
+        if !refresh, sameSettingsAccount, isRefreshing { return }
+        let hasCachedOwnerPreview = sameSettingsAccount && (card != nil || privateCard != nil)
         if refresh {
             guard !loading, !isRefreshing else { return }
             isRefreshing = true
+            refreshErrorMessage = nil
+        } else if hasCachedOwnerPreview {
+            loading = false
+            isRefreshing = true
+            errorMessage = nil
             refreshErrorMessage = nil
         } else {
             guard !isRefreshing else { return }
@@ -1483,43 +1547,7 @@ struct SupporterHypeCardView: View {
             settings = nil
             unavailable = false
         }
-        defer {
-            if refresh { isRefreshing = false }
-        }
-
-        guard let clerk else {
-            loading = false
-            athleteProfile = nil
-            settingsAccountSubject = nil
-            if refresh {
-                card = nil
-                privateCard = nil
-                privatePhoto = nil
-                settings = nil
-                unavailable = false
-                refreshErrorMessage = "Sign in to the iPhone app again."
-            } else {
-                unavailable = true
-            }
-            return
-        }
-        guard let requestSubject = clerk.user?.id else {
-            loading = false
-            unavailable = true
-            settingsAccountSubject = nil
-            return
-        }
-        let sameSettingsAccount = settingsAccountSubject == requestSubject
-        if !sameSettingsAccount {
-            settingsDraftRecoveryBlocked = false
-            settingsRevisionConflict = nil
-            settingsDraftRevision = nil
-            settingsStatusUnknown = false
-            settingsRecoveryAfterRestart = false
-            settingsRecoveryMarkerFound = false
-            settingsRecoverySnapshot = nil
-            settingsMessage = nil
-        }
+        defer { isRefreshing = false }
         settingsAccountSubject = requestSubject
         do {
             let client = NativeAccountLinkClient()
@@ -1613,7 +1641,23 @@ struct SupporterHypeCardView: View {
         } catch {
             guard !Task.isCancelled else { return }
             loading = false
-            if refresh {
+            let status = (error as? NativeAccountLinkError)?.statusCode
+            let accessWasRevoked = [401, 403, 404, 409, 410, 423].contains(status ?? 0)
+                || (error as? NativeOfflineError) == .locked
+            if accessWasRevoked {
+                card = nil
+                privateCard = nil
+                privatePhoto = nil
+                settings = nil
+                unavailable = true
+                errorMessage = status == 404 || status == 409
+                    ? "This HYPE Card isn’t available right now. Refresh and try again."
+                    : "Sign in again to view your HYPE Card."
+                refreshErrorMessage = nil
+            } else if card != nil || privateCard != nil {
+                refreshErrorMessage = "Your saved HYPE Card is shown. It couldn’t be refreshed right now."
+                errorMessage = nil
+            } else if refresh {
                 refreshErrorMessage = "Your HYPE Card preview couldn’t refresh right now. Please try again."
             } else {
                 errorMessage = "We couldn’t load your HYPE Card right now. Please try again."

@@ -35,6 +35,7 @@ final class SupporterHomeViewModel: ObservableObject {
     @Published private(set) var hasResolvedAthleteProfile = false
     @Published private(set) var hasResolvedInitialSchedule = false
     private var hasLoadedAthleteProfile = false
+    private var cachedPreviewSubject: String?
 
     var needsAthleteProfileSetup: Bool {
         guard hasResolvedAthleteProfile, athleteProfileError == nil,
@@ -140,6 +141,12 @@ final class SupporterHomeViewModel: ObservableObject {
     func load(clerk: Clerk, forceProfileReload: Bool = false) async {
         let previewRequestID = UUID()
         let previewUserID = clerk.user?.id
+        if cachedPreviewSubject != previewUserID {
+            hypeCardPreview = nil
+            hypeCardPrivatePhoto = nil
+            hypeCardPreviewError = nil
+            cachedPreviewSubject = previewUserID
+        }
         fanBase = nil
         fanBaseIsLoading = false
         fanBaseError = nil
@@ -196,6 +203,9 @@ final class SupporterHomeViewModel: ObservableObject {
             guard page.status == "linked" else {
                 state = .notConnected
                 fanBase = nil
+                hypeCardPreview = nil
+                hypeCardPrivatePhoto = nil
+                hypeCardPreviewError = nil
                 athleteProfile = nil
                 athleteProfileError = nil
                 hasResolvedAthleteProfile = true
@@ -276,7 +286,14 @@ final class SupporterHomeViewModel: ObservableObject {
                 return
             } catch {
                 guard hypePreviewRequestID == previewRequestID, clerk.user?.id == previewUserID else { return }
-                hypeCardPreviewError = error.localizedDescription
+                let status = (error as? NativeAccountLinkError)?.statusCode
+                if [401, 403, 404, 409, 410, 423].contains(status ?? 0) {
+                    hypeCardPreview = nil
+                    hypeCardPrivatePhoto = nil
+                    hypeCardPreviewError = "Reconnect this iPhone to view the HYPE Card."
+                } else {
+                    hypeCardPreviewError = "Your saved HYPE Card is shown, but it couldn’t be refreshed."
+                }
             }
             guard !Task.isCancelled else { return }
             offline.resume(clerk: clerk)
@@ -302,6 +319,11 @@ final class SupporterHomeViewModel: ObservableObject {
                 return
             }
             let status = (error as? NativeAccountLinkError)?.statusCode
+            if [401, 403, 410, 423].contains(status ?? 0) {
+                hypeCardPreview = nil
+                hypeCardPrivatePhoto = nil
+                hypeCardPreviewError = nil
+            }
             if case .schedule = state, status == nil || (status ?? 0) >= 500 {
                 hasResolvedInitialSchedule = true
                 return

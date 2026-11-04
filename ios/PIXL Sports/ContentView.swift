@@ -360,7 +360,8 @@ struct ContentView: View {
                     hypePhotoURL: viewModel.hypeCardPreview?.publicCard?.photoUrl
                         ?? viewModel.hypeCardPreview?.publicCard?.cutoutUrl,
                     hypePrivatePhoto: viewModel.hypeCardPrivatePhoto,
-                    hypePreviewFailed: viewModel.hypeCardPreviewError != nil,
+                    hypePreviewFailed: viewModel.hypeCardPreviewError != nil
+                        && viewModel.hypeCardPreview == nil,
                     onOpenEvent: {
                         if let token = guide?.event.shareToken {
                             heroDestination = .eventCard(token)
@@ -383,7 +384,11 @@ struct ContentView: View {
         case let .eventCard(token):
             eventDetailScreen(token: token)
         case .hypeCard:
-            SupporterHypeCardView(clerk: clerk)
+            SupporterHypeCardView(
+                clerk: clerk,
+                cachedOwnerPreview: NativeOfflineRuntime.shared.vault.canContinue(subject: clerk?.user?.id)
+                    ? viewModel.hypeCardPreview : nil
+            )
         case .createEvent:
             NativeCreateEventCardView(
                 athleteName: schedulePage?.athleteName ?? "your athlete",
