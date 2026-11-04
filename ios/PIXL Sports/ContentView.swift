@@ -22,6 +22,8 @@ struct ContentView: View {
     @StateObject private var viewModel = SupporterHomeViewModel()
 #if DEBUG
     @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
+    @ObservedObject private var fanBaseRefreshFixture: NativeFanBaseRefreshUITestFixture
+    private let usesFanBaseRefreshFixture: Bool
 #endif
     @State private var heroDestination: HeroDestination?
     @State private var eventToolsChanged = false
@@ -61,6 +63,10 @@ struct ContentView: View {
         self._showingSettings = showingSettings
 #if DEBUG
         self.fixtureState = nil
+        self._fanBaseRefreshFixture = ObservedObject(
+            wrappedValue: NativeFanBaseRefreshUITestFixture(startLoaded: false)
+        )
+        self.usesFanBaseRefreshFixture = false
 #endif
     }
 
@@ -68,6 +74,7 @@ struct ContentView: View {
     /// Fictional, network-free dashboard fixture for UI verification.
     init(
         fixtureState: SupporterHomeViewModel.State,
+        fanBaseRefreshFixture: NativeFanBaseRefreshUITestFixture? = nil,
         showingAccountLink: Binding<Bool>,
         showingSettings: Binding<Bool>
     ) {
@@ -75,7 +82,31 @@ struct ContentView: View {
         self._showingAccountLink = showingAccountLink
         self._showingSettings = showingSettings
         self.fixtureState = fixtureState
+        self._fanBaseRefreshFixture = ObservedObject(
+            wrappedValue: fanBaseRefreshFixture
+                ?? NativeFanBaseRefreshUITestFixture(startLoaded: false)
+        )
+        self.usesFanBaseRefreshFixture = fanBaseRefreshFixture != nil
     }
+#endif
+
+#if DEBUG
+    private var displayedFanBase: NativeSupporterFanBase? {
+        if usesFanBaseRefreshFixture { return fanBaseRefreshFixture.fanBase }
+        return viewModel.fanBase
+    }
+
+    private var displayedFanBaseIsLoading: Bool {
+        usesFanBaseRefreshFixture ? fanBaseRefreshFixture.isLoading : viewModel.fanBaseIsLoading
+    }
+
+    private var displayedFanBaseError: String? {
+        usesFanBaseRefreshFixture ? fanBaseRefreshFixture.error : viewModel.fanBaseError
+    }
+#else
+    private var displayedFanBase: NativeSupporterFanBase? { viewModel.fanBase }
+    private var displayedFanBaseIsLoading: Bool { viewModel.fanBaseIsLoading }
+    private var displayedFanBaseError: String? { viewModel.fanBaseError }
 #endif
 
     private var displayedState: SupporterHomeViewModel.State {
@@ -159,16 +190,42 @@ struct ContentView: View {
                                     NativeSeasonRecordView(record: record)
                                 }
                             }
-                            if let fanBase = viewModel.fanBase {
+                            if let fanBase = displayedFanBase {
                                 NativeFanBaseView(fanBase: fanBase)
-                            } else if viewModel.fanBaseIsLoading || viewModel.fanBaseError != nil {
+                            } else if displayedFanBaseIsLoading || displayedFanBaseError != nil {
                                 NativeFanBaseStatusView(
-                                    isLoading: viewModel.fanBaseIsLoading,
-                                    message: viewModel.fanBaseError ?? ""
+                                    isLoading: displayedFanBaseIsLoading,
+                                    message: displayedFanBaseError ?? ""
                                 ) {
+#if DEBUG
+                                    if usesFanBaseRefreshFixture {
+                                        fanBaseRefreshFixture.retry()
+                                    } else {
+                                        Task { await loadSchedule() }
+                                    }
+#else
                                     Task { await loadSchedule() }
+#endif
                                 }
                             }
+#if DEBUG
+                            if usesFanBaseRefreshFixture {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    if !fanBaseRefreshFixture.isOnline {
+                                        Button("Restore connection") {
+                                            fanBaseRefreshFixture.restoreConnection()
+                                        }
+                                        .accessibilityIdentifier("fan-base-fixture-reconnect")
+                                    }
+                                    if fanBaseRefreshFixture.fanBase != nil {
+                                        Button("Simulate failed refresh") {
+                                            fanBaseRefreshFixture.simulateOfflineRefresh()
+                                        }
+                                        .accessibilityIdentifier("fan-base-fixture-failed-refresh")
+                                    }
+                                }
+                            }
+#endif
                             accountSetupIfNeeded
                             athleteProfileLoadIssue
                             nextEventSection

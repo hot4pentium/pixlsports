@@ -22,7 +22,8 @@ struct MyApp: App {
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-launch-splash-error")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail")
-            || ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card") {
+            || ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card")
+            || NativeFanBaseRefreshUITestFixture.isRequested {
             return
         }
 #endif
@@ -45,6 +46,8 @@ struct MyApp: App {
                     NativeLaunchSplashView()
                 } else if SupporterDashboardFixtures.isRequested {
                     SupporterDashboardFixtureView()
+                } else if NativeFanBaseRefreshUITestFixture.isRequested {
+                    NativeFanBaseRefreshFixtureView()
                 } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card") {
                     NativePublicHypeCardRecipientView(fixtureCard: sharedHypeCardFixture, onClose: {})
                 } else if let publicHypeCardRoute {

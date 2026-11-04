@@ -373,6 +373,10 @@ xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
   -only-testing:PIXL\ SportsUITests/SupporterDashboardUITests
 ```
 
+The same suite verifies the Fan Base offline state and retry recovery, then
+checks that a failed refresh removes a previously loaded count. These cases use
+a Debug-only fictional connectivity fixture and never access an account.
+
 The dashboard suite also uses fictional fixed-time guide fixtures:
 `guide-upcoming` is one minute before the Event Card begins in Los Angeles,
 `guide-live` is its exact start, and `guide-postgame` is just over three hours

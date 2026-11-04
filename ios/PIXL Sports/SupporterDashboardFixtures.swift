@@ -1,5 +1,6 @@
 #if DEBUG
 import SwiftUI
+import Combine
 
 /// Local fictional content only. These screens cannot request account or schedule data.
 @MainActor
@@ -185,6 +186,91 @@ struct SupporterDashboardFixtureView: View {
                     }
             }
         }
+    }
+}
+
+@MainActor
+final class NativeFanBaseRefreshUITestFixture: ObservableObject {
+    static var isRequested: Bool {
+        ProcessInfo.processInfo.arguments.contains("--ui-testing-fan-base-refresh")
+    }
+
+    @Published private(set) var fanBase: NativeSupporterFanBase?
+    @Published private(set) var isLoading = false
+    @Published private(set) var error: String?
+    @Published private(set) var isOnline: Bool
+
+    private let unavailableMessage =
+        "The latest Fan Base count couldn’t be loaded, so no current count is shown. Check your connection and try again."
+
+    init(startLoaded: Bool) {
+        isOnline = startLoaded
+        if startLoaded {
+            fanBase = NativeSupporterFanBase(
+                totalFollows: 3,
+                namedFans: ["Casey"],
+                anonymousFollows: 2
+            )
+        } else {
+            fanBase = nil
+            error = unavailableMessage
+        }
+    }
+
+    func restoreConnection() {
+        isOnline = true
+    }
+
+    func simulateOfflineRefresh() {
+        isOnline = false
+        fanBase = nil
+        isLoading = false
+        error = unavailableMessage
+    }
+
+    func retry() {
+        fanBase = nil
+        error = nil
+        guard isOnline else {
+            error = unavailableMessage
+            return
+        }
+        isLoading = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            guard isOnline else {
+                isLoading = false
+                error = unavailableMessage
+                return
+            }
+            fanBase = NativeSupporterFanBase(
+                totalFollows: 3,
+                namedFans: ["Casey"],
+                anonymousFollows: 2
+            )
+            isLoading = false
+        }
+    }
+}
+
+struct NativeFanBaseRefreshFixtureView: View {
+    @StateObject private var fixture: NativeFanBaseRefreshUITestFixture
+    @State private var showingConnection = false
+
+    init() {
+        let startsLoaded = ProcessInfo.processInfo.arguments.contains("--fan-base-start-loaded")
+        _fixture = StateObject(
+            wrappedValue: NativeFanBaseRefreshUITestFixture(startLoaded: startsLoaded)
+        )
+    }
+
+    var body: some View {
+        ContentView(
+            fixtureState: SupporterDashboardFixtures.state,
+            fanBaseRefreshFixture: fixture,
+            showingAccountLink: $showingConnection,
+            showingSettings: .constant(false)
+        )
     }
 }
 #endif
