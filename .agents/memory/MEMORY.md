@@ -38,6 +38,7 @@
 - [Hype Card watermark legibility](hype-card-watermark-legibility.md) — judge overlays at phone scale; clipped SVG text bounds can overrun slightly, so verify the clip and raster output.
 - [AI image edit proportions](ai-image-edit-proportions.md) — verify edited image dimensions before replacing fixed-ratio UI artwork.
 - [Athlete fan card and Hype Page lifecycle](athlete-hype-page-lifecycle.md) — share the fan card first, preserve the original page, and keep live sessions temporary.
+- [iOS HYPE Card share fallback](ios-hype-card-share-fallback.md) — use the iOS Universal Link for new shares and keep browser fallback card-only.
 - [Athlete editor access boundaries](athlete-editor-access-boundaries.md) — athlete editing stays limited to the linked HYPE Card; parents retain publishing, privacy, and sharing controls.
 - [Hype manager task drafts](hype-manager-task-drafts.md) — keep task panels mounted; immediate visibility saves must not overwrite or implicitly save an unfinished time zone.
 - [Approved Hype manager layout](approved-hype-manager-layout.md) — the owner-only wallet-style task cards are approved; their chevrons should toggle panels open and closed.

@@ -6963,7 +6963,7 @@ test('mobile event guidance prioritizes live games and always offers a next acti
 });
 
 for (const shareOnly of [false, true]) {
-test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and desktop' : 'mobile Calendar and saved HYPE Card stay paired with safe states and fresh owner data', { concurrency: false }, async () => {
+test(shareOnly ? 'Hub Share copies the direct HYPE Card link on mobile and desktop' : 'mobile Calendar and saved HYPE Card stay paired with safe states and fresh owner data', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-hype-pair');
   let devServer: ChildProcess | undefined, browser: ChildProcess | undefined;
@@ -7006,7 +7006,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
     const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
     const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean);
     const verifyHypeCardShare = async (variant: 'mobile' | 'desktop') => {
-      const expectedUrl = new URL('/showcase/saved-athlete-token', fixtureUrl).toString();
+      const expectedUrl = new URL('/fan/saved-athlete-token', fixtureUrl).toString();
       await wait(`Boolean(document.querySelector('[data-testid="button-${variant}-hype-card-share"]'))`);
       await evaluate(`document.querySelector('[data-testid="button-${variant}-hype-card-share"]').click()`);
       await wait(`Boolean(document.querySelector('[data-testid="img-${variant}-hype-card-qr"]'))`);
@@ -7022,7 +7022,7 @@ test(shareOnly ? 'Hub Share copies the public Player Showcase link on mobile and
       assert.deepEqual(revealed, {
         link: expectedUrl,
         qrSrc: revealed.qrSrc,
-        qrAlt: "QR code for Alexandria Montgomery-Williams's public Player Showcase",
+        qrAlt: "QR code for Alexandria Montgomery-Williams's HYPE Card",
       });
       assert.match(revealed.qrSrc, /^data:image\/png;base64,/);
       await evaluate(`Object.defineProperty(navigator, 'clipboard', {

@@ -61,8 +61,8 @@ export function SupporterHypeCardPreview({
       ? 'https://pixlsports.com'
       : window.location.origin;
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-  const showcaseHref = card ? `${basePath}/showcase/${encodeURIComponent(card.inviteToken)}` : '';
-  const shareUrl = shareOrigin ? new URL(showcaseHref, shareOrigin).toString() : showcaseHref;
+  const hypeCardHref = card ? `${basePath}/fan/${encodeURIComponent(card.inviteToken)}` : '';
+  const shareUrl = shareOrigin ? new URL(hypeCardHref, shareOrigin).toString() : hypeCardHref;
 
   useEffect(() => {
     if (!shareOpen || loading || failed || !card || unavailable) return;
@@ -198,7 +198,7 @@ export function SupporterHypeCardPreview({
               <button
                 type="button"
                 className="supporter-hype-preview__share-trigger"
-                aria-label={`Share ${card.athleteName}'s Player Showcase`}
+                aria-label={`Share ${card.athleteName}'s HYPE Card`}
                 data-testid={`button-${testIdPrefix}-hype-card-share`}
               >
                 <Share2 size={15} strokeWidth={2.5} aria-hidden="true" />
@@ -214,10 +214,10 @@ export function SupporterHypeCardPreview({
       >
         <DialogHeader className="pr-7 text-left">
           <DialogTitle className="font-display text-2xl uppercase tracking-wide text-white">
-            Share {card?.athleteName ? `${card.athleteName}’s` : 'your athlete’s'} Player Showcase
+            Share {card?.athleteName ? `${card.athleteName}’s` : 'your athlete’s'} HYPE Card
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-white/75">
-            Anyone with this public link can view the Player Showcase, including the Jersey and HYPE Card. Copy the link or scan the code to open it.
+            Anyone with this link can view the HYPE Card. Copy the link or scan the code to open it.
           </DialogDescription>
         </DialogHeader>
         <div className="grid justify-items-center gap-4 rounded-lg border border-white/10 bg-white/[0.04] p-4">
@@ -225,7 +225,7 @@ export function SupporterHypeCardPreview({
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
-                alt={`QR code for ${card?.athleteName ?? 'your athlete'}'s public Player Showcase`}
+                alt={`QR code for ${card?.athleteName ?? 'your athlete'}'s HYPE Card`}
                 className="block h-44 w-44"
                 data-testid={`img-${testIdPrefix}-hype-card-qr`}
               />
@@ -240,7 +240,7 @@ export function SupporterHypeCardPreview({
           </div>
           <div className="w-full min-w-0">
             <label htmlFor={`input-${testIdPrefix}-hype-card-share-link`} className="mb-2 block text-[10px] font-black uppercase tracking-[0.15em] text-[#8EC4FF]">
-              Player Showcase link
+              HYPE Card link
             </label>
             <input
               ref={shareLinkInputRef}

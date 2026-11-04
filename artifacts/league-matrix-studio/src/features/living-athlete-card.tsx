@@ -3,8 +3,6 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { Bell, CalendarDays, ChartNoAxesCombined, Play, Radio, Send } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from 'wouter';
-import { BrandLogo } from './brand-logo';
 import {
   getGetAthleteFanCardQueryKey,
   getListAthleteInviteHypesQueryKey,
@@ -49,8 +47,6 @@ import {
   type CardSide,
   type FlipState,
 } from './hype-card-flip-model';
-import { BackNavigationLink } from '@/components/back-navigation-link';
-import { getHypeCardBackNavigation } from './hype-card-back-navigation';
 
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
 const liveTapAccessTokenPattern = /^[A-Za-z0-9_-]{40,100}$/;
@@ -76,23 +72,9 @@ function gameOutcome(game: FanGame) {
   return game.score > game.opponentScore ? 'W' : game.score < game.opponentScore ? 'L' : 'T';
 }
 
-function Shell({ children, inviteToken, embedded = false, ownerView = false }: { children: ReactNode; inviteToken: string; embedded?: boolean; ownerView?: boolean }) {
-  const backNavigation = getHypeCardBackNavigation(
-    inviteToken,
-    ownerView,
-    typeof window === 'undefined' ? '' : window.location.search,
-  );
+function Shell({ children, embedded = false }: { children: ReactNode; embedded?: boolean }) {
   return (
     <div className={`living-card-page lc-native-page${embedded ? ' living-card-page--embedded' : ''}`}>
-      {!embedded && <header className="living-card-header">
-        <div className="living-card-header-inner">
-          <Link href="/" className="living-card-brand" data-testid="link-living-card-home">
-            <BrandLogo variant="on-dark" alt="Pixl Sports home" />
-          </Link>
-          <span className="living-card-header-label">A season worth keeping / Pixl Sports</span>
-          <BackNavigationLink {...backNavigation} variant="public" />
-        </div>
-      </header>}
       {children}
     </div>
   );
@@ -327,8 +309,8 @@ export function LivingAthleteCardPage({
   const MainElement = embedded ? 'div' : 'main';
   if (isLoading) {
     return (
-      <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
-        <MainElement className={embedded ? 'living-card-main--embedded' : undefined} aria-busy="true" aria-label="Loading athlete card" role="status">
+      <Shell embedded={embedded}>
+        <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`} aria-busy="true" aria-label="Loading athlete card" role="status">
           <div className="living-card-skeleton"><div /><aside><span /><span /><span /></aside></div>
           <span className="sr-only">Loading athlete card</span>
         </MainElement>
@@ -337,7 +319,7 @@ export function LivingAthleteCardPage({
   }
   if (isError || !invite || !inviteToken) {
     return (
-      <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
+      <Shell embedded={embedded}>
         <MainElement className={`living-card-state${embedded ? ' living-card-state--embedded' : ''}`} role="alert" data-testid="state-living-card-unavailable">
           <span className="living-card-eyebrow">The card is off the field</span>
           <h1>This HYPE Card is paused or unavailable.</h1>
@@ -831,7 +813,7 @@ export function LivingAthleteCardPage({
               </>
   );
   return (
-    <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
+    <Shell embedded={embedded}>
       <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`}>
         {!embedded && ownerInvite && profileNameSyncKey && updateInvite.isPending && (
           <p className="mb-4 border-l-2 border-sky-300 bg-sky-950/60 px-4 py-3 text-sm text-white" role="status" data-testid="status-profile-name-sync">
@@ -864,12 +846,7 @@ export function LivingAthleteCardPage({
             } as CSSProperties}
             aria-label={`${displayAthleteName}'s HYPE Card`}
           >
-            {!embedded && (
-              <div className="lc-native-heading">
-                <span>Player Showcase</span>
-                <h1>HYPE Card</h1>
-              </div>
-            )}
+            {!embedded && <h1 className="sr-only">{displayAthleteName}’s HYPE Card</h1>}
             <div className="lc-native-shell" data-testid="living-card-flip-container" data-selected-side={side}>
               <div
                 className="lc-native-flip-face-area"

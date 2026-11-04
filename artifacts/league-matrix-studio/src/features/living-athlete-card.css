@@ -343,10 +343,10 @@
 .living-card-original:hover { color: var(--lc-orange) !important; }
 .living-card-original svg { width: 15px; height: 15px; }
 .living-card-footer { margin-top: 85px; padding-top: 20px; border-top: 1px solid #c9e3fb2b; display: flex; justify-content: space-between; gap: 12px; color: #8baac0; font-size: 10px; letter-spacing: .13em; text-transform: uppercase; font-weight: 700; }
-.living-card-state { max-width: 600px; margin: 14vh auto; text-align: center; padding: 20px; }
-.living-card-state h1 { font: 900 clamp(46px, 7vw, 76px)/.9 'Barlow Condensed', sans-serif; text-transform: uppercase; margin: 20px 0 12px; }
-.living-card-state p { color: var(--lc-muted); line-height: 1.6; }
-.living-card-state button { margin-top: 20px; background: var(--lc-orange); border: 0; padding: 13px 22px; font-weight: 800; text-transform: uppercase; color: var(--lc-ink); }
+.living-card-state { width: min(100%, 600px); max-width: 600px; min-width: 0; margin: 14vh auto; text-align: center; padding: 20px; }
+.living-card-state h1 { max-width: 100%; overflow-wrap: anywhere; font: 900 clamp(46px, 7vw, 76px)/1.1 'Barlow Condensed', sans-serif; text-transform: uppercase; margin: 20px 0 12px; }
+.living-card-state p { max-width: 100%; overflow-wrap: anywhere; color: var(--lc-muted); line-height: 1.6; }
+.living-card-state button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; margin-top: 20px; background: var(--lc-orange); border: 0; padding: 13px 22px; font-weight: 800; text-transform: uppercase; color: var(--lc-ink); }
 .living-card-skeleton { max-width: 1100px; margin: 8vh auto; padding: 30px; display: grid; grid-template-columns: minmax(0, 500px) 1fr; gap: 60px; }
 .living-card-skeleton > div { min-height: 600px; border-radius: 22px; background: linear-gradient(110deg, #153553 8%, #1d4465 22%, #153553 38%); background-size: 220% 100%; animation: lc-shimmer 1.6s linear infinite; }
 .living-card-skeleton aside span { display: block; height: 35px; margin-bottom: 21px; width: 85%; background: #1b3956; border-radius: 3px; }

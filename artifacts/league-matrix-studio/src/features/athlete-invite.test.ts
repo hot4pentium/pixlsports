@@ -3,13 +3,14 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { getHypeCardBackNavigation } from './hype-card-back-navigation';
 import { resolveHypeCardAthleteName } from './hype-card-appearance';
 
 const source = readFileSync(new URL('./athlete-invite.tsx', import.meta.url), 'utf8');
 const athleteDraftSource = readFileSync(new URL('./athlete-video-draft.ts', import.meta.url), 'utf8');
 const hypeCardSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const publicShowcaseSource = readFileSync(new URL('./public-player-showcase.tsx', import.meta.url), 'utf8');
+const hypeCardShareSource = readFileSync(new URL('./supporter-hype-card-preview.tsx', import.meta.url), 'utf8');
 
 const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
 const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/athleteInvites.ts', import.meta.url), 'utf8');
@@ -128,19 +129,13 @@ test('Player Showcase HYPE Card back actions use consistent Player Showcase nami
   );
 });
 
-test('HYPE Card back navigation distinguishes owner Showcase from public Showcase', () => {
-  assert.equal(getHypeCardBackNavigation('athlete/token', true).href, '/studio/player-showcase');
-  assert.equal(getHypeCardBackNavigation('athlete/token', false).href, '/showcase/athlete%2Ftoken');
-  assert.equal(getHypeCardBackNavigation('athlete/token', false, '?from=player-showcase').href, '/studio/player-showcase');
-  assert.match(showcaseSource, /cardPublicHref=[^\n]*\?from=player-showcase/);
-  assert.match(
-    livingCardSource,
-    /<BackNavigationLink \{\.\.\.backNavigation\} variant="public"/,
-  );
-  assert.match(livingCardSource, /const backNavigation = getHypeCardBackNavigation\(/);
-  assert.equal((livingCardSource.match(/<Shell inviteToken=\{inviteToken\} embedded=\{embedded\} ownerView=\{Boolean\(isSignedIn && ownerInvite\)\}>/g) ?? []).length, 3,
-    'loaded, loading, and unavailable cards all preserve the owner return destination');
+test('new and legacy shared HYPE Card routes open without website navigation', () => {
+  assert.match(appSource, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
   assert.match(appSource, /path="\/showcase\/:inviteToken" component=\{PublicPlayerShowcasePage\}/);
+  assert.match(hypeCardShareSource, /const hypeCardHref = card \? `\$\{basePath\}\/fan\/\$\{encodeURIComponent\(card\.inviteToken\)\}` : ''/);
+  assert.match(publicShowcaseSource, /<LivingAthleteCardPage\s+params=\{params\}\s+followControls=\{inviteToken \? <FanCardActions inviteToken=\{inviteToken\} \/> : undefined\}\s+\/>/);
+  assert.doesNotMatch(livingCardSource, /living-card-header|BackNavigationLink|Back to Player Showcase|lc-native-heading/);
+  assert.match(livingCardSource, /<h1 className="sr-only">\{displayAthleteName\}’s HYPE Card<\/h1>/);
 });
 
 test('HYPE Card sharing copy does not call links or pages stable', () => {

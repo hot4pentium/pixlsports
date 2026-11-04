@@ -122,9 +122,8 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
       await readable(browser, '.ps__card-unavailable h2');
       await readable(browser, '.ps__card-unavailable > span');
     } else {
-      await browser.wait(`document.querySelector('[data-testid="status-public-showcase-loading"]')`);
-      await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
-      await readable(browser, '.public-showcase__loading-copy', false, 10);
+      await browser.wait(`document.querySelector('[aria-label="Loading athlete card"]')`);
+      await bounded(browser, '.living-card-main', desktop ? 960 : width);
     }
     await browser.evaluate(`window.__releaseFixtureRequest('fan-card')`);
     if (route.startsWith('/studio/')) {
@@ -132,8 +131,8 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
       await bounded(browser, byId('showcase-card-art'), desktop ? 390 : width, false);
     } else {
       await browser.wait(`document.querySelector('#living-card-display')`);
-      await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
-      await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
+      await bounded(browser, '.living-card-main', desktop ? 960 : width);
+      await bounded(browser, '.living-card-stage', desktop ? 520 : width, false);
     }
   } else if (scenario === 'retry-owner') {
     assert.ok(route.startsWith('/studio/'), 'Owner retry geometry runs on the owner Showcase');
@@ -148,19 +147,19 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     await readable(browser, '.ps__card-only-team');
     await bounded(browser, byId('showcase-card-art'), desktop ? 390 : width, false);
   } else if (scenario === 'retry-public') {
-    assert.ok(route.startsWith('/showcase/'), 'Public retry geometry runs on the public Showcase');
-    await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
-    await expectAccessible(browser, byId('status-public-showcase-unavailable'), 'alert', 'This showcase isn’t available.', /link may have expired.*paused sharing/i);
-    await expectAccessible(browser, byId('button-public-showcase-retry'), 'button', 'Try again to load this showcase');
-    await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
-    await readable(browser, byId('button-public-showcase-retry'), true);
+    assert.ok(route.startsWith('/showcase/') || route.startsWith('/fan/'), 'Public retry geometry runs on a shared HYPE Card');
+    await browser.wait(`document.querySelector('[data-testid="state-living-card-unavailable"]')`);
+    await readable(browser, '[data-testid="state-living-card-unavailable"] h1');
+    await readable(browser, '[data-testid="state-living-card-unavailable"] p');
+    await bounded(browser, '[data-testid="state-living-card-unavailable"]', desktop ? 960 : width);
+    await readable(browser, byId('button-retry-living-card'), true);
     const attemptsBeforeRetry = await browser.evaluate(`window.__fixtureAttempts.fanCard`);
-    await click(browser, byId('button-public-showcase-retry'));
+    await click(browser, byId('button-retry-living-card'));
     await browser.wait(`document.querySelector('#living-card-display')`);
     assert.ok(await browser.evaluate(`window.__fixtureAttempts.fanCard`) > attemptsBeforeRetry, 'Public retry makes a new fan-card request');
-    await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
-    await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
-    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]')?.textContent.includes(${JSON.stringify(longShowcaseLabels.athleteName)})`), 'Retry displays the successful athlete card');
+    await bounded(browser, '.living-card-main', desktop ? 960 : width);
+    await bounded(browser, '.living-card-stage', desktop ? 520 : width, false);
+    assert.ok(await browser.evaluate(`document.querySelector('#living-card-display')?.getAttribute('aria-label').includes(${JSON.stringify(longShowcaseLabels.athleteName)})`), 'Retry displays the successful athlete card');
   } else if (route.startsWith('/studio/')) {
     await browser.wait(scenario === 'long-labels'
       ? `document.querySelector('[data-testid="showcase-card-art"]')`
@@ -212,22 +211,17 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     }
   } else if (route.startsWith('/showcase/')) {
     if (scenario === 'unavailable') {
-      await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
-      await expectAccessible(browser, byId('status-public-showcase-unavailable'), 'alert', 'This showcase isn’t available.', /link may have expired.*paused sharing/i);
-      await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
-      await readable(browser, '.public-showcase__state-panel h1');
-      await readable(browser, byId('button-public-showcase-retry'), true);
-      await expectAccessible(browser, byId('button-public-showcase-retry'), 'button', 'Try again to load this showcase');
+      await browser.wait(`document.querySelector('[data-testid="state-living-card-unavailable"]')`);
+      await bounded(browser, '[data-testid="state-living-card-unavailable"]', desktop ? 960 : width);
+      await readable(browser, '[data-testid="state-living-card-unavailable"] h1');
+      await readable(browser, '[data-testid="state-living-card-unavailable"] p');
+      await readable(browser, byId('button-retry-living-card'), true);
     } else {
       await browser.wait(`document.querySelector('#living-card-display')`);
-      await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
-      await bounded(browser, '.public-showcase__topbar', desktop ? 960 : width);
-      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), longShowcaseLabels.athleteName + '.');
-      await readable(browser, byId('text-public-showcase-name'));
-      await readable(browser, '.public-showcase__identity');
-      await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
+      await bounded(browser, '.living-card-main', desktop ? 960 : width);
+      await bounded(browser, '.living-card-stage', desktop ? 520 : width, false);
       await proportion(browser, '#living-card-display', 2 / 3);
-      await readable(browser, byId('link-owner-back-to-showcase'), true);
+      assert.equal(await browser.evaluate(`document.querySelector('.living-card-header, .lc-native-heading, .public-showcase__topbar, [data-testid="link-owner-back-to-showcase"]')`), null, 'the legacy share route opens the card without website navigation');
     }
   } else if (route.startsWith('/player/')) {
     await browser.wait(`document.querySelector('[data-testid="fan-card-appearance-manager"]')`);
@@ -329,17 +323,17 @@ export async function checkShowcaseEnlargedText(
     await bounded(browser, '.ps', desktop ? 880 : width);
   } else {
     assert.ok(route.startsWith('/showcase/'), 'Enlarged retry checks run on the public Showcase');
-    await browser.wait(`document.querySelector('[data-testid="status-public-showcase-unavailable"]')`);
+    await browser.wait(`document.querySelector('[data-testid="state-living-card-unavailable"]')`);
     await enlargeText(browser, [
-      '.public-showcase__state-panel h1',
-      '.public-showcase__state-panel > p:not(.public-showcase__eyebrow)',
-      byId('button-public-showcase-retry'),
+      '[data-testid="state-living-card-unavailable"] h1',
+      '[data-testid="state-living-card-unavailable"] p',
+      byId('button-retry-living-card'),
     ]);
-    await bounded(browser, '.public-showcase__state-panel', desktop ? 560 : width);
-    await readable(browser, '.public-showcase__state-panel h1');
-    await readable(browser, '.public-showcase__state-panel > p:not(.public-showcase__eyebrow)');
-    await readable(browser, byId('button-public-showcase-retry'), true);
-    await keyboardFocusable(browser, byId('button-public-showcase-retry'));
+    await bounded(browser, '[data-testid="state-living-card-unavailable"]', desktop ? 960 : width);
+    await readable(browser, '[data-testid="state-living-card-unavailable"] h1');
+    await readable(browser, '[data-testid="state-living-card-unavailable"] p');
+    await readable(browser, byId('button-retry-living-card'), true);
+    await keyboardFocusable(browser, byId('button-retry-living-card'));
   }
   await contained(browser);
   assert.deepEqual(await browser.evaluate('window.__unexpectedRequests'), [], 'Enlarged-text fixtures must explicitly handle all requests');
@@ -423,14 +417,9 @@ export async function checkResponsiveRoute(browser: Browser, route: string, widt
     await browser.wait(`document.querySelector('[data-testid="button-hype-manager-design"]').getAttribute('aria-expanded')==='true'`);
   } else {
     await browser.wait(`document.querySelector('#living-card-display')`);
-    if (route.startsWith('/showcase/')) {
-      await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
-      await bounded(browser, '.public-showcase__topbar', desktop ? 960 : width);
-      await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
-    } else {
-      await bounded(browser, '.living-card-main', desktop ? 960 : width);
-      await bounded(browser, '.living-card-stage', desktop ? 520 : width);
-    }
+    await bounded(browser, '.living-card-main', desktop ? 960 : width);
+    await bounded(browser, '.living-card-stage', desktop ? 520 : width);
+    assert.equal(await browser.evaluate(`document.querySelector('.living-card-header, .lc-native-heading, .public-showcase__topbar, [data-testid="link-owner-back-to-showcase"]')`), null, 'shared HYPE Cards render without the website header or back button');
     await cardSides(browser);
   }
   await contained(browser);
