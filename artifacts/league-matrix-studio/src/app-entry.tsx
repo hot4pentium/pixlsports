@@ -9,11 +9,14 @@ import { getHomeEntryState } from '@/features/auth-entry-routing';
 import { forgetPrivateSession, hasPreviousPrivateSession } from '@/features/previous-private-session';
 import { getPrivateEntrySplashRemainingMs } from '@/features/private-entry-splash';
 import { PublicLandingPage } from '@/features/landing-home';
+import { SharedHypeCardLoading } from '@/features/shared-hype-card-loading';
 import { ClerkQueryClientCacheInvalidator, queryClient } from './app-session';
 import { clerkAppearance } from './clerk-appearance';
 import './landing-unified.css';
 
-const ApplicationRoutes = lazy(() => import('./App'));
+const isSharedCardInitialRoute = /(?:^|\/)(?:fan|showcase)\/[^/]+\/?$/.test(window.location.pathname);
+const applicationRoutesModule = isSharedCardInitialRoute ? import('./App') : null;
+const ApplicationRoutes = lazy(() => applicationRoutesModule ?? import('./App'));
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const PRIVATE_ENTRY_SPLASH_STARTED_AT_ATTRIBUTE = 'data-pixl-private-return-started-at';
 const clerkPubKey = publishableKeyFromHost(
@@ -80,6 +83,7 @@ function PrivateEntrySplashGate({ children }: { children: ReactNode }) {
 }
 
 function EntryModuleLoadingState() {
+  if (isSharedCardInitialRoute) return <SharedHypeCardLoading />;
   return (
     <div
       className="grid place-items-center bg-background"

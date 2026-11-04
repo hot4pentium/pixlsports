@@ -28,9 +28,16 @@
         const base = '%BASE_URL%';
         const fanPath = `${base}fan/`;
         const appPath = base.endsWith('/') ? base : `${base}/`;
+        const routePath = window.location.pathname.startsWith(appPath)
+          ? window.location.pathname.slice(appPath.length)
+          : window.location.pathname.replace(/^\/+/, '');
+        const isPublicCardRoute = /^(?:fan|showcase)\/[^/]+\/?$/.test(routePath);
         const isPrivateStudioRoute = window.location.pathname === `${appPath}studio`
           || window.location.pathname.startsWith(`${appPath}studio/`);
         const isHomeRoute = window.location.pathname === appPath;
+        if (isPublicCardRoute) {
+          document.documentElement.setAttribute('data-pixl-public-card-entry', 'true');
+        }
         let hasKnownPrivateSession = false;
         try {
           hasKnownPrivateSession = window.localStorage.getItem('pixl:previous-private-session:v1') === 'seen';
@@ -68,6 +75,97 @@
       #app-boot-fallback *,
       #app-boot-fallback *::before,
       #app-boot-fallback *::after { box-sizing: border-box; }
+      #app-boot-public-card { display: none; }
+      html[data-pixl-public-card-entry="true"] body {
+        margin: 0;
+        background: #edf2f8;
+      }
+      html[data-pixl-public-card-entry="true"] #app-boot-fallback {
+        display: grid;
+        min-height: 100vh;
+        min-height: 100svh;
+        place-items: center;
+        padding: 20px 16px;
+        background: #edf2f8;
+        color: #102b4d;
+      }
+      html[data-pixl-public-card-entry="true"] #app-boot-fallback > :not(#app-boot-public-card) {
+        display: none !important;
+      }
+      html[data-pixl-public-card-entry="true"] #app-boot-public-card {
+        box-sizing: border-box;
+        width: min(100%, 350px);
+        min-height: calc(100vh - 40px);
+        min-height: calc(100svh - 40px);
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        gap: 18px;
+        text-align: center;
+        font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      }
+      .boot-public-card-frame {
+        box-sizing: border-box;
+        width: min(100%, 350px);
+        aspect-ratio: 2 / 3;
+        max-height: 68svh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border: 2px solid #2878f5;
+        border-radius: 22px;
+        background: #102b4d;
+        box-shadow: 0 18px 40px rgba(9, 19, 38, .18);
+      }
+      .boot-public-card-photo {
+        flex: 1 1 auto;
+        min-height: 0;
+        background:
+          linear-gradient(110deg, transparent 22%, rgba(255, 255, 255, .18) 46%, transparent 68%),
+          linear-gradient(155deg, #347fca, #183858 54%, #0b1a30);
+        background-size: 240% 100%, auto;
+        animation: boot-public-card-shimmer 1.8s ease-in-out infinite;
+      }
+      .boot-public-card-identity {
+        display: grid;
+        gap: 12px;
+        padding: 20px;
+        background: linear-gradient(transparent, rgba(4, 14, 28, .95) 32%);
+        color: #d5ff62;
+        text-align: left;
+      }
+      .boot-public-card-identity span {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: .16em;
+      }
+      .boot-public-card-identity i {
+        display: block;
+        width: 54%;
+        height: 26px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, .13);
+      }
+      #app-boot-public-card-message {
+        margin: 0;
+        color: #526981;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      html[data-pixl-public-card-entry="true"] #app-boot-retry {
+        position: fixed;
+        z-index: 2;
+        left: 50%;
+        bottom: max(20px, env(safe-area-inset-bottom));
+        margin: 0;
+        transform: translateX(-50%);
+      }
+      @keyframes boot-public-card-shimmer {
+        to { background-position: -140% 0, 0 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-public-card-photo { animation: none; }
+      }
       .boot-header {
         min-height: 76px;
         padding: 0 clamp(20px, 5vw, 64px);
@@ -322,6 +420,16 @@
   <body>
     <div id="root">
       <div id="app-boot-fallback" aria-busy="true">
+        <section id="app-boot-public-card" role="status" aria-label="Opening HYPE Card" aria-busy="true">
+          <div class="boot-public-card-frame" aria-hidden="true">
+            <div class="boot-public-card-photo"></div>
+            <div class="boot-public-card-identity">
+              <span>PIXL SPORTS · HYPE CARD</span>
+              <i></i>
+            </div>
+          </div>
+          <p id="app-boot-public-card-message">Opening HYPE Card…</p>
+        </section>
         <section id="app-boot-returning" aria-live="polite">
           <img class="boot-return-logo" src="%BASE_URL%pixlsports-logo.png" alt="PIXL SPORTS" />
           <span class="boot-return-kicker" aria-hidden="true">RESTORING YOUR SEASON</span>
@@ -355,7 +463,8 @@
     <script>
       (() => {
         const fallback = document.getElementById('app-boot-fallback');
-        const message = document.getElementById('app-boot-message');
+        const isPublicCardEntry = document.documentElement.hasAttribute('data-pixl-public-card-entry');
+        const message = document.getElementById(isPublicCardEntry ? 'app-boot-public-card-message' : 'app-boot-message');
         const returningMessage = document.getElementById('app-boot-return-message');
         const syncReturningMessage = () => {
           if (!document.documentElement.hasAttribute('data-pixl-private-return') || !message || !returningMessage) return;
@@ -449,8 +558,12 @@
         const slowTimeout = window.setTimeout(() => {
           if (booted || !message || !retry) return;
           message.textContent = '%MODE%' === 'development'
-            ? 'The dev site is taking longer to load. You can keep waiting or reconnect.'
-            : 'The landing page is taking longer than expected. You can keep waiting or refresh.';
+            ? isPublicCardEntry
+              ? 'The HYPE Card is taking longer to load. You can keep waiting or reconnect.'
+              : 'The dev site is taking longer to load. You can keep waiting or reconnect.'
+            : isPublicCardEntry
+              ? 'The HYPE Card is taking longer to open. You can keep waiting or refresh.'
+              : 'The landing page is taking longer than expected. You can keep waiting or refresh.';
           syncReturningMessage();
           retry.hidden = false;
         }, 7000);

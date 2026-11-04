@@ -35,6 +35,7 @@ import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, use
 import { ErrorBoundary } from '@/components/error-boundary';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { AccountLoadingScreen } from '@/features/account-loading-screen';
+import { SharedHypeCardLoading } from '@/features/shared-hype-card-loading';
 import { BrandLogo } from '@/features/brand-logo';
 import { rememberPrivateSession } from '@/features/previous-private-session';
 import { Toaster } from '@/components/ui/toaster';
@@ -195,17 +196,36 @@ const AthleteInviteManager = lazy(() =>
 const PublicAthleteInvitePage = lazy(() =>
   import('@/features/athlete-invite').then(({ PublicAthleteInvitePage }) => ({ default: PublicAthleteInvitePage })),
 );
+const isDirectFanCardRoute = /(?:^|\/)fan\/[^/]+\/?$/.test(window.location.pathname);
+const isLegacyShowcaseRoute = /(?:^|\/)showcase\/[^/]+\/?$/.test(window.location.pathname);
+const livingAthleteCardModule = isDirectFanCardRoute ? import('@/features/living-athlete-card') : null;
+const fanCardActionsModule = isDirectFanCardRoute ? import('@/features/fan-card-follow') : null;
+const publicPlayerShowcaseModule = isLegacyShowcaseRoute ? import('@/features/public-player-showcase') : null;
 const LivingAthleteCardPage = lazy(() =>
-  import('@/features/living-athlete-card').then(({ LivingAthleteCardPage }) => ({ default: LivingAthleteCardPage })),
+  (livingAthleteCardModule ?? import('@/features/living-athlete-card'))
+    .then(({ LivingAthleteCardPage }) => ({ default: LivingAthleteCardPage })),
 );
 const FanCardActions = lazy(() =>
-  import('@/features/fan-card-follow').then(({ FanCardActions }) => ({ default: FanCardActions })),
+  (fanCardActionsModule ?? import('@/features/fan-card-follow'))
+    .then(({ FanCardActions }) => ({ default: FanCardActions })),
 );
 const PublicPlayerShowcasePage = lazy(() =>
-  import('@/features/public-player-showcase').then(({ PublicPlayerShowcasePage }) => ({ default: PublicPlayerShowcasePage })),
+  (publicPlayerShowcaseModule ?? import('@/features/public-player-showcase'))
+    .then(({ PublicPlayerShowcasePage }) => ({ default: PublicPlayerShowcasePage })),
 );
 function LivingAthleteCardRoute({ params }: { params: { inviteToken?: string } }) {
-  return <LivingAthleteCardPage params={params} followControls={<FanCardActions inviteToken={params.inviteToken ?? ''} />} />;
+  return (
+    <Suspense fallback={<SharedHypeCardLoading />}>
+      <LivingAthleteCardPage params={params} followControls={<FanCardActions inviteToken={params.inviteToken ?? ''} />} />
+    </Suspense>
+  );
+}
+function PublicPlayerShowcaseRoute({ params }: { params: { inviteToken?: string } }) {
+  return (
+    <Suspense fallback={<SharedHypeCardLoading />}>
+      <PublicPlayerShowcasePage params={params} />
+    </Suspense>
+  );
 }
 function LegacyAthleteInviteRedirect({ params }: { params: { inviteToken?: string } }) {
   return <Redirect to={`/fan/${encodeURIComponent(params.inviteToken ?? '')}`} />;
@@ -4125,7 +4145,7 @@ function ApplicationRoutes() {
               <Route path="/live/:shareToken" component={PublicStatTrackerPage} />
               <Route path="/fan/:inviteToken" component={LivingAthleteCardRoute} />
               <Route path="/locker/:inviteToken" component={LegacyLockerRedirect} />
-              <Route path="/showcase/:inviteToken" component={PublicPlayerShowcasePage} />
+              <Route path="/showcase/:inviteToken" component={PublicPlayerShowcaseRoute} />
               <Route path="/supporter-guide" component={SupporterToolsGuidePage} />
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />

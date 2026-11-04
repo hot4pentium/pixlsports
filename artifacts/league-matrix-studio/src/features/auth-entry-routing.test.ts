@@ -37,6 +37,15 @@ test('the initial HTML shell shows landing content before React starts', () => {
   assert.doesNotMatch(bootShellSource, /Loading Pixl Sports/);
 });
 
+test('direct HYPE Card links never show the PWA landing shell while the app starts', () => {
+  assert.match(bootShellSource, /data-pixl-public-card-entry/);
+  assert.match(bootShellSource, /id="app-boot-public-card"[\s\S]*Opening HYPE Card/);
+  assert.match(bootShellSource, /#app-boot-fallback > :not\(#app-boot-public-card\)/);
+  assert.match(entrySource, /isSharedCardInitialRoute[\s\S]*<SharedHypeCardLoading \/>/);
+  assert.match(appSource, /<Suspense fallback=\{<SharedHypeCardLoading \/>\}>[\s\S]*<LivingAthleteCardPage/);
+  assert.match(appSource, /<Suspense fallback=\{<SharedHypeCardLoading \/>\}>[\s\S]*<PublicPlayerShowcasePage/);
+});
+
 test('returning sessions replace the static landing shell before first paint', () => {
   const sessionCheck = bootShellSource.indexOf(
     "window.localStorage.getItem('pixl:previous-private-session:v1') === 'seen'",
@@ -67,7 +76,7 @@ test('the app bypasses lifecycle checks on public home visits and opens the stud
   assert.match(appSource, /lifecycle\?\.status !== 'active'[\s\S]*?rememberPrivateSession\(\)/);
   assert.match(entrySource, /<Redirect to="\/studio" \/>/);
   assert.match(entrySource, /return <PublicLandingPage \/>/);
-  assert.match(entrySource, /const ApplicationRoutes = lazy\(\(\) => import\('\.\/App'\)\)/);
+  assert.match(entrySource, /const ApplicationRoutes = lazy\(\(\) => applicationRoutesModule \?\? import\('\.\/App'\)\)/);
   assert.match(entrySource, /<Route path="\/" component=\{HomeEntry\} \/>/);
 });
 

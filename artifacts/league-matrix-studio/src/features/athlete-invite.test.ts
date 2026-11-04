@@ -131,7 +131,7 @@ test('Player Showcase HYPE Card back actions use consistent Player Showcase nami
 
 test('new and legacy shared HYPE Card routes open without website navigation', () => {
   assert.match(appSource, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
-  assert.match(appSource, /path="\/showcase\/:inviteToken" component=\{PublicPlayerShowcasePage\}/);
+  assert.match(appSource, /path="\/showcase\/:inviteToken" component=\{PublicPlayerShowcaseRoute\}/);
   assert.match(hypeCardShareSource, /const hypeCardHref = card \? `\$\{basePath\}\/fan\/\$\{encodeURIComponent\(card\.inviteToken\)\}` : ''/);
   assert.match(publicShowcaseSource, /<LivingAthleteCardPage\s+params=\{params\}\s+followControls=\{inviteToken \? <FanCardActions inviteToken=\{inviteToken\} \/> : undefined\}\s+\/>/);
   assert.doesNotMatch(livingCardSource, /living-card-header|BackNavigationLink|Back to Player Showcase|lc-native-heading/);
