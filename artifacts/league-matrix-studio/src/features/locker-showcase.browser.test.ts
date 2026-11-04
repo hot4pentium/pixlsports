@@ -683,6 +683,7 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     await browser.evaluate(`document.querySelector('[data-testid="button-living-card-events"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="living-card-events-side"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="card-living-event-fixture-event"] h3').textContent`), 'vs Hawks');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-living-card-events-record"]')?.textContent.trim()`), '3–1–0');
     await browser.evaluate(`document.querySelector('[data-testid="button-living-card-front"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="img-living-card-athlete"]')`);
     await swipe('[data-testid="figure-public-showcase-hype-card"] .living-card-frame', 'right');

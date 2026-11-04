@@ -159,7 +159,9 @@ test('HYPE Card events use one persistent all-or-none setting', () => {
   assert.match(athleteApiSource, /async function availableAthleteEvents/);
   assert.match(athleteApiSource, /invite\.showEvents \? availableAthleteEvents\(invite\.ownerClerkUserId\) : Promise\.resolve\(\[\]\)/);
   assert.match(livingCardSource, /The card owner has turned off event sharing/);
-  assert.match(livingCardSource, /All eligible Event Cards saved by/);
+  assert.match(livingCardSource, /Recent and upcoming Event Cards from/);
+  assert.match(livingCardSource, /recentUpcomingAthleteEvents\(linkedEvents, eventDate\)/);
+  assert.match(livingCardSource, /invite\.showEvents && invite\.stats &&/);
   assert.match(eventNotificationsSource, /Turn on “Allow events” in Visible Sections/);
 });
 
@@ -167,7 +169,9 @@ test('HYPE Card event details do not repeat the full Game On Card link', () => {
   const eventsStart = livingCardSource.indexOf("{face === 'events' && (");
   const controlsStart = livingCardSource.indexOf("{face === 'live-taps' && (", eventsStart);
   const eventsSide = livingCardSource.slice(eventsStart, controlsStart);
-  assert.match(eventsSide, /All eligible Event Cards saved by/);
+  assert.match(eventsSide, /Recent and upcoming Event Cards from/);
+  assert.match(eventsSide, /visibleEvents\.map/);
+  assert.match(eventsSide, /text-living-card-events-record/);
   assert.doesNotMatch(eventsSide, /Full Event Card|gameOnHref|link-living-event-/);
   assert.doesNotMatch(eventsSide, /Open one for its full details/);
 });

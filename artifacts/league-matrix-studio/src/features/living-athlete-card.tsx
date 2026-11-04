@@ -19,7 +19,7 @@ import {
   type PublicAthleteFanCard,
   type AthleteInviteHypeInput,
 } from '@workspace/api-client-react';
-import { hasEventToday } from './athlete-event-links';
+import { athleteLocalDate, hasEventToday, recentUpcomingAthleteEvents } from './athlete-event-links';
 import { normalizeCardAppearance, resolveHypeCardAthleteName } from './hype-card-appearance';
 import { getUserProfile } from './supporter-dashboard-model';
 
@@ -332,7 +332,11 @@ export function LivingAthleteCardPage({
 
   const linkedEvents = invite.events ?? [];
   const cardAppearance = normalizeCardAppearance(invite.cardAppearance);
-  const eventToday = hasEventToday(linkedEvents, invite.timezone, new Date(todayTick));
+  const currentDate = new Date(todayTick);
+  const eventDate = athleteLocalDate(currentDate, invite.timezone)
+    ?? `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+  const visibleEvents = recentUpcomingAthleteEvents(linkedEvents, eventDate);
+  const eventToday = hasEventToday(linkedEvents, invite.timezone, currentDate);
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
   const shoutouts = ownerInvite ? ownerShoutouts.data : publicShoutouts.data;
   const shoutoutsLoading = ownerInvite ? ownerShoutouts.isPending : publicShoutouts.isPending;
@@ -665,22 +669,29 @@ export function LivingAthleteCardPage({
                     <h2 className="living-card-alt-title">Events.</h2>
                     <p className="living-card-alt-subtitle">
                       {invite.showEvents
-                        ? `All eligible Event Cards saved by ${displayAthleteName}’s card owner appear here.`
+                        ? `Recent and upcoming Event Cards from ${displayAthleteName}’s season.`
                         : 'The card owner has turned off event sharing.'}
                     </p>
-                    {invite.showEvents && linkedEvents.length > 0 ? (
+                    {invite.showEvents && visibleEvents.length > 0 ? (
                       <ol className="living-card-events-list" aria-label="Event Cards">
-                        {linkedEvents.map((event) => (
-                          <li className="living-card-event" data-status={event.status} key={`${event.shareToken}-${event.eventId}`} data-testid={`card-living-event-${event.shareToken}`}>
-                            <div className="living-card-event-top"><span>{event.type} / {formatDate(event.date) || 'Date to come'}</span><span>{event.status}</span></div>
-                            <h3>{event.opponent ? `vs ${event.opponent}` : event.title}</h3>
-                            {event.opponent && <p className="living-card-event-title">{event.title}</p>}
-                            <dl>
-                              <div><dt>Time</dt><dd>{event.time || 'To be announced'}</dd></div>
-                              <div><dt>Location</dt><dd>{event.location || 'To be announced'}</dd></div>
-                            </dl>
-                          </li>
-                        ))}
+                        {visibleEvents.map((event) => {
+                          const eventLabel = event.status === 'live'
+                            ? 'Live'
+                            : event.status === 'final'
+                              ? 'Final'
+                              : event.date < eventDate ? 'Recent' : 'Upcoming';
+                          return (
+                            <li className="living-card-event" data-status={event.status} key={`${event.shareToken}-${event.eventId}`} data-testid={`card-living-event-${event.shareToken}`}>
+                              <div className="living-card-event-top"><span>{event.type} / {formatDate(event.date) || 'Date to come'}</span><span>{eventLabel}</span></div>
+                              <h3>{event.opponent ? `vs ${event.opponent}` : event.title}</h3>
+                              {event.opponent && <p className="living-card-event-title">{event.title}</p>}
+                              <dl>
+                                <div><dt>Time</dt><dd>{event.time || 'To be announced'}</dd></div>
+                                <div><dt>Location</dt><dd>{event.location || 'To be announced'}</dd></div>
+                              </dl>
+                            </li>
+                          );
+                        })}
                       </ol>
                     ) : invite.showEvents ? (
                       <div className="living-card-empty" data-testid="living-card-events-empty">
@@ -689,6 +700,17 @@ export function LivingAthleteCardPage({
                         <p>There are no eligible Event Cards to show yet. Check back as the season moves.</p>
                       </div>
                     ) : null}
+                    {invite.showEvents && invite.stats && (
+                      <section className="living-card-events-record" aria-label="Season win-loss-tie record" data-testid="living-card-events-record">
+                        <div>
+                          <span className="living-card-events-record__label">Season record</span>
+                          <span className="living-card-events-record__detail">W – L – T</span>
+                        </div>
+                        <strong data-testid="text-living-card-events-record">
+                          {invite.stats.record.wins}–{invite.stats.record.losses}–{invite.stats.record.ties}
+                        </strong>
+                      </section>
+                    )}
                   </div>
                 )}
                 {face === 'live-taps' && (

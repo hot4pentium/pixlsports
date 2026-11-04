@@ -266,6 +266,11 @@
 .living-card-event a { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--lc-orange); color: var(--lc-paper); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .living-card-event a:hover { color: var(--lc-orange); }
 .living-card-event a svg { width: 15px; height: 15px; }
+.living-card-events-record { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 18px; padding: 15px 16px; border: 1px solid #8ecbff62; background: linear-gradient(115deg, #163959, #0b2948); }
+.living-card-events-record > div { display: grid; gap: 4px; }
+.living-card-events-record__label { color: var(--lc-sky); font-size: 10px; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+.living-card-events-record__detail { color: var(--lc-muted); font-size: 10px; letter-spacing: .12em; }
+.living-card-events-record strong { color: var(--lc-paper); font: 900 30px/.95 'Barlow Condensed', sans-serif; letter-spacing: .04em; white-space: nowrap; }
 .living-card-instruction { text-align: center; margin: 13px 0 0; color: #91acc3; font-size: 11px; }
 .living-card-support-actions { width: calc(100% - 20px - clamp(26px, 6vw, 48px)); margin: 16px auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .living-card-support-action { appearance: none; min-height: 68px; padding: 12px 14px; border: 1px solid #b4d6ee66; background: #143450; color: var(--lc-paper); display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 10px; text-align: left; transition: transform .2s, border-color .2s, background .2s; }
