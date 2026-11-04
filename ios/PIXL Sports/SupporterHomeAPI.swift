@@ -240,6 +240,50 @@ struct NativeEventCardDraft {
     let opponent: String
 }
 
+#if DEBUG
+@MainActor
+enum NativeEventCardCreateRetryUITestFixture {
+    static var isRequested: Bool {
+        ProcessInfo.processInfo.arguments.contains("--ui-testing-event-card-create-retry")
+    }
+
+    private(set) static var isOnline = false
+    private(set) static var savedDrafts: [String: NativeEventCardDraft] = [:]
+    private(set) static var confirmedEventIDs = Set<String>()
+    private static var interruptedFirstResponse = false
+
+    static func setOnline(_ online: Bool) {
+        isOnline = online
+    }
+
+    static func create(_ draft: NativeEventCardDraft) throws -> String {
+        guard isOnline else { throw NativeOfflineError.onlineOnly }
+        if let existing = savedDrafts[draft.id] {
+            return shareToken(for: existing)
+        }
+
+        savedDrafts[draft.id] = draft
+        if !interruptedFirstResponse {
+            interruptedFirstResponse = true
+            throw NativeAccountLinkError.message("The first save response was interrupted.")
+        }
+        return shareToken(for: draft)
+    }
+
+    static func confirm(token: String, draft: NativeEventCardDraft) throws {
+        guard isOnline else { throw NativeOfflineError.onlineOnly }
+        guard savedDrafts[draft.id] != nil, token == shareToken(for: draft) else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        confirmedEventIDs.insert(draft.id)
+    }
+
+    private static func shareToken(for draft: NativeEventCardDraft) -> String {
+        "ui-test-event-card-\(draft.id)"
+    }
+}
+#endif
+
 private struct NativeEventCardCreateBody: Encodable {
     let title: String
     let teamSeason: String
@@ -369,8 +413,14 @@ enum SupporterHomeAPI {
         teamName: String?,
         athleteName: String,
         seasonName: String?,
-        clerk: Clerk
+        clerk: Clerk?
     ) async throws -> String {
+#if DEBUG
+        if NativeEventCardCreateRetryUITestFixture.isRequested {
+            return try NativeEventCardCreateRetryUITestFixture.create(draft)
+        }
+#endif
+        guard let clerk else { throw SupporterHomeAPIError.invalidResponse }
         let event = NativeEventCardCreateBody.Event(
             id: draft.id,
             type: draft.type,
@@ -450,8 +500,15 @@ enum SupporterHomeAPI {
     static func confirmEventCard(
         shareToken: String,
         draft: NativeEventCardDraft,
-        clerk: Clerk
+        clerk: Clerk?
     ) async throws {
+#if DEBUG
+        if NativeEventCardCreateRetryUITestFixture.isRequested {
+            try NativeEventCardCreateRetryUITestFixture.confirm(token: shareToken, draft: draft)
+            return
+        }
+#endif
+        guard let clerk else { throw SupporterHomeAPIError.invalidResponse }
         let schedule = try await fetchPrivateSchedule(clerk: clerk)
         guard schedule.status == "linked",
               let event = schedule.events.first(where: {

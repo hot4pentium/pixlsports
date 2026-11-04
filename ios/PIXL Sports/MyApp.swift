@@ -23,6 +23,7 @@ struct MyApp: App {
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-live-taps")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card")
+            || NativeEventCardCreateRetryUITestFixture.isRequested
             || NativeFanBaseRefreshUITestFixture.isRequested {
             return
         }
@@ -50,6 +51,17 @@ struct MyApp: App {
                     NativeFanBaseRefreshFixtureView()
                 } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card") {
                     NativePublicHypeCardRecipientView(fixtureCard: sharedHypeCardFixture, onClose: {})
+                } else if NativeEventCardCreateRetryUITestFixture.isRequested {
+                    NavigationStack {
+                        NativeCreateEventCardView(
+                            athleteName: "Jordan Example",
+                            teamName: "PIXL Test Team",
+                            seasonName: "Fall 2026",
+                            initialTimezone: "America/Los_Angeles",
+                            clerk: nil,
+                            onCreated: { _ in }
+                        )
+                    }
                 } else if let publicHypeCardRoute {
                     NativePublicHypeCardRecipientView(inviteToken: publicHypeCardRoute.inviteToken) {
                         self.publicHypeCardRoute = nil

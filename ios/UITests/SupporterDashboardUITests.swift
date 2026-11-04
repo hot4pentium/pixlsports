@@ -344,6 +344,59 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertTrue(app.buttons["native-event-create-submit"].exists)
     }
 
+    func testOfflineEventCardRetryAfterInterruptedResponseCreatesExactlyOneCard() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-card-create-retry", "--dashboard-narrow"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Create an Event Card"].waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            app.staticTexts["native-event-create-fixture-connection"].label,
+            "PIXL connection: Offline"
+        )
+        let opponent = app.textFields["native-event-opponent"]
+        XCTAssertTrue(opponent.waitForExistence(timeout: 5))
+        opponent.tap()
+        opponent.typeText("Bears\n")
+        let location = app.textFields["native-event-location"]
+        location.tap()
+        location.typeText("North Field")
+
+        app.buttons["native-event-create-submit"].tap()
+        let error = app.staticTexts["native-event-create-error"]
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        XCTAssertTrue(error.label.contains("A connection to PIXL is required to create this Event Card"))
+        XCTAssertTrue(app.buttons["native-event-create-retry"].exists)
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Saved Event Cards: 0")
+
+        app.buttons["native-event-create-fixture-reconnect"].tap()
+        XCTAssertEqual(
+            app.staticTexts["native-event-create-fixture-connection"].label,
+            "PIXL connection: Reconnected"
+        )
+        app.buttons["native-event-create-retry"].tap()
+
+        let interruptedResponse = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "We couldn’t confirm that this Event Card was saved")
+        ).firstMatch
+        XCTAssertTrue(interruptedResponse.waitForExistence(timeout: 5))
+        XCTAssertTrue(interruptedResponse.label.contains("We couldn’t confirm that this Event Card was saved"))
+        XCTAssertTrue(app.buttons["native-event-create-retry"].exists)
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Saved Event Cards: 1")
+        XCTAssertTrue(
+            app.staticTexts["native-event-create-fixture-saved-details"].label.contains("Bears at North Field")
+        )
+
+        app.buttons["native-event-create-retry"].tap()
+        XCTAssertTrue(app.staticTexts["native-event-create-fixture-confirmed-count"]
+            .waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Saved Event Cards: 1")
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-confirmed-count"].label, "Confirmed Event Cards: 1")
+        XCTAssertFalse(error.exists)
+        XCTAssertFalse(app.buttons["native-event-create-retry"].exists)
+        app.terminate()
+    }
+
     func testEventCardFormControlsRemainReachableAtDefaultAndAccessibilityTextSizes() {
         for accessibilityText in [false, true] {
             let app = launch("empty", accessibilityText: accessibilityText)

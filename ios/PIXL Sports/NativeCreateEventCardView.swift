@@ -22,6 +22,7 @@ struct NativeCreateEventCardView: View {
     @State private var errorMessage: String?
     @State private var canRetrySave = false
     @State private var eventID = UUID().uuidString.lowercased()
+    @State private var fixtureIsOnline = false
 
     private let timeZoneChoices = [
         "America/New_York", "America/Chicago", "America/Denver",
@@ -84,6 +85,14 @@ struct NativeCreateEventCardView: View {
     }
 
     private var isEditing: Bool { existingEvent != nil && shareToken != nil }
+
+    private var canSaveWithoutClerk: Bool {
+#if DEBUG
+        NativeEventCardCreateRetryUITestFixture.isRequested
+#else
+        false
+#endif
+    }
 
     private var trimmedSeasonName: String? {
         guard let seasonName else { return nil }
@@ -191,6 +200,30 @@ struct NativeCreateEventCardView: View {
                     .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
                     .supporterSurfaceShadow()
 
+#if DEBUG
+                    if NativeEventCardCreateRetryUITestFixture.isRequested {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(fixtureIsOnline ? "PIXL connection: Reconnected" : "PIXL connection: Offline")
+                                .accessibilityIdentifier("native-event-create-fixture-connection")
+                            Button("Reconnect PIXL") {
+                                NativeEventCardCreateRetryUITestFixture.setOnline(true)
+                                fixtureIsOnline = true
+                            }
+                            .accessibilityIdentifier("native-event-create-fixture-reconnect")
+                            Text("Saved Event Cards: \(NativeEventCardCreateRetryUITestFixture.savedDrafts.count)")
+                                .accessibilityIdentifier("native-event-create-fixture-saved-count")
+                            if let savedDraft = NativeEventCardCreateRetryUITestFixture.savedDrafts.values.first {
+                                Text("Saved details: \(savedDraft.opponent) at \(savedDraft.location)")
+                                    .accessibilityIdentifier("native-event-create-fixture-saved-details")
+                            }
+                            Text("Confirmed Event Cards: \(NativeEventCardCreateRetryUITestFixture.confirmedEventIDs.count)")
+                                .accessibilityIdentifier("native-event-create-fixture-confirmed-count")
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(SupporterHomeColors.lightMuted)
+                    }
+#endif
+
                     Text(isEditing
                          ? "Updating an Event Card needs a connection to PIXL. Changes save to your PIXL account."
                          : "Creating an Event Card needs a connection to PIXL. It saves to your PIXL account, not on this iPhone.")
@@ -233,11 +266,11 @@ struct NativeCreateEventCardView: View {
                         .frame(maxWidth: .infinity, minHeight: 56)
                         .background(SupporterHomeColors.accent, in: RoundedRectangle(cornerRadius: 17))
                     }
-                    .disabled(isSaving || clerk == nil)
-                    .opacity(!isSaving && clerk != nil ? 1 : 0.58)
+                    .disabled(isSaving || (clerk == nil && !canSaveWithoutClerk))
+                    .opacity(!isSaving && (clerk != nil || canSaveWithoutClerk) ? 1 : 0.58)
                     .accessibilityIdentifier("native-event-create-submit")
 
-                    if clerk == nil {
+                    if clerk == nil && !canSaveWithoutClerk {
                         Text("Sign in on this iPhone to create an Event Card.")
                             .font(.footnote)
                             .foregroundStyle(SupporterHomeColors.lightMuted)
@@ -256,7 +289,7 @@ struct NativeCreateEventCardView: View {
 
     @MainActor
     private func saveEventCard() async {
-        guard let clerk else {
+        guard clerk != nil || canSaveWithoutClerk else {
             errorMessage = "Sign in on this iPhone to manage Event Cards."
             return
         }
@@ -290,13 +323,7 @@ struct NativeCreateEventCardView: View {
         )
         do {
             let token: String
-            if let shareToken, isEditing {
-                token = try await SupporterHomeAPI.updateEventCard(
-                    shareToken: shareToken,
-                    draft: draft,
-                    clerk: clerk
-                )
-            } else {
+            if canSaveWithoutClerk {
                 token = try await SupporterHomeAPI.createEventCard(
                     draft: draft,
                     teamName: teamName,
@@ -304,6 +331,22 @@ struct NativeCreateEventCardView: View {
                     seasonName: trimmedSeasonName,
                     clerk: clerk
                 )
+            } else if let shareToken, isEditing, let clerk {
+                token = try await SupporterHomeAPI.updateEventCard(
+                    shareToken: shareToken,
+                    draft: draft,
+                    clerk: clerk
+                )
+            } else if let clerk {
+                token = try await SupporterHomeAPI.createEventCard(
+                    draft: draft,
+                    teamName: teamName,
+                    athleteName: athleteName,
+                    seasonName: trimmedSeasonName,
+                    clerk: clerk
+                )
+            } else {
+                throw SupporterHomeAPIError.invalidResponse
             }
             try await SupporterHomeAPI.confirmEventCard(
                 shareToken: token,
