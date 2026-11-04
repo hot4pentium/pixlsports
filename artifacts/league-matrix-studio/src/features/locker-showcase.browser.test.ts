@@ -559,7 +559,7 @@ test('Showcase keeps the HYPE Card central and the athlete moment parent-control
     const mobileTypography = await browser.evaluate(`(() => {
       const preview = document.querySelector('[data-testid="mobile-saved-hype-card"]');
       const message = preview?.querySelector('.supporter-hype-preview__state--empty > p');
-      const action = preview?.querySelector('.supporter-hype-preview__state--empty > a');
+      const action = preview?.querySelector('.supporter-hype-preview__state--empty > p:last-child');
       return {
         message: message ? Number.parseFloat(getComputedStyle(message).fontSize) : 0,
         action: action ? Number.parseFloat(getComputedStyle(action).fontSize) : 0,
@@ -569,23 +569,24 @@ test('Showcase keeps the HYPE Card central and the athlete moment parent-control
       };
     })()`);
     assert.equal(mobileTypography.message, 15, 'the empty-card message should use the larger mobile type size');
-    assert.equal(mobileTypography.action, 15, 'the setup action should be easier to read on a phone');
+    assert.equal(mobileTypography.action, 15, 'the Showcase navigation guidance should be readable on a phone');
     assert.match(mobileTypography.text, /Your athlete’s card belongs here/);
-    assert.match(mobileTypography.actionText, /Set up card/);
+    assert.match(mobileTypography.actionText, /Use the Player Showcase tab to set up, view, and manage your HYPE Card/);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="mobile-saved-hype-card"] .supporter-hype-preview__state--empty > a')`), null, 'setup uses the Showcase tab, not a retired inline link');
     assert.equal(mobileTypography.noHorizontalOverflow, true, 'larger copy should not introduce horizontal scrolling on phones');
 
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     const desktopTypography = await browser.evaluate(`(() => {
       const preview = document.querySelector('[data-testid="desktop-saved-hype-card"]');
       const message = preview?.querySelector('.supporter-hype-preview__state--empty > p');
-      const action = preview?.querySelector('.supporter-hype-preview__state--empty > a');
+      const action = preview?.querySelector('.supporter-hype-preview__state--empty > p:last-child');
       return {
         message: message ? Number.parseFloat(getComputedStyle(message).fontSize) : 0,
         action: action ? Number.parseFloat(getComputedStyle(action).fontSize) : 0,
       };
     })()`);
     assert.equal(desktopTypography.message, 20, 'the desktop bulletin-board message should use the larger type size');
-    assert.equal(desktopTypography.action, 18, 'the desktop setup action should use the larger type size');
+    assert.equal(desktopTypography.action, 20, 'the desktop Showcase navigation guidance uses the current paragraph type size');
   } finally {
     browser?.close();
     await stop(chromium);
@@ -672,35 +673,6 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-alerts"] [data-testid="button-follow-fan-card"]'))`), true);
     assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="input-fan-alert-event"]'))`), true);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-alerts"]')?.getAttribute('href')`), '#showcase-event-alerts');
-    await browser.evaluate(`document.querySelector('[data-testid="button-follow-fan-card"]').click()`);
-    await browser.wait(`document.querySelector('[data-testid="button-follow-fan-card"]')?.getAttribute('aria-pressed')==='true'`);
-    assert.equal(await browser.evaluate(`JSON.parse(localStorage.getItem('pixl-fan-card-follow:fixture-athlete')).following`), true);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`), false, 'following does not silently enable event alerts');
-    const toggleAlert = async (kind: string) => {
-      await browser!.evaluate(`document.querySelector('[data-testid="input-fan-alert-${kind}"]').focus()`);
-      await browser!.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space' });
-      await browser!.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space' });
-    };
-    await browser.evaluate(`window.__permissionResult='denied'`);
-    await toggleAlert('event');
-    await browser.wait(`document.querySelector('[data-testid="status-fan-follow"]')?.textContent.includes('blocked alerts')`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`), false, 'denied permission never claims a saved subscription');
-    await browser.evaluate(`window.__permissionResult='granted'`);
-    await toggleAlert('event');
-    await browser.wait(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`);
-    assert.equal(await browser.evaluate(`window.__followCreates[0].followToken.length`), 64, 'the device follow is saved before alerts are enabled');
-    assert.equal(await browser.evaluate(`window.__followUpdates[0].preEventAlerts`), true);
-    assert.equal(await browser.evaluate(`window.__followUpdates[0].liveAlerts`), false);
-    assert.ok(await browser.evaluate(`window.__followUpdates[0].pushSubscription.endpoint`));
-    await toggleAlert('live');
-    await browser.wait(`document.querySelector('[data-testid="input-fan-alert-live"]').checked`);
-    await toggleAlert('event');
-    await browser.wait(`!document.querySelector('[data-testid="input-fan-alert-event"]').checked`);
-    assert.equal(await browser.evaluate(`window.__alertPreferences.liveAlerts`), true, 'turning off event alerts preserves live consent');
-    await toggleAlert('live');
-    await browser.wait(`!document.querySelector('[data-testid="input-fan-alert-live"]').checked`);
-    assert.equal(await browser.evaluate(`window.__followDeletes`), 0, 'turning off alerts keeps the device follow');
-    assert.equal(await browser.evaluate(`JSON.parse(localStorage.getItem('pixl-fan-card-follow:fixture-athlete')).following`), true);
     await browser.evaluate(`window.scrollTo(0,0)`);
     await swipe('[data-testid="figure-public-showcase-jersey"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"] [data-testid="img-living-card-athlete"]')`);
@@ -727,9 +699,6 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     await browser.wait(`document.querySelector('[data-testid="button-public-showcase-slide-card"]').getAttribute('aria-pressed')==='true'`);
     await browser.evaluate(`document.querySelector('[data-testid="button-public-showcase-slide-jersey"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-jersey"]')`);
-    await browser.wait(`document.querySelector('[data-testid="button-follow-fan-card"]')?.getAttribute('aria-pressed')==='true'`);
-    await browser.evaluate(`document.querySelector('[data-testid="button-follow-fan-card"]').click()`);
-    await browser.wait(`localStorage.getItem('pixl-fan-card-follow:fixture-athlete')===null`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="image-showcase-jersey"]'))`), 'Public soccer Showcase uses the photoreal jersey');
     await browser.wait(`document.querySelector('[data-testid="jersey-table-gear-soccer-ball"]')?.naturalWidth>0`);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'earned gear appears on the public jersey Showcase without a HYPE Card sharing setting');

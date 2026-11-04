@@ -14,3 +14,9 @@ Partial preference updates must preserve omitted alert choices. Put initial defa
 **Why:** OpenAPI defaults become active Zod parsing defaults; a default on an omitted PATCH field can silently reset existing alert consent during a name-only update.
 
 **How to apply:** Inspect generated parsers and verify a name-only update against an existing opted-in follow whenever changing these contracts.
+
+Offline follow fixtures must keep both creation and status reads unavailable until connectivity is explicitly restored; do not substitute a missing-record response for an outage.
+
+**Why:** A confirmed missing follow intentionally clears the device token and can start recovery automatically. Mixing that response with a failed creation tests token recovery rather than the user's explicit retry.
+
+**How to apply:** Use consistent unavailable responses during an offline browser scenario, then restore connectivity before clicking retry. Confirm the same token works and name/alert controls become usable without a reload.

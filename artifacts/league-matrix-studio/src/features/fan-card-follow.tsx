@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetAthleteInviteFanFollowQueryKey,
   getGetNotificationConfigQueryKey,
@@ -48,6 +49,7 @@ export function FanCardFollow({
   inviteToken: string;
   surface?: 'card' | 'showcase';
 }) {
+  const queryClient = useQueryClient();
   const [following, setFollowing] = useState(() => storedFollow(inviteToken).following);
   const [followToken, setFollowToken] = useState(() => storedFollow(inviteToken).followToken);
   const [displayNameDraft, setDisplayNameDraft] = useState('');
@@ -124,6 +126,10 @@ export function FanCardFollow({
 
   async function saveServerFollow(token: string) {
     const created = await create.mutateAsync({ inviteToken, data: { followToken: token } });
+    queryClient.setQueryData(
+      [...getGetAthleteInviteFanFollowQueryKey(inviteToken), created.followToken],
+      created,
+    );
     saveLocal(true, created.followToken);
     setFollowSaved(true);
     setDisplayNameDraft(created.displayName ?? '');
