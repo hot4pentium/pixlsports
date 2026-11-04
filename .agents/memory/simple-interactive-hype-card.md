@@ -32,3 +32,9 @@ For the native iOS public HYPE Card and its shared browser page, let the athlete
 **Why:** The user requested full-bleed photo coverage and integrated section tabs, rejected flips through Front between other sections, and explicitly approved matching the shared browser card to the iPhone design.
 
 **How to apply:** Keep the native and shared browser card interaction consistent. Shared links must still work without installing the app. Keep owner sharing/privacy settings authoritative and retain web follow, Shoutouts, and private-family Live Taps capabilities outside the main tabs.
+
+The owner's optional “Favorite moment” setting is a short personal highlight shown beneath the HYPE Card's Front as “A moment I’m proud of.” It is separate from game stats, Event Cards, and media; when blank, the panel is hidden.
+
+**Why:** The user asked twice what this field is for, indicating the label alone does not communicate its purpose.
+
+**How to apply:** Explain the visible result beside the field and give a short example. Do not present it as a required setup step or imply it changes stats or event data.
