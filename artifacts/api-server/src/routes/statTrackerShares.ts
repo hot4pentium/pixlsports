@@ -10,7 +10,11 @@ import {
   UpdateStatTrackerShareResponse,
 } from "@workspace/api-zod";
 import { athleteInvitesTable, db, statTrackerSharesTable } from "@workspace/db";
-import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import {
+  getRequiredClerkUserId,
+  requireAuth,
+  requireAuthOrNativeOwner,
+} from "../middlewares/requireAuth";
 import { isAccountActive } from "../lib/accountLifecycle";
 
 const router: IRouter = Router();
@@ -257,7 +261,7 @@ router.get("/stat-tracker-shares", requireAuth, async (req, res): Promise<void> 
   }
 });
 
-router.post("/stat-tracker-shares", requireAuth, async (req, res): Promise<void> => {
+router.post("/stat-tracker-shares", requireAuthOrNativeOwner, async (req, res): Promise<void> => {
   const parsed = CreateStatTrackerShareBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

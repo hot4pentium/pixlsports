@@ -1,7 +1,12 @@
 import { getAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
+import { and, eq } from "drizzle-orm";
+import { db, nativeAccountLinksTable } from "@workspace/db";
 import { getAccountLifecycleSnapshot } from "../lib/accountLifecycle";
 import { getAthleteEditorAccessForUser } from "../lib/athleteEditorAccess";
+import { assertLinkableWebAccount, limitNativeLinkAction } from "../lib/nativeAccountLink";
+import { assertNativeNotDeleting } from "../lib/nativeAccountDeletion";
+import { NativeLinkError, verifyNativeIdentity, type NativeIdentity } from "../lib/nativeIdentity";
 
 export type AuthenticatedRequest = Parameters<RequestHandler>[0] & {
   clerkUserId: string;
@@ -88,8 +93,72 @@ function activeAccountGuard(allowAthleteEditor: boolean): RequestHandler {
   };
 }
 
-export const requireAuth: RequestHandler = activeAccountGuard(false);
+const requireWebAccount: RequestHandler = activeAccountGuard(false);
+export const requireAuth: RequestHandler = requireWebAccount;
 export const requireProjectEditorAuth: RequestHandler = activeAccountGuard(true);
+
+type NativeOwnerAuthDependencies = {
+  verify: (token: string) => Promise<NativeIdentity>;
+  findLinkedOwner: (identity: NativeIdentity) => Promise<string | null>;
+  assertOwnerEligible: (ownerId: string) => Promise<void>;
+  assertNotDeleting: (identity: NativeIdentity) => Promise<void>;
+  rateLimit: (identity: NativeIdentity) => Promise<void>;
+};
+
+export function createRequireAuthOrNativeOwner(
+  dependencies: NativeOwnerAuthDependencies,
+): RequestHandler {
+  return async (req, res, next): Promise<void> => {
+    if (authenticatedUserId(req)) {
+      requireWebAccount(req, res, next);
+      return;
+    }
+
+    const authorization = req.get("authorization") ?? "";
+    if (!authorization.startsWith("Bearer ") || authorization.length > 12000) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    try {
+      const identity = await dependencies.verify(authorization.slice(7));
+      await dependencies.rateLimit(identity);
+      await dependencies.assertNotDeleting(identity);
+      const ownerId = await dependencies.findLinkedOwner(identity);
+      if (!ownerId) {
+        res.status(409).json({ error: "Connect your PIXL account before starting Live Taps." });
+        return;
+      }
+      await dependencies.assertOwnerEligible(ownerId);
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Referrer-Policy", "no-referrer");
+      res.locals.clerkUserId = ownerId;
+      next();
+    } catch (error) {
+      if (error instanceof NativeLinkError) {
+        res.status(error.status).json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  };
+}
+
+export const requireAuthOrNativeOwner = createRequireAuthOrNativeOwner({
+  verify: verifyNativeIdentity,
+  findLinkedOwner: async (identity) => {
+    const [link] = await db.select({
+      ownerClerkUserId: nativeAccountLinksTable.ownerClerkUserId,
+    }).from(nativeAccountLinksTable).where(and(
+      eq(nativeAccountLinksTable.nativeIssuer, identity.issuer),
+      eq(nativeAccountLinksTable.nativeSubject, identity.subject),
+    )).limit(1);
+    return link?.ownerClerkUserId ?? null;
+  },
+  assertOwnerEligible: async (ownerId) => assertLinkableWebAccount(ownerId),
+  assertNotDeleting: assertNativeNotDeleting,
+  rateLimit: (identity) => limitNativeLinkAction(JSON.stringify(identity), "native-request", 300),
+});
 
 export function getRequiredClerkUserId(res: { locals: Record<string, unknown> }): string {
   const userId = res.locals.clerkUserId;

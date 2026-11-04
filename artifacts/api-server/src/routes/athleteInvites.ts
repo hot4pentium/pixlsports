@@ -52,7 +52,12 @@ import { getAthleteLiveTapsSummary } from "../lib/athleteLiveTaps";
 import { athletePhotoRevision } from "../lib/athletePhotoRevision";
 import { sanitizeAthleteInvitePhoto } from "../lib/athleteInvitePhoto";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import {
+  getOptionalClerkUserId,
+  getRequiredClerkUserId,
+  requireAuth,
+  requireAuthOrNativeOwner,
+} from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 import { GAME_ON_CARD_MARKER } from "../lib/gameOnCard";
 import {
@@ -804,7 +809,7 @@ router.delete("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pr
   res.status(204).send(StopAthleteInviteLiveResponse.parse(undefined));
 });
 
-router.post("/athlete-invites/:inviteToken/live", requireAuth, async (req, res): Promise<void> => {
+router.post("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, async (req, res): Promise<void> => {
   const params = StartAthleteInviteLiveParams.safeParse(req.params);
   const bodyWasProvided = req.body !== undefined;
   const parsedBody = bodyWasProvided ? StartAthleteInviteLiveBody.safeParse(req.body) : null;
