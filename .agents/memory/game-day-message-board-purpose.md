@@ -23,7 +23,7 @@ On the Share step, keep a compact “Share event details” action below the her
 
 Opened native Event Cards should use compact, organized details with Prep, Track Stats, and Share step buttons at the bottom. Each opens its native section, the recommended step is highlighted according to event timing, and the selected navigation step identifies the active tool. Do not add numbered step badges or repeat an event banner inside each tool.
 
-**Why:** The user requested less vertical detail layout and said the navigation already tells people which step is open; repeated event banners take space away from the task.
+**Why:** The user requested less vertical detail layout and said the navigation already tells people which step is open; repeated event banners take space away from the task. They confirmed that loading this navigation with each Event Card is a good flow for users.
 
 **How to apply:** Keep the step bar visible as details scroll and preserve readable larger-text layouts. Keep event information in the shared Event Details hero, not in repeated Prep, Track Stats, or Share banners. Distinguish recommendation changes from actual saved completion or game finalization.
 
