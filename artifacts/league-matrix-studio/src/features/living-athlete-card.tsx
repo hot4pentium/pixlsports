@@ -272,10 +272,18 @@ export function LivingAthleteCardPage({
       setPhotoLoadResult({ url: photoUrl, loaded });
       setBrokenPhoto(!loaded);
     };
-    image.onload = () => settle(true);
+    const preparePhoto = () => {
+      if (typeof image.decode === 'function') {
+        void image.decode().then(() => settle(true), () => settle(image.naturalWidth > 0));
+      } else settle(true);
+    };
+    image.onload = preparePhoto;
     image.onerror = () => settle(false);
     image.src = photoUrl;
-    if (image.complete) settle(image.naturalWidth > 0);
+    if (image.complete) {
+      if (image.naturalWidth > 0) preparePhoto();
+      else settle(false);
+    }
     else timeout = window.setTimeout(() => settle(false), 8_000);
     return () => {
       active = false;

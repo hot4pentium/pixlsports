@@ -4,13 +4,22 @@
   min-height: 100svh;
   width: 100%;
   display: grid;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 28px;
   padding: 24px 18px;
   overflow: hidden;
-  background: #edf2f8;
+  background: #fff;
   color: #526981;
   font-family: system-ui, sans-serif;
   text-align: center;
+}
+
+.shared-hype-card-loading__logo {
+  display: block;
+  width: min(280px, 75vw);
+  height: auto;
+  object-fit: contain;
 }
 
 .shared-hype-card-loading > p {

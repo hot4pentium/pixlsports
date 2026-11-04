@@ -85,8 +85,8 @@
         min-height: 100vh;
         min-height: 100svh;
         place-items: center;
-        padding: 20px 16px;
-        background: #edf2f8;
+        padding: 24px 18px;
+        background: #fff;
         color: #102b4d;
       }
       html[data-pixl-public-card-entry="true"] #app-boot-fallback > :not(#app-boot-public-card) {
@@ -94,15 +94,21 @@
       }
       html[data-pixl-public-card-entry="true"] #app-boot-public-card {
         box-sizing: border-box;
-        width: min(100%, 350px);
-        min-height: calc(100vh - 40px);
-        min-height: calc(100svh - 40px);
+        width: 100%;
+        min-height: calc(100vh - 48px);
+        min-height: calc(100svh - 48px);
         display: grid;
         align-content: center;
         justify-items: center;
-        gap: 18px;
+        gap: 28px;
         text-align: center;
         font-family: system-ui, sans-serif;
+      }
+      .boot-public-card-logo {
+        display: block;
+        width: min(280px, 75vw);
+        height: auto;
+        object-fit: contain;
       }
       #app-boot-public-card-message {
         margin: 0;
@@ -373,6 +379,7 @@
     <div id="root">
       <div id="app-boot-fallback" aria-busy="true">
         <section id="app-boot-public-card" role="status" aria-label="Opening HYPE Card" aria-busy="true">
+          <img class="boot-public-card-logo" src="%BASE_URL%pixlsports-logo.png" alt="PIXL Sports" width="280" height="114" />
           <p id="app-boot-public-card-message">Opening HYPE Card…</p>
         </section>
         <section id="app-boot-returning" aria-live="polite">
