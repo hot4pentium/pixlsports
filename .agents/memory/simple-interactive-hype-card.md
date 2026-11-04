@@ -31,7 +31,7 @@ For the native iOS public HYPE Card and its shared browser page, let the athlete
 
 **Why:** The user requested full-bleed photo coverage and integrated section tabs, rejected flips through Front between other sections, and explicitly approved matching the shared browser card to the iPhone design.
 
-**How to apply:** Keep the native and shared browser card interaction consistent. Shared links must still work without installing the app. Keep owner sharing/privacy settings authoritative and retain web follow, Shoutouts, and private-family Live Taps capabilities outside the main tabs.
+**How to apply:** Keep the native and shared browser card content consistent. A shared link should open the native read-only card when PIXL is installed on iOS, while the same URL continues to show the browser card for recipients without the app. Do not require installation. Keep owner sharing/privacy settings authoritative and retain web follow, Shoutouts, and private-family Live Taps capabilities outside the main tabs.
 
 Do not show or edit Favorite Moment in HYPE Card experiences. Keep previously saved values and API support intact so unrelated settings updates do not erase them.
 
