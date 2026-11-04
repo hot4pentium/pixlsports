@@ -1,8 +1,7 @@
 import { ArrowRight, Check, Copy, ExternalLink, ShieldCheck, Zap } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useClerk, useUser } from '@clerk/react';
-import { useEffect, useState, type ReactNode } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, type ReactNode } from 'react';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { BrandLogo } from './brand-logo';
 import {
@@ -13,7 +12,6 @@ import {
   getGetAthleteEditorAccessQueryKey,
   getGetAthleteFanCardQueryKey,
   useGetAthleteFanCard,
-  useUpdateAthleteEditorFavoriteMoment,
   type OwnedAthleteInvite,
   type PublicAthleteFanCard,
 } from '@workspace/api-client-react';
@@ -253,7 +251,7 @@ export function AthleteShowcaseHome() {
         <section className="border border-border bg-card p-7" data-testid="card-editor-acceptance">
           <p className="text-xs font-bold uppercase tracking-widest text-primary">HYPE Card invitation</p>
           <h1 className="mt-4 font-display text-4xl uppercase">Edit {access.athleteName}’s HYPE Card</h1>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Accept to edit this card’s design and favorite-moment note. Your existing account and permissions will stay unchanged. The owner keeps control of publishing, privacy, sharing, and account settings.</p>
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Accept to customize this card’s design. Your existing account and permissions will stay unchanged. The owner keeps control of publishing, privacy, sharing, and account settings.</p>
           <button type="button" disabled={acceptInvitation.isPending} onClick={async () => {
             setAcceptError('');
             try {
@@ -292,11 +290,10 @@ export function AthleteShowcaseHome() {
     <AthleteStudioShell><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8" data-testid="athlete-showcase-home">
       <AthleteShowcaseBody profile={profile} projectId={access.projectId} inviteToken={access.inviteToken} existingAccount={access.existingAccount} />
       {access.existingAccount && <Link href="/studio" className="mt-4 inline-flex min-h-11 items-center text-sm font-bold underline">Back to my account</Link>}
-      <AthleteFavoriteMomentEditor inviteToken={access.inviteToken} initialValue={access.favoriteMoment} />
       <section className="mt-4 border border-border bg-primary/5 p-5 sm:p-7">
         <ShieldCheck className="h-5 w-5 text-primary" />
         <h2 className="mt-3 font-display text-2xl uppercase">A parent stays in control</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">You can edit your linked HYPE Card and add a favorite-moment note. Your parent or guardian controls the card’s visibility, publishing, privacy, and sharing.</p>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">You can customize your linked HYPE Card’s appearance. Your parent or guardian controls the card’s visibility, publishing, privacy, and sharing.</p>
       </section>
     </main></AthleteStudioShell>
   );
@@ -333,61 +330,6 @@ function AthleteShowcaseBody({ profile, projectId, inviteToken, existingAccount 
       cardEditHref={cardEditHref}
       cardPublicHref={!projectId ? `/fan/${encodeURIComponent(inviteToken)}` : undefined}
     />
-  );
-}
-
-function AthleteFavoriteMomentEditor({ inviteToken, initialValue }: {
-  inviteToken: string;
-  initialValue: string | null;
-}) {
-  const queryClient = useQueryClient();
-  const saveMoment = useUpdateAthleteEditorFavoriteMoment();
-  const [draft, setDraft] = useState(initialValue ?? '');
-  const [notice, setNotice] = useState('');
-  useEffect(() => setDraft(initialValue ?? ''), [initialValue]);
-
-  const save = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setNotice('');
-    try {
-      const saved = await saveMoment.mutateAsync({ data: { favoriteMoment: draft.trim() } });
-      setDraft(saved.favoriteMoment ?? '');
-      setNotice('Favorite moment saved.');
-      await queryClient.invalidateQueries({ queryKey: getGetAthleteEditorAccessQueryKey() });
-      await queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(inviteToken) });
-    } catch {
-      setNotice('Your favorite moment could not be saved. Try again.');
-    }
-  };
-
-  return (
-    <section className="mt-5 border border-border bg-card p-5 sm:p-7" aria-labelledby="favorite-moment-title" data-testid="athlete-favorite-moment-editor">
-      <div className="max-w-2xl">
-        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Your HYPE Card</p>
-        <h2 id="favorite-moment-title" className="mt-2 font-display text-3xl uppercase">Favorite moment</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Share one short moment you are proud of. Your parent or guardian controls whether the card is visible.</p>
-      </div>
-      <form onSubmit={(event) => void save(event)} className="mt-5 grid max-w-3xl gap-3">
-        <label htmlFor="favorite-moment-input" className="text-xs font-bold uppercase tracking-wider">Your note <span className="font-normal normal-case tracking-normal">(optional)</span></label>
-        <textarea
-          id="favorite-moment-input"
-          value={draft}
-          onChange={(event) => setDraft(event.currentTarget.value)}
-          maxLength={160}
-          rows={3}
-          placeholder="A moment from this season I’m proud of…"
-          className="min-h-24 resize-y border border-border bg-background px-3 py-3 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          data-testid="input-athlete-favorite-moment"
-        />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-xs text-muted-foreground" aria-live="polite" data-testid="text-favorite-moment-count">{draft.length}/160 characters</span>
-          <button type="submit" disabled={saveMoment.isPending} className="inline-flex min-h-11 items-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60" data-testid="button-save-athlete-favorite-moment">
-            {saveMoment.isPending ? 'Saving…' : 'Save note'}
-          </button>
-        </div>
-        {notice && <p role="status" className="text-sm" data-testid="status-athlete-favorite-moment">{notice}</p>}
-      </form>
-    </section>
   );
 }
 

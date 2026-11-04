@@ -826,8 +826,6 @@ export function LivingAthleteCardPage({
                 )}
               </>
   );
-  const favoriteMoment = invite.favoriteMoment?.trim() ?? '';
-
   return (
     <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
       <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`}>
@@ -906,12 +904,6 @@ export function LivingAthleteCardPage({
                 onSelectSide={selectSide}
               />
             </div>
-            {side === 'front' && !flip.busy && favoriteMoment && (
-              <aside className="living-card-favorite-moment lc-native-moment" aria-label="Athlete favorite moment" data-testid="living-card-favorite-moment">
-                <p className="living-card-favorite-moment-label">A moment I’m proud of</p>
-                <p className="living-card-favorite-moment-copy">{favoriteMoment}</p>
-              </aside>
-            )}
             <LivingCardSecondarySides side={side} liveTapsActive={invite.liveTaps.active} onSelectSide={selectSide} />
 
             {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">

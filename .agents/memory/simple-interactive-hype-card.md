@@ -33,8 +33,8 @@ For the native iOS public HYPE Card and its shared browser page, let the athlete
 
 **How to apply:** Keep the native and shared browser card interaction consistent. Shared links must still work without installing the app. Keep owner sharing/privacy settings authoritative and retain web follow, Shoutouts, and private-family Live Taps capabilities outside the main tabs.
 
-The owner's optional “Favorite moment” setting is a short personal highlight shown beneath the HYPE Card's Front as “A moment I’m proud of.” It is separate from game stats, Event Cards, and media; when blank, the panel is hidden.
+Do not show or edit Favorite Moment in HYPE Card experiences. Keep previously saved values and API support intact so unrelated settings updates do not erase them.
 
-**Why:** The user asked twice what this field is for, indicating the label alone does not communicate its purpose.
+**Why:** The user asked to remove Favorite Moment completely. Previously saved values should remain untouched rather than being deleted as a side effect.
 
-**How to apply:** Explain the visible result beside the field and give a short example. Do not present it as a required setup step or imply it changes stats or event data.
+**How to apply:** Keep the field and caption off native iOS and web HYPE Card screens, and preserve legacy settings values through reads and unrelated saves. This does not affect game-result notes.

@@ -101,8 +101,8 @@ import {AthleteEditorInvitationPanel} from './src/features/athlete-invite';
 import {SupporterHypeCardPreview} from './src/features/supporter-hype-card-preview';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
- const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:null,events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,favoriteMoment:null,patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
+ const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:'Legacy saved moment',events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,favoriteMoment:'Legacy saved moment',patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = []; window.__momentSaves = [];
@@ -479,7 +479,7 @@ test('Showcase responsive geometry remains usable at 200% text', { timeout: 120_
   }
 });
 
-test('Showcase keeps the HYPE Card central and the athlete moment parent-controlled', { timeout: 120_000 }, async () => {
+test('Showcase keeps the HYPE Card central without a Favorite Moment field', { timeout: 120_000 }, async () => {
   const suffix = `showcase-card-only-${process.pid}`;
   const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
   const htmlPath = resolve(appDirectory, `${suffix}.html`);
@@ -513,7 +513,8 @@ test('Showcase keeps the HYPE Card central and the athlete moment parent-control
     await browser.send('Network.enable');
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?mode=athlete-home` });
-    await browser.wait(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`);
+    await browser.wait(`document.querySelector('[data-testid="athlete-showcase-home"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`), null);
     await browser.evaluate(`window.__update({editorAccessStatus:'pending',existingAccount:true})`);
     await browser.wait(`document.querySelector('[data-testid="card-editor-acceptance"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`), null, 'an existing account cannot edit before accepting');
@@ -522,24 +523,17 @@ test('Showcase keeps the HYPE Card central and the athlete moment parent-control
     await browser.wait(`document.querySelector('[role="alert"]')?.textContent.includes('could not be accepted')`);
     await browser.evaluate(`window.__update({rejectAcceptance:false})`);
     await browser.evaluate(`document.querySelector('[data-testid="button-accept-card-invitation"]').click()`);
-    await browser.wait(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`);
+    await browser.wait(`document.querySelector('a[href="${base}/card-editor/design"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`), null);
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('a[href="${base}/card-editor/design"]'))`), 'accepted accounts open the scoped design route rather than their owner Showcase');
     assert.ok(await browser.evaluate(`document.body.textContent.includes('Back to my account')`));
-    await browser.evaluate(`window.__update({existingAccount:false})`);
-    const note = 'x'.repeat(161);
-    await browser.evaluate(`document.querySelector('[data-testid="input-athlete-favorite-moment"]').focus()`);
-    await browser.send('Input.insertText', { text: note });
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-athlete-favorite-moment"]').value.length`), 160, 'the browser prevents notes longer than 160 characters');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-favorite-moment-count"]').textContent`), '160/160 characters');
-    await browser.evaluate(`document.querySelector('[data-testid="button-save-athlete-favorite-moment"]').click()`);
-    await browser.wait(`window.__momentSaves.length===1`);
-    assert.equal(await browser.evaluate(`window.__momentSaves[0].favoriteMoment.length`), 160, 'the save request contains only the allowed length');
-    await browser.wait(`document.querySelector('[data-testid="status-athlete-favorite-moment"]')?.textContent==='Favorite moment saved.'`);
 
     await browser.evaluate(`window.__update({mode:'public-showcase'})`);
     await browser.evaluate(`Array.from(document.querySelectorAll('button')).find(button => /events/i.test(button.getAttribute('aria-label') ?? button.textContent ?? ''))?.click()`);
-    await browser.wait(`document.querySelector('[data-testid="living-card-favorite-moment"] .living-card-favorite-moment-copy')`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="living-card-favorite-moment"] .living-card-favorite-moment-copy').textContent`), 'x'.repeat(160));
+    await browser.wait(`document.querySelector('[data-testid="living-card-flip-container"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="living-card-favorite-moment"]')`), null);
+    assert.equal(await browser.evaluate(`document.body.textContent.includes('Legacy saved moment')`), false, 'previously saved text is not displayed');
+    assert.equal(await browser.evaluate(`window.__momentSaves.length`), 0, 'removing the field does not delete or rewrite saved values');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="section-public-showcase-gear"]')`), null);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="figure-public-showcase-jersey"]')`), null);
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid^="card-living-event-"]').length`), 1, 'Event Cards remain inside the interactive HYPE Card');

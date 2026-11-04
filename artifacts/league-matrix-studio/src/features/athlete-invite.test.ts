@@ -19,6 +19,12 @@ const supporterDashboardSource = readFileSync(new URL('./supporter-dashboard.tsx
 const showcaseSource = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
 const livingControlsSource = readFileSync(new URL('./living-card-controls.tsx', import.meta.url), 'utf8');
 
+test('Retired Favorite Moment text is absent from HYPE Card interfaces', () => {
+  assert.doesNotMatch(source, /favorite.?moment|AthleteFavoriteMomentEditor/i);
+  assert.doesNotMatch(showcaseSource, /favorite.?moment|AthleteFavoriteMomentEditor/i);
+  assert.doesNotMatch(livingCardSource, /favorite.?moment|living-card-favorite-moment/i);
+});
+
 // Execute the actual identity declarations/effect without importing Vite assets,
 // Clerk, or the page's unrelated UI. AST selection ignores whitespace/formatting.
 const livingCardAst = ts.createSourceFile('living-athlete-card.tsx', livingCardSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -187,7 +193,11 @@ test('new fan Shoutouts require public disclosure while older private responses 
 test('real Hype Card uses shared side controls below the card and retains private actions', () => {
   assert.match(livingCardSource, /import \{ LivingCardControls,[^}]*\} from '\.\/living-card-controls'/);
   assert.doesNotMatch(livingCardSource, /controlsBelowCard/);
-  assert.match(livingCardSource, /className="lc-native-shell"[\s\S]*?<LivingCardControls[\s\S]*?<\/div>\s*\{side === 'front'/);
+  const cardShell = livingCardSource.indexOf('className="lc-native-shell"');
+  const cardFace = livingCardSource.indexOf('<NativeHypeCardFront', cardShell);
+  const sideControls = livingCardSource.indexOf('<LivingCardControls', cardShell);
+  const secondarySides = livingCardSource.indexOf('<LivingCardSecondarySides', sideControls);
+  assert.ok(cardShell >= 0 && cardShell < cardFace && cardFace < sideControls && sideControls < secondarySides, 'the shared card controls stay below the card face');
   assert.match(livingControlsSource, /data-testid=\{`button-living-card-\$\{tab\}`\}/);
   assert.match(livingControlsSource, /data-testid=\{`button-living-card-\$\{item\.id\}`\}/);
   assert.match(livingControlsSource, /id: 'responses'[\s\S]*id: 'live-taps'/);

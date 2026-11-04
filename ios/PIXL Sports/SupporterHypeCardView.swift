@@ -234,7 +234,6 @@ struct SupporterHypeCardView: View {
                 athleteName: privateCard.athleteName,
                 teamName: privateCard.teamName,
                 seasonName: privateCard.seasonName,
-                favoriteMoment: privateCard.favoriteMoment,
                 photoURL: nil,
                 privatePhoto: privatePhoto
             )
@@ -428,11 +427,6 @@ struct SupporterHypeCardView: View {
             .accessibilityValue(selectedSide.rawValue)
             .accessibilityIdentifier("native-hype-card-flip-container")
 
-            if selectedSide == .front,
-               let moment = card.favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !moment.isEmpty {
-                favoriteMomentPanel(moment)
-            }
         }
         .onChange(of: availableSides) { _, sides in
             let transitionTargetUnavailable = backSideTransition.map { !sides.contains($0.to) } ?? false
@@ -615,18 +609,6 @@ struct SupporterHypeCardView: View {
                 .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
 
-            VStack(alignment: .leading, spacing: 12) {
-                TextField("Favorite moment", text: favoriteMomentBinding)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel("Favorite moment")
-                    .accessibilityIdentifier("native-hype-card-favorite-moment")
-                    .disabled(!canEditSettingsDraft)
-                Text("\(draftFavoriteMoment.count) / 160")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(SupporterHomeColors.muted)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-
             Toggle("Show HYPE Card", isOn: showHypeCardBinding)
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-public")
@@ -771,8 +753,7 @@ struct SupporterHypeCardView: View {
         let card = value.showHypeCard ? (value.paused ? "paused" : "on") : "off"
         let stats = value.showStats ? "shared" : "not shared"
         let events = value.showEvents ? "shared" : "not shared"
-        let moment = value.favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return "PIXL version: Card \(card), stats \(stats), Event Cards \(events), favorite moment \(moment.isEmpty ? "not set" : moment)."
+        return "PIXL version: Card \(card), stats \(stats), Event Cards \(events)."
     }
 
     private var publicationDescription: String {
@@ -814,16 +795,6 @@ struct SupporterHypeCardView: View {
             && settingsAccountSubject == clerk?.user?.id
             && settings?.revision?.isEmpty == false
             && !isSaving && !isCheckingSettings && !settingsStatusUnknown
-    }
-
-    private var favoriteMomentBinding: Binding<String> {
-        Binding(
-            get: { draftFavoriteMoment },
-            set: {
-                draftFavoriteMoment = String($0.prefix(160))
-                persistSettingsDraft()
-            }
-        )
     }
 
     private var showHypeCardBinding: Binding<Bool> {
@@ -1414,7 +1385,6 @@ struct SupporterHypeCardView: View {
         athleteName: String,
         teamName: String,
         seasonName: String,
-        favoriteMoment: String?,
         photoURL: URL?,
         privatePhoto: UIImage?
     ) -> some View {
@@ -1429,25 +1399,7 @@ struct SupporterHypeCardView: View {
             .accessibilityLabel("\(athleteName), \(teamName), \(seasonName), HYPE Card")
             .accessibilityIdentifier("native-hype-card")
 
-            if let favoriteMoment = favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !favoriteMoment.isEmpty {
-                favoriteMomentPanel(favoriteMoment)
-            }
         }
-    }
-
-    private func favoriteMomentPanel(_ favoriteMoment: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SupporterEyebrow(text: "Favorite moment", color: SupporterHomeColors.muted)
-            Text(favoriteMoment)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 18))
-        .supporterSurfaceShadow()
     }
 
     private var athleteSilhouette: some View {

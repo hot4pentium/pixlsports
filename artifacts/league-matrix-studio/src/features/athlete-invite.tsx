@@ -479,7 +479,7 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Design access only</p>
           <h2 id="athlete-editor-invitation-title" className="mt-2 font-display text-3xl uppercase">Invite athlete to edit</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Parents remain in control of the athlete page, visibility, publishing, privacy, and sharing. The athlete can edit only the linked HYPE Card design and add a favorite-moment note.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Parents remain in control of the athlete page, visibility, publishing, privacy, and sharing. The athlete can edit only the linked HYPE Card design.</p>
         </div>
         {inviteToken && (
           <span className={`inline-flex w-fit items-center gap-2 border px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${invitation?.status === 'active' ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}`}>
@@ -497,7 +497,7 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       ) : (
         <div className="mt-5">
           <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            New invitations connect to the HYPE Card already shown in the Showcase. You can invite a new or existing Pixl Sports account. Existing accounts must accept the invitation and keep their own account permissions. The recipient can edit this card’s design and add one short favorite-moment note; page settings and sharing stay with you.
+            New invitations connect to the HYPE Card already shown in the Showcase. You can invite a new or existing Pixl Sports account. Existing accounts must accept the invitation and keep their own account permissions. The recipient can edit this card’s design; page settings and sharing stay with you.
           </p>
           {invitationQuery.isError && (
             <p className="mb-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2 text-sm" role="alert">
