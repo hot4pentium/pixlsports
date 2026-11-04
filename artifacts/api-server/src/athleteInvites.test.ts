@@ -12,6 +12,7 @@ import {
   cloudProjectsTable,
   db,
   hypeCardSharesTable,
+  scheduleSharesTable,
   statTrackerSharesTable,
 } from "@workspace/db";
 import {
@@ -25,6 +26,7 @@ import {
 import athleteInvitesRouter from "./routes/athleteInvites";
 import athleteLiveTapsRouter from "./routes/athleteLiveTaps";
 import statTrackerSharesRouter from "./routes/statTrackerShares";
+import { GAME_ON_CARD_MARKER } from "./lib/gameOnCard";
 import { getLiveTapCheerPresets } from "./lib/athleteLiveTaps";
 
 test("every supported sport offers the three shared Live Taps cheers", () => {
@@ -1425,6 +1427,168 @@ test("an existing Hype Page finds its first finalized tracker project after the 
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+  }
+});
+
+test("native Live Taps joins same-card stat tracking without creating a separate game", async () => {
+  const ownerId = `native-live-taps-${randomUUID()}`;
+  const eventId = randomUUID();
+  const otherEventId = randomUUID();
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteInvitesRouter);
+  app.use("/api", athleteLiveTapsRouter);
+  const server = app.listen(0);
+  const nativeGame = {
+    id: `tracker-game-${randomUUID()}`,
+    sourceEventId: eventId,
+    sport: "soccer",
+    status: "live",
+    date: dateKey(0),
+    opponent: "Bears",
+    period: 2,
+    soccerPeriodFormat: "halves",
+    score: 2,
+    opponentScore: 1,
+    stats: { goals: 2 },
+    athleteStats: { goals: 1 },
+    trackYards: false,
+    yardStats: {},
+    events: [],
+  };
+
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
+    const [tracker] = await db.insert(cloudProjectsTable).values({
+      ownerClerkUserId: ownerId,
+      name: "Native Event tracker",
+      project: { tool: "stat-tracker", games: [nativeGame] },
+    }).returning();
+    await db.insert(scheduleSharesTable).values({
+      ownerClerkUserId: ownerId,
+      title: "Tigers events",
+      teamSeason: GAME_ON_CARD_MARKER,
+      events: [
+        { id: eventId, type: "game", status: "live", date: dateKey(0), opponent: "Bears" },
+        { id: otherEventId, type: "game", status: "upcoming", date: dateKey(2), opponent: "Warriors" },
+      ],
+    });
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const create = await fetch(`${baseUrl}/api/athlete-invites`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "Tigers",
+        seasonName: "Fall 2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "soccer",
+        timezone: "America/New_York",
+        trackerProjectId: tracker!.id,
+        scheduleProjectId: null,
+        showHypeCard: false,
+        showStats: true,
+        showSchedule: false,
+        paused: false,
+      }),
+    });
+    assert.equal(create.status, 201);
+    const created = await create.json() as { inviteToken: string };
+    const publicUrl = `${baseUrl}/api/athlete-invites/${created.inviteToken}`;
+    const liveUrl = `${publicUrl}/live`;
+
+    const start = await fetch(liveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({ eventId }),
+    });
+    assert.equal(start.status, 201);
+    const session = StartAthleteInviteLiveResponse.parse(await start.json());
+    assert.equal(session.gameId, nativeGame.id);
+    const [sharedGame] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, session.shareToken));
+    const sharedSnapshot = sharedGame!.game as Record<string, unknown>;
+    assert.equal(sharedSnapshot.sourceEventId, eventId);
+    assert.notEqual(sharedSnapshot.liveTapsOnly, true);
+    assert.deepEqual(sharedSnapshot.stats, { goals: 2 });
+    assert.equal(sharedSnapshot.score, 2);
+
+    const access = await fetch(`${publicUrl}/live-taps/access-links`, {
+      method: "POST",
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(access.status, 201);
+    const familyLink = CreateAthleteInviteLiveTapAccessLinkResponse.parse(await access.json());
+    const tap = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "goal", accessToken: familyLink.accessToken }),
+    });
+    assert.equal(tap.status, 201);
+    const tapSummary = SendAthleteLiveTapResponse.parse(await tap.json());
+    assert.equal(tapSummary.gameId, nativeGame.id);
+    assert.equal(tapSummary.cheers.find((cheer) => cheer.key === "goal")?.count, 1);
+
+    const conflict = await fetch(liveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({ eventId: otherEventId }),
+    });
+    assert.equal(conflict.status, 409);
+    const sharesBeforeStop = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+    assert.equal(sharesBeforeStop.length, 1, "a rejected different Event Card creates no orphan share");
+    const [unchangedShare] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, session.shareToken));
+    assert.deepEqual((unchangedShare!.game as Record<string, unknown>).stats, { goals: 2 });
+    assert.equal((unchangedShare!.game as Record<string, unknown>).score, 2);
+
+    const stopped = await fetch(liveUrl, {
+      method: "DELETE",
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(stopped.status, 204);
+    await db.update(cloudProjectsTable).set({
+      project: { tool: "stat-tracker", games: [{ ...nativeGame, status: "final" }] },
+    }).where(eq(cloudProjectsTable.id, tracker!.id));
+
+    const cheerOnlyStart = await fetch(liveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({ eventId: otherEventId, soccerPeriodFormat: "quarters" }),
+    });
+    assert.equal(cheerOnlyStart.status, 201);
+    const cheerOnlySession = StartAthleteInviteLiveResponse.parse(await cheerOnlyStart.json());
+    assert.notEqual(cheerOnlySession.gameId, nativeGame.id);
+    const [cheerOnlyShare] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
+    const cheerOnlyGame = cheerOnlyShare!.game as Record<string, unknown>;
+    assert.equal(cheerOnlyGame.sourceEventId, otherEventId);
+    assert.equal(cheerOnlyGame.liveTapsOnly, true);
+    assert.equal(cheerOnlyGame.soccerPeriodFormat, "quarters");
+    assert.deepEqual(cheerOnlyGame.stats, {});
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+    await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, ownerId));
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }

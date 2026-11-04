@@ -311,10 +311,12 @@ async function startNativeEventLive(
       }
     }
 
-    let [existingShare] = await tx.select().from(statTrackerSharesTable).where(and(
+    const existingShares = await tx.select().from(statTrackerSharesTable).where(and(
       eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
       eq(statTrackerSharesTable.gameId, String(game.id)),
     )).for("update");
+    let existingShare: typeof statTrackerSharesTable.$inferSelect | undefined =
+      existingShares[0] as typeof statTrackerSharesTable.$inferSelect | undefined;
     if (existingShare && existingShare.expiresAt <= now) {
       await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.id, existingShare.id));
       existingShare = undefined;

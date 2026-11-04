@@ -33,14 +33,14 @@ Every supported sport also includes the shared cheers “Thumbs Up,” “Way to
 
 **How to apply:** Keep them in the server-defined cheer presets so display, tally, and API validation stay consistent for every supported sport.
 
-When a supporter opens Stat Tracker from an Event Card, present separate paths for full stat tracking and Live Taps only, clearly stating that Live Taps does not record player stats.
+When a supporter opens Stat Tracker from an Event Card, keep a separate no-stats Live Taps path, clearly stating that it does not record player stats.
 
 **Why:** The user wants a clear no-stats choice at the Event Card's Stat Tracker button for days when supporters prefer cheers over tracking.
 
 **How to apply:** Keep both choices tied to the same event. Live Taps continues to use private, revocable family QR access and must not write cheers into official stats.
 
-Keep the presence of an active tracker separate from its mode. An active stats game is not a Live-Taps-only game; do not label it cheer-only or start a second cheer-only session over it.
+Allow Live Taps to run alongside stats tracking on the same Event Card. Keep cheer tallies separate from official stats, and do not create a second game or share for that event.
 
-**Why:** The user needs a real no-stats option, and replacing an already-running Event Card session could disrupt game data.
+**Why:** The user chose to let fans cheer while the owner tracks stats, with the cheers kept separate.
 
-**How to apply:** Return a distinct `liveTapsOnly` state alongside `liveTapsActive`. Only offer the cheer-only QR flow for an active cheer-only session; if stats are active, explain that the stats game must finish before starting a separate session.
+**How to apply:** Attach the fan access session to the active stats game for that Event Card. Keep the no-stats path when no stats game is active, and reject a different active event without creating an orphan share.
