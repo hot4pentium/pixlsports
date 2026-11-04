@@ -5012,10 +5012,16 @@ components:
         gameId: { type: string }
         expiresAt: { type: string, format: date-time }
     AthleteInviteLiveStartInput:
-      type: object
-      required: [shareToken]
-      properties:
-        shareToken: { type: string, format: uuid }
+      oneOf:
+        - type: object
+          required: [shareToken]
+          properties:
+            shareToken: { type: string, format: uuid }
+        - type: object
+          required: [eventId]
+          properties:
+            eventId: { type: string, minLength: 1, maxLength: 120 }
+            soccerPeriodFormat: { type: string, enum: [halves, quarters] }
     AthleteInviteLiveSessionPublic:
       allOf:
         - $ref: "#/components/schemas/AthleteInviteLiveSession"

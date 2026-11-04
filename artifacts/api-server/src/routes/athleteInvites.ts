@@ -185,6 +185,180 @@ function cleanLiveGame(payload: unknown, fallbackId: string) {
   };
 }
 
+type NativeEventLiveStartResult =
+  | { share: typeof statTrackerSharesTable.$inferSelect; notify: boolean }
+  | { status: number; error: string };
+
+async function startNativeEventLive(
+  invite: InviteRow,
+  ownerClerkUserId: string,
+  eventId: string,
+  soccerPeriodFormat?: "halves" | "quarters",
+): Promise<NativeEventLiveStartResult> {
+  return db.transaction(async (tx) => {
+    const [currentInvite] = await tx.select().from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.id, invite.id)).for("update");
+    if (!currentInvite || currentInvite.paused) {
+      return { status: 404, error: "Athlete HYPE Card not found." };
+    }
+
+    const scheduleRows = await tx.select({ events: scheduleSharesTable.events })
+      .from(scheduleSharesTable)
+      .where(and(
+        eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
+        eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER),
+      ));
+    const scheduledEvent = scheduleRows
+      .flatMap(({ events }) => Array.isArray(events) ? events : [])
+      .find((event) => event && typeof event === "object"
+        && !Array.isArray(event) && (event as { id?: unknown }).id === eventId) as
+        | Record<string, unknown>
+        | undefined;
+    if (!scheduledEvent || scheduledEvent.type !== "game") {
+      return { status: 404, error: "This Event Card is not available for Live Taps." };
+    }
+
+    const projects = await tx.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId))
+      .orderBy(desc(cloudProjectsTable.updatedAt))
+      .for("update");
+    const activeGames = projects.flatMap((project) => {
+      const payload = project.project && typeof project.project === "object" && !Array.isArray(project.project)
+        ? project.project as { tool?: unknown; games?: unknown }
+        : null;
+      if (payload?.tool !== "stat-tracker" || !Array.isArray(payload.games)) return [];
+      return payload.games.filter((game): game is Record<string, unknown> => (
+        Boolean(game)
+        && typeof game === "object"
+        && !Array.isArray(game)
+        && (game.status === "live" || game.status === "paused")
+      ));
+    });
+    const matchesEvent = (game: Record<string, unknown>) => (
+      game.sourceEventId === eventId || game.id === eventId
+    );
+    const nativeGame = activeGames.find(matchesEvent);
+    if (activeGames.some((game) => !matchesEvent(game))) {
+      return { status: 409, error: "Finish the other active game before starting Live Taps for this Event Card." };
+    }
+
+    let game: Record<string, unknown>;
+    if (nativeGame) {
+      if (nativeGame.sport !== currentInvite.sport) {
+        return { status: 409, error: "This game’s sport does not match the athlete’s HYPE Card." };
+      }
+      const cleaned = cleanLiveGame(nativeGame, "live-game");
+      if (!cleaned) return { status: 409, error: "The active stats game is unavailable." };
+      game = {
+        ...cleaned,
+        sourceEventId: eventId,
+        ...(nativeGame.liveTapsOnly === true ? { liveTapsOnly: true } : {}),
+        ...(nativeGame.soccerPeriodFormat === "halves" || nativeGame.soccerPeriodFormat === "quarters"
+          ? { soccerPeriodFormat: nativeGame.soccerPeriodFormat }
+          : {}),
+        ...(nativeGame.opponentStats && typeof nativeGame.opponentStats === "object"
+          && !Array.isArray(nativeGame.opponentStats) ? { opponentStats: nativeGame.opponentStats } : {}),
+        ...(nativeGame.opponentYardStats && typeof nativeGame.opponentYardStats === "object"
+          && !Array.isArray(nativeGame.opponentYardStats) ? { opponentYardStats: nativeGame.opponentYardStats } : {}),
+        ...(nativeGame.scoreRecorded === true ? { scoreRecorded: true } : {}),
+        ...(nativeGame.outcome === "win" || nativeGame.outcome === "loss" || nativeGame.outcome === "tie"
+          ? { outcome: nativeGame.outcome } : {}),
+      };
+    } else {
+      game = {
+        id: `tracker-game-${randomUUID().toLowerCase()}`,
+        sourceEventId: eventId,
+        liveTapsOnly: true,
+        sport: currentInvite.sport,
+        status: "live",
+        date: typeof scheduledEvent.date === "string" ? scheduledEvent.date : "",
+        opponent: typeof scheduledEvent.opponent === "string" ? scheduledEvent.opponent : "",
+        period: 1,
+        ...(currentInvite.sport === "soccer" ? { soccerPeriodFormat: soccerPeriodFormat ?? "halves" } : {}),
+        score: 0,
+        opponentScore: 0,
+        possessionSide: currentInvite.sport === "football" ? "athlete" : undefined,
+        stats: {},
+        ...(currentInvite.sport === "football" ? { opponentStats: {} } : {}),
+        athleteStats: {},
+        athleteYardStats: {},
+        trackYards: currentInvite.sport === "football",
+        yardStats: {},
+        ...(currentInvite.sport === "football" ? { opponentYardStats: {} } : {}),
+        events: [],
+      };
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    let linkedShare: typeof statTrackerSharesTable.$inferSelect | undefined;
+    if (currentInvite.liveTrackerShareToken) {
+      const [candidate] = await tx.select().from(statTrackerSharesTable).where(and(
+        eq(statTrackerSharesTable.id, currentInvite.liveTrackerShareToken),
+        eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+        gt(statTrackerSharesTable.expiresAt, now),
+      )).for("update");
+      if (candidate) linkedShare = candidate;
+    }
+    const linkedGame = linkedShare?.game && typeof linkedShare.game === "object"
+      && !Array.isArray(linkedShare.game) ? linkedShare.game as Record<string, unknown> : null;
+    const linkedIsActive = linkedGame?.status === "live" && linkedGame.liveTapsEnded !== true;
+    if (linkedIsActive && linkedShare && linkedShare.gameId !== game.id) {
+      if (!nativeGame && linkedGame.sourceEventId === eventId) {
+        game = linkedGame;
+      } else {
+        return { status: 409, error: "Live Taps is already active for another game. Finish that game first." };
+      }
+    }
+
+    let [existingShare] = await tx.select().from(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+      eq(statTrackerSharesTable.gameId, String(game.id)),
+    )).for("update");
+    if (existingShare && existingShare.expiresAt <= now) {
+      await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.id, existingShare.id));
+      existingShare = undefined;
+    }
+
+    let share: typeof statTrackerSharesTable.$inferSelect | undefined;
+    if (existingShare) {
+      [share] = await tx.update(statTrackerSharesTable).set({
+        game,
+        expiresAt,
+        revision: sql`${statTrackerSharesTable.revision} + 1`,
+        updatedAt: now,
+      }).where(eq(statTrackerSharesTable.id, existingShare.id)).returning();
+    } else {
+      [share] = await tx.insert(statTrackerSharesTable).values({
+        ownerClerkUserId,
+        gameId: String(game.id),
+        athleteName: currentInvite.athleteName,
+        teamName: currentInvite.teamName,
+        game,
+        expiresAt,
+      }).onConflictDoNothing({
+        target: [statTrackerSharesTable.ownerClerkUserId, statTrackerSharesTable.gameId],
+      }).returning();
+      if (!share) {
+        [share] = await tx.select().from(statTrackerSharesTable).where(and(
+          eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+          eq(statTrackerSharesTable.gameId, String(game.id)),
+        )).for("update");
+      }
+    }
+    if (!share) return { status: 409, error: "Unable to start Live Taps for this Event Card." };
+
+    const notify = currentInvite.liveTrackerShareToken !== share.id || !linkedIsActive;
+    if (currentInvite.liveTrackerShareToken !== share.id) {
+      await tx.update(athleteInvitesTable).set({
+        liveTrackerShareToken: share.id,
+        updatedAt: now,
+      }).where(eq(athleteInvitesTable.id, currentInvite.id));
+    }
+    return { share, notify };
+  });
+}
+
 function cleanVideoLabel(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
@@ -831,9 +1005,32 @@ router.post("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, asyn
     res.status(404).json({ error: "Athlete Hype Page not found" });
     return;
   }
+  if (parsedBody?.success && "eventId" in parsedBody.data) {
+    const started = await startNativeEventLive(
+      invite,
+      ownerClerkUserId,
+      parsedBody.data.eventId,
+      parsedBody.data.soccerPeriodFormat,
+    );
+    if ("error" in started) {
+      res.status(started.status).json({ error: started.error });
+      return;
+    }
+    if (started.notify) {
+      void import("./athleteInviteFeatures").then(({ notifyStartedAthleteInviteLive }) => (
+        notifyStartedAthleteInviteLive(invite.id, started.share.id, started.share.gameId)
+      )).catch((error) => req.log.error({ err: error }, "Unable to dispatch Athlete Hype Page live alerts"));
+    }
+    res.status(201).json(StartAthleteInviteLiveResponse.parse({
+      shareToken: started.share.id,
+      gameId: started.share.gameId,
+      expiresAt: started.share.expiresAt,
+    }));
+    return;
+  }
   let game: ReturnType<typeof cleanLiveGame> = null;
   let share: typeof statTrackerSharesTable.$inferSelect | undefined;
-  if (parsedBody?.success) {
+  if (parsedBody?.success && "shareToken" in parsedBody.data) {
     const [linkedShare] = await db.select().from(statTrackerSharesTable).where(and(
       eq(statTrackerSharesTable.id, parsedBody.data.shareToken),
       eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),

@@ -4692,9 +4692,16 @@ export const StartAthleteInviteLiveParams = zod.object({
   "inviteToken": zod.coerce.string().regex(startAthleteInviteLivePathInviteTokenRegExp)
 })
 
-export const StartAthleteInviteLiveBody = zod.object({
+export const startAthleteInviteLiveBodyTwoEventIdMax = 120;
+
+
+
+export const StartAthleteInviteLiveBody = zod.union([zod.object({
   "shareToken": zod.string().uuid()
-})
+}),zod.object({
+  "eventId": zod.string().min(1).max(startAthleteInviteLiveBodyTwoEventIdMax),
+  "soccerPeriodFormat": zod.enum(['halves', 'quarters']).optional()
+})])
 
 export const StartAthleteInviteLiveResponse = zod.object({
   "shareToken": zod.string(),

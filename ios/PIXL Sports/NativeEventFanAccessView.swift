@@ -32,69 +32,10 @@ struct NativeEventFanAccessView: View {
         let createdAt: String
     }
     private struct LinkList: Decodable { let links: [AccessLink] }
-    private struct CreatedShare: Decodable { let shareToken: String }
     private struct StartedLiveSession: Decodable { let shareToken: String }
-    private struct StartLiveBody: Encodable { let shareToken: String }
-
-    private struct LiveTapsOnlyShareInput: Encodable {
-        let athleteName: String
-        let teamName: String
-        let game: Game
-    }
-
-    private struct Game: Encodable {
-        struct Play: Encodable {
-            let id: String
-            let statId: String
-            let createdAt: Date
-            let period: Int
-            let attribution: String
-            let yards: Int?
-        }
-
-        let id: String
-        let sourceEventId: String
-        let liveTapsOnly: Bool
-        let sport: String
-        let status: String
-        let date: String
-        let opponent: String
-        let period: Int
+    private struct StartLiveBody: Encodable {
+        let eventId: String
         let soccerPeriodFormat: String?
-        let score: Int
-        let opponentScore: Int
-        let possessionSide: String?
-        let stats: [String: Int]
-        let opponentStats: [String: Int]?
-        let athleteStats: [String: Int]
-        let athleteYardStats: [String: Int]
-        let trackYards: Bool
-        let yardStats: [String: Int]
-        let opponentYardStats: [String: Int]?
-        let events: [Play]
-
-        init(event: AthleteFanEvent, sport: String, soccerPeriodFormat: String?) {
-            id = "tracker-game-\(UUID().uuidString.lowercased())"
-            sourceEventId = event.eventId
-            liveTapsOnly = true
-            self.sport = sport
-            status = "live"
-            date = event.date
-            opponent = event.opponent
-            period = 1
-            self.soccerPeriodFormat = sport == "soccer" ? soccerPeriodFormat : nil
-            score = 0
-            opponentScore = 0
-            possessionSide = sport == "football" ? "athlete" : nil
-            stats = [:]
-            opponentStats = sport == "football" ? [:] : nil
-            athleteStats = [:]
-            athleteYardStats = [:]
-            trackYards = sport == "football"
-            yardStats = [:]
-            opponentYardStats = sport == "football" ? [:] : nil
-            events = []
-        }
     }
 
     var body: some View {
@@ -167,15 +108,10 @@ struct NativeEventFanAccessView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(busy || !event.liveTapsActive || !event.liveTapsOnly)
+                .disabled(busy || !event.liveTapsActive)
                 .accessibilityIdentifier("native-live-taps-create-qr")
                 if !event.liveTapsActive {
-                    Text("Start a Live Taps-only session for this Event Card before creating fan access.")
-                        .font(.caption)
-                        .foregroundStyle(SupporterHomeColors.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else if !event.liveTapsOnly {
-                    Text("Finish stat tracking before creating a separate Live Taps fan QR.")
+                    Text("Start Live Taps for this Event Card before creating fan access.")
                         .font(.caption)
                         .foregroundStyle(SupporterHomeColors.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -212,7 +148,7 @@ struct NativeEventFanAccessView: View {
             Label("Live Taps session", systemImage: "hands.clap")
                 .font(.headline)
                 .accessibilityIdentifier("native-live-taps-session-heading")
-            if event.liveTapsActive, event.liveTapsOnly,
+            if event.liveTapsActive,
                let inviteToken = event.liveTapsInviteToken,
                let sport = event.liveTapsSport {
                 SupporterLiveTapsView(
@@ -221,14 +157,9 @@ struct NativeEventFanAccessView: View {
                     embedded: true, suppliedAccessToken: grant?.accessToken
                 )
             } else if event.liveTapsActive {
-                Label(
-                    event.liveTapsOnly ? "Live Taps is active" : "Stat tracking is active",
-                    systemImage: event.liveTapsOnly ? "hands.clap.fill" : "chart.bar.fill"
-                )
+                Label("Live Taps is active", systemImage: "hands.clap.fill")
                     .font(.subheadline)
-                Text(event.liveTapsOnly
-                    ? "Refresh this Event Card to reopen the fan taps."
-                    : "Finish this stats game before starting a separate Live Taps-only session.")
+                Text("Refresh this Event Card to reopen the fan taps.")
                     .font(.caption)
                     .foregroundStyle(SupporterHomeColors.muted)
             } else if hasActiveLiveTapsElsewhere {
@@ -240,7 +171,7 @@ struct NativeEventFanAccessView: View {
             } else {
                 Label("No active Live Taps session for this Event Card.", systemImage: "pause.circle")
                     .font(.subheadline)
-                Text("Start a cheer-only session for fans at the game. It will not record player stats.")
+                Text("Fans can cheer while you track stats. Cheers stay separate from official stats.")
                     .font(.caption)
                     .foregroundStyle(SupporterHomeColors.muted)
                 if loadingHypeCard {
@@ -254,9 +185,9 @@ struct NativeEventFanAccessView: View {
                         .accessibilityIdentifier("native-live-taps-soccer-format")
                     }
                     Button {
-                        Task { await startLiveTapsOnly(sport: hypeCard.sport) }
+                        Task { await startLiveTaps(sport: hypeCard.sport) }
                     } label: {
-                        Label("Start Live Taps only", systemImage: "hands.clap")
+                        Label("Start Live Taps", systemImage: "hands.clap")
                             .frame(maxWidth: .infinity, minHeight: 46)
                     }
                     .buttonStyle(.borderedProminent)
@@ -267,7 +198,7 @@ struct NativeEventFanAccessView: View {
                         .font(.caption)
                         .foregroundStyle(SupporterHomeColors.muted)
                 }
-                if startingLiveTaps { ProgressView("Starting cheer-only Live Taps…") }
+                if startingLiveTaps { ProgressView("Starting Live Taps…") }
                 if let liveTapsStartError {
                     Text(liveTapsStartError).font(.subheadline).foregroundStyle(.orange)
                 }
@@ -348,7 +279,7 @@ struct NativeEventFanAccessView: View {
         }
     }
 
-    private func startLiveTapsOnly(sport: String) async {
+    private func startLiveTaps(sport: String) async {
         guard !startingLiveTaps, !event.liveTapsActive, !hasActiveLiveTapsElsewhere,
               let hypeCard, let inviteToken = hypeCard.inviteToken else { return }
         guard sport != "soccer" || soccerPeriodFormat != nil else { return }
@@ -357,23 +288,17 @@ struct NativeEventFanAccessView: View {
         defer { startingLiveTaps = false }
         do {
             let client = NativeAccountLinkClient()
-            let shareBody = LiveTapsOnlyShareInput(
-                athleteName: hypeCard.athleteName,
-                teamName: hypeCard.teamName,
-                game: Game(event: event, sport: sport, soccerPeriodFormat: soccerPeriodFormat)
-            )
-            let createdData = try await client.postData(
-                "stat-tracker-shares", body: shareBody, apiRoot: true, clerk: clerk
-            )
-            let created = try JSONDecoder().decode(CreatedShare.self, from: createdData)
             let startedData = try await client.postData(
                 "athlete-invites/\(inviteToken)/live",
-                body: StartLiveBody(shareToken: created.shareToken),
+                body: StartLiveBody(
+                    eventId: event.eventId,
+                    soccerPeriodFormat: sport == "soccer" ? soccerPeriodFormat : nil
+                ),
                 apiRoot: true,
                 clerk: clerk
             )
             let started = try JSONDecoder().decode(StartedLiveSession.self, from: startedData)
-            guard started.shareToken == created.shareToken else {
+            guard !started.shareToken.isEmpty else {
                 throw NativeAccountLinkError.message("Live Taps could not be connected to this Event Card.")
             }
             let reason = NativeEventScheduleChangeReason.liveTapsStarted

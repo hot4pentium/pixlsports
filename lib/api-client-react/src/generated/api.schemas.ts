@@ -1983,9 +1983,16 @@ export interface AthleteInviteLiveSession {
   expiresAt: string;
 }
 
-export interface AthleteInviteLiveStartInput {
+export type AthleteInviteLiveStartInput = {
   shareToken: string;
-}
+} | {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  eventId: string;
+  soccerPeriodFormat?: 'halves' | 'quarters';
+};
 
 export type AthleteInviteLiveSessionPublic = AthleteInviteLiveSession;
 

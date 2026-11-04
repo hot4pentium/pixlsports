@@ -47,7 +47,7 @@ struct NativeEventTrackingPanel: View {
             case .statTracker:
                 return "Keep the team score here, then open the full tracker when you want player-stat details."
             case .liveTaps:
-                return "Start a cheer-only session and share a QR or link with fans. Cheers do not change scores or player stats."
+                return "Fans can cheer while you track stats. Cheers stay separate from official stats."
             }
         }
     }

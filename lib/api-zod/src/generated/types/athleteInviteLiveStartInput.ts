@@ -6,6 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AthleteInviteLiveStartInput {
+export type AthleteInviteLiveStartInput = {
   shareToken: string;
-}
+} | {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  eventId: string;
+  soccerPeriodFormat?: 'halves' | 'quarters';
+};
