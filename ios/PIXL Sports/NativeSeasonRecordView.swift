@@ -138,6 +138,7 @@ struct NativeFanBaseView: View {
 
 struct NativeFanBaseStatusView: View {
     let isLoading: Bool
+    let message: String
     let retry: () -> Void
 
     var body: some View {
@@ -147,17 +148,19 @@ struct NativeFanBaseStatusView: View {
                 .tracking(1.4)
                 .foregroundStyle(.white)
             if isLoading {
-                ProgressView("Loading Fan Base…")
+                ProgressView("Loading the latest Fan Base count…")
                     .tint(.white)
                     .foregroundStyle(.white)
             } else {
-                Text("Fan Base couldn’t load right now.")
+                Text(message)
                     .font(.subheadline)
                     .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button("Try again", action: retry)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
                     .frame(minHeight: 44)
+                    .accessibilityIdentifier("dashboard-fan-base-retry")
             }
         }
         .padding(20)

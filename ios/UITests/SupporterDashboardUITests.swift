@@ -304,6 +304,9 @@ final class SupporterDashboardUITests: XCTestCase {
             reachable("dashboard-message-board-card", in: app).tap()
 
             XCTAssertTrue(app.staticTexts["Create an Event Card"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts[
+                "Creating an Event Card needs a connection to PIXL. It saves to your PIXL account, not on this iPhone."
+            ].exists)
             for (identifier, expectedLabel) in [
                 ("native-event-opponent", "Opponent"),
                 ("native-event-date", "Date"),

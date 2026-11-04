@@ -162,7 +162,10 @@ struct ContentView: View {
                             if let fanBase = viewModel.fanBase {
                                 NativeFanBaseView(fanBase: fanBase)
                             } else if viewModel.fanBaseIsLoading || viewModel.fanBaseError != nil {
-                                NativeFanBaseStatusView(isLoading: viewModel.fanBaseIsLoading) {
+                                NativeFanBaseStatusView(
+                                    isLoading: viewModel.fanBaseIsLoading,
+                                    message: viewModel.fanBaseError ?? ""
+                                ) {
                                     Task { await loadSchedule() }
                                 }
                             }

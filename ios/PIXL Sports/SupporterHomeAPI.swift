@@ -315,6 +315,9 @@ enum SupporterHomeAPI {
     }
 
     static func fetchOwnerFanBase(clerk: Clerk) async throws -> NativeSupporterFanBase {
+        guard NativeOfflineRuntime.shared.online else {
+            throw NativeOfflineError.onlineOnly
+        }
         let data = try await NativeAccountLinkClient().getData("supporter/fan-base", clerk: clerk)
         do {
             let fanBase = try JSONDecoder().decode(NativeSupporterFanBase.self, from: data)

@@ -256,7 +256,7 @@ final class SupporterHomeViewModel: ObservableObject {
                 let status = (error as? NativeAccountLinkError)?.statusCode
                 // Do not reveal a panel for another or unavailable owner's card.
                 if status != 401 && status != 403 && status != 404 && status != 409 && status != 423 {
-                    fanBaseError = "Fan Base couldn’t load right now."
+                    fanBaseError = "The latest Fan Base count couldn’t be loaded, so no current count is shown. Check your connection and try again."
                 }
             }
             do {

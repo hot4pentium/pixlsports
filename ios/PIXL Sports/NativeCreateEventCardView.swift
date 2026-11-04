@@ -20,6 +20,7 @@ struct NativeCreateEventCardView: View {
     @State private var timezone: String
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var canRetrySave = false
     @State private var eventID = UUID().uuidString.lowercased()
 
     private let timeZoneChoices = [
@@ -191,18 +192,29 @@ struct NativeCreateEventCardView: View {
                     .supporterSurfaceShadow()
 
                     Text(isEditing
-                         ? "Changes are saved to the Event Card on the schedule connected to your PIXL account."
-                         : "This adds an Event Card to the schedule connected to your PIXL account.")
+                         ? "Updating an Event Card needs a connection to PIXL. Changes save to your PIXL account."
+                         : "Creating an Event Card needs a connection to PIXL. It saves to your PIXL account, not on this iPhone.")
                         .font(.footnote)
                         .foregroundStyle(SupporterHomeColors.lightMuted)
 
                     if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color(red: 0.58, green: 0.08, blue: 0.10))
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityLabel("Event Card save error: \(errorMessage)")
-                            .accessibilityIdentifier("native-event-create-error")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(errorMessage)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Color(red: 0.58, green: 0.08, blue: 0.10))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityLabel("Event Card save error: \(errorMessage)")
+                                .accessibilityIdentifier("native-event-create-error")
+                            if canRetrySave {
+                                Button("Try again") {
+                                    Task { await saveEventCard() }
+                                }
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(SupporterHomeColors.background)
+                                .frame(minHeight: 44)
+                                .accessibilityIdentifier("native-event-create-retry")
+                            }
+                        }
                     }
 
                     Button {
@@ -264,6 +276,7 @@ struct NativeCreateEventCardView: View {
         }
         isSaving = true
         errorMessage = nil
+        canRetrySave = false
         defer { isSaving = false }
 
         let draft = NativeEventCardDraft(
@@ -300,7 +313,16 @@ struct NativeCreateEventCardView: View {
             onCreated(token)
             if isEditing { dismiss() }
         } catch {
-            errorMessage = error.localizedDescription
+            if let offlineError = error as? NativeOfflineError, offlineError == .onlineOnly {
+                errorMessage = isEditing
+                    ? "A connection to PIXL is required to update this Event Card. Your changes haven’t been saved."
+                    : "A connection to PIXL is required to create this Event Card. It hasn’t been saved yet."
+            } else {
+                errorMessage = isEditing
+                    ? "We couldn’t confirm that this Event Card was updated. Check your connection and try again."
+                    : "We couldn’t confirm that this Event Card was saved. Check your connection and try again."
+            }
+            canRetrySave = true
         }
     }
 
