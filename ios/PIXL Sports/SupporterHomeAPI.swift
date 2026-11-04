@@ -53,7 +53,6 @@ struct NativeHypeCardSettings: Codable, Equatable {
             && paused == other.paused
             && favoriteMoment == other.favoriteMoment
     }
-    }
 }
 
 struct NativeHypeCardSettingsUpdate: Encodable {
