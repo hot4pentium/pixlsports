@@ -36,7 +36,7 @@ function storedFollow(token: string): { following: boolean; followToken: string 
 export function FanCardActions({ inviteToken }: { inviteToken: string }) {
   return (
     <div className="space-y-4">
-      <FanCardFollow inviteToken={inviteToken} />
+      <FanCardFollow inviteToken={inviteToken} compact />
       <FanCardInstall inviteToken={inviteToken} />
     </div>
   );
@@ -45,9 +45,11 @@ export function FanCardActions({ inviteToken }: { inviteToken: string }) {
 export function FanCardFollow({
   inviteToken,
   surface = 'card',
+  compact = false,
 }: {
   inviteToken: string;
   surface?: 'card' | 'showcase';
+  compact?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [following, setFollowing] = useState(() => storedFollow(inviteToken).following);
@@ -287,36 +289,51 @@ export function FanCardFollow({
             : '';
 
   return (
-    <section className="border border-[#8ecbff]/30 bg-[#102b4d] p-5 text-white" aria-label={surface === 'showcase' ? 'Event alerts' : 'Follow this athlete'} data-testid="fan-card-follow">
-      <div className="flex items-start gap-3">
-        {following ? <Bell className="mt-0.5 h-5 w-5 text-[#ff7849]" aria-hidden="true" /> : <BellOff className="mt-0.5 h-5 w-5 text-[#8ecbff]" aria-hidden="true" />}
-        <div>
-          <h2 className="font-display text-2xl uppercase">{surface === 'showcase' ? 'Get event alerts' : 'Follow this card'}</h2>
-          <p className="mt-1 text-xs leading-relaxed text-white/65">
-            {surface === 'showcase'
-              ? 'Follow this athlete on your device, then choose which event-day alerts you want. No account is needed.'
-              : 'Keep this athlete’s season close. Alerts are optional and only sent to this device when you choose them.'}
-          </p>
+    <section
+      className={`fan-card-follow border border-[#8ecbff]/30 bg-[#102b4d] p-5 text-white${compact ? ' fan-card-follow--compact' : ''}`}
+      aria-label={surface === 'showcase' ? 'Event alerts' : 'Follow this athlete'}
+      data-testid="fan-card-follow"
+    >
+      {!compact && (
+        <div className="fan-card-follow__intro">
+          {following ? <Bell className="h-5 w-5 text-[#ff7849]" aria-hidden="true" /> : <BellOff className="h-5 w-5 text-[#8ecbff]" aria-hidden="true" />}
+          <div className="min-w-0">
+            <h2 className="font-display text-2xl uppercase">{surface === 'showcase' ? 'Get event alerts' : 'Follow this card'}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-white/65">
+              {surface === 'showcase'
+                ? 'Follow this athlete on your device, then choose which event-day alerts you want. No account is needed.'
+                : 'Keep this athlete’s season close. Alerts are optional and only sent to this device when you choose them.'}
+            </p>
+          </div>
         </div>
-      </div>
-      <button type="button" onClick={() => void toggleFollow()} disabled={pending} className="mt-4 min-h-11 border border-[#ff7849] bg-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#102b4d] disabled:opacity-50" aria-pressed={following} data-testid="button-follow-fan-card">
+      )}
+      <button type="button" onClick={() => void toggleFollow()} disabled={pending} className="fan-card-follow__primary min-h-11 border border-[#ff7849] bg-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#102b4d] disabled:opacity-50" aria-pressed={following} data-testid="button-follow-fan-card">
         {!following
           ? surface === 'showcase' ? 'Subscribe on this device' : 'Follow on this device'
           : followSaved || status.data ? 'Unfollow this card' : 'Retry saving follow'}
       </button>
-      {availability && <p className="mt-4 border-l-2 border-[#ff7849] pl-3 text-sm leading-relaxed text-white/80" data-testid="status-fan-alert-availability">{availability}</p>}
-      {config.isError && <button type="button" onClick={() => void config.refetch()} className="mt-2 min-h-11 underline" data-testid="button-retry-fan-alert-config">Check alert availability again</button>}
-      <div className="mt-5 space-y-3 border-t border-white/15 pt-4" role="group" aria-label="Optional phone alerts">
-          {!following && <p className="text-xs leading-relaxed text-white/65">Follow this card to choose your phone alerts. Both choices start off.</p>}
-          <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
-            <span>Game Day Live starts</span>
-            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert('live')} disabled={!following || !followToken || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-live" />
-          </label>
-          <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
-            <span>Pre-event Hype Card announcements</span>
-            <input type="checkbox" checked={preEventAlerts} onChange={() => void toggleAlert('event')} disabled={!following || !followToken || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-event" />
-          </label>
-          <p className="text-xs leading-relaxed text-white/55">The card owner chooses whether to send a pre-event announcement. Following or enabling Game Day Live does not turn these on. Change either choice or unfollow here at any time; no account is needed.</p>
+      {availability && <p className="fan-card-follow__availability border-l-2 border-[#ff7849] pl-3 text-sm leading-relaxed text-white/80" data-testid="status-fan-alert-availability">{availability}</p>}
+      {config.isError && <button type="button" onClick={() => void config.refetch()} className="min-h-11 underline" data-testid="button-retry-fan-alert-config">Check alert availability again</button>}
+      <div className="fan-card-follow__alerts border-t border-white/15 pt-4" role="group" aria-label="Optional phone alerts">
+        <div className="fan-card-follow__alerts-intro">
+          <h3>Optional alerts</h3>
+          <p>{following ? 'Choose which alerts you want sent to this device.' : 'Follow first, then turn on only the alerts you want.'}</p>
+        </div>
+        <label className="fan-card-follow__option">
+          <span className="fan-card-follow__option-copy">
+            <strong>Game Day Live starts</strong>
+            <small>Get an alert when live coverage begins.</small>
+          </span>
+          <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert('live')} disabled={!following || !followToken || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-live" />
+        </label>
+        <label className="fan-card-follow__option">
+          <span className="fan-card-follow__option-copy">
+            <strong>Pre-event HYPE Card announcements</strong>
+            <small>Only when the owner shares an upcoming event.</small>
+          </span>
+          <input type="checkbox" checked={preEventAlerts} onChange={() => void toggleAlert('event')} disabled={!following || !followToken || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-event" />
+        </label>
+        <p className="fan-card-follow__alerts-note">The owner decides whether to send pre-event announcements. You can change these choices or unfollow at any time.</p>
       </div>
       {following && status.data && (
         <div className="mt-5 space-y-2 border-t border-white/15 pt-4">

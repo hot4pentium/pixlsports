@@ -896,12 +896,12 @@ export function LivingAthleteCardPage({
                      <small>Alerts are optional</small>
                    </button>
                  </DialogTrigger>
-                 <DialogContent className="living-card-dialog" data-testid="dialog-follow-fan-card">
+                  <DialogContent className="living-card-dialog living-card-follow-dialog" data-testid="dialog-follow-fan-card">
                    <DialogHeader className="living-card-dialog-header">
                      <span className="living-card-dialog-kicker">Keep the season close</span>
                      <DialogTitle>Follow {displayAthleteName}.</DialogTitle>
                      <DialogDescription>
-                        Follow this card on the device you are using. No account is needed. Choose Game Day Live alerts only if you want them.
+                         Follow this card on this device. No account is needed. Turn on only the alerts you want.
                      </DialogDescription>
                    </DialogHeader>
                    <div className="living-card-dialog-body">

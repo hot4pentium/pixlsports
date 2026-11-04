@@ -25,9 +25,11 @@ const fixture = `
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
-import {FanCardFollow} from './src/features/fan-card-follow';
+import {FanCardActions} from './src/features/fan-card-follow';
 import {FanBaseOwnerCard} from './src/features/fan-base-owner-card';
+import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from './src/components/ui/dialog';
 import './src/index.css';
+import './src/features/living-athlete-card.css';
 const token='fixture-athlete';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
 const root=createRoot(document.getElementById('root'));
@@ -68,7 +70,7 @@ window.fetch=async(input,init={})=>{
  if(method==='DELETE'){record=null;sessionStorage.removeItem('fixture-server-follow');return new Response(null,{status:204});}
  return json(record);
 };
-function render(){root.render(<QueryClientProvider client={client}>{owner?<FanBaseOwnerCard inviteToken={token}/>:<FanCardFollow inviteToken={token} surface="showcase"/>}</QueryClientProvider>);}
+function render(){root.render(<QueryClientProvider client={client}>{owner?<FanBaseOwnerCard inviteToken={token}/>:<Dialog open><DialogContent className="living-card-dialog living-card-follow-dialog" data-testid="dialog-follow-fan-card"><DialogHeader className="living-card-dialog-header"><span className="living-card-dialog-kicker">Keep the season close</span><DialogTitle>Follow Tim.</DialogTitle><DialogDescription>Follow this card on this device. No account is needed. Turn on only the alerts you want.</DialogDescription></DialogHeader><div className="living-card-dialog-body"><FanCardActions inviteToken={token}/></div></DialogContent></Dialog>}</QueryClientProvider>);}
 window.__showOwner=async value=>{owner=value;await client.invalidateQueries();render();};
 render();
 `;
@@ -140,9 +142,21 @@ test('Fan Base follows persist anonymously, names and alerts stay optional, fail
       await ownerSummary(value.trim() || null);
     };
     await wait(`${control('button-follow-fan-card')}`);
+    const layout = await evaluate(`(()=>{const dialog=document.querySelector('[data-testid="dialog-follow-fan-card"]');const body=dialog?.querySelector('.living-card-dialog-body');const option=dialog?.querySelector('.fan-card-follow__option');const copy=option?.querySelector('.fan-card-follow__option-copy');const checkbox=option?.querySelector('input[type="checkbox"]');const rect=dialog?.getBoundingClientRect();return {dialogLeft:rect?.left,dialogRight:rect?.right,viewportWidth:innerWidth,bodyOverflowX:getComputedStyle(body).overflowX,bodyOverflowY:getComputedStyle(body).overflowY,touchAction:getComputedStyle(body).touchAction,bodyWidth:body?.clientWidth,bodyScrollWidth:body?.scrollWidth,optionWidth:option?.clientWidth,copyWidth:copy?.getBoundingClientRect().width,checkboxWidth:checkbox?.getBoundingClientRect().width};})()`);
+    assert.ok(layout.dialogLeft >= 0 && layout.dialogRight <= layout.viewportWidth, 'follow dialog stays inside the phone viewport');
+    assert.ok(layout.bodyScrollWidth <= layout.bodyWidth + 1, 'follow dialog body has no horizontal overflow');
+    assert.equal(layout.bodyOverflowX, 'hidden');
+    assert.equal(layout.bodyOverflowY, 'auto');
+    assert.equal(layout.touchAction, 'pan-y');
+    assert.ok(layout.copyWidth > 150, 'alert names have room to read instead of collapsing beside the toggles');
+    assert.ok(layout.checkboxWidth >= 20 && layout.checkboxWidth <= 28, 'alert toggles keep a compact fixed size');
     assert.equal(await evaluate(`${control('button-follow-fan-card')}.getAttribute('aria-pressed')`), 'false');
     await click('button-follow-fan-card');
     await ready();
+    const scrollState = await evaluate(`(()=>{const body=document.querySelector('[data-testid="dialog-follow-fan-card"] .living-card-dialog-body');const pageY=scrollY;body.scrollTop=body.scrollHeight;return {scrollTop:body.scrollTop,maxScroll:body.scrollHeight-body.clientHeight,pageY:scrollY};})()`);
+    assert.ok(scrollState.maxScroll > 0, 'the dialog body scrolls when the form is taller than the phone screen');
+    assert.ok(scrollState.scrollTop > 0, 'the form can be scrolled vertically');
+    assert.equal(scrollState.pageY, 0, 'the page behind the follow form does not move');
     const token = await evaluate<string>(`${saved}.followToken`);
     assert.match(token, /^[a-f0-9]{64}$/);
     assert.equal(await evaluate(`${saved}.following`), true);
