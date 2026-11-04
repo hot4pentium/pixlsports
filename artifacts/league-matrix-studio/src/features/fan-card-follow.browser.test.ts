@@ -27,12 +27,27 @@ import {createRoot} from 'react-dom/client';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {FanCardActions} from './src/features/fan-card-follow';
 import {FanBaseOwnerCard} from './src/features/fan-base-owner-card';
-import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from './src/components/ui/dialog';
+import {FanCardFollowDialog} from './src/features/fan-card-follow-dialog';
+import {Dialog,DialogDescription,DialogHeader,DialogTitle} from './src/components/ui/dialog';
 import './src/index.css';
 import './src/features/living-athlete-card.css';
 const token='fixture-athlete';
 const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
 const root=createRoot(document.getElementById('root'));
+// Model iOS keyboard behavior: the layout viewport stays tall while the visual
+// viewport shrinks and pans. This is not a physical iPhone keyboard test.
+const viewport=window.visualViewport;
+const nativeHeight=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(viewport),'height').get.bind(viewport);
+let keyboardViewport=null;
+Object.defineProperties(viewport,{
+ height:{configurable:true,get:()=>keyboardViewport?.height??nativeHeight()},
+ offsetTop:{configurable:true,get:()=>keyboardViewport?.offsetTop??0},
+});
+window.__keyboardViewport=(height,offsetTop=0)=>{
+ keyboardViewport=height===null?null:{height,offsetTop};
+ viewport.dispatchEvent(new Event('resize'));
+ viewport.dispatchEvent(new Event('scroll'));
+};
 let record=JSON.parse(sessionStorage.getItem('fixture-server-follow')||'null');
 let owner=false;
 window.__requests=[];
@@ -70,7 +85,7 @@ window.fetch=async(input,init={})=>{
  if(method==='DELETE'){record=null;sessionStorage.removeItem('fixture-server-follow');return new Response(null,{status:204});}
  return json(record);
 };
-function render(){root.render(<QueryClientProvider client={client}>{owner?<FanBaseOwnerCard inviteToken={token}/>:<Dialog open><DialogContent className="living-card-dialog living-card-follow-dialog" data-testid="dialog-follow-fan-card"><DialogHeader className="living-card-dialog-header"><span className="living-card-dialog-kicker">Keep the season close</span><DialogTitle>Follow Tim.</DialogTitle><DialogDescription>Follow this card on this device. No account is needed. Turn on only the alerts you want.</DialogDescription></DialogHeader><div className="living-card-dialog-body"><FanCardActions inviteToken={token}/></div></DialogContent></Dialog>}</QueryClientProvider>);}
+function render(){root.render(<QueryClientProvider client={client}>{owner?<FanBaseOwnerCard inviteToken={token}/>:<Dialog open><FanCardFollowDialog className="living-card-dialog living-card-follow-dialog" data-testid="dialog-follow-fan-card"><DialogHeader className="living-card-dialog-header"><span className="living-card-dialog-kicker">Keep the season close</span><DialogTitle>Follow Tim.</DialogTitle><DialogDescription>Follow this card on this device. No account is needed. Turn on only the alerts you want.</DialogDescription></DialogHeader><div className="living-card-follow-dialog-form"><FanCardActions inviteToken={token}/></div></FanCardFollowDialog></Dialog>}</QueryClientProvider>);}
 window.__showOwner=async value=>{owner=value;await client.invalidateQueries();render();};
 render();
 `;
@@ -157,6 +172,60 @@ test('Fan Base follows persist anonymously, names and alerts stay optional, fail
     assert.ok(scrollState.maxScroll > 0, 'the dialog body scrolls when the form is taller than the phone screen');
     assert.ok(scrollState.scrollTop > 0, 'the form can be scrolled vertically');
     assert.equal(scrollState.pageY, 0, 'the page behind the follow form does not move');
+    // Keep the layout viewport unchanged, unlike ordinary mobile-height tests.
+    // Check both resize and pan events, then recovery when the keyboard closes.
+    const initialPage = await evaluate<{ x: number; y: number }>('({x:scrollX,y:scrollY})');
+    for (const { width, height, visibleHeight, offsetTop } of [
+      { width: 390, height: 844, visibleHeight: 350, offsetTop: 0 },
+      { width: 320, height: 568, visibleHeight: 250, offsetTop: 68 },
+    ]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+      await evaluate(`${control('input-fan-display-name')}.focus();window.__keyboardViewport(${visibleHeight},${offsetTop})`);
+      await wait(`document.querySelector('.living-card-follow-dialog').style.getPropertyValue('--follow-viewport-height')==='${visibleHeight}px'`);
+      const geometry = await evaluate(`(()=>{
+        const dialog=document.querySelector('.living-card-follow-dialog');
+        const body=dialog.querySelector('.living-card-dialog-body');
+        const rect=dialog.getBoundingClientRect();
+        return {top:rect.top,bottom:rect.bottom,left:rect.left,right:rect.right,width:innerWidth,
+          bodyWidth:body.clientWidth,scrollWidth:body.scrollWidth,overflowX:getComputedStyle(body).overflowX,
+          overflowY:getComputedStyle(body).overflowY,layoutHeight:innerHeight};
+      })()`);
+      assert.equal(geometry.layoutHeight, height, 'keyboard simulation does not shrink the layout viewport');
+      assert.ok(geometry.top >= offsetTop && geometry.bottom <= offsetTop + visibleHeight, `entire dialog fits above the simulated keyboard: ${JSON.stringify(geometry)}`);
+      assert.ok(geometry.left >= 0 && geometry.right <= width, 'keyboard does not push dialog sideways');
+      assert.ok(geometry.scrollWidth <= geometry.bodyWidth + 1);
+      assert.equal(geometry.overflowX, 'hidden');
+      assert.equal(geometry.overflowY, 'auto');
+      for (const id of ['input-fan-display-name', 'button-save-fan-display-name']) {
+        const reach = await evaluate(`(()=>{
+          const target=${control(id)};
+          target.scrollIntoView({block:'nearest',inline:'nearest'});
+          const rect=target.getBoundingClientRect();
+          const body=target.closest('.living-card-dialog-body').getBoundingClientRect();
+          return {top:rect.top,bottom:rect.bottom,bodyTop:body.top,bodyBottom:body.bottom,
+            hit:document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)?.closest('[data-testid]')?.dataset.testid};
+        })()`);
+        assert.ok(reach.top >= reach.bodyTop - 1 && reach.bottom <= reach.bodyBottom + 1, `${id} is reachable by vertical scrolling`);
+        assert.equal(reach.hit, id, `${id} is not covered by the dialog header or close control`);
+      }
+      assert.equal(await evaluate('document.activeElement?.dataset.testid'), 'input-fan-display-name', 'scrolling to Save preserves input focus');
+      await setName('Keyboard Fan');
+      // Dispatch a real pointer click at the visible Save button, not element.click().
+      const point = await evaluate<{ x: number; y: number }>(`(()=>{const r=${control('button-save-fan-display-name')}.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+      await connection.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 }, page.sessionId);
+      await connection.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 }, page.sessionId);
+      await wait(`${control('status-fan-follow')}?.textContent==='Your name choice was saved.'`);
+      assert.equal(await evaluate(`${server}.displayName`), 'Keyboard Fan');
+      await evaluate('document.activeElement?.blur();window.__keyboardViewport(null)');
+      await wait(`document.querySelector('.living-card-follow-dialog').style.getPropertyValue('--follow-viewport-height')==='${height}px'`);
+      assert.deepEqual(await evaluate('({x:scrollX,y:scrollY})'), initialPage, 'keyboard dismissal leaves the background page unshifted');
+      const restored = await evaluate(`(()=>{const r=document.querySelector('.living-card-follow-dialog').getBoundingClientRect();return {top:r.top,bottom:r.bottom};})()`);
+      assert.ok(restored.top >= 0 && restored.bottom <= height, 'dialog returns inside the restored viewport');
+    }
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+    await setName('');
+    await click('button-save-fan-display-name');
+    await wait(`${server}.displayName===null`);
     const token = await evaluate<string>(`${saved}.followToken`);
     assert.match(token, /^[a-f0-9]{64}$/);
     assert.equal(await evaluate(`${saved}.following`), true);

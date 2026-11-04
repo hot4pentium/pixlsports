@@ -122,8 +122,8 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
       await readable(browser, '.ps__card-unavailable h2');
       await readable(browser, '.ps__card-unavailable > span');
     } else {
-      await browser.wait(`document.querySelector('[aria-label="Loading athlete card"]')`);
-      await bounded(browser, '.living-card-main', desktop ? 960 : width);
+      await browser.wait(`document.querySelector('[data-testid="shared-hype-card-loading"]')`);
+      await bounded(browser, byId('shared-hype-card-loading'), width);
     }
     await browser.evaluate(`window.__releaseFixtureRequest('fan-card')`);
     if (route.startsWith('/studio/')) {

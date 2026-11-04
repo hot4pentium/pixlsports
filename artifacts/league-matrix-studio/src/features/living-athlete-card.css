@@ -283,7 +283,9 @@
 .living-card-support-action-hype svg, .living-card-support-action-hype small { color: var(--lc-ink); }
 .living-card-support-action-hype small { opacity: .72; }
 .living-card-dialog { --lc-ink: #07172b; --lc-navy: #102b4d; --lc-blue: #2878f5; --lc-sky: #8ecbff; --lc-orange: #ff7849; --lc-paper: #edf3f6; --lc-muted: #a9bfd3; z-index: 60 !important; display: flex !important; flex-direction: column !important; gap: 0 !important; min-width: 0 !important; width: min(580px, calc(100vw - 28px)) !important; max-width: 580px !important; max-height: min(760px, calc(100dvh - 28px)) !important; padding: 0 !important; overflow: hidden !important; border: 1px solid #8ecbff70 !important; border-radius: 18px !important; background: #102b4d !important; color: #edf3f6 !important; box-shadow: 0 28px 80px #010811d9, inset 0 1px 0 #ffffff24 !important; }
-.living-card-follow-dialog { animation: none !important; }
+.living-card-dialog.living-card-follow-dialog { animation: none !important; transition: none !important; top: var(--follow-viewport-center, 50%) !important; max-height: min(760px, calc(var(--follow-viewport-height, 100dvh) - 28px)) !important; }
+.living-card-follow-dialog .living-card-follow-dialog-scroll { padding: 0; scroll-padding-block: 16px; }
+.living-card-follow-dialog-form { padding: 0 31px 31px; min-width: 0; }
 .living-card-dialog::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, #2878f5, #8ecbff 48%, #ff7849); pointer-events: none; }
 .living-card-dialog-header { flex: 0 0 auto; min-width: 0; padding: 31px 31px 22px; background: radial-gradient(circle at 100% 0, #285d9566, transparent 52%); text-align: left !important; }
 .living-card-dialog-kicker { color: var(--lc-orange); font-size: 10px; font-weight: 900; letter-spacing: .22em; text-transform: uppercase; }

@@ -23,6 +23,7 @@ import { athleteLocalDate, hasEventToday, recentUpcomingAthleteEvents } from './
 import { normalizeCardAppearance, resolveHypeCardAthleteName } from './hype-card-appearance';
 import { getUserProfile } from './supporter-dashboard-model';
 import { SharedHypeCardLoading } from './shared-hype-card-loading';
+import { FanCardFollowDialog } from './fan-card-follow-dialog';
 
 import {
   Dialog,
@@ -961,7 +962,7 @@ export function LivingAthleteCardPage({
                      <small>Alerts are optional</small>
                    </button>
                  </DialogTrigger>
-                  <DialogContent className="living-card-dialog living-card-follow-dialog" data-testid="dialog-follow-fan-card">
+                  <FanCardFollowDialog className="living-card-dialog living-card-follow-dialog" data-testid="dialog-follow-fan-card">
                    <DialogHeader className="living-card-dialog-header">
                      <span className="living-card-dialog-kicker">Keep the season close</span>
                      <DialogTitle>Follow {displayAthleteName}.</DialogTitle>
@@ -969,10 +970,10 @@ export function LivingAthleteCardPage({
                          Follow this card on this device. No account is needed. Turn on only the alerts you want.
                      </DialogDescription>
                    </DialogHeader>
-                   <div className="living-card-dialog-body">
+                   <div className="living-card-follow-dialog-form">
                      {followControls}
                     </div>
-                 </DialogContent>
+                 </FanCardFollowDialog>
                </Dialog>
 
                <Dialog open={hypeDialogOpen} onOpenChange={setHypeDialogOpen}>
