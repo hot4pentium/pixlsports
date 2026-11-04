@@ -22,6 +22,7 @@ import {
 import { athleteLocalDate, hasEventToday, recentUpcomingAthleteEvents } from './athlete-event-links';
 import { normalizeCardAppearance, resolveHypeCardAthleteName } from './hype-card-appearance';
 import { getUserProfile } from './supporter-dashboard-model';
+import { SharedHypeCardLoading } from './shared-hype-card-loading';
 
 import {
   Dialog,
@@ -96,6 +97,7 @@ export function LivingAthleteCardPage({
   const [reducedMotion, setReducedMotion] = useState(false);
   const [todayTick, setTodayTick] = useState(() => Date.now());
   const [brokenPhoto, setBrokenPhoto] = useState(false);
+  const [photoLoadResult, setPhotoLoadResult] = useState<{ url: string; loaded: boolean } | null>(null);
   const [selectedGameKey, setSelectedGameKey] = useState('');
   const [trendStatId, setTrendStatId] = useState('score');
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
@@ -165,6 +167,7 @@ export function LivingAthleteCardPage({
     : '';
 
   const photoUrl = invite?.photoUrl ?? null;
+  const currentPhotoLoadResult = photoUrl && photoLoadResult?.url === photoUrl ? photoLoadResult : null;
 
   useEffect(() => {
     if (!ownerInvite || !profileNameSyncKey || updateInvite.isPending) return;
@@ -255,6 +258,27 @@ export function LivingAthleteCardPage({
   }, [embedded, inviteToken]);
   useEffect(() => { setBrokenPhoto(false); }, [photoUrl]);
   useEffect(() => {
+    if (embedded || !photoUrl) return;
+    let active = true;
+    let timeout: number | undefined;
+    const image = new Image();
+    const settle = (loaded: boolean) => {
+      if (!active) return;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      setPhotoLoadResult({ url: photoUrl, loaded });
+      setBrokenPhoto(!loaded);
+    };
+    image.onload = () => settle(true);
+    image.onerror = () => settle(false);
+    image.src = photoUrl;
+    if (image.complete) settle(image.naturalWidth > 0);
+    else timeout = window.setTimeout(() => settle(false), 8_000);
+    return () => {
+      active = false;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [embedded, photoUrl]);
+  useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => setReducedMotion(query.matches);
@@ -308,6 +332,7 @@ export function LivingAthleteCardPage({
 
   const MainElement = embedded ? 'div' : 'main';
   if (isLoading) {
+    if (!embedded) return <SharedHypeCardLoading />;
     return (
       <Shell embedded={embedded}>
         <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`} aria-busy="true" aria-label="Loading athlete card" role="status">
@@ -328,6 +353,9 @@ export function LivingAthleteCardPage({
         </MainElement>
       </Shell>
     );
+  }
+  if (!embedded && photoUrl && !currentPhotoLoadResult) {
+    return <SharedHypeCardLoading />;
   }
 
   const linkedEvents = invite.events ?? [];
@@ -889,7 +917,10 @@ export function LivingAthleteCardPage({
                         seasonName={invite.seasonName}
                         photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
                         appearance={cardAppearance}
-                        onPhotoError={() => setBrokenPhoto(true)}
+                        onPhotoError={() => {
+                          setBrokenPhoto(true);
+                          if (photoUrl) setPhotoLoadResult({ url: photoUrl, loaded: false });
+                        }}
                       />
                     ) : renderSection(flip.frontFace)}
                   </div>

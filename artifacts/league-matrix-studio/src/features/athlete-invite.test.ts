@@ -176,6 +176,13 @@ test('HYPE Card event details do not repeat the full Game On Card link', () => {
   assert.doesNotMatch(eventsSide, /Open one for its full details/);
 });
 
+test('recipient HYPE Card keeps one loading view until its photo is ready', () => {
+  assert.match(livingCardSource, /import \{ SharedHypeCardLoading \} from '\.\/shared-hype-card-loading'/);
+  assert.match(livingCardSource, /if \(isLoading\) \{\s+if \(!embedded\) return <SharedHypeCardLoading \/>/);
+  assert.match(livingCardSource, /if \(!embedded && photoUrl && !currentPhotoLoadResult\) \{\s+return <SharedHypeCardLoading \/>/);
+  assert.match(livingCardSource, /window\.setTimeout\(\(\) => settle\(false\), 8_000\)/);
+});
+
 test('new fan Shoutouts require public disclosure while older private responses stay owner-only', () => {
   assert.match(livingCardSource, /Send a Shoutout/);
   assert.match(livingCardSource, /Your emoji and message will appear publicly on this card/);
