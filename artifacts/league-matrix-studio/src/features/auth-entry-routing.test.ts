@@ -46,6 +46,15 @@ test('direct HYPE Card links never show the PWA landing shell while the app star
   assert.match(appSource, /<Suspense fallback=\{<SharedHypeCardLoading \/>\}>[\s\S]*<PublicPlayerShowcasePage/);
 });
 
+test('recipient startup uses a stationary message rather than blank card previews', () => {
+  const loadingSource = readFileSync(new URL('./shared-hype-card-loading.tsx', import.meta.url), 'utf8');
+  const loadingCss = readFileSync(new URL('./shared-hype-card-loading.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(bootShellSource, /boot-public-card-(frame|photo|identity|shimmer)/);
+  assert.doesNotMatch(loadingSource, /loading__(frame|photo|identity)/);
+  assert.doesNotMatch(loadingCss, /animation:|aspect-ratio:/);
+  assert.match(loadingSource, /<p>Opening HYPE Card…<\/p>/);
+});
+
 test('returning sessions replace the static landing shell before first paint', () => {
   const sessionCheck = bootShellSource.indexOf(
     "window.localStorage.getItem('pixl:previous-private-session:v1') === 'seen'",

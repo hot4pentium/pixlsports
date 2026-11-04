@@ -98,6 +98,7 @@ export function LivingAthleteCardPage({
   const [todayTick, setTodayTick] = useState(() => Date.now());
   const [brokenPhoto, setBrokenPhoto] = useState(false);
   const [photoLoadResult, setPhotoLoadResult] = useState<{ url: string; loaded: boolean } | null>(null);
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [selectedGameKey, setSelectedGameKey] = useState('');
   const [trendStatId, setTrendStatId] = useState('score');
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
@@ -168,6 +169,9 @@ export function LivingAthleteCardPage({
 
   const photoUrl = invite?.photoUrl ?? null;
   const currentPhotoLoadResult = photoUrl && photoLoadResult?.url === photoUrl ? photoLoadResult : null;
+  useEffect(() => {
+    if (invite && (!photoUrl || currentPhotoLoadResult)) setRevealedToken(inviteToken);
+  }, [invite, photoUrl, currentPhotoLoadResult, inviteToken]);
 
   useEffect(() => {
     if (!ownerInvite || !profileNameSyncKey || updateInvite.isPending) return;
@@ -354,7 +358,7 @@ export function LivingAthleteCardPage({
       </Shell>
     );
   }
-  if (!embedded && photoUrl && !currentPhotoLoadResult) {
+  if (!embedded && revealedToken !== inviteToken && photoUrl && !currentPhotoLoadResult) {
     return <SharedHypeCardLoading />;
   }
 
