@@ -333,7 +333,7 @@ window.__showError(false);
     await stop(chromium);
     await stop(vite);
     await Promise.all([sourcePath, htmlPath, configPath].map((path) => rm(path, { force: true })));
-    await rm(profile, { recursive: true, force: true });
+    await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 

@@ -131,7 +131,7 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
       await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"]')`);
       await bounded(browser, byId('showcase-card-art'), desktop ? 390 : width, false);
     } else {
-      await browser.wait(`document.querySelector('.living-card-frame')`);
+      await browser.wait(`document.querySelector('#living-card-display')`);
       await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
       await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
     }
@@ -156,7 +156,7 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     await readable(browser, byId('button-public-showcase-retry'), true);
     const attemptsBeforeRetry = await browser.evaluate(`window.__fixtureAttempts.fanCard`);
     await click(browser, byId('button-public-showcase-retry'));
-    await browser.wait(`document.querySelector('.living-card-frame')`);
+    await browser.wait(`document.querySelector('#living-card-display')`);
     assert.ok(await browser.evaluate(`window.__fixtureAttempts.fanCard`) > attemptsBeforeRetry, 'Public retry makes a new fan-card request');
     await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
     await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
@@ -219,14 +219,14 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
       await readable(browser, byId('button-public-showcase-retry'), true);
       await expectAccessible(browser, byId('button-public-showcase-retry'), 'button', 'Try again to load this showcase');
     } else {
-      await browser.wait(`document.querySelector('.living-card-frame')`);
+      await browser.wait(`document.querySelector('#living-card-display')`);
       await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
       await bounded(browser, '.public-showcase__topbar', desktop ? 960 : width);
       assert.equal(await browser.evaluate(`document.querySelector('[data-testid="text-public-showcase-name"]').textContent`), longShowcaseLabels.athleteName + '.');
       await readable(browser, byId('text-public-showcase-name'));
       await readable(browser, '.public-showcase__identity');
       await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
-      await proportion(browser, '.living-card-frame', 2 / 3);
+      await proportion(browser, '#living-card-display', 2 / 3);
       await readable(browser, byId('link-owner-back-to-showcase'), true);
     }
   } else if (route.startsWith('/player/')) {
@@ -236,10 +236,10 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     await proportion(browser, byId('classic-card-preview-surface'), 3 / 4);
     await readable(browser, byId('button-hype-manager-design'), true);
   } else {
-    await browser.wait(`document.querySelector('.living-card-frame')`);
+    await browser.wait(`document.querySelector('#living-card-display')`);
     await bounded(browser, '.living-card-main', desktop ? 960 : width);
-    await bounded(browser, '.living-card-stage', desktop ? 440 : width);
-    await proportion(browser, '.living-card-frame', 2 / 3);
+    await bounded(browser, '.living-card-stage', desktop ? 520 : width);
+    await proportion(browser, '#living-card-display', 2 / 3);
   }
   await contained(browser);
   assert.deepEqual(await browser.evaluate('window.__unexpectedRequests'), [], 'Edge fixtures must explicitly handle all requests');
@@ -347,14 +347,17 @@ export async function checkShowcaseEnlargedText(
 
 async function cardSides(browser: Browser) {
   // Wait for the flip to finish before measuring/clicking the next face.
-  for (const side of ['stats', 'events', 'live-taps', 'responses', 'front']) {
+  for (const side of ['videos', 'stats', 'events', 'live-taps', 'responses', 'front']) {
     const selector = byId(`button-living-card-${side}`);
     const target = await rect(browser, selector);
     assert.ok(target.width >= 44 && target.height >= 44, `${selector} retains a usable target: ${JSON.stringify(target)}`);
     await click(browser, selector);
-    await browser.wait(`document.querySelector('.living-card-frame').dataset.side===${JSON.stringify(side)}`);
-    await browser.evaluate(`Promise.all(document.querySelector('.living-card-frame').getAnimations({subtree:true}).filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))`);
-    await proportion(browser, '.living-card-frame', 2 / 3);
+    await browser.wait(`document.querySelector('[data-testid="living-card-flip-container"]').dataset.selectedSide===${JSON.stringify(side)}`);
+    // Section-to-section flips arm on two animation frames. getAnimations()
+    // alone can see no animation before that arm, or finish before busy clears.
+    await browser.evaluate(`new Promise(resolve=>setTimeout(resolve,550))`);
+    await browser.evaluate(`Promise.all(document.querySelector('#living-card-display').getAnimations({subtree:true}).filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))`);
+    await proportion(browser, '#living-card-display', 2 / 3);
     await contained(browser);
   }
 }
@@ -419,14 +422,14 @@ export async function checkResponsiveRoute(browser: Browser, route: string, widt
     await click(browser, byId('button-hype-manager-design'));
     await browser.wait(`document.querySelector('[data-testid="button-hype-manager-design"]').getAttribute('aria-expanded')==='true'`);
   } else {
-    await browser.wait(`document.querySelector('.living-card-frame')`);
+    await browser.wait(`document.querySelector('#living-card-display')`);
     if (route.startsWith('/showcase/')) {
       await bounded(browser, '.public-showcase__hero', desktop ? 920 : width);
       await bounded(browser, '.public-showcase__topbar', desktop ? 960 : width);
       await bounded(browser, '.living-card-stage', desktop ? 380 : width, false);
     } else {
       await bounded(browser, '.living-card-main', desktop ? 960 : width);
-      await bounded(browser, '.living-card-stage', desktop ? 440 : width);
+      await bounded(browser, '.living-card-stage', desktop ? 520 : width);
     }
     await cardSides(browser);
   }

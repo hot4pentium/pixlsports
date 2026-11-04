@@ -34,6 +34,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { NativeHypeCardFront } from './living-athlete-card-front';
+import { LivingCardVideo } from './living-card-video';
 import { LivingCardControls, LivingCardSecondarySides } from './living-card-controls';
 import {
   armFlip,
@@ -300,6 +301,9 @@ export function LivingAthleteCardPage({
     setFlip((current) => reconcileFlip(current, sidesKey.split('|') as CardSide[]));
   }, [sidesKey]);
   useEffect(() => {
+    if (side !== 'videos') setPlayingVideo(null);
+  }, [side]);
+  useEffect(() => {
     const updateToday = () => setTodayTick(Date.now());
     const timer = window.setInterval(updateToday, 30_000);
     document.addEventListener('visibilitychange', updateToday);
@@ -509,7 +513,7 @@ export function LivingAthleteCardPage({
                         {invite.videos.map((video) => (
                           <li key={video.shareToken}>
                             {playingVideo === video.shareToken ? (
-                              <video src={video.videoUrl} poster={video.posterUrl ?? undefined} controls autoPlay playsInline preload="metadata" data-testid={`video-living-card-${video.shareToken}`} />
+                              <LivingCardVideo src={video.videoUrl} poster={video.posterUrl} token={video.shareToken} active={side === 'videos'} />
                             ) : (
                               <button type="button" onClick={() => setPlayingVideo(video.shareToken)} data-testid={`button-living-card-video-${video.shareToken}`}>
                                 <Play aria-hidden="true" />

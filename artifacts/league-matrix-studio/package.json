@@ -14,6 +14,7 @@
     "test:landing-home-browser": "tsx --test src/features/landing-home.browser.test.ts",
     "test:showcase-responsive-browser": "tsx --test --test-concurrency=1 --test-name-pattern=\"Showcase responsive geometry|PIXL account-loading splash\" src/features/locker-showcase.browser.test.ts",
     "test:fan-follow-browser": "tsx --test --test-concurrency=1 src/features/fan-card-follow.browser.test.ts",
+    "test:shared-card-videos-browser": "tsx --test --test-concurrency=1 src/features/shared-card-videos.browser.test.ts",
     "test:supporter-tools-guide-browser": "tsx --test --test-concurrency=1 src/features/supporter-tools-guide.browser.test.ts",
     "test:hype-card-stats-link-browser": "tsx --test --test-concurrency=1 src/features/hype-card-stats-link.browser.test.ts",
     "test:hype-card-breakout-controls-browser": "tsx --test --test-concurrency=1 src/features/hype-card-breakout-controls.browser.test.ts",
