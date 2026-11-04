@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { eq } from "drizzle-orm";
 import {
+  accountAccessTable,
   athleteInviteFanDeliveriesTable,
   athleteInviteFansTable,
   athleteInvitesTable,
@@ -13,6 +14,7 @@ import { notifyAthleteInviteFans } from "./lib/athleteInviteFanNotifications";
 
 async function createFixture() {
   const ownerClerkUserId = `fan-alert-race-${randomUUID()}`;
+  await db.insert(accountAccessTable).values({ ownerClerkUserId, role: "fan", accessMode: "full" });
   const gameId = `game-${randomUUID()}`;
   const [share] = await db.insert(statTrackerSharesTable).values({
     ownerClerkUserId,
@@ -57,6 +59,7 @@ async function cleanFixture(fixture: Awaited<ReturnType<typeof createFixture>>) 
   await db.delete(athleteInviteFansTable).where(eq(athleteInviteFansTable.inviteId, fixture.invite.id));
   await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.id, fixture.invite.id));
   await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.id, fixture.share.id));
+  await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, fixture.ownerClerkUserId));
 }
 
 test("live alert rechecks the exact live session after stop and pause-resume races", async () => {
@@ -171,6 +174,28 @@ test("stopped live sessions and paused cards cannot send new alerts", async () =
       .where(eq(athleteInvitesTable.id, fixture.invite.id));
     assert.equal((await notifyAthleteInviteFans(fixture.invite.id, `event-${randomUUID()}`, "event", { send })).sent, 0);
     assert.equal(sends, 0);
+  } finally {
+    await cleanFixture(fixture);
+  }
+});
+
+test("expired push subscriptions retain the fan's saved follow and name", async () => {
+  const fixture = await createFixture();
+  try {
+    const follow = fixture.followers[0]!;
+    await db.update(athleteInviteFansTable).set({ displayName: "Grandma" })
+      .where(eq(athleteInviteFansTable.id, follow.id));
+    await notifyAthleteInviteFans(fixture.invite.id, `stale-${randomUUID()}`, "event", {
+      send: async () => ({ configured: true, sent: false, stale: true }),
+    });
+    const retained = await db.select().from(athleteInviteFansTable)
+      .where(eq(athleteInviteFansTable.inviteId, fixture.invite.id));
+    assert.equal(retained.length, 2);
+    assert.equal(retained.find((row) => row.id === follow.id)?.displayName, "Grandma");
+    for (const row of retained) {
+      assert.equal(row.endpoint, null);
+      assert.equal(row.liveAlerts || row.eventAlerts || row.preEventAlerts, false);
+    }
   } finally {
     await cleanFixture(fixture);
   }

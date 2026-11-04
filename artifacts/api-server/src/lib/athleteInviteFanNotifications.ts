@@ -105,7 +105,14 @@ export async function notifyAthleteInviteFans(
     });
     if (result.sent) sent += 1;
     if (result.stale) {
-      await db.delete(athleteInviteFansTable).where(eq(athleteInviteFansTable.id, subscription.id));
+      await db.update(athleteInviteFansTable).set({
+        endpoint: null, p256dh: null, auth: null,
+        liveAlerts: false, eventAlerts: false, preEventAlerts: false,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(athleteInviteFansTable.id, subscription.id),
+        eq(athleteInviteFansTable.endpoint, currentFollow.endpoint),
+      ));
       removed += 1;
     }
   }

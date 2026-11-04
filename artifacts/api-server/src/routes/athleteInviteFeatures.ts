@@ -365,7 +365,7 @@ router.post(
       return;
     }
     const hasPushDetails = parsed.data.endpoint !== undefined || parsed.data.keys !== undefined;
-    const hasAlerts = parsed.data.liveAlerts || parsed.data.eventAlerts || parsed.data.preEventAlerts;
+    const hasAlerts = Boolean(parsed.data.liveAlerts || parsed.data.eventAlerts || parsed.data.preEventAlerts);
     if (hasPushDetails !== hasAlerts || (hasPushDetails && (!parsed.data.endpoint || !parsed.data.keys))) {
       res.status(400).json({ error: "Choose a browser subscription when enabling alerts." });
       return;
@@ -464,6 +464,7 @@ router.get(
   "/athlete-invites/:inviteToken/fan-base",
   requireAuth,
   async (req, res): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     const params = GetAthleteInviteFanBaseParams.safeParse(req.params);
     if (!params.success) { res.status(404).json({ error: "Fan Base not found." }); return; }
     const ownerClerkUserId = getRequiredClerkUserId(res);
@@ -485,6 +486,7 @@ router.get(
 router.get(
   "/athlete-invites/:inviteToken/follows/me",
   async (req, res): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     const params = GetAthleteInviteFanFollowParams.safeParse(req.params);
     const header = GetAthleteInviteFanFollowHeader.safeParse({ "X-Fan-Follow-Token": req.get("X-Fan-Follow-Token") });
     if (!params.success || !header.success) { res.status(404).json({ error: "Follow not found." }); return; }
@@ -553,9 +555,9 @@ router.patch(
       return;
     }
     const [updated] = await db.update(athleteInviteFansTable).set({
-      liveAlerts,
-      eventAlerts,
-      preEventAlerts,
+      ...(parsed.data.liveAlerts !== undefined ? { liveAlerts } : {}),
+      ...(parsed.data.eventAlerts !== undefined ? { eventAlerts } : {}),
+      ...(parsed.data.preEventAlerts !== undefined ? { preEventAlerts } : {}),
       ...pushFields,
       ...(parsed.data.displayName !== undefined
         ? { displayName: parsed.data.displayName?.trim() || null }

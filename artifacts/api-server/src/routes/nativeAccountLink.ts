@@ -327,6 +327,7 @@ nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
   res.json(GetNativeSupporterScheduleResponse.parse(await loadNativeSupporterSchedule(identity(res))));
 }));
 nativeAccountLinkRouter.get("/supporter/fan-base", handle(async (_req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
   const summary = await loadNativeSupporterFanBase(identity(res));
   if (!summary) throw new NativeLinkError(404, "No HYPE Card is available for this athlete.");
   res.json(GetAthleteInviteFanBaseResponse.parse(summary));

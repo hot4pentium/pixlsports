@@ -5135,7 +5135,7 @@ components:
             auth: { type: string, minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
         liveAlerts: { type: boolean, default: false }
         eventAlerts: { type: boolean, default: false }
-        preEventAlerts: { type: boolean }
+        preEventAlerts: { type: boolean, default: false }
     AthleteInviteFanPushSubscription:
       type: object
       required: [endpoint, keys]
@@ -5152,7 +5152,7 @@ components:
       properties:
         liveAlerts: { type: boolean }
         eventAlerts: { type: boolean }
-        preEventAlerts: { type: boolean, default: false }
+        preEventAlerts: { type: boolean }
         displayName: { type: ["string", "null"], maxLength: 60 }
         pushSubscription:
           anyOf:

@@ -135,6 +135,7 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
     const status = await fetch(`${baseUrl}/follows/me`, { headers: followHeaders });
     assert.equal(status.status, 200);
     assert.deepEqual(await status.json(), {
+      displayName: null,
       liveAlerts: true,
       eventAlerts: true,
       preEventAlerts: false,
@@ -151,6 +152,7 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
     });
     assert.equal(update.status, 200);
     assert.deepEqual(await update.json(), {
+      displayName: null,
       liveAlerts: false,
       eventAlerts: true,
       preEventAlerts: true,
@@ -161,6 +163,7 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
     const pausedStatus = await fetch(`${baseUrl}/follows/me`, { headers: followHeaders });
     assert.equal(pausedStatus.status, 200);
     assert.deepEqual(await pausedStatus.json(), {
+      displayName: null,
       liveAlerts: false,
       eventAlerts: true,
       preEventAlerts: true,
@@ -173,9 +176,10 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
     });
     assert.equal(pausedPatch.status, 200);
     assert.deepEqual(await pausedPatch.json(), {
+      displayName: null,
       liveAlerts: true,
       eventAlerts: false,
-      preEventAlerts: false,
+      preEventAlerts: true,
       active: false,
     });
     assert.equal((await fetch(`${baseUrl}/follows`, {

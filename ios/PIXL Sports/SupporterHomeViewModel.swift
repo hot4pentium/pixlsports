@@ -24,6 +24,8 @@ final class SupporterHomeViewModel: ObservableObject {
 
     @Published private(set) var state: State = .loading
     @Published private(set) var fanBase: NativeSupporterFanBase?
+    @Published private(set) var fanBaseIsLoading = false
+    @Published private(set) var fanBaseError: String?
     @Published private(set) var hypeCardPreview: NativeSupporterHypeCardPreview?
     @Published private(set) var hypeCardPrivatePhoto: UIImage?
     @Published private(set) var hypeCardPreviewError: String?
@@ -139,6 +141,8 @@ final class SupporterHomeViewModel: ObservableObject {
         let previewRequestID = UUID()
         let previewUserID = clerk.user?.id
         fanBase = nil
+        fanBaseIsLoading = false
+        fanBaseError = nil
         hypePreviewRequestID = previewRequestID
         let offline = NativeOfflineRuntime.shared
         if let data = try? offline.vault.read("get/supporter/schedule", subject: previewUserID),
@@ -224,16 +228,26 @@ final class SupporterHomeViewModel: ObservableObject {
             // fetching its optional preview.
             hasResolvedInitialSchedule = true
             if needsAthleteProfileSetup { return }
+            fanBaseIsLoading = true
             do {
                 let summary = try await SupporterHomeAPI.fetchOwnerFanBase(clerk: clerk)
                 guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
                       clerk.user?.id == previewUserID, verifiedScope == offline.vault.namespace else { return }
                 fanBase = summary
+                fanBaseIsLoading = false
             } catch is CancellationError {
+                if hypePreviewRequestID == previewRequestID { fanBaseIsLoading = false }
                 return
             } catch {
-                // An unavailable or unlinked HYPE Card simply has no Fan Base panel.
+                guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
+                      clerk.user?.id == previewUserID, verifiedScope == offline.vault.namespace else { return }
                 fanBase = nil
+                fanBaseIsLoading = false
+                let status = (error as? NativeAccountLinkError)?.statusCode
+                // Do not reveal a panel for another or unavailable owner's card.
+                if status != 401 && status != 403 && status != 404 && status != 409 && status != 423 {
+                    fanBaseError = "Fan Base couldn’t load right now."
+                }
             }
             do {
                 let preview = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)

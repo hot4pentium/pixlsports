@@ -144,3 +144,4 @@
 - [Native local reminder handoff](native-local-reminder-handoff.md) — local and APNs alerts need an acknowledged per-phone handoff; connectivity alone cannot prevent repeats.
 - [Family-facing save messages](family-facing-save-messages.md) — state what is saved and the next choice without exposing sync or revision details.
 - [HYPE Card settings revisions](hype-card-settings-revisions.md) — concurrency revisions fingerprint the authoritative settings, not the card timestamp.
+- [Fan Base consent and privacy](fan-base-consent.md) — owner counts represent device follows; optional names and alert consent remain independent.

@@ -321,6 +321,7 @@ enum SupporterHomeAPI {
             let fanBase = try JSONDecoder().decode(NativeSupporterFanBase.self, from: data)
             guard fanBase.totalFollows >= 0,
                   fanBase.anonymousFollows >= 0,
+                  fanBase.totalFollows == fanBase.anonymousFollows + fanBase.namedFans.count,
                   fanBase.namedFans.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
                 throw SupporterHomeAPIError.invalidResponse
             }

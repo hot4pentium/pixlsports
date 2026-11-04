@@ -161,6 +161,10 @@ struct ContentView: View {
                             }
                             if let fanBase = viewModel.fanBase {
                                 NativeFanBaseView(fanBase: fanBase)
+                            } else if viewModel.fanBaseIsLoading || viewModel.fanBaseError != nil {
+                                NativeFanBaseStatusView(isLoading: viewModel.fanBaseIsLoading) {
+                                    Task { await loadSchedule() }
+                                }
                             }
                             accountSetupIfNeeded
                             athleteProfileLoadIssue

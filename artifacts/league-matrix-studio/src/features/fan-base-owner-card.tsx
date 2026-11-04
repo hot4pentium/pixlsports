@@ -1,19 +1,36 @@
+import { useUser } from '@clerk/react';
 import {
   getGetAthleteInviteFanBaseQueryKey,
   useGetAthleteInviteFanBase,
 } from '@workspace/api-client-react';
 
 export function FanBaseOwnerCard({ inviteToken }: { inviteToken?: string }) {
+  const { user, isLoaded } = useUser();
   const query = useGetAthleteInviteFanBase(inviteToken ?? '', {
     query: {
-      queryKey: getGetAthleteInviteFanBaseQueryKey(inviteToken ?? ''),
-      enabled: Boolean(inviteToken),
+      queryKey: [...getGetAthleteInviteFanBaseQueryKey(inviteToken ?? ''), user?.id],
+      enabled: Boolean(isLoaded && user?.id && inviteToken),
       retry: false,
       staleTime: 30_000,
     },
   });
   const fanBase = query.data;
-  if (!inviteToken || !fanBase || query.isError) return null;
+  const error = query.error as { status?: number; response?: { status?: number } } | null;
+  const status = error?.status ?? error?.response?.status;
+  if (!isLoaded || !user?.id || !inviteToken || (status && [401, 403, 404, 423].includes(status))) return null;
+  if (!fanBase || query.isError) {
+    return (
+      <section className="supporter-game-on-summary__fan-base" aria-label="Fan Base" data-testid="fan-base-owner">
+        <h3>Fan Base</h3>
+        <p className="supporter-game-on-summary__fan-base-note" role="status">
+          {query.isError ? 'Fan Base couldn’t load right now.' : 'Loading Fan Base…'}
+        </p>
+        {query.isError && (
+          <button type="button" onClick={() => void query.refetch()} className="min-h-11 text-xs underline">Try again</button>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="supporter-game-on-summary__fan-base" aria-label="Fan Base" data-testid="fan-base-owner">
@@ -33,7 +50,9 @@ export function FanBaseOwnerCard({ inviteToken }: { inviteToken?: string }) {
           ))}
         </ul>
       ) : (
-        <p className="supporter-game-on-summary__fan-base-empty">No one has shared a name yet.</p>
+        <p className="supporter-game-on-summary__fan-base-empty">
+          {fanBase.totalFollows === 0 ? 'Fans will appear here when they follow your HYPE Card.' : 'No one has shared a name yet.'}
+        </p>
       )}
       <p className="supporter-game-on-summary__fan-base-note">
         Follows are from devices; names are self-entered.

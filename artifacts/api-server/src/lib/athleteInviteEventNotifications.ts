@@ -137,7 +137,7 @@ async function sendClaimedDelivery(
         eq(athleteInviteFansTable.preEventAlerts, true),
       )).for("update").limit(1)
       : [];
-    if (!follow) {
+    if (!follow?.endpoint || !follow.p256dh || !follow.auth) {
       await tx.delete(athleteInviteEventDeliveryClaimsTable)
         .where(eq(athleteInviteEventDeliveryClaimsTable.id, claimId));
       return null;
@@ -170,7 +170,11 @@ async function sendClaimedDelivery(
       completedAt: now(),
     }).where(eq(athleteInviteEventDeliveryClaimsTable.id, claimId));
     if (outcome.stale) {
-      await tx.delete(athleteInviteFansTable).where(and(
+      await tx.update(athleteInviteFansTable).set({
+        endpoint: null, p256dh: null, auth: null,
+        liveAlerts: false, eventAlerts: false, preEventAlerts: false,
+        updatedAt: now(),
+      }).where(and(
         eq(athleteInviteFansTable.id, followId),
         eq(athleteInviteFansTable.endpoint, followEndpoint),
       ));

@@ -95,6 +95,12 @@ struct NativeFanBaseView: View {
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel("Fans who shared their name: \(fanBase.namedFans.joined(separator: ", "))")
+            } else {
+                Text(fanBase.totalFollows == 0
+                    ? "Fans will appear here when they follow your HYPE Card."
+                    : "No one has shared a name yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
             }
             Text("Follows are from devices; names are self-entered.")
                 .font(.caption)
@@ -127,5 +133,36 @@ struct NativeFanBaseView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(value) \(title.lowercased())")
+    }
+}
+
+struct NativeFanBaseStatusView: View {
+    let isLoading: Bool
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("FAN BASE")
+                .font(.caption.weight(.black))
+                .tracking(1.4)
+                .foregroundStyle(.white)
+            if isLoading {
+                ProgressView("Loading Fan Base…")
+                    .tint(.white)
+                    .foregroundStyle(.white)
+            } else {
+                Text("Fan Base couldn’t load right now.")
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                Button("Try again", action: retry)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(minHeight: 44)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityIdentifier("dashboard-fan-base-status")
     }
 }

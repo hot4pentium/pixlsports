@@ -5113,6 +5113,7 @@ export const createAthleteInviteFanFollowBodyKeysAuthMax = 128;
 export const createAthleteInviteFanFollowBodyKeysAuthRegExp = new RegExp('^[A-Za-z0-9_-]+$');
 export const createAthleteInviteFanFollowBodyLiveAlertsDefault = false;
 export const createAthleteInviteFanFollowBodyEventAlertsDefault = false;
+export const createAthleteInviteFanFollowBodyPreEventAlertsDefault = false;
 
 export const CreateAthleteInviteFanFollowBody = zod.object({
   "followToken": zod.string().min(createAthleteInviteFanFollowBodyFollowTokenMin).max(createAthleteInviteFanFollowBodyFollowTokenMax).regex(createAthleteInviteFanFollowBodyFollowTokenRegExp).optional(),
@@ -5124,7 +5125,7 @@ export const CreateAthleteInviteFanFollowBody = zod.object({
 }).optional(),
   "liveAlerts": zod.boolean().default(createAthleteInviteFanFollowBodyLiveAlertsDefault),
   "eventAlerts": zod.boolean().default(createAthleteInviteFanFollowBodyEventAlertsDefault),
-  "preEventAlerts": zod.boolean().optional()
+  "preEventAlerts": zod.boolean().default(createAthleteInviteFanFollowBodyPreEventAlertsDefault)
 })
 
 export const createAthleteInviteFanFollowResponseOneDisplayNameMax = 60;
@@ -5198,7 +5199,6 @@ export const UpdateAthleteInviteFanFollowHeader = zod.object({
   "X-Fan-Follow-Token": zod.string().min(updateAthleteInviteFanFollowHeaderXFanFollowTokenMin).max(updateAthleteInviteFanFollowHeaderXFanFollowTokenMax)
 })
 
-export const updateAthleteInviteFanFollowBodyPreEventAlertsDefault = false;
 export const updateAthleteInviteFanFollowBodyDisplayNameMax = 60;
 
 export const updateAthleteInviteFanFollowBodyPushSubscriptionOneEndpointMax = 2048;
@@ -5218,7 +5218,7 @@ export const updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysAuthRegExp =
 export const UpdateAthleteInviteFanFollowBody = zod.object({
   "liveAlerts": zod.boolean().optional(),
   "eventAlerts": zod.boolean().optional(),
-  "preEventAlerts": zod.boolean().default(updateAthleteInviteFanFollowBodyPreEventAlertsDefault),
+  "preEventAlerts": zod.boolean().optional(),
   "displayName": zod.string().max(updateAthleteInviteFanFollowBodyDisplayNameMax).nullish(),
   "pushSubscription": zod.union([zod.object({
   "endpoint": zod.string().url().max(updateAthleteInviteFanFollowBodyPushSubscriptionOneEndpointMax),
