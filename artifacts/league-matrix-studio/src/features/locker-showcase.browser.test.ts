@@ -108,7 +108,7 @@ const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = []; window.__momentSaves = [];
 window.__fixtureUser = null; window.__ownerInviteResponses = 0;
 window.__alertPreferences = {liveAlerts:false,eventAlerts:false,preEventAlerts:false,active:true};
-window.__followCreates = [];
+window.__followCreates = []; window.__followUpdates = []; window.__followDeletes = 0;
 window.__permissionResult = 'granted';
 Object.defineProperty(window,'Notification',{configurable:true,value:{permission:'default',requestPermission:async()=>window.__permissionResult}});
 Object.defineProperty(window,'PushManager',{configurable:true,value:function(){}});
@@ -126,12 +126,13 @@ window.fetch = async (input,init) => {
     window.__requests.push(url);
     if(url.endsWith('/api/notifications/config'))return new Response(JSON.stringify({available:true,publicKey:'AQID'}),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/follows')){
-      if(init?.method==='DELETE')return new Response(null,{status:204});
+      if(init?.method==='DELETE'){window.__followDeletes++;return new Response(null,{status:204});}
       if(init?.method==='POST'||init?.method==='PATCH'){
         const body=JSON.parse(init.body);Object.assign(window.__alertPreferences,body);
         if(init.method==='POST')window.__followCreates.push(body);
+        else window.__followUpdates.push(body);
       }
-      return new Response(JSON.stringify({...window.__alertPreferences,followToken:'fixture-follow-token'}),{status:200,headers:{'Content-Type':'application/json'}});
+      return new Response(JSON.stringify({...window.__alertPreferences,displayName:null,followToken:'fixture-follow-token'}),{status:200,headers:{'Content-Type':'application/json'}});
     }
     if(url.includes('/api/athlete-invites/')&&url.includes('/editor-access')){
       if(init?.method==='POST'){
@@ -687,13 +688,19 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     await browser.evaluate(`window.__permissionResult='granted'`);
     await toggleAlert('event');
     await browser.wait(`document.querySelector('[data-testid="input-fan-alert-event"]').checked`);
-    assert.equal(await browser.evaluate(`window.__followCreates[0].preEventAlerts`), true);
-    assert.equal(await browser.evaluate(`window.__followCreates[0].liveAlerts`), false);
+    assert.equal(await browser.evaluate(`window.__followCreates[0].followToken.length`), 64, 'the device follow is saved before alerts are enabled');
+    assert.equal(await browser.evaluate(`window.__followUpdates[0].preEventAlerts`), true);
+    assert.equal(await browser.evaluate(`window.__followUpdates[0].liveAlerts`), false);
+    assert.ok(await browser.evaluate(`window.__followUpdates[0].pushSubscription.endpoint`));
     await toggleAlert('live');
     await browser.wait(`document.querySelector('[data-testid="input-fan-alert-live"]').checked`);
     await toggleAlert('event');
     await browser.wait(`!document.querySelector('[data-testid="input-fan-alert-event"]').checked`);
     assert.equal(await browser.evaluate(`window.__alertPreferences.liveAlerts`), true, 'turning off event alerts preserves live consent');
+    await toggleAlert('live');
+    await browser.wait(`!document.querySelector('[data-testid="input-fan-alert-live"]').checked`);
+    assert.equal(await browser.evaluate(`window.__followDeletes`), 0, 'turning off alerts keeps the device follow');
+    assert.equal(await browser.evaluate(`JSON.parse(localStorage.getItem('pixl-fan-card-follow:fixture-athlete')).following`), true);
     await browser.evaluate(`window.scrollTo(0,0)`);
     await swipe('[data-testid="figure-public-showcase-jersey"]', 'left');
     await browser.wait(`document.querySelector('[data-testid="figure-public-showcase-hype-card"] [data-testid="img-living-card-athlete"]')`);

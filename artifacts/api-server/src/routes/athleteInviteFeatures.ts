@@ -14,6 +14,8 @@ import {
   GetAthleteInviteFanFollowHeader,
   GetAthleteInviteFanFollowParams,
   GetAthleteInviteFanFollowResponse,
+  GetAthleteInviteFanBaseParams,
+  GetAthleteInviteFanBaseResponse,
   GetAthleteInviteManifestParams,
   GetAthleteInviteManifestResponse,
   RemoveAthleteInvitePhotoParams,
@@ -40,6 +42,7 @@ import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage"
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { notifyAthleteInviteFans } from "../lib/athleteInviteFanNotifications";
 import { getWebPushConfig, isAllowedPushEndpoint } from "../lib/webPush";
+import { summarizeFanBase } from "../lib/athleteInviteFanBase";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -357,25 +360,33 @@ router.post(
   async (req, res): Promise<void> => {
     const params = CreateAthleteInviteFanFollowParams.safeParse(req.params);
     const parsed = CreateAthleteInviteFanFollowBody.safeParse(req.body);
-    if (!params.success || !parsed.success
-      || (!parsed.data.liveAlerts && !parsed.data.eventAlerts && !parsed.data.preEventAlerts)) {
-      res.status(400).json({ error: "Choose at least one alert and provide a valid browser subscription." });
+    if (!params.success || !parsed.success) {
+      res.status(400).json({ error: "Choose a valid follow." });
       return;
     }
-    if (!getWebPushConfig().available) {
-      res.status(503).json({ error: "Push notifications are not configured on this server." });
+    const hasPushDetails = parsed.data.endpoint !== undefined || parsed.data.keys !== undefined;
+    const hasAlerts = parsed.data.liveAlerts || parsed.data.eventAlerts || parsed.data.preEventAlerts;
+    if (hasPushDetails !== hasAlerts || (hasPushDetails && (!parsed.data.endpoint || !parsed.data.keys))) {
+      res.status(400).json({ error: "Choose a browser subscription when enabling alerts." });
       return;
     }
-    let endpoint: URL;
-    try {
-      endpoint = new URL(parsed.data.endpoint);
-    } catch {
-      res.status(400).json({ error: "Invalid push endpoint." });
-      return;
-    }
-    if (!isAllowedPushEndpoint(endpoint.toString())) {
-      res.status(400).json({ error: "Push endpoint must belong to a supported browser push service." });
-      return;
+    let endpoint: string | null = null;
+    if (hasPushDetails) {
+      if (!getWebPushConfig().available) {
+        res.status(503).json({ error: "Push notifications are not configured on this server." });
+        return;
+      }
+      try {
+        const parsedEndpoint = new URL(parsed.data.endpoint!);
+        if (!isAllowedPushEndpoint(parsedEndpoint.toString())) {
+          res.status(400).json({ error: "Push endpoint must belong to a supported browser push service." });
+          return;
+        }
+        endpoint = parsedEndpoint.toString();
+      } catch {
+        res.status(400).json({ error: "Invalid push endpoint." });
+        return;
+      }
     }
     const invite = await findActiveInvite(params.data.inviteToken);
     if (!invite) { res.status(404).json({ error: "Athlete invite not found." }); return; }
@@ -383,19 +394,54 @@ router.post(
       res.status(429).json({ error: "Too many follow attempts. Try again later." });
       return;
     }
-    const token = randomBytes(32).toString("base64url");
+    const token = parsed.data.followToken ?? randomBytes(32).toString("base64url");
+    const tokenHash = followTokenHash(token);
     try {
+      const [existingToken] = await db.select().from(athleteInviteFansTable).where(
+        eq(athleteInviteFansTable.followTokenHash, tokenHash),
+      ).limit(1);
+      if (existingToken) {
+        if (existingToken.inviteId !== invite.id) {
+          res.status(409).json({ error: "This follow token is already in use." });
+          return;
+        }
+        res.json(CreateAthleteInviteFanFollowResponse.parse({
+          followToken: token,
+          liveAlerts: existingToken.liveAlerts,
+          eventAlerts: existingToken.eventAlerts,
+          preEventAlerts: existingToken.preEventAlerts,
+          active: true,
+          displayName: existingToken.displayName,
+        }));
+        return;
+      }
       const [follow] = await db.insert(athleteInviteFansTable).values({
         inviteId: invite.id,
-        endpoint: endpoint.toString(),
-        p256dh: parsed.data.keys.p256dh,
-        auth: parsed.data.keys.auth,
-        followTokenHash: followTokenHash(token),
+        endpoint,
+        p256dh: parsed.data.keys?.p256dh ?? null,
+        auth: parsed.data.keys?.auth ?? null,
+        followTokenHash: tokenHash,
+        displayName: parsed.data.displayName?.trim() || null,
         liveAlerts: parsed.data.liveAlerts,
         eventAlerts: parsed.data.eventAlerts,
         preEventAlerts: parsed.data.preEventAlerts ?? false,
       }).onConflictDoNothing().returning();
       if (!follow) {
+        const [retry] = await db.select().from(athleteInviteFansTable).where(and(
+          eq(athleteInviteFansTable.inviteId, invite.id),
+          eq(athleteInviteFansTable.followTokenHash, tokenHash),
+        )).limit(1);
+        if (retry) {
+          res.json(CreateAthleteInviteFanFollowResponse.parse({
+            followToken: token,
+            liveAlerts: retry.liveAlerts,
+            eventAlerts: retry.eventAlerts,
+            preEventAlerts: retry.preEventAlerts,
+            active: true,
+            displayName: retry.displayName,
+          }));
+          return;
+        }
         res.status(409).json({ error: "This browser subscription is already following an invite." });
         return;
       }
@@ -405,11 +451,34 @@ router.post(
         eventAlerts: follow.eventAlerts,
         preEventAlerts: follow.preEventAlerts,
         active: true,
+        displayName: follow.displayName,
       }));
     } catch (error) {
       req.log.error({ err: error }, "Unable to create athlete invite fan follow");
       res.status(500).json({ error: "Unable to create follow." });
     }
+  },
+);
+
+router.get(
+  "/athlete-invites/:inviteToken/fan-base",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = GetAthleteInviteFanBaseParams.safeParse(req.params);
+    if (!params.success) { res.status(404).json({ error: "Fan Base not found." }); return; }
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const [invite] = await db.select({ id: athleteInvitesTable.id }).from(athleteInvitesTable).where(and(
+      eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+      eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+    )).limit(1);
+    if (!invite || !(await isAccountActive(ownerClerkUserId))) {
+      res.status(404).json({ error: "Fan Base not found." });
+      return;
+    }
+    const follows = await db.select({ displayName: athleteInviteFansTable.displayName })
+      .from(athleteInviteFansTable)
+      .where(eq(athleteInviteFansTable.inviteId, invite.id));
+    res.json(GetAthleteInviteFanBaseResponse.parse(summarizeFanBase(follows)));
   },
 );
 
@@ -426,6 +495,7 @@ router.get(
       eventAlerts: record.follow.eventAlerts,
       preEventAlerts: record.follow.preEventAlerts,
       active: record.active,
+      displayName: record.follow.displayName,
     }));
   },
 );
@@ -437,7 +507,7 @@ router.patch(
     const header = UpdateAthleteInviteFanFollowHeader.safeParse({ "X-Fan-Follow-Token": req.get("X-Fan-Follow-Token") });
     const parsed = UpdateAthleteInviteFanFollowBody.safeParse(req.body);
     if (!params.success || !header.success || !parsed.success) {
-      res.status(400).json({ error: "Choose at least one alert." });
+      res.status(400).json({ error: "Check your follow settings." });
       return;
     }
     const record = await isFollowTokenValid(req);
@@ -445,14 +515,51 @@ router.patch(
     const liveAlerts = parsed.data.liveAlerts ?? record.follow.liveAlerts;
     const eventAlerts = parsed.data.eventAlerts ?? record.follow.eventAlerts;
     const preEventAlerts = parsed.data.preEventAlerts ?? record.follow.preEventAlerts;
-    if (!liveAlerts && !eventAlerts && !preEventAlerts) {
-      res.status(400).json({ error: "Choose at least one alert." });
+    const hasAlerts = liveAlerts || eventAlerts || preEventAlerts;
+    let pushFields: { endpoint?: string | null; p256dh?: string | null; auth?: string | null } = {};
+    if (!hasAlerts) {
+      pushFields = { endpoint: null, p256dh: null, auth: null };
+    } else if (parsed.data.pushSubscription) {
+      if (!getWebPushConfig().available) {
+        res.status(503).json({ error: "Push notifications are not configured on this server." });
+        return;
+      }
+      let pushEndpoint: URL;
+      try {
+        pushEndpoint = new URL(parsed.data.pushSubscription.endpoint);
+      } catch {
+        res.status(400).json({ error: "Invalid push endpoint." });
+        return;
+      }
+      if (!isAllowedPushEndpoint(pushEndpoint.toString())) {
+        res.status(400).json({ error: "Push endpoint must belong to a supported browser push service." });
+        return;
+      }
+      const [duplicate] = await db.select({ id: athleteInviteFansTable.id }).from(athleteInviteFansTable).where(and(
+        eq(athleteInviteFansTable.inviteId, record.invite.id),
+        eq(athleteInviteFansTable.endpoint, pushEndpoint.toString()),
+      )).limit(1);
+      if (duplicate && duplicate.id !== record.follow.id) {
+        res.status(409).json({ error: "This device is already following this card." });
+        return;
+      }
+      pushFields = {
+        endpoint: pushEndpoint.toString(),
+        p256dh: parsed.data.pushSubscription.keys.p256dh,
+        auth: parsed.data.pushSubscription.keys.auth,
+      };
+    } else if (!record.follow.endpoint || !record.follow.p256dh || !record.follow.auth) {
+      res.status(400).json({ error: "Turn on alerts from a supported browser first." });
       return;
     }
     const [updated] = await db.update(athleteInviteFansTable).set({
       liveAlerts,
       eventAlerts,
       preEventAlerts,
+      ...pushFields,
+      ...(parsed.data.displayName !== undefined
+        ? { displayName: parsed.data.displayName?.trim() || null }
+        : {}),
       updatedAt: new Date(),
     }).where(eq(athleteInviteFansTable.id, record.follow.id)).returning();
     if (!updated) { res.status(404).json({ error: "Follow not found." }); return; }
@@ -461,6 +568,7 @@ router.patch(
       eventAlerts: updated.eventAlerts,
       preEventAlerts: updated.preEventAlerts,
       active: record.active,
+      displayName: updated.displayName,
     }));
   },
 );

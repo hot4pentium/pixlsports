@@ -5,9 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AthleteInviteFanPushSubscription } from './athleteInviteFanPushSubscription';
 
 export interface AthleteInviteFanFollowPreferences {
   liveAlerts?: boolean;
   eventAlerts?: boolean;
   preEventAlerts?: boolean;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  displayName?: string | null;
+  pushSubscription?: AthleteInviteFanPushSubscription | null;
 }

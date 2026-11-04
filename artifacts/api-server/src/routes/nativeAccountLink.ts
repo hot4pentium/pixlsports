@@ -10,6 +10,7 @@ import {
   CorrectNativeSupporterHypeCardIdentityResponse,
   UpdateNativeSupporterProfileBody,
   GetNativeSupporterScheduleResponse,
+  GetAthleteInviteFanBaseResponse,
   PrepareNativeSupporterAccountResponse,
 } from "@workspace/api-zod";
 import { prepareNativeSupporterAccount } from "../lib/nativeAccountPreparation";
@@ -23,6 +24,7 @@ import {
 import {
   correctNativeSupporterHypeCardIdentity,
   loadNativeSupporterHypeCard,
+  loadNativeSupporterFanBase,
   loadNativeSupporterHypeCardPhoto,
   updateNativeSupporterHypeCard,
 } from "../lib/nativeSupporterHypeCard";
@@ -323,6 +325,11 @@ nativeAccountLinkRouter.delete("/link", handle(async (_req, res) => {
 }));
 nativeAccountLinkRouter.get("/supporter/schedule", handle(async (_req, res) => {
   res.json(GetNativeSupporterScheduleResponse.parse(await loadNativeSupporterSchedule(identity(res))));
+}));
+nativeAccountLinkRouter.get("/supporter/fan-base", handle(async (_req, res) => {
+  const summary = await loadNativeSupporterFanBase(identity(res));
+  if (!summary) throw new NativeLinkError(404, "No HYPE Card is available for this athlete.");
+  res.json(GetAthleteInviteFanBaseResponse.parse(summary));
 }));
 nativeAccountLinkRouter.post("/supporter/live-taps-access", handle(async (req, res) => {
   const parsed = z.object({

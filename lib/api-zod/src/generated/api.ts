@@ -4086,6 +4086,25 @@ export const GetNativeSupporterScheduleResponse = zod.object({
 
 
 /**
+ * Resolves only the verified linked web account and selected athlete. Does not return a private card identifier, push endpoint, or fan token.
+ * @summary Get the linked iPhone owner's private Fan Base
+ */
+export const getNativeSupporterFanBaseResponseTotalFollowsMin = 0;
+
+export const getNativeSupporterFanBaseResponseNamedFansItemMax = 60;
+
+export const getNativeSupporterFanBaseResponseAnonymousFollowsMin = 0;
+
+
+
+export const GetNativeSupporterFanBaseResponse = zod.object({
+  "totalFollows": zod.number().int().min(getNativeSupporterFanBaseResponseTotalFollowsMin),
+  "namedFans": zod.array(zod.string().min(1).max(getNativeSupporterFanBaseResponseNamedFansItemMax)),
+  "anonymousFollows": zod.number().int().min(getNativeSupporterFanBaseResponseAnonymousFollowsMin)
+})
+
+
+/**
  * Returns the athlete identity fields from the verified linked PIXL account. Optional values are empty strings when unset.
  * @summary Load the linked iPhone owner’s athlete profile
  */
@@ -5037,8 +5056,34 @@ export const GetAthleteInviteManifestResponse = zod.object({
 
 
 /**
- * New follows are accepted only while this invite is active. The same browser subscription may follow different invites independently.
- * @summary Follow an active athlete invite anonymously on this device
+ * Requires the authenticated owner of this HYPE Card. Never returns push endpoints or fan tokens.
+ * @summary Get the owner's private fan count and volunteered names
+ */
+export const getAthleteInviteFanBasePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteInviteFanBaseParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteInviteFanBasePathInviteTokenRegExp)
+})
+
+export const getAthleteInviteFanBaseResponseTotalFollowsMin = 0;
+
+export const getAthleteInviteFanBaseResponseNamedFansItemMax = 60;
+
+export const getAthleteInviteFanBaseResponseAnonymousFollowsMin = 0;
+
+
+
+export const GetAthleteInviteFanBaseResponse = zod.object({
+  "totalFollows": zod.number().int().min(getAthleteInviteFanBaseResponseTotalFollowsMin),
+  "namedFans": zod.array(zod.string().min(1).max(getAthleteInviteFanBaseResponseNamedFansItemMax)),
+  "anonymousFollows": zod.number().int().min(getAthleteInviteFanBaseResponseAnonymousFollowsMin)
+})
+
+
+/**
+ * Creates or resumes a device follow while the invite is active. Alerts and display names are optional.
+ * @summary Follow an active athlete invite on this device
  */
 export const createAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -5046,6 +5091,13 @@ export const createAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A
 export const CreateAthleteInviteFanFollowParams = zod.object({
   "inviteToken": zod.coerce.string().regex(createAthleteInviteFanFollowPathInviteTokenRegExp)
 })
+
+export const createAthleteInviteFanFollowBodyFollowTokenMin = 40;
+export const createAthleteInviteFanFollowBodyFollowTokenMax = 100;
+
+
+export const createAthleteInviteFanFollowBodyFollowTokenRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const createAthleteInviteFanFollowBodyDisplayNameMax = 60;
 
 export const createAthleteInviteFanFollowBodyEndpointMax = 2048;
 
@@ -5059,18 +5111,23 @@ export const createAthleteInviteFanFollowBodyKeysAuthMax = 128;
 
 
 export const createAthleteInviteFanFollowBodyKeysAuthRegExp = new RegExp('^[A-Za-z0-9_-]+$');
-export const createAthleteInviteFanFollowBodyPreEventAlertsDefault = false;
+export const createAthleteInviteFanFollowBodyLiveAlertsDefault = false;
+export const createAthleteInviteFanFollowBodyEventAlertsDefault = false;
 
 export const CreateAthleteInviteFanFollowBody = zod.object({
-  "endpoint": zod.string().url().max(createAthleteInviteFanFollowBodyEndpointMax),
+  "followToken": zod.string().min(createAthleteInviteFanFollowBodyFollowTokenMin).max(createAthleteInviteFanFollowBodyFollowTokenMax).regex(createAthleteInviteFanFollowBodyFollowTokenRegExp).optional(),
+  "displayName": zod.string().max(createAthleteInviteFanFollowBodyDisplayNameMax).nullish(),
+  "endpoint": zod.string().url().max(createAthleteInviteFanFollowBodyEndpointMax).optional(),
   "keys": zod.object({
   "p256dh": zod.string().min(createAthleteInviteFanFollowBodyKeysP256dhMin).max(createAthleteInviteFanFollowBodyKeysP256dhMax).regex(createAthleteInviteFanFollowBodyKeysP256dhRegExp),
   "auth": zod.string().min(createAthleteInviteFanFollowBodyKeysAuthMin).max(createAthleteInviteFanFollowBodyKeysAuthMax).regex(createAthleteInviteFanFollowBodyKeysAuthRegExp)
-}),
-  "liveAlerts": zod.boolean(),
-  "eventAlerts": zod.boolean(),
-  "preEventAlerts": zod.boolean().default(createAthleteInviteFanFollowBodyPreEventAlertsDefault)
+}).optional(),
+  "liveAlerts": zod.boolean().default(createAthleteInviteFanFollowBodyLiveAlertsDefault),
+  "eventAlerts": zod.boolean().default(createAthleteInviteFanFollowBodyEventAlertsDefault),
+  "preEventAlerts": zod.boolean().optional()
 })
+
+export const createAthleteInviteFanFollowResponseOneDisplayNameMax = 60;
 
 export const createAthleteInviteFanFollowResponseTwoFollowTokenMin = 40;
 export const createAthleteInviteFanFollowResponseTwoFollowTokenMax = 100;
@@ -5081,7 +5138,8 @@ export const CreateAthleteInviteFanFollowResponse = zod.object({
   "liveAlerts": zod.boolean(),
   "eventAlerts": zod.boolean(),
   "preEventAlerts": zod.boolean(),
-  "active": zod.boolean()
+  "active": zod.boolean(),
+  "displayName": zod.string().max(createAthleteInviteFanFollowResponseOneDisplayNameMax).nullable()
 }).and(zod.object({
   "followToken": zod.string().min(createAthleteInviteFanFollowResponseTwoFollowTokenMin).max(createAthleteInviteFanFollowResponseTwoFollowTokenMax)
 }))
@@ -5089,7 +5147,7 @@ export const CreateAthleteInviteFanFollowResponse = zod.object({
 
 /**
  * A valid follow token remains usable to manage its own preferences or remove the follow while the invite is paused; active is false until the invite can send alerts again.
- * @summary Get device follow preferences and active status
+ * @summary Get device follow name and alert preferences
  */
 export const getAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -5107,17 +5165,22 @@ export const GetAthleteInviteFanFollowHeader = zod.object({
   "X-Fan-Follow-Token": zod.string().min(getAthleteInviteFanFollowHeaderXFanFollowTokenMin).max(getAthleteInviteFanFollowHeaderXFanFollowTokenMax)
 })
 
+export const getAthleteInviteFanFollowResponseDisplayNameMax = 60;
+
+
+
 export const GetAthleteInviteFanFollowResponse = zod.object({
   "liveAlerts": zod.boolean(),
   "eventAlerts": zod.boolean(),
   "preEventAlerts": zod.boolean(),
-  "active": zod.boolean()
+  "active": zod.boolean(),
+  "displayName": zod.string().max(getAthleteInviteFanFollowResponseDisplayNameMax).nullable()
 })
 
 
 /**
  * Existing follows may be updated while paused; the response reports active false until the invite can send alerts again.
- * @summary Update alert preferences using the device follow token
+ * @summary Update this device's name and alert preferences
  */
 export const updateAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -5136,18 +5199,46 @@ export const UpdateAthleteInviteFanFollowHeader = zod.object({
 })
 
 export const updateAthleteInviteFanFollowBodyPreEventAlertsDefault = false;
+export const updateAthleteInviteFanFollowBodyDisplayNameMax = 60;
+
+export const updateAthleteInviteFanFollowBodyPushSubscriptionOneEndpointMax = 2048;
+
+export const updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysP256dhMin = 40;
+export const updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysP256dhMax = 256;
+
+
+export const updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysP256dhRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysAuthMin = 8;
+export const updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysAuthMax = 128;
+
+
+export const updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysAuthRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
 
 export const UpdateAthleteInviteFanFollowBody = zod.object({
   "liveAlerts": zod.boolean().optional(),
   "eventAlerts": zod.boolean().optional(),
-  "preEventAlerts": zod.boolean().default(updateAthleteInviteFanFollowBodyPreEventAlertsDefault)
+  "preEventAlerts": zod.boolean().default(updateAthleteInviteFanFollowBodyPreEventAlertsDefault),
+  "displayName": zod.string().max(updateAthleteInviteFanFollowBodyDisplayNameMax).nullish(),
+  "pushSubscription": zod.union([zod.object({
+  "endpoint": zod.string().url().max(updateAthleteInviteFanFollowBodyPushSubscriptionOneEndpointMax),
+  "keys": zod.object({
+  "p256dh": zod.string().min(updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysP256dhMin).max(updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysP256dhMax).regex(updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysP256dhRegExp),
+  "auth": zod.string().min(updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysAuthMin).max(updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysAuthMax).regex(updateAthleteInviteFanFollowBodyPushSubscriptionOneKeysAuthRegExp)
 })
+}),zod.null()]).optional()
+})
+
+export const updateAthleteInviteFanFollowResponseDisplayNameMax = 60;
+
+
 
 export const UpdateAthleteInviteFanFollowResponse = zod.object({
   "liveAlerts": zod.boolean(),
   "eventAlerts": zod.boolean(),
   "preEventAlerts": zod.boolean(),
-  "active": zod.boolean()
+  "active": zod.boolean(),
+  "displayName": zod.string().max(updateAthleteInviteFanFollowResponseDisplayNameMax).nullable()
 })
 
 

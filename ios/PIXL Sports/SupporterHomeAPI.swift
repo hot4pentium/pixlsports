@@ -21,6 +21,12 @@ struct NativeSeasonRecord: Codable {
     let seasonName: String?
 }
 
+struct NativeSupporterFanBase: Decodable {
+    let totalFollows: Int
+    let namedFans: [String]
+    let anonymousFollows: Int
+}
+
 struct NativeHypeCardReference: Decodable {
     let status: String
     let inviteToken: String?
@@ -304,6 +310,21 @@ enum SupporterHomeAPI {
                 throw SupporterHomeAPIError.invalidResponse
             }
             return schedule
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func fetchOwnerFanBase(clerk: Clerk) async throws -> NativeSupporterFanBase {
+        let data = try await NativeAccountLinkClient().getData("supporter/fan-base", clerk: clerk)
+        do {
+            let fanBase = try JSONDecoder().decode(NativeSupporterFanBase.self, from: data)
+            guard fanBase.totalFollows >= 0,
+                  fanBase.anonymousFollows >= 0,
+                  fanBase.namedFans.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
+            return fanBase
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }

@@ -159,6 +159,9 @@ struct ContentView: View {
                                     NativeSeasonRecordView(record: record)
                                 }
                             }
+                            if let fanBase = viewModel.fanBase {
+                                NativeFanBaseView(fanBase: fanBase)
+                            }
                             accountSetupIfNeeded
                             athleteProfileLoadIssue
                             nextEventSection

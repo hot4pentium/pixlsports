@@ -95,7 +95,7 @@ async function claimDeviceDelivery(
       eq(athleteInviteFansTable.inviteId, inviteId),
       eq(athleteInviteFansTable.preEventAlerts, true),
     )).for("update").limit(1);
-    if (!follow) return { state: "stale" as const };
+    if (!follow?.endpoint || !follow.p256dh || !follow.auth) return { state: "stale" as const };
     const deviceKeyHash = createHash("sha256").update(follow.endpoint).digest("hex");
     const [claim] = await tx.insert(athleteInviteEventDeliveryClaimsTable).values({
       inviteId,
@@ -144,14 +144,23 @@ async function sendClaimedDelivery(
     }
     return follow;
   });
-  if (!currentFollow) return { state: "stale" as const };
+  if (!currentFollow?.endpoint || !currentFollow.p256dh || !currentFollow.auth) {
+    return { state: "stale" as const };
+  }
+  const followEndpoint = currentFollow.endpoint;
+  const pushFollow = {
+    ...currentFollow,
+    endpoint: followEndpoint,
+    p256dh: currentFollow.p256dh,
+    auth: currentFollow.auth,
+  };
 
   // The short transaction above is the final eligibility/consent check.
   // Do not hold the invite/share/follower locks during the network request:
   // slow push services must not block other recipients or preference changes.
   let outcome: Awaited<ReturnType<PushSender>>;
   try {
-    outcome = await send(currentFollow, payload);
+    outcome = await send(pushFollow, payload);
   } catch {
     outcome = { configured: true, sent: false, stale: false };
   }
@@ -163,7 +172,7 @@ async function sendClaimedDelivery(
     if (outcome.stale) {
       await tx.delete(athleteInviteFansTable).where(and(
         eq(athleteInviteFansTable.id, followId),
-        eq(athleteInviteFansTable.endpoint, currentFollow.endpoint),
+        eq(athleteInviteFansTable.endpoint, followEndpoint),
       ));
     }
   });
@@ -211,6 +220,10 @@ async function deliveryProgress(inviteId: string, eventId: string) {
   const remainingIds: string[] = [];
   const counts = { eligible: followers.length, sent: 0, failed: 0, pending: 0, remaining: 0 };
   for (const follow of followers) {
+    if (!follow.endpoint) {
+      counts.eligible--;
+      continue;
+    }
     const hash = createHash("sha256").update(follow.endpoint).digest("hex");
     const result = byDevice.get(hash);
     if (result === "sent") counts.sent++;

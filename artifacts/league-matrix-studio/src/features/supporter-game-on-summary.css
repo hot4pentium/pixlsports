@@ -1103,6 +1103,66 @@
   text-transform: uppercase;
 }
 
+.supporter-game-on-summary__fan-base {
+  margin-top: 14px;
+  border-top: 1px solid rgba(205, 225, 255, .18);
+  padding-top: 12px;
+  text-align: left;
+}
+
+.supporter-game-on-summary__fan-base-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.supporter-game-on-summary__fan-base-heading > div > span {
+  color: rgba(220, 232, 249, .6);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.supporter-game-on-summary__fan-base-heading h3 {
+  margin: 2px 0 0;
+  color: #f6f9ff;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.supporter-game-on-summary__fan-base-heading > span {
+  color: rgba(220, 232, 249, .68);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.supporter-game-on-summary__fan-base-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.supporter-game-on-summary__fan-base-names li {
+  border: 1px solid rgba(114, 201, 255, .24);
+  border-radius: 999px;
+  background: rgba(30, 77, 126, .35);
+  padding: 4px 9px;
+  color: #fff;
+  font-size: 11px;
+}
+
+.supporter-game-on-summary__fan-base-empty,
+.supporter-game-on-summary__fan-base-note {
+  margin: 8px 0 0;
+  color: rgba(220, 232, 249, .58);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .supporter-game-on-summary__event .dashboard-event-date-row {
   display: none;
 }

@@ -1378,6 +1378,7 @@ export function SupporterDashboardView({
             seasonName={profile.seasonName}
             sport={recordSport}
             record={gameRecord}
+            fanBaseInviteToken={savedFanCard?.inviteToken}
             headerAction={!isDesktopDashboard ? dashboardChecklist : undefined}
             installReminder={<DashboardInstallReminder action={installAction} showInstructions={showInstallInstructions} onInstall={handleInstallPrompt} variant="mobile" />}
             mobileHypeCard={
@@ -1560,6 +1561,7 @@ export function SupporterDashboardView({
             seasonName={profile.seasonName}
             sport={recordSport}
             record={gameRecord}
+            fanBaseInviteToken={savedFanCard?.inviteToken}
             showTitle={false}
             showSeasonKicker={false}
             headerAction={isDesktopDashboard ? dashboardChecklist : undefined}

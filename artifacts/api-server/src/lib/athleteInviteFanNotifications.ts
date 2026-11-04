@@ -5,12 +5,21 @@ import {
   athleteInvitesTable,
   db,
   statTrackerSharesTable,
+  type AthleteInviteFan,
 } from "@workspace/db";
 import { isAccountActive } from "./accountLifecycle";
 import { sendPushNotificationToSubscription } from "./webPush";
 
 export type AthleteInviteFanAlert = "live" | "event";
-type SendFanNotification = typeof sendPushNotificationToSubscription;
+type PushCapableFollow = Omit<AthleteInviteFan, "endpoint" | "p256dh" | "auth"> & {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+};
+type SendFanNotification = (
+  subscription: PushCapableFollow,
+  payload: Parameters<typeof sendPushNotificationToSubscription>[1],
+) => ReturnType<typeof sendPushNotificationToSubscription>;
 
 export async function notifyAthleteInviteFans(
   inviteId: string,
@@ -63,7 +72,7 @@ export async function notifyAthleteInviteFans(
         ? eq(athleteInviteFansTable.liveAlerts, true)
         : eq(athleteInviteFansTable.eventAlerts, true),
     )).limit(1);
-    if (!currentFollow) continue;
+    if (!currentFollow?.endpoint || !currentFollow.p256dh || !currentFollow.auth) continue;
     const [currentInvite] = await db.select().from(athleteInvitesTable).where(and(
       eq(athleteInvitesTable.id, inviteId),
       eq(athleteInvitesTable.paused, false),
@@ -82,7 +91,13 @@ export async function notifyAthleteInviteFans(
     }
     if (!(await isAccountActive(currentInvite.ownerClerkUserId))) break;
 
-    const result = await (options.send ?? sendPushNotificationToSubscription)(currentFollow, {
+    const pushFollow = {
+      ...currentFollow,
+      endpoint: currentFollow.endpoint,
+      p256dh: currentFollow.p256dh,
+      auth: currentFollow.auth,
+    };
+    const result = await (options.send ?? sendPushNotificationToSubscription)(pushFollow, {
       title,
       body,
       url: `/fan/${invite.publicToken}`,

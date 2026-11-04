@@ -50,6 +50,8 @@ export function FanCardFollow({
 }) {
   const [following, setFollowing] = useState(() => storedFollow(inviteToken).following);
   const [followToken, setFollowToken] = useState(() => storedFollow(inviteToken).followToken);
+  const [displayNameDraft, setDisplayNameDraft] = useState('');
+  const [followSaved, setFollowSaved] = useState(false);
   const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false);
   const [permission, setPermission] = useState(() => 'Notification' in window ? Notification.permission : 'default');
@@ -82,8 +84,17 @@ export function FanCardFollow({
     const saved = storedFollow(inviteToken);
     setFollowing(saved.following);
     setFollowToken(saved.followToken);
+    setFollowSaved(false);
+    setDisplayNameDraft('');
     setMessage('');
   }, [inviteToken]);
+
+  useEffect(() => {
+    if (status.data) {
+      setFollowSaved(true);
+      setDisplayNameDraft(status.data.displayName ?? '');
+    }
+  }, [status.data]);
 
   useEffect(() => {
     if (!followToken || !status.isError) return;
@@ -101,15 +112,61 @@ export function FanCardFollow({
   function saveLocal(nextFollowing: boolean, nextToken: string) {
     setFollowing(nextFollowing);
     setFollowToken(nextToken);
+    if (!nextFollowing) setFollowSaved(false);
     if (nextFollowing) localStorage.setItem(`pixl-fan-card-follow:${inviteToken}`, JSON.stringify({ following: true, followToken: nextToken }));
     else localStorage.removeItem(`pixl-fan-card-follow:${inviteToken}`);
   }
 
+  function newFollowToken() {
+    const bytes = window.crypto.getRandomValues(new Uint8Array(32));
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function saveServerFollow(token: string) {
+    const created = await create.mutateAsync({ inviteToken, data: { followToken: token } });
+    saveLocal(true, created.followToken);
+    setFollowSaved(true);
+    setDisplayNameDraft(created.displayName ?? '');
+  }
+
+  useEffect(() => {
+    if (!following || followToken || pending) return;
+    const token = newFollowToken();
+    saveLocal(true, token);
+    setPending(true);
+    setMessage('');
+    void saveServerFollow(token)
+      .then(() => setMessage('Following on this device. Alerts are optional.'))
+      .catch(() => setMessage('Your follow is saved on this device. Connect to the internet to finish saving it.'))
+      .finally(() => setPending(false));
+  }, [following, followToken, pending, inviteToken, create.mutateAsync]);
+
   async function toggleFollow() {
     setMessage('');
     if (!following) {
-      saveLocal(true, '');
-      setMessage('Following on this device. Choose which phone alerts to receive below.');
+      const token = newFollowToken();
+      saveLocal(true, token);
+      setPending(true);
+      try {
+        await saveServerFollow(token);
+        setMessage('Following on this device. Alerts are optional.');
+      } catch {
+        setMessage('Your follow is saved on this device. Connect to the internet to finish saving it.');
+      } finally {
+        setPending(false);
+      }
+      return;
+    }
+    if (!followSaved && !status.data) {
+      setPending(true);
+      try {
+        await saveServerFollow(followToken || newFollowToken());
+        setMessage('Your follow is saved.');
+      } catch {
+        setMessage('Could not save your follow right now. Please try again.');
+      } finally {
+        setPending(false);
+      }
       return;
     }
     setPending(true);
@@ -133,8 +190,11 @@ export function FanCardFollow({
     const legacyEventAlerts = Boolean(status.data?.eventAlerts);
     try {
       if (!next.liveAlerts && !next.preEventAlerts && !legacyEventAlerts) {
-        if (followToken) await remove.mutateAsync({ inviteToken });
-        saveLocal(true, '');
+        await update.mutateAsync({
+          inviteToken,
+          data: { liveAlerts: false, eventAlerts: false, preEventAlerts: false },
+        });
+        await status.refetch();
         setMessage('Alerts are off. You are still following this card on this device.');
         return;
       }
@@ -152,7 +212,11 @@ export function FanCardFollow({
           return;
         }
       }
-      if (!followToken) {
+      let pushSubscription: {
+        endpoint: string;
+        keys: { p256dh: string; auth: string };
+      } | undefined;
+      if (enabling) {
         if (!config.data?.publicKey) throw new Error('Push alerts are not configured on this server.');
         const registration = await fanPushRegistration();
         const subscription = await registration.pushManager.getSubscription()
@@ -164,27 +228,43 @@ export function FanCardFollow({
         if (!data.endpoint || !data.keys?.p256dh || !data.keys.auth) {
           throw new Error('This browser did not provide a complete push subscription.');
         }
-        const created = await create.mutateAsync({
-          inviteToken,
-          data: {
-            endpoint: data.endpoint,
-            keys: { p256dh: data.keys.p256dh, auth: data.keys.auth },
-            liveAlerts: next.liveAlerts,
-            eventAlerts: false,
-            preEventAlerts: next.preEventAlerts,
-          },
-        });
-        saveLocal(true, created.followToken);
-      } else {
-        await update.mutateAsync({
-          inviteToken,
-          data: { liveAlerts: next.liveAlerts, eventAlerts: legacyEventAlerts, preEventAlerts: next.preEventAlerts },
-        });
-        await status.refetch();
+        pushSubscription = {
+          endpoint: data.endpoint,
+          keys: { p256dh: data.keys.p256dh, auth: data.keys.auth },
+        };
       }
+      if (!followToken) throw new Error('Save your follow before turning on alerts.');
+      await update.mutateAsync({
+        inviteToken,
+        data: {
+          liveAlerts: next.liveAlerts,
+          eventAlerts: legacyEventAlerts,
+          preEventAlerts: next.preEventAlerts,
+          ...(pushSubscription ? { pushSubscription } : {}),
+        },
+      });
+      await status.refetch();
       setMessage('Your alert choices were saved for this device.');
     } catch (error) {
       setMessage(error instanceof Error ? `Alerts could not be saved: ${error.message}` : 'Alerts could not be saved. Please try again.');
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function saveDisplayName() {
+    if (!followToken || !status.data || pending) return;
+    setPending(true);
+    setMessage('');
+    try {
+      await update.mutateAsync({
+        inviteToken,
+        data: { displayName: displayNameDraft.trim() || null },
+      });
+      await status.refetch();
+      setMessage('Your name choice was saved.');
+    } catch {
+      setMessage('Could not save your name right now. Please try again.');
     } finally {
       setPending(false);
     }
@@ -214,7 +294,9 @@ export function FanCardFollow({
         </div>
       </div>
       <button type="button" onClick={() => void toggleFollow()} disabled={pending} className="mt-4 min-h-11 border border-[#ff7849] bg-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#102b4d] disabled:opacity-50" aria-pressed={following} data-testid="button-follow-fan-card">
-        {following ? 'Unfollow this card' : surface === 'showcase' ? 'Subscribe on this device' : 'Follow on this device'}
+        {!following
+          ? surface === 'showcase' ? 'Subscribe on this device' : 'Follow on this device'
+          : followSaved || status.data ? 'Unfollow this card' : 'Retry saving follow'}
       </button>
       {availability && <p className="mt-4 border-l-2 border-[#ff7849] pl-3 text-sm leading-relaxed text-white/80" data-testid="status-fan-alert-availability">{availability}</p>}
       {config.isError && <button type="button" onClick={() => void config.refetch()} className="mt-2 min-h-11 underline" data-testid="button-retry-fan-alert-config">Check alert availability again</button>}
@@ -222,14 +304,42 @@ export function FanCardFollow({
           {!following && <p className="text-xs leading-relaxed text-white/65">Follow this card to choose your phone alerts. Both choices start off.</p>}
           <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
             <span>Game Day Live starts</span>
-            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert('live')} disabled={!following || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-live" />
+            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert('live')} disabled={!following || !followToken || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-live" />
           </label>
           <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
             <span>Pre-event Hype Card announcements</span>
-            <input type="checkbox" checked={preEventAlerts} onChange={() => void toggleAlert('event')} disabled={!following || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-event" />
+            <input type="checkbox" checked={preEventAlerts} onChange={() => void toggleAlert('event')} disabled={!following || !followToken || pending || config.isLoading || Boolean(followToken && (status.isLoading || status.isError || !status.data))} className="h-6 w-6 shrink-0 cursor-pointer accent-[#ff7849] disabled:cursor-not-allowed disabled:opacity-40" data-testid="input-fan-alert-event" />
           </label>
           <p className="text-xs leading-relaxed text-white/55">The card owner chooses whether to send a pre-event announcement. Following or enabling Game Day Live does not turn these on. Change either choice or unfollow here at any time; no account is needed.</p>
       </div>
+      {following && status.data && (
+        <div className="mt-5 space-y-2 border-t border-white/15 pt-4">
+          <label htmlFor={`fan-display-name-${inviteToken}`} className="block text-xs font-semibold text-white/75">
+            Name for the owner to see (optional)
+          </label>
+          <div className="flex gap-2">
+            <input
+              id={`fan-display-name-${inviteToken}`}
+              type="text"
+              value={displayNameDraft}
+              maxLength={60}
+              onChange={(event) => setDisplayNameDraft(event.currentTarget.value)}
+              placeholder="Your name"
+              className="min-h-11 min-w-0 flex-1 rounded-md border border-white/20 bg-[#0b203b] px-3 text-sm text-white placeholder:text-white/45"
+              data-testid="input-fan-display-name"
+            />
+            <button
+              type="button"
+              onClick={() => void saveDisplayName()}
+              disabled={pending || displayNameDraft === (status.data.displayName ?? '')}
+              className="min-h-11 border border-white/25 px-3 text-xs font-bold text-white disabled:opacity-40"
+              data-testid="button-save-fan-display-name"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
       {message && <p role="status" className="mt-3 text-xs leading-relaxed text-[#ffae8f]" data-testid="status-fan-follow">{message}</p>}
     </section>
   );

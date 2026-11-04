@@ -66,3 +66,66 @@ struct NativeSeasonRecordView: View {
         .accessibilityLabel("\(count) \(count == 1 ? (title == "LOSSES" ? "loss" : title == "TIES" ? "tie" : "win") : title.lowercased())")
     }
 }
+
+struct NativeFanBaseView: View {
+    let fanBase: NativeSupporterFanBase
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "person.3.fill")
+                    .foregroundStyle(SupporterHomeColors.accent)
+                    .accessibilityHidden(true)
+                Text("FAN BASE")
+                    .font(.caption.weight(.black))
+                    .tracking(1.4)
+                    .foregroundStyle(.white)
+                Spacer()
+                Text("\(fanBase.totalFollows) \(fanBase.totalFollows == 1 ? "FOLLOW" : "FOLLOWS")")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(SupporterHomeColors.muted)
+            }
+            HStack(spacing: 12) {
+                count(fanBase.namedFans.count, title: "SHARED A NAME")
+                count(fanBase.anonymousFollows, title: "NO NAME")
+            }
+            if !fanBase.namedFans.isEmpty {
+                Text(fanBase.namedFans.joined(separator: " · "))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel("Fans who shared their name: \(fanBase.namedFans.joined(separator: ", "))")
+            }
+            Text("Follows are from devices; names are self-entered.")
+                .font(.caption)
+                .foregroundStyle(SupporterHomeColors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(SupporterHomeColors.blue.opacity(0.45), lineWidth: 1)
+        }
+        .supporterSurfaceShadow()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dashboard-fan-base")
+    }
+
+    private func count(_ value: Int, title: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value.formatted())
+                .font(.title2.weight(.black))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+            Text(title)
+                .font(.caption2.weight(.black))
+                .tracking(0.5)
+                .foregroundStyle(SupporterHomeColors.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(value) \(title.lowercased())")
+    }
+}

@@ -8,10 +8,21 @@
 import type { AthleteInviteFanFollowInputKeys } from './athleteInviteFanFollowInputKeys';
 
 export interface AthleteInviteFanFollowInput {
+  /**
+     * @minLength 40
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  followToken?: string;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  displayName?: string | null;
   /** @maxLength 2048 */
-  endpoint: string;
-  keys: AthleteInviteFanFollowInputKeys;
-  liveAlerts: boolean;
-  eventAlerts: boolean;
+  endpoint?: string;
+  keys?: AthleteInviteFanFollowInputKeys;
+  liveAlerts?: boolean;
+  eventAlerts?: boolean;
   preEventAlerts?: boolean;
 }

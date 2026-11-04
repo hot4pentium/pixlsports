@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { SupporterGameRecord } from './supporter-game-record-model';
 import type { Sport } from './stat-tracker';
+import { FanBaseOwnerCard } from './fan-base-owner-card';
 
 export type { SupporterGameRecord } from './supporter-game-record-model';
 
@@ -16,6 +17,7 @@ type SupporterGameOnSummaryProps = {
   showSeasonKicker?: boolean;
   children: ReactNode;
   mobileHypeCard?: ReactNode;
+  fanBaseInviteToken?: string;
 };
 
 export function SupporterGameOnSummary({
@@ -29,6 +31,7 @@ export function SupporterGameOnSummary({
   showSeasonKicker = true,
   children,
   mobileHypeCard,
+  fanBaseInviteToken,
 }: SupporterGameOnSummaryProps) {
   const isMobile = variant === 'mobile';
   const showHeader = isMobile || Boolean(headerAction || installReminder || showSeasonKicker);
@@ -124,6 +127,7 @@ export function SupporterGameOnSummary({
               ? `${record.gamesPlayed} scored ${record.gamesPlayed === 1 ? 'game' : 'games'} tracked`
               : 'Score completed games to build your record'}
           </p>
+          <FanBaseOwnerCard inviteToken={fanBaseInviteToken} />
         </section>
       </div>
     </section>

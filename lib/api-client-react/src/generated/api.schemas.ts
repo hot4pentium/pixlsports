@@ -2137,18 +2137,56 @@ export type AthleteInviteFanFollowInputKeys = {
 };
 
 export interface AthleteInviteFanFollowInput {
+  /**
+     * @minLength 40
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  followToken?: string;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  displayName?: string | null;
+  /** @maxLength 2048 */
+  endpoint?: string;
+  keys?: AthleteInviteFanFollowInputKeys;
+  liveAlerts?: boolean;
+  eventAlerts?: boolean;
+  preEventAlerts?: boolean;
+}
+
+export type AthleteInviteFanPushSubscriptionKeys = {
+  /**
+     * @minLength 40
+     * @maxLength 256
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  p256dh: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  auth: string;
+};
+
+export interface AthleteInviteFanPushSubscription {
   /** @maxLength 2048 */
   endpoint: string;
-  keys: AthleteInviteFanFollowInputKeys;
-  liveAlerts: boolean;
-  eventAlerts: boolean;
-  preEventAlerts?: boolean;
+  keys: AthleteInviteFanPushSubscriptionKeys;
 }
 
 export interface AthleteInviteFanFollowPreferences {
   liveAlerts?: boolean;
   eventAlerts?: boolean;
   preEventAlerts?: boolean;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  displayName?: string | null;
+  pushSubscription?: AthleteInviteFanPushSubscription | null;
 }
 
 export interface AthleteInviteFanFollow {
@@ -2156,6 +2194,11 @@ export interface AthleteInviteFanFollow {
   eventAlerts: boolean;
   preEventAlerts: boolean;
   active: boolean;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  displayName: string | null;
 }
 
 export type AthleteInviteFanFollowCreated = AthleteInviteFanFollow & {
@@ -2165,6 +2208,18 @@ export type AthleteInviteFanFollowCreated = AthleteInviteFanFollow & {
      */
   followToken: string;
 };
+
+export interface AthleteInviteFanBase {
+  /** @minimum 0 */
+  totalFollows: number;
+  /**
+     * @items.minLength 1
+     * @items.maxLength 60
+     */
+  namedFans: string[];
+  /** @minimum 0 */
+  anonymousFollows: number;
+}
 
 /**
  * @nullable

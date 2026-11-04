@@ -23,6 +23,7 @@ final class SupporterHomeViewModel: ObservableObject {
     }
 
     @Published private(set) var state: State = .loading
+    @Published private(set) var fanBase: NativeSupporterFanBase?
     @Published private(set) var hypeCardPreview: NativeSupporterHypeCardPreview?
     @Published private(set) var hypeCardPrivatePhoto: UIImage?
     @Published private(set) var hypeCardPreviewError: String?
@@ -137,6 +138,7 @@ final class SupporterHomeViewModel: ObservableObject {
     func load(clerk: Clerk, forceProfileReload: Bool = false) async {
         let previewRequestID = UUID()
         let previewUserID = clerk.user?.id
+        fanBase = nil
         hypePreviewRequestID = previewRequestID
         let offline = NativeOfflineRuntime.shared
         if let data = try? offline.vault.read("get/supporter/schedule", subject: previewUserID),
@@ -189,6 +191,7 @@ final class SupporterHomeViewModel: ObservableObject {
             }
             guard page.status == "linked" else {
                 state = .notConnected
+                fanBase = nil
                 athleteProfile = nil
                 athleteProfileError = nil
                 hasResolvedAthleteProfile = true
@@ -221,6 +224,17 @@ final class SupporterHomeViewModel: ObservableObject {
             // fetching its optional preview.
             hasResolvedInitialSchedule = true
             if needsAthleteProfileSetup { return }
+            do {
+                let summary = try await SupporterHomeAPI.fetchOwnerFanBase(clerk: clerk)
+                guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
+                      clerk.user?.id == previewUserID, verifiedScope == offline.vault.namespace else { return }
+                fanBase = summary
+            } catch is CancellationError {
+                return
+            } catch {
+                // An unavailable or unlinked HYPE Card simply has no Fan Base panel.
+                fanBase = nil
+            }
             do {
                 let preview = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
                 guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,

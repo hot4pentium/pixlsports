@@ -11,4 +11,9 @@ export interface AthleteInviteFanFollow {
   eventAlerts: boolean;
   preEventAlerts: boolean;
   active: boolean;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  displayName: string | null;
 }

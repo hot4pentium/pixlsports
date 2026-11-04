@@ -45,6 +45,7 @@ import type {
   AthleteFavoriteMoment,
   AthleteFavoriteMomentInput,
   AthleteInviteEventNotifyResult,
+  AthleteInviteFanBase,
   AthleteInviteFanFollow,
   AthleteInviteFanFollowCreated,
   AthleteInviteFanFollowInput,
@@ -5874,6 +5875,84 @@ export function useGetNativeSupporterSchedule<TData = Awaited<ReturnType<typeof 
 
 
 
+export const getGetNativeSupporterFanBaseUrl = () => {
+
+
+
+
+  return `/api/native/supporter/fan-base`
+}
+
+/**
+ * Resolves only the verified linked web account and selected athlete. Does not return a private card identifier, push endpoint, or fan token.
+ * @summary Get the linked iPhone owner's private Fan Base
+ */
+export const getNativeSupporterFanBase = async ( options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanBase> => {
+
+  return customFetch<AthleteInviteFanBase>(getGetNativeSupporterFanBaseUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeSupporterFanBaseQueryKey = () => {
+    return [
+    `/api/native/supporter/fan-base`
+    ] as const;
+    }
+
+
+export const getGetNativeSupporterFanBaseQueryOptions = <TData = Awaited<ReturnType<typeof getNativeSupporterFanBase>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterFanBase>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeSupporterFanBaseQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeSupporterFanBase>>> = ({ signal }) => getNativeSupporterFanBase({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterFanBase>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeSupporterFanBaseQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeSupporterFanBase>>>
+export type GetNativeSupporterFanBaseQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the linked iPhone owner's private Fan Base
+ */
+
+export function useGetNativeSupporterFanBase<TData = Awaited<ReturnType<typeof getNativeSupporterFanBase>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterFanBase>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeSupporterFanBaseQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetNativeSupporterProfileUrl = () => {
 
 
@@ -8333,6 +8412,84 @@ export function useGetAthleteInviteManifest<TData = Awaited<ReturnType<typeof ge
 
 
 
+export const getGetAthleteInviteFanBaseUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/fan-base`
+}
+
+/**
+ * Requires the authenticated owner of this HYPE Card. Never returns push endpoints or fan tokens.
+ * @summary Get the owner's private fan count and volunteered names
+ */
+export const getAthleteInviteFanBase = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanBase> => {
+
+  return customFetch<AthleteInviteFanBase>(getGetAthleteInviteFanBaseUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteInviteFanBaseQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/fan-base`
+    ] as const;
+    }
+
+
+export const getGetAthleteInviteFanBaseQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteInviteFanBase>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteFanBase>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteInviteFanBaseQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteInviteFanBase>>> = ({ signal }) => getAthleteInviteFanBase(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteFanBase>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteInviteFanBaseQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteInviteFanBase>>>
+export type GetAthleteInviteFanBaseQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the owner's private fan count and volunteered names
+ */
+
+export function useGetAthleteInviteFanBase<TData = Awaited<ReturnType<typeof getAthleteInviteFanBase>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteFanBase>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteInviteFanBaseQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCreateAthleteInviteFanFollowUrl = (inviteToken: string,) => {
 
 
@@ -8342,8 +8499,8 @@ export const getCreateAthleteInviteFanFollowUrl = (inviteToken: string,) => {
 }
 
 /**
- * New follows are accepted only while this invite is active. The same browser subscription may follow different invites independently.
- * @summary Follow an active athlete invite anonymously on this device
+ * Creates or resumes a device follow while the invite is active. Alerts and display names are optional.
+ * @summary Follow an active athlete invite on this device
  */
 export const createAthleteInviteFanFollow = async (inviteToken: string,
     athleteInviteFanFollowInput: AthleteInviteFanFollowInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanFollowCreated> => {
@@ -8410,7 +8567,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateAthleteInviteFanFollowMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteFanFollowInput>}
 
     /**
- * @summary Follow an active athlete invite anonymously on this device
+ * @summary Follow an active athlete invite on this device
  */
 export const useCreateAthleteInviteFanFollow = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteFanFollow>>, TError,CreateAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -8433,7 +8590,7 @@ export const getGetAthleteInviteFanFollowUrl = (inviteToken: string,) => {
 
 /**
  * A valid follow token remains usable to manage its own preferences or remove the follow while the invite is paused; active is false until the invite can send alerts again.
- * @summary Get device follow preferences and active status
+ * @summary Get device follow name and alert preferences
  */
 export const getAthleteInviteFanFollow = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanFollow> => {
 
@@ -8480,7 +8637,7 @@ export type GetAthleteInviteFanFollowQueryError = ErrorType<NotFoundResponse>
 
 
 /**
- * @summary Get device follow preferences and active status
+ * @summary Get device follow name and alert preferences
  */
 
 export function useGetAthleteInviteFanFollow<TData = Awaited<ReturnType<typeof getAthleteInviteFanFollow>>, TError = ErrorType<NotFoundResponse>>(
@@ -8511,7 +8668,7 @@ export const getUpdateAthleteInviteFanFollowUrl = (inviteToken: string,) => {
 
 /**
  * Existing follows may be updated while paused; the response reports active false until the invite can send alerts again.
- * @summary Update alert preferences using the device follow token
+ * @summary Update this device's name and alert preferences
  */
 export const updateAthleteInviteFanFollow = async (inviteToken: string,
     athleteInviteFanFollowPreferences: AthleteInviteFanFollowPreferences, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanFollow> => {
@@ -8578,7 +8735,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateAthleteInviteFanFollowMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteFanFollowPreferences>}
 
     /**
- * @summary Update alert preferences using the device follow token
+ * @summary Update this device's name and alert preferences
  */
 export const useUpdateAthleteInviteFanFollow = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInviteFanFollow>>, TError,UpdateAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

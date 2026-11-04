@@ -1429,6 +1429,23 @@ paths:
                 $ref: "#/components/schemas/NativeSupporterSchedule"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /native/supporter/fan-base:
+    get:
+      operationId: getNativeSupporterFanBase
+      tags: [athlete-invites]
+      summary: Get the linked iPhone owner's private Fan Base
+      description: Resolves only the verified linked web account and selected athlete. Does not return a private card identifier, push endpoint, or fan token.
+      responses:
+        "200":
+          description: Private Fan Base summary for the linked selected HYPE Card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanBase"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /native/supporter/profile:
     get:
       operationId: getNativeSupporterProfile
@@ -2124,14 +2141,33 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/fan-base:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: getAthleteInviteFanBase
+      tags: [athlete-invite-fans]
+      summary: Get the owner's private fan count and volunteered names
+      description: Requires the authenticated owner of this HYPE Card. Never returns push endpoints or fan tokens.
+      responses:
+        "200":
+          description: Private owner-only Fan Base summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanBase"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/follows:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
     post:
       operationId: createAthleteInviteFanFollow
       tags: [athlete-invite-fans]
-      summary: Follow an active athlete invite anonymously on this device
-      description: New follows are accepted only while this invite is active. The same browser subscription may follow different invites independently.
+      summary: Follow an active athlete invite on this device
+      description: Creates or resumes a device follow while the invite is active. Alerts and display names are optional.
       requestBody:
         required: true
         content:
@@ -2139,6 +2175,12 @@ paths:
             schema:
               $ref: "#/components/schemas/AthleteInviteFanFollowInput"
       responses:
+        "200":
+          description: Existing follow returned for an idempotent retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanFollowCreated"
         "201":
           description: Device follow created; keep the returned token private
           content:
@@ -2180,7 +2222,7 @@ paths:
     get:
       operationId: getAthleteInviteFanFollow
       tags: [athlete-invite-fans]
-      summary: Get device follow preferences and active status
+      summary: Get device follow name and alert preferences
       description: A valid follow token remains usable to manage its own preferences or remove the follow while the invite is paused; active is false until the invite can send alerts again.
       responses:
         "200":
@@ -2194,7 +2236,7 @@ paths:
     patch:
       operationId: updateAthleteInviteFanFollow
       tags: [athlete-invite-fans]
-      summary: Update alert preferences using the device follow token
+      summary: Update this device's name and alert preferences
       description: Existing follows may be updated while paused; the response reports active false until the invite can send alerts again.
       requestBody:
         required: true
@@ -5081,7 +5123,22 @@ components:
         purpose: { type: string, enum: [any, maskable, "any maskable"] }
     AthleteInviteFanFollowInput:
       type: object
-      required: [endpoint, keys, liveAlerts, eventAlerts]
+      properties:
+        followToken: { type: string, minLength: 40, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+        displayName: { type: ["string", "null"], maxLength: 60 }
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, minLength: 40, maxLength: 256, pattern: "^[A-Za-z0-9_-]+$" }
+            auth: { type: string, minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
+        liveAlerts: { type: boolean, default: false }
+        eventAlerts: { type: boolean, default: false }
+        preEventAlerts: { type: boolean }
+    AthleteInviteFanPushSubscription:
+      type: object
+      required: [endpoint, keys]
       properties:
         endpoint: { type: string, format: uri, maxLength: 2048 }
         keys:
@@ -5090,23 +5147,26 @@ components:
           properties:
             p256dh: { type: string, minLength: 40, maxLength: 256, pattern: "^[A-Za-z0-9_-]+$" }
             auth: { type: string, minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
-        liveAlerts: { type: boolean }
-        eventAlerts: { type: boolean }
-        preEventAlerts: { type: boolean, default: false }
     AthleteInviteFanFollowPreferences:
       type: object
       properties:
         liveAlerts: { type: boolean }
         eventAlerts: { type: boolean }
         preEventAlerts: { type: boolean, default: false }
+        displayName: { type: ["string", "null"], maxLength: 60 }
+        pushSubscription:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteFanPushSubscription"
+            - type: "null"
     AthleteInviteFanFollow:
       type: object
-      required: [liveAlerts, eventAlerts, preEventAlerts, active]
+      required: [liveAlerts, eventAlerts, preEventAlerts, active, displayName]
       properties:
         liveAlerts: { type: boolean }
         eventAlerts: { type: boolean }
         preEventAlerts: { type: boolean }
         active: { type: boolean }
+        displayName: { type: ["string", "null"], maxLength: 60 }
     AthleteInviteFanFollowCreated:
       allOf:
         - $ref: "#/components/schemas/AthleteInviteFanFollow"
@@ -5114,6 +5174,15 @@ components:
           required: [followToken]
           properties:
             followToken: { type: string, minLength: 40, maxLength: 100 }
+    AthleteInviteFanBase:
+      type: object
+      required: [totalFollows, namedFans, anonymousFollows]
+      properties:
+        totalFollows: { type: integer, minimum: 0 }
+        namedFans:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 60 }
+        anonymousFollows: { type: integer, minimum: 0 }
     OwnedHypeCardShare:
       allOf:
         - $ref: "#/components/schemas/HypeCardShare"
