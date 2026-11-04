@@ -135,6 +135,16 @@ struct ContentView: View {
         presentInitialGuidanceIfNeeded()
     }
 
+    private func refreshDashboard() async {
+#if DEBUG
+        if usesFanBaseRefreshFixture {
+            await fanBaseRefreshFixture.refresh()
+            return
+        }
+#endif
+        await loadSchedule()
+    }
+
     private var weeklyWelcomeProgress: NativeWeeklyWelcomeProgress? {
         guard let userID = clerk?.user?.id,
               let configuration = try? NativeClerkConfiguration.load().get() else { return nil }
@@ -211,6 +221,16 @@ struct ContentView: View {
 #if DEBUG
                             if usesFanBaseRefreshFixture {
                                 VStack(alignment: .leading, spacing: 8) {
+                                    Button("Refresh dashboard") {
+                                        Task { await refreshDashboard() }
+                                    }
+                                    .accessibilityIdentifier("fan-base-fixture-refresh")
+                                    if fanBaseRefreshFixture.fanBase != nil {
+                                        Button("Simulate follow from another device") {
+                                            fanBaseRefreshFixture.simulateRemoteFollowChange()
+                                        }
+                                        .accessibilityIdentifier("fan-base-fixture-remote-follow")
+                                    }
                                     if !fanBaseRefreshFixture.isOnline {
                                         Button("Restore connection") {
                                             fanBaseRefreshFixture.restoreConnection()
@@ -218,8 +238,8 @@ struct ContentView: View {
                                         .accessibilityIdentifier("fan-base-fixture-reconnect")
                                     }
                                     if fanBaseRefreshFixture.fanBase != nil {
-                                        Button("Simulate failed refresh") {
-                                            fanBaseRefreshFixture.simulateOfflineRefresh()
+                                        Button("Make next refresh fail") {
+                                            fanBaseRefreshFixture.makeNextRefreshFail()
                                         }
                                         .accessibilityIdentifier("fan-base-fixture-failed-refresh")
                                     }
@@ -238,7 +258,7 @@ struct ContentView: View {
                     }
                     .scrollIndicators(.hidden)
                     .refreshable {
-                        await loadSchedule()
+                        await refreshDashboard()
                     }
                     .onAppear {
                         dashboardVisible = true

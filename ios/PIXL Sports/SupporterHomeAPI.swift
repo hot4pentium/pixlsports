@@ -362,7 +362,10 @@ enum SupporterHomeAPI {
         guard NativeOfflineRuntime.shared.online else {
             throw NativeOfflineError.onlineOnly
         }
-        let data = try await NativeAccountLinkClient().getData("supporter/fan-base", clerk: clerk)
+        let data = try await NativeAccountLinkClient().getAuthoritativeData(
+            "supporter/fan-base",
+            clerk: clerk
+        )
         do {
             let fanBase = try JSONDecoder().decode(NativeSupporterFanBase.self, from: data)
             guard fanBase.totalFollows >= 0,

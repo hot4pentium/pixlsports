@@ -156,6 +156,32 @@ final class SupporterDashboardUITests: XCTestCase {
         app.terminate()
     }
 
+    func testFanBaseRefreshShowsRemoteFollowAndUnfollowChanges() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-fan-base-refresh",
+            "--dashboard-narrow",
+            "--fan-base-start-loaded"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["3 FOLLOWS"].waitForExistence(timeout: 10))
+        reachable("fan-base-fixture-remote-follow", in: app).tap()
+        XCTAssertTrue(app.staticTexts["3 FOLLOWS"].exists,
+                      "A remote change must not alter the displayed summary before refresh.")
+        reachable("fan-base-fixture-refresh", in: app).tap()
+        XCTAssertTrue(app.staticTexts["4 FOLLOWS"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["3 FOLLOWS"].exists)
+
+        reachable("fan-base-fixture-remote-follow", in: app).tap()
+        XCTAssertTrue(app.staticTexts["4 FOLLOWS"].exists,
+                      "A remote unfollow must not alter the displayed summary before refresh.")
+        reachable("fan-base-fixture-refresh", in: app).tap()
+        XCTAssertTrue(app.staticTexts["3 FOLLOWS"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["4 FOLLOWS"].exists)
+        app.terminate()
+    }
+
     func testFailedFanBaseRefreshDoesNotKeepThePreviousCountCurrent() {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -168,6 +194,7 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertTrue(reachable("dashboard-fan-base", in: app).exists)
         XCTAssertTrue(app.staticTexts["3 FOLLOWS"].exists)
         reachable("fan-base-fixture-failed-refresh", in: app).tap()
+        reachable("fan-base-fixture-refresh", in: app).tap()
 
         let unavailableMessage = app.staticTexts.containing(
             NSPredicate(format: "label CONTAINS[c] %@", "no current count is shown")

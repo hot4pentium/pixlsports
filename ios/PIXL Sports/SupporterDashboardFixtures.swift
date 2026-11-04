@@ -199,6 +199,11 @@ final class NativeFanBaseRefreshUITestFixture: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var error: String?
     @Published private(set) var isOnline: Bool
+    private var authoritativeFanBase = NativeSupporterFanBase(
+        totalFollows: 3,
+        namedFans: ["Casey"],
+        anonymousFollows: 2
+    )
 
     private let unavailableMessage =
         "The latest Fan Base count couldn’t be loaded, so no current count is shown. Check your connection and try again."
@@ -206,11 +211,7 @@ final class NativeFanBaseRefreshUITestFixture: ObservableObject {
     init(startLoaded: Bool) {
         isOnline = startLoaded
         if startLoaded {
-            fanBase = NativeSupporterFanBase(
-                totalFollows: 3,
-                namedFans: ["Casey"],
-                anonymousFollows: 2
-            )
+            fanBase = authoritativeFanBase
         } else {
             fanBase = nil
             error = unavailableMessage
@@ -221,35 +222,47 @@ final class NativeFanBaseRefreshUITestFixture: ObservableObject {
         isOnline = true
     }
 
-    func simulateOfflineRefresh() {
-        isOnline = false
-        fanBase = nil
-        isLoading = false
-        error = unavailableMessage
-    }
-
-    func retry() {
-        fanBase = nil
-        error = nil
-        guard isOnline else {
-            error = unavailableMessage
-            return
-        }
-        isLoading = true
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(150))
-            guard isOnline else {
-                isLoading = false
-                error = unavailableMessage
-                return
-            }
-            fanBase = NativeSupporterFanBase(
+    func simulateRemoteFollowChange() {
+        if authoritativeFanBase.totalFollows == 3 {
+            authoritativeFanBase = NativeSupporterFanBase(
+                totalFollows: 4,
+                namedFans: authoritativeFanBase.namedFans,
+                anonymousFollows: 3
+            )
+        } else {
+            authoritativeFanBase = NativeSupporterFanBase(
                 totalFollows: 3,
                 namedFans: ["Casey"],
                 anonymousFollows: 2
             )
-            isLoading = false
         }
+    }
+
+    func makeNextRefreshFail() {
+        isOnline = false
+    }
+
+    func refresh() async {
+        fanBase = nil
+        error = nil
+        isLoading = true
+        guard isOnline else {
+            isLoading = false
+            error = unavailableMessage
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(150))
+        guard isOnline else {
+            isLoading = false
+            error = unavailableMessage
+            return
+        }
+        fanBase = authoritativeFanBase
+        isLoading = false
+    }
+
+    func retry() {
+        Task { await refresh() }
     }
 }
 
