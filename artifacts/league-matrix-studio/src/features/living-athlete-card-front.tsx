@@ -44,3 +44,52 @@ export function LivingAthleteCardFront({ athleteName, teamName, photoUrl, photoA
     </div>
   );
 }
+
+export type NativeHypeCardFrontProps = {
+  athleteName: string;
+  teamName?: string | null;
+  seasonName?: string | null;
+  photoUrl?: string | null;
+  appearance?: Partial<HypeCardAppearance> | null;
+  onPhotoError?: () => void;
+};
+
+/** Full-bleed photo front matching ios/PIXL Sports/NativeHypeCardFront.swift. */
+export function NativeHypeCardFront({ athleteName, teamName, seasonName, photoUrl, appearance, onPhotoError }: NativeHypeCardFrontProps) {
+  const a = useMemo(() => normalizeCardAppearance(appearance ?? {}), [appearance]);
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const usablePhoto = photoUrl && photoUrl !== failedPhoto ? photoUrl : null;
+  const clamp = (value: number) => Math.min(100, Math.max(0, value));
+  // Preserve the owner's saved photo placement while always covering the whole face.
+  const photoX = clamp(50 - a.athleteX * 200);
+  const photoY = clamp(50 - a.athleteY * 200);
+  const photoScale = Math.max(1, a.athleteScale);
+  const identity = [a.jerseyNumber ? `#${a.jerseyNumber.replace(/^#/, '')}` : '', a.position].filter(Boolean).join(' · ');
+  const teamLine = [teamName ?? '', seasonName ?? ''].filter((part) => part.trim()).join(' · ');
+  return (
+    <div className="lc-native-front" data-testid="img-living-card-athlete" role="img" aria-label={`${athleteName}${teamName ? `, ${teamName}` : ''}${seasonName ? `, ${seasonName}` : ''}, HYPE Card`}>
+      {usablePhoto ? (
+        <img
+          className="lc-native-front-photo"
+          src={usablePhoto}
+          alt=""
+          style={{ objectPosition: `${photoX}% ${photoY}%`, transform: `scale(${photoScale})`, transformOrigin: `${photoX}% ${photoY}%` }}
+          onError={() => { setFailedPhoto(usablePhoto); onPhotoError?.(); }}
+        />
+      ) : (
+        <svg className="lc-native-front-silhouette" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4.5" /><path d="M3 22c0-5 4-8.5 9-8.5s9 3.5 9 8.5z" /></svg>
+      )}
+      <div className="lc-native-front-shade" aria-hidden="true" />
+      <div className="lc-native-front-identity" aria-hidden="true">
+        <span className="lc-native-front-eyebrow">PIXL SPORTS · HYPE CARD</span>
+        <strong className="lc-native-front-name">{athleteName}</strong>
+        {teamLine && <span className="lc-native-front-team">{teamLine}</span>}
+        {identity && <span className="lc-native-front-details">{identity}</span>}
+      </div>
+      <span className="sr-only" data-testid="text-living-card-athlete-name">{athleteName}</span>
+      {teamName && <span className="sr-only" data-testid="text-living-card-team-name">{teamName}</span>}
+      {a.position && <span className="sr-only" data-testid="text-living-card-position">Position {a.position}</span>}
+      {a.jerseyNumber && <span className="sr-only" data-testid="text-living-card-jersey-number">Number {a.jerseyNumber}</span>}
+    </div>
+  );
+}

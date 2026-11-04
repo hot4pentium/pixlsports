@@ -163,8 +163,8 @@ test('HYPE Card events use one persistent all-or-none setting', () => {
 });
 
 test('HYPE Card event details do not repeat the full Game On Card link', () => {
-  const eventsStart = livingCardSource.indexOf("{side === 'events' && (");
-  const controlsStart = livingCardSource.indexOf('<LivingCardControls', eventsStart);
+  const eventsStart = livingCardSource.indexOf("{face === 'events' && (");
+  const controlsStart = livingCardSource.indexOf("{face === 'live-taps' && (", eventsStart);
   const eventsSide = livingCardSource.slice(eventsStart, controlsStart);
   assert.match(eventsSide, /All eligible Event Cards saved by/);
   assert.doesNotMatch(eventsSide, /Full Event Card|gameOnHref|link-living-event-/);
@@ -187,13 +187,12 @@ test('new fan Shoutouts require public disclosure while older private responses 
 test('real Hype Card uses shared side controls below the card and retains private actions', () => {
   assert.match(livingCardSource, /import \{ LivingCardControls,[^}]*\} from '\.\/living-card-controls'/);
   assert.doesNotMatch(livingCardSource, /controlsBelowCard/);
-  assert.match(livingCardSource, /<div className="living-card-frame-outer">[\s\S]*?<\/div>\s*<LivingCardControls/);
-  for (const side of ['responses', 'stats', 'live-taps', 'events']) {
-    assert.ok(livingControlsSource.includes(`button-living-card-${side}`), `${side} remains available`);
-  }
-  assert.match(livingControlsSource, /onSelectSide\?\.\(control\.side\)/);
-  assert.match(livingControlsSource, /aria-pressed=\{side === control\.side\}/);
-  assert.match(livingCardSource, /data-testid="button-living-card-front"/);
+  assert.match(livingCardSource, /className="lc-native-shell"[\s\S]*?<LivingCardControls[\s\S]*?<\/div>\s*\{side === 'front'/);
+  assert.match(livingControlsSource, /data-testid=\{`button-living-card-\$\{tab\}`\}/);
+  assert.match(livingControlsSource, /data-testid=\{`button-living-card-\$\{item\.id\}`\}/);
+  assert.match(livingControlsSource, /id: 'responses'[\s\S]*id: 'live-taps'/);
+  assert.match(livingControlsSource, /aria-pressed=\{side === tab\}/);
+  assert.match(livingCardSource, /<LivingCardSecondarySides/);
   assert.match(livingCardSource, /data-design=\{cardAppearance\.design\}/);
   assert.match(livingCardSource, /living-card-responses-side/);
   assert.match(livingCardSource, /living-card-live-taps-side/);
@@ -231,28 +230,25 @@ test('the HYPE Page manager explains public link access and temporary hiding', (
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
-test('the real HYPE Card flips paired 3D faces and respects reduced motion', () => {
-  assert.match(livingCardSource, /className="living-card-frame" data-side=\{side\}/);
-  assert.match(livingCardSource, /className="living-card-flip-inner"/);
-  assert.match(livingCardSource, /living-card-flip-face living-card-flip-front/);
-  assert.match(livingCardSource, /living-card-flip-face living-card-flip-back/);
+test('the real HYPE Card flips paired 3D faces on the Y axis and respects reduced motion', () => {
+  assert.match(livingCardSource, /className="living-card-flip-inner lc-native-flip-inner"/);
+  assert.match(livingCardSource, /data-rotated=\{flip\.rotated/);
+  assert.match(livingCardSource, /flip\.frontFace === 'front' \?/);
+  assert.match(livingCardSource, /beginFlip\(current, next, availableSides, reducedMotion\)/);
   assert.match(livingCardStyles, /transform-style:\s*preserve-3d/);
   assert.match(livingCardStyles, /\.living-card-flip-back\s*\{\s*-webkit-transform:\s*rotateY\(180deg\);\s*transform:\s*rotateY\(180deg\)/);
   assert.match(livingCardStyles, /backface-visibility:\s*hidden/);
-  assert.match(livingCardStyles, /\.living-card-frame:not\(\[data-side="front"\]\).*rotateY\(180deg\)/);
+  assert.match(livingCardStyles, /\.lc-native-flip-inner\[data-rotated="true"\]\s*\{\s*transform:\s*rotateY\(180deg\)/);
+  assert.match(livingCardStyles, /\.lc-native-flip-face-area\s*\{[^}]*aspect-ratio:\s*2 \/ 3/);
   assert.match(livingCardStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(livingCardStyles, /@supports not \(transform-style: preserve-3d\)/);
-  assert.match(livingCardStyles, /\.living-card-frame\[data-side="front"\]\s+\.living-card-flip-front\s*\{\s*display:\s*block/);
-  assert.match(livingCardStyles, /\.living-card-frame:not\(\[data-side="front"\]\)\s+\.living-card-flip-back\s*\{\s*display:\s*block/);
 });
 
-test('desktop HYPE Cards are taller with a smaller athlete name while mobile sizing stays intact', () => {
-  assert.match(livingCardStyles, /@media \(min-width: 801px\)\s*\{\s*\.living-card-frame\s*\{\s*height:\s*min\(72dvh,\s*920px\);\s*\}\s*\.living-card-athlete-name\s*\{\s*font-size:\s*clamp\(44px,\s*5vw,\s*68px\);\s*\}\s*\}/);
-  assert.match(livingCardStyles, /@media \(max-width: 520px\)[\s\S]*?\.living-card-frame\s*\{\s*min-height:\s*540px;\s*height:\s*144vw;\s*max-height:\s*700px;\s*\}/);
-});
-
-test('the HYPE Card no longer exposes a Videos side', () => {
-  assert.doesNotMatch(livingCardSource, /side === 'videos'|button-living-card-videos|video-living-card/);
+test('the HYPE Card Videos side uses only supplied public videos with a native empty state', () => {
+  assert.match(livingCardSource, /face === 'videos'/);
+  assert.match(livingCardSource, /invite\.videos\.map/);
+  assert.match(livingCardSource, /Videos will appear here/);
+  assert.doesNotMatch(livingCardSource, /upload/i);
   assert.match(publicPageSource, /invite\.hypeCard\?\.posterUrl/, 'the separate Athlete Hype Page still supports its image shares');
 });
 

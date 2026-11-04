@@ -1,92 +1,108 @@
-import { CalendarDays, ChartNoAxesCombined, ThumbsUp, Zap } from 'lucide-react';
+import { CalendarDays, ChartNoAxesCombined, RectangleVertical, SquarePlay, ThumbsUp, Zap } from 'lucide-react';
+import type { CardSide, PrimaryCardSide, SecondaryCardSide } from './hype-card-flip-model';
 
-export type CardSide = 'front' | 'responses' | 'stats' | 'events' | 'live-taps';
-
-type ControlSide = Exclude<CardSide, 'front'>;
+export type { CardSide } from './hype-card-flip-model';
 
 type Props = {
   side?: CardSide;
+  tabs?: PrimaryCardSide[];
   eventToday?: boolean;
   eventCount?: number;
   liveScoreboardAvailable?: boolean;
-  liveTapsActive?: boolean;
   onSelectSide?: (next: CardSide) => void;
   decorative?: boolean;
 };
 
-const controls: Array<{
-  side: ControlSide;
-  label: string;
-  ariaLabel?: string;
-  testId: string;
-}> = [
-  { side: 'responses', label: 'Replies', ariaLabel: 'Responses', testId: 'button-living-card-responses' },
-  { side: 'stats', label: 'Stats', testId: 'button-living-card-stats' },
-  { side: 'live-taps', label: 'Taps', ariaLabel: 'Live Taps', testId: 'button-living-card-live-taps' },
-  { side: 'events', label: 'Events', testId: 'button-living-card-events' },
-];
+const labels: Record<PrimaryCardSide, string> = { front: 'Front', videos: 'Videos', stats: 'Stats', events: 'Events' };
 
-function ControlIcon({ side }: { side: ControlSide }) {
-  if (side === 'responses') return <ThumbsUp aria-hidden="true" />;
+function TabIcon({ side }: { side: PrimaryCardSide }) {
+  if (side === 'front') return <RectangleVertical aria-hidden="true" />;
+  if (side === 'videos') return <SquarePlay aria-hidden="true" />;
   if (side === 'stats') return <ChartNoAxesCombined aria-hidden="true" />;
-  if (side === 'live-taps') return <Zap aria-hidden="true" />;
   return <CalendarDays aria-hidden="true" />;
 }
 
+/** Attached section tabs, matching the native HYPE Card tab bar. */
 export function LivingCardControls({
   side = 'front',
+  tabs = ['front', 'videos', 'stats', 'events'],
   eventToday = false,
   eventCount = 0,
   liveScoreboardAvailable = false,
-  liveTapsActive = false,
   onSelectSide,
   decorative = false,
 }: Props) {
-  const isLive = (control: (typeof controls)[number]) => (
-    (control.side === 'stats' && liveScoreboardAvailable)
-    || (control.side === 'live-taps' && liveTapsActive)
-  );
-  const liveLabel = (control: (typeof controls)[number]) => (
-    control.side === 'stats' ? 'Live scoreboard available' : 'Game Day Live is active'
-  );
-  const content = (control: (typeof controls)[number]) => (
-    <>
-      <ControlIcon side={control.side} />
-      {control.label}
-      {control.side === 'events' && eventCount > 0 && <span className="living-card-control-count">({eventCount})</span>}
-      {control.side === 'events' && eventToday && <span className="sr-only"> · Event today</span>}
-      {isLive(control) && <span className="sr-only"> · {liveLabel(control)}</span>}
-    </>
-  );
-
   return (
     <div
       className="living-card-controls"
       role={decorative ? undefined : 'group'}
-      aria-label={decorative ? undefined : 'Choose a side of the athlete card'}
+      aria-label={decorative ? undefined : 'HYPE Card sections'}
       aria-hidden={decorative || undefined}
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
     >
-      {controls.map((control) => {
+      {tabs.map((tab) => {
+        const live = tab === 'stats' && liveScoreboardAvailable;
         const className = [
           'living-card-control',
-          control.side === 'events' && eventToday ? 'living-card-control-today' : '',
-          isLive(control) ? 'living-card-control-live' : '',
+          tab === 'events' && eventToday ? 'living-card-control-today' : '',
+          live ? 'living-card-control-live' : '',
         ].filter(Boolean).join(' ');
-        if (decorative) {
-          return <span key={control.side} className={className}>{content(control)}</span>;
-        }
+        const content = (
+          <>
+            <TabIcon side={tab} />
+            <span>{labels[tab]}</span>
+            {tab === 'events' && eventCount > 0 && <span className="sr-only"> ({eventCount})</span>}
+            {tab === 'events' && eventToday && <span className="sr-only"> · Event today</span>}
+            {live && <span className="sr-only"> · Live scoreboard available</span>}
+          </>
+        );
+        if (decorative) return <span key={tab} className={className}>{content}</span>;
         return (
           <button
-            key={control.side}
+            key={tab}
             type="button"
             className={className}
-            aria-label={isLive(control) ? `${control.ariaLabel ?? control.label}, ${liveLabel(control)}` : control.ariaLabel}
-            aria-pressed={side === control.side}
+            aria-label={live ? `Stats, Live scoreboard available` : undefined}
+            aria-pressed={side === tab}
             aria-controls="living-card-display"
-            onClick={() => onSelectSide?.(control.side)}
-            data-testid={control.testId}
+            onClick={() => onSelectSide?.(tab)}
+            data-testid={`button-living-card-${tab}`}
           >
-            {content(control)}
+            {content}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Secondary sides kept for Shoutouts and private family Live Taps. */
+export function LivingCardSecondarySides({
+  side,
+  liveTapsActive = false,
+  onSelectSide,
+}: { side: CardSide; liveTapsActive?: boolean; onSelectSide: (next: SecondaryCardSide) => void }) {
+  const items: Array<{ id: SecondaryCardSide; label: string; detail: string }> = [
+    { id: 'responses', label: 'Shoutouts', detail: 'Public cheers from fans' },
+    { id: 'live-taps', label: 'Live Taps', detail: liveTapsActive ? 'Game Day Live is active' : 'Family cheer tally' },
+  ];
+  return (
+    <div className="living-card-secondary-sides" role="group" aria-label="More from this card">
+      {items.map((item) => {
+        const live = item.id === 'live-taps' && liveTapsActive;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            className={`living-card-control living-card-secondary-side${live ? ' living-card-control-live' : ''}`}
+            aria-pressed={side === item.id}
+            aria-controls="living-card-display"
+            aria-label={item.id === 'responses' ? 'Responses' : live ? 'Live Taps, Game Day Live is active' : 'Live Taps'}
+            onClick={() => onSelectSide(item.id)}
+            data-testid={`button-living-card-${item.id}`}
+          >
+            {item.id === 'responses' ? <ThumbsUp aria-hidden="true" /> : <Zap aria-hidden="true" />}
+            <span className="living-card-secondary-copy"><strong>{item.label}</strong><small>{item.detail}</small></span>
           </button>
         );
       })}

@@ -1,6 +1,6 @@
 import './showcase-desktop-density.css';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Radio, RotateCcw, Send } from 'lucide-react';
+import { Bell, CalendarDays, ChartNoAxesCombined, Play, Radio, Send } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
@@ -33,8 +33,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { LivingAthleteCardFront } from './living-athlete-card-front';
-import { LivingCardControls, type CardSide } from './living-card-controls';
+import { NativeHypeCardFront } from './living-athlete-card-front';
+import { LivingCardControls, LivingCardSecondarySides } from './living-card-controls';
+import {
+  armFlip,
+  availableCardSides,
+  beginFlip,
+  flipDurationMs,
+  initialFlipState,
+  parseRequestedSide,
+  primaryTabs,
+  reconcileFlip,
+  settleFlip,
+  type CardSide,
+  type FlipState,
+} from './hype-card-flip-model';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { getHypeCardBackNavigation } from './hype-card-back-navigation';
 
@@ -69,7 +82,7 @@ function Shell({ children, inviteToken, embedded = false, ownerView = false }: {
     typeof window === 'undefined' ? '' : window.location.search,
   );
   return (
-    <div className={`living-card-page${embedded ? ' living-card-page--embedded' : ''}`}>
+    <div className={`living-card-page lc-native-page${embedded ? ' living-card-page--embedded' : ''}`}>
       {!embedded && <header className="living-card-header">
         <div className="living-card-header-inner">
           <Link href="/" className="living-card-brand" data-testid="link-living-card-home">
@@ -94,7 +107,10 @@ export function LivingAthleteCardPage({
   embedded?: boolean;
 }) {
   const inviteToken = params.inviteToken ?? '';
-  const [side, setSide] = useState<CardSide>('front');
+  const [flip, setFlip] = useState<FlipState>(() => initialFlipState());
+  const side = flip.selected;
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const [todayTick, setTodayTick] = useState(() => Date.now());
   const [brokenPhoto, setBrokenPhoto] = useState(false);
   const [selectedGameKey, setSelectedGameKey] = useState('');
@@ -220,8 +236,8 @@ export function LivingAthleteCardPage({
   ]);
 
   useEffect(() => {
-    const requestedSide = new URLSearchParams(window.location.search).get('side');
-    setSide(requestedSide === 'responses' || requestedSide === 'stats' || requestedSide === 'live-taps' || requestedSide === 'events' ? requestedSide : 'front');
+    setFlip(initialFlipState(parseRequestedSide(new URLSearchParams(window.location.search).get('side'))));
+    setPlayingVideo(null);
     setHypeFeedback('');
     setSenderName('');
     setMessage('');
@@ -255,6 +271,34 @@ export function LivingAthleteCardPage({
     }
   }, [embedded, inviteToken]);
   useEffect(() => { setBrokenPhoto(false); }, [photoUrl]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReducedMotion(query.matches);
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, []);
+  // Section-to-section flips park the outgoing section first, then rotate on the next frame.
+  useEffect(() => {
+    if (!flip.busy) return;
+    if (!flip.animate) {
+      let second = 0;
+      const first = window.requestAnimationFrame(() => {
+        second = window.requestAnimationFrame(() => setFlip((current) => armFlip(current)));
+      });
+      return () => { window.cancelAnimationFrame(first); window.cancelAnimationFrame(second); };
+    }
+    const timer = window.setTimeout(() => setFlip((current) => settleFlip(current)), flipDurationMs);
+    return () => window.clearTimeout(timer);
+  }, [flip.busy, flip.animate]);
+  const sidesKey = invite
+    ? availableCardSides({ hasStats: Boolean(invite.stats), hasLiveScoreboard: Boolean(invite.liveScoreboard), showEvents: invite.showEvents }).join('|')
+    : '';
+  useEffect(() => {
+    if (!sidesKey) return;
+    setFlip((current) => reconcileFlip(current, sidesKey.split('|') as CardSide[]));
+  }, [sidesKey]);
   useEffect(() => {
     const updateToday = () => setTodayTick(Date.now());
     const timer = window.setInterval(updateToday, 30_000);
@@ -345,10 +389,16 @@ export function LivingAthleteCardPage({
   const recentReplies = [...localReplies, ...invite.replies]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 6);
+  const availableSides = availableCardSides({
+    hasStats: Boolean(invite.stats),
+    hasLiveScoreboard: Boolean(invite.liveScoreboard),
+    showEvents: invite.showEvents,
+  });
+  const tabs = primaryTabs(availableSides);
   const selectSide = (next: CardSide) => {
-    if (side === next) return;
-    setSide(next);
+    setFlip((current) => beginFlip(current, next, availableSides, reducedMotion));
   };
+  const sideLabel = (face: CardSide) => face === 'front' ? 'card front' : face === 'responses' ? 'viewer responses' : face === 'stats' ? 'finalized stats' : face === 'events' ? 'events' : face === 'videos' ? 'videos' : 'Live Taps tally';
   const submitHype = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!publicConsent) return;
@@ -443,59 +493,36 @@ export function LivingAthleteCardPage({
     }
   };
 
-  return (
-    <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
-      <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`}>
-        {!embedded && ownerInvite && profileNameSyncKey && updateInvite.isPending && (
-          <p className="mb-4 border-l-2 border-sky-300 bg-sky-950/60 px-4 py-3 text-sm text-white" role="status" data-testid="status-profile-name-sync">
-            Updating the shared HYPE Card name from your athlete profile…
-          </p>
-        )}
-        {!embedded && ownerInvite && profileNameSyncError && (
-          <div className="mb-4 border-l-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="alert" data-testid="error-profile-name-sync">
-            <p>The card preview uses your profile name, but the shared card could not be updated for other viewers.</p>
-            <button
-              type="button"
-              className="mt-2 min-h-10 font-bold underline underline-offset-2"
-              onClick={() => {
-                profileNameSyncAttemptRef.current = '';
-                setProfileNameSyncError(false);
-                setProfileNameSyncRetry((attempt) => attempt + 1);
-              }}
-            >
-              Retry name update
-            </button>
-          </div>
-        )}
-        <div className="living-card-layout living-card-layout-solo">
-          <section
-            className="living-card-stage"
-            data-design={cardAppearance.design}
-            style={{
-              '--pixl-nav-accent': cardAppearance.borderColor,
-              '--pixl-accent': cardAppearance.accentColor,
-            } as CSSProperties}
-            aria-label={`${displayAthleteName}'s HYPE Card`}
-          >
-            <div className="living-card-frame-outer">
-              <div className="living-card-frame" data-side={side} data-design={cardAppearance.design} id="living-card-display" role="region" aria-label={`${displayAthleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
-                <div className="living-card-flip-inner">
-                  <div className="living-card-flip-face living-card-flip-front">
-                    {side === 'front' && (
-                      <LivingAthleteCardFront
-                        key="front"
-                        athleteName={displayAthleteName}
-                        teamName={invite.teamName}
-                        photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
-                        appearance={cardAppearance}
-                        sport={invite.sport}
-                        cutoutUrl={invite.cutoutUrl}
-                        onPhotoError={() => setBrokenPhoto(true)}
-                      />
+  const renderSection = (face: CardSide | null) => (
+              <>
+                {face === 'videos' && (
+                  <div className="living-card-face living-card-face-alt" key="videos" data-testid="living-card-videos-side">
+                    <span className="living-card-overline">Shared moments</span>
+                    <h2 className="living-card-alt-title">Videos</h2>
+                    {invite.videos.length === 0 ? (
+                      <div className="lc-native-empty" data-testid="living-card-videos-empty">
+                        <h3>Videos will appear here</h3>
+                        <p>Shared athlete videos will be available on this side of the HYPE Card.</p>
+                      </div>
+                    ) : (
+                      <ul className="lc-native-video-list" aria-label="Shared videos">
+                        {invite.videos.map((video) => (
+                          <li key={video.shareToken}>
+                            {playingVideo === video.shareToken ? (
+                              <video src={video.videoUrl} poster={video.posterUrl ?? undefined} controls autoPlay playsInline preload="metadata" data-testid={`video-living-card-${video.shareToken}`} />
+                            ) : (
+                              <button type="button" onClick={() => setPlayingVideo(video.shareToken)} data-testid={`button-living-card-video-${video.shareToken}`}>
+                                <Play aria-hidden="true" />
+                                <span><strong>{video.title || 'Athlete video'}</strong><small>{video.mediaName}</small></span>
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
-                  <div className="living-card-flip-face living-card-flip-back">
-                {side === 'stats' && (
+                )}
+                {face === 'stats' && (
                   <div className="living-card-face living-card-face-alt" key="stats">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / The record</span><span>{invite.seasonName}</span></div>
                     <h2 className="living-card-alt-title">Season stats.</h2>
@@ -646,7 +673,7 @@ export function LivingAthleteCardPage({
                   </div>
                 )}
 
-                {side === 'events' && (
+                {face === 'events' && (
                   <div className="living-card-face living-card-face-alt" key="events" data-testid="living-card-events-side">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / Game days</span><span>{invite.seasonName}</span></div>
                     <h2 className="living-card-alt-title">Events.</h2>
@@ -655,12 +682,6 @@ export function LivingAthleteCardPage({
                         ? `All eligible Event Cards saved by ${displayAthleteName}’s card owner appear here.`
                         : 'The card owner has turned off event sharing.'}
                     </p>
-                    {invite.favoriteMoment && (
-                      <aside className="living-card-favorite-moment" aria-label="Athlete favorite moment" data-testid="living-card-favorite-moment">
-                        <p className="living-card-favorite-moment-label">A moment I’m proud of</p>
-                        <p className="living-card-favorite-moment-copy">{invite.favoriteMoment}</p>
-                      </aside>
-                    )}
                     {invite.showEvents && linkedEvents.length > 0 ? (
                       <ol className="living-card-events-list" aria-label="Event Cards">
                         {linkedEvents.map((event) => (
@@ -684,7 +705,7 @@ export function LivingAthleteCardPage({
                     ) : null}
                   </div>
                 )}
-                {side === 'live-taps' && (
+                {face === 'live-taps' && (
                   <div className="living-card-face living-card-face-alt" key="live-taps" data-testid="living-card-live-taps-side">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / Family cheers</span><span>{invite.seasonName}</span></div>
                     <h2 className="living-card-alt-title">Live Taps.</h2>
@@ -777,7 +798,7 @@ export function LivingAthleteCardPage({
                     </section>
                   </div>
                 )}
-                {side === 'responses' && (
+                {face === 'responses' && (
                   <div className="living-card-face living-card-face-alt" key="responses" data-testid="living-card-responses-side">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / From the stands</span><span>{invite.seasonName}</span></div>
                     <h2 className="living-card-alt-title">Responses.</h2>
@@ -803,19 +824,95 @@ export function LivingAthleteCardPage({
                     {ownerInvite && <p role={responseFeedback.includes('could not') ? 'alert' : 'status'} aria-live="polite" className="living-card-response-feedback">{responseFeedback}</p>}
                   </div>
                 )}
+              </>
+  );
+  const favoriteMoment = invite.favoriteMoment?.trim() ?? '';
+
+  return (
+    <Shell inviteToken={inviteToken} embedded={embedded} ownerView={Boolean(isSignedIn && ownerInvite)}>
+      <MainElement className={`living-card-main${embedded ? ' living-card-main--embedded' : ''}`}>
+        {!embedded && ownerInvite && profileNameSyncKey && updateInvite.isPending && (
+          <p className="mb-4 border-l-2 border-sky-300 bg-sky-950/60 px-4 py-3 text-sm text-white" role="status" data-testid="status-profile-name-sync">
+            Updating the shared HYPE Card name from your athlete profile…
+          </p>
+        )}
+        {!embedded && ownerInvite && profileNameSyncError && (
+          <div className="mb-4 border-l-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="alert" data-testid="error-profile-name-sync">
+            <p>The card preview uses your profile name, but the shared card could not be updated for other viewers.</p>
+            <button
+              type="button"
+              className="mt-2 min-h-10 font-bold underline underline-offset-2"
+              onClick={() => {
+                profileNameSyncAttemptRef.current = '';
+                setProfileNameSyncError(false);
+                setProfileNameSyncRetry((attempt) => attempt + 1);
+              }}
+            >
+              Retry name update
+            </button>
+          </div>
+        )}
+        <div className="living-card-layout living-card-layout-solo">
+          <section
+            className="living-card-stage lc-native-stage"
+            data-design={cardAppearance.design}
+            style={{
+              '--pixl-nav-accent': cardAppearance.borderColor,
+              '--pixl-accent': cardAppearance.accentColor,
+            } as CSSProperties}
+            aria-label={`${displayAthleteName}'s HYPE Card`}
+          >
+            {!embedded && (
+              <div className="lc-native-heading">
+                <span>Player Showcase</span>
+                <h1>HYPE Card</h1>
+              </div>
+            )}
+            <div className="lc-native-shell" data-testid="living-card-flip-container" data-selected-side={side}>
+              <div
+                className="lc-native-flip-face-area"
+                id="living-card-display"
+                role="region"
+                aria-label={`${displayAthleteName} — ${sideLabel(side)}`}
+              >
+                <div
+                  className="living-card-flip-inner lc-native-flip-inner"
+                  data-rotated={flip.rotated ? 'true' : 'false'}
+                  data-animate={flip.animate ? 'true' : 'false'}
+                >
+                  <div className="living-card-flip-face living-card-flip-front" aria-hidden={flip.rotated || undefined} inert={flip.rotated || undefined}>
+                    {flip.frontFace === 'front' ? (
+                      <NativeHypeCardFront
+                        athleteName={displayAthleteName}
+                        teamName={invite.teamName}
+                        seasonName={invite.seasonName}
+                        photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
+                        appearance={cardAppearance}
+                        onPhotoError={() => setBrokenPhoto(true)}
+                      />
+                    ) : renderSection(flip.frontFace)}
+                  </div>
+                  <div className="living-card-flip-face living-card-flip-back" aria-hidden={!flip.rotated || undefined} inert={!flip.rotated || undefined}>
+                    {flip.backFace && renderSection(flip.backFace)}
                   </div>
                 </div>
               </div>
+              <LivingCardControls
+                side={side}
+                tabs={tabs}
+                eventToday={eventToday}
+                eventCount={linkedEvents.length}
+                liveScoreboardAvailable={Boolean(invite.liveScoreboard)}
+                onSelectSide={selectSide}
+              />
             </div>
-            <LivingCardControls
-              side={side}
-              eventToday={eventToday}
-              eventCount={linkedEvents.length}
-              liveScoreboardAvailable={Boolean(invite.liveScoreboard)}
-              liveTapsActive={invite.liveTaps.active}
-              onSelectSide={selectSide}
-            />
-            <button type="button" className="living-card-return-front" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Flip to card front</button>
+            {side === 'front' && !flip.busy && favoriteMoment && (
+              <aside className="living-card-favorite-moment lc-native-moment" aria-label="Athlete favorite moment" data-testid="living-card-favorite-moment">
+                <p className="living-card-favorite-moment-label">A moment I’m proud of</p>
+                <p className="living-card-favorite-moment-copy">{favoriteMoment}</p>
+              </aside>
+            )}
+            <LivingCardSecondarySides side={side} liveTapsActive={invite.liveTaps.active} onSelectSide={selectSide} />
 
             {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
                <Dialog open={followDialogOpen} onOpenChange={setFollowDialogOpen}>
@@ -890,7 +987,6 @@ export function LivingAthleteCardPage({
                  </DialogContent>
                </Dialog>
               </div>}
-            {!embedded && <p className="living-card-instruction">Choose a side to turn the card.</p>}
           </section>
 
         </div>
