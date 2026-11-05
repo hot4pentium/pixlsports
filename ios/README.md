@@ -444,6 +444,45 @@ swiftc -parse-as-library "ios/PIXL Sports/FamilyLiveTapQR.swift" \
 /tmp/pixl-live-tap-qr-checks
 ```
 
+### Live Taps Apple release verification
+
+Run from a Mac checkout with full **Xcode 26+** selected (`xcode-select -p`),
+the iOS Simulator platform installed, and Swift package download access:
+
+```sh
+bash ios/Tests/verify-live-taps-apple.sh
+```
+
+The command first compiles and **executes** the Foundation receipt/celebration
+checks with Apple Swift and assertions enabled, then builds the complete app for
+a generic iOS Simulator with signing disabled. It exits unsuccessfully if either
+step fails. Logs, source revision/working-tree status, build results and derived
+data stay in ignored `generated-artifacts/native-live-taps-apple/`.
+No login, real account, signing secret, deployment, or workflow push is required.
+This is a documented local/approved-runner command, not a newly enabled CI job:
+no existing CI configuration was present when this verification path was added.
+
+Coverage includes Event Card IDs used as game IDs with opaque recipient
+references, active/completed personal totals, legacy saved queues, retrying the
+same UUID after a lost accepted response, persisted one-time celebration,
+and audience isolation by account, account link and invite. Pending cheers retain
+their original grant, game and mutation ID across persistence. These local
+models do **not** prove that a revoked grant is rejected by the server.
+Server authorization and UUID deduplication remain unchanged.
+
+**Verification evidence:** The downloaded verification project was run on the
+user's Mac on November 4, 2026 (November 5 UTC). Its supplied terminal tail shows
+`BUILD SUCCEEDED` and `PASS: unsigned iOS Simulator app build.` Since the script
+uses fail-fast execution and runs the Foundation executable before invoking
+`xcodebuild`, successful script completion also indicates the preceding Foundation
+compile and execution succeeded. The earlier Foundation PASS line and tool
+versions are not present in the supplied tail; see the
+[evidence summary](Tests/native-live-taps-apple-verification.md) for that limit.
+Future release runs should retain the complete log with both PASS lines.
+The focused [device checklist](Tests/native-cheer-celebration-device-checks.md)
+separately covers real iPhone persistence, VoiceOver and offline radio behavior;
+a simulator build does not mark those checks passed.
+
 The schedule-refresh policy checks that navigation, stat saves, and Prep saves
 do not announce schedule changes, while event mutations route to the views that
 need updated data:

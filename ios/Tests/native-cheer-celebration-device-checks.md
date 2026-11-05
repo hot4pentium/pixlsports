@@ -1,7 +1,14 @@
 # Fan Cheers and completion checks on an Apple runner
 
-Linux checks exercise the Foundation receipt model and syntax only. They cannot
-verify SwiftUI, Clerk, Keychain, encrypted atomic writes, or real iOS presentation.
+First run `bash ios/Tests/verify-live-taps-apple.sh` on macOS with Xcode 26+.
+It executes the Foundation receipt model checks and builds the unsigned simulator
+app. Linux syntax parsing does not execute those checks. Neither syntax parsing
+nor the Foundation checks verify Clerk, Keychain, encrypted atomic writes or real
+iOS presentation. A simulator build alone is not an executed UI/device check.
+
+Status: **not executed on a physical iPhone, with VoiceOver, or with offline
+radios for this verification path**. Record date, source revision, phone/iOS
+versions and pass/fail evidence for each item below when actually performed.
 
 Run the app target and UI tests in Xcode, then use two phones/accounts:
 
@@ -26,3 +33,9 @@ Run the app target and UI tests in Xcode, then use two phones/accounts:
   safe areas. All content scrolls vertically and dismisses.
 - Sign out, change account link and return on another account: no old counts or
   modal can appear. Legacy receipts must not manufacture a personal number.
+- Use a saved game whose ID equals its Event Card ID, hide the event, and recover
+  an accepted cheer after End. Personal counts still match; recipient completion
+  and receipt payloads use opaque references, not the hidden event identifier.
+- Save cheers under QR grant A, revoke A and scan replacement B. Old queued taps
+  retain A and their UUIDs; B must not authorize delivery of A's rejected taps.
+  Also switch athlete invites: no previous invite's counts or celebration appear.

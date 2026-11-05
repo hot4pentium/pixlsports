@@ -73,6 +73,37 @@ struct SavedLiveTapSession: Codable {
 
     var confirmedCount: Int { confirmedReceipts?.count ?? 0 }
 
+    /// Only aggregate this audience's local receipts. This is not authorization;
+    /// the outbox still checks the current owner vault and the server checks grants.
+    mutating func claimCelebration(_ completion: NativeLiveTapCompletion,
+                                   among sessions: [SavedLiveTapSession],
+                                   ownerEnded: Bool) -> NativeLiveTapCelebration? {
+        let audience = sessions.filter {
+            $0.inviteToken == inviteToken && $0.ownerSubject == ownerSubject
+                && $0.ownerNamespace == ownerNamespace
+        }
+        guard !audience.contains(where: { $0.presentedCompletionIDs?.contains(completion.id) == true }) else { return nil }
+        let relevant = audience.filter {
+            $0.summary?.gameId == completion.gameId
+                || $0.confirmedReceipts?.values.contains(where: { $0.gameId == completion.gameId }) == true
+                || $0.acceptedLegacyGameIDs?.contains(completion.gameId) == true
+                || $0.pending.contains(where: { $0.gameId == completion.gameId })
+                || $0.scope == scope
+        }
+        var aggregate = self
+        aggregate.confirmedReceipts = relevant.reduce(into: [String: NativeLiveTapReceipt]()) { receipts, saved in
+            for receipt in (saved.confirmedReceipts ?? [:]).values { receipts[receipt.id] = receipt }
+        }
+        aggregate.acceptedLegacyGameIDs = relevant.reduce(into: Set<String>()) { $0.formUnion($1.acceptedLegacyGameIDs ?? []) }
+        aggregate.attributionReliable = relevant.allSatisfy { $0.attributionReliable == true }
+        guard aggregate.claim(completion, ownerEnded: ownerEnded) else { return nil }
+        presentedCompletionIDs = aggregate.presentedCompletionIDs
+        return NativeLiveTapCelebration(
+            completion: completion, personalTotal: aggregate.personalTotal(gameId: completion.gameId),
+            pendingCount: Set(relevant.flatMap(\.pending).filter { $0.gameId == completion.gameId }.map(\.id)).count
+        )
+    }
+
     func personalTotal(gameId: String) -> Int? {
         guard attributionReliable == true else { return nil }
         let activeReference = summary?.gameId == gameId ? summary?.gameRef : nil

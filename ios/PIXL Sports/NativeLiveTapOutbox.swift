@@ -90,33 +90,13 @@ final class NativeLiveTapOutbox: ObservableObject {
                   session.ownerNamespace == NativeOfflineRuntime.shared.vault.namespace,
                   NativeOfflineRuntime.shared.vault.canContinue(subject: subject) else { return nil }
         }
-        let audience = sessions.values.filter {
-            $0.inviteToken == session.inviteToken && $0.ownerSubject == session.ownerSubject
-                && $0.ownerNamespace == session.ownerNamespace
-        }
-        guard !audience.contains(where: { $0.presentedCompletionIDs?.contains(completion.id) == true }) else { return nil }
-        let relevant = audience.filter {
-            $0.summary?.gameId == completion.gameId
-                || $0.confirmedReceipts?.values.contains(where: { $0.gameId == completion.gameId }) == true
-                || $0.acceptedLegacyGameIDs?.contains(completion.gameId) == true
-                || $0.pending.contains(where: { $0.gameId == completion.gameId })
-                || $0.scope == scope
-        }
-        var aggregate = session
-        aggregate.confirmedReceipts = relevant.reduce(into: [String: NativeLiveTapReceipt]()) { receipts, saved in
-            for receipt in (saved.confirmedReceipts ?? [:]).values { receipts[receipt.id] = receipt }
-        }
-        aggregate.acceptedLegacyGameIDs = relevant.reduce(into: Set<String>()) { $0.formUnion($1.acceptedLegacyGameIDs ?? []) }
-        aggregate.attributionReliable = relevant.allSatisfy { $0.attributionReliable == true }
-        guard aggregate.claim(completion, ownerEnded: ownerEnded) else { return nil }
-        session.presentedCompletionIDs = aggregate.presentedCompletionIDs
+        guard let celebration = session.claimCelebration(
+            completion, among: Array(sessions.values), ownerEnded: ownerEnded
+        ) else { return nil }
         // Save display eligibility before presenting. The receipt journal and
         // outbox acknowledgement share this same encrypted atomic file.
         try commit(session)
-        return NativeLiveTapCelebration(
-            completion: completion, personalTotal: aggregate.personalTotal(gameId: completion.gameId),
-            pendingCount: Set(relevant.flatMap(\.pending).filter { $0.gameId == completion.gameId }.map(\.id)).count
-        )
+        return celebration
     }
 
     func remember(_ summary: LiveTapSummary, scope: String, accessToken: String?) throws {

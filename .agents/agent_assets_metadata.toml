@@ -598,3 +598,17 @@ mtime_ms = 1792295107557
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/97fabaa3-14d4-43bd-adf5-ac70ca8fc13a/d62e017e-d593-4a17-9e67-98f511414d50"
 storage_version_token = "1792295893718117"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "ttqq603XtQtNCAoX5UfzL"
+uri = "file://generated-artifacts/native-live-taps-download/pixl-live-taps-verification.zip"
+type = "unspecified"
+title = "Mac Live Taps verification project"
+description = "Updated native project and verification script. Extract as a separate folder without replacing your existing project. Apple verification still needs to be run on your Mac."
+logical_id = "db7bea2c-0dc5-4ed5-a0fe-a98a84d79d9d"
+content_hash = "sha256:a036e362e22464b6cce3c49d12e1359685ac062a95e5ae7506337e150c432dc9"
+size = 471646
+mtime_ms = 1793845064428
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:6b4151d5-4982-4a9f-b19b-ec59a135e9a9/db7bea2c-0dc5-4ed5-a0fe-a98a84d79d9d/644c78a8-22d8-4edb-92e3-498c889e10c1"
+storage_version_token = "1793845068402046"
+content_type = "application/octet-stream"
