@@ -50,3 +50,9 @@ A saved “live” flag from an earlier calendar day must not block a later day'
 **Why:** An older unfinished tracker record caused a false “other active game” warning even though the owner had no current competing event.
 
 **How to apply:** Judge blocking records using the Event Card's date and time zone, falling back to the saved game date and owner time zone. Reuse the requested event's own active game, and retain protection against a different current game.
+
+An Event Card ID and a generated Live Taps-only tracker game ID are distinct identities. Validate that session against the Event Card through its source-event link, while preserving compatibility for older sessions whose game ID is the Event Card ID.
+
+**Why:** A native Live Taps-only session generates its own game ID; checking only that ID against the Event Card prevented the linked owner from creating a family QR after starting the session.
+
+**How to apply:** When validating native Live Taps access or refreshing an Event Card, confirm the share’s source event matches the selected card. Keep owner, sport, and active-session checks in place.

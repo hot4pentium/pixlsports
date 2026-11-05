@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import test from "node:test";
 import express from "express";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { eq } from "drizzle-orm";
 import {
   accountAccessTable,
@@ -12,6 +13,7 @@ import {
   cloudProjectsTable,
   db,
   hypeCardSharesTable,
+  pool,
   scheduleSharesTable,
   statTrackerSharesTable,
 } from "@workspace/db";
@@ -25,9 +27,11 @@ import {
 
 import athleteInvitesRouter from "./routes/athleteInvites";
 import athleteLiveTapsRouter from "./routes/athleteLiveTaps";
+import { nativeAccountLinkRouter } from "./routes/nativeAccountLink";
 import statTrackerSharesRouter from "./routes/statTrackerShares";
 import { GAME_ON_CARD_MARKER } from "./lib/gameOnCard";
 import { getLiveTapCheerPresets } from "./lib/athleteLiveTaps";
+import { digest } from "./lib/nativeAccountLink";
 
 test("every supported sport offers the three shared Live Taps cheers", () => {
   const sharedCheerKeys = ["thumbs-up", "way-to-go", "big-play"];
@@ -1436,6 +1440,33 @@ test("native Live Taps joins same-card stat tracking without creating a separate
   const ownerId = `native-live-taps-${randomUUID()}`;
   const eventId = randomUUID();
   const otherEventId = randomUUID();
+  const nativeIssuer = `https://native-live-taps-${randomUUID().replaceAll("-", "")}.clerk.accounts.dev`;
+  const nativeSubject = `user_native${randomUUID().replaceAll("-", "")}`;
+  const originalIssuer = process.env.NATIVE_IOS_CLERK_ISSUER;
+  const originalFetch = globalThis.fetch;
+  const { privateKey, publicKey } = await generateKeyPair("RS256");
+  const keyId = `native-live-taps-${randomUUID().replaceAll("-", "")}`;
+  const jwk = await exportJWK(publicKey);
+  const jwks = JSON.stringify({ keys: [{ ...jwk, kid: keyId, alg: "RS256", use: "sig" }] });
+  process.env.NATIVE_IOS_CLERK_ISSUER = nativeIssuer;
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === `${nativeIssuer}/.well-known/jwks.json`) {
+      return Response.json(JSON.parse(jwks));
+    }
+    return originalFetch(input, init);
+  };
+  const now = Math.floor(Date.now() / 1000);
+  const nativeToken = await new SignJWT({ sid: `sess_native${randomUUID().replaceAll("-", "")}` })
+    .setProtectedHeader({ alg: "RS256", kid: keyId })
+    .setIssuer(nativeIssuer)
+    .setSubject(nativeSubject)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 60)
+    .sign(privateKey);
+  const nativeHeaders = {
+    authorization: `Bearer ${nativeToken}`,
+    "content-type": "application/json",
+  };
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -1448,6 +1479,7 @@ test("native Live Taps joins same-card stat tracking without creating a separate
   });
   app.use("/api", athleteInvitesRouter);
   app.use("/api", athleteLiveTapsRouter);
+  app.use("/api/native", nativeAccountLinkRouter);
   const server = app.listen(0);
   const nativeGame = {
     id: `tracker-game-${randomUUID()}`,
@@ -1480,20 +1512,31 @@ test("native Live Taps joins same-card stat tracking without creating a separate
       role: "fan",
       accessMode: "full",
     });
+    await pool.query(
+      `INSERT INTO native_account_links(native_issuer,native_subject,owner_clerk_user_id,account_label)
+       VALUES($1,$2,$3,'Live Taps test owner')`,
+      [nativeIssuer, nativeSubject, ownerId],
+    );
     const [tracker] = await db.insert(cloudProjectsTable).values({
       ownerClerkUserId: ownerId,
       name: "Native Event tracker",
       project: { tool: "stat-tracker", games: [nativeGame, historicalGame] },
     }).returning();
-    await db.insert(scheduleSharesTable).values({
-      ownerClerkUserId: ownerId,
-      title: "Tigers events",
-      teamSeason: GAME_ON_CARD_MARKER,
-      events: [
-        { id: eventId, type: "game", status: "live", date: dateKey(0), opponent: "Bears" },
-        { id: otherEventId, type: "game", status: "upcoming", date: dateKey(2), opponent: "Warriors" },
-      ],
-    });
+    const eventCards = await db.insert(scheduleSharesTable).values([
+      {
+        ownerClerkUserId: ownerId,
+        title: "Tigers · Bears",
+        teamSeason: GAME_ON_CARD_MARKER,
+        events: [{ id: eventId, type: "game", status: "live", date: dateKey(0), opponent: "Bears" }],
+      },
+      {
+        ownerClerkUserId: ownerId,
+        title: "Tigers · Warriors",
+        teamSeason: GAME_ON_CARD_MARKER,
+        events: [{ id: otherEventId, type: "game", status: "upcoming", date: dateKey(2), opponent: "Warriors" }],
+      },
+    ]).returning();
+    const eventCard = eventCards[1];
 
     const address = server.address();
     assert.ok(address && typeof address === "object");
@@ -1588,7 +1631,7 @@ test("native Live Taps joins same-card stat tracking without creating a separate
 
     const cheerOnlyStart = await fetch(liveUrl, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      headers: nativeHeaders,
       body: JSON.stringify({ eventId: otherEventId, soccerPeriodFormat: "quarters" }),
     });
     assert.equal(cheerOnlyStart.status, 201);
@@ -1597,6 +1640,10 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     const [cheerOnlyShare] = await db.select().from(statTrackerSharesTable)
       .where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
     const cheerOnlyGame = cheerOnlyShare!.game as Record<string, unknown>;
+    assert.equal(cheerOnlyShare!.ownerClerkUserId, ownerId);
+    assert.equal(cheerOnlyShare!.athleteName, "Jordan");
+    assert.equal(cheerOnlyShare!.teamName, "Tigers");
+    assert.equal(cheerOnlyShare!.gameId, cheerOnlySession.gameId);
     assert.equal(cheerOnlyGame.sourceEventId, otherEventId);
     assert.equal(cheerOnlyGame.liveTapsOnly, true);
     assert.equal(cheerOnlyGame.soccerPeriodFormat, "quarters");
@@ -1617,12 +1664,42 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     const [preservedHistoricalShare] = await db.select().from(statTrackerSharesTable)
       .where(eq(statTrackerSharesTable.id, historicalShare!.id));
     assert.deepEqual(preservedHistoricalShare!.game, historicalGame);
+
+    const accessList = await fetch(`${baseUrl}/api/native/supporter/live-taps-access`, {
+      method: "POST",
+      headers: nativeHeaders,
+      body: JSON.stringify({ shareToken: eventCard!.id, action: "list" }),
+    });
+    assert.equal(accessList.status, 200, "the linked iPhone remains authorized after starting Live Taps");
+    const listedAccess = await accessList.json() as { links: Array<{ id: string }> };
+    assert.deepEqual(listedAccess.links.map(({ id }) => id), [familyLink.id],
+      "the linked iPhone can still load its existing fan QR after starting another Event Card");
+    const createAccess = await fetch(`${baseUrl}/api/native/supporter/live-taps-access`, {
+      method: "POST",
+      headers: nativeHeaders,
+      body: JSON.stringify({ shareToken: eventCard!.id, action: "create" }),
+    });
+    assert.equal(createAccess.status, 200);
+    const accessLink = await createAccess.json() as { inviteToken: string; accessToken: string };
+    assert.equal(accessLink.inviteToken, created.inviteToken,
+      "the fan QR created from the iPhone belongs to the selected athlete");
+    assert.match(accessLink.accessToken, /^[A-Za-z0-9_-]{40,100}$/);
   } finally {
-    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
-    await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
-    await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, ownerId));
-    await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
-    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    try {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+      await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+      await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, ownerId));
+      await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
+      await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+      await pool.query("DELETE FROM native_account_links WHERE native_issuer=$1 AND native_subject=$2",
+        [nativeIssuer, nativeSubject]);
+      await pool.query("DELETE FROM native_link_rate_limits WHERE key=$1",
+        [digest(`native-request:${JSON.stringify({ issuer: nativeIssuer, subject: nativeSubject })}`)]);
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalIssuer === undefined) delete process.env.NATIVE_IOS_CLERK_ISSUER;
+      else process.env.NATIVE_IOS_CLERK_ISSUER = originalIssuer;
+    }
   }
 });

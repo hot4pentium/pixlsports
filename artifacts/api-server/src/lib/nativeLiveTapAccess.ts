@@ -37,7 +37,8 @@ export async function nativeLiveTapAccess(
     }
     const invite = (await tx.query<{
       id: string; public_token: string; paused: boolean; available: boolean; sport: string;
-      game_id: string | null; game: { status?: string; sport?: string } | null;
+      game_id: string | null;
+      game: { id?: string; sourceEventId?: string; status?: string; sport?: string } | null;
     }>(
       `SELECT ai.id,ai.public_token,ai.paused,(ai.season_ends_at>NOW()) AS available,ai.sport,s.game_id,s.game
        FROM athlete_invites ai LEFT JOIN stat_tracker_shares s
@@ -49,7 +50,11 @@ export async function nativeLiveTapAccess(
     if (!invite) throw new NativeLinkError(404, "No athlete HYPE Card is available.");
 
     if (action === "create") {
-      if (invite.paused || !invite.available || invite.game_id !== card.events[0]!.id
+      const eventId = card.events[0]!.id;
+      const sessionMatchesEvent = invite.game_id === eventId
+        || invite.game?.sourceEventId === eventId
+        || invite.game?.id === eventId;
+      if (invite.paused || !invite.available || !sessionMatchesEvent
           || !invite.game || invite.game.status === "final" || invite.game.sport !== invite.sport) {
         throw new NativeLinkError(409, "Live Taps must be active for this Event Card before sharing a fan QR.");
       }
