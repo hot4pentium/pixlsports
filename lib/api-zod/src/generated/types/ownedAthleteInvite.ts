@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AthleteInviteEventSummary } from './athleteInviteEventSummary';
+import type { AthleteInviteLiveTaps } from './athleteInviteLiveTaps';
 import type { HypeCardAppearance } from './hypeCardAppearance';
 import type { OwnedAthleteInviteSport } from './ownedAthleteInviteSport';
 
 export interface OwnedAthleteInvite {
+  liveTaps?: AthleteInviteLiveTaps;
   inviteToken: string;
   athleteName: string;
   teamName: string;

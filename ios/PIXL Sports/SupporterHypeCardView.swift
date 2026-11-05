@@ -233,6 +233,20 @@ struct SupporterHypeCardView: View {
             Text("This updates only the saved card’s athlete and team name to match your linked profile. Privacy, pause, photo, media, saved artwork, and published snapshots stay unchanged.")
         }
         .task { await loadCard() }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                guard !Task.isCancelled, scenePhase == .active else { return }
+                // Refresh aggregates without replacing the card or editing drafts.
+                guard let token = card?.inviteToken ?? publicInviteToken,
+                      !loading, !isSaving, !isCheckingSettings else { continue }
+                if let result = try? await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: token) {
+                    guard !Task.isCancelled, token == (card?.inviteToken ?? publicInviteToken) else { continue }
+                    card?.liveTaps = result.summary
+                }
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, !loading, !isRefreshing, !isSaving,
                   !isCheckingSettings, !hasUnsavedSettings else { return }
@@ -259,6 +273,9 @@ struct SupporterHypeCardView: View {
                 .frame(maxWidth: .infinity, minHeight: 240)
         } else if let card {
             publicCardContent(card)
+            if let cheers = card.liveTaps {
+                NativeFanCheersView(summary: cheers)
+            }
             if let shareURL = card.shareURL,
                (isPublicRecipient || (settings?.showHypeCard == true && settings?.paused == false)) {
                 ShareLink(item: shareURL) {
@@ -283,6 +300,9 @@ struct SupporterHypeCardView: View {
                 photoURL: nil,
                 privatePhoto: privatePhoto
             )
+            if let cheers = privateCard.liveTaps {
+                NativeFanCheersView(summary: cheers)
+            }
         } else if let errorMessage {
             VStack(alignment: .leading, spacing: 12) {
                 Label(

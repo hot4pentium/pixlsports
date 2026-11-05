@@ -48,7 +48,8 @@ import {
 import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
 import { notifyAthleteInviteHypeOwner } from "../lib/athleteInviteHypeNotification";
-import { getAthleteLiveTapsSummary } from "../lib/athleteLiveTaps";
+import { getAthleteLiveTapsSummary, visibleLiveTapSummary } from "../lib/athleteLiveTaps";
+import { completeLiveTapSession, completedLiveTapSessions } from "../lib/liveTapCompletions";
 import { athletePhotoRevision } from "../lib/athletePhotoRevision";
 import { sanitizeAthleteInvitePhoto } from "../lib/athleteInvitePhoto";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -333,6 +334,10 @@ async function startNativeEventLive(
     )).for("update");
     let existingShare: typeof statTrackerSharesTable.$inferSelect | undefined =
       existingShares[0] as typeof statTrackerSharesTable.$inferSelect | undefined;
+    if ((existingShare?.game as Record<string, unknown> | undefined)?.liveTapsEnded === true
+      || (await completedLiveTapSessions(currentInvite.id)).some(row => row.gameId === String(game.id))) {
+      return { status: 409, error: "Live Taps has ended for this game. Its cheers are saved on the HYPE Card." };
+    }
     if (existingShare && existingShare.expiresAt <= now) {
       await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.id, existingShare.id));
       existingShare = undefined;
@@ -528,12 +533,12 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
       teamName: invite.teamName,
     }
     : null;
-  const liveTaps = await getAthleteLiveTapsSummary(
+  const liveTaps = visibleLiveTapSummary(await getAthleteLiveTapsSummary(
     invite.id,
     invite.sport,
-    liveGame && liveShare?.gameId ? liveShare.gameId : null,
+    liveGame && liveGame.liveTapsEnded !== true && liveShare?.gameId ? liveShare.gameId : null,
     invite.liveTapsSeasonId,
-  );
+  ), invite.showEvents);
 
   return {
     inviteToken: invite.publicToken,
@@ -584,7 +589,16 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
 }
 
 async function ownedInviteResponse(invite: InviteRow) {
+  const [share] = invite.liveTrackerShareToken ? await db.select().from(statTrackerSharesTable).where(and(
+    eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+    eq(statTrackerSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+    gt(statTrackerSharesTable.expiresAt, new Date()),
+  )) : [];
+  const game = share?.game as Record<string, unknown> | undefined;
+  const activeGameId = game && game.liveTapsEnded !== true && ["live", "paused"].includes(String(game.status))
+    ? share!.gameId : null;
   return {
+    liveTaps: await getAthleteLiveTapsSummary(invite.id, invite.sport, activeGameId, invite.liveTapsSeasonId),
     inviteToken: invite.publicToken,
     athleteName: invite.athleteName,
     teamName: invite.teamName,
@@ -998,7 +1012,7 @@ router.delete("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pr
       eq(statTrackerSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
     ));
   }
-  res.status(204).send(StopAthleteInviteLiveResponse.parse(undefined));
+  res.status(204).end();
 });
 
 router.post("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, async (req, res): Promise<void> => {
@@ -1111,6 +1125,11 @@ router.post("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, asyn
     res.status(409).json({ error: "Unable to start Game Day Live." });
     return;
   }
+  if ((share.game as Record<string, unknown>)?.liveTapsEnded === true
+    || (await completedLiveTapSessions(invite.id)).some(row => row.gameId === share!.gameId)) {
+    res.status(409).json({ error: "Live Taps has ended for this game. Its cheers are saved on the HYPE Card." });
+    return;
+  }
   if (invite.liveTrackerShareToken && invite.liveTrackerShareToken !== share.id) {
     const [activeShare] = await db.select().from(statTrackerSharesTable).where(and(
       eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
@@ -1146,6 +1165,11 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, as
     return;
   }
   const expectedEventId = req.body?.eventId;
+  const expectedGameId = req.body?.gameId;
+  if (expectedGameId !== undefined && (typeof expectedGameId !== "string" || !expectedGameId.trim() || expectedGameId.length > 200)) {
+    res.status(400).json({ error: "Choose the Live Taps session you want to end." });
+    return;
+  }
   if (expectedEventId !== undefined && (
     typeof expectedEventId !== "string" || !expectedEventId.trim() || expectedEventId.length > 200
   )) {
@@ -1160,6 +1184,13 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, as
     )).for("update");
     if (!invite) return "missing" as const;
 
+    // A retry must acknowledge the old end, never stop a replacement session.
+    const completions = await completedLiveTapSessions(invite.id);
+    const previous = completions.find(row => expectedGameId
+      ? row.gameId === expectedGameId && (!expectedEventId || row.eventId === expectedEventId || row.gameId === expectedEventId)
+      : !invite.liveTrackerShareToken && (!expectedEventId || row.eventId === expectedEventId));
+    if (previous) return { completion: previous };
+    let completion = null;
     if (invite.liveTrackerShareToken) {
       const [share] = await tx.select().from(statTrackerSharesTable).where(and(
         eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
@@ -1168,11 +1199,13 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, as
       const game = share?.game && typeof share.game === "object" && !Array.isArray(share.game)
         ? share.game as Record<string, unknown>
         : null;
+      if (expectedGameId && share?.gameId !== expectedGameId) return "different-event" as const;
       if (expectedEventId && share && game
         && game.sourceEventId !== expectedEventId && share.gameId !== expectedEventId) {
         return "different-event" as const;
       }
       if (share && game) {
+        if (game.liveTapsEnded !== true) completion = await completeLiveTapSession(tx, invite, share);
         await tx.update(statTrackerSharesTable).set({
           game: {
             ...game,
@@ -1188,7 +1221,7 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, as
       liveTrackerShareToken: null,
       updatedAt: new Date(),
     }).where(eq(athleteInvitesTable.id, invite.id));
-    return "stopped" as const;
+    return { completion };
   });
   if (stopped === "different-event") {
     res.status(409).json({ error: "Live Taps has changed. Reopen this Event Card before ending it." });
@@ -1198,7 +1231,7 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, as
     res.status(404).json({ error: "Athlete Hype Page not found" });
     return;
   }
-  res.status(204).send(StopAthleteInviteLiveResponse.parse(undefined));
+  res.status(200).json(StopAthleteInviteLiveResponse.parse(stopped));
 });
 
 export default router;

@@ -5,6 +5,7 @@ import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { ObjectNotFoundError, ObjectStorageService } from "./objectStorage";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { summarizeFanBase } from "./athleteInviteFanBase";
+import { getAthleteLiveTapsSummary } from "./athleteLiveTaps";
 
 export type NativeHypeCardReference = {
   status: "unlinked" | "no-card" | "hidden" | "mismatch" | "available";
@@ -34,6 +35,7 @@ export type NativePrivateHypeCard = {
   seasonName: string;
   favoriteMoment: string | null;
   hasPhoto: boolean;
+  liveTaps?: Awaited<ReturnType<typeof getAthleteLiveTapsSummary>>;
 };
 
 export type SelectedAthlete = {
@@ -143,6 +145,8 @@ export async function loadNativeSupporterHypeCard(
       athlete_name: string;
       team_name: string;
       season_name: string;
+      sport: string;
+      live_taps_season_id: string | null;
       paused: boolean;
       show_hype_card: boolean;
       show_stats: boolean;
@@ -153,7 +157,7 @@ export async function loadNativeSupporterHypeCard(
     }>(
       `SELECT id, public_token, athlete_name, team_name, season_name, paused, show_hype_card,
               show_stats, show_events,
-              favorite_moment, photo_object_path, cutout_object_path
+              favorite_moment, photo_object_path, cutout_object_path, sport, live_taps_season_id
        FROM athlete_invites
        WHERE owner_clerk_user_id=$1
        ORDER BY created_at DESC`,
@@ -198,6 +202,7 @@ export async function loadNativeSupporterHypeCard(
           seasonName: invite.season_name,
           favoriteMoment: invite.favorite_moment,
           hasPhoto: Boolean(invite.cutout_object_path || invite.photo_object_path),
+          liveTaps: await getAthleteLiveTapsSummary(invite.id, invite.sport, null, invite.live_taps_season_id),
         },
         settings: settingsFor(invite),
       };

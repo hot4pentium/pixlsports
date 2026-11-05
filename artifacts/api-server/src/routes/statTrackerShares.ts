@@ -10,6 +10,7 @@ import {
   UpdateStatTrackerShareResponse,
 } from "@workspace/api-zod";
 import { athleteInvitesTable, db, statTrackerSharesTable } from "@workspace/db";
+import { completeLiveTapSession } from "../lib/liveTapCompletions";
 import {
   getRequiredClerkUserId,
   requireAuth,
@@ -392,13 +393,17 @@ router.patch("/stat-tracker-shares/:shareToken", requireAuth, async (req, res): 
       updated.revision,
     );
     if (parsed.data.game.status === "final") {
-      await db.update(athleteInvitesTable).set({
-        liveTrackerShareToken: null,
-        updatedAt: new Date(),
-      }).where(and(
-        eq(athleteInvitesTable.liveTrackerShareToken, params.data.shareToken),
-        eq(athleteInvitesTable.ownerClerkUserId, ownerId),
-      ));
+      await db.transaction(async tx => {
+        const invites = await tx.select().from(athleteInvitesTable).where(and(
+          eq(athleteInvitesTable.liveTrackerShareToken, params.data.shareToken),
+          eq(athleteInvitesTable.ownerClerkUserId, ownerId),
+        )).for("update");
+        for (const invite of invites) {
+          if (currentGame.liveTapsEnded !== true) await completeLiveTapSession(tx, invite, updated);
+          await tx.update(athleteInvitesTable).set({ liveTrackerShareToken: null, updatedAt: new Date() })
+            .where(eq(athleteInvitesTable.id, invite.id));
+        }
+      });
     }
     res.json(UpdateStatTrackerShareResponse.parse(response));
   } catch (error) {

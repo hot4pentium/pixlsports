@@ -27,7 +27,8 @@
     "test:support-center-browser": "tsx --test --test-concurrency=1 src/features/support-center.browser.test.ts",
     "test:supporter-dashboard-browser": "tsx --test --test-concurrency=1 src/features/supporter-dashboard.browser.test.ts",
     "test:supporter-dashboard-browser-cleanup": "tsx --test --test-concurrency=1 --test-name-pattern=\"assertion failures still clean up\" src/features/supporter-dashboard.browser.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:cheer-celebration-browser": "tsx --test --test-concurrency=1 src/features/cheer-celebration.browser.test.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

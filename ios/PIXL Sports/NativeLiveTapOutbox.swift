@@ -77,6 +77,48 @@ final class NativeLiveTapOutbox: ObservableObject {
 
     func snapshot(_ scope: String) -> SavedLiveTapSession? { sessions[scope] }
 
+    func beginEnding(gameID: String, scope: String) throws {
+        guard var session = sessions[scope], session.ownerSubject != nil else { throw NativeOfflineError.locked }
+        session.endingGameID = gameID
+        try commit(session)
+    }
+
+    func claimCelebration(_ completion: NativeLiveTapCompletion, scope: String, ownerEnded: Bool = false) throws -> NativeLiveTapCelebration? {
+        guard var session = sessions[scope] else { return nil }
+        if let subject = session.ownerSubject {
+            guard clerk?.user?.id == subject,
+                  session.ownerNamespace == NativeOfflineRuntime.shared.vault.namespace,
+                  NativeOfflineRuntime.shared.vault.canContinue(subject: subject) else { return nil }
+        }
+        let audience = sessions.values.filter {
+            $0.inviteToken == session.inviteToken && $0.ownerSubject == session.ownerSubject
+                && $0.ownerNamespace == session.ownerNamespace
+        }
+        guard !audience.contains(where: { $0.presentedCompletionIDs?.contains(completion.id) == true }) else { return nil }
+        let relevant = audience.filter {
+            $0.summary?.gameId == completion.gameId
+                || $0.confirmedReceipts?.values.contains(where: { $0.gameId == completion.gameId }) == true
+                || $0.acceptedLegacyGameIDs?.contains(completion.gameId) == true
+                || $0.pending.contains(where: { $0.gameId == completion.gameId })
+                || $0.scope == scope
+        }
+        var aggregate = session
+        aggregate.confirmedReceipts = relevant.reduce(into: [String: NativeLiveTapReceipt]()) { receipts, saved in
+            for receipt in (saved.confirmedReceipts ?? [:]).values { receipts[receipt.id] = receipt }
+        }
+        aggregate.acceptedLegacyGameIDs = relevant.reduce(into: Set<String>()) { $0.formUnion($1.acceptedLegacyGameIDs ?? []) }
+        aggregate.attributionReliable = relevant.allSatisfy { $0.attributionReliable == true }
+        guard aggregate.claim(completion, ownerEnded: ownerEnded) else { return nil }
+        session.presentedCompletionIDs = aggregate.presentedCompletionIDs
+        // Save display eligibility before presenting. The receipt journal and
+        // outbox acknowledgement share this same encrypted atomic file.
+        try commit(session)
+        return NativeLiveTapCelebration(
+            completion: completion, personalTotal: aggregate.personalTotal(gameId: completion.gameId),
+            pendingCount: Set(relevant.flatMap(\.pending).filter { $0.gameId == completion.gameId }.map(\.id)).count
+        )
+    }
+
     func remember(_ summary: LiveTapSummary, scope: String, accessToken: String?) throws {
         guard var session = sessions[scope] else { throw NativeOfflineError.locked }
         session.summary = summary
@@ -172,7 +214,10 @@ final class NativeLiveTapOutbox: ObservableObject {
                     gameId: item.gameId, clientMutationId: item.id, expectedEventId: session.eventId
                 )
                 guard var next = sessions[scope] else { return }
-                next.pending.removeAll { $0.id == item.id }
+                guard next.acknowledge(item, receipt: updated.receipt) else {
+                    messages[scope] = "Couldn’t confirm this cheer’s receipt. It is still saved here."
+                    return
+                }
                 if next.summary?.gameId == updated.gameId { next.summary = updated }
                 do { try commit(next) } catch {
                     messages[scope] = "Your cheer reached PIXL, but this iPhone couldn’t update its saved copy. It will safely check again."
@@ -190,7 +235,8 @@ final class NativeLiveTapOutbox: ObservableObject {
                         next.pending[index].needsAttention = true
                     }
                     if status == 409, next.summary?.gameId == item.gameId, let summary = next.summary {
-                        next.summary = LiveTapSummary(active: false, gameId: summary.gameId, cheers: summary.cheers)
+                        next.summary = LiveTapSummary(active: false, gameId: summary.gameId, cheers: summary.cheers,
+                            seasonCheers: summary.seasonCheers, completedSessions: summary.completedSessions)
                     }
                     if status == 403, session.ownerSubject == nil, next.accessToken == item.accessToken {
                         next.accessToken = nil

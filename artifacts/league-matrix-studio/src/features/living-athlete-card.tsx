@@ -18,7 +18,22 @@ import {
   useUpdateAthleteInvite,
   type PublicAthleteFanCard,
   type AthleteInviteHypeInput,
+  type LiveTapCompletion,
 } from '@workspace/api-client-react';
+import {
+  browserStorage,
+  cheerScope,
+  celebrationCandidate,
+  errorStatus,
+  claimCelebrationLocked,
+  personalTally,
+  totalCheers,
+  readJournal,
+  reconcilePendingCheers,
+  sendJournaledCheer,
+  type PersonalTally,
+} from './cheer-journal';
+import { CheerCelebrationDialog, FanCheersSummary } from './cheer-celebration';
 import { athleteLocalDate, hasEventToday, recentUpcomingAthleteEvents } from './athlete-event-links';
 import { normalizeCardAppearance, resolveHypeCardAthleteName } from './hype-card-appearance';
 import { getUserProfile } from './supporter-dashboard-model';
@@ -343,6 +358,85 @@ export function LivingAthleteCardPage({
     ));
   }, [invite?.stats]);
 
+  const [celebration, setCelebration] = useState<{ completion: LiveTapCompletion; personal: PersonalTally } | null>(null);
+  const [celebrationNotice, setCelebrationNotice] = useState('');
+  const [journalVersion, setJournalVersion] = useState(0);
+  const [recoveredScope, setRecoveredScope] = useState<string | null>(null);
+  const suppressedCelebrationsRef = useRef(new Set<string>());
+  const journalScope = embedded || !inviteToken
+    ? null
+    : ownerInvite && user?.id
+      ? cheerScope(inviteToken, user.id)
+      : isSignedIn && !ownedInvitesQuery.isSuccess
+        ? null
+        : cheerScope(inviteToken, null);
+  const journalScopeRef = useRef(journalScope);
+  journalScopeRef.current = journalScope;
+  const canSendCheers = Boolean(ownerInvite || liveTapAccessToken);
+  const sendLiveTapRef = useRef(sendLiveTap.mutateAsync);
+  sendLiveTapRef.current = sendLiveTap.mutateAsync;
+  useEffect(() => {
+    setCelebration(null);
+    setCelebrationNotice('');
+    setRecoveredScope(null);
+  }, [journalScope]);
+  useEffect(() => {
+    if (!journalScope) return;
+    const scope = journalScope;
+    if (!canSendCheers) {
+      setRecoveredScope(scope);
+      return;
+    }
+    const check = () => {
+      void reconcilePendingCheers({
+        storage: browserStorage(),
+        scope,
+        inviteToken,
+        accessToken: ownerInvite ? null : liveTapAccessToken,
+        authorized: true,
+        online: navigator.onLine !== false,
+        send: (variables) => sendLiveTapRef.current(variables),
+      }).catch(() => ({ confirmed: 0, rejected: 0 })).then((outcome) => {
+        if (journalScopeRef.current !== scope) return;
+        setRecoveredScope(scope);
+        setJournalVersion((value) => value + 1);
+        if (outcome.confirmed || outcome.rejected) void queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(inviteToken) });
+      });
+    };
+    check();
+    window.addEventListener('online', check);
+    return () => window.removeEventListener('online', check);
+  }, [journalScope, canSendCheers, inviteToken, liveTapAccessToken, Boolean(ownerInvite), queryClient]);
+  const completedSessions = invite?.liveTaps.completedSessions;
+  const completionKey = (completedSessions ?? []).map((item) => item.id).join('|');
+  const otherDialogOpen = followDialogOpen || hypeDialogOpen;
+  useEffect(() => {
+    // Wait for same-scope recovery so a returning fan's lost replies count before the claim.
+    if (!journalScope || recoveredScope !== journalScope || !completionKey || celebration || otherDialogOpen) return;
+    const storage = browserStorage();
+    const journal = readJournal(storage, journalScope);
+    const next = celebrationCandidate(
+      journal,
+      completedSessions?.filter((item) => !suppressedCelebrationsRef.current.has(`${journalScope}|${item.id}`)),
+      journalScope.startsWith('owner:'),
+    );
+    if (!next) return;
+    const scope = journalScope;
+    const key = `${scope}|${next.id}`;
+    suppressedCelebrationsRef.current.add(key);
+    void claimCelebrationLocked({ storage, scope }, next.id).then((claim) => {
+      if (journalScopeRef.current !== scope) {
+        if (claim.status !== 'claimed') suppressedCelebrationsRef.current.delete(key);
+        return;
+      }
+      if (claim.status === 'claimed') {
+        setCelebration({ completion: next, personal: personalTally(claim.journal, next.gameId) });
+      } else if (claim.status !== 'already') {
+        setCelebrationNotice(`Live Taps ended for ${next.eventTitle || 'the game'} with ${totalCheers(next.cheers)} cheers. ${claim.status === 'unavailable' ? 'This browser cannot safely coordinate open tabs' : 'This browser could not save the celebration'}, so it will not open here.`);
+      }
+    });
+  }, [journalScope, recoveredScope, completionKey, journalVersion, celebration, otherDialogOpen]);
+
   const MainElement = embedded ? 'div' : 'main';
   if (isLoading) {
     if (!embedded) return <SharedHypeCardLoading />;
@@ -460,13 +554,19 @@ export function LivingAthleteCardPage({
     if (!invite.liveTaps.active || (!ownerInvite && !liveTapAccessToken)) return;
     setLiveTapFeedback('');
     try {
-      const updated = await sendLiveTap.mutateAsync({
+      if (!invite.liveTaps.gameId) return;
+      const sendScope = journalScope;
+      const { result: updated } = await sendJournaledCheer({
+        storage: browserStorage(),
+        scope: sendScope,
         inviteToken,
-        data: {
-          cheerKey,
-          ...(liveTapAccessToken ? { accessToken: liveTapAccessToken } : {}),
-        },
+        cheerKey,
+        gameId: invite.liveTaps.gameId,
+        accessToken: ownerInvite ? null : liveTapAccessToken,
+        send: (variables) => sendLiveTap.mutateAsync(variables),
       });
+      if (journalScopeRef.current !== sendScope) return;
+      setJournalVersion((value) => value + 1);
       queryClient.setQueryData<PublicAthleteFanCard>(
         getGetAthleteFanCardQueryKey(inviteToken),
         (current) => {
@@ -489,7 +589,8 @@ export function LivingAthleteCardPage({
       const cheer = updated.cheers.find((item) => item.key === cheerKey);
       setLiveTapFeedback(`${cheer?.label ?? 'Cheer'} counted for this game.`);
     } catch (error) {
-      const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
+      const status = errorStatus(error);
+      setJournalVersion((value) => value + 1);
       if (status === 403 && liveTapAccessToken) {
         try {
           window.localStorage.removeItem(`pixlSports:liveTaps:${inviteToken}`);
@@ -506,7 +607,7 @@ export function LivingAthleteCardPage({
             ? 'Live Taps are closed because Game Day Live is not active.'
             : status === 429
               ? 'This family QR code has sent several taps. Try again in a moment.'
-              : 'Your cheer could not be counted. Please try again.');
+              : status === 0 ? 'Connection lost. This cheer will be checked when you are back online and counts only if the card received it.' : 'Your cheer could not be counted. Please try again.');
     }
   };
   const removeShoutout = async (hypeId: string) => {
@@ -952,6 +1053,9 @@ export function LivingAthleteCardPage({
               />
             </div>
             <LivingCardSecondarySides side={side} liveTapsActive={invite.liveTaps.active} onSelectSide={selectSide} />
+            {!embedded && <FanCheersSummary liveTaps={invite.liveTaps} />}
+            {celebrationNotice && <p className="fan-cheers-summary__notice" role="status" data-testid="status-cheer-celebration-unsaved">{celebrationNotice}</p>}
+            <CheerCelebrationDialog completion={celebration?.completion ?? null} personal={celebration?.personal ?? null} onClose={() => setCelebration(null)} />
 
             {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
                <Dialog open={followDialogOpen} onOpenChange={setFollowDialogOpen}>

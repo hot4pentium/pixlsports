@@ -2775,6 +2775,14 @@ export const GetStatTrackerShareEventsResponse = zod.unknown()
 /**
  * @summary List athlete invites owned by the authenticated user
  */
+export const listAthleteInvitesResponseLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
+export const listAthleteInvitesResponseLiveTapsCheersItemCountMin = 0;
+
+export const listAthleteInvitesResponseLiveTapsSeasonCheersItemCountMin = 0;
+
+export const listAthleteInvitesResponseLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
 export const listAthleteInvitesResponseTimezoneMax = 100;
 
 export const listAthleteInvitesResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -2827,6 +2835,52 @@ export const listAthleteInvitesResponseCardAppearanceOnePositionMax = 80;
 
 
 export const ListAthleteInvitesResponseItem = zod.object({
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(listAthleteInvitesResponseLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(listAthleteInvitesResponseLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(listAthleteInvitesResponseLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(listAthleteInvitesResponseLiveTapsArchivedSeasonsItemCheersItemCountMin)
+}))
+})).optional()
+}).optional(),
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
   "teamName": zod.string(),
@@ -2927,6 +2981,14 @@ export const CreateAthleteInviteBody = zod.object({
   "paused": zod.boolean().default(createAthleteInviteBodyPausedDefault)
 })
 
+export const createAthleteInviteResponseLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
+export const createAthleteInviteResponseLiveTapsCheersItemCountMin = 0;
+
+export const createAthleteInviteResponseLiveTapsSeasonCheersItemCountMin = 0;
+
+export const createAthleteInviteResponseLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
 export const createAthleteInviteResponseTimezoneMax = 100;
 
 export const createAthleteInviteResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -2979,6 +3041,52 @@ export const createAthleteInviteResponseCardAppearanceOnePositionMax = 80;
 
 
 export const CreateAthleteInviteResponse = zod.object({
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(createAthleteInviteResponseLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(createAthleteInviteResponseLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(createAthleteInviteResponseLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(createAthleteInviteResponseLiveTapsArchivedSeasonsItemCheersItemCountMin)
+}))
+})).optional()
+}).optional(),
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
   "teamName": zod.string(),
@@ -3149,6 +3257,8 @@ export const getAthleteInviteResponseRepliesItemReactionMax = 40;
 
 export const getAthleteInviteResponseRepliesItemMessageMax = 240;
 
+export const getAthleteInviteResponseLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
 export const getAthleteInviteResponseLiveTapsCheersItemCountMin = 0;
 
 export const getAthleteInviteResponseLiveTapsSeasonCheersItemCountMin = 0;
@@ -3277,6 +3387,27 @@ export const GetAthleteInviteResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteInviteResponseLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
   "cheers": zod.array(zod.object({
   "key": zod.string(),
   "label": zod.string(),
@@ -3340,6 +3471,14 @@ export const UpdateAthleteInviteBody = zod.object({
   "paused": zod.boolean().default(updateAthleteInviteBodyPausedDefault)
 })
 
+export const updateAthleteInviteResponseLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
+export const updateAthleteInviteResponseLiveTapsCheersItemCountMin = 0;
+
+export const updateAthleteInviteResponseLiveTapsSeasonCheersItemCountMin = 0;
+
+export const updateAthleteInviteResponseLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
 export const updateAthleteInviteResponseTimezoneMax = 100;
 
 export const updateAthleteInviteResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -3392,6 +3531,52 @@ export const updateAthleteInviteResponseCardAppearanceOnePositionMax = 80;
 
 
 export const UpdateAthleteInviteResponse = zod.object({
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteResponseLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteResponseLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteResponseLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteResponseLiveTapsArchivedSeasonsItemCheersItemCountMin)
+}))
+})).optional()
+}).optional(),
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
   "teamName": zod.string(),
@@ -3870,6 +4055,8 @@ export const getAthleteFanCardResponseLiveScoreboardOneAthleteNameMax = 100;
 
 export const getAthleteFanCardResponseLiveScoreboardOneTeamNameMax = 160;
 
+export const getAthleteFanCardResponseLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
 export const getAthleteFanCardResponseLiveTapsCheersItemCountMin = 0;
 
 export const getAthleteFanCardResponseLiveTapsSeasonCheersItemCountMin = 0;
@@ -4004,6 +4191,27 @@ export const GetAthleteFanCardResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteFanCardResponseLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
   "cheers": zod.array(zod.object({
   "key": zod.string(),
   "label": zod.string(),
@@ -4232,6 +4440,14 @@ export const CreateNativeSupporterEventCardResponse = zod.object({
  */
 export const getNativeSupporterHypeCardResponsePrivatePreviewFavoriteMomentMax = 160;
 
+export const getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
+export const getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsCheersItemCountMin = 0;
+
+export const getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsSeasonCheersItemCountMin = 0;
+
+export const getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
 export const getNativeSupporterHypeCardResponseSettingsRevisionRegExp = new RegExp('^[a-f0-9]{64}$');
 export const getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax = 160;
 
@@ -4246,7 +4462,53 @@ export const GetNativeSupporterHypeCardResponse = zod.object({
   "teamName": zod.string(),
   "seasonName": zod.string(),
   "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponsePrivatePreviewFavoriteMomentMax).nullable(),
-  "hasPhoto": zod.boolean()
+  "hasPhoto": zod.boolean(),
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getNativeSupporterHypeCardResponsePrivatePreviewLiveTapsArchivedSeasonsItemCheersItemCountMin)
+}))
+})).optional()
+}).optional()
 }).optional(),
   "settings": zod.object({
   "revision": zod.string().regex(getNativeSupporterHypeCardResponseSettingsRevisionRegExp).describe('Server version for the current HYPE Card settings.'),
@@ -4516,6 +4778,8 @@ export const SendAthleteLiveTapBody = zod.object({
   "expectedEventId": zod.string().min(1).max(sendAthleteLiveTapBodyExpectedEventIdMax).optional().describe('When opened from an Event Card, require that original source event as well as the game.')
 })
 
+export const sendAthleteLiveTapResponseCompletedSessionsItemCheersItemCountMin = 0;
+
 export const sendAthleteLiveTapResponseCheersItemCountMin = 0;
 
 export const sendAthleteLiveTapResponseSeasonCheersItemCountMin = 0;
@@ -4527,6 +4791,27 @@ export const sendAthleteLiveTapResponseArchivedSeasonsItemCheersItemCountMin = 0
 export const SendAthleteLiveTapResponse = zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(sendAthleteLiveTapResponseCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
   "cheers": zod.array(zod.object({
   "key": zod.string(),
   "label": zod.string(),
@@ -4727,7 +5012,39 @@ export const StopAthleteInviteLiveParams = zod.object({
   "inviteToken": zod.coerce.string().regex(stopAthleteInviteLivePathInviteTokenRegExp)
 })
 
-export const StopAthleteInviteLiveResponse = zod.void()
+export const stopAthleteInviteLiveBodyEventIdMax = 200;
+
+export const stopAthleteInviteLiveBodyGameIdMax = 200;
+
+
+
+export const StopAthleteInviteLiveBody = zod.object({
+  "eventId": zod.string().min(1).max(stopAthleteInviteLiveBodyEventIdMax).optional(),
+  "gameId": zod.string().min(1).max(stopAthleteInviteLiveBodyGameIdMax).optional()
+})
+
+export const stopAthleteInviteLiveResponseCompletionOneCheersItemCountMin = 0;
+
+
+
+export const StopAthleteInviteLiveResponse = zod.object({
+  "completion": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(stopAthleteInviteLiveResponseCompletionOneCheersItemCountMin)
+}))
+}),zod.null()])
+})
 
 
 /**
@@ -4824,6 +5141,14 @@ export const UpdateAthleteInviteAppearanceBody = zod.object({
   "position": zod.string().max(updateAthleteInviteAppearanceBodyPositionMax)
 })
 
+export const updateAthleteInviteAppearanceResponseLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
+export const updateAthleteInviteAppearanceResponseLiveTapsCheersItemCountMin = 0;
+
+export const updateAthleteInviteAppearanceResponseLiveTapsSeasonCheersItemCountMin = 0;
+
+export const updateAthleteInviteAppearanceResponseLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
 export const updateAthleteInviteAppearanceResponseTimezoneMax = 100;
 
 export const updateAthleteInviteAppearanceResponseCardAppearanceOneBorderColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -4876,6 +5201,52 @@ export const updateAthleteInviteAppearanceResponseCardAppearanceOnePositionMax =
 
 
 export const UpdateAthleteInviteAppearanceResponse = zod.object({
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteAppearanceResponseLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteAppearanceResponseLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteAppearanceResponseLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(updateAthleteInviteAppearanceResponseLiveTapsArchivedSeasonsItemCheersItemCountMin)
+}))
+})).optional()
+}).optional(),
   "inviteToken": zod.string(),
   "athleteName": zod.string(),
   "teamName": zod.string(),

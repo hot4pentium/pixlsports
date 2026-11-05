@@ -19,7 +19,7 @@ import {
   statTrackerSharesTable,
 } from "@workspace/db";
 import { isAccountActive } from "../lib/accountLifecycle";
-import { getAthleteLiveTapsSummary, isLiveTapCheerForSport } from "../lib/athleteLiveTaps";
+import { getAthleteLiveTapsSummary, isLiveTapCheerForSport, visibleLiveTapSummary } from "../lib/athleteLiveTaps";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth, requireAuthOrNativeOwner } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -290,7 +290,15 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
     result.seasonId,
   );
   // A receipt acknowledges delivery, not that an old session is still open.
-  res.status(201).json(SendAthleteLiveTapResponse.parse({ ...summary, active: result.active }));
+  const [privacy] = await db.select({ showEvents: athleteInvitesTable.showEvents })
+    .from(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id));
+  res.status(201).json(SendAthleteLiveTapResponse.parse({
+    ...visibleLiveTapSummary(summary, callerId === invite.ownerClerkUserId || privacy?.showEvents === true),
+    active: result.active,
+    ...(body.data.clientMutationId ? {
+      receipt: { id: body.data.clientMutationId, gameId: result.gameId, cheerKey: body.data.cheerKey },
+    } : {}),
+  }));
 });
 
 export default router;

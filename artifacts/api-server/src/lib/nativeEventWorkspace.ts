@@ -1,3 +1,4 @@
+import { completeNativeLiveTapSessions } from "./liveTapCompletions";
 import { createHash } from "node:crypto";
 import { pool } from "@workspace/db";
 import { assertLinkableWebAccount } from "./nativeAccountLink";
@@ -54,7 +55,7 @@ export async function nativeEventWorkspace(
       throw new NativeLinkError(404, "This Event Card is not available to your account.");
     }
     const athlete = (await tx.query<{ sport: string }>(
-      "SELECT sport FROM athlete_invites WHERE owner_clerk_user_id=$1 LIMIT 1", [owner],
+      "SELECT sport FROM athlete_invites WHERE owner_clerk_user_id=$1 FOR UPDATE", [owner],
     )).rows[0];
     const projects = (await tx.query<Project>(
       `SELECT id,revision,project FROM cloud_projects
@@ -157,6 +158,7 @@ export async function nativeEventWorkspace(
             WHERE owner_clerk_user_id=$2 AND (game_id=$3 OR game->>'sourceEventId'=$3) RETURNING id`,
           [JSON.stringify(game), owner, event.id])).rows.map((row) => row.id);
           if (game.status === "final" && changedShares.length) {
+            await completeNativeLiveTapSessions(tx, owner, changedShares);
             await tx.query(`UPDATE athlete_invites SET live_tracker_share_token=NULL
               WHERE owner_clerk_user_id=$1 AND live_tracker_share_token::text=ANY($2::text[])`, [owner, changedShares]);
           }

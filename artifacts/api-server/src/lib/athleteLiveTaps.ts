@@ -1,5 +1,20 @@
+/** Recipient aggregates must not bypass the owner's Event Card visibility. */
+export function visibleLiveTapSummary(
+  summary: Awaited<ReturnType<typeof getAthleteLiveTapsSummary>>, showEvents: boolean,
+) {
+  return {
+    ...summary,
+    completedSessions: summary.completedSessions.map(completion => ({
+      ...completion,
+      eventId: showEvents ? completion.eventId : null,
+      eventTitle: showEvents ? completion.eventTitle : "Completed game",
+      endedAt: showEvents ? completion.endedAt : null,
+    })),
+  };
+}
 import { count, eq, and, isNull, max } from "drizzle-orm";
 import { athleteInviteLiveTapsTable, db } from "@workspace/db";
+import { completedLiveTapSessions } from "./liveTapCompletions";
 
 type CheerPreset = { key: string; label: string; emoji: string };
 
@@ -143,5 +158,6 @@ export async function getAthleteLiveTapsSummary(
       count: seasonTotals.get(cheer.key) ?? 0,
     })),
     archivedSeasons,
+    completedSessions: await completedLiveTapSessions(inviteId),
   };
 }

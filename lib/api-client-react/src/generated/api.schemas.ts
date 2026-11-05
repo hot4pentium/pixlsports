@@ -1724,6 +1724,54 @@ export const OwnedAthleteInviteSport = {
   volleyball: 'volleyball',
 } as const;
 
+export interface LiveTapReceipt {
+  id: string;
+  gameId: string;
+  cheerKey: string;
+}
+
+export interface AthleteInviteLiveTapCheer {
+  key: string;
+  label: string;
+  emoji: string;
+  /** @minimum 0 */
+  count: number;
+}
+
+export interface LiveTapCompletion {
+  id: string;
+  gameId: string;
+  /** @nullable */
+  eventId: string | null;
+  athleteName: string;
+  eventTitle: string;
+  sport: string;
+  /** @nullable */
+  seasonId: string | null;
+  /**
+     * Hidden in recipient responses when the owner hides Events.
+     * @nullable
+     */
+  endedAt: string | null;
+  cheers: AthleteInviteLiveTapCheer[];
+}
+
+export type AthleteInviteLiveTapsArchivedSeasonsItem = {
+  seasonName: string;
+  cheers: AthleteInviteLiveTapCheer[];
+};
+
+export interface AthleteInviteLiveTaps {
+  active: boolean;
+  /** @nullable */
+  gameId: string | null;
+  receipt?: LiveTapReceipt;
+  completedSessions?: LiveTapCompletion[];
+  cheers: AthleteInviteLiveTapCheer[];
+  seasonCheers: AthleteInviteLiveTapCheer[];
+  archivedSeasons?: AthleteInviteLiveTapsArchivedSeasonsItem[];
+}
+
 export type AthleteInviteEventSummaryType = typeof AthleteInviteEventSummaryType[keyof typeof AthleteInviteEventSummaryType];
 
 
@@ -1755,6 +1803,7 @@ export interface AthleteInviteEventSummary {
 }
 
 export interface OwnedAthleteInvite {
+  liveTaps?: AthleteInviteLiveTaps;
   inviteToken: string;
   athleteName: string;
   teamName: string;
@@ -1859,26 +1908,21 @@ export interface AthleteInviteLiveTapInput {
   expectedEventId?: string;
 }
 
-export interface AthleteInviteLiveTapCheer {
-  key: string;
-  label: string;
-  emoji: string;
-  /** @minimum 0 */
-  count: number;
+export interface LiveTapEndInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  eventId?: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  gameId?: string;
 }
 
-export type AthleteInviteLiveTapsArchivedSeasonsItem = {
-  seasonName: string;
-  cheers: AthleteInviteLiveTapCheer[];
-};
-
-export interface AthleteInviteLiveTaps {
-  active: boolean;
-  /** @nullable */
-  gameId: string | null;
-  cheers: AthleteInviteLiveTapCheer[];
-  seasonCheers: AthleteInviteLiveTapCheer[];
-  archivedSeasons?: AthleteInviteLiveTapsArchivedSeasonsItem[];
+export interface LiveTapEndResult {
+  completion: LiveTapCompletion | null;
 }
 
 export interface AthleteInviteLiveTapAccessLink {
@@ -3140,6 +3184,7 @@ export interface NativePrivateHypeCard {
      */
   favoriteMoment: string | null;
   hasPhoto: boolean;
+  liveTaps?: AthleteInviteLiveTaps;
 }
 
 export interface NativeSupporterHypeCardSettings {

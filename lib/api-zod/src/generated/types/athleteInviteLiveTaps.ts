@@ -7,11 +7,15 @@
  */
 import type { AthleteInviteLiveTapCheer } from './athleteInviteLiveTapCheer';
 import type { AthleteInviteLiveTapsArchivedSeasonsItem } from './athleteInviteLiveTapsArchivedSeasonsItem';
+import type { LiveTapCompletion } from './liveTapCompletion';
+import type { LiveTapReceipt } from './liveTapReceipt';
 
 export interface AthleteInviteLiveTaps {
   active: boolean;
   /** @nullable */
   gameId: string | null;
+  receipt?: LiveTapReceipt;
+  completedSessions?: LiveTapCompletion[];
   cheers: AthleteInviteLiveTapCheer[];
   seasonCheers: AthleteInviteLiveTapCheer[];
   archivedSeasons?: AthleteInviteLiveTapsArchivedSeasonsItem[];

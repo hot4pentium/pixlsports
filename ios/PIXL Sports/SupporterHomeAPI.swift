@@ -96,6 +96,7 @@ struct NativePrivateHypeCard: Codable {
     let seasonName: String
     let favoriteMoment: String?
     let hasPhoto: Bool
+    var liveTaps: LiveTapSummary? = nil
 }
 
 struct NativeSupporterHypeCardPreview: Codable {
@@ -122,6 +123,7 @@ struct NativePublicHypeCard: Codable {
     let events: [NativeHypeEvent]
     var shareURL: URL? = nil
     var inviteToken: String? = nil
+    var liveTaps: LiveTapSummary? = nil
 }
 
 struct NativeHypeMedia: Codable {
@@ -208,21 +210,6 @@ struct AthleteFanEvent: Codable, Identifiable {
     let liveTapsSport: String?
 
     var id: String { shareToken }
-}
-
-struct LiveTapCheer: Codable, Identifiable {
-    let key: String
-    let label: String
-    let emoji: String
-    let count: Int
-
-    var id: String { key }
-}
-
-struct LiveTapSummary: Codable {
-    let active: Bool
-    let gameId: String?
-    let cheers: [LiveTapCheer]
 }
 
 private struct SupporterFanCardResponse: Decodable {

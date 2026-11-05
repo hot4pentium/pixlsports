@@ -1,3 +1,4 @@
+export * from "./athleteLiveTapCompletions";
 export * from "./nativeAccountDeletions";
 export * from "./nativeAccounts";
 export * from "./nativeAccountLinks";

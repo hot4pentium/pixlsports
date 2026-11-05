@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getListAthleteInvitesQueryKey,
@@ -15,9 +15,25 @@ import {
   useSendAthleteLiveTap,
   useStartAthleteInviteLive,
   useStopAthleteInviteLive,
+  type LiveTapCompletion,
   type PublicAthleteFanCard,
   type StatTrackerShare,
 } from '@workspace/api-client-react';
+import {
+  browserStorage,
+  cheerScope,
+  celebrationCandidate,
+  claimCelebrationLocked,
+  recordEndIntentLocked,
+  ownerCompletionToCelebrate,
+  personalTally,
+  readJournal,
+  reconcilePendingCheers,
+  sendJournaledCheer,
+  totalCheers,
+  type PersonalTally,
+} from './cheer-journal';
+import { CheerCelebrationDialog } from './cheer-celebration';
 import QRCode from 'qrcode';
 import { Link } from 'wouter';
 import { QrCode, Radio, ShieldCheck, SquareStop } from 'lucide-react';
@@ -174,6 +190,12 @@ export function EventCardLiveTaps({
   const [qrAccessId, setQrAccessId] = useState('');
   const [pendingCheerKeys, setPendingCheerKeys] = useState<Set<string>>(() => new Set());
   const [shareFromCreate, setShareFromCreate] = useState<StatTrackerShare | null>(null);
+  const [celebration, setCelebration] = useState<{ completion: LiveTapCompletion; personal: PersonalTally } | null>(null);
+  const [celebrationNotice, setCelebrationNotice] = useState('');
+  useEffect(() => {
+    setCelebration(null);
+    setCelebrationNotice('');
+  }, [userId]);
   const inviteLinksQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(userId),
@@ -221,6 +243,7 @@ export function EventCardLiveTaps({
       refetchOnWindowFocus: true,
     },
   });
+  const journalScope = userId ? cheerScope(liveTapInvite?.inviteToken ?? '', userId) : null;
   const createTrackerShare = useCreateStatTrackerShare();
   const startAthleteLive = useStartAthleteInviteLive();
   const stopAthleteLive = useStopAthleteInviteLive();
@@ -254,6 +277,55 @@ export function EventCardLiveTaps({
     && liveTapSummary?.active
     && liveTapSummary.gameId === session.game.id,
   );
+  const journalScopeRef = useRef(journalScope);
+  journalScopeRef.current = journalScope;
+  const sendLiveTapRef = useRef(sendLiveTap.mutateAsync);
+  sendLiveTapRef.current = sendLiveTap.mutateAsync;
+  useEffect(() => {
+    if (!journalScope || !liveTapInvite?.inviteToken) return;
+    const inviteToken = liveTapInvite.inviteToken;
+    const scope = journalScope;
+    const check = () => {
+      void reconcilePendingCheers({
+        storage: browserStorage(),
+        scope,
+        inviteToken,
+        authorized: true,
+        online: typeof navigator === 'undefined' || navigator.onLine !== false,
+        send: (variables) => sendLiveTapRef.current(variables),
+      }).catch(() => ({ confirmed: 0, rejected: 0 })).then((outcome) => {
+        if (journalScopeRef.current !== scope) return;
+        if (outcome.confirmed || outcome.rejected) {
+          void queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(inviteToken) });
+        }
+      });
+    };
+    check();
+    window.addEventListener('online', check);
+    return () => window.removeEventListener('online', check);
+  }, [journalScope, liveTapInvite?.inviteToken, queryClient]);
+  const ownerCompletionsKey = (liveTapSummaryQuery.data?.liveTaps.completedSessions ?? []).map((item) => item.id).join('|');
+  const ownerClaimingRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!journalScope || !ownerCompletionsKey || celebration) return;
+    const scope = journalScope;
+    const storage = browserStorage();
+    const candidate = celebrationCandidate(
+      readJournal(storage, scope),
+      liveTapSummaryQuery.data?.liveTaps.completedSessions?.filter((item) => !ownerClaimingRef.current.has(`${scope}|${item.id}`)),
+      true,
+    );
+    if (!candidate) return;
+    ownerClaimingRef.current.add(`${scope}|${candidate.id}`);
+    void claimCelebrationLocked({ storage, scope }, candidate.id).then((claim) => {
+      if (journalScopeRef.current !== scope) return;
+      if (claim.status === 'claimed') {
+        setCelebration({ completion: candidate, personal: personalTally(claim.journal, candidate.gameId) });
+      } else if (claim.status !== 'already') {
+        setCelebrationNotice(`Live Taps ended with ${totalCheers(candidate.cheers)} cheers. ${claim.status === 'unavailable' ? 'This browser cannot safely coordinate open tabs' : 'This browser could not save the celebration'}, so it will not open.`);
+      }
+    });
+  }, [journalScope, ownerCompletionsKey, celebration]);
   const trackerHref = buildWorkspaceToolHref('stats', {
     id: eventId,
     type: 'game',
@@ -402,10 +474,17 @@ export function EventCardLiveTaps({
     setNotice('');
     setPendingCheerKeys((current) => new Set(current).add(cheerKey));
     try {
-      const updated = await sendLiveTap.mutateAsync({
+      const sendScope = journalScope;
+      const { result: updated } = await sendJournaledCheer({
+        storage: browserStorage(),
+        scope: sendScope,
         inviteToken: liveTapInvite.inviteToken,
-        data: { cheerKey },
+        cheerKey,
+        gameId: session.game.id,
+        eventId,
+        send: (variables) => sendLiveTap.mutateAsync(variables),
       });
+      if (journalScopeRef.current !== sendScope) return;
       queryClient.setQueryData<PublicAthleteFanCard>(
         getGetAthleteFanCardQueryKey(liveTapInvite.inviteToken),
         (current) => {
@@ -463,7 +542,26 @@ export function EventCardLiveTaps({
     setNotice('');
     setBusy(true);
     try {
-      await stopAthleteLive.mutateAsync({ inviteToken: session.inviteToken });
+      // Persist the exact-game End intent before sending, so a lost reply is recoverable
+      // on return without ever ending a newer game.
+      const intentScope = cheerScope(session.inviteToken, userId);
+      if (intentScope) await recordEndIntentLocked({ storage: browserStorage(), scope: intentScope }, { gameId: session.game.id, eventId });
+      const ended = await stopAthleteLive.mutateAsync({
+        inviteToken: session.inviteToken,
+        data: { gameId: session.game.id, eventId },
+      });
+      const endScope = cheerScope(session.inviteToken, userId);
+      const storage = browserStorage();
+      const journal = readJournal(storage, endScope);
+      const toCelebrate = ownerCompletionToCelebrate(journal, ended?.completion);
+      if (toCelebrate) {
+        const claim = await claimCelebrationLocked({ storage, scope: endScope }, toCelebrate.id);
+        if (claim.status === 'claimed') {
+          setCelebration({ completion: toCelebrate, personal: personalTally(claim.journal, toCelebrate.gameId) });
+        } else if (claim.status !== 'already') {
+          setCelebrationNotice(`Live Taps ended with ${totalCheers(toCelebrate.cheers)} cheers. ${claim.status === 'unavailable' ? 'This browser cannot safely coordinate open tabs' : 'This browser could not save the celebration'}, so it will not open.`);
+        }
+      }
       let canResumeThisGame = false;
       try {
         const activeTrackerGame = userId ? readStoredActiveGame(window.localStorage, userId) : null;
@@ -830,6 +928,8 @@ export function EventCardLiveTaps({
       <Link href={trackerHref} className="event-card-live-taps__full-tracker" data-testid="link-event-card-stat-tracker">
         Want stats too? Open Stat Tracker
       </Link>
+      {celebrationNotice && <p className="event-card-live-taps__message" role="status" data-testid="status-cheer-celebration-unsaved">{celebrationNotice}</p>}
+      <CheerCelebrationDialog completion={endConfirmationOpen ? null : celebration?.completion ?? null} personal={celebration?.personal ?? null} onClose={() => setCelebration(null)} />
     </section>
   );
 }

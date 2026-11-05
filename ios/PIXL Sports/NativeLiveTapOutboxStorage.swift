@@ -2,28 +2,6 @@ import Foundation
 import CryptoKit
 import Security
 
-struct SavedLiveTap: Codable, Identifiable {
-    let id: String
-    let gameId: String
-    let cheerKey: String
-    let accessToken: String?
-    let savedAt: Date
-    var needsAttention = false
-}
-
-struct SavedLiveTapSession: Codable {
-    var version = 1
-    let scope: String
-    let inviteToken: String
-    let ownerSubject: String?
-    let ownerNamespace: String?
-    let eventId: String?
-    let sport: String
-    var summary: LiveTapSummary?
-    var accessToken: String?
-    var pending: [SavedLiveTap] = []
-}
-
 /// Visitor QR credentials are encrypted too. Never put them in preferences.
 @MainActor
 struct NativeLiveTapOutboxStorage {

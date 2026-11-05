@@ -26,6 +26,8 @@ struct NativeEventFanAccessView: View {
     @State private var hypeCard: NativePublicHypeCard?
     @State private var soccerPeriodFormat: String?
     @State private var pendingRevocation: String?
+    @State private var celebration: NativeLiveTapCelebration?
+    @AccessibilityFocusState private var endFocused: Bool
 
     private struct Grant: Decodable {
         let id: String
@@ -180,6 +182,7 @@ struct NativeEventFanAccessView: View {
                 .buttonStyle(.bordered)
                 .disabled(endingLiveTaps || busy)
                 .accessibilityIdentifier("native-live-taps-end")
+                .accessibilityFocused($endFocused)
                 if let liveTapsEndError {
                     Text(liveTapsEndError)
                         .font(.caption)
@@ -189,6 +192,7 @@ struct NativeEventFanAccessView: View {
             } else if endedLiveTaps {
                 Label("Live Taps ended", systemImage: "checkmark.circle.fill")
                     .font(.headline)
+                    .accessibilityFocused($endFocused)
                 Text("Your cheers are saved. Your Event Card and any stat tracking are unchanged.")
                     .font(.subheadline)
                     .foregroundStyle(SupporterHomeColors.muted)
@@ -245,6 +249,7 @@ struct NativeEventFanAccessView: View {
         .task {
             await perform("list")
             if !event.liveTapsActive && !hasActiveLiveTapsElsewhere { await loadHypeCard() }
+            await recoverCelebration()
         }
         .onChange(of: event.liveTapsActive) { _, isActive in
             if isActive {
@@ -255,7 +260,10 @@ struct NativeEventFanAccessView: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await perform("list") } }
+            if phase == .active { Task { await perform("list"); await recoverCelebration() } }
+        }
+        .onChange(of: isActive) { _, active in
+            if active { Task { await recoverCelebration() } }
         }
         .onChange(of: event.eventId) { _, _ in
             endedLiveTaps = false
@@ -287,6 +295,12 @@ struct NativeEventFanAccessView: View {
             Text(showingEndConfirmation
                  ? "New cheers will stop. Your cheer totals and Event Card will stay saved, and stat tracking will continue if it’s running."
                  : "Anyone using this QR will lose Live Taps access. Other family QR codes will keep working.")
+        }
+        .sheet(item: $celebration, onDismiss: {
+            endFocused = true
+            notifyLiveTapsEnded()
+        }) { value in
+            NativeLiveTapCelebrationView(celebration: value)
         }
     }
 
@@ -342,27 +356,71 @@ struct NativeEventFanAccessView: View {
         liveTapsEndError = nil
         defer { endingLiveTaps = false }
         do {
+            guard let sport = event.liveTapsSport else { return }
+            let outbox = NativeLiveTapOutbox.shared
+            let scope = try outbox.prepare(
+                inviteToken: inviteToken, sport: sport, ownerClerk: clerk,
+                accessToken: nil, eventId: event.eventId
+            )
             await NativeLiveTapOutbox.shared.flushAll()
             if let subject = clerk.user?.id,
                NativeLiveTapOutbox.shared.pendingCount(inviteToken: inviteToken, ownerSubject: subject, eventId: event.eventId) > 0 {
                 liveTapsEndError = "Your cheers are waiting to send. Let them finish before ending Live Taps."
                 return
             }
-            _ = try await NativeAccountLinkClient().postData(
+            let current = try await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: inviteToken)
+            let gameID = outbox.snapshot(scope)?.endingGameID ?? current.summary.gameId
+            guard let gameID else {
+                await recoverCelebration()
+                return
+            }
+            try outbox.beginEnding(gameID: gameID, scope: scope)
+            let data = try await NativeAccountLinkClient().postData(
                 "athlete-invites/\(inviteToken)/live",
-                body: ["eventId": event.eventId],
+                body: ["eventId": event.eventId, "gameId": gameID],
                 method: "DELETE", apiRoot: true, clerk: clerk
             )
+            let result = try JSONDecoder().decode(NativeLiveTapEndResult.self, from: data)
             endedLiveTaps = true
-            let reason = NativeEventScheduleChangeReason.liveTapsEnded
-            NotificationCenter.default.post(
-                name: .nativeEventScheduleChanged,
-                object: nil,
-                userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
-            )
+            if let completion = result.completion, isActive, scenePhase == .active {
+                celebration = try outbox.claimCelebration(completion, scope: scope, ownerEnded: true)
+            }
+            if celebration == nil { notifyLiveTapsEnded() }
         } catch {
             liveTapsEndError = "Couldn’t confirm Live Taps ended. Try again."
         }
+    }
+
+    private func recoverCelebration() async {
+        guard isActive, scenePhase == .active, celebration == nil, !endingLiveTaps,
+              !showingEndConfirmation, pendingRevocation == nil,
+              let inviteToken = event.liveTapsInviteToken ?? hypeCard?.inviteToken,
+              let sport = event.liveTapsSport ?? hypeCard?.sport else { return }
+        do {
+            let outbox = NativeLiveTapOutbox.shared
+            let scope = try outbox.prepare(inviteToken: inviteToken, sport: sport, ownerClerk: clerk, accessToken: nil, eventId: event.eventId)
+            guard let gameID = outbox.snapshot(scope)?.endingGameID else { return }
+            // Retry only the explicit saved End intent. The authenticated,
+            // game-bound response retains owner context even when Events is hidden.
+            let data = try await NativeAccountLinkClient().postData(
+                "athlete-invites/\(inviteToken)/live", body: ["eventId": event.eventId, "gameId": gameID],
+                method: "DELETE", apiRoot: true, clerk: clerk
+            )
+            let result = try JSONDecoder().decode(NativeLiveTapEndResult.self, from: data)
+            guard let completion = result.completion else { return }
+            celebration = try outbox.claimCelebration(completion, scope: scope, ownerEnded: true)
+            endedLiveTaps = true
+        } catch {
+            // Keep the saved end intent so a later connection can confirm it.
+        }
+    }
+
+    private func notifyLiveTapsEnded() {
+        let reason = NativeEventScheduleChangeReason.liveTapsEnded
+        NotificationCenter.default.post(
+            name: .nativeEventScheduleChanged, object: nil,
+            userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
+        )
     }
 
     private func startLiveTaps(sport: String) async {

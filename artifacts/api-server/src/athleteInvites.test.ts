@@ -1045,7 +1045,7 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       method: "DELETE",
       headers: { "x-test-user": ownerId },
     });
-    assert.equal(stopped.status, 204);
+    assert.equal(stopped.status, 200);
     const stoppedPublic = GetAthleteInviteResponse.parse(await (await fetch(publicUrl)).json());
     assert.equal(stoppedPublic.liveGame, null);
     assert.equal(stoppedPublic.stats?.gamesPlayed, 1);
@@ -1138,7 +1138,7 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       method: "DELETE",
       headers: { "x-test-user": ownerId },
     });
-    assert.equal(endedLiveTapsResponse.status, 204);
+    assert.equal(endedLiveTapsResponse.status, 200);
     const [preservedLiveTapsShare] = await db.select().from(statTrackerSharesTable)
       .where(eq(statTrackerSharesTable.id, liveTapsOnlyShare.id));
     assert.ok(preservedLiveTapsShare, "ending cheers preserves the editable game share");
@@ -1193,8 +1193,15 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       method: "POST",
       headers: { "x-test-user": ownerId },
     });
-    assert.equal(attachedAgain.status, 201);
-    const attachedSession = StartAthleteInviteLiveResponse.parse(await attachedAgain.json());
+    assert.equal(attachedAgain.status, 409, "a completed cheer session cannot be reopened and amend its final record");
+    const nextGameId = `next-game-${randomUUID()}`;
+    const nextProject = structuredClone(tracker.project) as { games: Array<Record<string, unknown>> };
+    const nextGame = nextProject.games.find(game => game.id === "live-game")!;
+    nextGame.id = nextGameId;
+    await db.update(cloudProjectsTable).set({ project: nextProject }).where(eq(cloudProjectsTable.id, tracker.id));
+    const attachedNewGame = await fetch(liveUrl, { method: "POST", headers: { "x-test-user": ownerId } });
+    assert.equal(attachedNewGame.status, 201);
+    const attachedSession = StartAthleteInviteLiveResponse.parse(await attachedNewGame.json());
     const paused = await fetch(publicUrl, {
       method: "PATCH",
       headers: { "content-type": "application/json", "x-test-user": ownerId },
@@ -1863,7 +1870,7 @@ test("native Live Taps joins same-card stat tracking without creating a separate
       headers: nativeHeaders,
       body: JSON.stringify({ eventId }),
     });
-    assert.equal(stopped.status, 204);
+    assert.equal(stopped.status, 200);
     const [statsAfterStop] = await db.select().from(statTrackerSharesTable)
       .where(eq(statTrackerSharesTable.id, session.shareToken));
     const stoppedGame = statsAfterStop!.game as Record<string, unknown>;
@@ -2030,12 +2037,17 @@ test("native Live Taps joins same-card stat tracking without creating a separate
       method: "DELETE", headers: nativeHeaders,
       body: JSON.stringify({ eventId: otherEventId }),
     });
-    assert.equal(endCheerOnly.status, 204);
+    assert.equal(endCheerOnly.status, 200);
+    const completionResult = await endCheerOnly.json();
+    assert.equal(completionResult.completion.gameId, cheerOnlySession.gameId);
+    assert.equal(completionResult.completion.eventId, otherEventId);
+    assert.equal(completionResult.completion.cheers.find((cheer: { key: string }) => cheer.key === "way-to-go").count, 1);
     const endAgain = await fetch(liveUrl, {
       method: "DELETE", headers: nativeHeaders,
       body: JSON.stringify({ eventId: otherEventId }),
     });
-    assert.equal(endAgain.status, 204, "retrying End Live Taps is safe");
+    assert.equal(endAgain.status, 200, "retrying End Live Taps is safe");
+    assert.deepEqual(await endAgain.json(), completionResult, "retries preserve the completion ID, counts and end time");
     const [endedCheerOnlyShare] = await db.select().from(statTrackerSharesTable)
       .where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
     assert.deepEqual(endedCheerOnlyShare!.game, { ...cheerOnlyGame, liveTapsOnly: false, liveTapsEnded: true });
@@ -2046,6 +2058,46 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.equal(endedFanCard.liveTaps.active, false);
     assert.equal(endedFanCard.liveTaps.seasonCheers.find((cheer) => cheer.key === "way-to-go")?.count, 1,
       "ending the session preserves its cheer totals");
+    assert.ok(endedFanCard.liveTaps.completedSessions?.some(row => row.id === completionResult.completion.id));
+    await db.update(athleteInvitesTable).set({ showEvents: false })
+      .where(eq(athleteInvitesTable.publicToken, created.inviteToken));
+    const recoveredReceipt = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "assist", accessToken: accessLink.accessToken,
+        clientMutationId: cheerOnlyMutationId, gameId: cheerOnlySession.gameId, expectedEventId: otherEventId }),
+    });
+    assert.equal(recoveredReceipt.status, 201, "a lost accepted reply can be recovered after End");
+    const recovered = SendAthleteLiveTapResponse.parse(await recoveredReceipt.json());
+    assert.deepEqual(recovered.receipt, { id: cheerOnlyMutationId, gameId: cheerOnlySession.gameId, cheerKey: "assist" });
+    assert.equal(recovered.active, false);
+    assert.ok(recovered.completedSessions?.every(row => row.eventId === null && row.eventTitle === "Completed game" && row.endedAt === null),
+      "anonymous receipt recovery cannot disclose hidden event details");
+    const rejectedLateTap = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "assist", accessToken: accessLink.accessToken,
+        clientMutationId: randomUUID(), gameId: cheerOnlySession.gameId, expectedEventId: otherEventId }),
+    });
+    assert.equal(rejectedLateTap.status, 409, "an unaccepted pending tap cannot change a completed session");
+    await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
+    const afterShareRemoval = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
+    assert.deepEqual(JSON.parse(JSON.stringify(afterShareRemoval.liveTaps.completedSessions?.find(row => row.id === completionResult.completion.id))),
+      { ...completionResult.completion, eventId: null, eventTitle: "Completed game", endedAt: null },
+      "the aggregate survives tracker removal without exposing hidden events");
+    for (const endpoint of [publicUrl, `${publicUrl}/fan`]) {
+      const recipient = await (await fetch(endpoint)).json();
+      assert.ok(recipient.liveTaps.completedSessions.length >= 1);
+      for (const completion of recipient.liveTaps.completedSessions) {
+        assert.equal(completion.eventId, null);
+        assert.equal(completion.eventTitle, "Completed game");
+        assert.equal(completion.endedAt, null, "completion date is also private");
+      }
+    }
+    const ownerCards = await (await fetch(`${baseUrl}/api/athlete-invites`, {
+      headers: { "x-test-user": ownerId },
+    })).json();
+    assert.deepEqual(ownerCards.find((row: { inviteToken: string }) => row.inviteToken === created.inviteToken)
+      .liveTaps.completedSessions.find((row: { id: string }) => row.id === completionResult.completion.id),
+      completionResult.completion, "the authenticated owner retains the full immutable event record");
   } finally {
     try {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

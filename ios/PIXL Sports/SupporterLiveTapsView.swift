@@ -46,6 +46,8 @@ struct SupporterLiveTapsView: View {
     @State private var showingDiscard = false
     @State private var refreshGeneration = 0
     @State private var loadedContext: RefreshContext?
+    @State private var celebration: NativeLiveTapCelebration?
+    @AccessibilityFocusState private var cheersFocused: Bool
 
     private struct RefreshContext: Hashable {
         let inviteToken: String
@@ -232,6 +234,7 @@ struct SupporterLiveTapsView: View {
         .task(id: refreshKey) { await refreshWhileActive(refreshKey) }
         .onChange(of: suppliedAccessToken) { _, token in accessToken = token }
         .onChange(of: outbox.revision) { _, _ in
+            checkForCelebration()
             guard loadedContext == refreshKey.context else { return }
             guard let outboxScope, let session = outbox.snapshot(outboxScope) else { return }
             if ownerClerk == nil { accessToken = session.accessToken }
@@ -285,6 +288,12 @@ struct SupporterLiveTapsView: View {
                     }
                 }
             }
+        }
+        .sheet(item: $celebration, onDismiss: { cheersFocused = true }) { value in
+            NativeLiveTapCelebrationView(celebration: value)
+        }
+        .onChange(of: isScanning) { _, scanning in
+            if !scanning { checkForCelebration() }
         }
     }
 
@@ -509,6 +518,7 @@ struct SupporterLiveTapsView: View {
                 .accessibilityIdentifier("live-taps-cheer-\(cheer.key)")
             }
         }
+        .accessibilityFocused($cheersFocused)
         .padding(18)
         .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
         .overlay {
@@ -535,6 +545,7 @@ struct SupporterLiveTapsView: View {
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("live-taps-message-title")
+                .accessibilityFocused($cheersFocused)
             Text(message)
                 .font(.system(size: bodySize))
                 .foregroundStyle(SupporterHomeColors.muted)
@@ -557,6 +568,7 @@ struct SupporterLiveTapsView: View {
     private func refreshWhileActive(_ key: RefreshKey) async {
         guard case nil = fixture, !Task.isCancelled else { return }
         if loadedContext != key.context {
+            celebration = nil
             loadedContext = key.context
             outboxScope = nil
             summary = nil
@@ -605,12 +617,27 @@ struct SupporterLiveTapsView: View {
             }
             summary = result.summary
             try outbox.remember(result.summary, scope: scope, accessToken: accessToken)
+            checkForCelebration()
             error = nil
         } catch is CancellationError {
         } catch {
             guard !Task.isCancelled, key == refreshKey else { return }
             self.error = summary == nil ? "Couldn’t open Live Taps. Try again. Existing saved cheers have not been removed."
                 : "Couldn’t refresh the totals. You can keep saving cheers on this iPhone."
+        }
+    }
+
+    private func checkForCelebration() {
+        guard isActive, scenePhase == .active, !isScanning, !showingDiscard,
+              celebration == nil, loadedContext == refreshKey.context,
+              let scope = outboxScope, let saved = outbox.snapshot(scope) else { return }
+        // Owners celebrate their explicit End action in the containing tool.
+        guard ownerClerk == nil else { return }
+        for completion in saved.summary?.completedSessions ?? [] {
+            if let value = try? outbox.claimCelebration(completion, scope: scope) {
+                celebration = value
+                return
+            }
         }
     }
 

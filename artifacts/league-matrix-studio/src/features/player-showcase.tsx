@@ -19,6 +19,7 @@ import type { SupporterProfile } from './supporter-dashboard';
 import { AthleteEditorInvitationPanel } from './athlete-invite';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { FanCardAppearanceManager } from './fan-card-appearance-manager';
+import { FanCheersSummary } from './cheer-celebration';
 import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
 import './player-showcase.css';
 import './showcase-desktop-density.css';
@@ -41,6 +42,7 @@ function sportLabel(sport: string | null) {
 
 export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', cardPublicHref, cardCandidates = [], selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
   const card = cardStatus === 'ready' ? linkedCard ?? null : null;
+  const privateCheers = cardCandidates.find(candidate => candidate.inviteToken === selectedCardToken)?.liveTaps;
   const cardPicker = cardCandidates.length > 1 && onSelectCard ? (
     <label className="ps__card-picker">
       <span>Choose the HYPE Card</span>
@@ -86,6 +88,7 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
               <div className="ps__card-only-art" aria-label={`${card.athleteName} HYPE Card preview`} data-testid="showcase-card-art">
                 <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
               </div>
+              <FanCheersSummary liveTaps={card.liveTaps} />
             </div>
           ) : (
             <div
@@ -119,6 +122,7 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
               </Link>}
             </div>
           )}
+          {!card && privateCheers && cardStatus === 'not-shared' && <FanCheersSummary liveTaps={privateCheers} />}
         </div>
       </section>
     </div>
@@ -131,6 +135,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const invitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(userId),
+      refetchInterval: 5000,
       queryKey: [...getListAthleteInvitesQueryKey(), userId ?? null],
       staleTime: 0,
       refetchOnMount: 'always',

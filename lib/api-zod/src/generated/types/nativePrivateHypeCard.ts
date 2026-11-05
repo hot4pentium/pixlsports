@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AthleteInviteLiveTaps } from './athleteInviteLiveTaps';
 
 export interface NativePrivateHypeCard {
   athleteName: string;
@@ -16,4 +17,5 @@ export interface NativePrivateHypeCard {
      */
   favoriteMoment: string | null;
   hasPhoto: boolean;
+  liveTaps?: AthleteInviteLiveTaps;
 }

@@ -1994,9 +1994,19 @@ paths:
       operationId: stopAthleteInviteLive
       tags: [athlete-invites]
       summary: Stop Game Day Live for an Athlete Hype Page
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LiveTapEndInput"
       responses:
-        "204":
+        "200":
           description: Live session stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveTapEndResult"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -4825,6 +4835,8 @@ components:
       type: object
       required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, showEvents, hypesEnabled, paused, liveTrackerShareToken, photoUrl, events, createdAt, updatedAt]
       properties:
+        liveTaps:
+          $ref: "#/components/schemas/AthleteInviteLiveTaps"
         inviteToken: { type: string }
         athleteName: { type: string }
         teamName: { type: string }
@@ -4923,6 +4935,12 @@ components:
       properties:
         active: { type: boolean }
         gameId: { type: ["string", "null"] }
+        receipt:
+          $ref: "#/components/schemas/LiveTapReceipt"
+        completedSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveTapCompletion"
         cheers:
           type: array
           items:
@@ -4942,6 +4960,42 @@ components:
                 type: array
                 items:
                   $ref: "#/components/schemas/AthleteInviteLiveTapCheer"
+    LiveTapEndInput:
+      type: object
+      properties:
+        eventId: { type: string, minLength: 1, maxLength: 200 }
+        gameId: { type: string, minLength: 1, maxLength: 200 }
+    LiveTapEndResult:
+      type: object
+      required: [completion]
+      properties:
+        completion:
+          oneOf:
+            - $ref: "#/components/schemas/LiveTapCompletion"
+            - type: "null"
+    LiveTapReceipt:
+      type: object
+      required: [id, gameId, cheerKey]
+      properties:
+        id: { type: string, format: uuid }
+        gameId: { type: string }
+        cheerKey: { type: string }
+    LiveTapCompletion:
+      type: object
+      required: [id, gameId, eventId, athleteName, eventTitle, sport, seasonId, endedAt, cheers]
+      properties:
+        id: { type: string, format: uuid }
+        gameId: { type: string }
+        eventId: { type: ["string", "null"] }
+        athleteName: { type: string }
+        eventTitle: { type: string }
+        sport: { type: string }
+        seasonId: { type: ["string", "null"] }
+        endedAt: { type: ["string", "null"], format: date-time, description: "Hidden in recipient responses when the owner hides Events." }
+        cheers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteLiveTapCheer"
     AthleteInviteLiveTapAccessLink:
       type: object
       required: [id, createdAt]
@@ -5765,6 +5819,8 @@ components:
         seasonName: { type: string }
         favoriteMoment: { type: ["string", "null"], maxLength: 160 }
         hasPhoto: { type: boolean }
+        liveTaps:
+          $ref: "#/components/schemas/AthleteInviteLiveTaps"
     NativeAthletePhoto:
       type: object
       required: [cardId, athleteName, hasPhoto, revision]

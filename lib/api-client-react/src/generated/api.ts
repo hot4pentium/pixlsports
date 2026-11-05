@@ -93,6 +93,8 @@ import type {
   ListAdminNativeDeletionEmailsParams,
   ListAdminSupportTicketsParams,
   ListHypeCardSharesParams,
+  LiveTapEndInput,
+  LiveTapEndResult,
   Media,
   MediaUpload,
   MediaUploadCompleteInput,
@@ -7771,14 +7773,29 @@ export const getStopAthleteInviteLiveUrl = (inviteToken: string,) => {
 /**
  * @summary Stop Game Day Live for an Athlete Hype Page
  */
-export const stopAthleteInviteLive = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+export const stopAthleteInviteLive = async (inviteToken: string,
+    liveTapEndInput?: LiveTapEndInput, options?: Parameters<typeof customFetch>[1]): Promise<LiveTapEndResult> => {
 
-  return customFetch<void>(getStopAthleteInviteLiveUrl(inviteToken),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LiveTapEndResult>(getStopAthleteInviteLiveUrl(inviteToken),
   {
     ...options,
-    method: 'DELETE'
-
-
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(liveTapEndInput)
   }
 );}
 
@@ -7803,9 +7820,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopAthleteInviteLive>>, StopAthleteInviteLiveMutationVariables> = (props) => {
-          const {inviteToken} = props ?? {};
+          const {inviteToken,data} = props ?? {};
 
-          return  stopAthleteInviteLive(inviteToken,requestOptions)
+          return  stopAthleteInviteLive(inviteToken,data,requestOptions)
         }
 
 
@@ -7816,9 +7833,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type StopAthleteInviteLiveMutationResult = NonNullable<Awaited<ReturnType<typeof stopAthleteInviteLive>>>
-
+    export type StopAthleteInviteLiveMutationBody = BodyType<LiveTapEndInput> | undefined
     export type StopAthleteInviteLiveMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
-    export type StopAthleteInviteLiveMutationVariables = {inviteToken: string}
+    export type StopAthleteInviteLiveMutationVariables = {inviteToken: string;data?: BodyType<LiveTapEndInput>}
 
     /**
  * @summary Stop Game Day Live for an Athlete Hype Page

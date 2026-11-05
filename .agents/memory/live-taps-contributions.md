@@ -14,3 +14,15 @@ The Live Taps completion celebration is a scoped exception to the usual rule aga
 **Why:** The owner ends the session remotely for fans, and the user explicitly wants fans included.
 
 **How to apply:** Gate the modal by confirmed session completion and viewer participation, persist once-per-session presentation, and do not replay it for routine refreshes, historical card visits, or unrelated updates. Continue applying the general completion-feedback rule elsewhere.
+
+Treat End Live Taps as terminal for that saved game’s cheer session, even if its stats remain open.
+
+**Why:** A final cheer record and a once-only celebration cannot stay truthful if the same game is silently reopened and its final tally changes.
+
+**How to apply:** Continue allowing stat edits without reopening cheers; start another cheer session with a new game. Preserve the original final aggregate when retrying End or removing a temporary tracker share.
+
+Completed-cheer records must honor Event Card visibility, including dates inferred from completion timestamps.
+
+**Why:** Cheer totals are public engagement data, but a completion's date and opponent can disclose a youth event the owner chose to hide.
+
+**How to apply:** Recipients retain totals and stable receipt matching without hidden event labels, event identifiers or completion dates. Owners retain full records through authenticated responses.

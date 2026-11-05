@@ -366,8 +366,14 @@ test("linked owners can preview a hidden HYPE Card without receiving its public 
     teamName: "Tigers",
   }));
 
+  assert.equal(reference.privatePreview?.liveTaps?.active, false);
+  assert.deepEqual(reference.privatePreview?.liveTaps?.completedSessions, []);
+  assert.ok(reference.privatePreview?.liveTaps?.seasonCheers.every(cheer => cheer.count === 0));
+  const privatePreview = { ...reference.privatePreview };
+  delete privatePreview.liveTaps;
   assert.deepEqual({
     ...reference,
+    privatePreview,
     settings: settingsValues(reference.settings),
   }, {
     status: "hidden",
