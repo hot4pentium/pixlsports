@@ -383,6 +383,63 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [cheerAccepted], timeout: 20), .completed,
                        "The cheer should be accepted by the active Live Taps session.")
 
+        assertReachable("native-event-switch-tracking-mode", in: app).tap()
+        XCTAssertTrue(statTrackerChoice.waitForExistence(timeout: 5))
+        statTrackerChoice.tap()
+        let pauseStats = app.buttons["Pause"]
+        XCTAssertTrue(pauseStats.waitForExistence(timeout: 10))
+        XCTAssertTrue(pauseStats.isEnabled, "The same-card stats game must still be available to pause.")
+        pauseStats.tap()
+        XCTAssertTrue(app.staticTexts["PAUSED"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Resume game"].exists)
+
+        assertReachable("native-event-switch-tracking-mode", in: app).tap()
+        XCTAssertTrue(liveTapsChoice.waitForExistence(timeout: 5))
+        liveTapsChoice.tap()
+        XCTAssertTrue(app.staticTexts["native-live-taps-stats-pause-note"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["native-live-taps-start"].exists,
+                       "Returning to Live Taps while stats are paused must not offer a second session.")
+        XCTAssertTrue(app.images[qr.identifier].exists,
+                      "The same fan QR must remain available while stats are paused.")
+        let pausedCheer = assertReachable("live-taps-cheer-thumbs-up", in: app)
+        XCTAssertTrue(pausedCheer.isEnabled, "Fans can still cheer while stats are paused.")
+        let pausedCheerCount = cheerCount(from: pausedCheer)
+        XCTAssertNotNil(pausedCheerCount)
+        pausedCheer.tap()
+        let pausedCheerAccepted = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "\((pausedCheerCount ?? 0) + 1) cheers"),
+            object: pausedCheer
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [pausedCheerAccepted], timeout: 20), .completed)
+
+        assertReachable("native-event-switch-tracking-mode", in: app).tap()
+        XCTAssertTrue(statTrackerChoice.waitForExistence(timeout: 5))
+        statTrackerChoice.tap()
+        let resumeStats = app.buttons["Resume game"]
+        XCTAssertTrue(resumeStats.waitForExistence(timeout: 10))
+        resumeStats.tap()
+        XCTAssertTrue(app.staticTexts["LIVE"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["native-event-score-team-add"].isEnabled,
+                      "Resuming stats must continue the same game.")
+
+        assertReachable("native-event-switch-tracking-mode", in: app).tap()
+        XCTAssertTrue(liveTapsChoice.waitForExistence(timeout: 5))
+        liveTapsChoice.tap()
+        XCTAssertTrue(app.images[qr.identifier].waitForExistence(timeout: 10),
+                      "Resuming stats must preserve the original fan QR.")
+        XCTAssertFalse(app.buttons["native-live-taps-start"].exists,
+                       "Resuming stats must not create a second Live Taps session.")
+        let resumedCheer = assertReachable("live-taps-cheer-thumbs-up", in: app)
+        XCTAssertTrue(resumedCheer.isEnabled, "Fans can continue cheering after stats resume.")
+        let resumedCheerCount = cheerCount(from: resumedCheer)
+        XCTAssertNotNil(resumedCheerCount)
+        resumedCheer.tap()
+        let resumedCheerAccepted = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "\((resumedCheerCount ?? 0) + 1) cheers"),
+            object: resumedCheer
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [resumedCheerAccepted], timeout: 20), .completed)
+
         assertReachable("native-live-taps-revoke-qr", in: app).tap()
         let confirmRevoke = app.buttons["Revoke QR access"]
         XCTAssertTrue(confirmRevoke.waitForExistence(timeout: 5))
@@ -403,8 +460,14 @@ final class SupporterEventDetailUITests: XCTestCase {
                        "A family cheer must not change the opponent's scoreboard.")
         XCTAssertTrue(
             app.buttons["native-event-score-team-add"].isEnabled,
-            "The stats game must remain live after the family cheer."
+            "The stats game must remain live and unchanged after the family cheers."
         )
+    }
+
+    private func cheerCount(from button: XCUIElement) -> Int? {
+        guard let countText = button.label.components(separatedBy: ", ").last?
+            .components(separatedBy: " ").first else { return nil }
+        return Int(countText)
     }
 
     private func checkSignedInPrepPersistence(dropFirstResponse: Bool) throws {

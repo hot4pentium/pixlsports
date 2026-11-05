@@ -161,6 +161,11 @@ struct NativeEventFanAccessView: View {
                     embedded: true, ownerClerk: clerk, expectedEventId: event.eventId
                 )
                 .disabled(endingLiveTaps)
+                Text("Fans can keep cheering while stat tracking is paused. Cheers stay separate from official stats.")
+                    .font(.caption)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("native-live-taps-stats-pause-note")
                 Button(role: .destructive) {
                     showingEndConfirmation = true
                 } label: {

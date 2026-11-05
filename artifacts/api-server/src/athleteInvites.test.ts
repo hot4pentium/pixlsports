@@ -1610,6 +1610,123 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.deepEqual((shareAfterCheer!.game as Record<string, unknown>).events, [],
       "a family cheer must not create a stat-tracker event");
 
+    const trackerEventCardId = eventCards[0]!.id;
+    const workspaceResponse = await fetch(`${baseUrl}/api/native/supporter/event-workspace`, {
+      method: "POST",
+      headers: nativeHeaders,
+      body: JSON.stringify({ shareToken: trackerEventCardId }),
+    });
+    assert.equal(workspaceResponse.status, 200);
+    const workspace = await workspaceResponse.json() as {
+      linkId: string;
+      trackerRevision: number;
+      game: { id: string; status: string; stats: Record<string, number> };
+    };
+    assert.equal(workspace.game.id, nativeGame.id);
+    assert.equal(workspace.game.status, "live");
+    const saveTrackerStatus = async (kind: "pause" | "resume", expectedRevision: number) => {
+      const response = await fetch(`${baseUrl}/api/native/supporter/event-workspace-save`, {
+        method: "POST",
+        headers: nativeHeaders,
+        body: JSON.stringify({
+          shareToken: trackerEventCardId,
+          linkId: workspace.linkId,
+          expectedRevision,
+          mutationId: randomUUID(),
+          kind,
+        }),
+      });
+      assert.equal(response.status, 200, `native tracker ${kind} should save`);
+      return response.json() as Promise<{
+        trackerRevision: number;
+        game: { id: string; status: string; stats: Record<string, number> };
+      }>;
+    };
+    const pausedWorkspace = await saveTrackerStatus("pause", workspace.trackerRevision);
+    assert.equal(pausedWorkspace.game.status, "paused");
+    const scheduleWhilePausedResponse = await fetch(`${baseUrl}/api/native/supporter/schedule`, {
+      headers: nativeHeaders,
+    });
+    assert.equal(scheduleWhilePausedResponse.status, 200);
+    const scheduleWhilePaused = await scheduleWhilePausedResponse.json() as {
+      events: Array<{ eventId: string; liveTapsActive: boolean }>;
+    };
+    assert.equal(
+      scheduleWhilePaused.events.find((event) => event.eventId === eventId)?.liveTapsActive,
+      true,
+      "the native Event Card keeps the same Live Taps session active while stats are paused",
+    );
+
+    const cheerWhilePaused = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        cheerKey: "goal", accessToken: familyLink.accessToken,
+        gameId: nativeGame.id, clientMutationId: randomUUID(),
+      }),
+    });
+    assert.equal(cheerWhilePaused.status, 201, "fans can cheer while same-card stats are paused");
+    assert.equal(
+      SendAthleteLiveTapResponse.parse(await cheerWhilePaused.json()).cheers.find((cheer) => cheer.key === "goal")?.count,
+      2,
+    );
+
+    const repeatedStartWhilePaused = await fetch(liveUrl, {
+      method: "POST",
+      headers: nativeHeaders,
+      body: JSON.stringify({ eventId }),
+    });
+    assert.equal(repeatedStartWhilePaused.status, 201,
+      "reopening Live Taps while stats are paused reuses the same-card session");
+    const repeatedPausedSession = StartAthleteInviteLiveResponse.parse(await repeatedStartWhilePaused.json());
+    assert.equal(repeatedPausedSession.shareToken, session.shareToken);
+    assert.equal(repeatedPausedSession.gameId, nativeGame.id);
+    const sharesWhilePaused = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+    assert.equal(sharesWhilePaused.length, 1, "pausing and reopening cheers must not create another game share");
+
+    const resumedWorkspace = await saveTrackerStatus("resume", pausedWorkspace.trackerRevision);
+    assert.equal(resumedWorkspace.game.status, "live");
+    const scheduleAfterResumeResponse = await fetch(`${baseUrl}/api/native/supporter/schedule`, {
+      headers: nativeHeaders,
+    });
+    assert.equal(scheduleAfterResumeResponse.status, 200);
+    const scheduleAfterResume = await scheduleAfterResumeResponse.json() as {
+      events: Array<{ eventId: string; liveTapsActive: boolean }>;
+    };
+    assert.equal(
+      scheduleAfterResume.events.find((event) => event.eventId === eventId)?.liveTapsActive,
+      true,
+      "resuming stats keeps Live Taps attached to the same Event Card",
+    );
+    const cheerAfterResume = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        cheerKey: "goal", accessToken: familyLink.accessToken,
+        gameId: nativeGame.id, clientMutationId: randomUUID(),
+      }),
+    });
+    assert.equal(cheerAfterResume.status, 201, "fans can keep cheering after same-card stats resume");
+    assert.equal(
+      SendAthleteLiveTapResponse.parse(await cheerAfterResume.json()).cheers.find((cheer) => cheer.key === "goal")?.count,
+      3,
+    );
+    const [shareAfterResume] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, session.shareToken));
+    assert.equal((shareAfterResume!.game as Record<string, unknown>).status, "live");
+    assert.deepEqual((shareAfterResume!.game as Record<string, unknown>).stats, { goals: 2 },
+      "cheers during pause and resume remain outside official player stats");
+    assert.equal((shareAfterResume!.game as Record<string, unknown>).score, 2);
+    assert.deepEqual((shareAfterResume!.game as Record<string, unknown>).events, [],
+      "cheers during pause and resume do not create stat-tracker events");
+    const [trackerAfterResume] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, tracker!.id));
+    const gamesAfterResume = (trackerAfterResume!.project as { games: Array<Record<string, unknown>> }).games;
+    assert.equal(gamesAfterResume.filter((game) => game.id === nativeGame.id).length, 1,
+      "resuming stats preserves the original tracker game instead of creating a second game");
+    assert.deepEqual(gamesAfterResume.find((game) => game.id === nativeGame.id)?.stats, { goals: 2 });
+
     const parentMutationId = randomUUID();
     const parentTapBody = JSON.stringify({
       cheerKey: "thumbs-up", gameId: nativeGame.id, clientMutationId: parentMutationId,
@@ -1642,7 +1759,8 @@ test("native Live Taps joins same-card stat tracking without creating a separate
       }),
     });
     assert.equal(familyRetry.status, 201);
-    assert.equal(SendAthleteLiveTapResponse.parse(await familyRetry.json()).cheers.find((cheer) => cheer.key === "goal")?.count, 1);
+    assert.equal(SendAthleteLiveTapResponse.parse(await familyRetry.json()).cheers.find((cheer) => cheer.key === "goal")?.count, 3,
+      "retrying the first family cheer after pause and resume returns the original total without counting it again");
     const changedMutation = await fetch(`${publicUrl}/live-taps`, {
       method: "POST", headers: nativeHeaders,
       body: JSON.stringify({ cheerKey: "goal", gameId: nativeGame.id, clientMutationId: parentMutationId }),
@@ -1710,12 +1828,19 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.equal(stopped.status, 204);
     const [statsAfterStop] = await db.select().from(statTrackerSharesTable)
       .where(eq(statTrackerSharesTable.id, session.shareToken));
-    assert.deepEqual(statsAfterStop!.game, { ...sharedSnapshot, liveTapsEnded: true },
-      "ending cheers preserves the running stats share, score, and player stats");
+    const stoppedGame = statsAfterStop!.game as Record<string, unknown>;
+    assert.equal(stoppedGame.liveTapsEnded, true);
+    for (const key of ["id", "sourceEventId", "sport", "status", "score", "opponentScore", "stats", "athleteStats", "events"]) {
+      assert.deepEqual(stoppedGame[key], sharedSnapshot[key],
+        `ending cheers preserves the running stats share's ${key}`);
+    }
     const [projectAfterStop] = await db.select().from(cloudProjectsTable)
       .where(eq(cloudProjectsTable.id, tracker!.id));
-    assert.deepEqual((projectAfterStop!.project as { games: unknown[] }).games, [nativeGame, historicalGame],
-      "ending cheers must not finish or change the tracker");
+    const gamesAfterStop = (projectAfterStop!.project as { games: Array<Record<string, unknown>> }).games;
+    assert.deepEqual(gamesAfterStop.find((game) => game.id === nativeGame.id), nativeGame,
+      "ending cheers must not finish or change the active tracker game");
+    assert.deepEqual(gamesAfterStop.find((game) => game.id === historicalGame.id), historicalGame,
+      "ending cheers must preserve unrelated tracker history");
     const lostReceiptAfterEnd = await fetch(`${publicUrl}/live-taps`, {
       method: "POST", headers: nativeHeaders, body: parentTapBody,
     });
