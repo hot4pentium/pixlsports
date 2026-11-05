@@ -1566,7 +1566,7 @@ test("native Live Taps joins same-card stat tracking without creating a separate
 
     const start = await fetch(liveUrl, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      headers: nativeHeaders,
       body: JSON.stringify({ eventId }),
     });
     assert.equal(start.status, 201);
@@ -1580,19 +1580,39 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.deepEqual(sharedSnapshot.stats, { goals: 2 });
     assert.equal(sharedSnapshot.score, 2);
 
-    const access = await fetch(`${publicUrl}/live-taps/access-links`, {
+    const access = await fetch(`${baseUrl}/api/native/supporter/live-taps-access`, {
       method: "POST",
-      headers: { "x-test-user": ownerId },
+      headers: nativeHeaders,
+      body: JSON.stringify({ shareToken: eventCards[0]!.id, action: "create" }),
     });
-    assert.equal(access.status, 201);
-    const familyLink = CreateAthleteInviteLiveTapAccessLinkResponse.parse(await access.json());
+    assert.equal(access.status, 200);
+    const nativeAccess = await access.json() as { id: string; inviteToken: string; accessToken: string };
+    assert.equal(nativeAccess.inviteToken, created.inviteToken);
+    // Match NativeEventFanAccessView's QR payload; the second device has no
+    // owner session and obtains its grant only from the link fragment.
+    const familyQR = new URL(`/fan/${nativeAccess.inviteToken}`, baseUrl);
+    familyQR.hash = `live-taps=${nativeAccess.accessToken}`;
+    const recipientInvite = familyQR.pathname.split("/").at(-1)!;
+    const recipientAccess = new URLSearchParams(familyQR.hash.slice(1)).get("live-taps");
+    assert.equal(recipientInvite, created.inviteToken);
+    assert.equal(recipientAccess, nativeAccess.accessToken);
+    const recipientUrl = `${baseUrl}/api/athlete-invites/${recipientInvite}`;
+    const fanBeforeResponse = await fetch(`${recipientUrl}/fan`);
+    assert.equal(fanBeforeResponse.status, 200, "the QR recipient can open the athlete without signing in");
+    const fanBefore = GetAthleteFanCardResponse.parse(await fanBeforeResponse.json());
+    assert.equal(fanBefore.athleteName, "Jordan");
+    assert.equal(fanBefore.sport, "soccer");
+    assert.equal(fanBefore.liveTaps.gameId, nativeGame.id);
+    assert.equal(fanBefore.liveTaps.active, true);
+    assert.ok(fanBefore.liveTaps.cheers.some((cheer) => cheer.key === "goal"));
+    const familyLink = nativeAccess;
     const familyMutationId = randomUUID();
-    const tap = await fetch(`${publicUrl}/live-taps`, {
+    const tap = await fetch(`${recipientUrl}/live-taps`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        cheerKey: "goal", accessToken: familyLink.accessToken,
-        gameId: nativeGame.id, clientMutationId: familyMutationId,
+        cheerKey: "goal", accessToken: recipientAccess,
+        gameId: fanBefore.liveTaps.gameId, expectedEventId: eventId, clientMutationId: familyMutationId,
       }),
     });
     assert.equal(tap.status, 201);
@@ -1609,6 +1629,24 @@ test("native Live Taps joins same-card stat tracking without creating a separate
       "a family cheer must not change the opponent's scoreboard");
     assert.deepEqual((shareAfterCheer!.game as Record<string, unknown>).events, [],
       "a family cheer must not create a stat-tracker event");
+    assert.deepEqual(shareAfterCheer!.game, sharedSnapshot,
+      "a native QR cheer preserves the entire official shared game snapshot");
+    const [projectAfterCheer] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, tracker!.id));
+    assert.deepEqual(projectAfterCheer!.project, tracker!.project,
+      "a native QR cheer cannot alter the saved tracker or another game's stats");
+    const [savedTap] = await db.select().from(athleteInviteLiveTapsTable)
+      .where(eq(athleteInviteLiveTapsTable.id, familyMutationId));
+    const [selectedInvite] = await db.select().from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.publicToken, recipientInvite));
+    assert.equal(savedTap!.inviteId, selectedInvite!.id, "the cheer belongs to the selected athlete");
+    assert.equal(savedTap!.gameId, nativeGame.id, "the cheer belongs to this Event Card's active game");
+    assert.equal(savedTap!.accessLinkId, nativeAccess.id, "the anonymous recipient uses the native QR grant");
+    const fanAfter = GetAthleteFanCardResponse.parse(await (await fetch(`${recipientUrl}/fan`)).json());
+    assert.equal(fanAfter.liveTaps.cheers.find((cheer) => cheer.key === "goal")?.count, 1,
+      "a fresh recipient read shows the cheer tally");
+    assert.deepEqual(fanAfter.liveScoreboard, fanBefore.liveScoreboard,
+      "recipient cheers leave the official public scoreboard unchanged");
 
     const trackerEventCardId = eventCards[0]!.id;
     const workspaceResponse = await fetch(`${baseUrl}/api/native/supporter/event-workspace`, {
@@ -1949,6 +1987,45 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.equal(accessLink.inviteToken, created.inviteToken,
       "the fan QR created from the iPhone belongs to the selected athlete");
     assert.match(accessLink.accessToken, /^[A-Za-z0-9_-]{40,100}$/);
+    const fanBeforeCheerOnly = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
+    assert.equal(fanBeforeCheerOnly.liveTaps.gameId, cheerOnlySession.gameId);
+    assert.equal(fanBeforeCheerOnly.liveTaps.active, true);
+    const cheerOnlyMutationId = randomUUID();
+    const cheerOnlyFanTap = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        accessToken: accessLink.accessToken,
+        cheerKey: "assist",
+        gameId: fanBeforeCheerOnly.liveTaps.gameId,
+        expectedEventId: otherEventId,
+        clientMutationId: cheerOnlyMutationId,
+      }),
+    });
+    assert.equal(cheerOnlyFanTap.status, 201,
+      "a second device can use the native QR for a generated Live Taps-only game");
+    const cheerOnlyFanSummary = SendAthleteLiveTapResponse.parse(await cheerOnlyFanTap.json());
+    assert.equal(cheerOnlyFanSummary.gameId, cheerOnlySession.gameId);
+    assert.equal(cheerOnlyFanSummary.cheers.find((cheer) => cheer.key === "assist")?.count, 1);
+    const [cheerOnlyReceipt] = await db.select().from(athleteInviteLiveTapsTable)
+      .where(eq(athleteInviteLiveTapsTable.id, cheerOnlyMutationId));
+    assert.equal(cheerOnlyReceipt!.inviteId, selectedInvite!.id);
+    assert.equal(cheerOnlyReceipt!.gameId, cheerOnlySession.gameId);
+    const [cheerOnlyAfterFanTap] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
+    assert.equal((cheerOnlyAfterFanTap!.game as Record<string, unknown>).sourceEventId, otherEventId);
+    assert.deepEqual(cheerOnlyAfterFanTap!.game, cheerOnlyShare!.game,
+      "the generated game's entire official snapshot remains unchanged");
+    const [projectAfterFanTap] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, tracker!.id));
+    assert.deepEqual(projectAfterFanTap!.project, preservedProject!.project,
+      "cheering for the next Event Card cannot alter any saved official stats");
+    const fanAfterCheerOnly = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
+    assert.equal(fanAfterCheerOnly.liveTaps.gameId, cheerOnlySession.gameId);
+    assert.equal(fanAfterCheerOnly.liveTaps.cheers.find((cheer) => cheer.key === "assist")?.count, 1);
+    assert.equal(fanAfterCheerOnly.liveTaps.cheers.find((cheer) => cheer.key === "goal")?.count, 0,
+      "the previous Event Card's game cheers must not leak into this game's tally");
+    assert.deepEqual(fanAfterCheerOnly.liveScoreboard, fanBeforeCheerOnly.liveScoreboard);
     const endCheerOnly = await fetch(liveUrl, {
       method: "DELETE", headers: nativeHeaders,
       body: JSON.stringify({ eventId: otherEventId }),
