@@ -16,6 +16,7 @@ struct SupporterLiveTapsView: View {
     let embedded: Bool
     let suppliedAccessToken: String?
     let ownerClerk: Clerk?
+    let expectedEventId: String?
     private let fixture: Fixture?
 
     @ScaledMetric(relativeTo: .largeTitle) private var eventTitleSize = 28
@@ -38,6 +39,10 @@ struct SupporterLiveTapsView: View {
     @State private var accessToken: String?
     @State private var isScanning = false
     @State private var pendingCheerKeys = Set<String>()
+    @ObservedObject private var outbox = NativeLiveTapOutbox.shared
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
+    @State private var outboxScope: String?
+    @State private var showingDiscard = false
 
     struct Fixture {
         let summary: LiveTapSummary?
@@ -53,7 +58,8 @@ struct SupporterLiveTapsView: View {
         fixture: Fixture? = nil,
         embedded: Bool = false,
         suppliedAccessToken: String? = nil,
-        ownerClerk: Clerk? = nil
+        ownerClerk: Clerk? = nil,
+        expectedEventId: String? = nil
     ) {
         self.inviteToken = inviteToken
         self.sport = sport
@@ -63,6 +69,7 @@ struct SupporterLiveTapsView: View {
         self.embedded = embedded
         self.suppliedAccessToken = suppliedAccessToken
         self.ownerClerk = ownerClerk
+        self.expectedEventId = expectedEventId
         self._summary = State(initialValue: fixture?.summary)
         self._loading = State(initialValue: fixture.map { _ in false } ?? true)
         self._error = State(initialValue: fixture?.error)
@@ -110,6 +117,7 @@ struct SupporterLiveTapsView: View {
                     .accessibilityElement(children: .combine)
 
                     if ownerClerk == nil { accessCard }
+                    deliveryStatus
 
                     if loading {
                         ProgressView("Checking the active cheer session…")
@@ -189,10 +197,50 @@ struct SupporterLiveTapsView: View {
         .toolbar(.visible, for: .navigationBar)
         .task { await loadSummary() }
         .onChange(of: suppliedAccessToken) { _, token in accessToken = token }
+        .onChange(of: outbox.revision) { _, _ in
+            guard let outboxScope, let session = outbox.snapshot(outboxScope) else { return }
+            if ownerClerk == nil { accessToken = session.accessToken }
+            if let saved = session.summary, summary == nil || summary?.gameId == saved.gameId { summary = saved }
+        }
+        .onChange(of: offline.vault.namespace) { _, _ in
+            guard ownerClerk != nil else { return }
+            outboxScope = nil
+            summary = nil
+            Task { await loadSummary() }
+        }
+        .onChange(of: offline.revocationGeneration) { _, _ in
+            guard ownerClerk != nil else { return }
+            outboxScope = nil
+            summary = nil
+            error = "Sign in again to open your saved cheers. They have not been removed."
+        }
+        .onChange(of: ownerClerk?.user?.id) { _, _ in
+            outboxScope = nil
+            summary = nil
+            Task { await loadSummary() }
+        }
+        .onChange(of: offline.online) { _, online in
+            if online {
+                Task {
+                    await outbox.flushAll()
+                    await loadSummary()
+                }
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, case nil = fixture {
                 Task { await loadSummary() }
             }
+        }
+        .confirmationDialog("Remove unsent cheers?", isPresented: $showingDiscard, titleVisibility: .visible) {
+            Button("Remove unsent cheers", role: .destructive) {
+                guard let outboxScope else { return }
+                do { try outbox.discard(outboxScope) }
+                catch { self.error = error.localizedDescription }
+            }
+            Button("Keep them saved", role: .cancel) {}
+        } message: {
+            Text("These cheers have not been confirmed by PIXL. Removing them means this iPhone will no longer try to send them. Cheers already delivered will stay saved.")
         }
         .sheet(isPresented: $isScanning) {
             NavigationStack {
@@ -333,6 +381,7 @@ struct SupporterLiveTapsView: View {
     private var inlineContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             if ownerClerk == nil && suppliedAccessToken == nil { accessCard }
+            deliveryStatus
             if loading {
                 ProgressView("Loading Live Taps…")
             } else if let summary, summary.active {
@@ -423,6 +472,11 @@ struct SupporterLiveTapsView: View {
                                 Text("\(cheer.count)")
                                     .font(.system(size: cheerCountSize, weight: .heavy, design: .rounded))
                                     .foregroundStyle(SupporterHomeColors.accent)
+                                if queuedCount(cheer.key, gameId: summary.gameId) > 0 {
+                                    Text("+\(queuedCount(cheer.key, gameId: summary.gameId)) saved here")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
                                 if pendingCheerKeys.contains(cheer.key) {
                                     ProgressView()
                                         .tint(SupporterHomeColors.accent)
@@ -438,7 +492,7 @@ struct SupporterLiveTapsView: View {
                 .buttonStyle(.plain)
                 .disabled(!hasCheerAccess || !pendingCheerKeys.isEmpty)
                 .opacity(hasCheerAccess ? 1 : 0.56)
-                .accessibilityLabel("\(cheer.label), \(cheer.count) cheers")
+                .accessibilityLabel("\(cheer.label), \(cheer.count) confirmed cheers, \(queuedCount(cheer.key, gameId: summary.gameId)) saved on this iPhone")
                 .accessibilityHint(!hasCheerAccess
                     ? "Scan the owner’s private family QR before sending a cheer."
                     : "Send one \(cheer.label) cheer.")
@@ -489,11 +543,24 @@ struct SupporterLiveTapsView: View {
 
     private func loadSummary() async {
         guard case nil = fixture else { return }
-        loading = true
-        summary = nil
+        if summary == nil { loading = true }
         error = nil
         defer { loading = false }
         do {
+            let scope = try outbox.prepare(
+                inviteToken: inviteToken, sport: sport, ownerClerk: ownerClerk, accessToken: accessToken,
+                eventId: expectedEventId
+            )
+            outboxScope = scope
+            if let saved = outbox.snapshot(scope) {
+                if summary == nil { summary = saved.summary }
+                if ownerClerk == nil, accessToken == nil { accessToken = saved.accessToken }
+            }
+            if summary != nil { loading = false }
+            if !offline.online {
+                if summary == nil { error = "Open this game with a connection first so it’s ready for offline cheers." }
+                return
+            }
             let result = try await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: inviteToken)
             guard !Task.isCancelled else { return }
             guard result.sport == sport else {
@@ -502,40 +569,73 @@ struct SupporterLiveTapsView: View {
                 return
             }
             summary = result.summary
+            try outbox.remember(result.summary, scope: scope, accessToken: accessToken)
             error = nil
         } catch is CancellationError {
         } catch {
             guard !Task.isCancelled else { return }
-            self.error = error.localizedDescription
+            self.error = summary == nil ? "Couldn’t open Live Taps. Try again. Existing saved cheers have not been removed."
+                : "Couldn’t refresh the totals. You can keep saving cheers on this iPhone."
         }
     }
 
-    private var hasCheerAccess: Bool { ownerClerk != nil || accessToken != nil }
+    private var hasCheerAccess: Bool {
+        (ownerClerk != nil || accessToken != nil) && (fixture != nil || outboxScope != nil)
+    }
+
+    private func queuedCount(_ cheerKey: String, gameId: String?) -> Int {
+        guard let outboxScope else { return 0 }
+        return outbox.snapshot(outboxScope)?.pending.filter { $0.gameId == gameId && $0.cheerKey == cheerKey }.count ?? 0
+    }
+
+    @ViewBuilder
+    private var deliveryStatus: some View {
+        if let outboxScope, let saved = outbox.snapshot(outboxScope), !saved.pending.isEmpty {
+            let waiting = saved.pending.filter { !$0.needsAttention }.count
+            let attention = saved.pending.count - waiting
+            VStack(alignment: .leading, spacing: 10) {
+                if waiting > 0 {
+                    Label("\(waiting) \(waiting == 1 ? "cheer" : "cheers") waiting to send",
+                          systemImage: "clock.arrow.circlepath")
+                        .font(.subheadline.weight(.semibold))
+                }
+                if attention > 0 {
+                    Label("\(attention) \(attention == 1 ? "cheer needs" : "cheers need") attention",
+                          systemImage: "exclamationmark.circle")
+                        .font(.subheadline.weight(.semibold))
+                }
+                Text(outbox.messages[outboxScope] ?? (attention > 0
+                    ? "These cheers are saved here but haven’t been delivered. Try sending again, or remove them if you no longer want them."
+                    : "Saved on this iPhone. They’ll send when a connection is available and this game’s Live Taps session is still open."))
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try sending") { Task { await outbox.retry(outboxScope) } }
+                    .disabled(!offline.online || outbox.sending.contains(outboxScope))
+                    .frame(minHeight: 44)
+                Button("Remove unsent cheers", role: .destructive) { showingDiscard = true }
+                    .disabled(outbox.sending.contains(outboxScope))
+                    .frame(minHeight: 44)
+            }
+            .foregroundStyle(SupporterHomeColors.muted)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 14))
+            .accessibilityIdentifier("live-taps-delivery-status")
+        }
+    }
 
     private func send(_ cheerKey: String) async {
-        guard hasCheerAccess, pendingCheerKeys.isEmpty else { return }
+        guard case nil = fixture, hasCheerAccess, let outboxScope, pendingCheerKeys.isEmpty else { return }
         pendingCheerKeys.insert(cheerKey)
         error = nil
         defer { pendingCheerKeys.remove(cheerKey) }
         do {
-            let updated = try await SupporterHomeAPI.sendLiveTap(
-                inviteToken: inviteToken,
-                accessToken: ownerClerk == nil ? accessToken : nil,
-                cheerKey: cheerKey,
-                clerk: ownerClerk
-            )
-            summary = updated
+            try outbox.enqueue(cheerKey, scope: outboxScope, accessToken: accessToken)
         } catch is CancellationError {
         } catch {
-            let message = error.localizedDescription
-            if message.localizedCaseInsensitiveContains("valid family Live Taps link") {
-                self.accessToken = nil
-            }
-            if message.localizedCaseInsensitiveContains("available only while Game Day Live is active") {
-                await loadSummary()
-                return
-            }
-            self.error = message
+            self.error = error is NativeOfflineError || error is NativeAccountLinkError
+                ? error.localizedDescription
+                : "Couldn’t save this cheer on your iPhone. It hasn’t been sent. Try again."
         }
     }
 
@@ -552,6 +652,10 @@ struct SupporterLiveTapsView: View {
         }
         accessToken = token
         error = nil
+        if let outboxScope, let summary {
+            do { try outbox.remember(summary, scope: outboxScope, accessToken: token) }
+            catch { self.error = "Couldn’t securely save this family QR. Try scanning it again." }
+        }
         isScanning = false
     }
 }

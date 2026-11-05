@@ -4502,11 +4502,18 @@ export const sendAthleteLiveTapBodyCheerKeyMax = 40;
 
 
 export const sendAthleteLiveTapBodyCheerKeyRegExp = new RegExp('^[a-z0-9-]+$');
+export const sendAthleteLiveTapBodyGameIdMax = 200;
+
+export const sendAthleteLiveTapBodyExpectedEventIdMax = 200;
+
 
 
 export const SendAthleteLiveTapBody = zod.object({
   "accessToken": zod.string().min(sendAthleteLiveTapBodyAccessTokenMin).max(sendAthleteLiveTapBodyAccessTokenMax).regex(sendAthleteLiveTapBodyAccessTokenRegExp).optional(),
-  "cheerKey": zod.string().min(1).max(sendAthleteLiveTapBodyCheerKeyMax).regex(sendAthleteLiveTapBodyCheerKeyRegExp)
+  "cheerKey": zod.string().min(1).max(sendAthleteLiveTapBodyCheerKeyMax).regex(sendAthleteLiveTapBodyCheerKeyRegExp),
+  "gameId": zod.string().min(1).max(sendAthleteLiveTapBodyGameIdMax).optional().describe('Original game for a device-saved cheer. Never reroute queued cheers to a newer game.'),
+  "clientMutationId": zod.string().uuid().optional().describe('Device-generated idempotency key, supplied with gameId when retrying saved cheers.'),
+  "expectedEventId": zod.string().min(1).max(sendAthleteLiveTapBodyExpectedEventIdMax).optional().describe('When opened from an Event Card, require that original source event as well as the game.')
 })
 
 export const sendAthleteLiveTapResponseCheersItemCountMin = 0;

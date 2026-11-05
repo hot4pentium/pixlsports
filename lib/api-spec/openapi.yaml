@@ -4895,6 +4895,20 @@ components:
       properties:
         accessToken: { type: string, minLength: 40, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
         cheerKey: { type: string, minLength: 1, maxLength: 40, pattern: "^[a-z0-9-]+$" }
+        gameId:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Original game for a device-saved cheer. Never reroute queued cheers to a newer game.
+        clientMutationId:
+          type: string
+          format: uuid
+          description: Device-generated idempotency key, supplied with gameId when retrying saved cheers.
+        expectedEventId:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: When opened from an Event Card, require that original source event as well as the game.
     AthleteInviteLiveTapCheer:
       type: object
       required: [key, label, emoji, count]

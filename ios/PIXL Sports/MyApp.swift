@@ -116,6 +116,11 @@ struct MyApp: App {
 #endif
             }
             .onOpenURL(perform: handleIncomingURL)
+            .task {
+                guard case .success = configuration,
+                      !ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--ui-testing") }) else { return }
+                NativeLiveTapOutbox.shared.start(clerk: Clerk.shared)
+            }
         }
     }
 

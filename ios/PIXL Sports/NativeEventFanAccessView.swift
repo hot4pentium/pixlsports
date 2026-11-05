@@ -158,7 +158,7 @@ struct NativeEventFanAccessView: View {
                 SupporterLiveTapsView(
                     inviteToken: inviteToken, sport: sport,
                     athleteName: athleteName, eventTitle: event.title,
-                    embedded: true, ownerClerk: clerk
+                    embedded: true, ownerClerk: clerk, expectedEventId: event.eventId
                 )
                 .disabled(endingLiveTaps)
                 Button(role: .destructive) {
@@ -335,6 +335,12 @@ struct NativeEventFanAccessView: View {
         liveTapsEndError = nil
         defer { endingLiveTaps = false }
         do {
+            await NativeLiveTapOutbox.shared.flushAll()
+            if let subject = clerk.user?.id,
+               NativeLiveTapOutbox.shared.pendingCount(inviteToken: inviteToken, ownerSubject: subject, eventId: event.eventId) > 0 {
+                liveTapsEndError = "Your cheers are waiting to send. Let them finish before ending Live Taps."
+                return
+            }
             _ = try await NativeAccountLinkClient().postData(
                 "athlete-invites/\(inviteToken)/live",
                 body: ["eventId": event.eventId],

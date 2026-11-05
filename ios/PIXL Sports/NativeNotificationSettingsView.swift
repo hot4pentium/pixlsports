@@ -443,7 +443,12 @@ struct NativeNotificationSettingsView: View {
     private func finishRemoval() async {
         pushCoordinator.clearAfterAccountRemoval()
         do {
+            let removedSubject = clerk.user?.id ?? NativeOfflineVault.shared.subject
+            // Invalidate private offline access even if queue cleanup fails.
             try NativeOfflineRuntime.shared.clear()
+            if let subject = removedSubject {
+                try NativeLiveTapOutbox.shared.removeOwner(subject: subject)
+            }
             try await clerk.auth.signOut()
             dismiss()
         } catch {

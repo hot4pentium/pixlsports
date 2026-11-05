@@ -1586,24 +1586,68 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     });
     assert.equal(access.status, 201);
     const familyLink = CreateAthleteInviteLiveTapAccessLinkResponse.parse(await access.json());
+    const familyMutationId = randomUUID();
     const tap = await fetch(`${publicUrl}/live-taps`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ cheerKey: "goal", accessToken: familyLink.accessToken }),
+      body: JSON.stringify({
+        cheerKey: "goal", accessToken: familyLink.accessToken,
+        gameId: nativeGame.id, clientMutationId: familyMutationId,
+      }),
     });
     assert.equal(tap.status, 201);
     const tapSummary = SendAthleteLiveTapResponse.parse(await tap.json());
     assert.equal(tapSummary.gameId, nativeGame.id);
     assert.equal(tapSummary.cheers.find((cheer) => cheer.key === "goal")?.count, 1);
+    const parentMutationId = randomUUID();
+    const parentTapBody = JSON.stringify({
+      cheerKey: "thumbs-up", gameId: nativeGame.id, clientMutationId: parentMutationId,
+    });
     const parentTap = await fetch(`${publicUrl}/live-taps`, {
       method: "POST",
       headers: nativeHeaders,
-      body: JSON.stringify({ cheerKey: "thumbs-up" }),
+      body: parentTapBody,
     });
     assert.equal(parentTap.status, 201, "verified native parents can cheer without a family QR");
     const parentSummary = SendAthleteLiveTapResponse.parse(await parentTap.json());
     assert.equal(parentSummary.gameId, nativeGame.id);
     assert.equal(parentSummary.cheers.find((cheer) => cheer.key === "thumbs-up")?.count, 1);
+    const receiptRetries = await Promise.all(Array.from({ length: 4 }, () => fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: nativeHeaders, body: parentTapBody,
+    })));
+    for (const retry of receiptRetries) {
+      assert.equal(retry.status, 201);
+      const replay = SendAthleteLiveTapResponse.parse(await retry.json());
+      assert.equal(replay.active, true);
+      assert.equal(replay.cheers.find((cheer) => cheer.key === "thumbs-up")?.count, 1,
+        "a lost response and concurrent retries must not double-count");
+    }
+    const familyRetry = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        cheerKey: "goal", accessToken: familyLink.accessToken,
+        gameId: nativeGame.id, clientMutationId: familyMutationId,
+      }),
+    });
+    assert.equal(familyRetry.status, 201);
+    assert.equal(SendAthleteLiveTapResponse.parse(await familyRetry.json()).cheers.find((cheer) => cheer.key === "goal")?.count, 1);
+    const changedMutation = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: nativeHeaders,
+      body: JSON.stringify({ cheerKey: "goal", gameId: nativeGame.id, clientMutationId: parentMutationId }),
+    });
+    assert.equal(changedMutation.status, 409);
+    const missingGame = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: nativeHeaders,
+      body: JSON.stringify({ cheerKey: "goal", clientMutationId: randomUUID() }),
+    });
+    assert.equal(missingGame.status, 400);
+    const wrongSourceEvent = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: nativeHeaders,
+      body: JSON.stringify({
+        cheerKey: "goal", gameId: nativeGame.id, clientMutationId: randomUUID(), expectedEventId: otherEventId,
+      }),
+    });
+    assert.equal(wrongSourceEvent.status, 409, "an Event Card must match its source even when a newer summary was cached");
     for (const userId of [null, `other-parent-${ownerId}`]) {
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (userId) headers["x-test-user"] = userId;
@@ -1660,6 +1704,13 @@ test("native Live Taps joins same-card stat tracking without creating a separate
       .where(eq(cloudProjectsTable.id, tracker!.id));
     assert.deepEqual((projectAfterStop!.project as { games: unknown[] }).games, [nativeGame, historicalGame],
       "ending cheers must not finish or change the tracker");
+    const lostReceiptAfterEnd = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: nativeHeaders, body: parentTapBody,
+    });
+    assert.equal(lostReceiptAfterEnd.status, 201, "an already-accepted offline tap can acknowledge its receipt after End");
+    const endedReplay = SendAthleteLiveTapResponse.parse(await lostReceiptAfterEnd.json());
+    assert.equal(endedReplay.active, false);
+    assert.equal(endedReplay.cheers.find((cheer) => cheer.key === "thumbs-up")?.count, 1);
     for (const isParent of [true, false]) {
       const headers: Record<string, string> = isParent ? nativeHeaders : { "content-type": "application/json" };
       const lateCheer = await fetch(`${publicUrl}/live-taps`, {
@@ -1701,6 +1752,18 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.equal(cheerOnlyGame.liveTapsOnly, true);
     assert.equal(cheerOnlyGame.soccerPeriodFormat, "quarters");
     assert.deepEqual(cheerOnlyGame.stats, {});
+    const oldQueuedTap = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: nativeHeaders,
+      body: JSON.stringify({ cheerKey: "goal", gameId: nativeGame.id, clientMutationId: randomUUID() }),
+    });
+    assert.equal(oldQueuedTap.status, 409, "reconnecting must never deliver an old queued cheer to the new Event Card");
+    const confirmedOldTap = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST", headers: nativeHeaders, body: parentTapBody,
+    });
+    assert.equal(confirmedOldTap.status, 201);
+    const oldReceipt = SendAthleteLiveTapResponse.parse(await confirmedOldTap.json());
+    assert.equal(oldReceipt.active, false);
+    assert.equal(oldReceipt.gameId, nativeGame.id);
     const repeatedStart = await fetch(liveUrl, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": ownerId },

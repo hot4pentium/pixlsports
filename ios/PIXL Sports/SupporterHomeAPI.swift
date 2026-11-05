@@ -210,7 +210,7 @@ struct AthleteFanEvent: Codable, Identifiable {
     var id: String { shareToken }
 }
 
-struct LiveTapCheer: Decodable, Identifiable {
+struct LiveTapCheer: Codable, Identifiable {
     let key: String
     let label: String
     let emoji: String
@@ -219,7 +219,7 @@ struct LiveTapCheer: Decodable, Identifiable {
     var id: String { key }
 }
 
-struct LiveTapSummary: Decodable {
+struct LiveTapSummary: Codable {
     let active: Bool
     let gameId: String?
     let cheers: [LiveTapCheer]
@@ -760,10 +760,16 @@ enum SupporterHomeAPI {
         inviteToken: String,
         accessToken: String?,
         cheerKey: String,
-        clerk: Clerk? = nil
+        clerk: Clerk? = nil,
+        gameId: String? = nil,
+        clientMutationId: String? = nil,
+        expectedEventId: String? = nil
     ) async throws -> LiveTapSummary {
         let path = "athlete-invites/\(inviteToken)/live-taps"
         var body = ["cheerKey": cheerKey]
+        if let gameId { body["gameId"] = gameId }
+        if let clientMutationId { body["clientMutationId"] = clientMutationId }
+        if let expectedEventId { body["expectedEventId"] = expectedEventId }
         let data: Data
         if let clerk {
             // The server verifies the native identity's account link. Parent

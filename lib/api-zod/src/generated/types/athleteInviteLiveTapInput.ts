@@ -19,4 +19,18 @@ export interface AthleteInviteLiveTapInput {
      * @pattern ^[a-z0-9-]+$
      */
   cheerKey: string;
+  /**
+     * Original game for a device-saved cheer. Never reroute queued cheers to a newer game.
+     * @minLength 1
+     * @maxLength 200
+     */
+  gameId?: string;
+  /** Device-generated idempotency key, supplied with gameId when retrying saved cheers. */
+  clientMutationId?: string;
+  /**
+     * When opened from an Event Card, require that original source event as well as the game.
+     * @minLength 1
+     * @maxLength 200
+     */
+  expectedEventId?: string;
 }

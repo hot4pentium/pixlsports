@@ -140,6 +140,10 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
     res.status(400).json({ error: "Choose one of the available cheers." });
     return;
   }
+  if (body.data.clientMutationId && !body.data.gameId) {
+    res.status(400).json({ error: "Saved cheers must include their original game." });
+    return;
+  }
   const [invite] = await db.select().from(athleteInvitesTable)
     .where(eq(athleteInvitesTable.publicToken, params.data.inviteToken));
   if (!invite || invite.paused || !(await isAccountActive(invite.ownerClerkUserId))) {
@@ -176,8 +180,35 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
         )).for("update");
       if (!accessLink) return "unauthorized" as const;
       accessLinkId = accessLink.id;
+    }
+
+    // Check after authorization, but before the current-session gate. A response
+    // can be lost immediately before End Live Taps; retrying that accepted tap
+    // must acknowledge the receipt rather than count it again or lose it.
+    if (body.data.clientMutationId) {
+      const [receipt] = await tx.select().from(athleteInviteLiveTapsTable)
+        .where(eq(athleteInviteLiveTapsTable.id, body.data.clientMutationId));
+      if (receipt) {
+        if (receipt.inviteId !== invite.id || receipt.gameId !== body.data.gameId
+          || receipt.cheerKey !== body.data.cheerKey || receipt.accessLinkId !== accessLinkId) {
+          return "mutation-conflict" as const;
+        }
+        const [currentShare] = currentInvite.liveTrackerShareToken
+          ? await tx.select().from(statTrackerSharesTable).where(and(
+            eq(statTrackerSharesTable.id, currentInvite.liveTrackerShareToken),
+            eq(statTrackerSharesTable.ownerClerkUserId, currentInvite.ownerClerkUserId),
+            gt(statTrackerSharesTable.expiresAt, new Date()),
+          ))
+          : [];
+        const currentGame = currentShare?.game as Record<string, unknown> | undefined;
+        const active = currentShare?.gameId === receipt.gameId
+          && currentGame?.status !== "final" && currentGame?.liveTapsEnded !== true;
+        return { gameId: receipt.gameId, seasonId: receipt.seasonId, active } as const;
+      }
+    }
+    if (accessLinkId) {
       const [recent] = await tx.select({ value: count() }).from(athleteInviteLiveTapsTable).where(and(
-        eq(athleteInviteLiveTapsTable.accessLinkId, accessLink.id),
+        eq(athleteInviteLiveTapsTable.accessLinkId, accessLinkId),
         gt(athleteInviteLiveTapsTable.createdAt, new Date(Date.now() - LIVE_TAP_RATE_WINDOW_MS)),
       ));
       if ((recent?.value ?? 0) >= LIVE_TAP_RATE_LIMIT) return "limited" as const;
@@ -193,11 +224,14 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
       gt(statTrackerSharesTable.expiresAt, new Date()),
     )).for("update");
     const game = share?.game && typeof share.game === "object"
-      ? share.game as { status?: unknown; sport?: unknown; liveTapsEnded?: unknown }
+      ? share.game as { status?: unknown; sport?: unknown; liveTapsEnded?: unknown; sourceEventId?: unknown }
       : null;
     if (!share || !game || game.status === "final" || game.liveTapsEnded === true || game.sport !== invite.sport) {
       return "not-live" as const;
     }
+    if (body.data.gameId && body.data.gameId !== share.gameId) return "different-game" as const;
+    const sourceEventId = typeof game.sourceEventId === "string" ? game.sourceEventId : share.gameId;
+    if (body.data.expectedEventId && body.data.expectedEventId !== sourceEventId) return "different-game" as const;
 
     const seasonId = currentInvite.liveTapsSeasonId ?? randomUUID();
     if (!currentInvite.liveTapsSeasonId) {
@@ -211,15 +245,17 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
         isNull(athleteInviteLiveTapsTable.seasonId),
       ));
     }
-    await tx.insert(athleteInviteLiveTapsTable).values({
+    const inserted = await tx.insert(athleteInviteLiveTapsTable).values({
+      ...(body.data.clientMutationId ? { id: body.data.clientMutationId } : {}),
       inviteId: invite.id,
       seasonId,
       seasonName: currentInvite.seasonName,
       gameId: share.gameId,
       cheerKey: body.data.cheerKey,
       accessLinkId,
-    });
-    return { gameId: share.gameId, seasonId } as const;
+    }).onConflictDoNothing().returning({ id: athleteInviteLiveTapsTable.id });
+    if (!inserted.length) return "mutation-conflict" as const;
+    return { gameId: share.gameId, seasonId, active: true } as const;
   });
 
   if (result === "unauthorized") {
@@ -239,13 +275,22 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
     res.status(409).json({ error: "Live Taps are available only while Game Day Live is active." });
     return;
   }
+  if (result === "different-game" || result === "mutation-conflict") {
+    res.status(409).json({
+      error: result === "different-game"
+        ? "These saved cheers belong to an earlier game. They have not been sent to the new game."
+        : "This saved cheer does not match its original receipt.",
+    });
+    return;
+  }
   const summary = await getAthleteLiveTapsSummary(
     invite.id,
     invite.sport,
     result.gameId,
     result.seasonId,
   );
-  res.status(201).json(SendAthleteLiveTapResponse.parse(summary));
+  // A receipt acknowledges delivery, not that an old session is still open.
+  res.status(201).json(SendAthleteLiveTapResponse.parse({ ...summary, active: result.active }));
 });
 
 export default router;
