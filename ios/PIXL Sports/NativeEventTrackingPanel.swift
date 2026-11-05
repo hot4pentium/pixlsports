@@ -14,17 +14,21 @@ struct NativeEventTrackingPanel: View {
     @State private var selectedMode: TrackingMode?
     @State private var hasVisitedStatTracker = false
     @State private var hasVisitedLiveTaps = false
+    @State private var hasVisitedRecordMoments = false
     @State private var showingModePicker = false
+    @State private var showingRecordMoments = false
     @State private var expandedExplanation: TrackingMode?
 
     private enum TrackingMode: String {
         case statTracker
         case liveTaps
+        case recordMoments
 
         var title: String {
             switch self {
             case .statTracker: return "Stat Tracker"
             case .liveTaps: return "Live Taps"
+            case .recordMoments: return "Record Moments"
             }
         }
 
@@ -32,6 +36,7 @@ struct NativeEventTrackingPanel: View {
             switch self {
             case .statTracker: return "chart.bar.fill"
             case .liveTaps: return "hands.clap.fill"
+            case .recordMoments: return "video.badge.plus"
             }
         }
 
@@ -39,6 +44,7 @@ struct NativeEventTrackingPanel: View {
             switch self {
             case .statTracker: return "Keep score and track player stats."
             case .liveTaps: return "Set up cheers for fans at the game."
+            case .recordMoments: return "Add a shoutout intro to a clip, then save or share it."
             }
         }
 
@@ -48,6 +54,8 @@ struct NativeEventTrackingPanel: View {
                 return "Keep the team score here, then open the full tracker when you want player-stat details."
             case .liveTaps:
                 return "Fans can cheer while you track stats. Cheers stay separate from official stats."
+            case .recordMoments:
+                return "Choose a video and shoutout image. Nothing uploads automatically; you decide whether to save or share the finished clip."
             }
         }
     }
@@ -81,10 +89,21 @@ struct NativeEventTrackingPanel: View {
                 .eventToolVisibility(selectedMode == .statTracker)
             liveTapsSection
                 .eventToolVisibility(selectedMode == .liveTaps)
+            if hasVisitedRecordMoments || selectedMode == .recordMoments {
+                recordMomentsSection
+                    .eventToolVisibility(selectedMode == .recordMoments)
+            }
         }
         .tint(NativeEventToolColors.trackStats)
         .sheet(isPresented: $showingModePicker) {
             modePickerSheet
+        }
+        .fullScreenCover(isPresented: $showingRecordMoments) {
+            NavigationStack {
+                NativeRecordMomentsView(athleteName: athleteName, eventTitle: event.title)
+            }
+            .toolbar(.visible, for: .navigationBar)
+            .preferredColorScheme(.light)
         }
         .onAppear {
             if isActive { presentModePicker() }
@@ -108,6 +127,7 @@ struct NativeEventTrackingPanel: View {
                 }
                 modeChoice(.statTracker)
                 modeChoice(.liveTaps)
+                modeChoice(.recordMoments)
                 Button(selectedMode == nil ? "Not now" : "Keep current tool") {
                     showingModePicker = false
                 }
@@ -308,6 +328,23 @@ struct NativeEventTrackingPanel: View {
         .accessibilityIdentifier("native-event-live-taps-section")
     }
 
+    private var recordMomentsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SupporterEyebrow(text: "Record Moments", color: NativeEventToolColors.trackStats)
+            Button {
+                showingRecordMoments = true
+            } label: {
+                NativeRecordMomentsLaunchCard(
+                    title: "Make a shareable clip",
+                    subtitle: "Pick a shoutout intro and a video. The finished clip stays here until you save or share it."
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("event-record-moments-open")
+        }
+        .accessibilityIdentifier("native-event-record-moments-section")
+    }
+
     private var switchToolButton: some View {
         Button(action: presentModePicker) {
             Label("Switch tool", systemImage: "arrow.left.arrow.right")
@@ -322,6 +359,7 @@ struct NativeEventTrackingPanel: View {
         selectedMode = mode
         if mode == .statTracker { hasVisitedStatTracker = true }
         if mode == .liveTaps { hasVisitedLiveTaps = true }
+        if mode == .recordMoments { hasVisitedRecordMoments = true }
         expandedExplanation = nil
         showingModePicker = false
     }

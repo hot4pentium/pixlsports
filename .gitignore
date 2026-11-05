@@ -50,6 +50,8 @@ Thumbs.db
 .cache/
 .local/
 /generated-artifacts/
+# Full-resolution shoutout inputs stay local; native assets contain optimized derivatives.
+/attached_assets/*_1793840947979.png
 /artifacts/league-matrix-studio/shared-videos-fixture-*
 /artifacts/league-matrix-studio/phone-frame.html
 

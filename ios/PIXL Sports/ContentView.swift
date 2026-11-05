@@ -36,6 +36,7 @@ struct ContentView: View {
         case eventCard(String)
         case hypeCard
         case createEvent
+        case recordMoments
         case profileSetup
 
         var id: String {
@@ -43,12 +44,14 @@ struct ContentView: View {
             case let .eventCard(token): return "event-\(token)"
             case .hypeCard: return "hype-card"
             case .createEvent: return "create-event"
+            case .recordMoments: return "record-moments"
             case .profileSetup: return "athlete-profile-setup"
             }
         }
 
         var showsDoneButton: Bool {
             if case .profileSetup = self { return false }
+            if case .recordMoments = self { return false }
             return true
         }
     }
@@ -196,6 +199,16 @@ struct ContentView: View {
                                 .accessibilityIdentifier("dashboard-header-section")
                             athleteHero
                             if case let .schedule(page, _, _) = displayedState {
+                                Button {
+                                    heroDestination = .recordMoments
+                                } label: {
+                                    NativeRecordMomentsLaunchCard(
+                                        title: "Make a shareable clip",
+                                        subtitle: "Add a shoutout intro, then save or share it whenever you like."
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("dashboard-record-moments")
                                 if let record = page.record {
                                     NativeSeasonRecordView(record: record)
                                 }
@@ -482,6 +495,13 @@ struct ContentView: View {
                         heroDestination = .eventCard(token)
                     }
                 }
+            )
+        case .recordMoments:
+            NativeRecordMomentsView(
+                athleteName: profileValue(
+                    viewModel.athleteProfile?.athleteName,
+                    fallback: schedulePage?.athleteName
+                ) ?? "Your athlete"
             )
         case .profileSetup:
             if let clerk {
