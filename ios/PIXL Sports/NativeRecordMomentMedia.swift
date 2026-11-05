@@ -1,5 +1,5 @@
 import AVFoundation
-import CoreAnimation
+import QuartzCore
 import CoreGraphics
 import CoreTransferable
 import Photos
