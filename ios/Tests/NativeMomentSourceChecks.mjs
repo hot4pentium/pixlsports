@@ -50,6 +50,22 @@ test("Photos and native sharing are explicit and camera has both permissions", (
   const project = readFileSync(new URL("../PIXL Sports.xcodeproj/project.pbxproj", import.meta.url), "utf8");
   assert.equal((project.match(/INFOPLIST_KEY_NSMicrophoneUsageDescription/g) ?? []).length, 2);
 });
+test("long-video trimming uses local thumbnails and bounded accessible handles", () => {
+  assert.match(model, /AVAssetImageGenerator\(asset: AVURLAsset\(url: url\)\)/);
+  assert.match(model, /copyCGImage\(at: time/);
+  assert.match(model, /maximumSize = CGSize\(width: 180, height: 180\)/);
+  assert.match(model, /thumbnailRequestID/);
+  assert.match(model, /thumbnailTask\?\.cancel\(\)/);
+  assert.match(model, /func setTrimStart/);
+  assert.match(model, /func setTrimEnd/);
+  assert.match(model, /NativeMomentPlan\.maximumFootage/);
+  assert.match(view, /record-moments-trim-timeline/);
+  assert.match(view, /record-moments-start-handle/);
+  assert.match(view, /record-moments-end-handle/);
+  assert.match(view, /accessibilityAdjustableAction/);
+  assert.match(view, /record-moments-start/);
+  assert.match(view, /record-moments-duration/);
+});
 test("all ten original-derived optimized graphics are full-size and bundled", () => {
   const root = new URL("../PIXL Sports/Assets.xcassets/", import.meta.url);
   const assets = readdirSync(root).filter(name => name.startsWith("Moment-"));

@@ -7,6 +7,8 @@ import UIKit
 final class NativeMomentModel: ObservableObject {
     @Published private(set) var source: URL?
     @Published private(set) var output: URL?
+    @Published private(set) var thumbnails: [UIImage?] = []
+    @Published private(set) var isGeneratingThumbnails = false
     @Published private(set) var duration = 0.0
     @Published var start = 0.0
     @Published var footage = 1.0
@@ -31,9 +33,13 @@ final class NativeMomentModel: ObservableObject {
     private var previewEnd = 0.0
     private var previewStart = 0.0
     private var previewID = UUID()
+    private var thumbnailTask: Task<[UIImage?], Never>?
+    private var thumbnailRequestID = UUID()
 
     var maximumFootage: Double { min(NativeMomentPlan.maximumFootage, duration) }
-    var maximumStart: Double { max(0, duration - footage) }
+    var minimumFootage: Double { min(0.1, duration) }
+    var minimumStart: Double { max(0, start + footage - maximumFootage) }
+    var maximumStart: Double { max(minimumStart, start + footage - minimumFootage) }
     var plan: NativeMomentPlan? {
         try? NativeMomentPlan(sourceDuration: duration, start: start, footage: footage, intro: introSeconds)
     }
@@ -107,6 +113,7 @@ final class NativeMomentModel: ObservableObject {
                     self.start = 0
                     self.footage = min(15, duration)
                     self.hasAudio = hasAudio
+                    generateThumbnails(for: url, duration: duration)
                     updatePreview()
                     message = hasAudio ? "Source audio will be preserved." : "This source has no audio. The finished clip will be silent."
                 } catch {
@@ -120,9 +127,30 @@ final class NativeMomentModel: ObservableObject {
     func selectionChanged() {
         guard !busy else { return }
         start = min(start, maximumStart)
+        footage = min(footage, max(minimumFootage, duration - start), NativeMomentPlan.maximumFootage)
         clearOutput()
         updatePreview()
         message = nil
+    }
+
+    /// Moves the in-point while keeping the selected out-point fixed.
+    func setTrimStart(_ proposedStart: Double) {
+        guard duration > 0 else { return }
+        let end = start + footage
+        let lowerBound = max(0, end - maximumFootage)
+        let upperBound = max(lowerBound, end - minimumFootage)
+        let newStart = min(max(proposedStart, lowerBound), upperBound)
+        footage = end - newStart
+        start = newStart
+    }
+
+    /// Moves the out-point while keeping the selected in-point fixed.
+    func setTrimEnd(_ proposedEnd: Double) {
+        guard duration > 0 else { return }
+        let minimumEnd = start + minimumFootage
+        let maximumEnd = min(duration, start + maximumFootage)
+        let newEnd = min(max(proposedEnd, minimumEnd), maximumEnd)
+        footage = newEnd - start
     }
 
     func export() {
@@ -184,6 +212,10 @@ final class NativeMomentModel: ObservableObject {
     func shutdown() {
         closed = true
         if isImporting { cancelImport() }
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
+        thumbnailRequestID = UUID()
+        isGeneratingThumbnails = false
         stopPlayback()
         releasePlayer()
         cancelExport()
@@ -208,6 +240,40 @@ final class NativeMomentModel: ObservableObject {
     }
 
     private func cleanup() { try? FileManager.default.removeItem(at: directory) }
+
+    private func generateThumbnails(for url: URL, duration: Double) {
+        thumbnailTask?.cancel()
+        let requestID = UUID()
+        thumbnailRequestID = requestID
+        let count = 12
+        thumbnails = Array(repeating: nil, count: count)
+        isGeneratingThumbnails = true
+
+        let task = Task.detached(priority: .utility) {
+            let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            generator.appliesPreferredTrackTransform = true
+            generator.maximumSize = CGSize(width: 180, height: 180)
+
+            return (0..<count).map { index -> UIImage? in
+                guard !Task.isCancelled else { return nil }
+                let seconds = duration * (Double(index) + 0.5) / Double(count)
+                let time = CMTime(seconds: seconds, preferredTimescale: 600)
+                guard let image = try? generator.copyCGImage(at: time, actualTime: nil) else {
+                    return nil
+                }
+                return UIImage(cgImage: image)
+            }
+        }
+        thumbnailTask = task
+
+        Task { [weak self] in
+            let images = await task.value
+            guard let self, self.thumbnailRequestID == requestID else { return }
+            self.isGeneratingThumbnails = false
+            self.thumbnailTask = nil
+            self.thumbnails = images
+        }
+    }
 
     private func clearOutput() {
         releasePlayer()

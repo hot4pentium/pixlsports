@@ -146,8 +146,23 @@ struct NativeRecordMomentsView: View {
             Text(String(format: "Start %.2fs · Footage %.2fs · Finished %.2fs",
                         model.start, model.footage, model.footage + model.introSeconds))
                 .monospacedDigit()
-            if model.maximumStart > 0 {
-                Slider(value: $model.start, in: 0...model.maximumStart)
+            NativeMomentTrimTimeline(model: model)
+                .frame(height: 92)
+                .accessibilityIdentifier("record-moments-trim-timeline")
+            if model.isGeneratingThumbnails {
+                Text("Preparing a private thumbnail timeline on this iPhone…")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if model.thumbnails.allSatisfy({ $0 == nil }) {
+                Text("Thumbnail previews aren’t available. You can still trim with the sliders.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Text("Drag the blue start and orange end handles to choose the action.")
+                .font(.caption).foregroundStyle(.secondary)
+            if model.maximumStart > model.minimumStart {
+                Slider(value: Binding(
+                    get: { model.start },
+                    set: { model.setTrimStart($0) }
+                ), in: model.minimumStart...model.maximumStart)
                     .accessibilityLabel("Footage start")
                     .accessibilityValue(String(format: "%.2f seconds", model.start))
                     .accessibilityIdentifier("record-moments-start")
@@ -221,5 +236,176 @@ struct NativeRecordMomentsView: View {
             return
         }
         if model.preparePicker() { showingCamera = true }
+    }
+}
+
+private struct NativeMomentTrimTimeline: View {
+    @ObservedObject var model: NativeMomentModel
+    @State private var startDragOrigin: Double?
+    @State private var endDragOrigin: Double?
+
+    private let trackHeight: CGFloat = 76
+    private let handleWidth: CGFloat = 30
+
+    var body: some View {
+        GeometryReader { geometry in
+            let inset = handleWidth / 2
+            let trackWidth = max(1, geometry.size.width - handleWidth)
+            let duration = max(model.duration, 0.001)
+            let startX = inset + trackWidth * CGFloat(model.start / duration)
+            let endX = inset + trackWidth * CGFloat((model.start + model.footage) / duration)
+            let trackY = trackHeight / 2 + 8
+
+            ZStack(alignment: .topLeading) {
+                thumbnailTrack(width: trackWidth)
+                    .position(x: geometry.size.width / 2, y: trackY)
+
+                Rectangle()
+                    .fill(.black.opacity(0.58))
+                    .frame(width: max(0, startX - inset), height: trackHeight)
+                    .position(x: inset + max(0, startX - inset) / 2, y: trackY)
+                    .allowsHitTesting(false)
+
+                Rectangle()
+                    .fill(.black.opacity(0.58))
+                    .frame(width: max(0, inset + trackWidth - endX), height: trackHeight)
+                    .position(x: endX + max(0, inset + trackWidth - endX) / 2, y: trackY)
+                    .allowsHitTesting(false)
+
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(Color.white, lineWidth: 2)
+                    .frame(width: max(2, endX - startX), height: trackHeight + 4)
+                    .position(x: (startX + endX) / 2, y: trackY)
+                    .allowsHitTesting(false)
+
+                handle(
+                    title: "START",
+                    color: .blue,
+                    x: startX,
+                    time: model.start,
+                    value: String(format: "%.2f seconds", model.start),
+                    isStart: true,
+                    trackWidth: trackWidth
+                )
+                handle(
+                    title: "END",
+                    color: .orange,
+                    x: endX,
+                    time: model.start + model.footage,
+                    value: String(format: "%.2f seconds", model.start + model.footage),
+                    isStart: false,
+                    trackWidth: trackWidth
+                )
+
+                HStack {
+                    Text("0:00")
+                    Spacer()
+                    Text(Self.timeLabel(model.duration))
+                }
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .position(x: geometry.size.width / 2, y: geometry.size.height - 4)
+                .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private func thumbnailTrack(width: CGFloat) -> some View {
+        HStack(spacing: 1) {
+            ForEach(0..<max(model.thumbnails.count, 12), id: \.self) { index in
+                Group {
+                    if index < model.thumbnails.count, let image = model.thumbnails[index] {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Rectangle()
+                            .fill(Color(uiColor: .secondarySystemBackground))
+                            .overlay {
+                                Image(systemName: "video.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: trackHeight)
+                .clipped()
+            }
+        }
+        .frame(width: width, height: trackHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func handle(
+        title: String,
+        color: Color,
+        x: CGFloat,
+        time: Double,
+        value: String,
+        isStart: Bool,
+        trackWidth: CGFloat
+    ) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.system(size: 9, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(color, in: Capsule())
+            RoundedRectangle(cornerRadius: 5)
+                .fill(color)
+                .frame(width: 22, height: trackHeight - 12)
+                .overlay {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 11, weight: .bold))
+                        .rotationEffect(.degrees(90))
+                        .foregroundStyle(.white)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(.white, lineWidth: 1.5)
+                }
+        }
+        .frame(width: handleWidth, height: trackHeight + 16)
+        .contentShape(Rectangle())
+        .position(x: x, y: trackHeight / 2 + 8)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { gesture in
+                    let origin: Double
+                    if isStart {
+                        if startDragOrigin == nil { startDragOrigin = model.start }
+                        origin = startDragOrigin ?? model.start
+                    } else {
+                        if endDragOrigin == nil { endDragOrigin = model.start + model.footage }
+                        origin = endDragOrigin ?? (model.start + model.footage)
+                    }
+                    let shift = Double(gesture.translation.width / trackWidth) * model.duration
+                    if isStart {
+                        model.setTrimStart(origin + shift)
+                    } else {
+                        model.setTrimEnd(origin + shift)
+                    }
+                }
+                .onEnded { _ in
+                    if isStart { startDragOrigin = nil }
+                    else { endDragOrigin = nil }
+                }
+        )
+        .accessibilityElement()
+        .accessibilityLabel(isStart ? "Footage start handle" : "Footage end handle")
+        .accessibilityValue(value)
+        .accessibilityAdjustableAction { direction in
+            let step = direction == .increment ? 0.25 : -0.25
+            if isStart { model.setTrimStart(time + step) }
+            else { model.setTrimEnd(time + step) }
+        }
+        .accessibilityIdentifier(isStart ? "record-moments-start-handle" : "record-moments-end-handle")
+    }
+
+    private static func timeLabel(_ seconds: Double) -> String {
+        let total = max(0, Int(seconds))
+        return String(format: "%d:%02d", total / 60, total % 60)
     }
 }
