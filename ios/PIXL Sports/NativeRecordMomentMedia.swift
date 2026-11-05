@@ -39,7 +39,7 @@ enum NativeRecordMomentArtwork: String, CaseIterable, Identifiable {
 }
 
 enum NativeRecordMomentLimits {
-    static let maximumSourceBytes = 120 * 1024 * 1024
+    nonisolated static let maximumSourceBytes = 120 * 1024 * 1024
     static let maximumFootageSeconds = 15.0
     static let minimumFootageSeconds = 0.5
 
@@ -89,7 +89,7 @@ enum NativeRecordMomentMediaError: LocalizedError {
 }
 
 enum NativeRecordMomentFileStorage {
-    static func importFile(at sourceURL: URL) throws -> URL {
+    nonisolated static func importFile(at sourceURL: URL) throws -> URL {
         let fileValues = try sourceURL.resourceValues(forKeys: [.fileSizeKey])
         guard let fileSize = fileValues.fileSize, fileSize <= NativeRecordMomentLimits.maximumSourceBytes else {
             throw NativeRecordMomentMediaError.fileTooLarge
@@ -111,7 +111,7 @@ enum NativeRecordMomentFileStorage {
         try? FileManager.default.removeItem(at: url)
     }
 
-    private static func storageDirectory() throws -> URL {
+    nonisolated static func storageDirectory() throws -> URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         let directory = base.appendingPathComponent("NativeRecordMoments", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -245,7 +245,7 @@ enum NativeRecordMomentExporter {
         guard let exporter = AVAssetExportSession(
             asset: composition,
             presetName: AVAssetExportPreset1280x720
-        ), exporter.supportedFileTypes?.contains(.mp4) == true else {
+        ), exporter.supportedFileTypes.contains(.mp4) else {
             throw NativeRecordMomentMediaError.exportUnavailable
         }
 
