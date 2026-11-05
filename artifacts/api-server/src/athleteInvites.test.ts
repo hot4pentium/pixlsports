@@ -1595,6 +1595,30 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     const tapSummary = SendAthleteLiveTapResponse.parse(await tap.json());
     assert.equal(tapSummary.gameId, nativeGame.id);
     assert.equal(tapSummary.cheers.find((cheer) => cheer.key === "goal")?.count, 1);
+    const parentTap = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST",
+      headers: nativeHeaders,
+      body: JSON.stringify({ cheerKey: "thumbs-up" }),
+    });
+    assert.equal(parentTap.status, 201, "verified native parents can cheer without a family QR");
+    const parentSummary = SendAthleteLiveTapResponse.parse(await parentTap.json());
+    assert.equal(parentSummary.gameId, nativeGame.id);
+    assert.equal(parentSummary.cheers.find((cheer) => cheer.key === "thumbs-up")?.count, 1);
+    for (const userId of [null, `other-parent-${ownerId}`]) {
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      if (userId) headers["x-test-user"] = userId;
+      const outsider = await fetch(`${publicUrl}/live-taps`, {
+        method: "POST", headers,
+        body: JSON.stringify({ cheerKey: "thumbs-up" }),
+      });
+      assert.equal(outsider.status, 403, "visitor access cannot be granted by omitting the family token");
+    }
+    const invalidParent = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer invalid-token" },
+      body: JSON.stringify({ cheerKey: "thumbs-up" }),
+    });
+    assert.equal(invalidParent.status, 401);
 
     const conflict = await fetch(liveUrl, {
       method: "POST",
@@ -1656,6 +1680,18 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.equal(repeatedStart.status, 201);
     const repeatedSession = StartAthleteInviteLiveResponse.parse(await repeatedStart.json());
     assert.equal(repeatedSession.shareToken, cheerOnlySession.shareToken);
+    const cheerOnlyParentTap = await fetch(`${publicUrl}/live-taps`, {
+      method: "POST",
+      headers: nativeHeaders,
+      body: JSON.stringify({ cheerKey: "way-to-go" }),
+    });
+    assert.equal(cheerOnlyParentTap.status, 201, "parents can cheer without tracking stats or creating a fan QR");
+    const cheerOnlyParentSummary = SendAthleteLiveTapResponse.parse(await cheerOnlyParentTap.json());
+    assert.equal(cheerOnlyParentSummary.gameId, cheerOnlySession.gameId);
+    assert.equal(cheerOnlyParentSummary.cheers.find((cheer) => cheer.key === "way-to-go")?.count, 1);
+    const [cheerOnlyAfterTap] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
+    assert.deepEqual(cheerOnlyAfterTap!.game, cheerOnlyShare!.game, "parent cheers do not write official stats");
     const [preservedProject] = await db.select().from(cloudProjectsTable)
       .where(eq(cloudProjectsTable.id, tracker!.id));
     const preservedGames = (preservedProject!.project as { games: Array<Record<string, unknown>> }).games;

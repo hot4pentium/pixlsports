@@ -9,6 +9,12 @@ Live Taps is scoped to one athlete. Family members can tap sport-specific, prelo
 
 **How to apply:** Keep the interaction separate from stat tracking and video. Family members may cheer for the athlete; do not turn a tap into a tracked play or teammate feature.
 
+Parents can use Live Taps themselves instead of tracking stats. They must not need to create or scan a family QR to cheer on their own Event Card; private QR access is for visiting family members.
+
+**Why:** The user clarified that the parent-facing Live Taps screen was incorrectly treating the parent as a visitor.
+
+**How to apply:** Send parent cheers using the verified owner's authenticated account link. Keep public visitor controls locked without a valid family token, and never grant parent access from a client-side role flag alone.
+
 For write access, the owner creates revocable family QR codes for in-person scanning. Store only a hash of each bearer token; encode the raw token in the QR code's URL fragment and remove it from the address bar after the card reads it. A public HYPE Card URL is always view-only. Store each tap by athlete invite, game, and cheer; revoking access must not erase its earlier taps. Show the active game's tally without merging it into official stats.
 
 **Why:** The public card is meant to be shared broadly, so its URL cannot also grant write access. The user prefers QR access because family members need to be present to send Live Taps. Game-scoped records preserve cheer history without changing the official stat record.

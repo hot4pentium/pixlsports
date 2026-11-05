@@ -758,14 +758,26 @@ enum SupporterHomeAPI {
 
     static func sendLiveTap(
         inviteToken: String,
-        accessToken: String,
-        cheerKey: String
+        accessToken: String?,
+        cheerKey: String,
+        clerk: Clerk? = nil
     ) async throws -> LiveTapSummary {
-        let data = try await NativeAccountLinkClient().publicRequest(
-            "athlete-invites/\(inviteToken)/live-taps",
-            method: "POST",
-            body: ["accessToken": accessToken, "cheerKey": cheerKey]
-        )
+        let path = "athlete-invites/\(inviteToken)/live-taps"
+        var body = ["cheerKey": cheerKey]
+        let data: Data
+        if let clerk {
+            // The server verifies the native identity's account link. Parent
+            // access must never depend on creating a visitor QR for this phone.
+            data = try await NativeAccountLinkClient().postData(
+                path, body: body, apiRoot: true, clerk: clerk
+            )
+        } else {
+            guard let accessToken else { throw SupporterHomeAPIError.privateScheduleUnavailable }
+            body["accessToken"] = accessToken
+            data = try await NativeAccountLinkClient().publicRequest(
+                path, method: "POST", body: body
+            )
+        }
         do {
             return try JSONDecoder().decode(LiveTapSummary.self, from: data)
         } catch {

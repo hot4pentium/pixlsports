@@ -20,7 +20,7 @@ import {
 } from "@workspace/db";
 import { isAccountActive } from "../lib/accountLifecycle";
 import { getAthleteLiveTapsSummary, isLiveTapCheerForSport } from "../lib/athleteLiveTaps";
-import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth, requireAuthOrNativeOwner } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 const LIVE_TAP_ACCESS_TOKEN_BYTES = 32;
@@ -125,7 +125,15 @@ router.delete("/athlete-invites/:inviteToken/live-taps/access-links/:accessId", 
   res.status(204).end();
 });
 
-router.post("/athlete-invites/:inviteToken/live-taps", async (req, res): Promise<void> => {
+router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
+  // Anonymous visitors authorize with a family token. Native owners instead
+  // present their session bearer, resolved through the verified account link.
+  if (req.get("authorization") && !req.body?.accessToken) {
+    requireAuthOrNativeOwner(req, res, next);
+    return;
+  }
+  next();
+}, async (req, res): Promise<void> => {
   const params = SendAthleteLiveTapParams.safeParse(req.params);
   const body = SendAthleteLiveTapBody.safeParse(req.body);
   if (!params.success || !body.success) {
@@ -143,7 +151,8 @@ router.post("/athlete-invites/:inviteToken/live-taps", async (req, res): Promise
     return;
   }
 
-  const callerId = getOptionalClerkUserId(req);
+  const callerId = typeof res.locals.clerkUserId === "string"
+    ? getRequiredClerkUserId(res) : getOptionalClerkUserId(req);
   const tokenHash = body.data.accessToken ? hashAccessToken(body.data.accessToken) : null;
   const result = await db.transaction(async (tx) => {
     const [currentInvite] = await tx.select({
@@ -184,9 +193,9 @@ router.post("/athlete-invites/:inviteToken/live-taps", async (req, res): Promise
       gt(statTrackerSharesTable.expiresAt, new Date()),
     )).for("update");
     const game = share?.game && typeof share.game === "object"
-      ? share.game as { status?: unknown; sport?: unknown }
+      ? share.game as { status?: unknown; sport?: unknown; liveTapsEnded?: unknown }
       : null;
-    if (!share || !game || game.status === "final" || game.sport !== invite.sport) {
+    if (!share || !game || game.status === "final" || game.liveTapsEnded === true || game.sport !== invite.sport) {
       return "not-live" as const;
     }
 

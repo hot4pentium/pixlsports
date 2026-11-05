@@ -154,7 +154,7 @@ struct NativeEventFanAccessView: View {
                 SupporterLiveTapsView(
                     inviteToken: inviteToken, sport: sport,
                     athleteName: athleteName, eventTitle: event.title,
-                    embedded: true, suppliedAccessToken: grant?.accessToken
+                    embedded: true, ownerClerk: clerk
                 )
             } else if event.liveTapsActive {
                 Label("Live Taps is active", systemImage: "hands.clap.fill")

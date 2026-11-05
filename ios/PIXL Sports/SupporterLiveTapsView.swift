@@ -1,4 +1,5 @@
 import SwiftUI
+import ClerkKit
 import UIKit
 import Vision
 import VisionKit
@@ -14,6 +15,7 @@ struct SupporterLiveTapsView: View {
     let eventTitle: String
     let embedded: Bool
     let suppliedAccessToken: String?
+    let ownerClerk: Clerk?
     private let fixture: Fixture?
 
     @ScaledMetric(relativeTo: .largeTitle) private var eventTitleSize = 28
@@ -50,7 +52,8 @@ struct SupporterLiveTapsView: View {
         eventTitle: String,
         fixture: Fixture? = nil,
         embedded: Bool = false,
-        suppliedAccessToken: String? = nil
+        suppliedAccessToken: String? = nil,
+        ownerClerk: Clerk? = nil
     ) {
         self.inviteToken = inviteToken
         self.sport = sport
@@ -59,6 +62,7 @@ struct SupporterLiveTapsView: View {
         self.fixture = fixture
         self.embedded = embedded
         self.suppliedAccessToken = suppliedAccessToken
+        self.ownerClerk = ownerClerk
         self._summary = State(initialValue: fixture?.summary)
         self._loading = State(initialValue: fixture.map { _ in false } ?? true)
         self._error = State(initialValue: fixture?.error)
@@ -105,7 +109,7 @@ struct SupporterLiveTapsView: View {
                     .supporterSurfaceShadow()
                     .accessibilityElement(children: .combine)
 
-                    accessCard
+                    if ownerClerk == nil { accessCard }
 
                     if loading {
                         ProgressView("Checking the active cheer session…")
@@ -328,7 +332,7 @@ struct SupporterLiveTapsView: View {
     @ViewBuilder
     private var inlineContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if suppliedAccessToken == nil { accessCard }
+            if ownerClerk == nil && suppliedAccessToken == nil { accessCard }
             if loading {
                 ProgressView("Loading Live Taps…")
             } else if let summary, summary.active {
@@ -432,10 +436,10 @@ struct SupporterLiveTapsView: View {
                     .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 15))
                 }
                 .buttonStyle(.plain)
-                .disabled(accessToken == nil || !pendingCheerKeys.isEmpty)
-                .opacity(accessToken == nil ? 0.56 : 1)
+                .disabled(!hasCheerAccess || !pendingCheerKeys.isEmpty)
+                .opacity(hasCheerAccess ? 1 : 0.56)
                 .accessibilityLabel("\(cheer.label), \(cheer.count) cheers")
-                .accessibilityHint(accessToken == nil
+                .accessibilityHint(!hasCheerAccess
                     ? "Scan the owner’s private family QR before sending a cheer."
                     : "Send one \(cheer.label) cheer.")
                 .accessibilityIdentifier("live-taps-cheer-\(cheer.key)")
@@ -506,16 +510,19 @@ struct SupporterLiveTapsView: View {
         }
     }
 
+    private var hasCheerAccess: Bool { ownerClerk != nil || accessToken != nil }
+
     private func send(_ cheerKey: String) async {
-        guard let accessToken, pendingCheerKeys.isEmpty else { return }
+        guard hasCheerAccess, pendingCheerKeys.isEmpty else { return }
         pendingCheerKeys.insert(cheerKey)
         error = nil
         defer { pendingCheerKeys.remove(cheerKey) }
         do {
             let updated = try await SupporterHomeAPI.sendLiveTap(
                 inviteToken: inviteToken,
-                accessToken: accessToken,
-                cheerKey: cheerKey
+                accessToken: ownerClerk == nil ? accessToken : nil,
+                cheerKey: cheerKey,
+                clerk: ownerClerk
             )
             summary = updated
         } catch is CancellationError {
