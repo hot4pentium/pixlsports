@@ -745,9 +745,11 @@ enum SupporterHomeAPI {
     }
 
     static func fetchLiveTapSummary(inviteToken: String) async throws -> (sport: String, summary: LiveTapSummary) {
+        try Task.checkCancellation()
         let data = try await NativeAccountLinkClient().publicRequest(
             "athlete-invites/\(inviteToken)/fan"
         )
+        try Task.checkCancellation()
         do {
             let card = try JSONDecoder().decode(SupporterFanCardResponse.self, from: data)
             return (card.sport, card.liveTaps)

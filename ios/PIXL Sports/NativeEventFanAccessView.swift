@@ -10,6 +10,7 @@ struct NativeEventFanAccessView: View {
     let athleteName: String
     let clerk: Clerk
     let hasActiveLiveTapsElsewhere: Bool
+    var isActive: Bool = true
     @State private var grant: Grant?
     @State private var fanURL: URL?
     @State private var links: [AccessLink] = []
@@ -158,7 +159,8 @@ struct NativeEventFanAccessView: View {
                 SupporterLiveTapsView(
                     inviteToken: inviteToken, sport: sport,
                     athleteName: athleteName, eventTitle: event.title,
-                    embedded: true, ownerClerk: clerk, expectedEventId: event.eventId
+                    embedded: true, ownerClerk: clerk, expectedEventId: event.eventId,
+                    isActive: isActive
                 )
                 .disabled(endingLiveTaps)
                 Text("Fans can keep cheering while stat tracking is paused. Cheers stay separate from official stats.")

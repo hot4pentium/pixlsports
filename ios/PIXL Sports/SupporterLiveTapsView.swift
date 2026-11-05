@@ -17,6 +17,7 @@ struct SupporterLiveTapsView: View {
     let suppliedAccessToken: String?
     let ownerClerk: Clerk?
     let expectedEventId: String?
+    let isActive: Bool
     private let fixture: Fixture?
 
     @ScaledMetric(relativeTo: .largeTitle) private var eventTitleSize = 28
@@ -43,6 +44,37 @@ struct SupporterLiveTapsView: View {
     @ObservedObject private var offline = NativeOfflineRuntime.shared
     @State private var outboxScope: String?
     @State private var showingDiscard = false
+    @State private var refreshGeneration = 0
+    @State private var loadedContext: RefreshContext?
+
+    private struct RefreshContext: Hashable {
+        let inviteToken: String
+        let sport: String
+        let eventId: String?
+        let ownerId: String?
+        let namespace: String?
+        let revocationGeneration: Int
+    }
+
+    private struct RefreshKey: Hashable {
+        let context: RefreshContext
+        let active: Bool
+        let online: Bool
+        let generation: Int
+    }
+
+    private var refreshKey: RefreshKey {
+        RefreshKey(
+            context: RefreshContext(
+                inviteToken: inviteToken, sport: sport, eventId: expectedEventId,
+                ownerId: ownerClerk?.user?.id,
+                namespace: ownerClerk == nil ? nil : offline.vault.namespace,
+                revocationGeneration: ownerClerk == nil ? 0 : offline.revocationGeneration
+            ),
+            active: isActive && scenePhase == .active,
+            online: offline.online, generation: refreshGeneration
+        )
+    }
 
     struct Fixture {
         let summary: LiveTapSummary?
@@ -59,7 +91,8 @@ struct SupporterLiveTapsView: View {
         embedded: Bool = false,
         suppliedAccessToken: String? = nil,
         ownerClerk: Clerk? = nil,
-        expectedEventId: String? = nil
+        expectedEventId: String? = nil,
+        isActive: Bool = true
     ) {
         self.inviteToken = inviteToken
         self.sport = sport
@@ -70,6 +103,7 @@ struct SupporterLiveTapsView: View {
         self.suppliedAccessToken = suppliedAccessToken
         self.ownerClerk = ownerClerk
         self.expectedEventId = expectedEventId
+        self.isActive = isActive
         self._summary = State(initialValue: fixture?.summary)
         self._loading = State(initialValue: fixture.map { _ in false } ?? true)
         self._error = State(initialValue: fixture?.error)
@@ -151,7 +185,7 @@ struct SupporterLiveTapsView: View {
                                 message: error ?? "Try again to check this Event Card’s active session."
                             )
                             Button {
-                                Task { await loadSummary() }
+                                refreshGeneration += 1
                             } label: {
                                 Label("Try again", systemImage: "arrow.clockwise")
                                     .font(.system(size: buttonSize, weight: .bold))
@@ -195,41 +229,17 @@ struct SupporterLiveTapsView: View {
         .eventToolNavigationTitle("Live Taps", embedded: embedded)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .task { await loadSummary() }
+        .task(id: refreshKey) { await refreshWhileActive(refreshKey) }
         .onChange(of: suppliedAccessToken) { _, token in accessToken = token }
         .onChange(of: outbox.revision) { _, _ in
+            guard loadedContext == refreshKey.context else { return }
             guard let outboxScope, let session = outbox.snapshot(outboxScope) else { return }
             if ownerClerk == nil { accessToken = session.accessToken }
             if let saved = session.summary, summary == nil || summary?.gameId == saved.gameId { summary = saved }
         }
-        .onChange(of: offline.vault.namespace) { _, _ in
-            guard ownerClerk != nil else { return }
-            outboxScope = nil
-            summary = nil
-            Task { await loadSummary() }
-        }
-        .onChange(of: offline.revocationGeneration) { _, _ in
-            guard ownerClerk != nil else { return }
-            outboxScope = nil
-            summary = nil
-            error = "Sign in again to open your saved cheers. They have not been removed."
-        }
-        .onChange(of: ownerClerk?.user?.id) { _, _ in
-            outboxScope = nil
-            summary = nil
-            Task { await loadSummary() }
-        }
         .onChange(of: offline.online) { _, online in
             if online {
-                Task {
-                    await outbox.flushAll()
-                    await loadSummary()
-                }
-            }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active, case nil = fixture {
-                Task { await loadSummary() }
+                Task { await outbox.flushAll() }
             }
         }
         .confirmationDialog("Remove unsent cheers?", isPresented: $showingDiscard, titleVisibility: .visible) {
@@ -386,7 +396,7 @@ struct SupporterLiveTapsView: View {
                 ProgressView("Loading Live Taps…")
             } else if let summary, summary.active {
                 cheersCard(summary)
-                Button("Refresh cheers") { Task { await loadSummary() } }
+                Button("Refresh cheers") { refreshGeneration += 1 }
                     .frame(minHeight: 44)
             } else {
                 messageCard(
@@ -394,7 +404,7 @@ struct SupporterLiveTapsView: View {
                     title: "Live Taps aren’t available",
                     message: error ?? "There is no active cheer session for this Event Card."
                 )
-                Button("Check again") { Task { await loadSummary() } }
+                Button("Check again") { refreshGeneration += 1 }
                     .frame(minHeight: 44)
             }
             if let error, summary != nil {
@@ -541,11 +551,36 @@ struct SupporterLiveTapsView: View {
         .supporterSurfaceShadow()
     }
 
-    private func loadSummary() async {
-        guard case nil = fixture else { return }
+    // One SwiftUI-owned task serializes initial, manual and periodic requests.
+    // Changing identity, visibility, connectivity or scene phase cancels it,
+    // including its URLSession request and sleep. No remote update calls send().
+    private func refreshWhileActive(_ key: RefreshKey) async {
+        guard case nil = fixture, !Task.isCancelled else { return }
+        if loadedContext != key.context {
+            loadedContext = key.context
+            outboxScope = nil
+            summary = nil
+            accessToken = suppliedAccessToken
+            error = nil
+        }
+        guard key.active else { return }
+        repeat {
+            await loadSummary(key)
+            guard !Task.isCancelled, key == refreshKey, key.online else { return }
+            do {
+                // Back off on failures; never overlap requests or catch up missed ticks.
+                try await Task.sleep(for: .seconds(error == nil ? 5 : 15))
+            } catch { return }
+        } while !Task.isCancelled
+    }
+
+    private func loadSummary(_ key: RefreshKey) async {
+        guard !Task.isCancelled, key == refreshKey else { return }
         if summary == nil { loading = true }
-        error = nil
-        defer { loading = false }
+        // Keep both the current summary and any warning until the next result.
+        defer {
+            if !Task.isCancelled, key == refreshKey { loading = false }
+        }
         do {
             let scope = try outbox.prepare(
                 inviteToken: inviteToken, sport: sport, ownerClerk: ownerClerk, accessToken: accessToken,
@@ -562,7 +597,7 @@ struct SupporterLiveTapsView: View {
                 return
             }
             let result = try await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: inviteToken)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, key == refreshKey, outboxScope == scope else { return }
             guard result.sport == sport else {
                 summary = nil
                 error = "This Event Card’s sport doesn’t match its Live Taps session."
@@ -573,7 +608,7 @@ struct SupporterLiveTapsView: View {
             error = nil
         } catch is CancellationError {
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, key == refreshKey else { return }
             self.error = summary == nil ? "Couldn’t open Live Taps. Try again. Existing saved cheers have not been removed."
                 : "Couldn’t refresh the totals. You can keep saving cheers on this iPhone."
         }

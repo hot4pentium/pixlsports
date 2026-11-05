@@ -300,7 +300,8 @@ struct NativeEventTrackingPanel: View {
                     event: event,
                     athleteName: athleteName,
                     clerk: clerk,
-                    hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere
+                    hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere,
+                    isActive: isActive && selectedMode == .liveTaps
                 )
             }
         }
