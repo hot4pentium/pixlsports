@@ -254,14 +254,30 @@ final class NativeMomentModel: ObservableObject {
             generator.appliesPreferredTrackTransform = true
             generator.maximumSize = CGSize(width: 180, height: 180)
 
-            return (0..<count).map { index -> UIImage? in
-                guard !Task.isCancelled else { return nil }
-                let seconds = duration * (Double(index) + 0.5) / Double(count)
-                let time = CMTime(seconds: seconds, preferredTimescale: 600)
-                guard let image = try? generator.copyCGImage(at: time, actualTime: nil) else {
-                    return nil
+            return await withTaskCancellationHandler {
+                var images: [UIImage?] = []
+                for index in 0..<count {
+                    guard !Task.isCancelled else {
+                        images.append(contentsOf: repeatElement(nil, count: count - images.count))
+                        break
+                    }
+                    let seconds = duration * (Double(index) + 0.5) / Double(count)
+                    let time = CMTime(seconds: seconds, preferredTimescale: 600)
+                    let image: UIImage? = await withCheckedContinuation {
+                        (continuation: CheckedContinuation<UIImage?, Never>) in
+                        generator.generateCGImagesAsynchronously(forTimes: [NSValue(time: time)]) {
+                            _, cgImage, _, result, _ in
+                            let image = result == .succeeded
+                                ? cgImage.map { UIImage(cgImage: $0) }
+                                : nil
+                            continuation.resume(returning: image)
+                        }
+                    }
+                    images.append(image)
                 }
-                return UIImage(cgImage: image)
+                return images
+            } onCancel: {
+                generator.cancelAllCGImageGeneration()
             }
         }
         thumbnailTask = task

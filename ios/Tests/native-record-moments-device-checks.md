@@ -6,8 +6,9 @@ This feature was implemented in a Linux workspace without Apple SDKs, an iOS
 simulator, or a physical iPhone. Swift syntax parsing and Node source/asset checks
 are not iOS type checking or Apple codec execution. **No successful native app
 build, exported-MP4 execution, camera capture, Photos write, or native share
-completion is claimed from this environment.** Do not treat these checks as passed
-until Apple evidence has been collected.
+completion is claimed from this environment. The long-source thumbnail,
+replacement, and dismissal checks below also require a physical iPhone; they
+remain unverified until the device, iOS version, and results are recorded.**
 
 ## Automated Apple media checks
 
@@ -79,6 +80,31 @@ Use non-personal test footage.
    `tmp/PIXL-Moment-*` workspace: source copies, intros, and outputs should be
    removed. Saved Photos and shared copies must remain. The app must make no
    clip-upload request and create no persistent moment library.
+10. **Thumbnail generation under load:** On a supported iPhone, use a local,
+    non-personal video close to the 120 MB source limit. While the private
+    thumbnail timeline is preparing, scroll the editor and repeatedly adjust
+    both trim handles/sliders. Confirm controls continue responding, the
+    selected times update, and the app remains usable until thumbnails finish.
+    Record the source file size and whether any stall, memory warning, or crash
+    occurred.
+11. **Replace during thumbnail generation:** Start with a long source that takes
+    several seconds to prepare, then choose a visibly different clip before the
+    first timeline finishes. Once the new source is accepted, confirm the old
+    frames do not reappear and all visible thumbnails belong to the new clip.
+    Repeat with a quick second replacement if possible; the final timeline must
+    match only the last accepted source.
+12. **Close during thumbnail generation:** Open a long source and tap Done while
+    its timeline is still preparing. Confirm the editor closes and thumbnail
+    decoding stops; reopening Record Moments must not show frames from the
+    dismissed session. Confirm no Photos save or share sheet was started by the
+    thumbnail task. In a separate pass, export a clip and verify the existing
+    Photos save and native share flows still work.
+
+Record results for checks 10–12 here before release:
+
+| iPhone / iOS | Source size | Check 10 | Check 11 | Check 12 | Notes |
+| --- | ---: | --- | --- | --- | --- |
+| Not run in this workspace | — | Pending | Pending | Pending | Requires physical iPhone |
 
 The temporary system camera/picker files are device-managed. PIXL owns and
 removes only its copied workspace and the camera's returned disposable capture;

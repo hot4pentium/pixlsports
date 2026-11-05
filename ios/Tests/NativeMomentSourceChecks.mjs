@@ -52,10 +52,15 @@ test("Photos and native sharing are explicit and camera has both permissions", (
 });
 test("long-video trimming uses local thumbnails and bounded accessible handles", () => {
   assert.match(model, /AVAssetImageGenerator\(asset: AVURLAsset\(url: url\)\)/);
-  assert.match(model, /copyCGImage\(at: time/);
+  assert.match(model, /generateCGImagesAsynchronously\(forTimes:/);
+  assert.match(model, /withTaskCancellationHandler/);
+  assert.match(model, /cancelAllCGImageGeneration\(\)/);
   assert.match(model, /maximumSize = CGSize\(width: 180, height: 180\)/);
   assert.match(model, /thumbnailRequestID/);
   assert.match(model, /thumbnailTask\?\.cancel\(\)/);
+  assert.match(model, /self\.thumbnailRequestID == requestID/);
+  assert.match(model, /func shutdown\(\)/);
+  assert.match(view, /model\.shutdown\(\)/);
   assert.match(model, /func setTrimStart/);
   assert.match(model, /func setTrimEnd/);
   assert.match(model, /NativeMomentPlan\.maximumFootage/);
