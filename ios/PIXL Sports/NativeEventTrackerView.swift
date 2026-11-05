@@ -218,7 +218,9 @@ struct NativeEventTrackerView: View {
     private func scoreboard(_ label: String, score: Int, opponent: Bool, editable: Bool) -> some View {
         VStack(spacing: 8) {
             Text(label).font(.subheadline.bold()).multilineTextAlignment(.center)
-            Text("\(score)").font(.system(.largeTitle, design: .rounded).bold())
+            Text("\(score)")
+                .font(.system(.largeTitle, design: .rounded).bold())
+                .accessibilityIdentifier("native-event-score-\(opponent ? "opponent" : "team")-value")
             if editable {
                 HStack {
                     Button { adjustScore(opponent: opponent, delta: -1) } label: {

@@ -310,6 +310,103 @@ final class SupporterEventDetailUITests: XCTestCase {
                       "The existing session should still allow a new QR after revoking the old one.")
     }
 
+    func testSignedInFansCanCheerWhileEventStatsStayLive() throws {
+        guard let eventID = ProcessInfo.processInfo.environment["PIXL_TRACKING_TEST_EVENT_ID"],
+              !eventID.isEmpty else {
+            throw XCTSkip("Set PIXL_TRACKING_TEST_EVENT_ID to a dedicated Event Card with active stats and no Live Taps session. Sign in and link its owner on this iPhone first.")
+        }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-signed-in-prep"]
+        app.launch()
+        defer { app.terminate() }
+        openSignedInPrep(eventID: eventID, in: app)
+
+        assertReachable("event-card-track-stats", in: app).tap()
+        let statTrackerChoice = app.buttons["native-event-choice-statTracker"]
+        XCTAssertTrue(statTrackerChoice.waitForExistence(timeout: 10))
+        statTrackerChoice.tap()
+
+        let teamScore = app.staticTexts["native-event-score-team-value"]
+        let opponentScore = app.staticTexts["native-event-score-opponent-value"]
+        XCTAssertTrue(teamScore.waitForExistence(timeout: 20), "The active tracker scoreboard must load.")
+        XCTAssertTrue(opponentScore.exists)
+        let teamScoreBeforeCheer = teamScore.label
+        let opponentScoreBeforeCheer = opponentScore.label
+        XCTAssertTrue(
+            app.buttons["native-event-score-team-add"].isEnabled,
+            "Use an Event Card with an active, editable stats game."
+        )
+
+        assertReachable("native-event-switch-tracking-mode", in: app).tap()
+        let liveTapsChoice = app.buttons["native-event-choice-liveTaps"]
+        XCTAssertTrue(liveTapsChoice.waitForExistence(timeout: 5))
+        liveTapsChoice.tap()
+
+        let startLiveTaps = app.buttons["native-live-taps-start"]
+        XCTAssertTrue(startLiveTaps.waitForExistence(timeout: 20),
+                      "The active stats Event Card must offer to start its separate Live Taps session.")
+        XCTAssertTrue(startLiveTaps.isEnabled,
+                      "Starting Live Taps must not require stopping the active stats game.")
+        startLiveTaps.tap()
+
+        let createQR = app.buttons["native-live-taps-create-qr"]
+        XCTAssertTrue(createQR.waitForExistence(timeout: 30),
+                      "Live Taps should start on the same Event Card as the active stats game.")
+        XCTAssertTrue(createQR.isEnabled)
+        createQR.tap()
+
+        let qr = app.images.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "native-live-taps-qr-"
+        )).firstMatch
+        XCTAssertTrue(qr.waitForExistence(timeout: 20), "The family QR should appear after Live Taps starts.")
+        XCTAssertEqual(
+            assertReachable("native-live-taps-qr-status", in: app).label,
+            "QR ready to show or share"
+        )
+        XCTAssertTrue(app.buttons["native-live-taps-share-qr"].exists)
+        XCTAssertTrue(app.buttons["native-live-taps-share-link"].exists)
+
+        let cheer = assertReachable("live-taps-cheer-thumbs-up", in: app)
+        XCTAssertTrue(cheer.isEnabled, "The family cheer control must be authorized by the new QR grant.")
+        let existingCountText = cheer.label.components(separatedBy: ", ").last?
+            .components(separatedBy: " ").first
+        XCTAssertNotNil(existingCountText, "The Live Taps control should announce its current cheer count.")
+        let existingCount = Int(existingCountText ?? "")
+        XCTAssertNotNil(existingCount, "The Live Taps cheer count should be numeric.")
+        let expectedCountLabel = "\((existingCount ?? 0) + 1) cheers"
+        cheer.tap()
+        let cheerAccepted = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", expectedCountLabel),
+            object: cheer
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [cheerAccepted], timeout: 20), .completed,
+                       "The cheer should be accepted by the active Live Taps session.")
+
+        assertReachable("native-live-taps-revoke-qr", in: app).tap()
+        let confirmRevoke = app.buttons["Revoke QR access"]
+        XCTAssertTrue(confirmRevoke.waitForExistence(timeout: 5))
+        confirmRevoke.tap()
+        let qrRemoved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: qr
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [qrRemoved], timeout: 15))
+
+        reachableFromAbove("native-event-switch-tracking-mode", in: app).tap()
+        XCTAssertTrue(statTrackerChoice.waitForExistence(timeout: 5))
+        statTrackerChoice.tap()
+        XCTAssertTrue(teamScore.waitForExistence(timeout: 10))
+        XCTAssertEqual(teamScore.label, teamScoreBeforeCheer,
+                       "A family cheer must not change the team's scoreboard.")
+        XCTAssertEqual(opponentScore.label, opponentScoreBeforeCheer,
+                       "A family cheer must not change the opponent's scoreboard.")
+        XCTAssertTrue(
+            app.buttons["native-event-score-team-add"].isEnabled,
+            "The stats game must remain live after the family cheer."
+        )
+    }
+
     private func checkSignedInPrepPersistence(dropFirstResponse: Bool) throws {
         let environment = ProcessInfo.processInfo.environment
         guard let eventID = environment["PIXL_PREP_TEST_EVENT_ID"], !eventID.isEmpty,

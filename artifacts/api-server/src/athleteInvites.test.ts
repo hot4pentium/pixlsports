@@ -1599,10 +1599,22 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     const tapSummary = SendAthleteLiveTapResponse.parse(await tap.json());
     assert.equal(tapSummary.gameId, nativeGame.id);
     assert.equal(tapSummary.cheers.find((cheer) => cheer.key === "goal")?.count, 1);
+    const [shareAfterCheer] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, session.shareToken));
+    assert.deepEqual((shareAfterCheer!.game as Record<string, unknown>).stats, { goals: 2 },
+      "a family cheer must not change the active game's player stats");
+    assert.equal((shareAfterCheer!.game as Record<string, unknown>).score, 2,
+      "a family cheer must not change the team's scoreboard");
+    assert.equal((shareAfterCheer!.game as Record<string, unknown>).opponentScore, 1,
+      "a family cheer must not change the opponent's scoreboard");
+    assert.deepEqual((shareAfterCheer!.game as Record<string, unknown>).events, [],
+      "a family cheer must not create a stat-tracker event");
+
     const parentMutationId = randomUUID();
     const parentTapBody = JSON.stringify({
       cheerKey: "thumbs-up", gameId: nativeGame.id, clientMutationId: parentMutationId,
     });
+
     const parentTap = await fetch(`${publicUrl}/live-taps`, {
       method: "POST",
       headers: nativeHeaders,

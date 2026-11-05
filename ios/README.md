@@ -83,6 +83,21 @@ The app does not supply either Apple capability with a guessed team/prefix/domai
   remains view-only. The iPhone uses the existing family-token tap endpoint,
   and Live Taps do not create stat-tracker plays or a separate history.
 
+The signed-in iPhone UI test `testSignedInFansCanCheerWhileEventStatsStayLive`
+uses `PIXL_TRACKING_TEST_EVENT_ID` to open a dedicated Event Card with an
+editable live stats game and no existing Live Taps session. It starts Live Taps,
+creates a family QR, sends one cheer through the granted fan controls, and
+checks both scoreboard values remain unchanged. It revokes the QR it creates,
+but leaves Live Taps active; use a disposable development Event Card and end or
+reset that session before running the test again. Run it on a Mac with Xcode
+after signing in and linking the development owner on the simulator:
+
+```sh
+xcodebuild test -project "ios/PIXL Sports.xcodeproj" \
+  -scheme "PIXL Sports" -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/SupporterEventDetailUITests/testSignedInFansCanCheerWhileEventStatsStayLive
+```
+
 ## Securely connect an existing PIXL account
 
 The link button on native home starts a ten-minute, device-bound request. Sign in
