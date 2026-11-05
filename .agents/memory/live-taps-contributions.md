@@ -26,3 +26,9 @@ Completed-cheer records must honor Event Card visibility, including dates inferr
 **Why:** Cheer totals are public engagement data, but a completion's date and opponent can disclose a youth event the owner chose to hide.
 
 **How to apply:** Recipients retain totals and stable receipt matching without hidden event labels, event identifiers or completion dates. Owners retain full records through authenticated responses.
+
+Do not assume a tracker game ID is independent of its Event Card ID.
+
+**Why:** Native tracking legitimately reuses an Event Card ID as the saved game ID. Hiding only the event-ID field can still disclose the same identifier through completion history or receipt recovery.
+
+**How to apply:** Use invite-scoped opaque references to match recipient completions and receipts, including inactive summary fields. Preserve original IDs only for owners and existing active-session contracts. Keep legacy queues deliverable without inventing personal attribution.

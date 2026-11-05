@@ -9,5 +9,7 @@
 export interface LiveTapReceipt {
   id: string;
   gameId: string;
+  /** Opaque session matching key; independent of Event Card IDs. */
+  gameRef?: string;
   cheerKey: string;
 }

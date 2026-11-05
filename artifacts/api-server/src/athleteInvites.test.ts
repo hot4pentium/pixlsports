@@ -1489,7 +1489,7 @@ test("native Live Taps joins same-card stat tracking without creating a separate
   app.use("/api/native", nativeAccountLinkRouter);
   const server = app.listen(0);
   const nativeGame = {
-    id: `tracker-game-${randomUUID()}`,
+    id: eventId,
     sourceEventId: eventId,
     sport: "soccer",
     status: "live",
@@ -2068,7 +2068,11 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     });
     assert.equal(recoveredReceipt.status, 201, "a lost accepted reply can be recovered after End");
     const recovered = SendAthleteLiveTapResponse.parse(await recoveredReceipt.json());
-    assert.deepEqual(recovered.receipt, { id: cheerOnlyMutationId, gameId: cheerOnlySession.gameId, cheerKey: "assist" });
+    assert.deepEqual(recovered.receipt, {
+      id: cheerOnlyMutationId, gameId: completionResult.completion.gameRef,
+      gameRef: completionResult.completion.gameRef, cheerKey: "assist",
+    });
+    assert.equal(recovered.gameId, completionResult.completion.gameRef);
     assert.equal(recovered.active, false);
     assert.ok(recovered.completedSessions?.every(row => row.eventId === null && row.eventTitle === "Completed game" && row.endedAt === null),
       "anonymous receipt recovery cannot disclose hidden event details");
@@ -2081,11 +2085,14 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
     const afterShareRemoval = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
     assert.deepEqual(JSON.parse(JSON.stringify(afterShareRemoval.liveTaps.completedSessions?.find(row => row.id === completionResult.completion.id))),
-      { ...completionResult.completion, eventId: null, eventTitle: "Completed game", endedAt: null },
+      { ...completionResult.completion, gameId: completionResult.completion.gameRef,
+        eventId: null, eventTitle: "Completed game", endedAt: null },
       "the aggregate survives tracker removal without exposing hidden events");
     for (const endpoint of [publicUrl, `${publicUrl}/fan`]) {
       const recipient = await (await fetch(endpoint)).json();
       assert.ok(recipient.liveTaps.completedSessions.length >= 1);
+      assert.equal(JSON.stringify(recipient.liveTaps).includes(eventId), false,
+        "an existing stats game may use its Event Card ID; neither identifier is public");
       for (const completion of recipient.liveTaps.completedSessions) {
         assert.equal(completion.eventId, null);
         assert.equal(completion.eventTitle, "Completed game");

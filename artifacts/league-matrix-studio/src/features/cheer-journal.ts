@@ -11,13 +11,14 @@ export type JournalStatus = 'pending' | 'confirmed' | 'unverified' | 'rejected';
 export type JournalEntry = {
   id: string;
   gameId: string;
+  gameRef?: string | null;
   cheerKey: string;
   eventId: string | null;
   status: JournalStatus;
   createdAt: number;
 };
 /** Owner-only: an End the owner sent for an exact game/event, recorded before the request. */
-export type EndIntent = { gameId: string; eventId: string | null; createdAt: number };
+export type EndIntent = { gameId: string; gameRef?: string | null; eventId: string | null; createdAt: number };
 export type CheerJournal = { version: 1; entries: JournalEntry[]; celebrated: string[]; endIntents: EndIntent[] };
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 export type CheerScope = string;
@@ -59,7 +60,7 @@ export function readJournal(storage: StorageLike | null, scope: CheerScope | nul
     const celebrated = Array.isArray(parsed.celebrated) ? parsed.celebrated.filter((id) => typeof id === 'string') : [];
     const endIntents = Array.isArray(parsed.endIntents)
       ? parsed.endIntents.filter((item): item is EndIntent => Boolean(item) && typeof item.gameId === 'string' && item.gameId.length > 0)
-        .map((item) => ({ gameId: item.gameId, eventId: typeof item.eventId === 'string' ? item.eventId : null, createdAt: Number(item.createdAt) || 0 }))
+        .map((item) => ({ gameId: item.gameId, gameRef: typeof item.gameRef === 'string' ? item.gameRef : null, eventId: typeof item.eventId === 'string' ? item.eventId : null, createdAt: Number(item.createdAt) || 0 }))
       : [];
     return { version: 1, entries, celebrated, endIntents };
   } catch {
@@ -105,7 +106,14 @@ export function applySendResult(journal: CheerJournal, id: string, result: Pick<
   const entry = journal.entries.find((item) => item.id === id);
   if (!entry) return journal;
   const receipt = result.receipt;
-  if (receipt && receipt.id === id && receipt.gameId === entry.gameId && receipt.cheerKey === entry.cheerKey) return setStatus(journal, id, 'confirmed');
+  if (receipt && receipt.id === id && receipt.cheerKey === entry.cheerKey) {
+    const matches = receipt.gameId === entry.gameId
+      || Boolean(entry.gameRef && (receipt.gameId === entry.gameRef || receipt.gameRef === entry.gameRef));
+    if (matches || (!entry.gameRef && receipt.gameRef?.startsWith('lt_') && receipt.gameRef === receipt.gameId)) {
+      const mapped = { ...journal, entries: journal.entries.map(item => item.id === id ? { ...item, gameRef: receipt.gameRef ?? item.gameRef } : item) };
+      return setStatus(mapped, id, matches ? 'confirmed' : 'unverified');
+    }
+  }
   return setStatus(journal, id, 'unverified');
 }
 
@@ -126,7 +134,7 @@ export type PersonalTally = {
 };
 
 export function personalTally(journal: CheerJournal, gameId: string | null | undefined): PersonalTally {
-  const entries = gameId ? journal.entries.filter((entry) => entry.gameId === gameId) : [];
+  const entries = gameId ? journal.entries.filter((entry) => entry.gameId === gameId || entry.gameRef === gameId) : [];
   const confirmed = entries.filter((entry) => entry.status === 'confirmed').length;
   const pending = entries.filter((entry) => entry.status === 'pending').length;
   const unverified = entries.filter((entry) => entry.status === 'unverified').length;
@@ -144,7 +152,7 @@ export function pendingIntents(journal: CheerJournal): JournalEntry[] {
   return journal.entries.filter((entry) => entry.status === 'pending');
 }
 
-export function recordEndIntent(journal: CheerJournal, intent: { gameId: string; eventId: string | null }, now = Date.now()): CheerJournal {
+export function recordEndIntent(journal: CheerJournal, intent: { gameId: string; gameRef?: string | null; eventId: string | null }, now = Date.now()): CheerJournal {
   if (journal.endIntents.some((item) => item.gameId === intent.gameId && item.eventId === intent.eventId)) return journal;
   return { ...journal, endIntents: [...journal.endIntents, { ...intent, createdAt: now }] };
 }
@@ -157,7 +165,7 @@ export function recordEndIntent(journal: CheerJournal, intent: { gameId: string;
 export function endIntentCompletion(journal: CheerJournal, completions: readonly LiveTapCompletion[] | undefined): LiveTapCompletion | null {
   return (completions ?? [])
     .filter((completion) => !journal.celebrated.includes(completion.id))
-    .filter((completion) => journal.endIntents.some((intent) => intent.gameId === completion.gameId
+    .filter((completion) => journal.endIntents.some((intent) => (intent.gameId === completion.gameId || Boolean(intent.gameRef && intent.gameRef === completion.gameRef))
       && (!intent.eventId || !completion.eventId || intent.eventId === completion.eventId)))
     .sort((a, b) => a.endedAt && b.endedAt ? b.endedAt.localeCompare(a.endedAt) : 0)[0] ?? null;
 }
@@ -277,7 +285,7 @@ async function update(store: JournalStore, change: (journal: CheerJournal) => Ch
 }
 
 /** Persist the End intent under the journal lock BEFORE sending End. */
-export async function recordEndIntentLocked(store: JournalStore, intent: { gameId: string; eventId: string | null }): Promise<boolean> {
+export async function recordEndIntentLocked(store: JournalStore, intent: Parameters<typeof recordEndIntent>[1]): Promise<boolean> {
   const next = await update(store, (journal) => recordEndIntent(journal, intent));
   return next.endIntents.some((item) => item.gameId === intent.gameId)
     && readJournal(store.storage, store.scope).endIntents.some((item) => item.gameId === intent.gameId);
@@ -317,13 +325,14 @@ export async function sendJournaledCheer(options: JournalStore & {
   inviteToken: string;
   cheerKey: string;
   gameId: string;
+  gameRef?: string | null;
   eventId?: string | null;
   accessToken?: string | null;
   send: SendFn;
   id?: string;
 }): Promise<{ result: AthleteInviteLiveTaps; id: string }> {
   const id = options.id ?? newMutationId();
-  await update(options, (journal) => recordIntent(journal, { id, gameId: options.gameId, cheerKey: options.cheerKey, eventId: options.eventId ?? null }));
+  await update(options, (journal) => recordIntent(journal, { id, gameId: options.gameId, gameRef: options.gameRef, cheerKey: options.cheerKey, eventId: options.eventId ?? null }));
   try {
     const result = await options.send({ inviteToken: options.inviteToken, data: buildSendData(options, id) });
     await update(options, (journal) => applySendResult(journal, id, result));

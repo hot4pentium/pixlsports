@@ -4935,6 +4935,7 @@ components:
       properties:
         active: { type: boolean }
         gameId: { type: ["string", "null"] }
+        gameRef: { type: ["string", "null"], description: "Opaque invite-scoped session matching key." }
         receipt:
           $ref: "#/components/schemas/LiveTapReceipt"
         completedSessions:
@@ -4979,6 +4980,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         gameId: { type: string }
+        gameRef: { type: string, description: "Opaque session matching key; independent of Event Card IDs." }
         cheerKey: { type: string }
     LiveTapCompletion:
       type: object
@@ -4986,6 +4988,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         gameId: { type: string }
+        gameRef: { type: string, description: "Opaque session matching key; independent of Event Card IDs." }
         eventId: { type: ["string", "null"] }
         athleteName: { type: string }
         eventTitle: { type: string }

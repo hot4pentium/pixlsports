@@ -14,6 +14,11 @@ export interface AthleteInviteLiveTaps {
   active: boolean;
   /** @nullable */
   gameId: string | null;
+  /**
+     * Opaque invite-scoped session matching key.
+     * @nullable
+     */
+  gameRef?: string | null;
   receipt?: LiveTapReceipt;
   completedSessions?: LiveTapCompletion[];
   cheers: AthleteInviteLiveTapCheer[];

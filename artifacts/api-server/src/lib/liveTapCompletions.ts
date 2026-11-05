@@ -1,6 +1,7 @@
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { athleteInvitesTable, athleteInviteLiveTapsTable, athleteLiveTapCompletionsTable, db, pool, statTrackerSharesTable } from "@workspace/db";
 import { getLiveTapCheerPresets } from "./athleteLiveTaps";
+import { liveTapGameRef } from "./liveTapGameRef";
 type PoolClient = Pick<typeof pool, "query">;
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -8,7 +9,7 @@ type Completion = typeof athleteLiveTapCompletionsTable.$inferSelect;
 
 export function publicCompletion(row: Completion) {
   return {
-    id: row.id, gameId: row.gameId, eventId: row.eventId,
+    id: row.id, gameId: row.gameId, gameRef: liveTapGameRef(row.inviteId, row.gameId), eventId: row.eventId,
     athleteName: row.athleteName, eventTitle: row.eventTitle, sport: row.sport,
     seasonId: row.seasonKey === "legacy" ? null : row.seasonKey,
     endedAt: row.endedAt.toISOString(), cheers: row.cheers,

@@ -1,11 +1,15 @@
+import { liveTapGameRef } from "./liveTapGameRef";
 /** Recipient aggregates must not bypass the owner's Event Card visibility. */
 export function visibleLiveTapSummary(
-  summary: Awaited<ReturnType<typeof getAthleteLiveTapsSummary>>, showEvents: boolean,
+  summary: Awaited<ReturnType<typeof getAthleteLiveTapsSummary>>, showEvents: boolean, inviteId: string,
 ) {
   return {
     ...summary,
+    gameId: !showEvents && !summary.active && summary.gameId ? liveTapGameRef(inviteId, summary.gameId) : summary.gameId,
+    gameRef: summary.gameId ? liveTapGameRef(inviteId, summary.gameId) : null,
     completedSessions: summary.completedSessions.map(completion => ({
       ...completion,
+      gameId: showEvents ? completion.gameId : completion.gameRef,
       eventId: showEvents ? completion.eventId : null,
       eventTitle: showEvents ? completion.eventTitle : "Completed game",
       endedAt: showEvents ? completion.endedAt : null,
@@ -149,6 +153,7 @@ export async function getAthleteLiveTapsSummary(
   return {
     active: Boolean(gameId),
     gameId,
+    gameRef: gameId ? liveTapGameRef(inviteId, gameId) : null,
     cheers: presets.map((cheer) => ({
       ...cheer,
       count: gameTotals.get(cheer.key) ?? 0,

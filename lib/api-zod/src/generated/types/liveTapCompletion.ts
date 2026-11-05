@@ -10,6 +10,8 @@ import type { AthleteInviteLiveTapCheer } from './athleteInviteLiveTapCheer';
 export interface LiveTapCompletion {
   id: string;
   gameId: string;
+  /** Opaque session matching key; independent of Event Card IDs. */
+  gameRef?: string;
   /** @nullable */
   eventId: string | null;
   athleteName: string;

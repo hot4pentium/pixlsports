@@ -1727,6 +1727,8 @@ export const OwnedAthleteInviteSport = {
 export interface LiveTapReceipt {
   id: string;
   gameId: string;
+  /** Opaque session matching key; independent of Event Card IDs. */
+  gameRef?: string;
   cheerKey: string;
 }
 
@@ -1741,6 +1743,8 @@ export interface AthleteInviteLiveTapCheer {
 export interface LiveTapCompletion {
   id: string;
   gameId: string;
+  /** Opaque session matching key; independent of Event Card IDs. */
+  gameRef?: string;
   /** @nullable */
   eventId: string | null;
   athleteName: string;
@@ -1765,6 +1769,11 @@ export interface AthleteInviteLiveTaps {
   active: boolean;
   /** @nullable */
   gameId: string | null;
+  /**
+     * Opaque invite-scoped session matching key.
+     * @nullable
+     */
+  gameRef?: string | null;
   receipt?: LiveTapReceipt;
   completedSessions?: LiveTapCompletion[];
   cheers: AthleteInviteLiveTapCheer[];

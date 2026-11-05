@@ -20,6 +20,7 @@ import {
 } from "@workspace/db";
 import { isAccountActive } from "../lib/accountLifecycle";
 import { getAthleteLiveTapsSummary, isLiveTapCheerForSport, visibleLiveTapSummary } from "../lib/athleteLiveTaps";
+import { visibleLiveTapReceipt } from "../lib/liveTapGameRef";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth, requireAuthOrNativeOwner } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -292,11 +293,13 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
   // A receipt acknowledges delivery, not that an old session is still open.
   const [privacy] = await db.select({ showEvents: athleteInvitesTable.showEvents })
     .from(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id));
+  const ownerOrEventsVisible = callerId === invite.ownerClerkUserId || privacy?.showEvents === true;
   res.status(201).json(SendAthleteLiveTapResponse.parse({
-    ...visibleLiveTapSummary(summary, callerId === invite.ownerClerkUserId || privacy?.showEvents === true),
+    ...visibleLiveTapSummary({ ...summary, active: result.active }, ownerOrEventsVisible, invite.id),
     active: result.active,
     ...(body.data.clientMutationId ? {
-      receipt: { id: body.data.clientMutationId, gameId: result.gameId, cheerKey: body.data.cheerKey },
+      receipt: visibleLiveTapReceipt({ id: body.data.clientMutationId, gameId: result.gameId,
+        cheerKey: body.data.cheerKey }, ownerOrEventsVisible, invite.id),
     } : {}),
   }));
 });

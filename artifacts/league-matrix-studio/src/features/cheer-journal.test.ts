@@ -257,6 +257,31 @@ test('owner without End intent never celebrates historical completions; account 
   assert.equal(celebrationCandidate(readJournal(storage, ownerA), [completion('old', 'g0')], true), null, 'other games stay historical');
 });
 
+test('opaque receipt references retain exact personal counts without revealing an event ID', () => {
+  let journal = recordIntent(emptyJournal(), {
+    id: ids[0], gameId: 'private-event', gameRef: 'lt_opaque', cheerKey: 'goal', eventId: null,
+  });
+  journal = applySendResult(journal, ids[0], {
+    receipt: { id: ids[0], gameId: 'lt_opaque', gameRef: 'lt_opaque', cheerKey: 'goal' },
+  });
+  const hidden = { ...completion('hidden', 'lt_opaque'), gameRef: 'lt_opaque', eventId: null, endedAt: null };
+  assert.equal(personalTally(journal, hidden.gameId).confirmed, 1);
+  assert.equal(completionToCelebrate(journal, [hidden])?.id, 'hidden');
+  assert.equal(completionToCelebrate(markCelebrated(journal, hidden.id), [hidden]), null);
+  assert.equal(personalTally(journal, 'lt_other').confirmed, 0);
+});
+
+test('older queues learn opaque references without inventing a personal count', () => {
+  let journal = recordIntent(emptyJournal(), { id: ids[0], gameId: 'old-game', cheerKey: 'goal', eventId: null });
+  journal = applySendResult(journal, ids[0], {
+    receipt: { id: ids[0], gameId: 'lt_opaque', gameRef: 'lt_opaque', cheerKey: 'goal' },
+  });
+  assert.equal(personalTally(journal, 'lt_opaque').confirmed, 0);
+  assert.equal(personalTally(journal, 'lt_opaque').reliable, false);
+  assert.equal(personalTally(journal, 'lt_opaque').eligible, true);
+  assert.equal(personalTally(journal, 'lt_opaque').pending, 0);
+});
+
 test('End intent requires the same event when both are known', async () => {
   const storage = memory();
   const scope = cheerScope('inv', 'owner_1');

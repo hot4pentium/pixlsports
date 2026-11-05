@@ -2838,14 +2838,17 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -3044,14 +3047,17 @@ export const CreateAthleteInviteResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -3387,14 +3393,17 @@ export const GetAthleteInviteResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -3534,14 +3543,17 @@ export const UpdateAthleteInviteResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -4191,14 +4203,17 @@ export const GetAthleteFanCardResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -4466,14 +4481,17 @@ export const GetNativeSupporterHypeCardResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -4791,14 +4809,17 @@ export const sendAthleteLiveTapResponseArchivedSeasonsItemCheersItemCountMin = 0
 export const SendAthleteLiveTapResponse = zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -5031,6 +5052,7 @@ export const StopAthleteInviteLiveResponse = zod.object({
   "completion": zod.union([zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),
@@ -5204,14 +5226,17 @@ export const UpdateAthleteInviteAppearanceResponse = zod.object({
   "liveTaps": zod.object({
   "active": zod.boolean(),
   "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
   "receipt": zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "cheerKey": zod.string()
 }).optional(),
   "completedSessions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
   "eventId": zod.string().nullable(),
   "athleteName": zod.string(),
   "eventTitle": zod.string(),

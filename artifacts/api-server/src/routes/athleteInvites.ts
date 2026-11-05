@@ -538,7 +538,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
     invite.sport,
     liveGame && liveGame.liveTapsEnded !== true && liveShare?.gameId ? liveShare.gameId : null,
     invite.liveTapsSeasonId,
-  ), invite.showEvents);
+  ), invite.showEvents, invite.id);
 
   return {
     inviteToken: invite.publicToken,

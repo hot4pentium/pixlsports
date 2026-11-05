@@ -562,6 +562,7 @@ export function LivingAthleteCardPage({
         inviteToken,
         cheerKey,
         gameId: invite.liveTaps.gameId,
+        gameRef: invite.liveTaps.gameRef,
         accessToken: ownerInvite ? null : liveTapAccessToken,
         send: (variables) => sendLiveTap.mutateAsync(variables),
       });

@@ -481,6 +481,7 @@ export function EventCardLiveTaps({
         inviteToken: liveTapInvite.inviteToken,
         cheerKey,
         gameId: session.game.id,
+        gameRef: liveTapSummaryQuery.data?.liveTaps.gameRef ?? liveTapInvite.liveTaps?.gameRef,
         eventId,
         send: (variables) => sendLiveTap.mutateAsync(variables),
       });
@@ -545,7 +546,9 @@ export function EventCardLiveTaps({
       // Persist the exact-game End intent before sending, so a lost reply is recoverable
       // on return without ever ending a newer game.
       const intentScope = cheerScope(session.inviteToken, userId);
-      if (intentScope) await recordEndIntentLocked({ storage: browserStorage(), scope: intentScope }, { gameId: session.game.id, eventId });
+      if (intentScope) await recordEndIntentLocked({ storage: browserStorage(), scope: intentScope }, {
+        gameId: session.game.id, gameRef: liveTapSummaryQuery.data?.liveTaps.gameRef ?? liveTapInvite?.liveTaps?.gameRef, eventId,
+      });
       const ended = await stopAthleteLive.mutateAsync({
         inviteToken: session.inviteToken,
         data: { gameId: session.game.id, eventId },

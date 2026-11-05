@@ -144,7 +144,7 @@ final class NativeLiveTapOutbox: ObservableObject {
         }
         session.pending.append(SavedLiveTap(
             id: UUID().uuidString.lowercased(), gameId: gameId, cheerKey: cheerKey,
-            accessToken: session.ownerSubject == nil ? accessToken : nil, savedAt: Date()
+            accessToken: session.ownerSubject == nil ? accessToken : nil, savedAt: Date(), gameRef: summary.gameRef
         ))
         try commit(session)
         Task { await flush(scope) }
@@ -218,7 +218,8 @@ final class NativeLiveTapOutbox: ObservableObject {
                     messages[scope] = "Couldn’t confirm this cheer’s receipt. It is still saved here."
                     return
                 }
-                if next.summary?.gameId == updated.gameId { next.summary = updated }
+                if next.summary?.gameId == updated.gameId
+                    || (updated.gameRef != nil && next.summary?.gameRef == updated.gameRef) { next.summary = updated }
                 do { try commit(next) } catch {
                     messages[scope] = "Your cheer reached PIXL, but this iPhone couldn’t update its saved copy. It will safely check again."
                     return

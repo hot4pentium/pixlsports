@@ -58,6 +58,32 @@ struct NativeLiveTapContributionChecks {
             athleteName: completion.athleteName, eventTitle: "Completed game", sport: "soccer",
             seasonId: completion.seasonId, endedAt: nil, cheers: completion.cheers)
         precondition(privateEvent.claim(redacted, ownerEnded: false), "known game receipts work without disclosing hidden event fields")
+        let opaqueItem = SavedLiveTap(id: "opaque-tap", gameId: "private-event", cheerKey: "goal",
+            accessToken: nil, savedAt: Date(), gameRef: "lt_opaque")
+        var opaqueSession = SavedLiveTapSession(scope: "family|opaque", inviteToken: "invite",
+            ownerSubject: nil, ownerNamespace: nil, eventId: nil, sport: "soccer")
+        opaqueSession.pending = [opaqueItem]
+        let opaqueReceipt = NativeLiveTapReceipt(id: opaqueItem.id, gameId: "lt_opaque",
+            cheerKey: "goal", gameRef: "lt_opaque")
+        precondition(opaqueSession.acknowledge(opaqueItem, receipt: opaqueReceipt))
+        precondition(opaqueSession.personalTotal(gameId: "lt_opaque") == 1)
+        opaqueSession.summary = LiveTapSummary(active: true, gameId: "private-event", cheers: [],
+            seasonCheers: [], gameRef: "lt_opaque")
+        precondition(opaqueSession.personalTotal(gameId: "private-event") == 1, "active and completed identities match")
+        let opaqueCompletion = NativeLiveTapCompletion(id: "opaque-completion", gameId: "lt_opaque",
+            eventId: nil, athleteName: "Athlete", eventTitle: "Completed game", sport: "soccer",
+            seasonId: nil, endedAt: nil, cheers: completion.cheers, gameRef: "lt_opaque")
+        precondition(opaqueSession.claim(opaqueCompletion, ownerEnded: false))
+        precondition(!opaqueSession.claim(opaqueCompletion, ownerEnded: false))
+        var olderSession = SavedLiveTapSession(scope: "family|older", inviteToken: "invite",
+            ownerSubject: nil, ownerNamespace: nil, eventId: nil, sport: "soccer")
+        let olderItem = SavedLiveTap(id: opaqueItem.id, gameId: opaqueItem.gameId, cheerKey: "goal",
+            accessToken: nil, savedAt: Date())
+        olderSession.pending = [olderItem]
+        precondition(olderSession.acknowledge(olderItem, receipt: opaqueReceipt))
+        precondition(olderSession.pending.isEmpty)
+        precondition(olderSession.personalTotal(gameId: "lt_opaque") == nil, "legacy attribution stays unknown")
+        precondition(olderSession.claim(opaqueCompletion, ownerEnded: false))
         print("Live Taps receipt, atomic-snapshot roundtrip, eligibility and replay checks passed.")
     }
 }

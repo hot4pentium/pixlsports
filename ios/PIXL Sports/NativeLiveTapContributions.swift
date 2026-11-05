@@ -12,6 +12,7 @@ struct NativeLiveTapReceipt: Codable {
     let id: String
     let gameId: String
     let cheerKey: String
+    var gameRef: String? = nil
 }
 
 struct NativeLiveTapCompletion: Codable, Identifiable {
@@ -24,6 +25,7 @@ struct NativeLiveTapCompletion: Codable, Identifiable {
     let seasonId: String?
     let endedAt: String?
     let cheers: [LiveTapCheer]
+    var gameRef: String? = nil
     var total: Int { cheers.reduce(0) { $0 + $1.count } }
 }
 
@@ -38,6 +40,7 @@ struct LiveTapSummary: Codable {
     var seasonCheers: [LiveTapCheer]? = nil
     var completedSessions: [NativeLiveTapCompletion]? = nil
     var receipt: NativeLiveTapReceipt? = nil
+    var gameRef: String? = nil
 }
 
 struct SavedLiveTap: Codable, Identifiable {
@@ -47,6 +50,7 @@ struct SavedLiveTap: Codable, Identifiable {
     let accessToken: String?
     let savedAt: Date
     var needsAttention = false
+    var gameRef: String? = nil
 }
 
 struct SavedLiveTapSession: Codable {
@@ -71,13 +75,29 @@ struct SavedLiveTapSession: Codable {
 
     func personalTotal(gameId: String) -> Int? {
         guard attributionReliable == true else { return nil }
-        return confirmedReceipts?.values.filter { $0.gameId == gameId }.count ?? 0
+        let activeReference = summary?.gameId == gameId ? summary?.gameRef : nil
+        return confirmedReceipts?.values.filter {
+            $0.gameId == gameId || $0.gameRef == gameId
+                || (activeReference != nil && $0.gameRef == activeReference)
+        }.count ?? 0
     }
 
     mutating func acknowledge(_ item: SavedLiveTap, receipt: NativeLiveTapReceipt?) -> Bool {
         if let receipt {
-            guard receipt.id == item.id, receipt.gameId == item.gameId,
-                  receipt.cheerKey == item.cheerKey else { return false }
+            guard receipt.id == item.id, receipt.cheerKey == item.cheerKey else { return false }
+            let matches = receipt.gameId == item.gameId
+                || (item.gameRef != nil && (receipt.gameId == item.gameRef || receipt.gameRef == item.gameRef))
+            if !matches {
+                guard item.gameRef == nil, let reference = receipt.gameRef,
+                      reference.hasPrefix("lt_"), reference == receipt.gameId else { return false }
+                // Older queues lack the opaque mapping: delivery is known, personal attribution is not.
+                attributionReliable = false
+                var accepted = acceptedLegacyGameIDs ?? []
+                accepted.insert(reference)
+                acceptedLegacyGameIDs = accepted
+                pending.removeAll { $0.id == item.id }
+                return true
+            }
             var receipts = confirmedReceipts ?? [:]
             receipts[receipt.id] = receipt
             confirmedReceipts = receipts
