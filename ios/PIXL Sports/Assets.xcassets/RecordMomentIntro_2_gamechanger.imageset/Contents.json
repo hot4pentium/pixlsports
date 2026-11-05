@@ -2,7 +2,8 @@
   "images" : [
     {
       "filename" : "2_gamechanger.jpg",
-      "idiom" : "universal"
+      "idiom" : "universal",
+      "scale" : "1x"
     }
   ],
   "info" : {

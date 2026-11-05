@@ -2,7 +2,8 @@
   "images" : [
     {
       "filename" : "3_highlight.jpg",
-      "idiom" : "universal"
+      "idiom" : "universal",
+      "scale" : "1x"
     }
   ],
   "info" : {

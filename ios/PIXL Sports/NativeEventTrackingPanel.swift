@@ -251,10 +251,10 @@ struct NativeEventTrackingPanel: View {
             Label("Choose a tracking tool", systemImage: "chart.bar.fill")
                 .font(.headline.weight(.bold))
                 .foregroundStyle(NativeEventToolColors.trackStats)
-            Text("Select Stat Tracker or Live Taps to continue.")
+            Text("Choose Stat Tracker, Live Taps, or Record Moments.")
                 .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
-            Button("Choose a tool", action: presentModePicker)
+            Button("Choose an option", action: presentModePicker)
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("native-event-open-mode-choice")
         }

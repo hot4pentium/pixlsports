@@ -263,7 +263,7 @@ struct NativeRecordMomentsView: View {
                 .foregroundStyle(SupporterHomeColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if maximumFootageSeconds >= NativeRecordMomentLimits.minimumFootageSeconds {
+            if maximumFootageSeconds >= NativeRecordMomentLimits.minimumFootageSeconds + 0.1 {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Video")
@@ -306,7 +306,9 @@ struct NativeRecordMomentsView: View {
                         .foregroundStyle(SupporterHomeColors.muted)
                 }
             } else {
-                Text("Choose a video that is at least half a second long.")
+                Text(sourceDuration >= NativeRecordMomentLimits.minimumFootageSeconds
+                     ? "Using the full available video."
+                     : "Choose a video that is at least half a second long.")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(.orange)
             }

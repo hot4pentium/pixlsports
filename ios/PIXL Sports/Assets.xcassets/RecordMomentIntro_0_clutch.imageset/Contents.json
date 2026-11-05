@@ -2,7 +2,8 @@
   "images" : [
     {
       "filename" : "0_clutch.jpg",
-      "idiom" : "universal"
+      "idiom" : "universal",
+      "scale" : "1x"
     }
   ],
   "info" : {
