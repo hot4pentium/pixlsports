@@ -180,8 +180,10 @@ test("native schedule exposes only the invite for its matching active Live Taps 
   }])]);
   const [share] = (await pool.query<{ id: string }>(`INSERT INTO stat_tracker_shares
     (owner_clerk_user_id,game_id,athlete_name,team_name,game,expires_at)
-    VALUES ($1,'active-game','Jordan','Tigers',$2::jsonb,NOW()+INTERVAL '1 hour')
-    RETURNING id`, [linkedOwner, JSON.stringify({ status: "live", sport: "soccer", liveTapsOnly: true })])).rows;
+    VALUES ($1,'tracker-game-generated','Jordan','Tigers',$2::jsonb,NOW()+INTERVAL '1 hour')
+    RETURNING id`, [linkedOwner, JSON.stringify({
+      sourceEventId: "active-game", status: "live", sport: "soccer", liveTapsOnly: true,
+    })])).rows;
   await pool.query(`UPDATE athlete_invites SET live_tracker_share_token=$2 WHERE id=$1`, [invite!.id, share!.id]);
 
   const schedule = await loadNativeSupporterSchedule(who);
@@ -196,12 +198,22 @@ test("native schedule exposes only the invite for its matching active Live Taps 
 
   await pool.query(
     "UPDATE stat_tracker_shares SET game=$2::jsonb WHERE id=$1",
-    [share!.id, JSON.stringify({ status: "live", sport: "soccer" })],
+    [share!.id, JSON.stringify({ sourceEventId: "active-game", status: "live", sport: "soccer" })],
   );
   const statsSchedule = await loadNativeSupporterSchedule(who);
   const statsEvent = statsSchedule.events.find((event) => event.eventId === "active-game");
   assert.equal(statsEvent?.liveTapsActive, true);
   assert.equal(statsEvent?.liveTapsOnly, false);
+  await pool.query("UPDATE stat_tracker_shares SET game=$2::jsonb WHERE id=$1", [
+    share!.id, JSON.stringify({ sourceEventId: "active-game", status: "live", sport: "soccer", liveTapsEnded: true }),
+  ]);
+  const endedSchedule = await loadNativeSupporterSchedule(who);
+  assert.equal(endedSchedule.events.find((event) => event.eventId === "active-game")?.liveTapsActive, false);
+  await pool.query("UPDATE stat_tracker_shares SET game_id='active-game',game=$2::jsonb WHERE id=$1", [
+    share!.id, JSON.stringify({ status: "live", sport: "soccer" }),
+  ]);
+  const legacySchedule = await loadNativeSupporterSchedule(who);
+  assert.equal(legacySchedule.events.find((event) => event.eventId === "active-game")?.liveTapsActive, true);
 });
 
 test("private season records use the owner's selected history and intentional final results", async () => {

@@ -44,3 +44,9 @@ Allow Live Taps to run alongside stats tracking on the same Event Card. Keep che
 **Why:** The user chose to let fans cheer while the owner tracks stats, with the cheers kept separate.
 
 **How to apply:** Attach the fan access session to the active stats game for that Event Card. Keep the no-stats path when no stats game is active, and reject a different active event without creating an orphan share.
+
+A saved “live” flag from an earlier calendar day must not block a later day's Live Taps session. Preserve the older game and its stats; do not automatically finalize or delete it.
+
+**Why:** An older unfinished tracker record caused a false “other active game” warning even though the owner had no current competing event.
+
+**How to apply:** Judge blocking records using the Event Card's date and time zone, falling back to the saved game date and owner time zone. Reuse the requested event's own active game, and retain protection against a different current game.

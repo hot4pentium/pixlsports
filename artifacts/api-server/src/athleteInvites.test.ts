@@ -1466,6 +1466,13 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     yardStats: {},
     events: [],
   };
+  const historicalGame = {
+    ...nativeGame,
+    id: `historical-${randomUUID()}`,
+    sourceEventId: randomUUID(),
+    date: dateKey(-7),
+    status: "live",
+  };
 
   try {
     await db.insert(accountAccessTable).values({
@@ -1476,7 +1483,7 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     const [tracker] = await db.insert(cloudProjectsTable).values({
       ownerClerkUserId: ownerId,
       name: "Native Event tracker",
-      project: { tool: "stat-tracker", games: [nativeGame] },
+      project: { tool: "stat-tracker", games: [nativeGame, historicalGame] },
     }).returning();
     await db.insert(scheduleSharesTable).values({
       ownerClerkUserId: ownerId,
@@ -1566,8 +1573,18 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     });
     assert.equal(stopped.status, 204);
     await db.update(cloudProjectsTable).set({
-      project: { tool: "stat-tracker", games: [{ ...nativeGame, status: "final" }] },
+      project: { tool: "stat-tracker", games: [{ ...nativeGame, status: "final" }, historicalGame] },
     }).where(eq(cloudProjectsTable.id, tracker!.id));
+    const [historicalShare] = await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId: ownerId,
+      gameId: historicalGame.id,
+      athleteName: "Jordan",
+      teamName: "Tigers",
+      game: historicalGame,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    }).returning();
+    await db.update(athleteInvitesTable).set({ liveTrackerShareToken: historicalShare!.id })
+      .where(eq(athleteInvitesTable.publicToken, created.inviteToken));
 
     const cheerOnlyStart = await fetch(liveUrl, {
       method: "POST",
@@ -1584,6 +1601,22 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.equal(cheerOnlyGame.liveTapsOnly, true);
     assert.equal(cheerOnlyGame.soccerPeriodFormat, "quarters");
     assert.deepEqual(cheerOnlyGame.stats, {});
+    const repeatedStart = await fetch(liveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({ eventId: otherEventId, soccerPeriodFormat: "quarters" }),
+    });
+    assert.equal(repeatedStart.status, 201);
+    const repeatedSession = StartAthleteInviteLiveResponse.parse(await repeatedStart.json());
+    assert.equal(repeatedSession.shareToken, cheerOnlySession.shareToken);
+    const [preservedProject] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, tracker!.id));
+    const preservedGames = (preservedProject!.project as { games: Array<Record<string, unknown>> }).games;
+    assert.deepEqual(preservedGames.find((game) => game.id === historicalGame.id), historicalGame,
+      "ignoring a historical live flag must not finalize, delete, or modify the saved game");
+    const [preservedHistoricalShare] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, historicalShare!.id));
+    assert.deepEqual(preservedHistoricalShare!.game, historicalGame);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));

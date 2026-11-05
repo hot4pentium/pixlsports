@@ -367,10 +367,13 @@ export async function loadNativeSupporterSchedule(
       && liveShare
       && liveGame
       && liveGame.status !== "final"
+      && liveGame.liveTapsEnded !== true
       && liveGame.sport === invite.sport,
     );
     const events: NativeSupporterEvent[] = mapAthleteEventSummaries(shareRows, trackerRows).map((event) => {
-      const isActiveEvent = liveTapsActive && event.type === "game" && event.eventId === liveShare?.game_id;
+      const activeEventId = typeof liveGame?.sourceEventId === "string"
+        ? liveGame.sourceEventId : liveShare?.game_id;
+      const isActiveEvent = liveTapsActive && event.type === "game" && event.eventId === activeEventId;
       return {
         ...event,
         liveTapsActive: isActiveEvent,

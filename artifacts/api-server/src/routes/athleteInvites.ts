@@ -201,6 +201,7 @@ async function startNativeEventLive(
     if (!currentInvite || currentInvite.paused) {
       return { status: 404, error: "Athlete HYPE Card not found." };
     }
+    const now = new Date();
 
     const scheduleRows = await tx.select({ events: scheduleSharesTable.events })
       .from(scheduleSharesTable)
@@ -208,12 +209,12 @@ async function startNativeEventLive(
         eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
         eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER),
       ));
-    const scheduledEvent = scheduleRows
+    const scheduledEvents = scheduleRows
       .flatMap(({ events }) => Array.isArray(events) ? events : [])
-      .find((event) => event && typeof event === "object"
-        && !Array.isArray(event) && (event as { id?: unknown }).id === eventId) as
-        | Record<string, unknown>
-        | undefined;
+      .filter((event): event is Record<string, unknown> => (
+        Boolean(event) && typeof event === "object" && !Array.isArray(event)
+      ));
+    const scheduledEvent = scheduledEvents.find((event) => event.id === eventId);
     if (!scheduledEvent || scheduledEvent.type !== "game") {
       return { status: 404, error: "This Event Card is not available for Live Taps." };
     }
@@ -237,8 +238,24 @@ async function startNativeEventLive(
     const matchesEvent = (game: Record<string, unknown>) => (
       game.sourceEventId === eventId || game.id === eventId
     );
+    // A saved "live" flag is not proof that a game from an earlier day is
+    // still running. Preserve that history without making it block a new day.
+    const isHistoricalGame = (game: Record<string, unknown>) => {
+      const card = scheduledEvents.find((event) => (
+        (typeof game.sourceEventId === "string" && event.id === game.sourceEventId)
+        || (typeof game.id === "string" && event.id === game.id)
+      ));
+      const date = typeof card?.date === "string" ? card.date : game.date;
+      if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+      const timeZone = isIanaTimezone(card?.timezone) ? card.timezone
+        : isIanaTimezone(currentInvite.timezone) ? currentInvite.timezone : "UTC";
+      const parts = new Map(new Intl.DateTimeFormat("en-US", {
+        timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+      }).formatToParts(now).map((part) => [part.type, part.value]));
+      return date < `${parts.get("year")}-${parts.get("month")}-${parts.get("day")}`;
+    };
     const nativeGame = activeGames.find(matchesEvent);
-    if (activeGames.some((game) => !matchesEvent(game))) {
+    if (!nativeGame && activeGames.some((game) => !matchesEvent(game) && !isHistoricalGame(game))) {
       return { status: 409, error: "Finish the other active game before starting Live Taps for this Event Card." };
     }
 
@@ -289,7 +306,6 @@ async function startNativeEventLive(
       };
     }
 
-    const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     let linkedShare: typeof statTrackerSharesTable.$inferSelect | undefined;
     if (currentInvite.liveTrackerShareToken) {
@@ -306,7 +322,7 @@ async function startNativeEventLive(
     if (linkedIsActive && linkedShare && linkedShare.gameId !== game.id) {
       if (!nativeGame && linkedGame.sourceEventId === eventId) {
         game = linkedGame;
-      } else {
+      } else if (!isHistoricalGame(linkedGame)) {
         return { status: 409, error: "Live Taps is already active for another game. Finish that game first." };
       }
     }
