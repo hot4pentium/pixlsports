@@ -4,6 +4,7 @@ enum NativeEventScheduleChangeReason: String, CaseIterable {
     case gameStarted
     case gameFinished
     case liveTapsStarted
+    case liveTapsEnded
     case eventCardEdited
 
     static let userInfoKey = "reason"

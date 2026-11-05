@@ -22,7 +22,8 @@ struct NativeEventScheduleRefreshChecks {
         for reason in [
             NativeEventScheduleChangeReason.gameStarted,
             .gameFinished,
-            .liveTapsStarted
+            .liveTapsStarted,
+            .liveTapsEnded
         ] {
             precondition(reason.refreshesEventDetail, "\(reason) must refresh Event Details.")
             precondition(reason.refreshesDashboard, "\(reason) must refresh the dashboard.")

@@ -1139,10 +1139,17 @@ router.post("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, asyn
   }));
 });
 
-router.delete("/athlete-invites/:inviteToken/live", requireAuth, async (req, res): Promise<void> => {
+router.delete("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, async (req, res): Promise<void> => {
   const params = StopAthleteInviteLiveParams.safeParse(req.params);
   if (!params.success) {
     res.status(404).json({ error: "Athlete Hype Page not found" });
+    return;
+  }
+  const expectedEventId = req.body?.eventId;
+  if (expectedEventId !== undefined && (
+    typeof expectedEventId !== "string" || !expectedEventId.trim() || expectedEventId.length > 200
+  )) {
+    res.status(400).json({ error: "Choose the Event Card whose Live Taps you want to end." });
     return;
   }
   const ownerClerkUserId = getRequiredClerkUserId(res);
@@ -1151,7 +1158,7 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuth, async (req, res
       eq(athleteInvitesTable.publicToken, params.data.inviteToken),
       eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
     )).for("update");
-    if (!invite) return false;
+    if (!invite) return "missing" as const;
 
     if (invite.liveTrackerShareToken) {
       const [share] = await tx.select().from(statTrackerSharesTable).where(and(
@@ -1161,26 +1168,33 @@ router.delete("/athlete-invites/:inviteToken/live", requireAuth, async (req, res
       const game = share?.game && typeof share.game === "object" && !Array.isArray(share.game)
         ? share.game as Record<string, unknown>
         : null;
-      if (share && game?.liveTapsOnly === true && game.status === "live") {
+      if (expectedEventId && share && game
+        && game.sourceEventId !== expectedEventId && share.gameId !== expectedEventId) {
+        return "different-event" as const;
+      }
+      if (share && game) {
         await tx.update(statTrackerSharesTable).set({
-          game: { ...game, liveTapsOnly: false, liveTapsEnded: true },
+          game: {
+            ...game,
+            ...(game.liveTapsOnly === true && game.status === "live" ? { liveTapsOnly: false } : {}),
+            liveTapsEnded: true,
+          },
           revision: sql`${statTrackerSharesTable.revision} + 1`,
           updatedAt: new Date(),
         }).where(eq(statTrackerSharesTable.id, share.id));
-      } else {
-        await tx.delete(statTrackerSharesTable).where(and(
-          eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
-          eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
-        ));
       }
     }
     await tx.update(athleteInvitesTable).set({
       liveTrackerShareToken: null,
       updatedAt: new Date(),
     }).where(eq(athleteInvitesTable.id, invite.id));
-    return true;
+    return "stopped" as const;
   });
-  if (!stopped) {
+  if (stopped === "different-event") {
+    res.status(409).json({ error: "Live Taps has changed. Reopen this Event Card before ending it." });
+    return;
+  }
+  if (stopped === "missing") {
     res.status(404).json({ error: "Athlete Hype Page not found" });
     return;
   }

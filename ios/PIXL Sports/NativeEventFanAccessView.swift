@@ -16,6 +16,10 @@ struct NativeEventFanAccessView: View {
     @State private var busy = false
     @State private var loadingHypeCard = false
     @State private var startingLiveTaps = false
+    @State private var endingLiveTaps = false
+    @State private var showingEndConfirmation = false
+    @State private var endedLiveTaps = false
+    @State private var liveTapsEndError: String?
     @State private var error: String?
     @State private var liveTapsStartError: String?
     @State private var hypeCard: NativePublicHypeCard?
@@ -108,7 +112,7 @@ struct NativeEventFanAccessView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(busy || !event.liveTapsActive)
+                .disabled(busy || endingLiveTaps || endedLiveTaps || !event.liveTapsActive)
                 .accessibilityIdentifier("native-live-taps-create-qr")
                 if !event.liveTapsActive {
                     Text("Start Live Taps for this Event Card before creating fan access.")
@@ -148,7 +152,7 @@ struct NativeEventFanAccessView: View {
             Label("Live Taps session", systemImage: "hands.clap")
                 .font(.headline)
                 .accessibilityIdentifier("native-live-taps-session-heading")
-            if event.liveTapsActive,
+            if event.liveTapsActive, !endedLiveTaps,
                let inviteToken = event.liveTapsInviteToken,
                let sport = event.liveTapsSport {
                 SupporterLiveTapsView(
@@ -156,6 +160,32 @@ struct NativeEventFanAccessView: View {
                     athleteName: athleteName, eventTitle: event.title,
                     embedded: true, ownerClerk: clerk
                 )
+                .disabled(endingLiveTaps)
+                Button(role: .destructive) {
+                    showingEndConfirmation = true
+                } label: {
+                    HStack {
+                        if endingLiveTaps { ProgressView() }
+                        Label(endingLiveTaps ? "Ending Live Taps…" : "End Live Taps", systemImage: "stop.circle")
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(endingLiveTaps || busy)
+                .accessibilityIdentifier("native-live-taps-end")
+                if let liveTapsEndError {
+                    Text(liveTapsEndError)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("native-live-taps-end-error")
+                }
+            } else if endedLiveTaps {
+                Label("Live Taps ended", systemImage: "checkmark.circle.fill")
+                    .font(.headline)
+                Text("Your cheers are saved. Your Event Card and any stat tracking are unchanged.")
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .accessibilityIdentifier("native-live-taps-ended")
             } else if event.liveTapsActive {
                 Label("Live Taps is active", systemImage: "hands.clap.fill")
                     .font(.subheadline)
@@ -211,6 +241,7 @@ struct NativeEventFanAccessView: View {
         }
         .onChange(of: event.liveTapsActive) { _, isActive in
             if isActive {
+                endedLiveTaps = false
                 Task { await perform("list") }
             } else if hypeCard == nil && !hasActiveLiveTapsElsewhere {
                 Task { await loadHypeCard() }
@@ -219,18 +250,36 @@ struct NativeEventFanAccessView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await perform("list") } }
         }
+        .onChange(of: event.eventId) { _, _ in
+            endedLiveTaps = false
+            liveTapsEndError = nil
+        }
         .confirmationDialog(
-            "Revoke this fan QR?", isPresented: Binding(
-                get: { pendingRevocation != nil },
-                set: { if !$0 { pendingRevocation = nil } }
+            showingEndConfirmation ? "End Live Taps?" : "Revoke this fan QR?", isPresented: Binding(
+                get: { showingEndConfirmation || pendingRevocation != nil },
+                set: {
+                    if !$0 {
+                        showingEndConfirmation = false
+                        pendingRevocation = nil
+                    }
+                }
             ), titleVisibility: .visible
         ) {
-            Button("Revoke QR access", role: .destructive) {
-                if let id = pendingRevocation { Task { await perform("revoke", id: id) } }
-                pendingRevocation = nil
+            if showingEndConfirmation {
+                Button("End Live Taps", role: .destructive) {
+                    Task { await endLiveTaps() }
+                }
+                Button("Keep cheering", role: .cancel) {}
+            } else {
+                Button("Revoke QR access", role: .destructive) {
+                    if let id = pendingRevocation { Task { await perform("revoke", id: id) } }
+                    pendingRevocation = nil
+                }
             }
         } message: {
-            Text("Anyone using this QR will lose Live Taps access. Other family QR codes will keep working.")
+            Text(showingEndConfirmation
+                 ? "New cheers will stop. Your cheer totals and Event Card will stay saved, and stat tracking will continue if it’s running."
+                 : "Anyone using this QR will lose Live Taps access. Other family QR codes will keep working.")
         }
     }
 
@@ -276,6 +325,30 @@ struct NativeEventFanAccessView: View {
             }
         } catch {
             liveTapsStartError = error.localizedDescription
+        }
+    }
+
+    private func endLiveTaps() async {
+        guard !endingLiveTaps, !endedLiveTaps, event.liveTapsActive,
+              let inviteToken = event.liveTapsInviteToken else { return }
+        endingLiveTaps = true
+        liveTapsEndError = nil
+        defer { endingLiveTaps = false }
+        do {
+            _ = try await NativeAccountLinkClient().postData(
+                "athlete-invites/\(inviteToken)/live",
+                body: ["eventId": event.eventId],
+                method: "DELETE", apiRoot: true, clerk: clerk
+            )
+            endedLiveTaps = true
+            let reason = NativeEventScheduleChangeReason.liveTapsEnded
+            NotificationCenter.default.post(
+                name: .nativeEventScheduleChanged,
+                object: nil,
+                userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
+            )
+        } catch {
+            liveTapsEndError = "Couldn’t confirm Live Taps ended. Try again."
         }
     }
 

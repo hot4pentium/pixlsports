@@ -1634,11 +1634,40 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.deepEqual((unchangedShare!.game as Record<string, unknown>).stats, { goals: 2 });
     assert.equal((unchangedShare!.game as Record<string, unknown>).score, 2);
 
+    const visitorStop = await fetch(liveUrl, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventId, accessToken: familyLink.accessToken }),
+    });
+    assert.equal(visitorStop.status, 401, "a family QR cannot end the owner's session");
+    const wrongEventStop = await fetch(liveUrl, {
+      method: "DELETE",
+      headers: nativeHeaders,
+      body: JSON.stringify({ eventId: otherEventId }),
+    });
+    assert.equal(wrongEventStop.status, 409, "a stale Event Card must not end a different event's session");
     const stopped = await fetch(liveUrl, {
       method: "DELETE",
-      headers: { "x-test-user": ownerId },
+      headers: nativeHeaders,
+      body: JSON.stringify({ eventId }),
     });
     assert.equal(stopped.status, 204);
+    const [statsAfterStop] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, session.shareToken));
+    assert.deepEqual(statsAfterStop!.game, { ...sharedSnapshot, liveTapsEnded: true },
+      "ending cheers preserves the running stats share, score, and player stats");
+    const [projectAfterStop] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, tracker!.id));
+    assert.deepEqual((projectAfterStop!.project as { games: unknown[] }).games, [nativeGame, historicalGame],
+      "ending cheers must not finish or change the tracker");
+    for (const isParent of [true, false]) {
+      const headers: Record<string, string> = isParent ? nativeHeaders : { "content-type": "application/json" };
+      const lateCheer = await fetch(`${publicUrl}/live-taps`, {
+        method: "POST", headers,
+        body: JSON.stringify({ cheerKey: "goal", ...(isParent ? {} : { accessToken: familyLink.accessToken }) }),
+      });
+      assert.equal(lateCheer.status, 409, "neither parent nor family can cheer after the session ends");
+    }
     await db.update(cloudProjectsTable).set({
       project: { tool: "stat-tracker", games: [{ ...nativeGame, status: "final" }, historicalGame] },
     }).where(eq(cloudProjectsTable.id, tracker!.id));
@@ -1720,6 +1749,26 @@ test("native Live Taps joins same-card stat tracking without creating a separate
     assert.equal(accessLink.inviteToken, created.inviteToken,
       "the fan QR created from the iPhone belongs to the selected athlete");
     assert.match(accessLink.accessToken, /^[A-Za-z0-9_-]{40,100}$/);
+    const endCheerOnly = await fetch(liveUrl, {
+      method: "DELETE", headers: nativeHeaders,
+      body: JSON.stringify({ eventId: otherEventId }),
+    });
+    assert.equal(endCheerOnly.status, 204);
+    const endAgain = await fetch(liveUrl, {
+      method: "DELETE", headers: nativeHeaders,
+      body: JSON.stringify({ eventId: otherEventId }),
+    });
+    assert.equal(endAgain.status, 204, "retrying End Live Taps is safe");
+    const [endedCheerOnlyShare] = await db.select().from(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.id, cheerOnlySession.shareToken));
+    assert.deepEqual(endedCheerOnlyShare!.game, { ...cheerOnlyGame, liveTapsOnly: false, liveTapsEnded: true });
+    const [cardAfterStop] = await db.select().from(scheduleSharesTable)
+      .where(eq(scheduleSharesTable.id, eventCard!.id));
+    assert.deepEqual(cardAfterStop!.events, eventCard!.events, "ending cheers keeps the Event Card unchanged");
+    const endedFanCard = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
+    assert.equal(endedFanCard.liveTaps.active, false);
+    assert.equal(endedFanCard.liveTaps.seasonCheers.find((cheer) => cheer.key === "way-to-go")?.count, 1,
+      "ending the session preserves its cheer totals");
   } finally {
     try {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

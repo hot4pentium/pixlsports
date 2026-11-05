@@ -15,6 +15,12 @@ Parents can use Live Taps themselves instead of tracking stats. They must not ne
 
 **How to apply:** Send parent cheers using the verified owner's authenticated account link. Keep public visitor controls locked without a valid family token, and never grant parent access from a client-side role flag alone.
 
+Ending Live Taps is a parent-only action independent of finishing stat tracking. Keep the Event Card, cheer history, and shared stats game; stop new cheers without changing the running score or player stats.
+
+**Why:** The user approved an explicit End Live Taps control with confirmation and preservation of totals, rather than ending the stats game.
+
+**How to apply:** Authenticate the owner, confirm the selected Event Card still matches the active session, and preserve the stats share rather than deleting it. Retries must be safe, and both parent and family cheer writes must stop after the session ends.
+
 For write access, the owner creates revocable family QR codes for in-person scanning. Store only a hash of each bearer token; encode the raw token in the QR code's URL fragment and remove it from the address bar after the card reads it. A public HYPE Card URL is always view-only. Store each tap by athlete invite, game, and cheer; revoking access must not erase its earlier taps. Show the active game's tally without merging it into official stats.
 
 **Why:** The public card is meant to be shared broadly, so its URL cannot also grant write access. The user prefers QR access because family members need to be present to send Live Taps. Game-scoped records preserve cheer history without changing the official stat record.
