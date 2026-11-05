@@ -4,5 +4,6 @@
 # No need to store the pnpm store twice.
 .local
 /generated-artifacts/
+/attached_assets/*_1793840947979.png
 /artifacts/league-matrix-studio/shared-videos-fixture-*
 /artifacts/league-matrix-studio/phone-frame.html

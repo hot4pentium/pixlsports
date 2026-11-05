@@ -17,6 +17,7 @@ struct NativeEventTrackingPanel: View {
     @State private var hasVisitedRecordMoments = false
     @State private var showingModePicker = false
     @State private var showingRecordMoments = false
+    @State private var recordMomentsAfterPicker = false
     @State private var expandedExplanation: TrackingMode?
 
     private enum TrackingMode: String {
@@ -26,7 +27,7 @@ struct NativeEventTrackingPanel: View {
 
         var title: String {
             switch self {
-            case .statTracker: return "Stat Tracker"
+            case .statTracker: return "Track Stats"
             case .liveTaps: return "Live Taps"
             case .recordMoments: return "Record Moments"
             }
@@ -55,7 +56,7 @@ struct NativeEventTrackingPanel: View {
             case .liveTaps:
                 return "Fans can cheer while you track stats. Cheers stay separate from official stats."
             case .recordMoments:
-                return "Choose a video and shoutout image. Nothing uploads automatically; you decide whether to save or share the finished clip."
+                return "Choose or record video, keep up to 15 seconds of action, and add a short shoutout intro. Save to Photos or share without uploading to PIXL Sports."
             }
         }
     }
@@ -95,7 +96,12 @@ struct NativeEventTrackingPanel: View {
             }
         }
         .tint(NativeEventToolColors.trackStats)
-        .sheet(isPresented: $showingModePicker) {
+        .sheet(isPresented: $showingModePicker, onDismiss: {
+            if recordMomentsAfterPicker {
+                recordMomentsAfterPicker = false
+                showingRecordMoments = true
+            }
+        }) {
             modePickerSheet
         }
         .fullScreenCover(isPresented: $showingRecordMoments) {
@@ -248,10 +254,10 @@ struct NativeEventTrackingPanel: View {
 
     private var chooseTrackingToolPrompt: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Choose a tracking tool", systemImage: "chart.bar.fill")
+            Label("Choose a game-day tool", systemImage: "figure.run")
                 .font(.headline.weight(.bold))
                 .foregroundStyle(NativeEventToolColors.trackStats)
-            Text("Choose Stat Tracker, Live Taps, or Record Moments.")
+            Text("Choose Track Stats, Live Taps, or Record Moments.")
                 .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
             Button("Choose an option", action: presentModePicker)
@@ -330,7 +336,11 @@ struct NativeEventTrackingPanel: View {
 
     private var recordMomentsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SupporterEyebrow(text: "Record Moments", color: NativeEventToolColors.trackStats)
+            HStack {
+                SupporterEyebrow(text: "Record Moments", color: NativeEventToolColors.trackStats)
+                Spacer(minLength: 8)
+                switchToolButton
+            }
             Button {
                 showingRecordMoments = true
             } label: {
@@ -356,6 +366,9 @@ struct NativeEventTrackingPanel: View {
     }
 
     private func selectMode(_ mode: TrackingMode) {
+        if mode == .recordMoments {
+            recordMomentsAfterPicker = true
+        }
         selectedMode = mode
         if mode == .statTracker { hasVisitedStatTracker = true }
         if mode == .liveTaps { hasVisitedLiveTaps = true }

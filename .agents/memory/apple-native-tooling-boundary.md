@@ -25,3 +25,14 @@ when the system C linker can link a Swift object successfully.
 **Why:** The compiler, Foundation module graph, system linker, and Apple SDK are
 independent availability boundaries. A linker setup failure is not a test failure
 or proof that all Swift execution is impossible.
+
+For native media work, verification must invoke the production AVFoundation
+exporter on Apple platforms. A Linux/FFmpeg reconstruction of the intended video
+is not evidence that the iPhone exporter produced that file.
+
+**Why:** Composition duration alone cannot establish the encoded MP4's duration,
+frame order, selected tail footage, orientation, or retained audio.
+
+**How to apply:** Keep an Apple-run synthetic-media harness for file inspection,
+and report camera, Photos permission/write, and native share-target checks as
+separate physical-device evidence.

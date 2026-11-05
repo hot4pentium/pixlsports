@@ -198,17 +198,17 @@ struct ContentView: View {
                                 .accessibilityElement(children: .contain)
                                 .accessibilityIdentifier("dashboard-header-section")
                             athleteHero
+                            Button {
+                                heroDestination = .recordMoments
+                            } label: {
+                                NativeRecordMomentsLaunchCard(
+                                    title: "Make a shareable clip",
+                                    subtitle: "Record Moments anytime, with or without an Event Card."
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("dashboard-record-moments")
                             if case let .schedule(page, _, _) = displayedState {
-                                Button {
-                                    heroDestination = .recordMoments
-                                } label: {
-                                    NativeRecordMomentsLaunchCard(
-                                        title: "Make a shareable clip",
-                                        subtitle: "Add a shoutout intro, then save or share it whenever you like."
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("dashboard-record-moments")
                                 if let record = page.record {
                                     NativeSeasonRecordView(record: record)
                                 }
