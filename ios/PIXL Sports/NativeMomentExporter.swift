@@ -52,7 +52,7 @@ final class NativeMomentExporter {
         // Intersect audio's real range; some phone movies start audio later than video.
         for sourceAudio in try await asset.loadTracks(withMediaType: .audio) {
             let available = try await sourceAudio.load(.timeRange)
-            let overlap = CMTimeRangeGetIntersection(range, available)
+            let overlap = CMTimeRangeGetIntersection(range, otherRange: available)
             if overlap.isValid, !overlap.isEmpty {
                 guard let audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
                     throw NativeMomentError.message("The source audio could not be preserved.")
