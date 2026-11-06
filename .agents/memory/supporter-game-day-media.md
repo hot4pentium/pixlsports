@@ -26,3 +26,9 @@ Videos explicitly added to the HYPE Card from Record Moments should stay there u
 **Why:** The user chose “stay until replaced” for HYPE Card videos.
 
 **How to apply:** Delete stored video and poster objects when a card video is replaced or removed; do not expire it automatically. Preserve existing expiration behavior for one-off shares.
+
+When the proposed two-month paid pass ends, hosted HYPE Card videos remain stored but are greyed out and unavailable; Live Taps QR access stops, and the rest of the app returns to the free options.
+
+**Why:** The user chose to revert to free features after the pass, with hosted videos locked rather than deleted.
+
+**How to apply:** At pass expiry, lock clip playback without deleting stored media, stop QR access, and preserve the free Event Cards, Prep, Stats, owner-only Live Taps, and local Record Moments flows.
