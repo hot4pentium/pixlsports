@@ -143,6 +143,7 @@ final class NativeMomentModel: ObservableObject {
     func introMusicSelectionChanged() {
         guard !busy else { return }
         clearOutput()
+        updatePreview()
         message = nil
     }
 

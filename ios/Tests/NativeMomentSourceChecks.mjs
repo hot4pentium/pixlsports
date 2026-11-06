@@ -128,8 +128,12 @@ test("each new source requires a fresh shoutout selection", () => {
 });
 test("replacing a preview remounts the video player instead of showing a stale frame", () => {
   assert.match(model, /@Published private\(set\) var previewID = UUID\(\)/);
-  assert.match(model, /previewID = UUID\(\)/);
-  assert.match(view, /VideoPlayer\(player: model\.player\)[\s\S]*?\.id\(model\.previewID\)/);
+  const release = model.slice(model.indexOf("private func releasePlayer()"), model.indexOf("private func setPreview("));
+  assert.match(release, /previewID = UUID\(\)/);
+  assert.match(release, /replaceCurrentItem\(with: nil\)/);
+  assert.match(view, /VideoPlayer\(player: player\)[\s\S]*?\.id\(model\.previewID\)/);
+  const musicChange = model.slice(model.indexOf("func introMusicSelectionChanged()"), model.indexOf("func setTrimStart("));
+  assert.match(musicChange, /clearOutput\(\)[\s\S]*?updatePreview\(\)/);
 });
 test("all ten original-derived optimized graphics are full-size and bundled", () => {
   const root = new URL("../PIXL Sports/Assets.xcassets/", import.meta.url);
