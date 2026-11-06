@@ -48,6 +48,13 @@ enum NativeMomentShoutout: String, CaseIterable, Identifiable {
         default: return nil
         }
     }
+    var portraitVideoResource: String? {
+        switch self {
+        case .clutchAnimated: return "RecordMomentClutchPortrait"
+        case .dominationAnimated: return "RecordMomentDominationPortrait"
+        default: return nil
+        }
+    }
     var fixedIntroSeconds: Double? {
         videoResource == nil ? nil : 2.5
     }

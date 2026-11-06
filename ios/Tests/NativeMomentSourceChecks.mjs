@@ -80,19 +80,29 @@ test("animated shoutouts are compact local video intros with portrait and landsc
   assert.match(plan, /case \.dominationAnimated: return "Moment-domination"/);
   assert.match(plan, /RecordMomentClutch/);
   assert.match(plan, /RecordMomentDomination/);
+  assert.match(plan, /RecordMomentClutchPortrait/);
+  assert.match(plan, /RecordMomentDominationPortrait/);
   assert.match(model, /Bundle\.main\.url\(forResource: resource, withExtension: "mp4"\)/);
+  assert.match(model, /portraitVideoResource/);
+  assert.match(model, /shoutoutVideoPortrait: portraitShoutoutVideo/);
+  assert.match(exporter, /if oriented\.height > oriented\.width/);
+  assert.match(exporter, /shoutoutVideoPortrait/);
   assert.match(model, /shoutoutVideo: shoutoutVideo/);
   assert.match(view, /Animated video intro/);
   assert.match(view, /shoutout\.videoResource != nil/);
   assert.match(view, /music cue plays only with animated shoutout intros/);
-  for (const name of ["RecordMomentClutch.mp4", "RecordMomentDomination.mp4"]) {
+  const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
+  for (const name of [
+    "RecordMomentClutch.mp4", "RecordMomentDomination.mp4",
+    "RecordMomentClutchPortrait.mp4", "RecordMomentDominationPortrait.mp4"
+  ]) {
     const clip = readFileSync(new URL(`../PIXL Sports/${name}`, import.meta.url));
     assert.ok(clip.length < 350_000, `${name} should stay below 350 KB: ${clip.length} bytes`);
     assert.equal(clip.subarray(4, 8).toString(), "ftyp", `${name} must be a valid local MP4`);
   }
-  const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
-  assert.match(appleChecks, /animated-clutch-landscape/);
   assert.match(appleChecks, /animated-clutch-portrait/);
+  assert.match(appleChecks, /centeredContentFrame/);
+  assert.match(appleChecks, /animated-clutch-landscape/);
   assert.match(appleChecks, /PASS: animated Domination with Stadium Ignition music/);
 });
 test("the exact exported MP4 is previewed, saved, and shared", () => {

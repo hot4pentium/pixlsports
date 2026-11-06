@@ -174,14 +174,25 @@ final class NativeMomentModel: ObservableObject {
             return
         }
         let shoutoutVideo: URL?
+        let portraitShoutoutVideo: URL?
         if let resource = shoutout.videoResource {
             guard let bundledVideo = Bundle.main.url(forResource: resource, withExtension: "mp4") else {
                 error = "The animated shoutout isn’t available. Choose another intro."
                 return
             }
             shoutoutVideo = bundledVideo
+            if let portraitResource = shoutout.portraitVideoResource {
+                guard let bundledPortraitVideo = Bundle.main.url(forResource: portraitResource, withExtension: "mp4") else {
+                    error = "The portrait version of this animated shoutout isn’t available. Choose another intro."
+                    return
+                }
+                portraitShoutoutVideo = bundledPortraitVideo
+            } else {
+                portraitShoutoutVideo = nil
+            }
         } else {
             shoutoutVideo = nil
+            portraitShoutoutVideo = nil
         }
         let introMusicURL: URL?
         if introMusicEnabled, shoutout.videoResource != nil {
@@ -208,6 +219,7 @@ final class NativeMomentModel: ObservableObject {
                     plan: plan,
                     directory: directory,
                     shoutoutVideo: shoutoutVideo,
+                    shoutoutVideoPortrait: portraitShoutoutVideo,
                     introMusicURL: introMusicURL
                 )
                 unclaimedOutput = url

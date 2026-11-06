@@ -42,29 +42,55 @@ Animated**. The supplied **Domination · Animated** clip is also bundled as a
 1280 × 720, 30 fps H.264 MP4 (200,418 bytes). The still-art choices remain
 available for both. Animated intros use a fixed 2.5-second duration, keep the
 selected footage allowance at up to 15 seconds, and fit the output frame
-without cropping. In portrait output, the complete landscape video is centered
-with black space above and below. The intro clips are silent; the 58,994-byte
-AAC Stadium Ignition cue can play during either intro and fades out before
-source-video audio begins. No music is mixed under the action.
+without cropping. Portrait footage now selects a dedicated 9:16 version
+(described below); landscape footage keeps the original 16:9 version. The intro
+clips are silent; the 58,994-byte AAC Stadium Ignition cue can play during either
+intro and fades out before source-video audio begins. No music is mixed under
+the action.
 
-The bundled artwork, the two animated pilots, and the intro-only music cue
-total about 2.55 MB. The original Domination upload is not bundled.
+## Portrait-safe versions
+
+Each animated pilot now has a 9:16 version for portrait source footage. The
+portrait encode uses a blurred, enlarged fill behind the entire original
+landscape animation, centered without cropping. This keeps all title text and
+animation visible while using the full portrait preview and output frame.
+Landscape footage continues to use the landscape version. The exporter picks
+the matching version from the source video's oriented dimensions.
+
+| Portrait version | Frame size / rate | Duration | File size |
+| --- | --- | ---: | ---: |
+| Clutch | 720 × 1280 at 30 fps | 2.5 seconds | 335,862 bytes |
+| Domination | 720 × 1280 at 30 fps | 3.03 seconds | 287,210 bytes |
+
+The two portrait versions add **623,072 bytes (0.62 MB / 0.59 MiB)** to the
+bundle. Together, both landscape and portrait versions total 1,155,937 bytes;
+including the 58,994-byte intro music cue and 1,964,080 bytes of shoutout
+artwork, the animated shoutout set totals **3,179,011 bytes (3.18 MB)**. The
+original Domination upload is not bundled.
+
+The Apple export checks render both portrait variants into portrait MP4s and
+compare the full output against the portrait source at multiple timestamps.
+They also compare the center landscape band against the corresponding original
+frames, checking that the title and animation remain intact rather than being
+cropped. Local extracted-frame review confirmed the treatment preserves the
+Clutch and Domination wording at phone-preview scale.
 
 ## Recommendation
 
-- If all ten shoutouts are animated, target silent 1280 × 720 H.264 at 30 fps,
-  about 1 Mbps, and roughly 2.5 seconds. Aim for no more than 350 KB per clip.
+- For landscape versions, target silent 1280 × 720 H.264 at 30 fps, about
+  1 Mbps, and roughly 2.5 seconds. For portrait, use 720 × 1280 with the full
+  landscape animation centered over a blurred fill. Aim for no more than 350 KB
+  per version.
 - A 960 × 540, 700 Kbps version is a smaller fallback, about 235 KB each.
 - The optional music cue is limited to the animated intro and can be turned
   off. It never continues under the selected action.
-- The sample is landscape 16:9. Portrait exports need a portrait-specific
-  version or a tested layout that keeps the title readable; cropping this
-  animation to fill a phone screen can cut off its text.
+- The supplied source remains landscape 16:9; portrait versions use a tested
+  full-frame layout instead of cropping it to fill the phone screen.
 
 ## iPhone/export verification boundary
 
-This workspace has no Apple developer directory, Swift compiler, simulator, or
-physical iPhone, so AVFoundation playback/export of the new video-intro path was
-not verified. The feature is wired into the local Record Moments source for
-simulator testing, but should be built and checked in Xcode before relying on
-device playback, portrait framing, Photos save, or sharing.
+This workspace has no Apple SDK or physical iPhone, so AVFoundation playback,
+export, and device preview were not run here. The Apple-platform test now checks
+portrait source selection, finished MP4 framing, and uncropped title frames;
+run it on macOS with Xcode, then inspect the finished preview and sharing flow
+on an iPhone before release.

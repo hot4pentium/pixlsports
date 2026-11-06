@@ -18,6 +18,7 @@ final class NativeMomentExporter {
         plan: NativeMomentPlan,
         directory: URL,
         shoutoutVideo: URL? = nil,
+        shoutoutVideoPortrait: URL? = nil,
         introMusicURL: URL? = nil
     ) async throws -> URL {
         defer {
@@ -42,7 +43,16 @@ final class NativeMomentExporter {
         var generatedIntroURL: URL?
         let introAsset: AVURLAsset
         if let shoutoutVideo {
-            introAsset = AVURLAsset(url: shoutoutVideo)
+            let introURL: URL
+            if oriented.height > oriented.width {
+                guard let shoutoutVideoPortrait else {
+                    throw NativeMomentError.message("A portrait version of this animated shoutout isn’t available.")
+                }
+                introURL = shoutoutVideoPortrait
+            } else {
+                introURL = shoutoutVideo
+            }
+            introAsset = AVURLAsset(url: introURL)
         } else {
             let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
             generatedIntroURL = introURL

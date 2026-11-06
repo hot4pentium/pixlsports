@@ -77,7 +77,10 @@ struct NativeMomentExportChecks {
             print("PASS: \(name), actual MP4 \(actual)s, ordered intact intro, first/last selected frames, orientation, audio=\(audible)")
         }
         let animatedURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutch.mp4")
+        let portraitAnimatedURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchPortrait.mp4")
         precondition(FileManager.default.fileExists(atPath: animatedURL.path), "Bundled Clutch video is missing")
+        precondition(FileManager.default.fileExists(atPath: portraitAnimatedURL.path),
+                     "Bundled portrait Clutch video is missing")
         for (name, url, isPortrait) in [
             ("animated-clutch-landscape", source, false),
             ("animated-clutch-portrait", portrait, true)
@@ -89,7 +92,8 @@ struct NativeMomentExportChecks {
                 shoutout: artwork,
                 plan: plan,
                 directory: directory,
-                shoutoutVideo: animatedURL
+                shoutoutVideo: animatedURL,
+                shoutoutVideoPortrait: portraitAnimatedURL
             )
             let asset = AVURLAsset(url: output)
             let actual = try await asset.load(.duration).seconds
@@ -102,7 +106,8 @@ struct NativeMomentExportChecks {
             resultGenerator.appliesPreferredTrackTransform = true
             resultGenerator.requestedTimeToleranceBefore = .zero
             resultGenerator.requestedTimeToleranceAfter = .zero
-            let introGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: animatedURL))
+            let introURL = isPortrait ? portraitAnimatedURL : animatedURL
+            let introGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: introURL))
             introGenerator.appliesPreferredTrackTransform = true
             introGenerator.requestedTimeToleranceBefore = .zero
             introGenerator.requestedTimeToleranceAfter = .zero
@@ -114,6 +119,20 @@ struct NativeMomentExportChecks {
             let actualIntro = try frame(resultGenerator, at: 0.5)
             precondition(distance(signature(actualIntro), signature(expectedIntro)) < 0.1,
                          "Animated shoutout was cropped or not centered in \(name)")
+            if isPortrait {
+                let landscapeGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: animatedURL))
+                landscapeGenerator.appliesPreferredTrackTransform = true
+                landscapeGenerator.requestedTimeToleranceBefore = .zero
+                landscapeGenerator.requestedTimeToleranceAfter = .zero
+                for timestamp in [0.5, 1.25, 2.25] {
+                    let portraitFrame = try frame(introGenerator, at: timestamp)
+                    let originalFrame = try frame(landscapeGenerator, at: timestamp)
+                    precondition(
+                        distance(signature(centeredContentFrame(portraitFrame)), signature(originalFrame)) < 0.1,
+                        "Portrait Clutch text or animation was cropped at \(timestamp)s"
+                    )
+                }
+            }
             for relative in [0.1, 14.9] {
                 let resultFrame = try frame(resultGenerator, at: plan.intro + relative)
                 let sourceFrame = try frame(sourceGenerator, at: start + relative)
@@ -170,14 +189,18 @@ struct NativeMomentExportChecks {
         print("PASS: intro music fades before source audio; original source audio starts and remains intact")
 
         let dominationURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentDomination.mp4")
+        let portraitDominationURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentDominationPortrait.mp4")
         precondition(FileManager.default.fileExists(atPath: dominationURL.path),
                      "Bundled Domination video is missing")
+        precondition(FileManager.default.fileExists(atPath: portraitDominationURL.path),
+                     "Bundled portrait Domination video is missing")
         let dominationOutput = try await NativeMomentExporter().export(
-            source: source,
+            source: portrait,
             shoutout: artwork,
             plan: musicPlan,
             directory: directory,
             shoutoutVideo: dominationURL,
+            shoutoutVideoPortrait: portraitDominationURL,
             introMusicURL: introMusicURL
         )
         let dominationAsset = AVURLAsset(url: dominationOutput)
@@ -185,15 +208,17 @@ struct NativeMomentExportChecks {
         precondition(abs(dominationDuration - 17.5) < 0.12,
                      "Domination intro music changed the finished duration")
         let dominationVideo = try await dominationAsset.loadTracks(withMediaType: .video).first!
+        let dominationSize = try await dominationVideo.load(.naturalSize)
+        precondition(dominationSize.height > dominationSize.width,
+                     "Portrait Domination footage did not produce a portrait MP4")
         let dominationOutputGenerator = AVAssetImageGenerator(asset: dominationAsset)
         dominationOutputGenerator.appliesPreferredTrackTransform = true
         dominationOutputGenerator.requestedTimeToleranceBefore = .zero
         dominationOutputGenerator.requestedTimeToleranceAfter = .zero
-        let dominationIntroGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: dominationURL))
+        let dominationIntroGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: portraitDominationURL))
         dominationIntroGenerator.appliesPreferredTrackTransform = true
         dominationIntroGenerator.requestedTimeToleranceBefore = .zero
         dominationIntroGenerator.requestedTimeToleranceAfter = .zero
-        let dominationSize = try await dominationVideo.load(.naturalSize)
         let expectedDominationFrame = fittedVideoFrame(
             try frame(dominationIntroGenerator, at: 1.0),
             size: dominationSize
@@ -201,6 +226,18 @@ struct NativeMomentExportChecks {
         let actualDominationFrame = try frame(dominationOutputGenerator, at: 1.0)
         precondition(distance(signature(actualDominationFrame), signature(expectedDominationFrame)) < 0.1,
                      "Domination animation was not used in the music test export")
+        let landscapeDominationGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: dominationURL))
+        landscapeDominationGenerator.appliesPreferredTrackTransform = true
+        landscapeDominationGenerator.requestedTimeToleranceBefore = .zero
+        landscapeDominationGenerator.requestedTimeToleranceAfter = .zero
+        for timestamp in [0.5, 1.5, 2.25] {
+            let portraitFrame = try frame(dominationIntroGenerator, at: timestamp)
+            let originalFrame = try frame(landscapeDominationGenerator, at: timestamp)
+            precondition(
+                distance(signature(centeredContentFrame(portraitFrame)), signature(originalFrame)) < 0.1,
+                "Portrait Domination text or animation was cropped at \(timestamp)s"
+            )
+        }
         let dominationAudio = try await dominationAsset.loadTracks(withMediaType: .audio).first!
         let dominationIntroSamples = try samples(asset: dominationAsset, track: dominationAudio, at: 0.5)
         let dominationIntroEnergy = dominationIntroSamples.map { abs(Double($0)) }.reduce(0, +)
@@ -282,6 +319,14 @@ struct NativeMomentExportChecks {
         context.draw(image, in: CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2,
                                        width: width, height: height))
         return context.makeImage()!
+    }
+
+    static func centeredContentFrame(_ image: CGImage) -> CGImage {
+        let width = CGFloat(image.width)
+        let height = width * 9 / 16
+        let rect = CGRect(x: 0, y: (CGFloat(image.height) - height) / 2,
+                          width: width, height: height).integral
+        return image.cropping(to: rect)!
     }
 
     @MainActor
