@@ -173,6 +173,9 @@ struct NativeRecordMomentsView: View {
             } else if model.thumbnails.allSatisfy({ $0 == nil }) {
                 Text("Thumbnail previews aren’t available. You can still trim with the sliders.")
                     .font(.caption).foregroundStyle(.secondary)
+            } else if model.thumbnails.contains(where: { $0 == nil }) {
+                Text("Some thumbnail previews aren’t available. You can still trim with the timeline or sliders.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Text("Drag the blue start and orange end handles to choose the action.")
                 .font(.caption).foregroundStyle(.secondary)

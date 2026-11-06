@@ -297,10 +297,9 @@ final class NativeMomentModel: ObservableObject {
             generator.maximumSize = CGSize(width: 180, height: 180)
 
             return await withTaskCancellationHandler {
-                var images: [UIImage?] = []
+                var images = Array<UIImage?>(repeating: nil, count: count)
                 for index in 0..<count {
                     guard !Task.isCancelled else {
-                        images.append(contentsOf: repeatElement(nil, count: count - images.count))
                         break
                     }
                     let seconds = duration * (Double(index) + 0.5) / Double(count)
@@ -315,7 +314,8 @@ final class NativeMomentModel: ObservableObject {
                             continuation.resume(returning: image)
                         }
                     }
-                    images.append(image)
+                    // Keep missing frames in their original timeline slots.
+                    images[index] = image
                 }
                 return images
             } onCancel: {
@@ -327,9 +327,9 @@ final class NativeMomentModel: ObservableObject {
         Task { [weak self] in
             let images = await task.value
             guard let self, self.thumbnailRequestID == requestID else { return }
-            self.isGeneratingThumbnails = false
             self.thumbnailTask = nil
             self.thumbnails = images
+            self.isGeneratingThumbnails = false
         }
     }
 

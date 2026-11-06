@@ -131,6 +131,24 @@ test("long-video trimming uses local thumbnails and bounded accessible handles",
   assert.match(view, /record-moments-start/);
   assert.match(view, /record-moments-duration/);
 });
+test("unavailable thumbnail frames keep their timeline positions without blocking trim", () => {
+  const generation = model.slice(model.indexOf("private func generateThumbnails"), model.indexOf("private func clearOutput"));
+  assert.match(generation, /var images = Array<UIImage\?>\(repeating: nil, count: count\)/);
+  assert.match(generation, /images\[index\] = image/);
+  assert.doesNotMatch(generation, /images\.append/);
+  assert.match(generation, /self\.thumbnails = images[\s\S]*?self\.isGeneratingThumbnails = false/);
+  assert.match(view, /Some thumbnail previews aren.t available[\s\S]*?trim with the timeline or sliders/);
+  assert.match(view, /Thumbnail previews aren.t available[\s\S]*?trim with the sliders/);
+  const trim = view.slice(view.indexOf("private var trimSection"), view.indexOf("private var shoutoutSection"));
+  const timeline = view.slice(view.indexOf("private struct NativeMomentTrimTimeline"));
+  assert.match(timeline, /title: "START"/);
+  assert.match(timeline, /title: "END"/);
+  assert.match(trim, /model\.thumbnails\.allSatisfy/);
+  assert.match(trim, /record-moments-trim-timeline/);
+  assert.match(trim, /record-moments-start/);
+  assert.match(trim, /record-moments-duration/);
+  assert.match(timeline, /accessibilityAdjustableAction/);
+});
 test("each new source requires a fresh shoutout selection", () => {
   assert.match(model, /@Published var shoutout: NativeMomentShoutout\?/);
   assert.match(model, /guard let shoutout else \{ return nil \}/);
