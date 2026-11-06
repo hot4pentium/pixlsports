@@ -59,7 +59,8 @@ Use non-personal test footage.
    square artwork must remain upright and readable, with no edge cropping.
    Inspect landscape and portrait at phone viewing size. Confirm the intro
    gently fades and scales in, reaches the complete artwork, and precedes rather
-    than covers or replaces the selected action. Also select **Clutch · Animated**:
+    than covers or replaces the selected action. Also select **Clutch · Animated**
+    and **Domination · Animated**:
     verify the bundled 16:9 video plays in landscape and remains fully visible,
     centered with black space above/below in portrait rather than cropping its
     text. Its intro is fixed at 2.5 seconds. Turn the intro-music toggle on and

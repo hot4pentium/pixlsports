@@ -31,18 +31,20 @@ enum NativeMomentError: LocalizedError {
 }
 
 enum NativeMomentShoutout: String, CaseIterable, Identifiable {
-    case clutch, clutchAnimated, domination, gamechanger, highlight, hustle
+    case clutch, clutchAnimated, domination, dominationAnimated, gamechanger, highlight, hustle
     case lockedin, milestone, nextlevel, unstoppable, victory
     var id: String { rawValue }
     var asset: String {
         switch self {
         case .clutchAnimated: return "Moment-clutch"
+        case .dominationAnimated: return "Moment-domination"
         default: return "Moment-\(rawValue)"
         }
     }
     var videoResource: String? {
         switch self {
         case .clutchAnimated: return "RecordMomentClutch"
+        case .dominationAnimated: return "RecordMomentDomination"
         default: return nil
         }
     }
@@ -54,6 +56,7 @@ enum NativeMomentShoutout: String, CaseIterable, Identifiable {
         case .clutch: return "Clutch"
         case .clutchAnimated: return "Clutch · Animated"
         case .domination: return "Domination"
+        case .dominationAnimated: return "Domination · Animated"
         case .gamechanger: return "Game Changer"
         case .highlight: return "Highlight"
         case .hustle: return "Hustle"

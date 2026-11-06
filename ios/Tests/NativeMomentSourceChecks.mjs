@@ -72,22 +72,28 @@ test("animated shoutout music fades out before the original audio", () => {
   assert.match(appleChecks, /intro music fades before source audio/);
   assert.match(appleChecks, /Intro music overlapped the original clip audio/);
 });
-test("Clutch Animated is a compact local video intro with portrait and landscape checks", () => {
+test("animated shoutouts are compact local video intros with portrait and landscape checks", () => {
   const plan = read("NativeMomentPlan.swift");
-  assert.match(plan, /case clutch, clutchAnimated/);
+  assert.match(plan, /case clutch, clutchAnimated, domination, dominationAnimated/);
   assert.match(plan, /Clutch · Animated/);
+  assert.match(plan, /Domination · Animated/);
+  assert.match(plan, /case \.dominationAnimated: return "Moment-domination"/);
   assert.match(plan, /RecordMomentClutch/);
+  assert.match(plan, /RecordMomentDomination/);
   assert.match(model, /Bundle\.main\.url\(forResource: resource, withExtension: "mp4"\)/);
   assert.match(model, /shoutoutVideo: shoutoutVideo/);
   assert.match(view, /Animated video intro/);
   assert.match(view, /shoutout\.videoResource != nil/);
-  const clipURL = new URL("../PIXL Sports/RecordMomentClutch.mp4", import.meta.url);
-  const clip = readFileSync(clipURL);
-  assert.ok(clip.length < 350_000, `Bundled sample should stay below 350 KB: ${clip.length} bytes`);
-  assert.equal(clip.subarray(4, 8).toString(), "ftyp", "Animated shoutout must be a valid local MP4");
+  assert.match(view, /music cue plays only with animated shoutout intros/);
+  for (const name of ["RecordMomentClutch.mp4", "RecordMomentDomination.mp4"]) {
+    const clip = readFileSync(new URL(`../PIXL Sports/${name}`, import.meta.url));
+    assert.ok(clip.length < 350_000, `${name} should stay below 350 KB: ${clip.length} bytes`);
+    assert.equal(clip.subarray(4, 8).toString(), "ftyp", `${name} must be a valid local MP4`);
+  }
   const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
   assert.match(appleChecks, /animated-clutch-landscape/);
   assert.match(appleChecks, /animated-clutch-portrait/);
+  assert.match(appleChecks, /PASS: animated Domination with Stadium Ignition music/);
 });
 test("file representations are copied before callbacks return and errors are explicit", () => {
   assert.match(picker, /loadFileRepresentation/);

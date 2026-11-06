@@ -169,6 +169,50 @@ struct NativeMomentExportChecks {
         try checkSourceFadeIn(asset: musicAsset, track: mixedTrack, start: musicPlan.intro)
         print("PASS: intro music fades before source audio; original source audio starts and remains intact")
 
+        let dominationURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentDomination.mp4")
+        precondition(FileManager.default.fileExists(atPath: dominationURL.path),
+                     "Bundled Domination video is missing")
+        let dominationOutput = try await NativeMomentExporter().export(
+            source: source,
+            shoutout: artwork,
+            plan: musicPlan,
+            directory: directory,
+            shoutoutVideo: dominationURL,
+            introMusicURL: introMusicURL
+        )
+        let dominationAsset = AVURLAsset(url: dominationOutput)
+        let dominationDuration = try await dominationAsset.load(.duration).seconds
+        precondition(abs(dominationDuration - 17.5) < 0.12,
+                     "Domination intro music changed the finished duration")
+        let dominationVideo = try await dominationAsset.loadTracks(withMediaType: .video).first!
+        let dominationOutputGenerator = AVAssetImageGenerator(asset: dominationAsset)
+        dominationOutputGenerator.appliesPreferredTrackTransform = true
+        dominationOutputGenerator.requestedTimeToleranceBefore = .zero
+        dominationOutputGenerator.requestedTimeToleranceAfter = .zero
+        let dominationIntroGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: dominationURL))
+        dominationIntroGenerator.appliesPreferredTrackTransform = true
+        dominationIntroGenerator.requestedTimeToleranceBefore = .zero
+        dominationIntroGenerator.requestedTimeToleranceAfter = .zero
+        let dominationSize = try await dominationVideo.load(.naturalSize)
+        let expectedDominationFrame = fittedVideoFrame(
+            try frame(dominationIntroGenerator, at: 1.0),
+            size: dominationSize
+        )
+        let actualDominationFrame = try frame(dominationOutputGenerator, at: 1.0)
+        precondition(distance(signature(actualDominationFrame), signature(expectedDominationFrame)) < 0.1,
+                     "Domination animation was not used in the music test export")
+        let dominationAudio = try await dominationAsset.loadTracks(withMediaType: .audio).first!
+        let dominationIntroSamples = try samples(asset: dominationAsset, track: dominationAudio, at: 0.5)
+        let dominationIntroEnergy = dominationIntroSamples.map { abs(Double($0)) }.reduce(0, +)
+            / Double(max(1, dominationIntroSamples.count))
+        precondition(dominationIntroEnergy > 100, "Domination intro music was not audible")
+        let dominationFirstFrequency = try frequency(
+            asset: dominationAsset, track: dominationAudio, at: musicPlan.intro + 0.25
+        )
+        precondition(abs(dominationFirstFrequency - 880) < 60,
+                     "Original audio did not begin after Domination intro music")
+        print("PASS: animated Domination with Stadium Ignition music and original audio")
+
         // Cancellation must stop work and remove all unfinished exporter files.
         let exporter = NativeMomentExporter()
         let baseline = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path))

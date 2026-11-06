@@ -21,14 +21,21 @@ struct NativeMomentPlanChecks {
                 preconditionFailure("Invalid selection accepted")
             } catch is NativeMomentError {}
         }
-        precondition(NativeMomentShoutout.allCases.count == 11)
+        precondition(NativeMomentShoutout.allCases.count == 12)
         precondition(Set(NativeMomentShoutout.allCases.map(\.asset)).count == 10)
         let animated = NativeMomentShoutout.clutchAnimated
         precondition(animated.videoResource == "RecordMomentClutch")
         precondition(animated.fixedIntroSeconds == 2.5)
+        let dominationAnimated = NativeMomentShoutout.dominationAnimated
+        precondition(dominationAnimated.asset == "Moment-domination")
+        precondition(dominationAnimated.videoResource == "RecordMomentDomination")
+        precondition(dominationAnimated.fixedIntroSeconds == 2.5)
         let animatedPlan = try NativeMomentPlan(sourceDuration: 60, start: 20, footage: 15,
                                                 intro: animated.fixedIntroSeconds!)
         precondition(animatedPlan.total == 17.5 && animatedPlan.footage == 15)
-        print("PASS: footage limit, independent intro, invalid ranges, ten poster images, animated Clutch plan")
+        let dominationPlan = try NativeMomentPlan(sourceDuration: 60, start: 20, footage: 15,
+                                                  intro: dominationAnimated.fixedIntroSeconds!)
+        precondition(dominationPlan.total == 17.5 && dominationPlan.footage == 15)
+        print("PASS: footage limit, independent intro, invalid ranges, ten poster images, animated shoutout plans")
     }
 }

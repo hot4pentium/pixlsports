@@ -256,7 +256,7 @@ struct NativeRecordMomentsView: View {
         Section("4 · Animated intro music") {
             Toggle("Add intro music", isOn: $model.introMusicEnabled)
                 .accessibilityIdentifier("record-moments-music-toggle")
-            Text("A short music cue plays only with Clutch · Animated. It fades out before your original video audio begins; no music plays over the action.")
+            Text("A short music cue plays only with animated shoutout intros. It fades out before your original video audio begins; no music plays over the action.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

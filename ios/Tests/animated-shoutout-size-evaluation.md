@@ -37,17 +37,18 @@ bundled; the current intro-only cue is 58,994 bytes.
 
 ## Clutch pilot added to Record Moments
 
-The 1280 × 720, 30 fps export (332,447 bytes) is now included as an optional
-local **Clutch · Animated** intro. The existing still-art choices remain
-available. The animated intro uses its fixed 2.5-second duration, keeps the
-selected footage allowance at up to 15 seconds, and is fit to the output frame
+The 1280 × 720, 30 fps export (332,447 bytes) is included as **Clutch ·
+Animated**. The supplied **Domination · Animated** clip is also bundled as a
+1280 × 720, 30 fps H.264 MP4 (200,418 bytes). The still-art choices remain
+available for both. Animated intros use a fixed 2.5-second duration, keep the
+selected footage allowance at up to 15 seconds, and fit the output frame
 without cropping. In portrait output, the complete landscape video is centered
-with black space above and below. The video is silent. A 58,994-byte AAC music
-cue can play during the intro only; it fades out before source-video audio
-begins. No music is mixed under the action.
+with black space above and below. The intro clips are silent; the 58,994-byte
+AAC Stadium Ignition cue can play during either intro and fades out before
+source-video audio begins. No music is mixed under the action.
 
-The bundled artwork, this animated pilot, and the intro-only music cue total
-about 2.35 MB. The original user MP4 is not bundled; only its audio track is.
+The bundled artwork, the two animated pilots, and the intro-only music cue
+total about 2.55 MB. The original Domination upload is not bundled.
 
 ## Recommendation
 
