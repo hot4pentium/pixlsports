@@ -95,6 +95,15 @@ test("animated shoutouts are compact local video intros with portrait and landsc
   assert.match(appleChecks, /animated-clutch-portrait/);
   assert.match(appleChecks, /PASS: animated Domination with Stadium Ignition music/);
 });
+test("the exact exported MP4 is previewed, saved, and shared", () => {
+  const exportFlow = model.slice(model.indexOf("func export()"), model.indexOf("func save()"));
+  const saveFlow = model.slice(model.indexOf("func save()"), model.indexOf("func stopPlayback()"));
+  assert.match(exportFlow, /output = url/);
+  assert.match(exportFlow, /setPreview\(url: url, start: 0, end: plan\.total\)/);
+  assert.match(saveFlow, /creationRequestForAssetFromVideo\(atFileURL: output\)/);
+  assert.match(view, /NativeMomentShareSheet\(url: output\)/);
+  assert.match(view, /Finished MP4 preview/);
+});
 test("file representations are copied before callbacks return and errors are explicit", () => {
   assert.match(picker, /loadFileRepresentation/);
   assert.match(picker, /copyItem\(at: url, to: target\)/);
