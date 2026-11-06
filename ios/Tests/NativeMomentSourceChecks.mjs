@@ -126,6 +126,11 @@ test("each new source requires a fresh shoutout selection", () => {
   assert.match(model, /guard let source, let plan, let shoutout, !busy else \{ return \}/);
   assert.match(view, /Previous choices won.t carry over/);
 });
+test("replacing a preview remounts the video player instead of showing a stale frame", () => {
+  assert.match(model, /@Published private\(set\) var previewID = UUID\(\)/);
+  assert.match(model, /previewID = UUID\(\)/);
+  assert.match(view, /VideoPlayer\(player: model\.player\)[\s\S]*?\.id\(model\.previewID\)/);
+});
 test("all ten original-derived optimized graphics are full-size and bundled", () => {
   const root = new URL("../PIXL Sports/Assets.xcassets/", import.meta.url);
   const assets = readdirSync(root).filter(name => name.startsWith("Moment-"));

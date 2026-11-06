@@ -50,6 +50,7 @@ struct NativeRecordMomentsView: View {
                         : "\(previewStep) · Finished MP4 preview") {
                     if let player = model.player {
                         VideoPlayer(player: player)
+                            .id(model.previewID)
                             .frame(height: 280)
                             .accessibilityIdentifier("record-moments-preview")
                     }

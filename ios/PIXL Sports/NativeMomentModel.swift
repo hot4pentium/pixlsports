@@ -33,7 +33,7 @@ final class NativeMomentModel: ObservableObject {
     private var importProgress: Progress?
     private var previewEnd = 0.0
     private var previewStart = 0.0
-    private var previewID = UUID()
+    @Published private(set) var previewID = UUID()
     private var thumbnailTask: Task<[UIImage?], Never>?
     private var thumbnailRequestID = UUID()
 
