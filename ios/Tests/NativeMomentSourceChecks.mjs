@@ -20,7 +20,7 @@ test("Record Moments is the third choice without replacing Prep or Share", () =>
 });
 test("local-only output preserves audio and orientation with no frame cropping", () => {
   assert.match(exporter, /load\(\.preferredTransform\)/);
-  assert.match(exporter, /CMTimeRangeGetIntersection\(range, available\)/);
+  assert.match(exporter, /CMTimeRangeGetIntersection\(range, otherRange: available\)/);
   assert.match(exporter, /at: CMTimeAdd\(introTime, CMTimeSubtract/);
   assert.match(exporter, /insertTimeRange\(range, of: video, at: introTime\)/);
   assert.match(exporter, /min\(size.width, size.height\)/);
@@ -70,6 +70,13 @@ test("long-video trimming uses local thumbnails and bounded accessible handles",
   assert.match(view, /accessibilityAdjustableAction/);
   assert.match(view, /record-moments-start/);
   assert.match(view, /record-moments-duration/);
+});
+test("each new source requires a fresh shoutout selection", () => {
+  assert.match(model, /@Published var shoutout: NativeMomentShoutout\?/);
+  assert.match(model, /guard shoutout != nil else \{ return nil \}/);
+  assert.match(model, /shoutout = nil/);
+  assert.match(model, /guard let source, let plan, let shoutout, !busy else \{ return \}/);
+  assert.match(view, /Previous choices won.t carry over/);
 });
 test("all ten original-derived optimized graphics are full-size and bundled", () => {
   const root = new URL("../PIXL Sports/Assets.xcassets/", import.meta.url);

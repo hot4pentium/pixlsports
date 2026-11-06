@@ -9,6 +9,12 @@ Accept source videos up to 120MB, prepare a smaller MP4 locally when the browser
 
 **How to apply:** Keep original and converted video bytes on-device only. Save trim settings as part of the design. If local MP4 conversion is unavailable, retain the original local clip and explain the fallback.
 
+Require a fresh shoutout choice for each newly imported source clip; do not silently carry the prior clip's choice forward.
+
+**Why:** The user reported that a previous intro was unexpectedly included when making another clip.
+
+**How to apply:** Clear the selected intro only after a new source imports successfully, and keep export unavailable until an intro is selected. Preserve the choice while editing the same clip.
+
 For the proposed shoutout-graphic export, put the chosen graphic before the full selected clip as a brief lead-in. Preserve up to 15 seconds of footage; the intro adds to the finished file duration instead of cutting into the footage. Keep the source video unchanged and let the user save the resulting MP4 to Photos for sharing. This is a local export idea, not permission to upload or publish the clip.
 
 **Why:** The user chose an intro before the entire clip and explicitly chose to keep the full clip duration.

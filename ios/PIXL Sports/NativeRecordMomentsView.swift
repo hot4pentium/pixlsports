@@ -192,6 +192,9 @@ struct NativeRecordMomentsView: View {
 
     private var shoutoutSection: some View {
         Section("3 · Choose a shoutout intro") {
+            Text(model.shoutout.map { "Selected for this clip: \($0.title)" }
+                 ?? "Choose an intro for this video. Previous choices won’t carry over.")
+                .font(.subheadline)
             Text(String(format: "Shoutout intro · %.1f seconds", model.introSeconds))
             Slider(value: $model.introSeconds, in: NativeMomentPlan.introRange, step: 0.5)
                 .accessibilityLabel("Shoutout intro length")

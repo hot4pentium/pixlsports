@@ -12,7 +12,7 @@ final class NativeMomentModel: ObservableObject {
     @Published private(set) var duration = 0.0
     @Published var start = 0.0
     @Published var footage = 1.0
-    @Published var shoutout: NativeMomentShoutout = .clutch
+    @Published var shoutout: NativeMomentShoutout?
     @Published var introSeconds = NativeMomentPlan.introSeconds
     @Published private(set) var hasAudio = false
     @Published private(set) var busy = false
@@ -41,7 +41,8 @@ final class NativeMomentModel: ObservableObject {
     var minimumStart: Double { max(0, start + footage - maximumFootage) }
     var maximumStart: Double { max(minimumStart, start + footage - minimumFootage) }
     var plan: NativeMomentPlan? {
-        try? NativeMomentPlan(sourceDuration: duration, start: start, footage: footage, intro: introSeconds)
+        guard shoutout != nil else { return nil }
+        return try? NativeMomentPlan(sourceDuration: duration, start: start, footage: footage, intro: introSeconds)
     }
 
     func preparePicker() -> Bool {
@@ -108,6 +109,7 @@ final class NativeMomentModel: ObservableObject {
                     try Task.checkCancellation()
                     clearOutput()
                     if let source { try? FileManager.default.removeItem(at: source) }
+                    shoutout = nil
                     self.source = url
                     self.duration = duration
                     self.start = 0
@@ -154,7 +156,7 @@ final class NativeMomentModel: ObservableObject {
     }
 
     func export() {
-        guard let source, let plan, !busy else { return }
+        guard let source, let plan, let shoutout, !busy else { return }
         guard let artwork = UIImage(named: shoutout.asset)?.cgImage else {
             error = "The selected shoutout is missing. Choose another graphic."
             return
