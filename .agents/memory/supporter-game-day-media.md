@@ -20,3 +20,9 @@ Record Moments should not add a music bed under the selected action. A short, op
 **Why:** The user tested the animated intro and wants any added audio confined to the shoutout intro, never under the original action. They later chose a supplied short music cue to replace the whoosh-and-hit effect and requested a fade-in for the video's own audio.
 
 **How to apply:** Keep added audio out of the exported action segment. Keep any intro cue short, user-controllable, and faded out before the original clip audio starts.
+
+Videos explicitly added to the HYPE Card from Record Moments should stay there until the owner removes or replaces them. Keep that permanent three-slot card media separate from expiring one-off video shares.
+
+**Why:** The user chose “stay until replaced” for HYPE Card videos.
+
+**How to apply:** Delete stored video and poster objects when a card video is replaced or removed; do not expire it automatically. Preserve existing expiration behavior for one-off shares.
