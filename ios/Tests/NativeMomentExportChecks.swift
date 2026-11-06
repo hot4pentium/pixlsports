@@ -72,6 +72,7 @@ struct NativeMomentExportChecks {
                 let tailFrequency = try frequency(asset: asset, track: audio, at: plan.intro + 14.5)
                 precondition(abs(firstFrequency - 880) < 50, "Beginning audio changed")
                 precondition(abs(tailFrequency - 1760) < 80, "Selected tail audio missing or shortened")
+                try checkSourceFadeIn(asset: asset, track: audio, start: plan.intro)
             }
             print("PASS: \(name), actual MP4 \(actual)s, ordered intact intro, first/last selected frames, orientation, audio=\(audible)")
         }
@@ -165,6 +166,7 @@ struct NativeMomentExportChecks {
                      "Original source audio did not start after intro music")
         precondition(abs(tailFrequency - 1760) < 100,
                      "Original tail audio was shortened or covered by intro music")
+        try checkSourceFadeIn(asset: musicAsset, track: mixedTrack, start: musicPlan.intro)
         print("PASS: intro music fades before source audio; original source audio starts and remains intact")
 
         // Cancellation must stop work and remove all unfinished exporter files.
@@ -319,6 +321,16 @@ struct NativeMomentExportChecks {
             number(Int16(sin(2 * .pi * hz * time) * 12_000))
         }
         return data
+    }
+
+    static func checkSourceFadeIn(asset: AVAsset, track: AVAssetTrack, start: Double) throws {
+        let early = try samples(asset: asset, track: track, at: start + 0.02, duration: 0.04)
+        let steady = try samples(asset: asset, track: track, at: start + 0.5, duration: 0.04)
+        precondition(!early.isEmpty && !steady.isEmpty, "Source fade-in audio could not be decoded")
+        let earlyEnergy = early.map { abs(Double($0)) }.reduce(0, +) / Double(early.count)
+        let steadyEnergy = steady.map { abs(Double($0)) }.reduce(0, +) / Double(steady.count)
+        precondition(earlyEnergy > 1 && steadyEnergy > 1000 && earlyEnergy < steadyEnergy * 0.6,
+                     "Source audio did not fade in gently")
     }
 
     static func frequency(asset: AVAsset, track: AVAssetTrack, at seconds: Double) throws -> Double {

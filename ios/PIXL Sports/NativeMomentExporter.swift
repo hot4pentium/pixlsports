@@ -90,10 +90,20 @@ final class NativeMomentExporter {
                 guard let audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
                     throw NativeMomentError.message("The source audio could not be preserved.")
                 }
-                try audio.insertTimeRange(overlap, of: sourceAudio,
-                    at: CMTimeAdd(introTime, CMTimeSubtract(overlap.start, range.start)))
+                let audioStart = CMTimeAdd(introTime, CMTimeSubtract(overlap.start, range.start))
+                try audio.insertTimeRange(overlap, of: sourceAudio, at: audioStart)
                 let parameters = AVMutableAudioMixInputParameters(track: audio)
-                parameters.setVolume(1, at: .zero)
+                // Ease into the original sound without delaying or trimming the footage.
+                let sourceFadeDuration = CMTime(
+                    seconds: min(0.35, overlap.duration.seconds),
+                    preferredTimescale: 600
+                )
+                parameters.setVolumeRamp(
+                    fromStartVolume: 0,
+                    toEndVolume: 1,
+                    timeRange: CMTimeRange(start: audioStart, duration: sourceFadeDuration)
+                )
+                parameters.setVolume(1, at: CMTimeAdd(audioStart, sourceFadeDuration))
                 audioMixParameters.append(parameters)
             }
         }

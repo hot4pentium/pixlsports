@@ -25,7 +25,8 @@ test("local-only output preserves audio and orientation with no frame cropping",
   assert.match(exporter, /introPreferredTransform/);
   assert.match(exporter, /introInstruction\.backgroundColor/);
   assert.match(exporter, /CMTimeRangeGetIntersection\(range, otherRange: available\)/);
-  assert.match(exporter, /at: CMTimeAdd\(introTime, CMTimeSubtract/);
+  assert.match(exporter, /audioStart = CMTimeAdd\(introTime, CMTimeSubtract/);
+  assert.match(exporter, /of: sourceAudio, at: audioStart/);
   assert.match(exporter, /insertTimeRange\(range, of: video, at: introTime\)/);
   assert.match(exporter, /min\(size.width, size.height\)/);
   assert.match(exporter, /finished.load\(\.duration\)/);
@@ -35,6 +36,17 @@ test("local-only output preserves audio and orientation with no frame cropping",
   for (const code of [exporter, model, picker, view]) {
     assert.doesNotMatch(code, /URLSession|NativeAccountLinkClient|CKAsset/i, "No hosting in media pipeline");
   }
+});
+test("original video audio fades in at its actual start without moving the footage", () => {
+  const sourceAudio = exporter.slice(exporter.indexOf("for sourceAudio in"), exporter.indexOf("if let introMusicURL"));
+  assert.match(sourceAudio, /min\(0\.35, overlap\.duration\.seconds\)/);
+  assert.match(sourceAudio, /fromStartVolume: 0,[\s\S]*?toEndVolume: 1/);
+  assert.match(sourceAudio, /CMTimeRange\(start: audioStart, duration: sourceFadeDuration\)/);
+  assert.match(sourceAudio, /setVolume\(1, at: CMTimeAdd\(audioStart, sourceFadeDuration\)\)/);
+  assert.match(exporter, /insertTimeRange\(range, of: video, at: introTime\)/);
+  const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
+  assert.match(appleChecks, /checkSourceFadeIn/);
+  assert.match(appleChecks, /Source audio did not fade in gently/);
 });
 test("animated shoutout music fades out before the original audio", () => {
   assert.match(model, /@Published var introMusicEnabled = true/);
