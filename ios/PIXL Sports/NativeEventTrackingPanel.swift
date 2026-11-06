@@ -145,10 +145,10 @@ struct NativeEventTrackingPanel: View {
             .frame(maxWidth: 560, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
-        .presentationDragIndicator(.visible)
+        .presentationDetents([.large])
+        .presentationCornerRadius(0)
+        .presentationDragIndicator(.hidden)
         .presentationBackground(.white)
-        .background(NativePageBackground())
         .preferredColorScheme(.light)
         .accessibilityIdentifier("native-event-mode-choice-sheet")
     }
