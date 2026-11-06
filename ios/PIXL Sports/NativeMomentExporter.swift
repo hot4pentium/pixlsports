@@ -12,7 +12,14 @@ final class NativeMomentExporter {
         session?.cancelExport()
     }
 
-    func export(source: URL, shoutout: CGImage, plan: NativeMomentPlan, directory: URL) async throws -> URL {
+    func export(
+        source: URL,
+        shoutout: CGImage,
+        plan: NativeMomentPlan,
+        directory: URL,
+        musicURL: URL? = nil,
+        musicVolume: Float = 0.18
+    ) async throws -> URL {
         defer {
             if writer?.status == .writing { writer?.cancelWriting() }
             writer = nil
@@ -47,9 +54,11 @@ final class NativeMomentExporter {
         let introTime = CMTime(seconds: plan.intro, preferredTimescale: 600)
         let range = CMTimeRange(start: CMTime(seconds: plan.start, preferredTimescale: 600),
                                 duration: CMTime(seconds: plan.footage, preferredTimescale: 600))
+        let totalTime = CMTimeAdd(introTime, range.duration)
         try introTrack.insertTimeRange(CMTimeRange(start: .zero, duration: introTime), of: introVideo, at: .zero)
         try footageTrack.insertTimeRange(range, of: video, at: introTime)
         // Intersect audio's real range; some phone movies start audio later than video.
+        var audioMixParameters: [AVMutableAudioMixInputParameters] = []
         for sourceAudio in try await asset.loadTracks(withMediaType: .audio) {
             let available = try await sourceAudio.load(.timeRange)
             let overlap = CMTimeRangeGetIntersection(range, otherRange: available)
@@ -59,7 +68,46 @@ final class NativeMomentExporter {
                 }
                 try audio.insertTimeRange(overlap, of: sourceAudio,
                     at: CMTimeAdd(introTime, CMTimeSubtract(overlap.start, range.start)))
+                let parameters = AVMutableAudioMixInputParameters(track: audio)
+                parameters.setVolume(1, at: .zero)
+                audioMixParameters.append(parameters)
             }
+        }
+        if let musicURL {
+            let musicAsset = AVURLAsset(url: musicURL)
+            guard let musicSource = try await musicAsset.loadTracks(withMediaType: .audio).first else {
+                throw NativeMomentError.message("The background music could not be read.")
+            }
+            let musicAvailable = try await musicSource.load(.timeRange)
+            guard musicAvailable.duration.seconds + 0.001 >= totalTime.seconds else {
+                throw NativeMomentError.message("The background music is shorter than this clip.")
+            }
+            guard let musicTrack = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) else {
+                throw NativeMomentError.message("The background music could not be added.")
+            }
+            try musicTrack.insertTimeRange(
+                CMTimeRange(start: musicAvailable.start, duration: totalTime),
+                of: musicSource,
+                at: .zero
+            )
+            let parameters = AVMutableAudioMixInputParameters(track: musicTrack)
+            let volume = min(0.35, max(0, musicVolume))
+            let fadeIn = CMTime(seconds: min(0.18, totalTime.seconds / 3), preferredTimescale: 600)
+            let fadeOut = CMTime(seconds: min(0.28, totalTime.seconds / 3), preferredTimescale: 600)
+            parameters.setVolumeRamp(
+                fromStartVolume: 0,
+                toEndVolume: volume,
+                timeRange: CMTimeRange(start: .zero, duration: fadeIn)
+            )
+            parameters.setVolumeRamp(
+                fromStartVolume: volume,
+                toEndVolume: 0,
+                timeRange: CMTimeRange(start: CMTimeSubtract(totalTime, fadeOut), duration: fadeOut)
+            )
+            audioMixParameters.append(parameters)
         }
         let introInstruction = AVMutableVideoCompositionInstruction()
         introInstruction.timeRange = CMTimeRange(start: .zero, duration: introTime)
@@ -91,7 +139,12 @@ final class NativeMomentExporter {
         export.outputURL = output
         export.outputFileType = .mp4
         export.videoComposition = videoComposition
-        export.timeRange = CMTimeRange(start: .zero, duration: CMTimeAdd(introTime, range.duration))
+        export.timeRange = CMTimeRange(start: .zero, duration: totalTime)
+        if !audioMixParameters.isEmpty {
+            let audioMix = AVMutableAudioMix()
+            audioMix.inputParameters = audioMixParameters
+            export.audioMix = audioMix
+        }
         export.shouldOptimizeForNetworkUse = false
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             export.exportAsynchronously { continuation.resume() }
@@ -110,7 +163,7 @@ final class NativeMomentExporter {
         }
         let expectedAudio = try await composition.loadTracks(withMediaType: .audio)
         if !expectedAudio.isEmpty, (try await finished.loadTracks(withMediaType: .audio)).isEmpty {
-            throw NativeMomentError.message("The source audio was missing from the finished clip. Please try again.")
+            throw NativeMomentError.message("Audio was missing from the finished clip. Please try again.")
         }
         success = true
         return output
@@ -137,25 +190,9 @@ final class NativeMomentExporter {
         guard writer.startWriting() else { throw writer.error ?? NativeMomentError.message("The intro could not be started.") }
         writer.startSession(atSourceTime: .zero)
         guard let pool = adaptor.pixelBufferPool else { throw NativeMomentError.message("Not enough memory to prepare the intro.") }
-        var buffer: CVPixelBuffer?
-        guard CVPixelBufferPoolCreatePixelBuffer(nil, pool, &buffer) == kCVReturnSuccess, let buffer else {
-            throw NativeMomentError.message("Not enough memory to prepare the intro.")
-        }
-        CVPixelBufferLockBaseAddress(buffer, [])
-        guard let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
-            width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
-            bytesPerRow: CVPixelBufferGetBytesPerRow(buffer), space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue) else {
-            CVPixelBufferUnlockBaseAddress(buffer, [])
-            throw NativeMomentError.message("The shoutout artwork could not be read.")
-        }
-        context.setFillColor(CGColor(gray: 0, alpha: 1))
-        context.fill(CGRect(origin: .zero, size: size))
         let side = min(size.width, size.height)
-        context.interpolationQuality = .high
-        context.draw(image, in: CGRect(x: (size.width - side) / 2, y: (size.height - side) / 2, width: side, height: side))
-        CVPixelBufferUnlockBaseAddress(buffer, [])
-        for frame in 0..<Int(ceil(seconds * 30)) {
+        let frameCount = max(1, Int(ceil(seconds * 30)))
+        for frame in 0..<frameCount {
             while !input.isReadyForMoreMediaData {
                 try Task.checkCancellation()
                 guard writer.status == .writing else {
@@ -164,6 +201,39 @@ final class NativeMomentExporter {
                 try await Task.sleep(nanoseconds: 5_000_000)
             }
             try Task.checkCancellation()
+            var buffer: CVPixelBuffer?
+            guard CVPixelBufferPoolCreatePixelBuffer(nil, pool, &buffer) == kCVReturnSuccess, let buffer else {
+                throw NativeMomentError.message("Not enough memory to prepare the intro.")
+            }
+            CVPixelBufferLockBaseAddress(buffer, [])
+            guard let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
+                width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
+                bytesPerRow: CVPixelBufferGetBytesPerRow(buffer), space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue) else {
+                CVPixelBufferUnlockBaseAddress(buffer, [])
+                throw NativeMomentError.message("The shoutout artwork could not be read.")
+            }
+            context.setFillColor(CGColor(gray: 0, alpha: 1))
+            context.fill(CGRect(origin: .zero, size: size))
+            context.interpolationQuality = .high
+
+            // Ease the full square artwork from 92% to 100% scale while it fades in.
+            // It never grows beyond its letterboxed bounds, so no artwork is cropped.
+            let progress = frameCount > 1 ? Double(frame) / Double(frameCount - 1) : 1
+            let eased = 1 - pow(1 - progress, 3)
+            let scale = CGFloat(0.92 + 0.08 * eased)
+            let opacity = min(1, progress / 0.12)
+            let animatedSide = side * scale
+            context.saveGState()
+            context.setAlpha(CGFloat(opacity))
+            context.draw(image, in: CGRect(
+                x: (size.width - animatedSide) / 2,
+                y: (size.height - animatedSide) / 2,
+                width: animatedSide,
+                height: animatedSide
+            ))
+            context.restoreGState()
+            CVPixelBufferUnlockBaseAddress(buffer, [])
             guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: 30)) else {
                 throw writer.error ?? NativeMomentError.message("The intro could not be written.")
             }

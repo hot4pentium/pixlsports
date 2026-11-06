@@ -57,12 +57,16 @@ Use non-personal test footage.
    H.264 tests establish these device-specific decoding paths.
 5. **Artwork:** Export with each of the ten original-derived shoutouts. Full
    square artwork must remain upright and readable, with no edge cropping.
-   Inspect landscape and portrait at phone viewing size. Two seconds of intro
-   must precede, not cover or replace, the complete selected action.
+   Inspect landscape and portrait at phone viewing size. Confirm the intro
+   gently fades and scales in, reaches the complete artwork, and precedes rather
+   than covers or replaces the selected action.
 6. **Actual files:** Save a full selection to Photos. Inspect the saved MP4
    with QuickTime/`ffprobe`: duration should be about 17 seconds (within a frame),
    video must be upright, and the selected first/last spoken markers must
-   remain audible in sync after the silent intro. A 4-second selection produces
+   remain audible and in sync. Test once with music off and once on; confirm the
+   intro music is audible, source sound remains clear underneath it, and the
+   volume slider changes the music level. Silent source clips may use the
+   optional music by itself. A 4-second selection produces
    about 6 seconds total with the default intro. Repeat with the adjustable
    one- and three-second intros: 15 seconds of footage must produce about 16 and
    18 seconds respectively. Silent sources are allowed with an explicit notice.

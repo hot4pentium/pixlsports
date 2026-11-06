@@ -14,6 +14,8 @@ final class NativeMomentModel: ObservableObject {
     @Published var footage = 1.0
     @Published var shoutout: NativeMomentShoutout?
     @Published var introSeconds = NativeMomentPlan.introSeconds
+    @Published var musicEnabled = false
+    @Published var musicVolume = 0.18
     @Published private(set) var hasAudio = false
     @Published private(set) var busy = false
     @Published private(set) var isExporting = false
@@ -117,7 +119,9 @@ final class NativeMomentModel: ObservableObject {
                     self.hasAudio = hasAudio
                     generateThumbnails(for: url, duration: duration)
                     updatePreview()
-                    message = hasAudio ? "Source audio will be preserved." : "This source has no audio. The finished clip will be silent."
+                    message = hasAudio
+                        ? "Source audio will be preserved."
+                        : "This source has no audio. Turn on background music if you want sound."
                 } catch {
                     try? FileManager.default.removeItem(at: url)
                     handle(error)
@@ -132,6 +136,12 @@ final class NativeMomentModel: ObservableObject {
         footage = min(footage, max(minimumFootage, duration - start), NativeMomentPlan.maximumFootage)
         clearOutput()
         updatePreview()
+        message = nil
+    }
+
+    func audioSelectionChanged() {
+        guard !busy else { return }
+        clearOutput()
         message = nil
     }
 
@@ -170,14 +180,29 @@ final class NativeMomentModel: ObservableObject {
             var unclaimedOutput: URL?
             defer { if let unclaimedOutput { try? FileManager.default.removeItem(at: unclaimedOutput) } }
             do {
-                let url = try await exporter.export(source: source, shoutout: artwork, plan: plan, directory: directory)
+                var musicURL: URL?
+                if musicEnabled {
+                    guard let bundledMusic = Bundle.main.url(forResource: "RecordMomentMusic", withExtension: "m4a") else {
+                        throw NativeMomentError.message("The optional background music isn’t available. Turn it off and try again.")
+                    }
+                    musicURL = bundledMusic
+                }
+                let url = try await exporter.export(
+                    source: source,
+                    shoutout: artwork,
+                    plan: plan,
+                    directory: directory,
+                    musicURL: musicURL,
+                    musicVolume: Float(musicVolume)
+                )
                 unclaimedOutput = url
                 try Task.checkCancellation()
                 clearOutput()
                 output = url
                 unclaimedOutput = nil
                 setPreview(url: url, start: 0, end: plan.total)
-                message = String(format: "Ready: %.1f-second intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage)
+                let musicNote = musicEnabled ? " Background music is mixed under your original sound." : ""
+                message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + musicNote
             } catch { handle(error) }
         }
     }

@@ -25,9 +25,27 @@ test("local-only output preserves audio and orientation with no frame cropping",
   assert.match(exporter, /insertTimeRange\(range, of: video, at: introTime\)/);
   assert.match(exporter, /min\(size.width, size.height\)/);
   assert.match(exporter, /finished.load\(\.duration\)/);
+  assert.match(exporter, /context\.setAlpha\(CGFloat\(opacity\)\)/);
+  assert.match(exporter, /0\.92 \+ 0\.08 \* eased/);
+  assert.match(exporter, /setVolumeRamp/);
   for (const code of [exporter, model, picker, view]) {
     assert.doesNotMatch(code, /URLSession|NativeAccountLinkClient|CKAsset/i, "No hosting in media pipeline");
   }
+});
+test("bundled instrumental is optional and stays below original audio", () => {
+  assert.match(model, /@Published var musicEnabled = false/);
+  assert.match(model, /func audioSelectionChanged\(\)/);
+  assert.match(model, /RecordMomentMusic/);
+  assert.match(view, /record-moments-music-toggle/);
+  assert.match(view, /record-moments-music-volume/);
+  assert.match(view, /model\.audioSelectionChanged\(\)/);
+  assert.match(exporter, /musicURL: URL\? = nil/);
+  assert.match(exporter, /parameters\.setVolume\(1, at: \.zero\)/);
+  assert.match(exporter, /let volume = min\(0\.35, max\(0, musicVolume\)\)/);
+  const music = new URL("../PIXL Sports/RecordMomentMusic.m4a", import.meta.url);
+  const bytes = readFileSync(music);
+  assert.ok(bytes.length < 500_000, `Bundled music should stay small: ${bytes.length} bytes`);
+  assert.equal(bytes.subarray(4, 8).toString(), "ftyp", "Music must be a valid local MP4-family audio file");
 });
 test("file representations are copied before callbacks return and errors are explicit", () => {
   assert.match(picker, /loadFileRepresentation/);

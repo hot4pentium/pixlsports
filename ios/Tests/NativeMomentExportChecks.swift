@@ -51,11 +51,11 @@ struct NativeMomentExportChecks {
             }
             let earlyIntro = try frame(generator, at: 0.1)
             let lateIntro = try frame(generator, at: plan.intro - 0.1)
-            precondition(distance(signature(earlyIntro), signature(lateIntro)) < 0.03,
-                         "Intro must remain before all footage")
+            precondition(distance(signature(earlyIntro), signature(lateIntro)) > 0.002,
+                         "The shoutout intro did not animate")
             let expected = graphicFrame(artwork, size: size)
-            precondition(distance(signature(earlyIntro), signature(expected)) < 0.08,
-                         "Artwork cropped, inverted, or absent")
+            precondition(distance(signature(lateIntro), signature(expected)) < 0.08,
+                         "Artwork cropped, inverted, or absent at the end of the animation")
             let audioTracks = try await asset.loadTracks(withMediaType: .audio)
             precondition(audioTracks.isEmpty != audible, "Audio presence changed")
             if audible {
@@ -75,6 +75,32 @@ struct NativeMomentExportChecks {
             }
             print("PASS: \(name), actual MP4 \(actual)s, ordered intact intro, first/last selected frames, orientation, audio=\(audible)")
         }
+        let musicURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentMusic.m4a")
+        precondition(FileManager.default.fileExists(atPath: musicURL.path), "Bundled instrumental is missing")
+        let musicPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2)
+        let musicOutput = try await NativeMomentExporter().export(
+            source: source,
+            shoutout: artwork,
+            plan: musicPlan,
+            directory: directory,
+            musicURL: musicURL,
+            musicVolume: 0.18
+        )
+        let musicAsset = AVURLAsset(url: musicOutput)
+        let musicDuration = try await musicAsset.load(.duration).seconds
+        precondition(abs(musicDuration - musicPlan.total) < 0.12, "Music changed the finished duration")
+        let mixedTrack = try await musicAsset.loadTracks(withMediaType: .audio).first!
+        let introSamples = try samples(asset: musicAsset, track: mixedTrack, at: 0.5)
+        let introEnergy = introSamples.map { abs(Double($0)) }.reduce(0, +) / Double(introSamples.count)
+        precondition(introEnergy > 100, "Optional music was not audible during the intro")
+        let mixedFirstFrequency = try frequency(asset: musicAsset, track: mixedTrack, at: musicPlan.intro + 0.25)
+        let mixedTailFrequency = try frequency(asset: musicAsset, track: mixedTrack, at: musicPlan.intro + 14.5)
+        precondition(abs(mixedFirstFrequency - 880) < 60,
+                     "Original source audio was not preserved under the music")
+        precondition(abs(mixedTailFrequency - 1760) < 100,
+                     "The selected tail audio was not preserved under the music")
+        print("PASS: optional bundled music, source audio retained, soundtrack stays under source audio, unchanged duration")
+
         // Cancellation must stop work and remove all unfinished exporter files.
         let exporter = NativeMomentExporter()
         let baseline = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path))
