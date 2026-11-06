@@ -75,6 +75,67 @@ struct NativeMomentExportChecks {
             }
             print("PASS: \(name), actual MP4 \(actual)s, ordered intact intro, first/last selected frames, orientation, audio=\(audible)")
         }
+        let animatedURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutch.mp4")
+        precondition(FileManager.default.fileExists(atPath: animatedURL.path), "Bundled Clutch video is missing")
+        for (name, url, isPortrait) in [
+            ("animated-clutch-landscape", source, false),
+            ("animated-clutch-portrait", portrait, true)
+        ] {
+            let start = 3.0
+            let plan = try NativeMomentPlan(sourceDuration: 20, start: start, footage: 15, intro: 2.5)
+            let output = try await NativeMomentExporter().export(
+                source: url,
+                shoutout: artwork,
+                plan: plan,
+                directory: directory,
+                shoutoutVideo: animatedURL
+            )
+            let asset = AVURLAsset(url: output)
+            let actual = try await asset.load(.duration).seconds
+            precondition(abs(actual - 17.5) < 0.12, "Animated intro reduced the selected footage")
+            let videoTrack = try await asset.loadTracks(withMediaType: .video).first!
+            let size = try await videoTrack.load(.naturalSize)
+            precondition(isPortrait ? size.height > size.width : size.width > size.height)
+
+            let resultGenerator = AVAssetImageGenerator(asset: asset)
+            resultGenerator.appliesPreferredTrackTransform = true
+            resultGenerator.requestedTimeToleranceBefore = .zero
+            resultGenerator.requestedTimeToleranceAfter = .zero
+            let introGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: animatedURL))
+            introGenerator.appliesPreferredTrackTransform = true
+            introGenerator.requestedTimeToleranceBefore = .zero
+            introGenerator.requestedTimeToleranceAfter = .zero
+            let sourceGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            sourceGenerator.appliesPreferredTrackTransform = true
+            sourceGenerator.requestedTimeToleranceBefore = .zero
+            sourceGenerator.requestedTimeToleranceAfter = .zero
+            let expectedIntro = fittedVideoFrame(try frame(introGenerator, at: 0.5), size: size)
+            let actualIntro = try frame(resultGenerator, at: 0.5)
+            precondition(distance(signature(actualIntro), signature(expectedIntro)) < 0.1,
+                         "Animated shoutout was cropped or not centered in \(name)")
+            for relative in [0.1, 14.9] {
+                let resultFrame = try frame(resultGenerator, at: plan.intro + relative)
+                let sourceFrame = try frame(sourceGenerator, at: start + relative)
+                precondition(distance(signature(resultFrame), signature(sourceFrame)) < 0.08,
+                             "Animated intro changed selected action in \(name)")
+            }
+            let audioTrack = try await asset.loadTracks(withMediaType: .audio).first!
+            let audioRange = try await audioTrack.load(.timeRange)
+            precondition(audioRange.start.seconds <= plan.intro + 0.12,
+                         "Original audio begins after the selected footage")
+            let introSamples = try samples(asset: asset, track: audioTrack, at: 0.5)
+            if !introSamples.isEmpty {
+                let introEnergy = introSamples.map { abs(Double($0)) }.reduce(0, +) / Double(introSamples.count)
+                precondition(introEnergy < 50, "The animated intro unexpectedly contains source audio")
+            }
+            let firstFrequency = try frequency(asset: asset, track: audioTrack, at: plan.intro + 0.25)
+            let tailFrequency = try frequency(asset: asset, track: audioTrack, at: plan.intro + 14.5)
+            precondition(abs(firstFrequency - 880) < 60,
+                         "Original audio did not start with the selected footage")
+            precondition(abs(tailFrequency - 1760) < 100,
+                         "Original tail audio was shortened by the animated intro")
+            print("PASS: \(name), bundled silent video intro, full 15-second footage, uncropped layout, source audio")
+        }
         let musicURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentMusic.m4a")
         precondition(FileManager.default.fileExists(atPath: musicURL.path), "Bundled instrumental is missing")
         let musicPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2)
@@ -155,6 +216,20 @@ struct NativeMomentExportChecks {
         context.fill(CGRect(origin: .zero, size: size))
         let side = min(size.width, size.height)
         context.draw(image, in: CGRect(x: (size.width - side) / 2, y: (size.height - side) / 2, width: side, height: side))
+        return context.makeImage()!
+    }
+
+    static func fittedVideoFrame(_ image: CGImage, size: CGSize) -> CGImage {
+        let context = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
+            bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        context.setFillColor(CGColor(gray: 0, alpha: 1))
+        context.fill(CGRect(origin: .zero, size: size))
+        let scale = min(size.width / CGFloat(image.width), size.height / CGFloat(image.height))
+        let width = CGFloat(image.width) * scale
+        let height = CGFloat(image.height) * scale
+        context.draw(image, in: CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2,
+                                       width: width, height: height))
         return context.makeImage()!
     }
 

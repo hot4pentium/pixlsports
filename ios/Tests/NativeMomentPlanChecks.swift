@@ -21,8 +21,14 @@ struct NativeMomentPlanChecks {
                 preconditionFailure("Invalid selection accepted")
             } catch is NativeMomentError {}
         }
-        precondition(NativeMomentShoutout.allCases.count == 10)
+        precondition(NativeMomentShoutout.allCases.count == 11)
         precondition(Set(NativeMomentShoutout.allCases.map(\.asset)).count == 10)
-        print("PASS: footage limit, independent intro, tail selections, invalid ranges, ten unique shoutouts")
+        let animated = NativeMomentShoutout.clutchAnimated
+        precondition(animated.videoResource == "RecordMomentClutch")
+        precondition(animated.fixedIntroSeconds == 2.5)
+        let animatedPlan = try NativeMomentPlan(sourceDuration: 60, start: 20, footage: 15,
+                                                intro: animated.fixedIntroSeconds!)
+        precondition(animatedPlan.total == 17.5 && animatedPlan.footage == 15)
+        print("PASS: footage limit, independent intro, invalid ranges, ten poster images, animated Clutch plan")
     }
 }

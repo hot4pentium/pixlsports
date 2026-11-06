@@ -31,13 +31,28 @@ enum NativeMomentError: LocalizedError {
 }
 
 enum NativeMomentShoutout: String, CaseIterable, Identifiable {
-    case clutch, domination, gamechanger, highlight, hustle
+    case clutch, clutchAnimated, domination, gamechanger, highlight, hustle
     case lockedin, milestone, nextlevel, unstoppable, victory
     var id: String { rawValue }
-    var asset: String { "Moment-\(rawValue)" }
+    var asset: String {
+        switch self {
+        case .clutchAnimated: return "Moment-clutch"
+        default: return "Moment-\(rawValue)"
+        }
+    }
+    var videoResource: String? {
+        switch self {
+        case .clutchAnimated: return "RecordMomentClutch"
+        default: return nil
+        }
+    }
+    var fixedIntroSeconds: Double? {
+        videoResource == nil ? nil : 2.5
+    }
     var title: String {
         switch self {
         case .clutch: return "Clutch"
+        case .clutchAnimated: return "Clutch · Animated"
         case .domination: return "Domination"
         case .gamechanger: return "Game Changer"
         case .highlight: return "Highlight"

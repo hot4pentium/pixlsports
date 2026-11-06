@@ -59,7 +59,10 @@ Use non-personal test footage.
    square artwork must remain upright and readable, with no edge cropping.
    Inspect landscape and portrait at phone viewing size. Confirm the intro
    gently fades and scales in, reaches the complete artwork, and precedes rather
-   than covers or replaces the selected action.
+    than covers or replaces the selected action. Also select **Clutch · Animated**:
+    verify the bundled 16:9 video plays in landscape and remains fully visible,
+    centered with black space above/below in portrait rather than cropping its
+    text. Its intro is fixed at 2.5 seconds.
 6. **Actual files:** Save a full selection to Photos. Inspect the saved MP4
    with QuickTime/`ffprobe`: duration should be about 17 seconds (within a frame),
    video must be upright, and the selected first/last spoken markers must
@@ -69,7 +72,9 @@ Use non-personal test footage.
    optional music by itself. A 4-second selection produces
    about 6 seconds total with the default intro. Repeat with the adjustable
    one- and three-second intros: 15 seconds of footage must produce about 16 and
-   18 seconds respectively. Silent sources are allowed with an explicit notice.
+    18 seconds respectively. The Clutch animated video intro plus 15 seconds of
+    footage should produce about 17.5 seconds. Silent sources are allowed with an
+    explicit notice.
 7. **Photos:** Deny add permission and confirm a helpful retry/Settings path.
    Grant add-only permission and save successfully. Confirm Photos contains the
    finished MP4, not the original or a poster. Retry after denied permission.
@@ -81,9 +86,10 @@ Use non-personal test footage.
 9. **Lifecycle:** Cancel export, retry, change the artwork, then export again.
    Background during export and return. A failed/interrupted export must keep
    the source intact and allow retry. Close the editor and inspect its
-   `tmp/PIXL-Moment-*` workspace: source copies, intros, and outputs should be
-   removed. Saved Photos and shared copies must remain. The app must make no
-   clip-upload request and create no persistent moment library.
+    `tmp/PIXL-Moment-*` workspace: source copies, generated still intros, and
+    outputs should be removed. The bundled Clutch video stays with the installed
+    app. Saved Photos and shared copies must remain. The app must make no
+    clip-upload request and create no persistent moment library.
 10. **Thumbnail generation under load:** On a supported iPhone, use a local,
     non-personal video close to the 120 MB source limit. While the private
     thumbnail timeline is preparing, scroll the editor and repeatedly adjust

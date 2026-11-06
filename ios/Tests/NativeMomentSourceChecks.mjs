@@ -20,6 +20,10 @@ test("Record Moments is the third choice without replacing Prep or Share", () =>
 });
 test("local-only output preserves audio and orientation with no frame cropping", () => {
   assert.match(exporter, /load\(\.preferredTransform\)/);
+  assert.match(exporter, /shoutoutVideo: URL\? = nil/);
+  assert.match(exporter, /introAvailable\.duration\.seconds/);
+  assert.match(exporter, /introPreferredTransform/);
+  assert.match(exporter, /introInstruction\.backgroundColor/);
   assert.match(exporter, /CMTimeRangeGetIntersection\(range, otherRange: available\)/);
   assert.match(exporter, /at: CMTimeAdd\(introTime, CMTimeSubtract/);
   assert.match(exporter, /insertTimeRange\(range, of: video, at: introTime\)/);
@@ -46,6 +50,23 @@ test("bundled instrumental is optional and stays below original audio", () => {
   const bytes = readFileSync(music);
   assert.ok(bytes.length < 500_000, `Bundled music should stay small: ${bytes.length} bytes`);
   assert.equal(bytes.subarray(4, 8).toString(), "ftyp", "Music must be a valid local MP4-family audio file");
+});
+test("Clutch Animated is a compact local video intro with portrait and landscape checks", () => {
+  const plan = read("NativeMomentPlan.swift");
+  assert.match(plan, /case clutch, clutchAnimated/);
+  assert.match(plan, /Clutch · Animated/);
+  assert.match(plan, /RecordMomentClutch/);
+  assert.match(model, /Bundle\.main\.url\(forResource: resource, withExtension: "mp4"\)/);
+  assert.match(model, /shoutoutVideo: shoutoutVideo/);
+  assert.match(view, /Animated video intro/);
+  assert.match(view, /shoutout\.videoResource != nil/);
+  const clipURL = new URL("../PIXL Sports/RecordMomentClutch.mp4", import.meta.url);
+  const clip = readFileSync(clipURL);
+  assert.ok(clip.length < 350_000, `Bundled sample should stay below 350 KB: ${clip.length} bytes`);
+  assert.equal(clip.subarray(4, 8).toString(), "ftyp", "Animated shoutout must be a valid local MP4");
+  const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
+  assert.match(appleChecks, /animated-clutch-landscape/);
+  assert.match(appleChecks, /animated-clutch-portrait/);
 });
 test("file representations are copied before callbacks return and errors are explicit", () => {
   assert.match(picker, /loadFileRepresentation/);
@@ -91,7 +112,7 @@ test("long-video trimming uses local thumbnails and bounded accessible handles",
 });
 test("each new source requires a fresh shoutout selection", () => {
   assert.match(model, /@Published var shoutout: NativeMomentShoutout\?/);
-  assert.match(model, /guard shoutout != nil else \{ return nil \}/);
+  assert.match(model, /guard let shoutout else \{ return nil \}/);
   assert.match(model, /shoutout = nil/);
   assert.match(model, /guard let source, let plan, let shoutout, !busy else \{ return \}/);
   assert.match(view, /Previous choices won.t carry over/);

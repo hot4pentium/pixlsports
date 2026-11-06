@@ -43,8 +43,9 @@ final class NativeMomentModel: ObservableObject {
     var minimumStart: Double { max(0, start + footage - maximumFootage) }
     var maximumStart: Double { max(minimumStart, start + footage - minimumFootage) }
     var plan: NativeMomentPlan? {
-        guard shoutout != nil else { return nil }
-        return try? NativeMomentPlan(sourceDuration: duration, start: start, footage: footage, intro: introSeconds)
+        guard let shoutout else { return nil }
+        let intro = shoutout.fixedIntroSeconds ?? introSeconds
+        return try? NativeMomentPlan(sourceDuration: duration, start: start, footage: footage, intro: intro)
     }
 
     func preparePicker() -> Bool {
@@ -171,6 +172,16 @@ final class NativeMomentModel: ObservableObject {
             error = "The selected shoutout is missing. Choose another graphic."
             return
         }
+        let shoutoutVideo: URL?
+        if let resource = shoutout.videoResource {
+            guard let bundledVideo = Bundle.main.url(forResource: resource, withExtension: "mp4") else {
+                error = "The animated shoutout isn’t available. Choose another intro."
+                return
+            }
+            shoutoutVideo = bundledVideo
+        } else {
+            shoutoutVideo = nil
+        }
         busy = true
         isExporting = true
         message = "Creating your MP4 on this iPhone…"
@@ -192,6 +203,7 @@ final class NativeMomentModel: ObservableObject {
                     shoutout: artwork,
                     plan: plan,
                     directory: directory,
+                    shoutoutVideo: shoutoutVideo,
                     musicURL: musicURL,
                     musicVolume: Float(musicVolume)
                 )

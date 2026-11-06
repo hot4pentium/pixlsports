@@ -17,6 +17,7 @@ final class NativeMomentExporter {
         shoutout: CGImage,
         plan: NativeMomentPlan,
         directory: URL,
+        shoutoutVideo: URL? = nil,
         musicURL: URL? = nil,
         musicVolume: Float = 0.18
     ) async throws -> URL {
@@ -38,24 +39,48 @@ final class NativeMomentExporter {
         let scale = min(1, 1080 / max(oriented.width, oriented.height))
         let size = CGSize(width: max(2, floor(oriented.width * scale / 2) * 2),
                           height: max(2, floor(oriented.height * scale / 2) * 2))
-        let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
-        defer { try? FileManager.default.removeItem(at: introURL) }
-        try await writeIntro(image: shoutout, size: size, seconds: plan.intro, to: introURL)
+        let introTime = CMTime(seconds: plan.intro, preferredTimescale: 600)
+        var generatedIntroURL: URL?
+        let introAsset: AVURLAsset
+        if let shoutoutVideo {
+            introAsset = AVURLAsset(url: shoutoutVideo)
+        } else {
+            let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
+            generatedIntroURL = introURL
+            try await writeIntro(image: shoutout, size: size, seconds: plan.intro, to: introURL)
+            introAsset = AVURLAsset(url: introURL)
+        }
+        defer {
+            if let generatedIntroURL { try? FileManager.default.removeItem(at: generatedIntroURL) }
+        }
         try Task.checkCancellation()
-        let introAsset = AVURLAsset(url: introURL)
         guard let introVideo = try await introAsset.loadTracks(withMediaType: .video).first else {
             throw NativeMomentError.message("The shoutout intro could not be read.")
+        }
+        let introAvailable = try await introVideo.load(.timeRange)
+        guard introAvailable.duration.seconds + 0.001 >= plan.intro else {
+            throw NativeMomentError.message("The animated shoutout is shorter than its selected intro time.")
+        }
+        let introNaturalSize = try await introVideo.load(.naturalSize)
+        let introPreferredTransform = try await introVideo.load(.preferredTransform)
+        let introOriented = CGRect(origin: .zero, size: introNaturalSize)
+            .applying(introPreferredTransform).standardized
+        guard introOriented.width > 0, introOriented.height > 0 else {
+            throw NativeMomentError.message("The shoutout intro’s dimensions could not be read.")
         }
         let composition = AVMutableComposition()
         guard let introTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
               let footageTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
             throw NativeMomentError.message("The clip could not be prepared.")
         }
-        let introTime = CMTime(seconds: plan.intro, preferredTimescale: 600)
         let range = CMTimeRange(start: CMTime(seconds: plan.start, preferredTimescale: 600),
                                 duration: CMTime(seconds: plan.footage, preferredTimescale: 600))
         let totalTime = CMTimeAdd(introTime, range.duration)
-        try introTrack.insertTimeRange(CMTimeRange(start: .zero, duration: introTime), of: introVideo, at: .zero)
+        try introTrack.insertTimeRange(
+            CMTimeRange(start: introAvailable.start, duration: introTime),
+            of: introVideo,
+            at: .zero
+        )
         try footageTrack.insertTimeRange(range, of: video, at: introTime)
         // Intersect audio's real range; some phone movies start audio later than video.
         var audioMixParameters: [AVMutableAudioMixInputParameters] = []
@@ -111,7 +136,22 @@ final class NativeMomentExporter {
         }
         let introInstruction = AVMutableVideoCompositionInstruction()
         introInstruction.timeRange = CMTimeRange(start: .zero, duration: introTime)
-        introInstruction.layerInstructions = [AVMutableVideoCompositionLayerInstruction(assetTrack: introTrack)]
+        introInstruction.backgroundColor = CGColor(gray: 0, alpha: 1)
+        let introLayer = AVMutableVideoCompositionLayerInstruction(assetTrack: introTrack)
+        // Preserve the intro's full frame in portrait and landscape exports.
+        let introFit = min(size.width / introOriented.width, size.height / introOriented.height)
+        let introTransform = introPreferredTransform
+            .concatenating(CGAffineTransform(
+                translationX: -introOriented.minX,
+                y: -introOriented.minY
+            ))
+            .concatenating(CGAffineTransform(scaleX: introFit, y: introFit))
+            .concatenating(CGAffineTransform(
+                translationX: (size.width - introOriented.width * introFit) / 2,
+                y: (size.height - introOriented.height * introFit) / 2
+            ))
+        introLayer.setTransform(introTransform, at: .zero)
+        introInstruction.layerInstructions = [introLayer]
         let footageInstruction = AVMutableVideoCompositionInstruction()
         footageInstruction.timeRange = CMTimeRange(start: introTime, duration: range.duration)
         let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: footageTrack)

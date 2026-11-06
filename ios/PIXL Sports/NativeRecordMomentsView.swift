@@ -156,7 +156,7 @@ struct NativeRecordMomentsView: View {
     private var trimSection: some View {
         Section("2 · Select up to 15 seconds of footage") {
             Text(String(format: "Start %.2fs · Footage %.2fs · Finished %.2fs",
-                        model.start, model.footage, model.footage + model.introSeconds))
+                        model.start, model.footage, model.footage + (model.plan?.intro ?? model.introSeconds)))
                 .monospacedDigit()
             NativeMomentTrimTimeline(model: model)
                 .frame(height: 92)
@@ -199,19 +199,32 @@ struct NativeRecordMomentsView: View {
             Text(model.shoutout.map { "Selected for this clip: \($0.title)" }
                  ?? "Choose an intro for this video. Previous choices won’t carry over.")
                 .font(.subheadline)
-            Text(String(format: "Shoutout intro · %.1f seconds", model.introSeconds))
-            Slider(value: $model.introSeconds, in: NativeMomentPlan.introRange, step: 0.5)
-                .accessibilityLabel("Shoutout intro length")
-                .accessibilityValue(String(format: "%.1f seconds", model.introSeconds))
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 125))], spacing: 12) {
+            if let fixedIntroSeconds = model.shoutout?.fixedIntroSeconds {
+                Text(String(format: "Animated video intro · %.1f seconds", fixedIntroSeconds))
+            } else {
+                Text(String(format: "Shoutout intro · %.1f seconds", model.introSeconds))
+                Slider(value: $model.introSeconds, in: NativeMomentPlan.introRange, step: 0.5)
+                    .accessibilityLabel("Shoutout intro length")
+                    .accessibilityValue(String(format: "%.1f seconds", model.introSeconds))
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 135))], spacing: 12) {
                 ForEach(NativeMomentShoutout.allCases) { shoutout in
                     Button {
                         model.shoutout = shoutout
                     } label: {
                         VStack {
-                            Image(shoutout.asset)
-                                .resizable().aspectRatio(1, contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            ZStack(alignment: .topTrailing) {
+                                Image(shoutout.asset)
+                                    .resizable().aspectRatio(1, contentMode: .fit)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                if shoutout.videoResource != nil {
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.white)
+                                        .shadow(color: .black.opacity(0.55), radius: 3)
+                                        .padding(8)
+                                }
+                            }
                             Label(shoutout.title, systemImage: model.shoutout == shoutout ? "checkmark.circle.fill" : "circle")
                                 .font(.caption.bold())
                         }
@@ -225,7 +238,7 @@ struct NativeRecordMomentsView: View {
                     .accessibilityIdentifier("record-moments-shoutout-\(shoutout.rawValue)")
                 }
             }
-            Text("Artwork is shown in full, with black space around it when needed. No text or action is cropped.")
+            Text("Still artwork and video are fit without cropping. Landscape videos may have black space around them on portrait clips.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

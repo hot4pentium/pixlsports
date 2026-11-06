@@ -34,6 +34,19 @@ The 720p version is the better quality/size balance. If the original stills
 remain as selection thumbnails, the ten 720p clips plus the stills and current
 instrumental would total about 5.54 MB for these assets.
 
+## Clutch pilot added to Record Moments
+
+The 1280 × 720, 30 fps export (332,447 bytes) is now included as an optional
+local **Clutch · Animated** intro. The existing still-art choices remain
+available. The animated intro uses its fixed 2.5-second duration, keeps the
+selected footage allowance at up to 15 seconds, and is fit to the output frame
+without cropping. In portrait output, the complete landscape video is centered
+with black space above and below. The video is silent; the existing optional
+music and source-video audio paths remain separate.
+
+The bundled artwork, instrumental, and this one animated pilot total about
+2.54 MB. The original 1080p upload is not bundled.
+
 ## Recommendation
 
 - If all ten shoutouts are animated, target silent 1280 × 720 H.264 at 30 fps,
@@ -47,11 +60,8 @@ instrumental would total about 5.54 MB for these assets.
 
 ## iPhone/export verification boundary
 
-The sample's H.264 MP4 format is a reasonable iPhone playback candidate, but
-this workspace has no Apple developer directory, Swift compiler, simulator, or
-physical iPhone, so AVFoundation playback/export was not verified. The current
-exporter accepts image artwork for its intro; using a pre-rendered video would
-require a separate exporter path. The existing plan keeps the 15-second footage
-limit independent from intro duration, so a 2.5-second intro can be added
-without shortening the selected action, but that still needs an iPhone export
-test before adoption.
+This workspace has no Apple developer directory, Swift compiler, simulator, or
+physical iPhone, so AVFoundation playback/export of the new video-intro path was
+not verified. The feature is wired into the local Record Moments source for
+simulator testing, but should be built and checked in Xcode before relying on
+device playback, portrait framing, Photos save, or sharing.
