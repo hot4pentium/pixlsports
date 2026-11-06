@@ -1,0 +1,57 @@
+# Animated Shoutout Size Evaluation
+
+## Sample
+
+The supplied clip is a silent 16:9 MP4:
+
+Source: `attached_assets/0_clutch_16x9_slower_shake_1793927320127.mp4`
+
+| Property | Value |
+| --- | --- |
+| Duration | 2.5 seconds |
+| Frame size / rate | 1920 × 1080 at 30 fps |
+| Video | H.264 High, 8-bit YUV 4:2:0 |
+| Audio | None |
+| File size | 1,482,040 bytes (1.48 MB) |
+| Average bitrate | About 4.74 Mbps |
+
+The current ten 1024 × 1024 shoutout JPEGs total 1,964,080 bytes (1.96 MB).
+Ten clips at the supplied sample's size would total about 14.82 MB, roughly
+7.5 times the still-image set. Replacing the stills at that quality would add
+about 12.86 MB; keeping the stills for the chooser would add the full 14.82 MB.
+
+## Local compression tests
+
+The same sample was encoded as silent H.264 MP4 at 30 fps:
+
+| Export | Size per clip | Ten clips | SSIM vs. source scaled to export size |
+| --- | ---: | ---: | ---: |
+| 1280 × 720, target 1 Mbps | 332,447 bytes | 3.32 MB | 0.9719 |
+| 960 × 540, target 700 Kbps | 235,024 bytes | 2.35 MB | 0.9639 |
+
+The shoutout wording remained readable in extracted frames from both exports.
+The 720p version is the better quality/size balance. If the original stills
+remain as selection thumbnails, the ten 720p clips plus the stills and current
+instrumental would total about 5.54 MB for these assets.
+
+## Recommendation
+
+- If all ten shoutouts are animated, target silent 1280 × 720 H.264 at 30 fps,
+  about 1 Mbps, and roughly 2.5 seconds. Aim for no more than 350 KB per clip.
+- A 960 × 540, 700 Kbps version is a smaller fallback, about 235 KB each.
+- Keep the music separate; the sample has no audio, so it will not replace or
+  cover source-video sound.
+- The sample is landscape 16:9. Portrait exports need a portrait-specific
+  version or a tested layout that keeps the title readable; cropping this
+  animation to fill a phone screen can cut off its text.
+
+## iPhone/export verification boundary
+
+The sample's H.264 MP4 format is a reasonable iPhone playback candidate, but
+this workspace has no Apple developer directory, Swift compiler, simulator, or
+physical iPhone, so AVFoundation playback/export was not verified. The current
+exporter accepts image artwork for its intro; using a pre-rendered video would
+require a separate exporter path. The existing plan keeps the 15-second footage
+limit independent from intro duration, so a 2.5-second intro can be added
+without shortening the selected action, but that still needs an iPhone export
+test before adoption.
