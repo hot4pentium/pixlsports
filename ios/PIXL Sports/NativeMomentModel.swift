@@ -14,7 +14,7 @@ final class NativeMomentModel: ObservableObject {
     @Published var footage = 1.0
     @Published var shoutout: NativeMomentShoutout?
     @Published var introSeconds = NativeMomentPlan.introSeconds
-    @Published var introSoundEffectEnabled = true
+    @Published var introMusicEnabled = true
     @Published private(set) var hasAudio = false
     @Published private(set) var busy = false
     @Published private(set) var isExporting = false
@@ -112,7 +112,7 @@ final class NativeMomentModel: ObservableObject {
                     clearOutput()
                     if let source { try? FileManager.default.removeItem(at: source) }
                     shoutout = nil
-                    introSoundEffectEnabled = true
+                    introMusicEnabled = true
                     self.source = url
                     self.duration = duration
                     self.start = 0
@@ -140,7 +140,7 @@ final class NativeMomentModel: ObservableObject {
         message = nil
     }
 
-    func soundEffectSelectionChanged() {
+    func introMusicSelectionChanged() {
         guard !busy else { return }
         clearOutput()
         message = nil
@@ -182,15 +182,15 @@ final class NativeMomentModel: ObservableObject {
         } else {
             shoutoutVideo = nil
         }
-        let introSoundEffectURL: URL?
-        if introSoundEffectEnabled, shoutout.videoResource != nil {
-            guard let bundledEffect = Bundle.main.url(forResource: "RecordMomentClutchSFX", withExtension: "m4a") else {
-                error = "The animated intro sound effect isn’t available. Turn it off and try again."
+        let introMusicURL: URL?
+        if introMusicEnabled, shoutout.videoResource != nil {
+            guard let bundledMusic = Bundle.main.url(forResource: "RecordMomentClutchIntroMusic", withExtension: "m4a") else {
+                error = "The animated intro music isn’t available. Turn it off and try again."
                 return
             }
-            introSoundEffectURL = bundledEffect
+            introMusicURL = bundledMusic
         } else {
-            introSoundEffectURL = nil
+            introMusicURL = nil
         }
         busy = true
         isExporting = true
@@ -207,7 +207,7 @@ final class NativeMomentModel: ObservableObject {
                     plan: plan,
                     directory: directory,
                     shoutoutVideo: shoutoutVideo,
-                    introSoundEffectURL: introSoundEffectURL
+                    introMusicURL: introMusicURL
                 )
                 unclaimedOutput = url
                 try Task.checkCancellation()
@@ -215,8 +215,8 @@ final class NativeMomentModel: ObservableObject {
                 output = url
                 unclaimedOutput = nil
                 setPreview(url: url, start: 0, end: plan.total)
-                let effectNote = introSoundEffectURL == nil ? "" : " A short sound effect plays only during the intro."
-                message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + effectNote
+                let musicNote = introMusicURL == nil ? "" : " Intro music plays only during the animated intro."
+                message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + musicNote
             } catch { handle(error) }
         }
     }

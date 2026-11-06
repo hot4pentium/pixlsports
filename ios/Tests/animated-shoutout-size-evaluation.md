@@ -32,8 +32,8 @@ The same sample was encoded as silent H.264 MP4 at 30 fps:
 The shoutout wording remained readable in extracted frames from both exports.
 The 720p version is the better quality/size balance. If the original stills
 remain as selection thumbnails, ten 720p clips plus the stills would total about
-5.29 MB before sound effects. The earlier 247,511-byte instrumental asset has
-since been removed from the app.
+5.29 MB before intro music. The former 247,511-byte music bed is no longer
+bundled; the current intro-only cue is 58,994 bytes.
 
 ## Clutch pilot added to Record Moments
 
@@ -42,20 +42,20 @@ local **Clutch · Animated** intro. The existing still-art choices remain
 available. The animated intro uses its fixed 2.5-second duration, keeps the
 selected footage allowance at up to 15 seconds, and is fit to the output frame
 without cropping. In portrait output, the complete landscape video is centered
-with black space above and below. The video is silent. A brief whoosh and soft
-hit can play during the intro only; the effect ends before source-video audio
-begins. No instrumental music is bundled or mixed under the action.
+with black space above and below. The video is silent. A 58,994-byte AAC music
+cue can play during the intro only; it fades out before source-video audio
+begins. No music is mixed under the action.
 
-The bundled artwork, this animated pilot, and its 26,628-byte sound effect total
-about 2.32 MB. The original 1080p upload is not bundled.
+The bundled artwork, this animated pilot, and the intro-only music cue total
+about 2.35 MB. The original user MP4 is not bundled; only its audio track is.
 
 ## Recommendation
 
 - If all ten shoutouts are animated, target silent 1280 × 720 H.264 at 30 fps,
   about 1 Mbps, and roughly 2.5 seconds. Aim for no more than 350 KB per clip.
 - A 960 × 540, 700 Kbps version is a smaller fallback, about 235 KB each.
-- The optional sound effect is limited to the animated intro and can be turned
-  off. There is no instrumental music bed.
+- The optional music cue is limited to the animated intro and can be turned
+  off. It never continues under the selected action.
 - The sample is landscape 16:9. Portrait exports need a portrait-specific
   version or a tested layout that keeps the title readable; cropping this
   animation to fill a phone screen can cut off its text.

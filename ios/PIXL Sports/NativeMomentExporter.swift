@@ -18,7 +18,7 @@ final class NativeMomentExporter {
         plan: NativeMomentPlan,
         directory: URL,
         shoutoutVideo: URL? = nil,
-        introSoundEffectURL: URL? = nil
+        introMusicURL: URL? = nil
     ) async throws -> URL {
         defer {
             if writer?.status == .writing { writer?.cancelWriting() }
@@ -97,32 +97,32 @@ final class NativeMomentExporter {
                 audioMixParameters.append(parameters)
             }
         }
-        if let introSoundEffectURL {
-            let effectAsset = AVURLAsset(url: introSoundEffectURL)
-            guard let effectSource = try await effectAsset.loadTracks(withMediaType: .audio).first else {
-                throw NativeMomentError.message("The intro sound effect could not be read.")
+        if let introMusicURL {
+            let musicAsset = AVURLAsset(url: introMusicURL)
+            guard let musicSource = try await musicAsset.loadTracks(withMediaType: .audio).first else {
+                throw NativeMomentError.message("The intro music could not be read.")
             }
-            let effectAvailable = try await effectSource.load(.timeRange)
-            let effectDuration = CMTime(seconds: max(0, plan.intro - 0.12), preferredTimescale: 600)
-            guard effectDuration.seconds > 0,
-                  effectAvailable.duration.seconds + 0.001 >= effectDuration.seconds else {
-                throw NativeMomentError.message("The intro sound effect is too short.")
+            let musicAvailable = try await musicSource.load(.timeRange)
+            let musicDuration = CMTime(seconds: max(0, plan.intro - 0.12), preferredTimescale: 600)
+            guard musicDuration.seconds > 0,
+                  musicAvailable.duration.seconds + 0.001 >= musicDuration.seconds else {
+                throw NativeMomentError.message("The intro music is too short.")
             }
-            guard let effectTrack = composition.addMutableTrack(
+            guard let musicTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ) else {
-                throw NativeMomentError.message("The intro sound effect could not be added.")
+                throw NativeMomentError.message("The intro music could not be added.")
             }
-            try effectTrack.insertTimeRange(
-                CMTimeRange(start: effectAvailable.start, duration: effectDuration),
-                of: effectSource,
+            try musicTrack.insertTimeRange(
+                CMTimeRange(start: musicAvailable.start, duration: musicDuration),
+                of: musicSource,
                 at: .zero
             )
-            let parameters = AVMutableAudioMixInputParameters(track: effectTrack)
+            let parameters = AVMutableAudioMixInputParameters(track: musicTrack)
             let volume: Float = 0.55
-            let fadeIn = CMTime(seconds: min(0.08, effectDuration.seconds / 4), preferredTimescale: 600)
-            let fadeOut = CMTime(seconds: min(0.24, effectDuration.seconds / 4), preferredTimescale: 600)
+            let fadeIn = CMTime(seconds: min(0.08, musicDuration.seconds / 4), preferredTimescale: 600)
+            let fadeOut = CMTime(seconds: min(0.24, musicDuration.seconds / 4), preferredTimescale: 600)
             parameters.setVolumeRamp(
                 fromStartVolume: 0,
                 toEndVolume: volume,
@@ -131,7 +131,7 @@ final class NativeMomentExporter {
             parameters.setVolumeRamp(
                 fromStartVolume: volume,
                 toEndVolume: 0,
-                timeRange: CMTimeRange(start: CMTimeSubtract(effectDuration, fadeOut), duration: fadeOut)
+                timeRange: CMTimeRange(start: CMTimeSubtract(musicDuration, fadeOut), duration: fadeOut)
             )
             audioMixParameters.append(parameters)
         }

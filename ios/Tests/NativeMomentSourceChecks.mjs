@@ -36,27 +36,29 @@ test("local-only output preserves audio and orientation with no frame cropping",
     assert.doesNotMatch(code, /URLSession|NativeAccountLinkClient|CKAsset/i, "No hosting in media pipeline");
   }
 });
-test("animated shoutout sound effects end before the original audio, with no music bed", () => {
-  assert.match(model, /@Published var introSoundEffectEnabled = true/);
-  assert.match(model, /func soundEffectSelectionChanged\(\)/);
-  assert.match(model, /RecordMomentClutchSFX/);
-  assert.match(model, /if introSoundEffectEnabled, shoutout\.videoResource != nil/);
-  assert.doesNotMatch(model, /musicEnabled|musicVolume|RecordMomentMusic/);
-  assert.match(view, /record-moments-sfx-toggle/);
-  assert.match(view, /stop before your original video audio begins/);
-  assert.doesNotMatch(view, /PIXL Sports instrumental|Background music/);
-  assert.match(exporter, /introSoundEffectURL: URL\? = nil/);
+test("animated shoutout music fades out before the original audio", () => {
+  assert.match(model, /@Published var introMusicEnabled = true/);
+  assert.match(model, /func introMusicSelectionChanged\(\)/);
+  assert.match(model, /RecordMomentClutchIntroMusic/);
+  assert.match(model, /if introMusicEnabled, shoutout\.videoResource != nil/);
+  assert.doesNotMatch(model, /introSoundEffectEnabled|RecordMomentClutchSFX/);
+  assert.match(view, /record-moments-music-toggle/);
+  assert.match(view, /fades out before your original video audio begins/);
+  assert.doesNotMatch(view, /Add intro sound effect|whoosh and soft hit/);
+  assert.match(exporter, /introMusicURL: URL\? = nil/);
   assert.match(exporter, /plan\.intro - 0\.12/);
-  assert.match(exporter, /of: effectSource/);
-  const effectURL = new URL("../PIXL Sports/RecordMomentClutchSFX.m4a", import.meta.url);
-  const bytes = readFileSync(effectURL);
-  assert.ok(bytes.length < 50_000, `Intro effect should stay small: ${bytes.length} bytes`);
-  assert.equal(bytes.subarray(4, 8).toString(), "ftyp", "Sound effect must be a valid local M4A file");
+  assert.match(exporter, /of: musicSource/);
+  const musicURL = new URL("../PIXL Sports/RecordMomentClutchIntroMusic.m4a", import.meta.url);
+  const bytes = readFileSync(musicURL);
+  assert.ok(bytes.length < 75_000, `Intro music should stay small: ${bytes.length} bytes`);
+  assert.equal(bytes.subarray(4, 8).toString(), "ftyp", "Intro music must be a valid local M4A file");
+  assert.equal(existsSync(new URL("../PIXL Sports/RecordMomentClutchSFX.m4a", import.meta.url)), false,
+    "The previous intro effect should no longer be bundled");
   assert.equal(existsSync(new URL("../PIXL Sports/RecordMomentMusic.m4a", import.meta.url)), false,
     "The instrumental music bed should no longer be bundled");
   const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
-  assert.match(appleChecks, /short intro sound effect/);
-  assert.match(appleChecks, /Original source audio did not start after the intro sound effect/);
+  assert.match(appleChecks, /intro music fades before source audio/);
+  assert.match(appleChecks, /Intro music overlapped the original clip audio/);
 });
 test("Clutch Animated is a compact local video intro with portrait and landscape checks", () => {
   const plan = read("NativeMomentPlan.swift");

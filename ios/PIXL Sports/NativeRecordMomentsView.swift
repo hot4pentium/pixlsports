@@ -42,7 +42,7 @@ struct NativeRecordMomentsView: View {
                 shoutoutSection
                     .disabled(model.busy)
                 if model.shoutout?.videoResource != nil {
-                    soundEffectSection
+                    introMusicSection
                         .disabled(model.busy)
                 }
                 Section(model.output == nil
@@ -54,8 +54,8 @@ struct NativeRecordMomentsView: View {
                             .accessibilityIdentifier("record-moments-preview")
                     }
                     Text(model.output == nil
-                         ? "Preview shows your selected footage. Create the clip to preview the intro, sound effect, and footage together."
-                         : "Check the intro sound, action, and original sound before saving or sharing.")
+                         ? "Preview shows your selected footage. Create the clip to preview the intro, music cue, and footage together."
+                         : "Check the intro, action, and original sound before saving or sharing.")
                         .font(.caption).foregroundStyle(.secondary)
                     Button(model.output == nil ? "Create clip & preview" : "Recreate clip & preview", action: model.export)
                         .accessibilityIdentifier("record-moments-export")
@@ -148,7 +148,7 @@ struct NativeRecordMomentsView: View {
         .onChange(of: model.footage) { _, _ in model.selectionChanged() }
         .onChange(of: model.shoutout) { _, _ in model.selectionChanged() }
         .onChange(of: model.introSeconds) { _, _ in model.selectionChanged() }
-        .onChange(of: model.introSoundEffectEnabled) { _, _ in model.soundEffectSelectionChanged() }
+        .onChange(of: model.introMusicEnabled) { _, _ in model.introMusicSelectionChanged() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { model.stopPlayback() } }
         .onDisappear {
             // Full-screen capture hides the editor; it has not ended the edit session.
@@ -247,11 +247,11 @@ struct NativeRecordMomentsView: View {
         }
     }
 
-    private var soundEffectSection: some View {
-        Section("4 · Animated intro sound") {
-            Toggle("Add intro sound effect", isOn: $model.introSoundEffectEnabled)
-                .accessibilityIdentifier("record-moments-sfx-toggle")
-            Text("A brief whoosh and soft hit play only with Clutch · Animated. They stop before your original video audio begins. No instrumental music is added.")
+    private var introMusicSection: some View {
+        Section("4 · Animated intro music") {
+            Toggle("Add intro music", isOn: $model.introMusicEnabled)
+                .accessibilityIdentifier("record-moments-music-toggle")
+            Text("A short music cue plays only with Clutch · Animated. It fades out before your original video audio begins; no music plays over the action.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

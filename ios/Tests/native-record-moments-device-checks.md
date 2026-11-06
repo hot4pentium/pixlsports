@@ -62,14 +62,14 @@ Use non-personal test footage.
     than covers or replaces the selected action. Also select **Clutch · Animated**:
     verify the bundled 16:9 video plays in landscape and remains fully visible,
     centered with black space above/below in portrait rather than cropping its
-    text. Its intro is fixed at 2.5 seconds. Turn the sound-effect toggle on and
-    off; when enabled, the whoosh and hit should play only during the intro.
+    text. Its intro is fixed at 2.5 seconds. Turn the intro-music toggle on and
+    off; when enabled, the cue should fade out before original clip audio begins.
 6. **Actual files:** Save a full selection to Photos. Inspect the saved MP4
    with QuickTime/`ffprobe`: duration should be about 17 seconds (within a frame),
    video must be upright, and the selected first/last spoken markers must
    remain audible and in sync. For **Clutch · Animated**, confirm the short
-   effect ends before original audio begins; no instrumental plays under the
-   action. With the effect disabled, the intro has no added sound. A 4-second
+    intro music fades out before original audio begins; no music plays under
+    the action. With music disabled, the intro has no added cue. A 4-second
    selection produces about 6 seconds total with the default still intro.
    Repeat with the adjustable one- and three-second still intros: 15 seconds of
    footage must produce about 16 and 18 seconds respectively. The Clutch

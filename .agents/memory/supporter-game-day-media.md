@@ -15,8 +15,8 @@ The native iPhone flow should offer three ways to support the athlete: Track Sta
 
 **How to apply:** Record Moments creates a device-local video with a selected shoutout graphic as a lead-in, then the selected clip. Keep up to 15 seconds of footage; the intro is additional and must not consume that footage allowance. Let the user save the finished video to their phone and share it later. Use the user's supplied original graphics, not crops of the overview screenshot. This does not authorize automatic hosting or a separate cloud moment library.
 
-Record Moments should not add an instrumental bed under the selected action. A brief, optional sound effect may play only during an animated shoutout intro and must end before original clip audio begins.
+Record Moments should not add a music bed under the selected action. A short, optional music cue or sound effect may play only during an animated shoutout intro and must end before original clip audio begins.
 
-**Why:** The user tested the animated intro in the simulator and asked for effects with the shoutout instead of instrumental music over the original audio.
+**Why:** The user tested the animated intro and wants any added audio confined to the shoutout intro, never under the original action. They later chose a supplied short music cue to replace the whoosh-and-hit effect.
 
-**How to apply:** Keep music out of the exported action segment. Keep any intro effect short, user-controllable, and confined to the intro timeline.
+**How to apply:** Keep added audio out of the exported action segment. Keep any intro cue short, user-controllable, and faded out before the original clip audio starts.
