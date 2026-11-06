@@ -14,8 +14,7 @@ final class NativeMomentModel: ObservableObject {
     @Published var footage = 1.0
     @Published var shoutout: NativeMomentShoutout?
     @Published var introSeconds = NativeMomentPlan.introSeconds
-    @Published var musicEnabled = false
-    @Published var musicVolume = 0.18
+    @Published var introSoundEffectEnabled = true
     @Published private(set) var hasAudio = false
     @Published private(set) var busy = false
     @Published private(set) var isExporting = false
@@ -113,6 +112,7 @@ final class NativeMomentModel: ObservableObject {
                     clearOutput()
                     if let source { try? FileManager.default.removeItem(at: source) }
                     shoutout = nil
+                    introSoundEffectEnabled = true
                     self.source = url
                     self.duration = duration
                     self.start = 0
@@ -122,7 +122,7 @@ final class NativeMomentModel: ObservableObject {
                     updatePreview()
                     message = hasAudio
                         ? "Source audio will be preserved."
-                        : "This source has no audio. Turn on background music if you want sound."
+                        : "This source has no audio."
                 } catch {
                     try? FileManager.default.removeItem(at: url)
                     handle(error)
@@ -140,7 +140,7 @@ final class NativeMomentModel: ObservableObject {
         message = nil
     }
 
-    func audioSelectionChanged() {
+    func soundEffectSelectionChanged() {
         guard !busy else { return }
         clearOutput()
         message = nil
@@ -182,6 +182,16 @@ final class NativeMomentModel: ObservableObject {
         } else {
             shoutoutVideo = nil
         }
+        let introSoundEffectURL: URL?
+        if introSoundEffectEnabled, shoutout.videoResource != nil {
+            guard let bundledEffect = Bundle.main.url(forResource: "RecordMomentClutchSFX", withExtension: "m4a") else {
+                error = "The animated intro sound effect isn’t available. Turn it off and try again."
+                return
+            }
+            introSoundEffectURL = bundledEffect
+        } else {
+            introSoundEffectURL = nil
+        }
         busy = true
         isExporting = true
         message = "Creating your MP4 on this iPhone…"
@@ -191,21 +201,13 @@ final class NativeMomentModel: ObservableObject {
             var unclaimedOutput: URL?
             defer { if let unclaimedOutput { try? FileManager.default.removeItem(at: unclaimedOutput) } }
             do {
-                var musicURL: URL?
-                if musicEnabled {
-                    guard let bundledMusic = Bundle.main.url(forResource: "RecordMomentMusic", withExtension: "m4a") else {
-                        throw NativeMomentError.message("The optional background music isn’t available. Turn it off and try again.")
-                    }
-                    musicURL = bundledMusic
-                }
                 let url = try await exporter.export(
                     source: source,
                     shoutout: artwork,
                     plan: plan,
                     directory: directory,
                     shoutoutVideo: shoutoutVideo,
-                    musicURL: musicURL,
-                    musicVolume: Float(musicVolume)
+                    introSoundEffectURL: introSoundEffectURL
                 )
                 unclaimedOutput = url
                 try Task.checkCancellation()
@@ -213,8 +215,8 @@ final class NativeMomentModel: ObservableObject {
                 output = url
                 unclaimedOutput = nil
                 setPreview(url: url, start: 0, end: plan.total)
-                let musicNote = musicEnabled ? " Background music is mixed under your original sound." : ""
-                message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + musicNote
+                let effectNote = introSoundEffectURL == nil ? "" : " A short sound effect plays only during the intro."
+                message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + effectNote
             } catch { handle(error) }
         }
     }

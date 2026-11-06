@@ -36,28 +36,33 @@ struct NativeRecordMomentsView: View {
             .disabled(model.busy || authorizing)
 
             if model.source != nil {
+                let previewStep = model.shoutout?.videoResource == nil ? 4 : 5
                 trimSection
                     .disabled(model.busy)
                 shoutoutSection
                     .disabled(model.busy)
-                musicSection
-                    .disabled(model.busy)
-                Section(model.output == nil ? "5 · Selected footage preview" : "5 · Finished MP4 preview") {
+                if model.shoutout?.videoResource != nil {
+                    soundEffectSection
+                        .disabled(model.busy)
+                }
+                Section(model.output == nil
+                        ? "\(previewStep) · Selected footage preview"
+                        : "\(previewStep) · Finished MP4 preview") {
                     if let player = model.player {
                         VideoPlayer(player: player)
                             .frame(height: 280)
                             .accessibilityIdentifier("record-moments-preview")
                     }
                     Text(model.output == nil
-                         ? "Preview shows your selected footage. Create the clip to preview the animated intro, music, and footage together."
-                         : "Check the animated intro, action, music, and original sound before saving or sharing.")
+                         ? "Preview shows your selected footage. Create the clip to preview the intro, sound effect, and footage together."
+                         : "Check the intro sound, action, and original sound before saving or sharing.")
                         .font(.caption).foregroundStyle(.secondary)
                     Button(model.output == nil ? "Create clip & preview" : "Recreate clip & preview", action: model.export)
                         .accessibilityIdentifier("record-moments-export")
                         .disabled(model.busy || model.plan == nil)
                 }
                 if model.output != nil {
-                    Section("6 · Keep or share") {
+                    Section("\(previewStep + 1) · Keep or share") {
                         Button(action: model.save) { Label("Save to Photos", systemImage: "square.and.arrow.down") }
                             .accessibilityIdentifier("record-moments-save")
                         Button {
@@ -143,8 +148,7 @@ struct NativeRecordMomentsView: View {
         .onChange(of: model.footage) { _, _ in model.selectionChanged() }
         .onChange(of: model.shoutout) { _, _ in model.selectionChanged() }
         .onChange(of: model.introSeconds) { _, _ in model.selectionChanged() }
-        .onChange(of: model.musicEnabled) { _, _ in model.audioSelectionChanged() }
-        .onChange(of: model.musicVolume) { _, _ in model.audioSelectionChanged() }
+        .onChange(of: model.introSoundEffectEnabled) { _, _ in model.soundEffectSelectionChanged() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { model.stopPlayback() } }
         .onDisappear {
             // Full-screen capture hides the editor; it has not ended the edit session.
@@ -243,20 +247,12 @@ struct NativeRecordMomentsView: View {
         }
     }
 
-    private var musicSection: some View {
-        Section("4 · Optional background music") {
-            Toggle("Add PIXL Sports instrumental", isOn: $model.musicEnabled)
-                .accessibilityIdentifier("record-moments-music-toggle")
-            Text("A short original instrumental plays under your video. When it has sound, that audio stays on top. Music is off by default.")
+    private var soundEffectSection: some View {
+        Section("4 · Animated intro sound") {
+            Toggle("Add intro sound effect", isOn: $model.introSoundEffectEnabled)
+                .accessibilityIdentifier("record-moments-sfx-toggle")
+            Text("A brief whoosh and soft hit play only with Clutch · Animated. They stop before your original video audio begins. No instrumental music is added.")
                 .font(.caption).foregroundStyle(.secondary)
-            if model.musicEnabled {
-                Slider(value: $model.musicVolume, in: 0.05...0.35)
-                    .accessibilityLabel("Background music volume")
-                    .accessibilityValue(String(format: "%.0f percent", model.musicVolume * 100))
-                    .accessibilityIdentifier("record-moments-music-volume")
-                Text("Music volume · \(Int((model.musicVolume * 100).rounded()))%")
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-            }
         }
     }
 

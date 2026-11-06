@@ -136,31 +136,31 @@ struct NativeMomentExportChecks {
                          "Original tail audio was shortened by the animated intro")
             print("PASS: \(name), bundled silent video intro, full 15-second footage, uncropped layout, source audio")
         }
-        let musicURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentMusic.m4a")
-        precondition(FileManager.default.fileExists(atPath: musicURL.path), "Bundled instrumental is missing")
-        let musicPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2)
-        let musicOutput = try await NativeMomentExporter().export(
+        let soundEffectURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchSFX.m4a")
+        precondition(FileManager.default.fileExists(atPath: soundEffectURL.path), "Bundled intro sound effect is missing")
+        let soundEffectPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
+        let soundEffectOutput = try await NativeMomentExporter().export(
             source: source,
             shoutout: artwork,
-            plan: musicPlan,
+            plan: soundEffectPlan,
             directory: directory,
-            musicURL: musicURL,
-            musicVolume: 0.18
+            shoutoutVideo: animatedURL,
+            introSoundEffectURL: soundEffectURL
         )
-        let musicAsset = AVURLAsset(url: musicOutput)
-        let musicDuration = try await musicAsset.load(.duration).seconds
-        precondition(abs(musicDuration - musicPlan.total) < 0.12, "Music changed the finished duration")
-        let mixedTrack = try await musicAsset.loadTracks(withMediaType: .audio).first!
-        let introSamples = try samples(asset: musicAsset, track: mixedTrack, at: 0.5)
+        let soundEffectAsset = AVURLAsset(url: soundEffectOutput)
+        let soundEffectDuration = try await soundEffectAsset.load(.duration).seconds
+        precondition(abs(soundEffectDuration - 17.5) < 0.12, "Intro sound effect changed the finished duration")
+        let mixedTrack = try await soundEffectAsset.loadTracks(withMediaType: .audio).first!
+        let introSamples = try samples(asset: soundEffectAsset, track: mixedTrack, at: 0.5)
         let introEnergy = introSamples.map { abs(Double($0)) }.reduce(0, +) / Double(introSamples.count)
-        precondition(introEnergy > 100, "Optional music was not audible during the intro")
-        let mixedFirstFrequency = try frequency(asset: musicAsset, track: mixedTrack, at: musicPlan.intro + 0.25)
-        let mixedTailFrequency = try frequency(asset: musicAsset, track: mixedTrack, at: musicPlan.intro + 14.5)
-        precondition(abs(mixedFirstFrequency - 880) < 60,
-                     "Original source audio was not preserved under the music")
-        precondition(abs(mixedTailFrequency - 1760) < 100,
-                     "The selected tail audio was not preserved under the music")
-        print("PASS: optional bundled music, source audio retained, soundtrack stays under source audio, unchanged duration")
+        precondition(introEnergy > 100, "The intro sound effect was not audible")
+        let firstFrequency = try frequency(asset: soundEffectAsset, track: mixedTrack, at: soundEffectPlan.intro + 0.25)
+        let tailFrequency = try frequency(asset: soundEffectAsset, track: mixedTrack, at: soundEffectPlan.intro + 14.5)
+        precondition(abs(firstFrequency - 880) < 60,
+                     "Original source audio did not start after the intro sound effect")
+        precondition(abs(tailFrequency - 1760) < 100,
+                     "Original tail audio was shortened or covered by the intro effect")
+        print("PASS: short intro sound effect, no music bed, source audio starts after effect and remains intact")
 
         // Cancellation must stop work and remove all unfinished exporter files.
         let exporter = NativeMomentExporter()
