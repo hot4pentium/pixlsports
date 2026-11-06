@@ -20,3 +20,9 @@ Revocation must block the athlete identity from parent-only APIs, even if the at
 **Why:** The user chose athlete editing as a limited delegation, not a transfer of ownership or parent account role, and explicitly said parents should also be able to edit in case the athlete is too young. They now want the Showcase to retain its name but focus on the HYPE Card, with jersey and gear tools retired.
 
 **How to apply:** Keep authorization server-side and scope athlete edits to the linked HYPE Card. Preserve parent controls and legacy invitation safety, but do not expose the retired kit or gear editors. Treat athlete access as a narrow card-editing role, not a general supporter account.
+
+A standalone athlete-managed profile is a possible later v2 direction, not part of the current scope. Keep current athlete access limited to parent-enabled editing of the linked HYPE Card.
+
+**Why:** The user said an athlete profile may be a 2.0 option for later.
+
+**How to apply:** Do not add a separate athlete profile or its independent sharing flow to current work unless the user brings it back into scope.
