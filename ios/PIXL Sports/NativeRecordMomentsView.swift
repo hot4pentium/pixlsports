@@ -83,11 +83,19 @@ struct NativeRecordMomentsView: View {
                 Section { Text(message).accessibilityIdentifier("record-moments-status") }
             }
         }
+        .foregroundStyle(SupporterHomeColors.background)
+        .tint(SupporterHomeColors.blue)
         .navigationTitle("Record Moments")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }.disabled(model.busy || authorizing)
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done")
+                        .foregroundStyle(SupporterHomeColors.background)
+                }
+                .disabled(model.busy || authorizing)
             }
         }
         .interactiveDismissDisabled(model.busy || authorizing)
