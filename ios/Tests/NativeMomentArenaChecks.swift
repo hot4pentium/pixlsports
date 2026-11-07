@@ -4,13 +4,13 @@ import Foundation
 
 extension NativeMomentExportChecks {
     @MainActor
-    static func checkIntroReplacement(root: URL, source: URL, artwork: CGImage, directory: URL) async throws {
+    static func checkIntroReplacement(root: URL, source: URL, directory: URL) async throws {
         let exporter = NativeMomentExporter()
         let plan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 0.5, intro: 2.5)
         var outputs = Set<URL>()
         for resource in ["RecordMomentClutch", "RecordMomentDomination", "RecordMomentGameChanger"] {
             let selected = root.appendingPathComponent("ios/PIXL Sports/\(resource).mp4")
-            let output = try await exporter.export(source: source, shoutout: artwork, plan: plan,
+            let output = try await exporter.export(source: source, plan: plan,
                                                    directory: directory, shoutoutVideo: selected)
             precondition(outputs.insert(output).inserted, "An intro change reused a previous output file")
             let asset = AVURLAsset(url: output)
@@ -27,19 +27,30 @@ extension NativeMomentExportChecks {
             let reference = fittedVideoFrame(try frame(expected, at: 1), size: size)
             precondition(distance(signature(try frame(result, at: 1)), signature(reference)) < 0.08,
                          "A recreated clip retained the previous intro instead of \(resource)")
+            let original = AVAssetImageGenerator(asset: AVURLAsset(url: source))
+            original.appliesPreferredTrackTransform = true
+            original.requestedTimeToleranceBefore = .zero
+            original.requestedTimeToleranceAfter = .zero
+            precondition(
+                distance(signature(try frame(result, at: plan.total - 0.1)),
+                         signature(try frame(original, at: plan.start + plan.footage - 0.1))) < 0.08,
+                "A still image replaced the final footage after \(resource)"
+            )
+            let duration = try await asset.load(.duration).seconds
+            precondition(abs(duration - plan.total) < 0.12, "A trailing still extended the exported clip")
         }
         print("PASS: sequential intro replacement uses only the newly selected animation")
     }
 
     @MainActor
     static func checkArenaFrames(
-        fixtures: [(String, URL)], artwork: CGImage, directory: URL,
+        fixtures: [(String, URL)], directory: URL,
         intro: URL, portraitIntro: URL
     ) async throws {
         for (name, source) in fixtures {
             let plan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 1, intro: 2.5)
             let output = try await NativeMomentExporter().export(
-                source: source, shoutout: artwork, plan: plan, directory: directory,
+                source: source, plan: plan, directory: directory,
                 shoutoutVideo: intro, shoutoutVideoPortrait: portraitIntro, arenaFrameEnabled: true
             )
             let asset = AVURLAsset(url: output)

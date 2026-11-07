@@ -293,7 +293,7 @@ struct NativeRecordMomentsView: View {
                     .accessibilityIdentifier("record-moments-shoutout-\(shoutout.rawValue)")
                 }
             }
-            Text("Still artwork and video are fit without cropping. Landscape videos may have black space around them on portrait clips.")
+            Text("Only the selected animated intro is added before your footage. No still-image intro or ending card is added.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

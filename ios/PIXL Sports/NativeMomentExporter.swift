@@ -5,28 +5,23 @@ import QuartzCore
 /// All files belong to the caller's disposable workspace. No network or library writes.
 @MainActor
 final class NativeMomentExporter {
-    private var writer: AVAssetWriter?
     private var session: AVAssetExportSession?
 
     func cancel() {
-        writer?.cancelWriting()
         session?.cancelExport()
     }
 
     func export(
         source: URL,
-        shoutout: CGImage,
         plan: NativeMomentPlan,
         directory: URL,
-        shoutoutVideo: URL? = nil,
+        shoutoutVideo: URL,
         shoutoutVideoPortrait: URL? = nil,
         introMusicURL: URL? = nil,
         footageFrame: CGImage? = nil,
         arenaFrameEnabled: Bool = false
     ) async throws -> URL {
         defer {
-            if writer?.status == .writing { writer?.cancelWriting() }
-            writer = nil
             session = nil
         }
         let asset = AVURLAsset(url: source)
@@ -41,33 +36,20 @@ final class NativeMomentExporter {
         }
         let size = NativeMomentArenaFrame.renderSize(for: oriented.size)
         let introTime = CMTime(seconds: plan.intro, preferredTimescale: 600)
-        var generatedIntroURL: URL?
-        let introAsset: AVURLAsset
-        if let shoutoutVideo {
-            let selectedURL: URL
-            if oriented.height > oriented.width {
-                guard let shoutoutVideoPortrait else {
-                    throw NativeMomentError.message("A portrait version of this animated shoutout isn’t available.")
-                }
-                selectedURL = shoutoutVideoPortrait
-            } else {
-                selectedURL = shoutoutVideo
+        let selectedURL: URL
+        if oriented.height > oriented.width {
+            guard let shoutoutVideoPortrait else {
+                throw NativeMomentError.message("A portrait version of this animated shoutout isn’t available.")
             }
-            // Isolate each render from AVFoundation's previous asset/player state.
-            // This file contains only the currently selected bundled intro.
-            let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
-            try FileManager.default.copyItem(at: selectedURL, to: introURL)
-            generatedIntroURL = introURL
-            introAsset = AVURLAsset(url: introURL)
+            selectedURL = shoutoutVideoPortrait
         } else {
-            let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
-            generatedIntroURL = introURL
-            try await writeIntro(image: shoutout, size: size, seconds: plan.intro, to: introURL)
-            introAsset = AVURLAsset(url: introURL)
+            selectedURL = shoutoutVideo
         }
-        defer {
-            if let generatedIntroURL { try? FileManager.default.removeItem(at: generatedIntroURL) }
-        }
+        // Animations are mandatory. There is deliberately no still-image fallback.
+        let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
+        try FileManager.default.copyItem(at: selectedURL, to: introURL)
+        defer { try? FileManager.default.removeItem(at: introURL) }
+        let introAsset = AVURLAsset(url: introURL)
         try Task.checkCancellation()
         guard let introVideo = try await introAsset.loadTracks(withMediaType: .video).first else {
             throw NativeMomentError.message("The shoutout intro could not be read.")
@@ -290,84 +272,4 @@ final class NativeMomentExporter {
         )
     }
 
-    private func writeIntro(image: CGImage, size: CGSize, seconds: Double, to url: URL) async throws {
-        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
-        self.writer = writer
-        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: Int(size.width), AVVideoHeightKey: Int(size.height)
-        ])
-        input.expectsMediaDataInRealTime = false
-        let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input,
-            sourcePixelBufferAttributes: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB,
-                kCVPixelBufferWidthKey as String: Int(size.width),
-                kCVPixelBufferHeightKey as String: Int(size.height),
-                kCVPixelBufferCGImageCompatibilityKey as String: true,
-                kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
-            ])
-        guard writer.canAdd(input) else { throw NativeMomentError.message("The intro could not be encoded.") }
-        writer.add(input)
-        guard writer.startWriting() else { throw writer.error ?? NativeMomentError.message("The intro could not be started.") }
-        writer.startSession(atSourceTime: .zero)
-        guard let pool = adaptor.pixelBufferPool else { throw NativeMomentError.message("Not enough memory to prepare the intro.") }
-        let side = min(size.width, size.height)
-        let frameCount = max(1, Int(ceil(seconds * 30)))
-        for frame in 0..<frameCount {
-            while !input.isReadyForMoreMediaData {
-                try Task.checkCancellation()
-                guard writer.status == .writing else {
-                    throw writer.error ?? NativeMomentError.message("The intro export stopped.")
-                }
-                try await Task.sleep(nanoseconds: 5_000_000)
-            }
-            try Task.checkCancellation()
-            var buffer: CVPixelBuffer?
-            guard CVPixelBufferPoolCreatePixelBuffer(nil, pool, &buffer) == kCVReturnSuccess, let buffer else {
-                throw NativeMomentError.message("Not enough memory to prepare the intro.")
-            }
-            CVPixelBufferLockBaseAddress(buffer, [])
-            guard let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
-                width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
-                bytesPerRow: CVPixelBufferGetBytesPerRow(buffer), space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue) else {
-                CVPixelBufferUnlockBaseAddress(buffer, [])
-                throw NativeMomentError.message("The shoutout artwork could not be read.")
-            }
-            context.setFillColor(CGColor(gray: 0, alpha: 1))
-            context.fill(CGRect(origin: .zero, size: size))
-            context.interpolationQuality = .high
-
-            // Ease the full square artwork from 92% to 100% scale while it fades in.
-            // It never grows beyond its letterboxed bounds, so no artwork is cropped.
-            let progress = frameCount > 1 ? Double(frame) / Double(frameCount - 1) : 1
-            let eased = 1 - pow(1 - progress, 3)
-            let scale = CGFloat(0.92 + 0.08 * eased)
-            let opacity = min(1, progress / 0.12)
-            let animatedSide = side * scale
-            context.saveGState()
-            context.setAlpha(CGFloat(opacity))
-            context.draw(image, in: CGRect(
-                x: (size.width - animatedSide) / 2,
-                y: (size.height - animatedSide) / 2,
-                width: animatedSide,
-                height: animatedSide
-            ))
-            context.restoreGState()
-            CVPixelBufferUnlockBaseAddress(buffer, [])
-            guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: 30)) else {
-                throw writer.error ?? NativeMomentError.message("The intro could not be written.")
-            }
-        }
-        writer.endSession(atSourceTime: CMTime(seconds: seconds, preferredTimescale: 600))
-        input.markAsFinished()
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            writer.finishWriting { continuation.resume() }
-        }
-        try Task.checkCancellation()
-        guard writer.status == .completed else {
-            throw writer.error ?? NativeMomentError.message("The intro export did not finish.")
-        }
-        self.writer = nil
-    }
 }

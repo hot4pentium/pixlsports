@@ -218,10 +218,6 @@ final class NativeMomentModel: ObservableObject {
 
     func export() {
         guard let source, let plan, let shoutout, !busy else { return }
-        guard let artwork = UIImage(named: shoutout.asset)?.cgImage else {
-            error = "The selected shoutout is missing. Choose another graphic."
-            return
-        }
         let footageFrame: CGImage?
         if graphiteFrameEnabled {
             guard let image = graphiteFramePreview?.cgImage else {
@@ -232,7 +228,7 @@ final class NativeMomentModel: ObservableObject {
         } else {
             footageFrame = nil
         }
-        let shoutoutVideo: URL?
+        let shoutoutVideo: URL
         let portraitShoutoutVideo: URL?
         if let resource = shoutout.videoResource {
             guard let bundledVideo = Bundle.main.url(forResource: resource, withExtension: "mp4") else {
@@ -250,8 +246,8 @@ final class NativeMomentModel: ObservableObject {
                 portraitShoutoutVideo = nil
             }
         } else {
-            shoutoutVideo = nil
-            portraitShoutoutVideo = nil
+            error = "Choose an animated shoutout intro before creating your clip."
+            return
         }
         let introMusicURL: URL?
         if introMusicEnabled, shoutout.videoResource != nil {
@@ -277,7 +273,6 @@ final class NativeMomentModel: ObservableObject {
             do {
                 let url = try await exporter.export(
                     source: source,
-                    shoutout: artwork,
                     plan: plan,
                     directory: directory,
                     shoutoutVideo: shoutoutVideo,
@@ -443,6 +438,7 @@ final class NativeMomentModel: ObservableObject {
         previewStart = start
         previewEnd = end
         let player = AVPlayer(url: url)
+        player.actionAtItemEnd = .pause
         player.seek(to: CMTime(seconds: start, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         self.player = player
         let id = previewID
@@ -451,8 +447,11 @@ final class NativeMomentModel: ObservableObject {
                 guard let self, self.previewID == id, let current = self.player else { return }
                 if time.seconds >= self.previewEnd || time.seconds < self.previewStart - 0.1 {
                     current.pause()
-                    current.seek(to: CMTime(seconds: self.previewStart, preferredTimescale: 600),
-                                 toleranceBefore: .zero, toleranceAfter: .zero)
+                    // A finished MP4 ends on its footage, not an intro/poster frame.
+                    if self.output == nil || time.seconds < self.previewStart - 0.1 {
+                        current.seek(to: CMTime(seconds: self.previewStart, preferredTimescale: 600),
+                                     toleranceBefore: .zero, toleranceAfter: .zero)
+                    }
                 }
             }
         }

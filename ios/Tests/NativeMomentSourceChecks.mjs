@@ -20,7 +20,7 @@ test("Record Moments is the third choice without replacing Prep or Share", () =>
 });
 test("local-only output preserves audio and orientation with no frame cropping", () => {
   assert.match(exporter, /load\(\.preferredTransform\)/);
-  assert.match(exporter, /shoutoutVideo: URL\? = nil/);
+  assert.match(exporter, /shoutoutVideo: URL,/);
   assert.match(exporter, /introAvailable\.duration\.seconds/);
   assert.match(exporter, /introPreferredTransform/);
   assert.match(exporter, /introInstruction\.backgroundColor/);
@@ -28,14 +28,25 @@ test("local-only output preserves audio and orientation with no frame cropping",
   assert.match(exporter, /audioStart = CMTimeAdd\(introTime, CMTimeSubtract/);
   assert.match(exporter, /of: sourceAudio, at: audioStart/);
   assert.match(exporter, /insertTimeRange\(range, of: video, at: introTime\)/);
-  assert.match(exporter, /min\(size.width, size.height\)/);
   assert.match(exporter, /finished.load\(\.duration\)/);
-  assert.match(exporter, /context\.setAlpha\(CGFloat\(opacity\)\)/);
-  assert.match(exporter, /0\.92 \+ 0\.08 \* eased/);
+  assert.doesNotMatch(exporter, /writeIntro|shoutout: CGImage|AVAssetWriter|context\.draw\(image/);
   assert.match(exporter, /setVolumeRamp/);
   for (const code of [exporter, model, picker, view]) {
     assert.doesNotMatch(code, /URLSession|NativeAccountLinkClient|CKAsset/i, "No hosting in media pipeline");
   }
+});
+test("Record Moments cannot export still artwork or return to a poster after playback", () => {
+  const legacy = read("NativeRecordMomentMedia.swift");
+  assert.doesNotMatch(legacy, /enum NativeRecordMomentExporter|introLayer\.contents = introImage/);
+  const flow = model.slice(model.indexOf("func export()"), model.indexOf("func save()"));
+  assert.doesNotMatch(flow, /UIImage\(named: shoutout\.asset\)|shoutout: artwork/);
+  assert.match(flow, /Choose an animated shoutout intro before creating your clip/);
+  assert.match(model, /player\.actionAtItemEnd = \.pause/);
+  assert.match(model, /if self\.output == nil \|\| time\.seconds < self\.previewStart - 0\.1/);
+  assert.match(view, /No still-image intro or ending card is added/);
+  const checks = readFileSync(new URL("NativeMomentArenaChecks.swift", import.meta.url), "utf8");
+  assert.match(checks, /A still image replaced the final footage/);
+  assert.match(checks, /A trailing still extended the exported clip/);
 });
 test("original video audio fades in at its actual start without moving the footage", () => {
   const sourceAudio = exporter.slice(exporter.indexOf("for sourceAudio in"), exporter.indexOf("if let introMusicURL"));

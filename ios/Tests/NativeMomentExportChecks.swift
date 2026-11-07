@@ -11,9 +11,8 @@ struct NativeMomentExportChecks {
         let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
         let directory = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let imageURL = root.appendingPathComponent("ios/PIXL Sports/Assets.xcassets/Moment-clutch.imageset/artwork.jpg")
-        let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, nil)!
-        let artwork = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)!
+        let animatedURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutch.mp4")
+        let portraitAnimatedURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchPortrait.mp4")
         let introVideos = [
             ("Clutch", "RecordMomentClutch", "RecordMomentClutchPortrait", CGFloat(16) / 9),
             ("Domination", "RecordMomentDomination", "RecordMomentDominationPortrait", CGFloat(16) / 9),
@@ -79,12 +78,15 @@ struct NativeMomentExportChecks {
         for (name, url, start, footage, intro, isPortrait, audible) in [
             ("landscape", source, 3.0, 15.0, 2.0, false, true),
             ("portrait", portrait, 3.0, 15.0, 2.0, true, true),
-            ("three-second-intro", source, 3.0, 15.0, 3.0, false, true),
+            ("full-animation-intro", source, 3.0, 15.0, 2.5, false, true),
             ("short-silent", silent, 0.0, 0.4, 2.0, false, false)
         ] {
             let exporter = NativeMomentExporter()
             let plan = try NativeMomentPlan(sourceDuration: start + footage + (footage == 15 ? 2 : 0), start: start, footage: footage, intro: intro)
-            let output = try await exporter.export(source: url, shoutout: artwork, plan: plan, directory: directory)
+            let output = try await exporter.export(
+                source: url, plan: plan, directory: directory,
+                shoutoutVideo: animatedURL, shoutoutVideoPortrait: portraitAnimatedURL
+            )
             let asset = AVURLAsset(url: output)
             let actual = try await asset.load(.duration).seconds
             precondition(abs(actual - plan.total) < 0.12, "Actual MP4 duration differs")
@@ -110,9 +112,15 @@ struct NativeMomentExportChecks {
             let lateIntro = try frame(generator, at: plan.intro - 0.1)
             precondition(distance(signature(earlyIntro), signature(lateIntro)) > 0.002,
                          "The shoutout intro did not animate")
-            let expected = graphicFrame(artwork, size: size)
+            let introGenerator = AVAssetImageGenerator(asset: AVURLAsset(
+                url: isPortrait ? portraitAnimatedURL : animatedURL
+            ))
+            introGenerator.appliesPreferredTrackTransform = true
+            introGenerator.requestedTimeToleranceBefore = .zero
+            introGenerator.requestedTimeToleranceAfter = .zero
+            let expected = fittedVideoFrame(try frame(introGenerator, at: plan.intro - 0.1), size: size)
             precondition(distance(signature(lateIntro), signature(expected)) < 0.08,
-                         "Artwork cropped, inverted, or absent at the end of the animation")
+                          "The selected animation was replaced by still artwork")
             let audioTracks = try await asset.loadTracks(withMediaType: .audio)
             precondition(audioTracks.isEmpty != audible, "Audio presence changed")
             if audible {
@@ -133,8 +141,6 @@ struct NativeMomentExportChecks {
             }
             print("PASS: \(name), actual MP4 \(actual)s, ordered intact intro, first/last selected frames, orientation, audio=\(audible)")
         }
-        let animatedURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutch.mp4")
-        let portraitAnimatedURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchPortrait.mp4")
         precondition(FileManager.default.fileExists(atPath: animatedURL.path), "Bundled Clutch video is missing")
         precondition(FileManager.default.fileExists(atPath: portraitAnimatedURL.path),
                      "Bundled portrait Clutch video is missing")
@@ -146,7 +152,6 @@ struct NativeMomentExportChecks {
             let plan = try NativeMomentPlan(sourceDuration: 20, start: start, footage: 15, intro: 2.5)
             let output = try await NativeMomentExporter().export(
                 source: url,
-                shoutout: artwork,
                 plan: plan,
                 directory: directory,
                 shoutoutVideo: animatedURL,
@@ -233,7 +238,6 @@ struct NativeMomentExportChecks {
             let plan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
             let output = try await NativeMomentExporter().export(
                 source: url,
-                shoutout: artwork,
                 plan: plan,
                 directory: directory,
                 shoutoutVideo: animatedURL,
@@ -330,17 +334,16 @@ struct NativeMomentExportChecks {
             }
         }
         print("PASS: Graphite frame fits landscape, portrait, 4:3, tall 3:4, and square footage without cropping or stretching")
-        try await checkIntroReplacement(root: root, source: source, artwork: artwork, directory: directory)
+        try await checkIntroReplacement(root: root, source: source, directory: directory)
         try await checkArenaFrames(
             fixtures: [("landscape", source), ("portrait", portrait), ("4:3", fourThree), ("square", square)],
-            artwork: artwork, directory: directory, intro: animatedURL, portraitIntro: portraitAnimatedURL
+            directory: directory, intro: animatedURL, portraitIntro: portraitAnimatedURL
         )
         let introMusicURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchIntroMusic.m4a")
         precondition(FileManager.default.fileExists(atPath: introMusicURL.path), "Bundled intro music is missing")
         let musicPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
         let musicOutput = try await NativeMomentExporter().export(
             source: source,
-            shoutout: artwork,
             plan: musicPlan,
             directory: directory,
             shoutoutVideo: animatedURL,
@@ -375,7 +378,6 @@ struct NativeMomentExportChecks {
                      "Bundled portrait Domination video is missing")
         let dominationOutput = try await NativeMomentExporter().export(
             source: portrait,
-            shoutout: artwork,
             plan: musicPlan,
             directory: directory,
             shoutoutVideo: dominationURL,
@@ -436,8 +438,9 @@ struct NativeMomentExportChecks {
         let exporter = NativeMomentExporter()
         let baseline = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path))
         let task = Task { @MainActor in
-            try await exporter.export(source: source, shoutout: artwork,
-                plan: NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15), directory: directory)
+            try await exporter.export(source: source,
+                plan: NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15),
+                directory: directory, shoutoutVideo: animatedURL)
         }
         task.cancel()
         do { _ = try await task.value; preconditionFailure("Cancelled export succeeded") }
@@ -447,8 +450,9 @@ struct NativeMomentExportChecks {
         let invalid = directory.appendingPathComponent("invalid.mov")
         try Data("not video".utf8).write(to: invalid)
         do {
-            _ = try await NativeMomentExporter().export(source: invalid, shoutout: artwork,
-                plan: NativeMomentPlan(sourceDuration: 20, start: 0, footage: 15), directory: directory)
+            _ = try await NativeMomentExporter().export(source: invalid,
+                plan: NativeMomentPlan(sourceDuration: 20, start: 0, footage: 15),
+                directory: directory, shoutoutVideo: animatedURL)
             preconditionFailure("Invalid media succeeded")
         } catch {}
         let remainingFiles = try FileManager.default.contentsOfDirectory(atPath: directory.path)

@@ -38,3 +38,9 @@ The current Record Moments chooser should offer only the seven supplied animated
 **Why:** The user asked to offer the supplied videos as intro choices, remove stills without matching videos, and chose Stadium Ignition in place of each video's embedded audio.
 
 **How to apply:** Keep available choices one-to-one with the supplied animations. Do not mix the supplied MP4 audio with the common cue.
+
+Record Moments exports must never generate a still-image shoutout intro or ending card. Poster artwork is only for the chooser; unavailable animations must produce an explicit error, not a still fallback.
+
+**Why:** The user reiterated “We don't use stills anymore” after reporting Total Domination artwork after the animation and footage.
+
+**How to apply:** Check both active and legacy export paths, and verify that finished playback ends on the user's footage rather than returning to an intro/poster.
