@@ -149,6 +149,22 @@ test("Apple Graphite exports cover tall 3:4 footage with the portrait frame and 
   assert.match(tallChecks, /normalizedPixelDifference\(resultFrame, sourceFrame, at: CGPoint\(x: x, y: y\)\) < 0\.08/);
   assert.match(tallChecks, /Graphite cropped or obscured the 3:4 source side margins/);
 });
+test("Apple Graphite exports exercise high-resolution downscaling with normalized comparisons", () => {
+  const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
+  assert.match(appleChecks, /let largeTallThreeFour = try await fixture\([\s\S]*?videoSize: CGSize\(width: 1536, height: 2048\), edgeAction: true/);
+  assert.match(appleChecks, /\("large-3:4", largeTallThreeFour, graphitePortrait, true, CGFloat\(3\) \/ 4\)/);
+  assert.match(appleChecks, /sourceSize\.width == 1536 && sourceSize\.height == 2048/);
+  assert.match(appleChecks, /outputSize\.width < sourceSize\.width && outputSize\.height < sourceSize\.height/);
+  assert.match(appleChecks, /outputSize\.height == 1080 && outputSize\.width <= 1080/);
+  assert.match(appleChecks, /Int\(outputSize\.width\) % 2 == 0 && Int\(outputSize\.height\) % 2 == 0/);
+  assert.match(appleChecks, /abs\(outputSize\.width - outputSize\.height \* sourceAspectRatio\) < 2/);
+  assert.match(appleChecks, /normalizedPixelDifference\(outputFootage, sourceFootage, at: CGPoint\(x: 0\.5, y: 0\.5\)\)/);
+  assert.match(appleChecks, /if name == "3:4" \|\| name == "large-3:4"/);
+  assert.match(appleChecks, /let expectedFrame = graphiteVideoFrame\(sourceFootage, frame: frameImage, size: outputSize\)/);
+  assert.match(appleChecks, /normalizedPixelDifference\(outputFootage, expectedFrame/);
+  assert.match(appleChecks, /if edgeAction \{[\s\S]*?time < 17/);
+  assert.doesNotMatch(appleChecks, /pixelSignature\(sourceFootage, at: center\)/);
+});
 test("the chooser offers only seven matching animated intros", () => {
   const plan = read("NativeMomentPlan.swift");
   const choices = plan.slice(plan.indexOf("enum NativeMomentShoutout"));

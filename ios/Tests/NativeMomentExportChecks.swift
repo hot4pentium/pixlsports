@@ -74,6 +74,10 @@ struct NativeMomentExportChecks {
             directory: directory, seconds: 20, rotated: false, audio: true,
             videoSize: CGSize(width: 240, height: 320)
         )
+        let largeTallThreeFour = try await fixture(
+            directory: directory, seconds: 20, rotated: false, audio: true,
+            videoSize: CGSize(width: 1536, height: 2048), edgeAction: true
+        )
         let silent = try await fixture(directory: directory, seconds: 0.4, rotated: false, audio: false)
         for (name, url, start, footage, intro, isPortrait, audible) in [
             ("landscape", source, 3.0, 15.0, 2.0, false, true),
@@ -233,6 +237,7 @@ struct NativeMomentExportChecks {
             ("portrait", portrait, graphitePortrait, true, CGFloat(9) / 16),
             ("4:3", fourThree, graphiteLandscape, false, CGFloat(4) / 3),
             ("3:4", tallThreeFour, graphitePortrait, true, CGFloat(3) / 4),
+            ("large-3:4", largeTallThreeFour, graphitePortrait, true, CGFloat(3) / 4),
             ("square", square, graphiteLandscape, false, CGFloat(1))
         ] {
             let plan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
@@ -269,6 +274,21 @@ struct NativeMomentExportChecks {
                 abs(outputSize.width / outputSize.height - sourceAspectRatio) < 0.01,
                 "Graphite export changed the \(name) source proportions"
             )
+            if name == "large-3:4" {
+                let sourceTrack = try await AVURLAsset(url: url).loadTracks(withMediaType: .video).first!
+                let sourceSize = try await sourceTrack.load(.naturalSize)
+                precondition(sourceSize.width == 1536 && sourceSize.height == 2048,
+                             "The large 3:4 fixture must exceed the production render limit")
+                precondition(outputSize.width < sourceSize.width && outputSize.height < sourceSize.height,
+                             "The large 3:4 Graphite export did not downscale")
+                precondition(outputSize.height == 1080 && outputSize.width <= 1080,
+                             "The encoded Graphite export did not respect the 1080-pixel render limit")
+                precondition(Int(outputSize.width) % 2 == 0 && Int(outputSize.height) % 2 == 0,
+                             "The encoded Graphite dimensions must be even")
+                // Allow at most one even-pixel rounding step, independently of renderSize().
+                precondition(abs(outputSize.width - outputSize.height * sourceAspectRatio) < 2,
+                             "Downscaling changed the encoded 3:4 proportions beyond even-pixel rounding")
+            }
             let expectedIntro = fittedVideoFrame(try frame(introGenerator, at: 0.5), size: outputSize)
             precondition(
                 distance(signature(try frame(resultGenerator, at: 0.5)), signature(expectedIntro)) < 0.1,
@@ -276,9 +296,8 @@ struct NativeMomentExportChecks {
             )
             let outputFootage = try frame(resultGenerator, at: plan.intro + 2)
             let sourceFootage = try frame(sourceGenerator, at: 5)
-            let center = CGPoint(x: CGFloat(outputFootage.width) / 2, y: CGFloat(outputFootage.height) / 2)
             precondition(
-                distance(pixelSignature(outputFootage, at: center), pixelSignature(sourceFootage, at: center)) < 0.08,
+                normalizedPixelDifference(outputFootage, sourceFootage, at: CGPoint(x: 0.5, y: 0.5)) < 0.08,
                 "The transparent opening did not reveal the original footage"
             )
             let frameRect = aspectFitRect(
@@ -313,12 +332,31 @@ struct NativeMomentExportChecks {
                     )
                 }
             }
-            if name == "3:4" {
+            if name == "3:4" || name == "large-3:4" {
                 // The supplied 9:16 portrait frame fits by height, leaving action
                 // visible on BOTH sides. Sample asymmetric source corners too:
                 // a centered crop or black side bars must not pass as a full fit.
                 precondition(frameRect.minX > 0 && frameRect.maxX < outputSize.width,
                              "The 3:4 portrait frame must leave visible side margins")
+                precondition(
+                    abs(frameRect.width / frameRect.height
+                        - CGFloat(frameImage.width) / CGFloat(frameImage.height)) < 0.001,
+                    "The supplied portrait frame was stretched instead of fitted proportionally"
+                )
+                if name == "large-3:4" {
+                    // Check the actual encoded overlay, not just the expected fit rectangle.
+                    // Sampling its top rim inside and outside the fitted bounds catches a
+                    // portrait frame stretched across the whole 3:4 canvas.
+                    let expectedFrame = graphiteVideoFrame(sourceFootage, frame: frameImage, size: outputSize)
+                    precondition(distance(signature(outputFootage), signature(expectedFrame)) < 0.08,
+                                 "The encoded portrait frame is not proportional after downscaling")
+                    for x in [CGFloat(0.04), CGFloat(0.2), CGFloat(0.5), CGFloat(0.8), CGFloat(0.96)] {
+                        precondition(
+                            normalizedPixelDifference(outputFootage, expectedFrame, at: CGPoint(x: x, y: 0.02)) < 0.08,
+                            "The encoded portrait rim was stretched or misplaced after downscaling"
+                        )
+                    }
+                }
                 for relative in [0.1, 14.9] {
                     let resultFrame = try frame(resultGenerator, at: plan.intro + relative)
                     let sourceFrame = try frame(sourceGenerator, at: plan.start + relative)
@@ -334,6 +372,7 @@ struct NativeMomentExportChecks {
             }
         }
         print("PASS: Graphite frame fits landscape, portrait, 4:3, tall 3:4, and square footage without cropping or stretching")
+        print("PASS: large 1536x2048 Graphite footage downscales to even 3:4 dimensions with proportional portrait artwork and intact edge action")
         try await checkIntroReplacement(root: root, source: source, directory: directory)
         try await checkArenaFrames(
             fixtures: [("landscape", source), ("portrait", portrait), ("4:3", fourThree), ("square", square)],
@@ -539,6 +578,19 @@ struct NativeMomentExportChecks {
         return context.makeImage()!
     }
 
+    static func graphiteVideoFrame(_ image: CGImage, frame: CGImage, size: CGSize) -> CGImage {
+        let context = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
+            bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.interpolationQuality = .high
+        context.draw(fittedVideoFrame(image, size: size), in: CGRect(origin: .zero, size: size))
+        context.draw(frame, in: aspectFitRect(
+            imageSize: CGSize(width: frame.width, height: frame.height),
+            inside: CGRect(origin: .zero, size: size)
+        ))
+        return context.makeImage()!
+    }
+
     static func centeredContentFrame(_ image: CGImage, aspectRatio: CGFloat = 16 / 9) -> CGImage {
         let width = CGFloat(image.width)
         let height = width / aspectRatio
@@ -553,7 +605,8 @@ struct NativeMomentExportChecks {
         seconds: Double,
         rotated: Bool,
         audio: Bool,
-        videoSize: CGSize = CGSize(width: 320, height: 180)
+        videoSize: CGSize = CGSize(width: 320, height: 180),
+        edgeAction: Bool = false
     ) async throws -> URL {
         let raw = directory.appendingPathComponent("fixture-\(UUID()).mp4")
         let writer = try AVAssetWriter(outputURL: raw, fileType: .mp4)
@@ -602,6 +655,20 @@ struct NativeMomentExportChecks {
                 width: videoSize.width / 4,
                 height: videoSize.height / 4
             ))
+            if edgeAction {
+                // Narrow, asymmetric edge markers change at the selected tail.
+                // Cropping, stretching, side bars, or frozen footage must not
+                // look like the original merely because its background is flat.
+                for (index, x) in [CGFloat(0.02), CGFloat(0.94)].enumerated() {
+                    context.setFillColor(index == (time < 17 ? 0 : 1)
+                        ? CGColor(red: 0.95, green: 0.15, blue: 0.85, alpha: 1)
+                        : CGColor(red: 0.1, green: 0.85, blue: 0.95, alpha: 1))
+                    for y in [CGFloat(0.04), CGFloat(0.84)] {
+                        context.fill(CGRect(x: videoSize.width * x, y: videoSize.height * y,
+                                            width: videoSize.width * 0.04, height: videoSize.height * 0.12))
+                    }
+                }
+            }
             CVPixelBufferUnlockBaseAddress(buffer!, [])
             precondition(adaptor.append(buffer!, withPresentationTime: CMTime(value: Int64(frame), timescale: 30)))
         }
