@@ -98,6 +98,32 @@ test("trailing toolbar labels reserve padding inside their native containers", (
   }
 });
 
+test("native Settings shows only the current Clerk email without caching it", () => {
+  const settings = readFileSync(new URL("../PIXL Sports/NativeNotificationSettingsView.swift", import.meta.url), "utf8");
+  const signIn = settings.slice(
+    settings.indexOf('Section("iPhone sign-in")'),
+    settings.indexOf('Section("Athlete profile")'),
+  );
+  assert.match(signIn, /LabeledContent\("Sign-in email"\)/);
+  assert.match(signIn, /signInEmailText/);
+  assert.match(signIn, /native-settings-sign-in-email/);
+  assert.match(settings, /user\.primaryEmailAddress\?\.emailAddress/);
+  assert.match(settings, /return "Not signed in"/);
+  assert.match(settings, /return "No email on this account"/);
+  assert.match(signIn, /\.fixedSize\(horizontal: false, vertical: true\)/);
+  assert.match(signIn, /\.textSelection\(\.enabled\)/);
+  assert.doesNotMatch(signIn, /@AppStorage|UserDefaults|emailAddress\s*:/);
+
+  const publicCardSources = [
+    readFileSync(new URL("../PIXL Sports/NativeHypeCardFront.swift", import.meta.url), "utf8"),
+    readFileSync(new URL("../PIXL Sports/SupporterHypeCardView.swift", import.meta.url), "utf8"),
+    readFileSync(new URL("../../artifacts/league-matrix-studio/src/features/living-athlete-card.tsx", import.meta.url), "utf8"),
+    readFileSync(new URL("../../artifacts/league-matrix-studio/src/features/public-player-showcase.tsx", import.meta.url), "utf8"),
+    readFileSync(new URL("../../artifacts/league-matrix-studio/src/features/public-hype-card.tsx", import.meta.url), "utf8"),
+  ].join("\n");
+  assert.doesNotMatch(publicCardSources, /primaryEmailAddress|signInEmailText|native-settings-sign-in-email/);
+});
+
 test("dashboard header uses the white Sports logo on its dark panel", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   const start = content.indexOf("private var header: some View");

@@ -143,6 +143,15 @@ struct NativeNotificationSettingsView: View {
         Array(Set([TimeZone.current.identifier] + TimeZone.knownTimeZoneIdentifiers)).sorted()
     }
 
+    private var signInEmailText: String {
+        guard clerk.isLoaded else { return "Unavailable" }
+        guard let user = clerk.user else { return "Not signed in" }
+        guard let email = user.primaryEmailAddress?.emailAddress, !email.isEmpty else {
+            return "No email on this account"
+        }
+        return email
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -151,6 +160,15 @@ struct NativeNotificationSettingsView: View {
                     Text("Your account keeps your athlete profile, Event Cards, and alert preferences together.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    LabeledContent("Sign-in email") {
+                        Text(signInEmailText)
+                            .multilineTextAlignment(.trailing)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("native-settings-sign-in-email")
+                    }
+                    .accessibilityIdentifier("native-settings-sign-in-email-row")
                     Button("Sign out of iPhone account", role: .destructive) {
                         if NativeOfflineRuntime.shared.hasPending { confirmingPendingSignOut = true }
                         else { Task { await signOut() } }
