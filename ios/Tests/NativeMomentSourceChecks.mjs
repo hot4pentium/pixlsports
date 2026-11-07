@@ -90,12 +90,19 @@ test("optional Graphite frame is matched to the source and covers footage only",
   assert.match(exporter, /footageFrame: CGImage\? = nil/);
   assert.match(exporter, /frameLayer\.contents = footageFrame/);
   assert.match(exporter, /aspectFitRect\(/);
+  assert.match(exporter, /aspect fit leaves source footage visible outside its centered 16:9 bounds/);
   assert.match(exporter, /appear\.beginTime = AVCoreAnimationBeginTimeAtZero \+ introTime\.seconds/);
   assert.match(exporter, /AVVideoCompositionCoreAnimationTool\.Configuration/);
   assert.match(exporter, /AVVideoCompositionCoreAnimationTool\(configuration: configuration\)/);
 
   const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
-  assert.match(appleChecks, /PASS: Graphite frame appears only over original footage/);
+  assert.match(appleChecks, /PASS: Graphite frame fits landscape, portrait, 4:3, and square footage/);
+  assert.match(appleChecks, /"4:3", fourThree, graphiteLandscape, false, CGFloat\(4\) \/ 3/);
+  assert.match(appleChecks, /"square", square, graphiteLandscape, false, CGFloat\(1\)/);
+  assert.match(appleChecks, /videoSize: CGSize\(width: 320, height: 240\)/);
+  assert.match(appleChecks, /videoSize: CGSize\(width: 320, height: 320\)/);
+  assert.match(appleChecks, /Graphite cropped source action in the/);
+  assert.match(appleChecks, /frame margin obscured or letterboxed the source footage/);
 
   const frames = [
     ["GraphiteFramePortrait", "Graphite_Frame_Portrait.png", 941, 1672],

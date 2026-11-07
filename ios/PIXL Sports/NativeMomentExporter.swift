@@ -202,6 +202,8 @@ final class NativeMomentExporter {
             parentLayer.addSublayer(videoLayer)
 
             let frameLayer = CALayer()
+            // Preserve the supplied frame's aspect ratio. On 4:3 and square videos,
+            // aspect fit leaves source footage visible outside its centered 16:9 bounds.
             frameLayer.frame = aspectFitRect(
                 imageSize: CGSize(width: footageFrame.width, height: footageFrame.height),
                 inside: parentLayer.bounds

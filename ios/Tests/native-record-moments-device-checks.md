@@ -27,6 +27,14 @@ tail, exercises cancellation and invalid media, and checks intro cleanup. Then i
 builds the complete unsigned iOS app. Evidence and MP4s stay under the ignored
 `generated-artifacts/native-record-moments/` directory.
 
+The Graphite export fixtures also include 4:3 and square sources. The 16:9
+landscape frame stays centered and proportional on those exports: the source
+video remains visible without cropping in the unframed area above and below the
+frame. These are visible footage margins, not black bars. The checks compare
+source pixels in those margins and in the transparent opening, confirm the
+frame border is present, preserve the output aspect ratio, and verify the intro
+has no frame.
+
 The audio fixture changes tone at source second 17. A selection from second 3
 through second 18 must retain the changed tone at the end. Reducing footage to
 13 seconds to accommodate the intro must fail both frame and sound checks.
@@ -68,11 +76,13 @@ Use non-personal test footage.
    only during the intro and fades before original clip audio begins. Confirm
    the embedded audio from the supplied intro files is not played.
     **Graphite frame:** Leave the optional frame off and confirm the export is
-    unchanged. Turn it on and test portrait and landscape footage. The matching
-    frame must appear over the selected action only, never over the animated
-    intro. Confirm the video shows through the transparent center, the source
-    audio and full selected footage remain intact, and the finished preview,
-    Photos save, and shared MP4 all include the frame. Turn the frame off after
+    unchanged. Turn it on and test portrait, landscape, 4:3, and square footage.
+    The matching frame must appear over the selected action only, never over
+    the animated intro. Confirm the video shows through the transparent center,
+    the source audio and full selected footage remain intact, and the finished
+    preview, Photos save, and shared MP4 all include the frame. For 4:3 and
+    square sources, confirm the centered 16:9 frame leaves visible, uncropped
+    footage above and below it rather than black bars. Turn the frame off after
     an export and confirm the previous framed output is cleared before saving
     or sharing.
 6. **Actual files:** Save a full selection to Photos. Inspect the saved MP4

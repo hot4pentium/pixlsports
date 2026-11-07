@@ -6,8 +6,6 @@ import ImageIO
 /// No accounts, Photos library, network, or personal video required.
 @main
 struct NativeMomentExportChecks {
-    static let frameSize = CGSize(width: 320, height: 180)
-
     @MainActor
     static func main() async throws {
         let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
@@ -65,6 +63,14 @@ struct NativeMomentExportChecks {
         }
         let source = try await fixture(directory: directory, seconds: 20, rotated: false, audio: true)
         let portrait = try await fixture(directory: directory, seconds: 20, rotated: true, audio: true)
+        let fourThree = try await fixture(
+            directory: directory, seconds: 20, rotated: false, audio: true,
+            videoSize: CGSize(width: 320, height: 240)
+        )
+        let square = try await fixture(
+            directory: directory, seconds: 20, rotated: false, audio: true,
+            videoSize: CGSize(width: 320, height: 320)
+        )
         let silent = try await fixture(directory: directory, seconds: 0.4, rotated: false, audio: false)
         for (name, url, start, footage, intro, isPortrait, audible) in [
             ("landscape", source, 3.0, 15.0, 2.0, false, true),
@@ -213,9 +219,11 @@ struct NativeMomentExportChecks {
         let graphiteLandscapeSource = CGImageSourceCreateWithURL(graphiteLandscapeURL as CFURL, nil)!
         let graphitePortrait = CGImageSourceCreateImageAtIndex(graphitePortraitSource, 0, nil)!
         let graphiteLandscape = CGImageSourceCreateImageAtIndex(graphiteLandscapeSource, 0, nil)!
-        for (name, url, frameImage, isPortrait) in [
-            ("landscape", source, graphiteLandscape, false),
-            ("portrait", portrait, graphitePortrait, true)
+        for (name, url, frameImage, isPortrait, sourceAspectRatio) in [
+            ("landscape", source, graphiteLandscape, false, CGFloat(16) / 9),
+            ("portrait", portrait, graphitePortrait, true, CGFloat(9) / 16),
+            ("4:3", fourThree, graphiteLandscape, false, CGFloat(4) / 3),
+            ("square", square, graphiteLandscape, false, CGFloat(1))
         ] {
             let plan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
             let output = try await NativeMomentExporter().export(
@@ -248,6 +256,10 @@ struct NativeMomentExportChecks {
             introGenerator.requestedTimeToleranceAfter = .zero
             let outputTrack = try await asset.loadTracks(withMediaType: .video).first!
             let outputSize = try await outputTrack.load(.naturalSize)
+            precondition(
+                abs(outputSize.width / outputSize.height - sourceAspectRatio) < 0.01,
+                "Graphite export changed the \(name) source proportions"
+            )
             let expectedIntro = fittedVideoFrame(try frame(introGenerator, at: 0.5), size: outputSize)
             precondition(
                 distance(signature(try frame(resultGenerator, at: 0.5)), signature(expectedIntro)) < 0.1,
@@ -260,16 +272,40 @@ struct NativeMomentExportChecks {
                 distance(pixelSignature(outputFootage, at: center), pixelSignature(sourceFootage, at: center)) < 0.08,
                 "The transparent opening did not reveal the original footage"
             )
-            let edgeY = [CGFloat(8), CGFloat(outputFootage.height - 9)]
-            let edgeDifference = edgeY.map { y in
-                distance(
-                    pixelSignature(outputFootage, at: CGPoint(x: CGFloat(outputFootage.width) / 2, y: y)),
-                    pixelSignature(sourceFootage, at: CGPoint(x: CGFloat(sourceFootage.width) / 2, y: y))
+            let frameRect = aspectFitRect(
+                imageSize: CGSize(width: frameImage.width, height: frameImage.height),
+                inside: CGRect(origin: .zero, size: outputSize)
+            )
+            let frameEdge = CGPoint(
+                x: frameRect.midX / outputSize.width,
+                y: (frameRect.minY + max(2, frameRect.height * 0.02)) / outputSize.height
+            )
+            precondition(
+                normalizedPixelDifference(outputFootage, sourceFootage, at: frameEdge) > 0.1,
+                "The Graphite frame was missing from the selected footage"
+            )
+            for point in [
+                CGPoint(x: 0.2, y: 0.2),
+                CGPoint(x: 0.8, y: 0.8)
+            ] {
+                precondition(
+                    normalizedPixelDifference(outputFootage, sourceFootage, at: point) < 0.08,
+                    "Graphite cropped source action in the \(name) export"
                 )
-            }.max() ?? 0
-            precondition(edgeDifference > 0.1, "The Graphite frame was missing from the selected footage")
+            }
+            if name == "4:3" || name == "square" {
+                // The 16:9 frame is centered, not stretched; footage remains visible
+                // in the unframed top and bottom margins.
+                for y in [outputSize.height * 0.04, outputSize.height * 0.96] {
+                    let marginPoint = CGPoint(x: 0.5, y: y / outputSize.height)
+                    precondition(
+                        normalizedPixelDifference(outputFootage, sourceFootage, at: marginPoint) < 0.08,
+                        "The \(name) frame margin obscured or letterboxed the source footage"
+                    )
+                }
+            }
         }
-        print("PASS: Graphite frame appears only over original footage, with both orientations and transparent center")
+        print("PASS: Graphite frame fits landscape, portrait, 4:3, and square footage without cropping or stretching")
         let introMusicURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchIntroMusic.m4a")
         precondition(FileManager.default.fileExists(atPath: introMusicURL.path), "Bundled intro music is missing")
         let musicPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
@@ -422,6 +458,29 @@ struct NativeMomentExportChecks {
         return signature(pixel)
     }
 
+    static func normalizedPixelDifference(_ first: CGImage, _ second: CGImage, at point: CGPoint) -> Double {
+        let firstPoint = CGPoint(
+            x: point.x * CGFloat(first.width),
+            y: point.y * CGFloat(first.height)
+        )
+        let secondPoint = CGPoint(
+            x: point.x * CGFloat(second.width),
+            y: point.y * CGFloat(second.height)
+        )
+        return distance(pixelSignature(first, at: firstPoint), pixelSignature(second, at: secondPoint))
+    }
+
+    static func aspectFitRect(imageSize: CGSize, inside bounds: CGRect) -> CGRect {
+        let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
+        let fittedSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        return CGRect(
+            x: bounds.midX - fittedSize.width / 2,
+            y: bounds.midY - fittedSize.height / 2,
+            width: fittedSize.width,
+            height: fittedSize.height
+        )
+    }
+
     static func graphicFrame(_ image: CGImage, size: CGSize) -> CGImage {
         let context = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
             bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
@@ -456,16 +515,27 @@ struct NativeMomentExportChecks {
     }
 
     @MainActor
-    static func fixture(directory: URL, seconds: Double, rotated: Bool, audio: Bool) async throws -> URL {
+    static func fixture(
+        directory: URL,
+        seconds: Double,
+        rotated: Bool,
+        audio: Bool,
+        videoSize: CGSize = CGSize(width: 320, height: 180)
+    ) async throws -> URL {
         let raw = directory.appendingPathComponent("fixture-\(UUID()).mp4")
         let writer = try AVAssetWriter(outputURL: raw, fileType: .mp4)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
-            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 320, AVVideoHeightKey: 180
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: Int(videoSize.width),
+            AVVideoHeightKey: Int(videoSize.height)
         ])
-        if rotated { input.transform = CGAffineTransform(a: 0, b: 1, c: -1, d: 0, tx: 180, ty: 0) }
+        if rotated {
+            input.transform = CGAffineTransform(a: 0, b: 1, c: -1, d: 0, tx: videoSize.height, ty: 0)
+        }
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB,
-            kCVPixelBufferWidthKey as String: 320, kCVPixelBufferHeightKey as String: 180
+            kCVPixelBufferWidthKey as String: Int(videoSize.width),
+            kCVPixelBufferHeightKey as String: Int(videoSize.height)
         ])
         writer.add(input)
         precondition(writer.startWriting())
@@ -475,19 +545,30 @@ struct NativeMomentExportChecks {
             var buffer: CVPixelBuffer?
             precondition(CVPixelBufferPoolCreatePixelBuffer(nil, adaptor.pixelBufferPool!, &buffer) == kCVReturnSuccess)
             CVPixelBufferLockBaseAddress(buffer!, [])
-            let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer!), width: 320, height: 180, bitsPerComponent: 8,
-                bytesPerRow: CVPixelBufferGetBytesPerRow(buffer!), space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)!
+            let context = CGContext(
+                data: CVPixelBufferGetBaseAddress(buffer!),
+                width: Int(videoSize.width),
+                height: Int(videoSize.height),
+                bitsPerComponent: 8,
+                bytesPerRow: CVPixelBufferGetBytesPerRow(buffer!),
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue
+            )!
             // Distinct beginning/middle/tail colors, plus asymmetric corners to expose rotation.
             let time = Double(frame) / 30
             context.setFillColor(time < 3 ? CGColor(red: 0.9, green: 0.1, blue: 0.1, alpha: 1)
                 : time < 17 ? CGColor(red: 0.1, green: 0.8, blue: 0.2, alpha: 1)
                 : CGColor(red: 0.1, green: 0.2, blue: 0.9, alpha: 1))
-            context.fill(CGRect(origin: .zero, size: frameSize))
+            context.fill(CGRect(origin: .zero, size: videoSize))
             context.setFillColor(CGColor(gray: 1, alpha: 1))
-            context.fill(CGRect(x: 0, y: 0, width: 80, height: 45))
+            context.fill(CGRect(x: 0, y: 0, width: videoSize.width / 4, height: videoSize.height / 4))
             context.setFillColor(CGColor(gray: 0, alpha: 1))
-            context.fill(CGRect(x: 240, y: 135, width: 80, height: 45))
+            context.fill(CGRect(
+                x: videoSize.width * 0.75,
+                y: videoSize.height * 0.75,
+                width: videoSize.width / 4,
+                height: videoSize.height / 4
+            ))
             CVPixelBufferUnlockBaseAddress(buffer!, [])
             precondition(adaptor.append(buffer!, withPresentationTime: CMTime(value: Int64(frame), timescale: 30)))
         }
