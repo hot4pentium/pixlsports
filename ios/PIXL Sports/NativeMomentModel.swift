@@ -35,6 +35,11 @@ final class NativeMomentModel: ObservableObject {
     private var previewEnd = 0.0
     private var previewStart = 0.0
     @Published private(set) var previewID = UUID()
+    @Published private(set) var previewAspectRatio: CGFloat = 16.0 / 9.0
+    @Published private(set) var previewingIntro = false
+    @Published private(set) var renderedShoutoutTitle: String?
+    private var sourceAspectRatio: CGFloat = 16.0 / 9.0
+    private var renderRevision = UUID()
     private var thumbnailTask: Task<[UIImage?], Never>?
     private var thumbnailRequestID = UUID()
 
@@ -112,6 +117,15 @@ final class NativeMomentModel: ObservableObject {
                         throw NativeMomentError.message("Choose a readable, non-empty video.")
                     }
                     let hasAudio = !(try await asset.loadTracks(withMediaType: .audio)).isEmpty
+                    guard let track = try await asset.loadTracks(withMediaType: .video).first else {
+                        throw NativeMomentError.message("This file has no readable video.")
+                    }
+                    let naturalSize = try await track.load(.naturalSize)
+                    let transform = try await track.load(.preferredTransform)
+                    let oriented = CGRect(origin: .zero, size: naturalSize).applying(transform).standardized
+                    guard oriented.width > 0, oriented.height > 0 else {
+                        throw NativeMomentError.message("This video’s dimensions could not be read.")
+                    }
                     try Task.checkCancellation()
                     clearOutput()
                     if let source { try? FileManager.default.removeItem(at: source) }
@@ -123,6 +137,7 @@ final class NativeMomentModel: ObservableObject {
                     self.start = 0
                     self.footage = min(15, duration)
                     self.hasAudio = hasAudio
+                    sourceAspectRatio = oriented.width / oriented.height
                     generateThumbnails(for: url, duration: duration)
                     updatePreview()
                     message = hasAudio
@@ -140,6 +155,14 @@ final class NativeMomentModel: ObservableObject {
         guard !busy else { return }
         shoutout = selected
         selectionChanged()
+        let portrait = sourceAspectRatio < 1
+        let resource = portrait ? selected.portraitVideoResource : selected.videoResource
+        if let resource, let url = Bundle.main.url(forResource: resource, withExtension: "mp4") {
+            setPreview(url: url, start: 0, end: selected.fixedIntroSeconds ?? introSeconds,
+                       aspectRatio: portrait ? 9.0 / 16.0 : 16.0 / 9.0)
+            previewingIntro = true
+        }
+        message = "\(selected.title) selected. Create the clip to combine this intro with your footage."
     }
 
     func selectionChanged() {
@@ -220,6 +243,9 @@ final class NativeMomentModel: ObservableObject {
         } else {
             introMusicURL = nil
         }
+        clearOutput()
+        let requestedRevision = renderRevision
+        let selectedFrame = graphiteFrameEnabled
         busy = true
         isExporting = true
         message = "Creating your MP4 on this iPhone…"
@@ -229,7 +255,6 @@ final class NativeMomentModel: ObservableObject {
             var unclaimedOutput: URL?
             defer { if let unclaimedOutput { try? FileManager.default.removeItem(at: unclaimedOutput) } }
             do {
-                let footageFrame = try await loadGraphiteFrame(for: source)
                 let url = try await exporter.export(
                     source: source,
                     shoutout: artwork,
@@ -238,38 +263,23 @@ final class NativeMomentModel: ObservableObject {
                     shoutoutVideo: shoutoutVideo,
                     shoutoutVideoPortrait: portraitShoutoutVideo,
                     introMusicURL: introMusicURL,
-                    footageFrame: footageFrame
+                    arenaFrameEnabled: selectedFrame
                 )
                 unclaimedOutput = url
                 try Task.checkCancellation()
+                guard renderRevision == requestedRevision, !closed, self.shoutout == shoutout else {
+                    throw CancellationError()
+                }
                 clearOutput()
                 output = url
+                renderedShoutoutTitle = shoutout.title
                 unclaimedOutput = nil
                 setPreview(url: url, start: 0, end: plan.total)
                 let musicNote = introMusicURL == nil ? "" : " Intro music plays only during the animated intro."
-                let frameNote = graphiteFrameEnabled ? " The Graphite frame appears over the footage only." : ""
+                let frameNote = selectedFrame ? " The PIXL Arena frame surrounds the footage only." : ""
                 message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + musicNote + frameNote
             } catch { handle(error) }
         }
-    }
-
-    private func loadGraphiteFrame(for source: URL) async throws -> CGImage? {
-        guard graphiteFrameEnabled else { return nil }
-        let asset = AVURLAsset(url: source)
-        guard let video = try await asset.loadTracks(withMediaType: .video).first else {
-            throw NativeMomentError.message("This file has no readable video.")
-        }
-        let naturalSize = try await video.load(.naturalSize)
-        let preferredTransform = try await video.load(.preferredTransform)
-        let oriented = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform).standardized
-        guard oriented.width > 0, oriented.height > 0 else {
-            throw NativeMomentError.message("This video’s orientation could not be read.")
-        }
-        let assetName = oriented.height > oriented.width ? "GraphiteFramePortrait" : "GraphiteFrameLandscape"
-        guard let image = UIImage(named: assetName)?.cgImage else {
-            throw NativeMomentError.message("The Graphite frame is unavailable. Turn it off and try again.")
-        }
-        return image
     }
 
     func save() {
@@ -384,6 +394,9 @@ final class NativeMomentModel: ObservableObject {
     }
 
     private func clearOutput() {
+        renderRevision = UUID()
+        renderedShoutoutTitle = nil
+        previewingIntro = false
         releasePlayer()
         if let output { try? FileManager.default.removeItem(at: output) }
         output = nil
@@ -391,6 +404,7 @@ final class NativeMomentModel: ObservableObject {
 
     private func updatePreview() {
         guard let source else { return }
+        previewingIntro = false
         setPreview(url: source, start: start, end: start + footage)
     }
 
@@ -403,8 +417,9 @@ final class NativeMomentModel: ObservableObject {
         player = nil
     }
 
-    private func setPreview(url: URL, start: Double, end: Double) {
+    private func setPreview(url: URL, start: Double, end: Double, aspectRatio: CGFloat? = nil) {
         releasePlayer()
+        previewAspectRatio = aspectRatio ?? sourceAspectRatio
         previewStart = start
         previewEnd = end
         let player = AVPlayer(url: url)

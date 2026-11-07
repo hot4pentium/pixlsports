@@ -17,7 +17,9 @@ xcrun --sdk macosx swiftc -swift-version 5 -sdk "$MAC_SDK" -Onone -parse-as-libr
   -o "$OUTPUT/plan-checks"
 "$OUTPUT/plan-checks"
 xcrun --sdk macosx swiftc -swift-version 5 -sdk "$MAC_SDK" -Onone -parse-as-library \
-  "ios/PIXL Sports/NativeMomentPlan.swift" "ios/PIXL Sports/NativeMomentExporter.swift" \
+  "ios/PIXL Sports/NativeMomentPlan.swift" "ios/PIXL Sports/NativeMomentArenaFrame.swift" \
+  "ios/PIXL Sports/NativeMomentExporter.swift" \
+  ios/Tests/NativeMomentArenaChecks.swift \
   ios/Tests/NativeMomentExportChecks.swift -o "$OUTPUT/export-checks"
 "$OUTPUT/export-checks" "$ROOT" "$OUTPUT/mp4-evidence"
 xcodebuild build -project "ios/PIXL Sports.xcodeproj" -scheme "PIXL Sports" \

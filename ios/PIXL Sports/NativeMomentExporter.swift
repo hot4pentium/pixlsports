@@ -21,7 +21,8 @@ final class NativeMomentExporter {
         shoutoutVideo: URL? = nil,
         shoutoutVideoPortrait: URL? = nil,
         introMusicURL: URL? = nil,
-        footageFrame: CGImage? = nil
+        footageFrame: CGImage? = nil,
+        arenaFrameEnabled: Bool = false
     ) async throws -> URL {
         defer {
             if writer?.status == .writing { writer?.cancelWriting() }
@@ -38,22 +39,25 @@ final class NativeMomentExporter {
         guard oriented.width > 0, oriented.height > 0 else {
             throw NativeMomentError.message("This video’s dimensions could not be read.")
         }
-        let scale = min(1, 1080 / max(oriented.width, oriented.height))
-        let size = CGSize(width: max(2, floor(oriented.width * scale / 2) * 2),
-                          height: max(2, floor(oriented.height * scale / 2) * 2))
+        let size = NativeMomentArenaFrame.renderSize(for: oriented.size)
         let introTime = CMTime(seconds: plan.intro, preferredTimescale: 600)
         var generatedIntroURL: URL?
         let introAsset: AVURLAsset
         if let shoutoutVideo {
-            let introURL: URL
+            let selectedURL: URL
             if oriented.height > oriented.width {
                 guard let shoutoutVideoPortrait else {
                     throw NativeMomentError.message("A portrait version of this animated shoutout isn’t available.")
                 }
-                introURL = shoutoutVideoPortrait
+                selectedURL = shoutoutVideoPortrait
             } else {
-                introURL = shoutoutVideo
+                selectedURL = shoutoutVideo
             }
+            // Isolate each render from AVFoundation's previous asset/player state.
+            // This file contains only the currently selected bundled intro.
+            let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
+            try FileManager.default.copyItem(at: selectedURL, to: introURL)
+            generatedIntroURL = introURL
             introAsset = AVURLAsset(url: introURL)
         } else {
             let introURL = directory.appendingPathComponent("intro-\(UUID()).mp4")
@@ -179,20 +183,24 @@ final class NativeMomentExporter {
         footageInstruction.timeRange = CMTimeRange(start: introTime, duration: range.duration)
         let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: footageTrack)
         // Normalize all rotations/mirroring, then aspect-fit without cropping any action.
-        let fit = min(size.width / oriented.width, size.height / oriented.height)
+        let footageBounds = arenaFrameEnabled
+            ? NativeMomentArenaFrame.footageRect(in: size)
+            : CGRect(origin: .zero, size: size)
+        let fit = min(footageBounds.width / oriented.width, footageBounds.height / oriented.height)
         let transform = preferredTransform
             .concatenating(CGAffineTransform(translationX: -oriented.minX, y: -oriented.minY))
             .concatenating(CGAffineTransform(scaleX: fit, y: fit))
             .concatenating(CGAffineTransform(
-                translationX: (size.width - oriented.width * fit) / 2,
-                y: (size.height - oriented.height * fit) / 2))
+                translationX: footageBounds.midX - oriented.width * fit / 2,
+                y: footageBounds.midY - oriented.height * fit / 2))
         layer.setTransform(transform, at: introTime)
         footageInstruction.layerInstructions = [layer]
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = size
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions = [introInstruction, footageInstruction]
-        if let footageFrame {
+        let resolvedFrame = arenaFrameEnabled ? try NativeMomentArenaFrame.image(size: size) : footageFrame
+        if let footageFrame = resolvedFrame {
             let parentLayer = CALayer()
             parentLayer.frame = CGRect(origin: .zero, size: size)
             parentLayer.masksToBounds = true

@@ -21,6 +21,12 @@ Fresh selections must also replace the rendered preview, even when the user only
 
 **How to apply:** Invalidate finished previews when footage, intro, or audio changes, and give each replacement preview a fresh player-view identity.
 
+Decorative video frames should surround the full, uncropped footage and match its proportions, rather than float inside the video. Keep the animated intro unframed.
+
+**Why:** The user rejected the fixed-shape Graphite result and asked for a custom frame around the video.
+
+**How to apply:** Keep the frame opening and footage placement consistent across preview and export, including non-16:9 source clips.
+
 For the proposed shoutout-graphic export, put the chosen graphic before the full selected clip as a brief lead-in. Preserve up to 15 seconds of footage; the intro adds to the finished file duration instead of cutting into the footage. Keep the source video unchanged and let the user save the resulting MP4 to Photos for sharing. This is a local export idea, not permission to upload or publish the clip.
 
 **Why:** The user chose an intro before the entire clip and explicitly chose to keep the full clip duration.

@@ -75,16 +75,15 @@ Use non-personal test footage.
    intro is 2.5 seconds. With Stadium Ignition enabled, confirm the cue plays
    only during the intro and fades before original clip audio begins. Confirm
    the embedded audio from the supplied intro files is not played.
-    **Graphite frame:** Leave the optional frame off and confirm the export is
+    **PIXL Arena frame:** Leave the optional frame off and confirm the export is
     unchanged. Turn it on and test portrait, landscape, 4:3, and square footage.
-    The matching frame must appear over the selected action only, never over
-    the animated intro. Confirm the video shows through the transparent center,
-    the source audio and full selected footage remain intact, and the finished
-    preview, Photos save, and shared MP4 all include the frame. For 4:3 and
-    square sources, confirm the centered 16:9 frame leaves visible, uncropped
-    footage above and below it rather than black bars. Turn the frame off after
-    an export and confirm the previous framed output is cleared before saving
-    or sharing.
+    The blue-and-lime rim must surround the entire selected action, with the
+    full video fitted inside the opening. It must never frame the animated
+    intro. Confirm the source audio and full selected footage remain intact,
+    and the finished preview, Photos save, and shared MP4 all include the rim.
+    The preview player should follow the video's proportions, without an
+    extra fixed-height black box. Turn the frame off after an export and
+    confirm the previous framed output is cleared before saving or sharing.
 6. **Actual files:** Save a full selection to Photos. Inspect the saved MP4
    with QuickTime/`ffprobe`: duration should be about 17.5 seconds (within a frame),
    video must be upright, and the selected first/last spoken markers must
@@ -101,9 +100,13 @@ Use non-personal test footage.
    Cancel the sheet and retry; the preview/file must remain available. The
    editor must retain its file while an activity is using it.
 9. **Lifecycle:** Cancel export, retry, and change the intro after a finished
-   preview exists. Confirm the old output is removed, preview returns to the
-   source, and saving/sharing waits for a new export. Reselecting the same intro
-   also clears the prior output. Background during export and return. A
+   preview exists. Confirm the old output is removed, preview switches to the
+   newly selected intro, and saving/sharing waits for a new export. Reselecting the same intro
+   also clears the prior output. Repeat on the first clip after an Xcode rebuild:
+   create Clutch, select Domination, recreate, then select Game Changer and
+   recreate. Verify both the displayed finished-intro name and the actual
+   animation in preview and saved MP4 match the newest choice, without deleting
+   the installed app or its data. Background during export and return. A
    failed/interrupted export must keep the source intact and allow retry. Close
    the editor and inspect its
     `tmp/PIXL-Moment-*` workspace: source copies, generated files, and outputs

@@ -72,21 +72,28 @@ test("animated shoutout music fades out before the original audio", () => {
   assert.match(appleChecks, /intro music fades before source audio/);
   assert.match(appleChecks, /Intro music overlapped the original clip audio/);
 });
-test("optional Graphite frame is matched to the source and covers footage only", () => {
+test("optional Arena frame surrounds footage at its exact aspect ratio", () => {
+  const frame = read("NativeMomentArenaFrame.swift");
   assert.match(model, /@Published var graphiteFrameEnabled = false/);
   assert.match(model, /graphiteFrameEnabled = false/);
   assert.match(model, /func graphiteFrameSelectionChanged\(\)[\s\S]*?clearOutput\(\)[\s\S]*?updatePreview\(\)/);
-  assert.match(model, /oriented\.height > oriented\.width \? "GraphiteFramePortrait" : "GraphiteFrameLandscape"/);
-  assert.match(model, /footageFrame: footageFrame/);
-  assert.match(model, /The Graphite frame appears over the footage only/);
+  assert.match(model, /arenaFrameEnabled: selectedFrame/);
+  assert.match(model, /PIXL Arena frame surrounds the footage only/);
+  assert.match(frame, /width: size\.width \* 0\.93, height: size\.height \* 0\.93/);
+  assert.match(frame, /context\.clear\(opening\)/);
+  assert.match(frame, /context\.clip\(using: \.evenOdd\)/);
 
   assert.match(view, /Section\("Optional · Video frame"\)/);
-  assert.match(view, /Toggle\("Graphite frame", isOn: \$model\.graphiteFrameEnabled\)/);
+  assert.match(view, /Toggle\("PIXL Arena frame", isOn: \$model\.graphiteFrameEnabled\)/);
   assert.match(view, /record-moments-graphite-frame/);
-  assert.match(view, /It appears over the footage only, not the animated intro/);
+  assert.match(view, /full footage fits inside the border without cropping/);
   assert.match(view, /onChange\(of: model\.graphiteFrameEnabled\)/);
   assert.match(view, /frame, and footage together/);
 
+  assert.match(exporter, /arenaFrameEnabled: Bool = false/);
+  assert.match(exporter, /NativeMomentArenaFrame\.footageRect\(in: size\)/);
+  assert.match(exporter, /NativeMomentArenaFrame\.image\(size: size\)/);
+  assert.match(exporter, /translationX: footageBounds\.midX - oriented\.width \* fit \/ 2/);
   assert.match(exporter, /footageFrame: CGImage\? = nil/);
   assert.match(exporter, /frameLayer\.contents = footageFrame/);
   assert.match(exporter, /aspectFitRect\(/);
@@ -254,18 +261,35 @@ test("choosing an intro clears the previous output and resets its preview", () =
   const choose = model.slice(model.indexOf("func selectShoutout"), model.indexOf("func selectionChanged"));
   assert.match(choose, /guard !busy else \{ return \}/);
   assert.match(choose, /shoutout = selected[\s\S]*?selectionChanged\(\)/);
+  assert.match(choose, /selected\.portraitVideoResource : selected\.videoResource/);
+  assert.match(choose, /setPreview\(url: url[\s\S]*?previewingIntro = true/);
   assert.match(view, /model\.selectShoutout\(shoutout\)/);
   assert.doesNotMatch(view, /\.onChange\(of: model\.shoutout/);
   const selectionChange = model.slice(model.indexOf("func selectionChanged"), model.indexOf("func introMusicSelectionChanged"));
   assert.match(selectionChange, /clearOutput\(\)[\s\S]*?updatePreview\(\)/);
-  assert.match(model, /private func clearOutput\(\)[\s\S]*?releasePlayer\(\)[\s\S]*?removeItem\(at: output\)[\s\S]*?output = nil/);
+  assert.match(model, /private func clearOutput\(\)[\s\S]*?renderRevision = UUID\(\)[\s\S]*?releasePlayer\(\)[\s\S]*?removeItem\(at: output\)[\s\S]*?output = nil/);
+  const exportFlow = model.slice(model.indexOf("func export()"), model.indexOf("func save()"));
+  assert.match(exportFlow, /clearOutput\(\)[\s\S]*?let requestedRevision = renderRevision[\s\S]*?busy = true/);
+  assert.match(exportFlow, /renderRevision == requestedRevision, !closed, self\.shoutout == shoutout/);
+  assert.match(exporter, /copyItem\(at: selectedURL, to: introURL\)/);
+  assert.match(view, /Finished intro: /);
+  const regression = readFileSync(new URL("NativeMomentArenaChecks.swift", import.meta.url), "utf8");
+  assert.match(regression, /let exporter = NativeMomentExporter\(\)/);
+  assert.match(regression, /RecordMomentClutch", "RecordMomentDomination", "RecordMomentGameChanger/);
+  assert.match(regression, /retained the previous intro/);
+  assert.match(regression, /Arena frame surrounds full portrait, landscape, 4:3, and square footage/);
 });
 test("replacing a preview remounts the video player instead of showing a stale frame", () => {
   assert.match(model, /@Published private\(set\) var previewID = UUID\(\)/);
   const release = model.slice(model.indexOf("private func releasePlayer()"), model.indexOf("private func setPreview("));
   assert.match(release, /previewID = UUID\(\)/);
   assert.match(release, /replaceCurrentItem\(with: nil\)/);
-  assert.match(view, /VideoPlayer\(player: player\)[\s\S]*?\.id\(model\.previewID\)/);
+  assert.match(view, /NativeMomentPreviewPlayer\(player: player\)[\s\S]*?\.id\(model\.previewID\)/);
+  assert.match(view, /aspectRatio\(model\.previewAspectRatio, contentMode: \.fit\)/);
+  assert.doesNotMatch(view, /\.frame\(height: 280\)/);
+  const player = read("NativeMomentPreviewPlayer.swift");
+  assert.match(player, /controller\.player !== player/);
+  assert.match(player, /dismantleUIViewController[\s\S]*?controller\.player = nil/);
   const musicChange = model.slice(model.indexOf("func introMusicSelectionChanged()"), model.indexOf("func setTrimStart("));
   assert.match(musicChange, /clearOutput\(\)[\s\S]*?updatePreview\(\)/);
 });

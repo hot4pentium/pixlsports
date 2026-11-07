@@ -48,16 +48,22 @@ struct NativeRecordMomentsView: View {
                 frameSection
                     .disabled(model.busy)
                 Section(model.output == nil
-                        ? "\(previewStep) · Selected footage preview"
+                        ? "\(previewStep) · \(model.previewingIntro ? "Selected intro preview" : "Selected footage preview")"
                         : "\(previewStep) · Finished MP4 preview") {
                     if let player = model.player {
-                        VideoPlayer(player: player)
+                        NativeMomentPreviewPlayer(player: player)
                             // A replacement player must not retain the prior preview's rendered view.
                             .id(model.previewID)
-                            .frame(height: 280)
+                            .aspectRatio(model.previewAspectRatio, contentMode: .fit)
+                            .frame(maxHeight: 360)
                             .accessibilityIdentifier("record-moments-preview")
                     }
-                    Text(model.output == nil
+                    if let title = model.renderedShoutoutTitle {
+                        Text("Finished intro: \(title)").font(.subheadline.weight(.semibold))
+                    }
+                    Text(model.previewingIntro
+                         ? "This is the newly selected intro. Create the clip to combine it with your original footage."
+                         : model.output == nil
                          ? (model.graphiteFrameEnabled
                             ? "Preview shows your selected footage. Create the clip to preview the intro, music cue, frame, and footage together."
                             : "Preview shows your selected footage. Create the clip to preview the intro, music cue, and footage together.")
@@ -291,9 +297,9 @@ struct NativeRecordMomentsView: View {
 
     private var frameSection: some View {
         Section("Optional · Video frame") {
-            Toggle("Graphite frame", isOn: $model.graphiteFrameEnabled)
+            Toggle("PIXL Arena frame", isOn: $model.graphiteFrameEnabled)
                 .accessibilityIdentifier("record-moments-graphite-frame")
-            Text("PIXL matches the portrait or landscape frame to your video. It appears over the footage only, not the animated intro.")
+            Text("A blue-and-lime sports frame sized to your video. Your full footage fits inside the border without cropping. The animated intro stays unframed.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

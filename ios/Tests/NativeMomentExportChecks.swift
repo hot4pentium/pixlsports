@@ -306,6 +306,11 @@ struct NativeMomentExportChecks {
             }
         }
         print("PASS: Graphite frame fits landscape, portrait, 4:3, and square footage without cropping or stretching")
+        try await checkIntroReplacement(root: root, source: source, artwork: artwork, directory: directory)
+        try await checkArenaFrames(
+            fixtures: [("landscape", source), ("portrait", portrait), ("4:3", fourThree), ("square", square)],
+            artwork: artwork, directory: directory, intro: animatedURL, portraitIntro: portraitAnimatedURL
+        )
         let introMusicURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchIntroMusic.m4a")
         precondition(FileManager.default.fileExists(atPath: introMusicURL.path), "Bundled intro music is missing")
         let musicPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
