@@ -131,6 +131,12 @@ final class NativeMomentModel: ObservableObject {
         }
     }
 
+    func selectShoutout(_ selected: NativeMomentShoutout) {
+        guard !busy else { return }
+        shoutout = selected
+        selectionChanged()
+    }
+
     func selectionChanged() {
         guard !busy else { return }
         start = min(start, maximumStart)

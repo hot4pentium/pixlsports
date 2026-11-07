@@ -148,7 +148,6 @@ struct NativeRecordMomentsView: View {
         } message: { Text(model.error ?? "") }
         .onChange(of: model.start) { _, _ in model.selectionChanged() }
         .onChange(of: model.footage) { _, _ in model.selectionChanged() }
-        .onChange(of: model.shoutout) { _, _ in model.selectionChanged() }
         .onChange(of: model.introSeconds) { _, _ in model.selectionChanged() }
         .onChange(of: model.introMusicEnabled) { _, _ in model.introMusicSelectionChanged() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { model.stopPlayback() } }
@@ -219,7 +218,7 @@ struct NativeRecordMomentsView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 135))], spacing: 12) {
                 ForEach(NativeMomentShoutout.allCases) { shoutout in
                     Button {
-                        model.shoutout = shoutout
+                        model.selectShoutout(shoutout)
                     } label: {
                         VStack {
                             ZStack(alignment: .topTrailing) {

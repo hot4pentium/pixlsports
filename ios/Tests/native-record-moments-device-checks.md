@@ -77,9 +77,12 @@ Use non-personal test footage.
    and Files. Open the received MP4 and repeat duration/orientation/audio checks.
    Cancel the sheet and retry; the preview/file must remain available. The
    editor must retain its file while an activity is using it.
-9. **Lifecycle:** Cancel export, retry, change the intro, then export again.
-   Background during export and return. A failed/interrupted export must keep
-   the source intact and allow retry. Close the editor and inspect its
+9. **Lifecycle:** Cancel export, retry, and change the intro after a finished
+   preview exists. Confirm the old output is removed, preview returns to the
+   source, and saving/sharing waits for a new export. Reselecting the same intro
+   also clears the prior output. Background during export and return. A
+   failed/interrupted export must keep the source intact and allow retry. Close
+   the editor and inspect its
     `tmp/PIXL-Moment-*` workspace: source copies, generated files, and outputs
     should be removed. Bundled intro videos stay with the installed app. Saved
     Photos and shared copies must remain. The app must make no
