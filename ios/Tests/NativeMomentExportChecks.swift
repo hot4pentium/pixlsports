@@ -18,7 +18,7 @@ struct NativeMomentExportChecks {
         let artwork = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)!
         let introVideos = [
             ("Clutch", "RecordMomentClutch", "RecordMomentClutchPortrait", CGFloat(16) / 9),
-            ("Domination", "RecordMomentDomination", "RecordMomentDominationPortrait", CGFloat(1)),
+            ("Domination", "RecordMomentDomination", "RecordMomentDominationPortrait", CGFloat(16) / 9),
             ("Game Changer", "RecordMomentGameChanger", "RecordMomentGameChangerPortrait", CGFloat(16) / 9),
             ("Highlight", "RecordMomentHighlight", "RecordMomentHighlightPortrait", CGFloat(16) / 9),
             ("Hustle", "RecordMomentHustle", "RecordMomentHustlePortrait", CGFloat(16) / 9),
@@ -282,7 +282,7 @@ struct NativeMomentExportChecks {
             let originalFrame = try frame(landscapeDominationGenerator, at: timestamp)
             precondition(
                 distance(
-                    signature(centeredContentFrame(portraitFrame, aspectRatio: 1)),
+                    signature(centeredContentFrame(portraitFrame, aspectRatio: CGFloat(16) / 9)),
                     signature(originalFrame)
                 ) < 0.1,
                 "Portrait Domination text or animation was cropped at \(timestamp)s"
