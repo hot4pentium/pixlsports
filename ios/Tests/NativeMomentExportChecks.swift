@@ -71,6 +71,10 @@ struct NativeMomentExportChecks {
             directory: directory, seconds: 20, rotated: false, audio: true,
             videoSize: CGSize(width: 320, height: 320)
         )
+        let tallThreeFour = try await fixture(
+            directory: directory, seconds: 20, rotated: false, audio: true,
+            videoSize: CGSize(width: 240, height: 320)
+        )
         let silent = try await fixture(directory: directory, seconds: 0.4, rotated: false, audio: false)
         for (name, url, start, footage, intro, isPortrait, audible) in [
             ("landscape", source, 3.0, 15.0, 2.0, false, true),
@@ -223,6 +227,7 @@ struct NativeMomentExportChecks {
             ("landscape", source, graphiteLandscape, false, CGFloat(16) / 9),
             ("portrait", portrait, graphitePortrait, true, CGFloat(9) / 16),
             ("4:3", fourThree, graphiteLandscape, false, CGFloat(4) / 3),
+            ("3:4", tallThreeFour, graphitePortrait, true, CGFloat(3) / 4),
             ("square", square, graphiteLandscape, false, CGFloat(1))
         ] {
             let plan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
@@ -304,8 +309,27 @@ struct NativeMomentExportChecks {
                     )
                 }
             }
+            if name == "3:4" {
+                // The supplied 9:16 portrait frame fits by height, leaving action
+                // visible on BOTH sides. Sample asymmetric source corners too:
+                // a centered crop or black side bars must not pass as a full fit.
+                precondition(frameRect.minX > 0 && frameRect.maxX < outputSize.width,
+                             "The 3:4 portrait frame must leave visible side margins")
+                for relative in [0.1, 14.9] {
+                    let resultFrame = try frame(resultGenerator, at: plan.intro + relative)
+                    let sourceFrame = try frame(sourceGenerator, at: plan.start + relative)
+                    for x in [CGFloat(0.04), CGFloat(0.96)] {
+                        for y in [CGFloat(0.1), CGFloat(0.9)] {
+                            precondition(
+                                normalizedPixelDifference(resultFrame, sourceFrame, at: CGPoint(x: x, y: y)) < 0.08,
+                                "Graphite cropped or obscured the 3:4 source side margins at \(relative)s"
+                            )
+                        }
+                    }
+                }
+            }
         }
-        print("PASS: Graphite frame fits landscape, portrait, 4:3, and square footage without cropping or stretching")
+        print("PASS: Graphite frame fits landscape, portrait, 4:3, tall 3:4, and square footage without cropping or stretching")
         try await checkIntroReplacement(root: root, source: source, artwork: artwork, directory: directory)
         try await checkArenaFrames(
             fixtures: [("landscape", source), ("portrait", portrait), ("4:3", fourThree), ("square", square)],

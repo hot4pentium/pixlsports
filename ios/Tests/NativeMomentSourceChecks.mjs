@@ -120,6 +120,24 @@ test("optional Arena frame is previewed locally and surrounds footage at its exa
   const deviceChecks = readFileSync(new URL("native-record-moments-device-checks.md", import.meta.url), "utf8");
   assert.match(deviceChecks, /Before exporting, turn it on and confirm the matching frame[\s\S]*?turn it off and[\s\S]*?disappears immediately without changing the source video/);
 });
+test("Apple Graphite exports cover tall 3:4 footage with the portrait frame and intact side margins", () => {
+  const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
+  assert.match(appleChecks, /let tallThreeFour = try await fixture\([\s\S]*?videoSize: CGSize\(width: 240, height: 320\)/);
+  assert.match(appleChecks, /\("3:4", tallThreeFour, graphitePortrait, true, CGFloat\(3\) \/ 4\)/);
+  const graphiteChecks = appleChecks.slice(appleChecks.indexOf("for (name, url, frameImage"));
+  assert.match(graphiteChecks, /abs\(outputSize\.width \/ outputSize\.height - sourceAspectRatio\) < 0\.01/);
+  assert.match(graphiteChecks, /Graphite frame appeared during the shoutout intro/);
+  assert.match(graphiteChecks, /The transparent opening did not reveal the original footage/);
+  assert.match(graphiteChecks, /The Graphite frame was missing from the selected footage/);
+  const tallChecks = graphiteChecks.slice(graphiteChecks.indexOf('if name == "3:4"'));
+  assert.match(tallChecks, /frameRect\.minX > 0 && frameRect\.maxX < outputSize\.width/);
+  assert.match(tallChecks, /for relative in \[0\.1, 14\.9\]/);
+  assert.match(tallChecks, /plan\.start \+ relative/);
+  assert.match(tallChecks, /for x in \[CGFloat\(0\.04\), CGFloat\(0\.96\)\]/);
+  assert.match(tallChecks, /for y in \[CGFloat\(0\.1\), CGFloat\(0\.9\)\]/);
+  assert.match(tallChecks, /normalizedPixelDifference\(resultFrame, sourceFrame, at: CGPoint\(x: x, y: y\)\) < 0\.08/);
+  assert.match(tallChecks, /Graphite cropped or obscured the 3:4 source side margins/);
+});
 test("the chooser offers only seven matching animated intros", () => {
   const plan = read("NativeMomentPlan.swift");
   const choices = plan.slice(plan.indexOf("enum NativeMomentShoutout"));

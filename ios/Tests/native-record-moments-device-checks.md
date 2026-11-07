@@ -27,13 +27,19 @@ tail, exercises cancellation and invalid media, and checks intro cleanup. Then i
 builds the complete unsigned iOS app. Evidence and MP4s stay under the ignored
 `generated-artifacts/native-record-moments/` directory.
 
-The Graphite export fixtures also include 4:3 and square sources. The 16:9
+The Graphite export fixtures also include 4:3, tall 3:4, and square sources. The 16:9
 landscape frame stays centered and proportional on those exports: the source
 video remains visible without cropping in the unframed area above and below the
 frame. These are visible footage margins, not black bars. The checks compare
 source pixels in those margins and in the transparent opening, confirm the
 frame border is present, preserve the output aspect ratio, and verify the intro
 has no frame.
+
+The tall 3:4 fixture uses a 240×320 source and the supplied 9:16 portrait
+Graphite frame. Its output must remain 3:4, with the transparent opening
+revealing the footage and the intro unframed. The narrower frame leaves source
+footage visible on both sides; asymmetric corner samples at the beginning and
+end of the selected footage catch cropping, stretching, and black side bars.
 
 The audio fixture changes tone at source second 17. A selection from second 3
 through second 18 must retain the changed tone at the end. Reducing footage to
