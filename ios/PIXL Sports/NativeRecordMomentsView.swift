@@ -45,6 +45,8 @@ struct NativeRecordMomentsView: View {
                     introMusicSection
                         .disabled(model.busy)
                 }
+                frameSection
+                    .disabled(model.busy)
                 Section(model.output == nil
                         ? "\(previewStep) · Selected footage preview"
                         : "\(previewStep) · Finished MP4 preview") {
@@ -56,8 +58,12 @@ struct NativeRecordMomentsView: View {
                             .accessibilityIdentifier("record-moments-preview")
                     }
                     Text(model.output == nil
-                         ? "Preview shows your selected footage. Create the clip to preview the intro, music cue, and footage together."
-                         : "Check the intro, action, and original sound before saving or sharing.")
+                         ? (model.graphiteFrameEnabled
+                            ? "Preview shows your selected footage. Create the clip to preview the intro, music cue, frame, and footage together."
+                            : "Preview shows your selected footage. Create the clip to preview the intro, music cue, and footage together.")
+                         : (model.graphiteFrameEnabled
+                            ? "Check the intro, frame, action, and original sound before saving or sharing."
+                            : "Check the intro, action, and original sound before saving or sharing."))
                         .font(.caption).foregroundStyle(.secondary)
                     Button(model.output == nil ? "Create clip & preview" : "Recreate clip & preview", action: model.export)
                         .accessibilityIdentifier("record-moments-export")
@@ -150,6 +156,7 @@ struct NativeRecordMomentsView: View {
         .onChange(of: model.footage) { _, _ in model.selectionChanged() }
         .onChange(of: model.introSeconds) { _, _ in model.selectionChanged() }
         .onChange(of: model.introMusicEnabled) { _, _ in model.introMusicSelectionChanged() }
+        .onChange(of: model.graphiteFrameEnabled) { _, _ in model.graphiteFrameSelectionChanged() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { model.stopPlayback() } }
         .onDisappear {
             // Full-screen capture hides the editor; it has not ended the edit session.
@@ -278,6 +285,15 @@ struct NativeRecordMomentsView: View {
             Toggle("Add intro music", isOn: $model.introMusicEnabled)
                 .accessibilityIdentifier("record-moments-music-toggle")
             Text("A short music cue plays only with animated shoutout intros. It fades out before your original video audio begins; no music plays over the action.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var frameSection: some View {
+        Section("Optional · Video frame") {
+            Toggle("Graphite frame", isOn: $model.graphiteFrameEnabled)
+                .accessibilityIdentifier("record-moments-graphite-frame")
+            Text("PIXL matches the portrait or landscape frame to your video. It appears over the footage only, not the animated intro.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

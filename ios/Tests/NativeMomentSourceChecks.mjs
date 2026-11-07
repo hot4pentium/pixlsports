@@ -72,6 +72,47 @@ test("animated shoutout music fades out before the original audio", () => {
   assert.match(appleChecks, /intro music fades before source audio/);
   assert.match(appleChecks, /Intro music overlapped the original clip audio/);
 });
+test("optional Graphite frame is matched to the source and covers footage only", () => {
+  assert.match(model, /@Published var graphiteFrameEnabled = false/);
+  assert.match(model, /graphiteFrameEnabled = false/);
+  assert.match(model, /func graphiteFrameSelectionChanged\(\)[\s\S]*?clearOutput\(\)[\s\S]*?updatePreview\(\)/);
+  assert.match(model, /oriented\.height > oriented\.width \? "GraphiteFramePortrait" : "GraphiteFrameLandscape"/);
+  assert.match(model, /footageFrame: footageFrame/);
+  assert.match(model, /The Graphite frame appears over the footage only/);
+
+  assert.match(view, /Section\("Optional · Video frame"\)/);
+  assert.match(view, /Toggle\("Graphite frame", isOn: \$model\.graphiteFrameEnabled\)/);
+  assert.match(view, /record-moments-graphite-frame/);
+  assert.match(view, /It appears over the footage only, not the animated intro/);
+  assert.match(view, /onChange\(of: model\.graphiteFrameEnabled\)/);
+  assert.match(view, /frame, and footage together/);
+
+  assert.match(exporter, /footageFrame: CGImage\? = nil/);
+  assert.match(exporter, /frameLayer\.contents = footageFrame/);
+  assert.match(exporter, /aspectFitRect\(/);
+  assert.match(exporter, /appear\.beginTime = AVCoreAnimationBeginTimeAtZero \+ introTime\.seconds/);
+  assert.match(exporter, /AVVideoCompositionCoreAnimationTool\.Configuration/);
+  assert.match(exporter, /AVVideoCompositionCoreAnimationTool\(configuration: configuration\)/);
+
+  const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
+  assert.match(appleChecks, /PASS: Graphite frame appears only over original footage/);
+
+  const frames = [
+    ["GraphiteFramePortrait", "Graphite_Frame_Portrait.png", 941, 1672],
+    ["GraphiteFrameLandscape", "Graphite_Frame_Landscape.png", 1672, 941]
+  ];
+  for (const [name, filename, width, height] of frames) {
+    const directory = new URL(`../PIXL Sports/Assets.xcassets/${name}.imageset/`, import.meta.url);
+    const manifest = JSON.parse(readFileSync(new URL("Contents.json", directory), "utf8"));
+    assert.equal(manifest.images[0].filename, filename);
+    const data = readFileSync(new URL(filename, directory));
+    assert.equal(data.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(data.readUInt32BE(16), width);
+    assert.equal(data.readUInt32BE(20), height);
+    assert.equal(data[25], 6, `${name} must retain PNG transparency`);
+    assert.ok(data.length < 300_000, `${name} should remain a lightweight bundled overlay`);
+  }
+});
 test("the chooser offers only seven matching animated intros", () => {
   const plan = read("NativeMomentPlan.swift");
   const choices = plan.slice(plan.indexOf("enum NativeMomentShoutout"));

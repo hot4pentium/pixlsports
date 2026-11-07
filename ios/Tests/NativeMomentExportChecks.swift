@@ -203,6 +203,73 @@ struct NativeMomentExportChecks {
                          "Original tail audio was shortened by the animated intro")
             print("PASS: \(name), bundled silent video intro, full 15-second footage, uncropped layout, source audio")
         }
+        let graphitePortraitURL = root.appendingPathComponent(
+            "ios/PIXL Sports/Assets.xcassets/GraphiteFramePortrait.imageset/Graphite_Frame_Portrait.png"
+        )
+        let graphiteLandscapeURL = root.appendingPathComponent(
+            "ios/PIXL Sports/Assets.xcassets/GraphiteFrameLandscape.imageset/Graphite_Frame_Landscape.png"
+        )
+        let graphitePortraitSource = CGImageSourceCreateWithURL(graphitePortraitURL as CFURL, nil)!
+        let graphiteLandscapeSource = CGImageSourceCreateWithURL(graphiteLandscapeURL as CFURL, nil)!
+        let graphitePortrait = CGImageSourceCreateImageAtIndex(graphitePortraitSource, 0, nil)!
+        let graphiteLandscape = CGImageSourceCreateImageAtIndex(graphiteLandscapeSource, 0, nil)!
+        for (name, url, frameImage, isPortrait) in [
+            ("landscape", source, graphiteLandscape, false),
+            ("portrait", portrait, graphitePortrait, true)
+        ] {
+            let plan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
+            let output = try await NativeMomentExporter().export(
+                source: url,
+                shoutout: artwork,
+                plan: plan,
+                directory: directory,
+                shoutoutVideo: animatedURL,
+                shoutoutVideoPortrait: portraitAnimatedURL,
+                footageFrame: frameImage
+            )
+            let asset = AVURLAsset(url: output)
+            let outputDuration = try await asset.load(.duration).seconds
+            precondition(abs(outputDuration - plan.total) < 0.12,
+                         "Graphite frame changed the finished video duration")
+            let outputAudioTracks = try await asset.loadTracks(withMediaType: .audio)
+            precondition(!outputAudioTracks.isEmpty,
+                         "Graphite frame removed the original audio")
+            let resultGenerator = AVAssetImageGenerator(asset: asset)
+            resultGenerator.appliesPreferredTrackTransform = true
+            resultGenerator.requestedTimeToleranceBefore = .zero
+            resultGenerator.requestedTimeToleranceAfter = .zero
+            let sourceGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            sourceGenerator.appliesPreferredTrackTransform = true
+            sourceGenerator.requestedTimeToleranceBefore = .zero
+            sourceGenerator.requestedTimeToleranceAfter = .zero
+            let introGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: isPortrait ? portraitAnimatedURL : animatedURL))
+            introGenerator.appliesPreferredTrackTransform = true
+            introGenerator.requestedTimeToleranceBefore = .zero
+            introGenerator.requestedTimeToleranceAfter = .zero
+            let outputTrack = try await asset.loadTracks(withMediaType: .video).first!
+            let outputSize = try await outputTrack.load(.naturalSize)
+            let expectedIntro = fittedVideoFrame(try frame(introGenerator, at: 0.5), size: outputSize)
+            precondition(
+                distance(signature(try frame(resultGenerator, at: 0.5)), signature(expectedIntro)) < 0.1,
+                "Graphite frame appeared during the shoutout intro"
+            )
+            let outputFootage = try frame(resultGenerator, at: plan.intro + 2)
+            let sourceFootage = try frame(sourceGenerator, at: 5)
+            let center = CGPoint(x: CGFloat(outputFootage.width) / 2, y: CGFloat(outputFootage.height) / 2)
+            precondition(
+                distance(pixelSignature(outputFootage, at: center), pixelSignature(sourceFootage, at: center)) < 0.08,
+                "The transparent opening did not reveal the original footage"
+            )
+            let edgeY = [CGFloat(8), CGFloat(outputFootage.height - 9)]
+            let edgeDifference = edgeY.map { y in
+                distance(
+                    pixelSignature(outputFootage, at: CGPoint(x: CGFloat(outputFootage.width) / 2, y: y)),
+                    pixelSignature(sourceFootage, at: CGPoint(x: CGFloat(sourceFootage.width) / 2, y: y))
+                )
+            }.max() ?? 0
+            precondition(edgeDifference > 0.1, "The Graphite frame was missing from the selected footage")
+        }
+        print("PASS: Graphite frame appears only over original footage, with both orientations and transparent center")
         let introMusicURL = root.appendingPathComponent("ios/PIXL Sports/RecordMomentClutchIntroMusic.m4a")
         precondition(FileManager.default.fileExists(atPath: introMusicURL.path), "Bundled intro music is missing")
         let musicPlan = try NativeMomentPlan(sourceDuration: 20, start: 3, footage: 15, intro: 2.5)
@@ -344,6 +411,15 @@ struct NativeMomentExportChecks {
 
     static func distance(_ a: [Double], _ b: [Double]) -> Double {
         zip(a, b).map { abs($0 - $1) }.reduce(0, +) / Double(a.count)
+    }
+
+    static func pixelSignature(_ image: CGImage, at point: CGPoint) -> [Double] {
+        let x = min(max(0, Int(point.x)), image.width - 1)
+        let y = min(max(0, Int(point.y)), image.height - 1)
+        guard let pixel = image.cropping(to: CGRect(x: CGFloat(x), y: CGFloat(y), width: 1, height: 1)) else {
+            preconditionFailure("Unable to sample exported video frame")
+        }
+        return signature(pixel)
     }
 
     static func graphicFrame(_ image: CGImage, size: CGSize) -> CGImage {

@@ -15,6 +15,7 @@ final class NativeMomentModel: ObservableObject {
     @Published var shoutout: NativeMomentShoutout?
     @Published var introSeconds = NativeMomentPlan.introSeconds
     @Published var introMusicEnabled = true
+    @Published var graphiteFrameEnabled = false
     @Published private(set) var hasAudio = false
     @Published private(set) var busy = false
     @Published private(set) var isExporting = false
@@ -116,6 +117,7 @@ final class NativeMomentModel: ObservableObject {
                     if let source { try? FileManager.default.removeItem(at: source) }
                     shoutout = nil
                     introMusicEnabled = true
+                    graphiteFrameEnabled = false
                     self.source = url
                     self.duration = duration
                     self.start = 0
@@ -150,6 +152,13 @@ final class NativeMomentModel: ObservableObject {
     }
 
     func introMusicSelectionChanged() {
+        guard !busy else { return }
+        clearOutput()
+        updatePreview()
+        message = nil
+    }
+
+    func graphiteFrameSelectionChanged() {
         guard !busy else { return }
         clearOutput()
         updatePreview()
@@ -220,6 +229,7 @@ final class NativeMomentModel: ObservableObject {
             var unclaimedOutput: URL?
             defer { if let unclaimedOutput { try? FileManager.default.removeItem(at: unclaimedOutput) } }
             do {
+                let footageFrame = try await loadGraphiteFrame(for: source)
                 let url = try await exporter.export(
                     source: source,
                     shoutout: artwork,
@@ -227,7 +237,8 @@ final class NativeMomentModel: ObservableObject {
                     directory: directory,
                     shoutoutVideo: shoutoutVideo,
                     shoutoutVideoPortrait: portraitShoutoutVideo,
-                    introMusicURL: introMusicURL
+                    introMusicURL: introMusicURL,
+                    footageFrame: footageFrame
                 )
                 unclaimedOutput = url
                 try Task.checkCancellation()
@@ -236,9 +247,29 @@ final class NativeMomentModel: ObservableObject {
                 unclaimedOutput = nil
                 setPreview(url: url, start: 0, end: plan.total)
                 let musicNote = introMusicURL == nil ? "" : " Intro music plays only during the animated intro."
-                message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + musicNote
+                let frameNote = graphiteFrameEnabled ? " The Graphite frame appears over the footage only." : ""
+                message = String(format: "Ready: %.1f-second animated intro + %.2f seconds of footage. Nothing has been uploaded.", plan.intro, plan.footage) + musicNote + frameNote
             } catch { handle(error) }
         }
+    }
+
+    private func loadGraphiteFrame(for source: URL) async throws -> CGImage? {
+        guard graphiteFrameEnabled else { return nil }
+        let asset = AVURLAsset(url: source)
+        guard let video = try await asset.loadTracks(withMediaType: .video).first else {
+            throw NativeMomentError.message("This file has no readable video.")
+        }
+        let naturalSize = try await video.load(.naturalSize)
+        let preferredTransform = try await video.load(.preferredTransform)
+        let oriented = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform).standardized
+        guard oriented.width > 0, oriented.height > 0 else {
+            throw NativeMomentError.message("This video’s orientation could not be read.")
+        }
+        let assetName = oriented.height > oriented.width ? "GraphiteFramePortrait" : "GraphiteFrameLandscape"
+        guard let image = UIImage(named: assetName)?.cgImage else {
+            throw NativeMomentError.message("The Graphite frame is unavailable. Turn it off and try again.")
+        }
+        return image
     }
 
     func save() {

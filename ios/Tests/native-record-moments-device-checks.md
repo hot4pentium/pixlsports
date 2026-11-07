@@ -67,6 +67,14 @@ Use non-personal test footage.
    intro is 2.5 seconds. With Stadium Ignition enabled, confirm the cue plays
    only during the intro and fades before original clip audio begins. Confirm
    the embedded audio from the supplied intro files is not played.
+    **Graphite frame:** Leave the optional frame off and confirm the export is
+    unchanged. Turn it on and test portrait and landscape footage. The matching
+    frame must appear over the selected action only, never over the animated
+    intro. Confirm the video shows through the transparent center, the source
+    audio and full selected footage remain intact, and the finished preview,
+    Photos save, and shared MP4 all include the frame. Turn the frame off after
+    an export and confirm the previous framed output is cleared before saving
+    or sharing.
 6. **Actual files:** Save a full selection to Photos. Inspect the saved MP4
    with QuickTime/`ffprobe`: duration should be about 17.5 seconds (within a frame),
    video must be upright, and the selected first/last spoken markers must

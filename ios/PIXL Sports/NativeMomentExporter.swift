@@ -1,5 +1,6 @@
 import AVFoundation
 import CoreGraphics
+import QuartzCore
 
 /// All files belong to the caller's disposable workspace. No network or library writes.
 @MainActor
@@ -19,7 +20,8 @@ final class NativeMomentExporter {
         directory: URL,
         shoutoutVideo: URL? = nil,
         shoutoutVideoPortrait: URL? = nil,
-        introMusicURL: URL? = nil
+        introMusicURL: URL? = nil,
+        footageFrame: CGImage? = nil
     ) async throws -> URL {
         defer {
             if writer?.status == .writing { writer?.cancelWriting() }
@@ -190,6 +192,41 @@ final class NativeMomentExporter {
         videoComposition.renderSize = size
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions = [introInstruction, footageInstruction]
+        if let footageFrame {
+            let parentLayer = CALayer()
+            parentLayer.frame = CGRect(origin: .zero, size: size)
+            parentLayer.masksToBounds = true
+
+            let videoLayer = CALayer()
+            videoLayer.frame = parentLayer.bounds
+            parentLayer.addSublayer(videoLayer)
+
+            let frameLayer = CALayer()
+            frameLayer.frame = aspectFitRect(
+                imageSize: CGSize(width: footageFrame.width, height: footageFrame.height),
+                inside: parentLayer.bounds
+            )
+            frameLayer.contents = footageFrame
+            frameLayer.contentsGravity = .resize
+            frameLayer.opacity = 0
+            parentLayer.addSublayer(frameLayer)
+
+            // Begin exactly as the selected footage starts; the intro remains unframed.
+            let appear = CABasicAnimation(keyPath: "opacity")
+            appear.fromValue = 0
+            appear.toValue = 1
+            appear.beginTime = AVCoreAnimationBeginTimeAtZero + introTime.seconds
+            appear.duration = 1.0 / 30.0
+            appear.fillMode = .forwards
+            appear.isRemovedOnCompletion = false
+            frameLayer.add(appear, forKey: "record-moment-frame-appear")
+
+            let configuration = AVVideoCompositionCoreAnimationTool.Configuration(
+                postProcessingAsVideoLayer: videoLayer,
+                containingLayer: parentLayer
+            )
+            videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(configuration: configuration)
+        }
         let output = directory.appendingPathComponent("PIXL-Moment-\(UUID()).mp4")
         var success = false
         defer { if !success { try? FileManager.default.removeItem(at: output) } }
@@ -228,6 +265,19 @@ final class NativeMomentExporter {
         }
         success = true
         return output
+    }
+
+    private func aspectFitRect(imageSize: CGSize, inside bounds: CGRect) -> CGRect {
+        guard imageSize.width > 0, imageSize.height > 0,
+              bounds.width > 0, bounds.height > 0 else { return bounds }
+        let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
+        let fittedSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        return CGRect(
+            x: bounds.midX - fittedSize.width / 2,
+            y: bounds.midY - fittedSize.height / 2,
+            width: fittedSize.width,
+            height: fittedSize.height
+        )
     }
 
     private func writeIntro(image: CGImage, size: CGSize, seconds: Double, to url: URL) async throws {
