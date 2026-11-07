@@ -24,6 +24,7 @@ final class NativeMomentModel: ObservableObject {
     @Published var error: String?
     @Published var permissionDenied = false
     @Published private(set) var player: AVPlayer?
+    @Published private(set) var arenaFramePreview: UIImage?
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("PIXL-Moment-\(UUID())", isDirectory: true)
     private let exporter = NativeMomentExporter()
@@ -126,12 +127,16 @@ final class NativeMomentModel: ObservableObject {
                     guard oriented.width > 0, oriented.height > 0 else {
                         throw NativeMomentError.message("This video’s dimensions could not be read.")
                     }
+                    let arenaFrame = try? NativeMomentArenaFrame.image(
+                        size: NativeMomentArenaFrame.renderSize(for: oriented.size)
+                    )
                     try Task.checkCancellation()
                     clearOutput()
                     if let source { try? FileManager.default.removeItem(at: source) }
                     shoutout = nil
                     introMusicEnabled = true
                     graphiteFrameEnabled = false
+                    arenaFramePreview = arenaFrame.map(UIImage.init(cgImage:))
                     self.source = url
                     self.duration = duration
                     self.start = 0
@@ -183,8 +188,13 @@ final class NativeMomentModel: ObservableObject {
 
     func graphiteFrameSelectionChanged() {
         guard !busy else { return }
-        clearOutput()
-        updatePreview()
+        if output != nil {
+            clearOutput()
+            updatePreview()
+        }
+        if graphiteFrameEnabled && arenaFramePreview == nil {
+            error = "The PIXL Arena frame could not be prepared. Turn it off and try again."
+        }
         message = nil
     }
 
@@ -211,6 +221,16 @@ final class NativeMomentModel: ObservableObject {
         guard let artwork = UIImage(named: shoutout.asset)?.cgImage else {
             error = "The selected shoutout is missing. Choose another graphic."
             return
+        }
+        let footageFrame: CGImage?
+        if graphiteFrameEnabled {
+            guard let image = graphiteFramePreview?.cgImage else {
+                error = "The Graphite frame is unavailable. Turn it off and try again."
+                return
+            }
+            footageFrame = image
+        } else {
+            footageFrame = nil
         }
         let shoutoutVideo: URL?
         let portraitShoutoutVideo: URL?

@@ -76,11 +76,15 @@ Use non-personal test footage.
    only during the intro and fades before original clip audio begins. Confirm
    the embedded audio from the supplied intro files is not played.
     **PIXL Arena frame:** Leave the optional frame off and confirm the export is
-    unchanged. Turn it on and test portrait, landscape, 4:3, and square footage.
+    unchanged. Before exporting, turn it on and confirm the matching frame
+    appears over the selected footage in the editor preview; turn it off and
+    confirm it disappears immediately without changing the source video. Turn it
+    on again and test portrait, landscape, 4:3, and square footage.
     The blue-and-lime rim must surround the entire selected action, with the
     full video fitted inside the opening. It must never frame the animated
-    intro. Confirm the source audio and full selected footage remain intact,
-    and the finished preview, Photos save, and shared MP4 all include the rim.
+    intro or the intro-only editor preview. Confirm the source audio and full
+    selected footage remain intact, and the finished preview, Photos save, and
+    shared MP4 all include the rim.
     The preview player should follow the video's proportions, without an
     extra fixed-height black box. Turn the frame off after an export and
     confirm the previous framed output is cleared before saving or sharing.

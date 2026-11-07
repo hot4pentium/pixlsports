@@ -72,11 +72,16 @@ test("animated shoutout music fades out before the original audio", () => {
   assert.match(appleChecks, /intro music fades before source audio/);
   assert.match(appleChecks, /Intro music overlapped the original clip audio/);
 });
-test("optional Arena frame surrounds footage at its exact aspect ratio", () => {
+test("optional Arena frame is previewed locally and surrounds footage at its exact aspect ratio", () => {
   const frame = read("NativeMomentArenaFrame.swift");
   assert.match(model, /@Published var graphiteFrameEnabled = false/);
+  assert.match(model, /@Published private\(set\) var arenaFramePreview: UIImage\?/);
   assert.match(model, /graphiteFrameEnabled = false/);
-  assert.match(model, /func graphiteFrameSelectionChanged\(\)[\s\S]*?clearOutput\(\)[\s\S]*?updatePreview\(\)/);
+  assert.match(model, /NativeMomentArenaFrame\.image\([\s\S]*?NativeMomentArenaFrame\.renderSize\(for: oriented\.size\)/);
+  assert.match(model, /arenaFramePreview = arenaFrame\.map\(UIImage\.init\(cgImage:\)\)/);
+  assert.match(model, /sourceAspectRatio = oriented\.width \/ oriented\.height/);
+  assert.match(model, /func graphiteFrameSelectionChanged\(\)[\s\S]*?if output != nil[\s\S]*?clearOutput\(\)[\s\S]*?updatePreview\(\)/);
+  assert.match(model, /graphiteFrameEnabled && arenaFramePreview == nil/);
   assert.match(model, /arenaFrameEnabled: selectedFrame/);
   assert.match(model, /PIXL Arena frame surrounds the footage only/);
   assert.match(frame, /width: size\.width \* 0\.93, height: size\.height \* 0\.93/);
@@ -86,9 +91,15 @@ test("optional Arena frame surrounds footage at its exact aspect ratio", () => {
   assert.match(view, /Section\("Optional · Video frame"\)/);
   assert.match(view, /Toggle\("PIXL Arena frame", isOn: \$model\.graphiteFrameEnabled\)/);
   assert.match(view, /record-moments-graphite-frame/);
-  assert.match(view, /full footage fits inside the border without cropping/);
+  assert.match(view, /Your full footage fits inside the border without cropping/);
+  assert.match(view, /Preview it immediately over selected footage; the animated intro stays unframed/);
   assert.match(view, /onChange\(of: model\.graphiteFrameEnabled\)/);
-  assert.match(view, /frame, and footage together/);
+  const preview = view.slice(view.indexOf("Selected footage preview"), view.indexOf("Keep or share"));
+  assert.match(preview, /NativeMomentPreviewPlayer\(player: player\)[\s\S]*?model\.output == nil,[\s\S]*?!model\.previewingIntro,[\s\S]*?model\.graphiteFrameEnabled,[\s\S]*?model\.arenaFramePreview/);
+  assert.match(preview, /Image\(uiImage: frame\)[\s\S]*?\.scaledToFit\(\)/);
+  assert.match(preview, /Preview shows your selected footage with the PIXL Arena frame/);
+  assert.match(view, /aspectRatio\(model\.previewAspectRatio, contentMode: \.fit\)/);
+  assert.doesNotMatch(view, /\.frame\(height: 280\)/);
 
   assert.match(exporter, /arenaFrameEnabled: Bool = false/);
   assert.match(exporter, /NativeMomentArenaFrame\.footageRect\(in: size\)/);
@@ -103,29 +114,11 @@ test("optional Arena frame surrounds footage at its exact aspect ratio", () => {
   assert.match(exporter, /AVVideoCompositionCoreAnimationTool\(configuration: configuration\)/);
 
   const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
-  assert.match(appleChecks, /PASS: Graphite frame fits landscape, portrait, 4:3, and square footage/);
-  assert.match(appleChecks, /"4:3", fourThree, graphiteLandscape, false, CGFloat\(4\) \/ 3/);
-  assert.match(appleChecks, /"square", square, graphiteLandscape, false, CGFloat\(1\)/);
-  assert.match(appleChecks, /videoSize: CGSize\(width: 320, height: 240\)/);
-  assert.match(appleChecks, /videoSize: CGSize\(width: 320, height: 320\)/);
-  assert.match(appleChecks, /Graphite cropped source action in the/);
-  assert.match(appleChecks, /frame margin obscured or letterboxed the source footage/);
-
-  const frames = [
-    ["GraphiteFramePortrait", "Graphite_Frame_Portrait.png", 941, 1672],
-    ["GraphiteFrameLandscape", "Graphite_Frame_Landscape.png", 1672, 941]
-  ];
-  for (const [name, filename, width, height] of frames) {
-    const directory = new URL(`../PIXL Sports/Assets.xcassets/${name}.imageset/`, import.meta.url);
-    const manifest = JSON.parse(readFileSync(new URL("Contents.json", directory), "utf8"));
-    assert.equal(manifest.images[0].filename, filename);
-    const data = readFileSync(new URL(filename, directory));
-    assert.equal(data.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
-    assert.equal(data.readUInt32BE(16), width);
-    assert.equal(data.readUInt32BE(20), height);
-    assert.equal(data[25], 6, `${name} must retain PNG transparency`);
-    assert.ok(data.length < 300_000, `${name} should remain a lightweight bundled overlay`);
-  }
+  const arenaChecks = readFileSync(new URL("NativeMomentArenaChecks.swift", import.meta.url), "utf8");
+  assert.match(arenaChecks, /Arena frame surrounds full portrait, landscape, 4:3, and square footage/);
+  assert.match(appleChecks, /Graphite frame appeared during the shoutout intro/);
+  const deviceChecks = readFileSync(new URL("native-record-moments-device-checks.md", import.meta.url), "utf8");
+  assert.match(deviceChecks, /Before exporting, turn it on and confirm the matching frame[\s\S]*?turn it off and[\s\S]*?disappears immediately without changing the source video/);
 });
 test("the chooser offers only seven matching animated intros", () => {
   const plan = read("NativeMomentPlan.swift");

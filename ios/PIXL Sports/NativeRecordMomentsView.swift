@@ -51,9 +51,21 @@ struct NativeRecordMomentsView: View {
                         ? "\(previewStep) · \(model.previewingIntro ? "Selected intro preview" : "Selected footage preview")"
                         : "\(previewStep) · Finished MP4 preview") {
                     if let player = model.player {
-                        NativeMomentPreviewPlayer(player: player)
-                            // A replacement player must not retain the prior preview's rendered view.
-                            .id(model.previewID)
+                        ZStack {
+                            NativeMomentPreviewPlayer(player: player)
+                                // A replacement player must not retain the prior preview's rendered view.
+                                .id(model.previewID)
+                            if model.output == nil,
+                               !model.previewingIntro,
+                               model.graphiteFrameEnabled,
+                               let frame = model.arenaFramePreview {
+                                Image(uiImage: frame)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .accessibilityHidden(true)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                             .aspectRatio(model.previewAspectRatio, contentMode: .fit)
                             .frame(maxHeight: 360)
                             .accessibilityIdentifier("record-moments-preview")
@@ -65,7 +77,7 @@ struct NativeRecordMomentsView: View {
                          ? "This is the newly selected intro. Create the clip to combine it with your original footage."
                          : model.output == nil
                          ? (model.graphiteFrameEnabled
-                            ? "Preview shows your selected footage. Create the clip to preview the intro, music cue, frame, and footage together."
+                            ? "Preview shows your selected footage with the PIXL Arena frame. Create the clip to preview the intro and music cue together."
                             : "Preview shows your selected footage. Create the clip to preview the intro, music cue, and footage together.")
                          : (model.graphiteFrameEnabled
                             ? "Check the intro, frame, action, and original sound before saving or sharing."
@@ -299,7 +311,7 @@ struct NativeRecordMomentsView: View {
         Section("Optional · Video frame") {
             Toggle("PIXL Arena frame", isOn: $model.graphiteFrameEnabled)
                 .accessibilityIdentifier("record-moments-graphite-frame")
-            Text("A blue-and-lime sports frame sized to your video. Your full footage fits inside the border without cropping. The animated intro stays unframed.")
+            Text("A blue-and-lime sports frame sized to your video. Your full footage fits inside the border without cropping. Preview it immediately over selected footage; the animated intro stays unframed.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
