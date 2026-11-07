@@ -93,6 +93,11 @@ test("optional Arena frame is previewed locally and surrounds footage at its exa
   assert.match(model, /sourceAspectRatio = oriented\.width \/ oriented\.height/);
   assert.match(model, /func graphiteFrameSelectionChanged\(\)[\s\S]*?if output != nil[\s\S]*?clearOutput\(\)[\s\S]*?updatePreview\(\)/);
   assert.match(model, /graphiteFrameEnabled && arenaFramePreview == nil/);
+  assert.doesNotMatch(model, /\bgraphiteFramePreview\b/,
+    "The retired Graphite preview name must not break the native build");
+  const exportFlow = model.slice(model.indexOf("func export()"), model.indexOf("func save()"));
+  assert.doesNotMatch(exportFlow, /let footageFrame:/,
+    "Arena export generates its own frame; do not retain the unused legacy image");
   assert.match(model, /arenaFrameEnabled: selectedFrame/);
   assert.match(model, /PIXL Arena frame surrounds the footage only/);
   assert.match(frame, /width: size\.width \* 0\.93, height: size\.height \* 0\.93/);

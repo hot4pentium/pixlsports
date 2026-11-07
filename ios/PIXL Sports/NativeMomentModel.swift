@@ -218,15 +218,9 @@ final class NativeMomentModel: ObservableObject {
 
     func export() {
         guard let source, let plan, let shoutout, !busy else { return }
-        let footageFrame: CGImage?
-        if graphiteFrameEnabled {
-            guard let image = graphiteFramePreview?.cgImage else {
-                error = "The Graphite frame is unavailable. Turn it off and try again."
-                return
-            }
-            footageFrame = image
-        } else {
-            footageFrame = nil
+        if graphiteFrameEnabled && arenaFramePreview == nil {
+            error = "The PIXL Arena frame is unavailable. Turn it off and try again."
+            return
         }
         let shoutoutVideo: URL
         let portraitShoutoutVideo: URL?
