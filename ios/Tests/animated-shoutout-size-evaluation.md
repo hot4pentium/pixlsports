@@ -2,11 +2,11 @@
 
 ## Supplied intro videos
 
-The supplied videos are H.264 MP4s. The latest Domination and Unstoppable
-uploads are 3.018 and 4.064 seconds long, respectively. The original files
-contain AAC audio. The selected product behavior uses the separate Stadium
-Ignition cue instead, so all bundled intro encodes are silent. The user's
-original uploads are not bundled.
+The supplied videos are H.264 MP4s. The latest Domination, Highlight, and
+Unstoppable uploads are 3.018, 4.064, and 4.064 seconds long, respectively.
+The original files contain AAC audio. The selected product behavior uses the
+separate Stadium Ignition cue instead, so all bundled intro encodes are silent.
+The user's original uploads are not bundled.
 
 Each intro is trimmed to the fixed 2.5-second app duration and encoded at 30 fps.
 All landscape versions are 16:9. Every choice also has a 720 × 1280 portrait
@@ -18,17 +18,17 @@ original animation centered in front.
 | Clutch | 5,834,186 B | 196,572 B | 191,971 B |
 | Domination | 5,153,582 B | 285,023 B | 215,672 B |
 | Game Changer | 4,827,515 B | 287,989 B | 281,174 B |
-| Highlight | 3,289,769 B | 158,908 B | 165,400 B |
+| Highlight | 2,180,760 B | 266,046 B | 190,171 B |
 | Hustle | 5,097,284 B | 162,580 B | 160,879 B |
 | Locked In | 5,218,433 B | 212,632 B | 208,928 B |
 | Unstoppable | 2,253,980 B | 325,366 B | 230,273 B |
-| **Total video assets** | **31,675,749 B** | **1,629,070 B** | **1,454,297 B** |
+| **Total video assets** | **30,566,740 B** | **1,736,208 B** | **1,479,068 B** |
 
-The fourteen silent video files total **3,083,367 bytes (3.08 MB)**, down from
-about 31.7 MB for the seven original uploads. The optional Stadium Ignition cue
-adds 58,994 bytes. Domination and Unstoppable chooser thumbnails now use frames
-from their replacement animations; still-only Milestone, Next Level, and
-Victory are no longer choices.
+The fourteen silent video files total **3,215,276 bytes (3.22 MB)**, down from
+about 30.6 MB for the seven original uploads. The optional Stadium Ignition cue
+adds 58,994 bytes. Domination, Highlight, and Unstoppable chooser thumbnails
+now use frames from their replacement animations; still-only Milestone, Next
+Level, and Victory are no longer choices.
 
 ## Export behavior
 
