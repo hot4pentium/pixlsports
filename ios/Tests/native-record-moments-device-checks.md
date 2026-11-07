@@ -50,11 +50,16 @@ Use non-personal test footage.
    message must explain Settings and keep Choose Video usable. Grant both and
    record portrait, landscape-left, and landscape-right clips with spoken first
    and last selected markers. Cancel recording without losing the existing clip.
-4. **Trim:** Select 15 seconds beginning in the middle of a longer clip. Preview
-   must start and stop at that selection. Select a shorter segment, including
+4. **Trim:** Use only the blue Start and orange End sliders below the thumbnail
+   strip; the strip is a visual guide, not a second control. Move each slider
+   and confirm its time label and the blue-to-orange selected-range gradient
+   update. Select 15 seconds beginning in the middle of a longer clip and
+   confirm preview starts and stops there. Select a shorter segment, including
    the end of the source. Check a front-camera mirrored source, HEVC/HDR source,
    variable-frame-rate source, and slow-motion source. Do not assume simulator
-   H.264 tests establish these device-specific decoding paths.
+   H.264 tests establish these device-specific decoding paths. With VoiceOver,
+   confirm the sliders announce Footage start and Footage end, their current
+   values, and which endpoint stays fixed while adjusting.
 5. **Intro videos:** Try all seven choices: Clutch, Domination, Game Changer,
    Highlight, Hustle, Locked In, and Unstoppable. Confirm each plays before the
    action and the poster matches its animation. Test portrait and landscape
@@ -90,8 +95,8 @@ Use non-personal test footage.
 10. **Thumbnail generation under load:** On a supported iPhone, use a local,
     non-personal video close to the 120 MB source limit. While the private
     thumbnail timeline is preparing, scroll the editor and repeatedly adjust
-    both trim handles/sliders. Confirm controls continue responding, the
-    selected times update, and the app remains usable until thumbnails finish.
+    both sliders. Confirm controls continue responding, the selected times and
+    gradient update, and the app remains usable until thumbnails finish.
     Record the source file size and whether any stall, memory warning, or crash
     occurred.
 11. **Replace during thumbnail generation:** Start with a long source that takes

@@ -39,8 +39,11 @@ final class NativeMomentModel: ObservableObject {
 
     var maximumFootage: Double { min(NativeMomentPlan.maximumFootage, duration) }
     var minimumFootage: Double { min(0.1, duration) }
+    var end: Double { start + footage }
     var minimumStart: Double { max(0, start + footage - maximumFootage) }
     var maximumStart: Double { max(minimumStart, start + footage - minimumFootage) }
+    var minimumEnd: Double { start + minimumFootage }
+    var maximumEnd: Double { min(duration, start + maximumFootage) }
     var plan: NativeMomentPlan? {
         guard let shoutout else { return nil }
         let intro = shoutout.fixedIntroSeconds ?? introSeconds
@@ -167,8 +170,6 @@ final class NativeMomentModel: ObservableObject {
     /// Moves the out-point while keeping the selected in-point fixed.
     func setTrimEnd(_ proposedEnd: Double) {
         guard duration > 0 else { return }
-        let minimumEnd = start + minimumFootage
-        let maximumEnd = min(duration, start + maximumFootage)
         let newEnd = min(max(proposedEnd, minimumEnd), maximumEnd)
         footage = newEnd - start
     }

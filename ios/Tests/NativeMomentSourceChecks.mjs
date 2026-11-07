@@ -134,7 +134,7 @@ test("Photos and native sharing are explicit and camera has both permissions", (
   const project = readFileSync(new URL("../PIXL Sports.xcodeproj/project.pbxproj", import.meta.url), "utf8");
   assert.equal((project.match(/INFOPLIST_KEY_NSMicrophoneUsageDescription/g) ?? []).length, 2);
 });
-test("long-video trimming uses local thumbnails and bounded accessible handles", () => {
+test("long-video trimming uses local thumbnails and accessible start/end sliders", () => {
   assert.match(model, /AVAssetImageGenerator\(asset: AVURLAsset\(url: url\)\)/);
   assert.match(model, /generateCGImagesAsynchronously\(forTimes:/);
   assert.match(model, /withTaskCancellationHandler/);
@@ -148,12 +148,35 @@ test("long-video trimming uses local thumbnails and bounded accessible handles",
   assert.match(model, /func setTrimStart/);
   assert.match(model, /func setTrimEnd/);
   assert.match(model, /NativeMomentPlan\.maximumFootage/);
+  assert.match(model, /var end: Double \{ start \+ footage \}/);
+  assert.match(model, /var minimumEnd: Double \{ start \+ minimumFootage \}/);
+  assert.match(model, /var maximumEnd: Double \{ min\(duration, start \+ maximumFootage\) \}/);
+  assert.match(model, /let newEnd = min\(max\(proposedEnd, minimumEnd\), maximumEnd\)/);
   assert.match(view, /record-moments-trim-timeline/);
-  assert.match(view, /record-moments-start-handle/);
-  assert.match(view, /record-moments-end-handle/);
-  assert.match(view, /accessibilityAdjustableAction/);
-  assert.match(view, /record-moments-start/);
-  assert.match(view, /record-moments-duration/);
+  assert.doesNotMatch(view, /record-moments-start-handle|record-moments-end-handle/);
+  const trim = view.slice(view.indexOf("private var trimSection"), view.indexOf("private var shoutoutSection"));
+  assert.match(trim, /Text\("Start"\)/);
+  assert.match(trim, /Text\("End"\)/);
+  assert.match(trim, /\.tint\(SupporterHomeColors\.blue\)/);
+  assert.match(trim, /\.tint\(\.orange\)/);
+  assert.match(trim, /accessibilityLabel\("Footage start"\)/);
+  assert.match(trim, /accessibilityLabel\("Footage end"\)/);
+  assert.match(trim, /Moves the start point while keeping the end fixed/);
+  assert.match(trim, /Moves the end point while keeping the start fixed/);
+  assert.match(trim, /get: \{ model\.start \}[\s\S]*?model\.setTrimStart\(\$0\)/);
+  assert.match(trim, /in: model\.minimumStart\.\.\.model\.maximumStart/);
+  assert.match(trim, /get: \{ model\.end \}[\s\S]*?model\.setTrimEnd\(\$0\)/);
+  assert.match(trim, /in: model\.minimumEnd\.\.\.model\.maximumEnd/);
+  assert.match(trim, /accessibilityValue\(String\(format: "%.2f seconds", model\.start\)\)/);
+  assert.match(trim, /accessibilityValue\(String\(format: "%.2f seconds", model\.end\)\)/);
+  assert.match(trim, /record-moments-start/);
+  assert.match(trim, /record-moments-end/);
+  const timeline = view.slice(view.indexOf("private struct NativeMomentTrimTimeline"));
+  assert.match(timeline, /LinearGradient/);
+  assert.match(timeline, /colors: \[SupporterHomeColors\.blue\.opacity\(0\.5\), Color\.orange\.opacity\(0\.5\)\]/);
+  assert.match(timeline, /model\.start/);
+  assert.match(timeline, /model\.end/);
+  assert.doesNotMatch(timeline, /DragGesture|startDragOrigin|endDragOrigin|accessibilityAdjustableAction/);
 });
 test("unavailable thumbnail frames keep their timeline positions without blocking trim", () => {
   const generation = model.slice(model.indexOf("private func generateThumbnails"), model.indexOf("private func clearOutput"));
@@ -161,17 +184,16 @@ test("unavailable thumbnail frames keep their timeline positions without blockin
   assert.match(generation, /images\[index\] = image/);
   assert.doesNotMatch(generation, /images\.append/);
   assert.match(generation, /self\.thumbnails = images[\s\S]*?self\.isGeneratingThumbnails = false/);
-  assert.match(view, /Some thumbnail previews aren.t available[\s\S]*?trim with the timeline or sliders/);
+  assert.match(view, /Some thumbnail previews aren.t available[\s\S]*?trim with the sliders/);
   assert.match(view, /Thumbnail previews aren.t available[\s\S]*?trim with the sliders/);
   const trim = view.slice(view.indexOf("private var trimSection"), view.indexOf("private var shoutoutSection"));
   const timeline = view.slice(view.indexOf("private struct NativeMomentTrimTimeline"));
-  assert.match(timeline, /title: "START"/);
-  assert.match(timeline, /title: "END"/);
   assert.match(trim, /model\.thumbnails\.allSatisfy/);
   assert.match(trim, /record-moments-trim-timeline/);
   assert.match(trim, /record-moments-start/);
-  assert.match(trim, /record-moments-duration/);
-  assert.match(timeline, /accessibilityAdjustableAction/);
+  assert.match(trim, /record-moments-end/);
+  assert.match(timeline, /LinearGradient/);
+  assert.doesNotMatch(timeline, /DragGesture|accessibilityAdjustableAction/);
 });
 test("each new source requires a fresh shoutout selection", () => {
   assert.match(model, /@Published var shoutout: NativeMomentShoutout\?/);
