@@ -1,96 +1,49 @@
 # Animated Shoutout Size Evaluation
 
-## Sample
+## Supplied intro videos
 
-The supplied clip is a silent 16:9 MP4:
+The seven supplied videos are H.264 MP4s, each about three seconds long. The
+original files also contain AAC audio. The selected product behavior uses the
+separate Stadium Ignition cue instead, so all bundled intro encodes are silent.
+The user's original uploads are not bundled.
 
-Source: `attached_assets/0_clutch_16x9_slower_shake_1793927320127.mp4`
+Each intro is trimmed to the fixed 2.5-second app duration and encoded at 30 fps.
+Landscape versions remain 16:9; Domination remains square. Every choice also
+has a 720 × 1280 portrait variant that blurs and enlarges the background while
+keeping the complete original animation centered in front.
 
-| Property | Value |
-| --- | --- |
-| Duration | 2.5 seconds |
-| Frame size / rate | 1920 × 1080 at 30 fps |
-| Video | H.264 High, 8-bit YUV 4:2:0 |
-| Audio | None |
-| File size | 1,482,040 bytes (1.48 MB) |
-| Average bitrate | About 4.74 Mbps |
-
-The current ten 1024 × 1024 shoutout JPEGs total 1,964,080 bytes (1.96 MB).
-Ten clips at the supplied sample's size would total about 14.82 MB, roughly
-7.5 times the still-image set. Replacing the stills at that quality would add
-about 12.86 MB; keeping the stills for the chooser would add the full 14.82 MB.
-
-## Local compression tests
-
-The same sample was encoded as silent H.264 MP4 at 30 fps:
-
-| Export | Size per clip | Ten clips | SSIM vs. source scaled to export size |
+| Intro | Source size | Landscape bundle | Portrait bundle |
 | --- | ---: | ---: | ---: |
-| 1280 × 720, target 1 Mbps | 332,447 bytes | 3.32 MB | 0.9719 |
-| 960 × 540, target 700 Kbps | 235,024 bytes | 2.35 MB | 0.9639 |
+| Clutch | 5,834,186 B | 196,572 B | 191,971 B |
+| Domination | 913,089 B | 130,364 B | 127,192 B |
+| Game Changer | 4,827,515 B | 287,989 B | 281,174 B |
+| Highlight | 3,289,769 B | 158,908 B | 165,400 B |
+| Hustle | 5,097,284 B | 162,580 B | 160,879 B |
+| Locked In | 5,218,433 B | 212,632 B | 208,928 B |
+| Unstoppable | 2,941,414 B | 244,707 B | 234,520 B |
+| **Total video assets** | **28,122,690 B** | **1,393,752 B** | **1,370,064 B** |
 
-The shoutout wording remained readable in extracted frames from both exports.
-The 720p version is the better quality/size balance. If the original stills
-remain as selection thumbnails, ten 720p clips plus the stills would total about
-5.29 MB before intro music. The former 247,511-byte music bed is no longer
-bundled; the current intro-only cue is 58,994 bytes.
+The fourteen silent video files total **2,763,816 bytes (2.76 MB)**, down from
+about 28.1 MB for the seven originals. The optional Stadium Ignition cue adds
+58,994 bytes. The seven matching still images remain as chooser thumbnails;
+still-only Milestone, Next Level, and Victory are no longer choices.
 
-## Clutch pilot added to Record Moments
+## Export behavior
 
-The 1280 × 720, 30 fps export (332,447 bytes) is included as **Clutch ·
-Animated**. The supplied **Domination · Animated** clip is also bundled as a
-1280 × 720, 30 fps H.264 MP4 (200,418 bytes). The still-art choices remain
-available for both. Animated intros use a fixed 2.5-second duration, keep the
-selected footage allowance at up to 15 seconds, and fit the output frame
-without cropping. Portrait footage now selects a dedicated 9:16 version
-(described below); landscape footage keeps the original 16:9 version. The intro
-clips are silent; the 58,994-byte AAC Stadium Ignition cue can play during either
-intro and fades out before source-video audio begins. No music is mixed under
-the action.
+Each intro adds 2.5 seconds before the selected action footage, preserving the
+full footage allowance of up to 15 seconds. The optional Stadium Ignition cue
+fades out before the original video's audio begins; the supplied intro videos'
+embedded audio is stripped to avoid layering tracks. No music plays over the
+action.
 
-## Portrait-safe versions
-
-Each animated pilot now has a 9:16 version for portrait source footage. The
-portrait encode uses a blurred, enlarged fill behind the entire original
-landscape animation, centered without cropping. This keeps all title text and
-animation visible while using the full portrait preview and output frame.
-Landscape footage continues to use the landscape version. The exporter picks
-the matching version from the source video's oriented dimensions.
-
-| Portrait version | Frame size / rate | Duration | File size |
-| --- | --- | ---: | ---: |
-| Clutch | 720 × 1280 at 30 fps | 2.5 seconds | 335,862 bytes |
-| Domination | 720 × 1280 at 30 fps | 3.03 seconds | 287,210 bytes |
-
-The two portrait versions add **623,072 bytes (0.62 MB / 0.59 MiB)** to the
-bundle. Together, both landscape and portrait versions total 1,155,937 bytes;
-including the 58,994-byte intro music cue and 1,964,080 bytes of shoutout
-artwork, the animated shoutout set totals **3,179,011 bytes (3.18 MB)**. The
-original Domination upload is not bundled.
-
-The Apple export checks render both portrait variants into portrait MP4s and
-compare the full output against the portrait source at multiple timestamps.
-They also compare the center landscape band against the corresponding original
-frames, checking that the title and animation remain intact rather than being
-cropped. Local extracted-frame review confirmed the treatment preserves the
-Clutch and Domination wording at phone-preview scale.
-
-## Recommendation
-
-- For landscape versions, target silent 1280 × 720 H.264 at 30 fps, about
-  1 Mbps, and roughly 2.5 seconds. For portrait, use 720 × 1280 with the full
-  landscape animation centered over a blurred fill. Aim for no more than 350 KB
-  per version.
-- A 960 × 540, 700 Kbps version is a smaller fallback, about 235 KB each.
-- The optional music cue is limited to the animated intro and can be turned
-  off. It never continues under the selected action.
-- The supplied source remains landscape 16:9; portrait versions use a tested
-  full-frame layout instead of cropping it to fill the phone screen.
+The Apple export checks verify that all fourteen files have the expected
+duration, orientation, and silent audio tracks; they compare the portrait
+foreground with its matching landscape animation. Production exports are also
+checked with music for Clutch and Domination.
 
 ## iPhone/export verification boundary
 
-This workspace has no Apple SDK or physical iPhone, so AVFoundation playback,
-export, and device preview were not run here. The Apple-platform test now checks
-portrait source selection, finished MP4 framing, and uncropped title frames;
-run it on macOS with Xcode, then inspect the finished preview and sharing flow
-on an iPhone before release.
+AVFoundation playback and export still need verification with Xcode on macOS.
+Run `bash ios/Tests/verify-record-moments-apple.sh`, then inspect all seven
+choices, portrait and landscape outputs, the music toggle, Photos save, and
+sharing on a simulator or iPhone before release.

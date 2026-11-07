@@ -26,3 +26,9 @@ For the proposed shoutout-graphic export, put the chosen graphic before the full
 **Why:** The user chose an intro before the entire clip and explicitly chose to keep the full clip duration.
 
 **How to apply:** Keep the short graphic card visually separate from the action, preserve clip audio, and make saving and sharing explicit.
+
+The current Record Moments chooser should offer only the seven supplied animated shoutout videos with their matching poster images. Do not expose still-only shoutouts until a matching intro video is available. Use Stadium Ignition instead of the audio embedded in those supplied videos.
+
+**Why:** The user asked to offer the supplied videos as intro choices, remove stills without matching videos, and chose Stadium Ignition in place of each video's embedded audio.
+
+**How to apply:** Keep available choices one-to-one with the supplied animations. Do not mix the supplied MP4 audio with the common cue.

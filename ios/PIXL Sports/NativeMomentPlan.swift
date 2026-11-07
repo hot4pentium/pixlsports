@@ -31,8 +31,7 @@ enum NativeMomentError: LocalizedError {
 }
 
 enum NativeMomentShoutout: String, CaseIterable, Identifiable {
-    case clutch, clutchAnimated, domination, dominationAnimated, gamechanger, highlight, hustle
-    case lockedin, milestone, nextlevel, unstoppable, victory
+    case clutchAnimated, dominationAnimated, gamechanger, highlight, hustle, lockedin, unstoppable
     var id: String { rawValue }
     var asset: String {
         switch self {
@@ -45,33 +44,36 @@ enum NativeMomentShoutout: String, CaseIterable, Identifiable {
         switch self {
         case .clutchAnimated: return "RecordMomentClutch"
         case .dominationAnimated: return "RecordMomentDomination"
-        default: return nil
+        case .gamechanger: return "RecordMomentGameChanger"
+        case .highlight: return "RecordMomentHighlight"
+        case .hustle: return "RecordMomentHustle"
+        case .lockedin: return "RecordMomentLockedIn"
+        case .unstoppable: return "RecordMomentUnstoppable"
         }
     }
     var portraitVideoResource: String? {
         switch self {
         case .clutchAnimated: return "RecordMomentClutchPortrait"
         case .dominationAnimated: return "RecordMomentDominationPortrait"
-        default: return nil
+        case .gamechanger: return "RecordMomentGameChangerPortrait"
+        case .highlight: return "RecordMomentHighlightPortrait"
+        case .hustle: return "RecordMomentHustlePortrait"
+        case .lockedin: return "RecordMomentLockedInPortrait"
+        case .unstoppable: return "RecordMomentUnstoppablePortrait"
         }
     }
     var fixedIntroSeconds: Double? {
-        videoResource == nil ? nil : 2.5
+        2.5
     }
     var title: String {
         switch self {
-        case .clutch: return "Clutch"
-        case .clutchAnimated: return "Clutch · Animated"
-        case .domination: return "Domination"
-        case .dominationAnimated: return "Domination · Animated"
+        case .clutchAnimated: return "Clutch"
+        case .dominationAnimated: return "Domination"
         case .gamechanger: return "Game Changer"
         case .highlight: return "Highlight"
         case .hustle: return "Hustle"
         case .lockedin: return "Locked In"
-        case .milestone: return "Milestone"
-        case .nextlevel: return "Next Level"
         case .unstoppable: return "Unstoppable"
-        case .victory: return "Victory"
         }
     }
 }

@@ -16,6 +16,53 @@ struct NativeMomentExportChecks {
         let imageURL = root.appendingPathComponent("ios/PIXL Sports/Assets.xcassets/Moment-clutch.imageset/artwork.jpg")
         let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, nil)!
         let artwork = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)!
+        let introVideos = [
+            ("Clutch", "RecordMomentClutch", "RecordMomentClutchPortrait", CGFloat(16) / 9),
+            ("Domination", "RecordMomentDomination", "RecordMomentDominationPortrait", CGFloat(1)),
+            ("Game Changer", "RecordMomentGameChanger", "RecordMomentGameChangerPortrait", CGFloat(16) / 9),
+            ("Highlight", "RecordMomentHighlight", "RecordMomentHighlightPortrait", CGFloat(16) / 9),
+            ("Hustle", "RecordMomentHustle", "RecordMomentHustlePortrait", CGFloat(16) / 9),
+            ("Locked In", "RecordMomentLockedIn", "RecordMomentLockedInPortrait", CGFloat(16) / 9),
+            ("Unstoppable", "RecordMomentUnstoppable", "RecordMomentUnstoppablePortrait", CGFloat(16) / 9)
+        ]
+        for (title, landscapeName, portraitName, sourceAspectRatio) in introVideos {
+            let landscapeURL = root.appendingPathComponent("ios/PIXL Sports/\(landscapeName).mp4")
+            let portraitURL = root.appendingPathComponent("ios/PIXL Sports/\(portraitName).mp4")
+            for (url, isPortrait) in [(landscapeURL, false), (portraitURL, true)] {
+                precondition(FileManager.default.fileExists(atPath: url.path),
+                             "\(title) intro video is missing")
+                let introAsset = AVURLAsset(url: url)
+                let duration = try await introAsset.load(.duration).seconds
+                precondition(duration >= 2.5, "\(title) intro is shorter than the selected duration")
+                let tracks = try await introAsset.loadTracks(withMediaType: .video)
+                precondition(!tracks.isEmpty, "\(title) intro has no video track")
+                let size = try await tracks[0].load(.naturalSize)
+                precondition(isPortrait ? size.height > size.width : size.width >= size.height,
+                             "\(title) intro has the wrong orientation")
+                let audioTracks = try await introAsset.loadTracks(withMediaType: .audio)
+                precondition(audioTracks.isEmpty,
+                             "\(title) intro should use Stadium Ignition, not its embedded audio")
+            }
+            let landscapeGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: landscapeURL))
+            landscapeGenerator.appliesPreferredTrackTransform = true
+            landscapeGenerator.requestedTimeToleranceBefore = .zero
+            landscapeGenerator.requestedTimeToleranceAfter = .zero
+            let portraitGenerator = AVAssetImageGenerator(asset: AVURLAsset(url: portraitURL))
+            portraitGenerator.appliesPreferredTrackTransform = true
+            portraitGenerator.requestedTimeToleranceBefore = .zero
+            portraitGenerator.requestedTimeToleranceAfter = .zero
+            for timestamp in [0.5, 1.25, 2.25] {
+                let landscapeFrame = try frame(landscapeGenerator, at: timestamp)
+                let portraitFrame = try frame(portraitGenerator, at: timestamp)
+                precondition(
+                    distance(
+                        signature(centeredContentFrame(portraitFrame, aspectRatio: sourceAspectRatio)),
+                        signature(landscapeFrame)
+                    ) < 0.1,
+                    "\(title) portrait intro crops or changes its animation at \(timestamp)s"
+                )
+            }
+        }
         let source = try await fixture(directory: directory, seconds: 20, rotated: false, audio: true)
         let portrait = try await fixture(directory: directory, seconds: 20, rotated: true, audio: true)
         let silent = try await fixture(directory: directory, seconds: 0.4, rotated: false, audio: false)
@@ -234,7 +281,10 @@ struct NativeMomentExportChecks {
             let portraitFrame = try frame(dominationIntroGenerator, at: timestamp)
             let originalFrame = try frame(landscapeDominationGenerator, at: timestamp)
             precondition(
-                distance(signature(centeredContentFrame(portraitFrame)), signature(originalFrame)) < 0.1,
+                distance(
+                    signature(centeredContentFrame(portraitFrame, aspectRatio: 1)),
+                    signature(originalFrame)
+                ) < 0.1,
                 "Portrait Domination text or animation was cropped at \(timestamp)s"
             )
         }
@@ -321,9 +371,9 @@ struct NativeMomentExportChecks {
         return context.makeImage()!
     }
 
-    static func centeredContentFrame(_ image: CGImage) -> CGImage {
+    static func centeredContentFrame(_ image: CGImage, aspectRatio: CGFloat = 16 / 9) -> CGImage {
         let width = CGFloat(image.width)
-        let height = width * 9 / 16
+        let height = width / aspectRatio
         let rect = CGRect(x: 0, y: (CGFloat(image.height) - height) / 2,
                           width: width, height: height).integral
         return image.cropping(to: rect)!

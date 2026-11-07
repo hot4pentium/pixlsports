@@ -55,27 +55,20 @@ Use non-personal test footage.
    the end of the source. Check a front-camera mirrored source, HEVC/HDR source,
    variable-frame-rate source, and slow-motion source. Do not assume simulator
    H.264 tests establish these device-specific decoding paths.
-5. **Artwork:** Export with each of the ten original-derived shoutouts. Full
-   square artwork must remain upright and readable, with no edge cropping.
-   Inspect landscape and portrait at phone viewing size. Confirm the intro
-   gently fades and scales in, reaches the complete artwork, and precedes rather
-    than covers or replaces the selected action. Also select **Clutch · Animated**
-    and **Domination · Animated**:
-    verify the bundled 16:9 video plays in landscape and remains fully visible,
-    centered with black space above/below in portrait rather than cropping its
-    text. Its intro is fixed at 2.5 seconds. Turn the intro-music toggle on and
-    off; when enabled, the cue should fade out before original clip audio begins.
+5. **Intro videos:** Try all seven choices: Clutch, Domination, Game Changer,
+   Highlight, Hustle, Locked In, and Unstoppable. Confirm each plays before the
+   action and the poster matches its animation. Test portrait and landscape
+   source clips; the full intro should remain centered and uncropped. Each
+   intro is 2.5 seconds. With Stadium Ignition enabled, confirm the cue plays
+   only during the intro and fades before original clip audio begins. Confirm
+   the embedded audio from the supplied intro files is not played.
 6. **Actual files:** Save a full selection to Photos. Inspect the saved MP4
-   with QuickTime/`ffprobe`: duration should be about 17 seconds (within a frame),
+   with QuickTime/`ffprobe`: duration should be about 17.5 seconds (within a frame),
    video must be upright, and the selected first/last spoken markers must
-   remain audible and in sync. For **Clutch · Animated**, confirm the short
-    intro music fades out before original audio begins; no music plays under
-    the action. With music disabled, the intro has no added cue. A 4-second
-   selection produces about 6 seconds total with the default still intro.
-   Repeat with the adjustable one- and three-second still intros: 15 seconds of
-   footage must produce about 16 and 18 seconds respectively. The Clutch
-   animated video intro plus 15 seconds of footage should produce about
-   17.5 seconds. Silent source clips are allowed.
+   remain audible and in sync. Repeat the export with all seven intros. The
+   Stadium Ignition cue must stop before source audio begins; with the cue
+   disabled, preserve only the selected source audio after the intro. Silent
+   source clips are allowed.
 7. **Photos:** Deny add permission and confirm a helpful retry/Settings path.
    Grant add-only permission and save successfully. Confirm Photos contains the
    finished MP4, not the original or a poster. Retry after denied permission.
@@ -84,12 +77,12 @@ Use non-personal test footage.
    and Files. Open the received MP4 and repeat duration/orientation/audio checks.
    Cancel the sheet and retry; the preview/file must remain available. The
    editor must retain its file while an activity is using it.
-9. **Lifecycle:** Cancel export, retry, change the artwork, then export again.
+9. **Lifecycle:** Cancel export, retry, change the intro, then export again.
    Background during export and return. A failed/interrupted export must keep
    the source intact and allow retry. Close the editor and inspect its
-    `tmp/PIXL-Moment-*` workspace: source copies, generated still intros, and
-    outputs should be removed. The bundled Clutch video stays with the installed
-    app. Saved Photos and shared copies must remain. The app must make no
+    `tmp/PIXL-Moment-*` workspace: source copies, generated files, and outputs
+    should be removed. Bundled intro videos stay with the installed app. Saved
+    Photos and shared copies must remain. The app must make no
     clip-upload request and create no persistent moment library.
 10. **Thumbnail generation under load:** On a supported iPhone, use a local,
     non-personal video close to the 120 MB source limit. While the private

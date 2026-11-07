@@ -5,17 +5,16 @@
 Record Moments is available directly from the dashboard, with no event required,
 and as the third game-day choice alongside Track Stats and Live Taps. Existing
 Prep / Track Stats / Share event navigation is preserved. Choose or record a
-video, select up to 15 seconds of action, select one of the ten shoutouts, create
-and preview a finished MP4, then explicitly save to Photos or share through iOS.
-The intro is adjustable from one to three seconds, defaulting to two, and is
-additional: 15 seconds of footage with the default intro produces about 17
-seconds total. Clips are processed locally with AVFoundation; there is no
-automatic hosting, persistent moment library, or new API requirement.
+video, select up to 15 seconds of action, and choose one of seven animated
+shoutout intros. Each is 2.5 seconds and the Stadium Ignition cue is optional;
+it ends before the original clip audio begins. The intro adds to the footage:
+15 seconds of action produces about 17.5 seconds total. Clips are processed
+locally with AVFoundation; there is no automatic hosting, persistent moment
+library, or new API requirement.
 
-The bundled graphics preserve the entire original 1024×1024 artwork as optimized
-JPEG asset-catalog images (~2 MB total instead of ~13.7 MB of source PNGs).
-Rebuild them with `node scripts/optimize-native-shoutouts.mjs` when the original
-`attached_assets/*_1793840947979.png` files are locally available. Originals and
+The chooser uses the seven matching optimized poster images; the intro videos
+are bundled as compact silent MP4s with portrait and landscape versions. The
+optional Stadium Ignition cue plays only during the intro. Source uploads and
 generated verification outputs are excluded from Git/deployment.
 
 Linux checks: `node --test ios/Tests/NativeMomentSourceChecks.mjs`.

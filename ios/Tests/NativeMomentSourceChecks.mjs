@@ -72,16 +72,13 @@ test("animated shoutout music fades out before the original audio", () => {
   assert.match(appleChecks, /intro music fades before source audio/);
   assert.match(appleChecks, /Intro music overlapped the original clip audio/);
 });
-test("animated shoutouts are compact local video intros with portrait and landscape checks", () => {
+test("the chooser offers only seven matching animated intros", () => {
   const plan = read("NativeMomentPlan.swift");
-  assert.match(plan, /case clutch, clutchAnimated, domination, dominationAnimated/);
-  assert.match(plan, /Clutch · Animated/);
-  assert.match(plan, /Domination · Animated/);
-  assert.match(plan, /case \.dominationAnimated: return "Moment-domination"/);
-  assert.match(plan, /RecordMomentClutch/);
-  assert.match(plan, /RecordMomentDomination/);
-  assert.match(plan, /RecordMomentClutchPortrait/);
-  assert.match(plan, /RecordMomentDominationPortrait/);
+  const choices = plan.slice(plan.indexOf("enum NativeMomentShoutout"));
+  assert.match(choices, /case clutchAnimated, dominationAnimated, gamechanger, highlight, hustle, lockedin, unstoppable/);
+  assert.doesNotMatch(choices, /milestone|nextlevel|victory/);
+  assert.match(choices, /case \.clutchAnimated: return "Moment-clutch"/);
+  assert.match(choices, /case \.dominationAnimated: return "Moment-domination"/);
   assert.match(model, /Bundle\.main\.url\(forResource: resource, withExtension: "mp4"\)/);
   assert.match(model, /portraitVideoResource/);
   assert.match(model, /shoutoutVideoPortrait: portraitShoutoutVideo/);
@@ -92,13 +89,15 @@ test("animated shoutouts are compact local video intros with portrait and landsc
   assert.match(view, /shoutout\.videoResource != nil/);
   assert.match(view, /music cue plays only with animated shoutout intros/);
   const appleChecks = readFileSync(new URL("NativeMomentExportChecks.swift", import.meta.url), "utf8");
-  for (const name of [
-    "RecordMomentClutch.mp4", "RecordMomentDomination.mp4",
-    "RecordMomentClutchPortrait.mp4", "RecordMomentDominationPortrait.mp4"
-  ]) {
-    const clip = readFileSync(new URL(`../PIXL Sports/${name}`, import.meta.url));
-    assert.ok(clip.length < 350_000, `${name} should stay below 350 KB: ${clip.length} bytes`);
-    assert.equal(clip.subarray(4, 8).toString(), "ftyp", `${name} must be a valid local MP4`);
+  const introTitles = ["Clutch", "Domination", "GameChanger", "Highlight", "Hustle", "LockedIn", "Unstoppable"];
+  for (const title of introTitles) {
+    for (const suffix of ["", "Portrait"]) {
+      const name = `RecordMoment${title}${suffix}.mp4`;
+      const clip = readFileSync(new URL(`../PIXL Sports/${name}`, import.meta.url));
+      assert.ok(clip.length < 350_000, `${name} should stay below 350 KB: ${clip.length} bytes`);
+      assert.equal(clip.subarray(4, 8).toString(), "ftyp", `${name} must be a valid local MP4`);
+      assert.ok(appleChecks.includes(name.slice(0, -4)), `Apple checks must inspect ${name}`);
+    }
   }
   assert.match(appleChecks, /animated-clutch-portrait/);
   assert.match(appleChecks, /centeredContentFrame/);
@@ -190,7 +189,7 @@ test("replacing a preview remounts the video player instead of showing a stale f
   const musicChange = model.slice(model.indexOf("func introMusicSelectionChanged()"), model.indexOf("func setTrimStart("));
   assert.match(musicChange, /clearOutput\(\)[\s\S]*?updatePreview\(\)/);
 });
-test("all ten original-derived optimized graphics are full-size and bundled", () => {
+test("bundled legacy artwork remains full-size", () => {
   const root = new URL("../PIXL Sports/Assets.xcassets/", import.meta.url);
   const assets = readdirSync(root).filter(name => name.startsWith("Moment-"));
   assert.equal(assets.length, 10);
