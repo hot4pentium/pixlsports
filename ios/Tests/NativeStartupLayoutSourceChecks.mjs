@@ -20,6 +20,11 @@ test("authentication root does not wrap child navigation in another stack or scr
   assert.match(authBody, /accessibilityIdentifier\("native-sign-in-screen"\)/);
 });
 
+test("the native sign-in hero and form have a clear gap without nested scrolling", () => {
+  const source = readFileSync(new URL("../PIXL Sports/NativeAuthRootView.swift", import.meta.url), "utf8");
+  assert.match(source, /VStack\(spacing: 20\) \{\s*signInHeader\s*NativeClerkSignInForm\(\)/);
+});
+
 test("Clerk form construction has a stable observation boundary and theme", () => {
   const form = withoutComments.slice(
     withoutComments.indexOf("struct NativeClerkSignInForm"),

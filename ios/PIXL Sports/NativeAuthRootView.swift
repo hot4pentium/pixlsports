@@ -85,7 +85,7 @@ struct NativeAuthRootView: View {
                 // AuthView owns navigation and scrolling. Let the window offer
                 // its remaining finite height, rather than feeding GeometryReader
                 // measurements back into a NavigationStack inside a ScrollView.
-                VStack(spacing: 0) {
+                VStack(spacing: 20) {
                     signInHeader
                     NativeClerkSignInForm()
                         .id(authPresentationID)
