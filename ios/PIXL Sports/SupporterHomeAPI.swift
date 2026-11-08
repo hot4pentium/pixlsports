@@ -326,6 +326,117 @@ enum NativeEventCardCreateRetryUITestFixture {
         "ui-test-event-card-\(draft.id)"
     }
 }
+
+@MainActor
+enum NativeEventCardConflictUITestFixture {
+    static let isRequested = ProcessInfo.processInfo.arguments.contains("--ui-testing-event-card-conflict")
+    static let shareToken = "ui-test-event-card-conflict"
+    static let initialDraft = NativeEventCardDraft(
+        id: "37400000-0000-4000-8000-000000000001",
+        type: "game",
+        date: "2099-04-01",
+        time: "18:00",
+        timezone: "America/Los_Angeles",
+        location: "",
+        opponent: "Tigers"
+    )
+    static var initialEvent: AthleteFanEvent {
+        AthleteFanEvent(
+            shareToken: shareToken,
+            eventId: initialDraft.id,
+            title: "PIXL Test Team",
+            date: initialDraft.date,
+            time: initialDraft.time,
+            type: initialDraft.type,
+            status: "upcoming",
+            opponent: initialDraft.opponent,
+            location: initialDraft.location,
+            timezone: initialDraft.timezone,
+            liveTapsActive: false,
+            liveTapsOnly: false,
+            liveTapsInviteToken: nil,
+            liveTapsSport: nil
+        )
+    }
+
+    private(set) static var isOnline = false
+    private(set) static var serverCards: [String: NativeEventCardDraft] = [
+        initialDraft.id: initialDraft
+    ]
+    private(set) static var queuedDraft: NativeEventCardDraft?
+    private(set) static var isConflicted = false
+
+    static var serverDraft: NativeEventCardDraft {
+        serverCards[initialDraft.id] ?? initialDraft
+    }
+    static var serverCardCount: Int { serverCards.count }
+    static var pendingCardCount: Int { queuedDraft == nil ? 0 : 1 }
+
+    static var pendingChange: NativePendingEventCardChange? {
+        guard let queuedDraft else { return nil }
+        return NativePendingEventCardChange(
+            operation: .update,
+            draft: queuedDraft,
+            teamName: "PIXL Test Team",
+            athleteName: "Jordan Example",
+            seasonName: "Fall 2026",
+            shareToken: shareToken,
+            baseDraft: initialDraft,
+            attemptedDraft: nil,
+            conflictDraft: isConflicted ? serverDraft : nil,
+            conflictMessage: isConflicted
+                ? "This Event Card changed on another device. Choose whether to keep your iPhone edits or use the server version."
+                : nil,
+            lastError: nil,
+            createdAt: Date(timeIntervalSince1970: 0)
+        )
+    }
+
+    static func saveOffline(_ draft: NativeEventCardDraft) {
+        queuedDraft = draft
+        isConflicted = false
+    }
+
+    static func editOnAnotherDevice() {
+        serverCards[initialDraft.id] = NativeEventCardDraft(
+            id: initialDraft.id,
+            type: initialDraft.type,
+            date: initialDraft.date,
+            time: initialDraft.time,
+            timezone: initialDraft.timezone,
+            location: "Away Field",
+            opponent: "Cougars"
+        )
+    }
+
+    static func reconnect() {
+        isOnline = true
+    }
+
+    static func retrySync() {
+        guard isOnline, let queuedDraft else { return }
+        if serverDraft == initialDraft {
+            serverCards[queuedDraft.id] = queuedDraft
+            self.queuedDraft = nil
+        } else if serverDraft == queuedDraft {
+            self.queuedDraft = nil
+        } else {
+            isConflicted = true
+        }
+    }
+
+    static func keepLocalEdits() {
+        guard isConflicted, let queuedDraft else { return }
+        serverCards[queuedDraft.id] = queuedDraft
+        self.queuedDraft = nil
+        isConflicted = false
+    }
+
+    static func useServerVersion() {
+        queuedDraft = nil
+        isConflicted = false
+    }
+}
 #endif
 
 private struct NativeEventCardCreateBody: Encodable {

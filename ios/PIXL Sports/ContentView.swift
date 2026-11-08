@@ -502,31 +502,34 @@ struct ContentView: View {
                             Text(title)
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.white)
-                            Text(change.conflictMessage ?? change.lastError
-                                 ?? "Saved on this iPhone. Waiting for PIXL to confirm the save.")
-                                .font(.footnote)
-                                .foregroundStyle(change.isConflicted ? .orange : SupporterHomeColors.muted)
-                                .fixedSize(horizontal: false, vertical: true)
+                            if !change.isConflicted || change.conflictDraft == nil {
+                                Text(change.conflictMessage ?? change.lastError
+                                     ?? "Saved on this iPhone. Waiting for PIXL to confirm the save.")
+                                    .font(.footnote)
+                                    .foregroundStyle(change.isConflicted ? .orange : SupporterHomeColors.muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                             if change.isConflicted {
-                                if change.conflictDraft != nil {
-                                    Button("Keep my iPhone edits") {
-                                        Task {
-                                            await offlineRuntime.keepLocalEventCardAfterConflict(
-                                                id: change.id,
-                                                subject: subject,
-                                                clerk: clerk
-                                            )
+                                if let remoteDraft = change.conflictDraft {
+                                    NativeEventCardConflictPanel(
+                                        message: change.conflictMessage
+                                            ?? "This Event Card changed on another device.",
+                                        localDraft: change.draft,
+                                        serverDraft: remoteDraft,
+                                        onKeepLocal: {
+                                            Task {
+                                                await offlineRuntime.keepLocalEventCardAfterConflict(
+                                                    id: change.id,
+                                                    subject: subject,
+                                                    clerk: clerk
+                                                )
+                                            }
+                                        },
+                                        onUseServer: {
+                                            offlineRuntime.discardPendingEventCard(id: change.id, subject: subject)
+                                            Task { await loadSchedule() }
                                         }
-                                    }
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(SupporterHomeColors.accent)
-                                    .frame(minHeight: 44)
-                                    Button("Use server version") {
-                                        offlineRuntime.discardPendingEventCard(id: change.id, subject: subject)
-                                    }
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(.white.opacity(0.8))
-                                    .frame(minHeight: 44)
+                                    )
                                 } else {
                                     Button("Create as new Event Card") {
                                         Task {

@@ -27,6 +27,7 @@ struct NativeCreateEventCardView: View {
     @State private var completedEventCallback = false
     @State private var eventID = UUID().uuidString.lowercased()
     @State private var fixtureIsOnline = false
+    @State private var conflictFixtureRefresh = 0
 
     private let timeZoneChoices = [
         "America/New_York", "America/Chicago", "America/Denver",
@@ -106,6 +107,7 @@ struct NativeCreateEventCardView: View {
     private var canSaveWithoutClerk: Bool {
 #if DEBUG
         NativeEventCardCreateRetryUITestFixture.isRequested
+            || NativeEventCardConflictUITestFixture.isRequested
 #else
         false
 #endif
@@ -118,6 +120,7 @@ struct NativeCreateEventCardView: View {
     }
 
     var body: some View {
+        let _ = conflictFixtureRefresh
         ZStack {
             NativePageBackground()
             ScrollView {
@@ -240,6 +243,56 @@ struct NativeCreateEventCardView: View {
                         }
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(SupporterHomeColors.lightMuted)
+                    } else if NativeEventCardConflictUITestFixture.isRequested {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NativeEventCardConflictUITestFixture.isOnline
+                                 ? "PIXL connection: Reconnected"
+                                 : "PIXL connection: Offline")
+                                .accessibilityIdentifier("native-event-card-conflict-fixture-connection")
+                            Button("Edit on another device") {
+                                NativeEventCardConflictUITestFixture.editOnAnotherDevice()
+                                conflictFixtureRefresh += 1
+                            }
+                            .accessibilityIdentifier("native-event-card-conflict-fixture-remote-edit")
+                            Button("Reconnect PIXL") {
+                                NativeEventCardConflictUITestFixture.reconnect()
+                                conflictFixtureRefresh += 1
+                            }
+                            .accessibilityIdentifier("native-event-card-conflict-fixture-reconnect")
+                            Text("Pending Event Cards: \(NativeEventCardConflictUITestFixture.pendingCardCount)")
+                                .accessibilityIdentifier("native-event-card-conflict-fixture-pending-count")
+                            Text("Server Event Cards: \(NativeEventCardConflictUITestFixture.serverCardCount)")
+                                .accessibilityIdentifier("native-event-card-conflict-fixture-server-count")
+                            Text("Server version: \(Self.conflictSummary(NativeEventCardConflictUITestFixture.serverDraft))")
+                                .accessibilityIdentifier("native-event-card-conflict-fixture-server-details")
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(SupporterHomeColors.lightMuted)
+                    }
+#endif
+
+#if DEBUG
+                    if NativeEventCardConflictUITestFixture.isRequested,
+                       let pendingChange = NativeEventCardConflictUITestFixture.pendingChange,
+                       NativeEventCardConflictUITestFixture.isConflicted,
+                       let serverDraft = pendingChange.conflictDraft {
+                        NativeEventCardConflictPanel(
+                            message: pendingChange.conflictMessage ?? "",
+                            localDraft: pendingChange.draft,
+                            serverDraft: serverDraft,
+                            onKeepLocal: {
+                                NativeEventCardConflictUITestFixture.keepLocalEdits()
+                                localSaveMessage = "Your iPhone edits are now on the server."
+                                canRetrySave = false
+                                conflictFixtureRefresh += 1
+                            },
+                            onUseServer: {
+                                NativeEventCardConflictUITestFixture.useServerVersion()
+                                localSaveMessage = "The server version is kept on this iPhone."
+                                canRetrySave = false
+                                conflictFixtureRefresh += 1
+                            }
+                        )
                     }
 #endif
 
@@ -381,6 +434,24 @@ struct NativeCreateEventCardView: View {
         )
 #if DEBUG
         if canSaveWithoutClerk {
+            if NativeEventCardConflictUITestFixture.isRequested {
+                if forceNetworkAttempt {
+                    NativeEventCardConflictUITestFixture.retrySync()
+                    if NativeEventCardConflictUITestFixture.isConflicted {
+                        localSaveMessage = nil
+                        canRetrySave = false
+                    } else if NativeEventCardConflictUITestFixture.pendingCardCount == 0 {
+                        localSaveMessage = "Event Card synced. One server card remains."
+                        canRetrySave = false
+                    }
+                    conflictFixtureRefresh += 1
+                    return
+                }
+                NativeEventCardConflictUITestFixture.saveOffline(draft)
+                localSaveMessage = "Saved on this iPhone. Waiting for a connection to PIXL."
+                canRetrySave = true
+                return
+            }
             NativeEventCardCreateRetryUITestFixture.saveLocally(draft)
             localSaveMessage = "Saved on this iPhone. Waiting to sync with PIXL."
             guard NativeEventCardCreateRetryUITestFixture.isOnline else {
@@ -482,6 +553,12 @@ struct NativeCreateEventCardView: View {
         if isEditing { dismiss() }
     }
 
+    private static func conflictSummary(_ draft: NativeEventCardDraft) -> String {
+        let event = draft.type == "practice" ? "Practice" : "Game vs. \(draft.opponent)"
+        let location = draft.location.isEmpty ? "Location not set" : draft.location
+        return "\(event) · \(draft.date) at \(draft.time) · \(location)"
+    }
+
     private static func dateValue(_ date: String?, time: String, timezone: String) -> Date? {
         guard let date else { return nil }
         let formatter = DateFormatter()
@@ -512,5 +589,61 @@ struct NativeCreateEventCardView: View {
         return dateValue(today, time: "12:00", timezone: timezone)
             .flatMap { calendar.date(byAdding: .day, value: 1, to: $0) }
             ?? Date()
+    }
+}
+
+struct NativeEventCardConflictPanel: View {
+    let message: String
+    let localDraft: NativeEventCardDraft
+    let serverDraft: NativeEventCardDraft
+    let onKeepLocal: () -> Void
+    let onUseServer: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("Your iPhone edits")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+            Text(Self.summary(localDraft))
+                .font(.footnote)
+                .foregroundStyle(SupporterHomeColors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("native-event-card-conflict-local-version")
+
+            Text("Current server version")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+            Text(Self.summary(serverDraft))
+                .font(.footnote)
+                .foregroundStyle(SupporterHomeColors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("native-event-card-conflict-server-version")
+
+            Button("Keep my iPhone edits", action: onKeepLocal)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(SupporterHomeColors.accent)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .accessibilityIdentifier("native-event-card-conflict-keep-local")
+            Button("Use server version", action: onUseServer)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white.opacity(0.8))
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .accessibilityIdentifier("native-event-card-conflict-use-server")
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityIdentifier("native-event-card-conflict-panel")
+    }
+
+    private static func summary(_ draft: NativeEventCardDraft) -> String {
+        let event = draft.type == "practice" ? "Practice" : "Game vs. \(draft.opponent)"
+        let location = draft.location.isEmpty ? "Location not set" : draft.location
+        return "\(event) · \(draft.date) at \(draft.time) · \(location)"
     }
 }

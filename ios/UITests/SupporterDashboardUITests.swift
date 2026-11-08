@@ -426,6 +426,98 @@ final class SupporterDashboardUITests: XCTestCase {
         app.terminate()
     }
 
+    func testTwoDeviceEventCardEditConflictPreservesBothChoicesWithoutDuplicateCards() {
+        for choice in ["keep-local", "use-server"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing-event-card-conflict"]
+            app.launch()
+
+            XCTAssertTrue(app.staticTexts["Edit Event Card"].waitForExistence(timeout: 5))
+            XCTAssertEqual(
+                app.staticTexts["native-event-card-conflict-fixture-connection"].label,
+                "PIXL connection: Offline"
+            )
+            let location = app.textFields["native-event-location"]
+            XCTAssertTrue(location.waitForExistence(timeout: 5))
+            location.tap()
+            location.typeText("Home Field\n")
+            reachable("native-event-create-submit", in: app).tap()
+
+            XCTAssertTrue(app.staticTexts["native-event-create-local-status"].waitForExistence(timeout: 5))
+            XCTAssertEqual(
+                app.staticTexts["native-event-card-conflict-fixture-pending-count"].label,
+                "Pending Event Cards: 1"
+            )
+            XCTAssertEqual(
+                app.staticTexts["native-event-card-conflict-fixture-server-count"].label,
+                "Server Event Cards: 1"
+            )
+            XCTAssertTrue(app.staticTexts["native-event-card-conflict-fixture-server-details"].label
+                .contains("Tigers"))
+
+            reachable("native-event-card-conflict-fixture-remote-edit", in: app).tap()
+            XCTAssertTrue(app.staticTexts["native-event-card-conflict-fixture-server-details"].label
+                .contains("Cougars"))
+            XCTAssertTrue(app.staticTexts["native-event-card-conflict-fixture-server-details"].label
+                .contains("Away Field"))
+            XCTAssertEqual(
+                app.staticTexts["native-event-card-conflict-fixture-pending-count"].label,
+                "Pending Event Cards: 1",
+                "The offline iPhone edit must remain saved after the other device changes the card."
+            )
+
+            reachable("native-event-card-conflict-fixture-reconnect", in: app).tap()
+            XCTAssertEqual(
+                app.staticTexts["native-event-card-conflict-fixture-connection"].label,
+                "PIXL connection: Reconnected"
+            )
+            reachable("native-event-create-retry", in: app).tap()
+
+            let conflictPanel = app.descendants(matching: .any)["native-event-card-conflict-panel"]
+            XCTAssertTrue(conflictPanel.waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["Your iPhone edits"].exists)
+            XCTAssertTrue(app.staticTexts["Current server version"].exists)
+            let localVersion = app.staticTexts["native-event-card-conflict-local-version"]
+            let serverVersion = app.staticTexts["native-event-card-conflict-server-version"]
+            XCTAssertTrue(localVersion.label.contains("Tigers"))
+            XCTAssertTrue(localVersion.label.contains("Home Field"))
+            XCTAssertTrue(serverVersion.label.contains("Cougars"))
+            XCTAssertTrue(serverVersion.label.contains("Away Field"))
+            XCTAssertTrue(app.buttons["native-event-card-conflict-keep-local"].exists)
+            XCTAssertTrue(app.buttons["native-event-card-conflict-use-server"].exists)
+
+            if choice == "keep-local" {
+                reachable("native-event-card-conflict-keep-local", in: app).tap()
+                XCTAssertTrue(app.staticTexts["native-event-create-local-status"].label
+                    .contains("Your iPhone edits are now on the server"))
+                XCTAssertTrue(app.staticTexts["native-event-card-conflict-fixture-server-details"].label
+                    .contains("Home Field"))
+                XCTAssertTrue(app.staticTexts["native-event-card-conflict-fixture-server-details"].label
+                    .contains("Tigers"))
+            } else {
+                reachable("native-event-card-conflict-use-server", in: app).tap()
+                XCTAssertTrue(app.staticTexts["native-event-create-local-status"].label
+                    .contains("The server version is kept"))
+                XCTAssertTrue(app.staticTexts["native-event-card-conflict-fixture-server-details"].label
+                    .contains("Away Field"))
+                XCTAssertTrue(app.staticTexts["native-event-card-conflict-fixture-server-details"].label
+                    .contains("Cougars"))
+            }
+
+            XCTAssertEqual(
+                app.staticTexts["native-event-card-conflict-fixture-pending-count"].label,
+                "Pending Event Cards: 0"
+            )
+            XCTAssertEqual(
+                app.staticTexts["native-event-card-conflict-fixture-server-count"].label,
+                "Server Event Cards: 1",
+                "Resolving a conflict must update or retain the same Event Card, never create a duplicate."
+            )
+            XCTAssertFalse(conflictPanel.exists)
+            app.terminate()
+        }
+    }
+
     func testEventCardFormControlsRemainReachableAtDefaultAndAccessibilityTextSizes() {
         for accessibilityText in [false, true] {
             let app = launch("empty", accessibilityText: accessibilityText)

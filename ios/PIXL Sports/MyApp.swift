@@ -24,6 +24,7 @@ struct MyApp: App {
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-event-detail")
             || ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card")
             || NativeEventCardCreateRetryUITestFixture.isRequested
+            || NativeEventCardConflictUITestFixture.isRequested
             || NativeFanBaseRefreshUITestFixture.isRequested {
             return
         }
@@ -51,6 +52,19 @@ struct MyApp: App {
                     NativeFanBaseRefreshFixtureView()
                 } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card") {
                     NativePublicHypeCardRecipientView(fixtureCard: sharedHypeCardFixture, onClose: {})
+                } else if NativeEventCardConflictUITestFixture.isRequested {
+                    NavigationStack {
+                        NativeCreateEventCardView(
+                            athleteName: "Jordan Example",
+                            teamName: "PIXL Test Team",
+                            seasonName: "Fall 2026",
+                            initialTimezone: "America/Los_Angeles",
+                            clerk: nil,
+                            existingEvent: NativeEventCardConflictUITestFixture.initialEvent,
+                            shareToken: NativeEventCardConflictUITestFixture.shareToken,
+                            onCreated: { _ in }
+                        )
+                    }
                 } else if NativeEventCardCreateRetryUITestFixture.isRequested {
                     NavigationStack {
                         NativeCreateEventCardView(

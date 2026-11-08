@@ -144,6 +144,9 @@ test("native Event Card creation is account-scoped, redacts prep fields, and saf
   assert.equal(schedule.events[0]?.shareToken, first.shareToken);
   assert.equal(schedule.events[0]?.type, "practice");
   assert.equal(schedule.events[0]?.date, "2099-04-02");
+  assert.equal(schedule.events[0]?.location, updatedDraft.location,
+    "Rejecting the stale iPhone snapshot must leave the newer server version unchanged.");
+  assert.equal(schedule.events[0]?.opponent, updatedDraft.opponent);
 });
 
 test("native Event Card creation works without a team and keeps the season label", async () => {
