@@ -112,4 +112,75 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
     func testHiddenOwnerCardPhotoAndSettingsRestoreOffline() throws {
         try exerciseOfflineRestore(visibility: "hidden")
     }
+
+    func testRevokedLinkCannotRestoreHiddenOwnerCardOffline() throws {
+        try requireVisibility("hidden")
+        continueAfterFailure = false
+
+        let app = XCUIApplication()
+        app.launch()
+        openOwnerCard(in: app, visibility: "hidden")
+
+        let statsToggle = app.switches["native-hype-card-toggle-stats"]
+        XCTAssertTrue(statsToggle.waitForExistence(timeout: 10))
+        for _ in 0..<15 where !statsToggle.isHittable { app.swipeUp() }
+        guard let initialValue = statsToggle.value as? String,
+              initialValue == "0" || initialValue == "1" else {
+            XCTFail("The hidden card setting should expose its current switch value.")
+            app.terminate()
+            return
+        }
+        statsToggle.tap()
+        let localSaveMessage = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier == %@ AND label CONTAINS[c] %@",
+                        "native-hype-card-settings-message", "saved on this iPhone")
+        ).firstMatch
+        XCTAssertTrue(
+            localSaveMessage.waitForExistence(timeout: 10),
+            "The saved settings draft must exist before the link is revoked."
+        )
+
+        // This Debug-only route opens the real account-link screen in the same
+        // installation. Preserve the local vault to simulate revocation from a
+        // different device, then let the app discover it through its API.
+        app.terminate()
+        app.launchArguments = [
+            "--ui-testing-account-link",
+            "--ui-testing-preserve-offline-vault"
+        ]
+        app.launch()
+        let disconnect = app.buttons["native-account-link-disconnect"]
+        XCTAssertTrue(disconnect.waitForExistence(timeout: 30))
+        disconnect.tap()
+        let confirmDisconnect = app.buttons["Disconnect"]
+        XCTAssertTrue(confirmDisconnect.waitForExistence(timeout: 10))
+        confirmDisconnect.tap()
+        XCTAssertTrue(
+            app.buttons["Connect existing PIXL account"].waitForExistence(timeout: 20),
+            "The server should confirm that the account link is revoked."
+        )
+        app.terminate()
+
+        // The server-side unlink must be discovered by a fresh authenticated
+        // schedule request before the old offline data is made inaccessible.
+        app.launchArguments = []
+        app.launch()
+        XCTAssertTrue(
+            app.buttons["dashboard-connection-action"].waitForExistence(timeout: 30),
+            "The restored iPhone account must require an explicit PIXL reconnection."
+        )
+        app.terminate()
+
+        // Keep the signed-in iPhone session but disable requests to PIXL. A
+        // valid old continuation lease must not reopen the cached owner data.
+        app.launchArguments = ["--ui-testing-force-offline"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Connect to get ready"].waitForExistence(timeout: 30))
+        XCTAssertFalse(app.buttons["dashboard-hype-card"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["native-hype-card"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["native-hype-card-private-preview"].exists)
+        XCTAssertFalse(app.switches["native-hype-card-toggle-stats"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["native-hype-card-owner-settings"].exists)
+        app.terminate()
+    }
 }

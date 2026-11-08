@@ -52,6 +52,9 @@ struct MyApp: App {
                     NativeFanBaseRefreshFixtureView()
                 } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-shared-hype-card") {
                     NativePublicHypeCardRecipientView(fixtureCard: sharedHypeCardFixture, onClose: {})
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-account-link") {
+                    NativeAccountLinkView()
+                        .environment(Clerk.shared)
                 } else if NativeEventCardConflictUITestFixture.isRequested {
                     NavigationStack {
                         NativeCreateEventCardView(

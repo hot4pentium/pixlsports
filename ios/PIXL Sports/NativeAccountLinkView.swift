@@ -45,6 +45,7 @@ struct NativeAccountLinkView: View {
                         Text("You can disconnect here or from Account information on the PIXL website. Neither account will be deleted.")
                             .font(.footnote)
                         Button("Disconnect PIXL account", role: .destructive) { confirmingDisconnect = true }
+                            .accessibilityIdentifier("native-account-link-disconnect")
                     }
                 } else if model.hasAttempt && !model.finished {
                     Section("1. Approve on the PIXL website") {
@@ -96,7 +97,19 @@ struct NativeAccountLinkView: View {
                 }
             }
             .confirmationDialog("Disconnect your PIXL account?", isPresented: $confirmingDisconnect, titleVisibility: .visible) {
-                Button("Disconnect", role: .destructive) { Task { await model.disconnect(clerk: clerk) } }
+                Button("Disconnect", role: .destructive) {
+                    Task {
+#if DEBUG
+                        if ProcessInfo.processInfo.arguments.contains("--ui-testing-preserve-offline-vault") {
+                            await model.disconnectRemotelyForOfflineRevocationUITest(clerk: clerk)
+                        } else {
+                            await model.disconnect(clerk: clerk)
+                        }
+#else
+                        await model.disconnect(clerk: clerk)
+#endif
+                    }
+                }
                 Button("Keep connected", role: .cancel) {}
             } message: { Text("This removes the account link only. Neither account or its saved data will be deleted.") }
             .task(id: scenePhase) {

@@ -843,7 +843,21 @@ enum SupporterHomeAPI {
                 correctionId: reference.correctionId
             )
         }
-        guard reference.status == "unlinked" || reference.status == "no-card" else {
+        if reference.status == "unlinked" {
+            // A successful owner-authenticated response is authoritative. The
+            // continuation lease and its private card/photo/settings must not
+            // survive a server-side account-link revocation.
+            try offline.clear()
+            return NativeSupporterHypeCardPreview(
+                publicCard: nil,
+                privateCard: nil,
+                privatePhoto: nil,
+                settings: nil,
+                identityMismatch: false,
+                correctionId: nil
+            )
+        }
+        guard reference.status == "no-card" else {
             throw SupporterHomeAPIError.invalidResponse
         }
         return NativeSupporterHypeCardPreview(

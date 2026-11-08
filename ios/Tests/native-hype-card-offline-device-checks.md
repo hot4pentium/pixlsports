@@ -16,6 +16,11 @@ PIXL_HYPE_CARD_OFFLINE_VISIBILITY=hidden xcodebuild test \
   -project "ios/PIXL Sports.xcodeproj" -scheme "PIXL Sports" \
   -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
   -only-testing:PIXL\ SportsUITests/NativeHypeCardOfflineUITests/testHiddenOwnerCardPhotoAndSettingsRestoreOffline
+
+PIXL_HYPE_CARD_OFFLINE_VISIBILITY=hidden xcodebuild test \
+  -project "ios/PIXL Sports.xcodeproj" -scheme "PIXL Sports" \
+  -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/NativeHypeCardOfflineUITests/testRevokedLinkCannotRestoreHiddenOwnerCardOffline
 ```
 
 Sign in to the matching owner in the simulator before each run, and make sure
@@ -54,7 +59,14 @@ to contact its servers; use the Airplane Mode steps below for that check.
    settings draft, and pending save must not appear or be sent for the new
    account. Verify the old account's own data is still available after signing
    back into that account.
-7. On a fresh install with no saved card, offline mode should explain that a
+7. Run `testRevokedLinkCannotRestoreHiddenOwnerCardOffline` with a dedicated
+   hidden development owner. It saves a local settings draft, disconnects the
+   real server link through the app, and relaunches offline. The connection gate
+   must appear without the card, photo, or settings. Then reconnect and sign
+   out/in to the same iPhone account while its PIXL link remains disconnected;
+   cached card access must stay blocked until the account is explicitly linked
+   again.
+8. On a fresh install with no saved card, offline mode should explain that a
    first successful connected load is needed; it must not fabricate a card.
 
 The Linux checkout does not include Apple's SDKs or iOS Simulator. Linux source

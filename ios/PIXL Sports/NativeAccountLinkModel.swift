@@ -92,6 +92,18 @@ final class NativeAccountLinkModel {
     }
 
     func disconnect(clerk: Clerk) async {
+        await performDisconnect(clerk: clerk, clearOfflineData: true)
+    }
+
+#if DEBUG
+    /// Simulates a disconnect completed on another device while this iPhone
+    /// still holds its valid continuation lease.
+    func disconnectRemotelyForOfflineRevocationUITest(clerk: Clerk) async {
+        await performDisconnect(clerk: clerk, clearOfflineData: false)
+    }
+#endif
+
+    private func performDisconnect(clerk: Clerk, clearOfflineData: Bool) async {
         guard !busy else { return }
         busy = true
         generation += 1
@@ -100,6 +112,11 @@ final class NativeAccountLinkModel {
         do {
             state = try await client.request(method: "DELETE", clerk: clerk)
             clearAttempt()
+            if clearOfflineData, state?.status == "unlinked" {
+                // The server confirmed revocation. Remove the local continuation
+                // lease and all private offline data immediately.
+                try NativeOfflineRuntime.shared.clear()
+            }
         } catch { self.error = error.localizedDescription }
     }
 
