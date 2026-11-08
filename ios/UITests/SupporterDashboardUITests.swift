@@ -138,6 +138,7 @@ final class SupporterDashboardUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-fan-base-refresh", "--dashboard-narrow"]
         app.launch()
+        reachable("dashboard-fan-base-entry", in: app).tap()
 
         let unavailableMessage = app.staticTexts.containing(
             NSPredicate(format: "label CONTAINS[c] %@", "no current count is shown")
@@ -147,7 +148,9 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertTrue(reachable("dashboard-fan-base-retry", in: app).exists)
         XCTAssertFalse(app.staticTexts["3 FOLLOWS"].exists)
 
+        app.navigationBars.buttons["Done"].firstMatch.tap()
         reachable("fan-base-fixture-reconnect", in: app).tap()
+        reachable("dashboard-fan-base-entry", in: app).tap()
         reachable("dashboard-fan-base-retry", in: app).tap()
 
         XCTAssertTrue(app.staticTexts["3 FOLLOWS"].waitForExistence(timeout: 5))
@@ -191,10 +194,12 @@ final class SupporterDashboardUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(reachable("dashboard-fan-base", in: app).exists)
+        XCTAssertTrue(reachable("dashboard-fan-base-entry", in: app).exists)
+        XCTAssertFalse(app.descendants(matching: .any)["dashboard-fan-base"].exists)
         XCTAssertTrue(app.staticTexts["3 FOLLOWS"].exists)
         reachable("fan-base-fixture-failed-refresh", in: app).tap()
         reachable("fan-base-fixture-refresh", in: app).tap()
+        reachable("dashboard-fan-base-entry", in: app).tap()
 
         let unavailableMessage = app.staticTexts.containing(
             NSPredicate(format: "label CONTAINS[c] %@", "no current count is shown")
@@ -204,6 +209,34 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertTrue(reachable("dashboard-fan-base-retry", in: app).exists)
         XCTAssertFalse(app.staticTexts["3 FOLLOWS"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["dashboard-fan-base"].exists)
+        app.terminate()
+    }
+
+    func testCompactFanBaseEntrySitsBelowHypeCardAndOpensAllDetails() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-fan-base-refresh",
+            "--dashboard-narrow",
+            "--fan-base-start-loaded"
+        ]
+        app.launch()
+
+        let hypeCard = reachable("dashboard-hype-card", in: app)
+        let entry = reachable("dashboard-fan-base-entry", in: app)
+        XCTAssertEqual(entry.frame.midX, hypeCard.frame.midX, accuracy: 2)
+        XCTAssertGreaterThanOrEqual(entry.frame.minY, hypeCard.frame.maxY)
+        XCTAssertLessThanOrEqual(entry.frame.width, 261)
+        XCTAssertGreaterThanOrEqual(entry.frame.height, 44)
+        XCTAssertFalse(app.descendants(matching: .any)["dashboard-fan-base"].exists)
+        XCTAssertFalse(app.staticTexts["Casey"].exists)
+
+        entry.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["native-fan-base-page"].waitForExistence(timeout: 5))
+        XCTAssertTrue(reachable("dashboard-fan-base", in: app).exists)
+        XCTAssertTrue(app.staticTexts["Casey"].exists)
+        XCTAssertTrue(app.staticTexts["Follows are from devices; names are self-entered."].exists)
+        app.navigationBars.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(reachable("dashboard-fan-base-entry", in: app).exists)
         app.terminate()
     }
 

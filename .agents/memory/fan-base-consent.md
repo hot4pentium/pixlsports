@@ -3,11 +3,17 @@ name: Fan Base consent and privacy
 description: Product boundaries for owner follower summaries and partial alert-preference updates.
 ---
 
-Fan Base belongs on both owner dashboards below Game Record. It shows saved browser/device follows, optional self-entered names, and an anonymous count—not verified unique people or contact details. Fans do not need an account, a name, or alert permission. Turning off alerts or expiring a push subscription must not remove the saved follow.
+Fan Base remains available on both owner dashboards. It shows saved browser/device follows, optional self-entered names, and an anonymous count—not verified unique people or contact details. Fans do not need an account, a name, or alert permission. Turning off alerts or expiring a push subscription must not remove the saved follow.
 
 **Why:** The user chose counts and optional names on both dashboards, without requiring fan identities or alert sign-up.
 
 **How to apply:** Keep owner summaries private and limited to counts and volunteered names. Native access must use the verified account link and selected athlete, never an email match.
+
+On the native dashboard, Fan Base is a small box centered directly beneath the HYPE Card. Tapping it opens a dedicated page with all Fan Base content, rather than expanding the content on the dashboard.
+
+**Why:** The user requested a smaller dashboard entry beneath the HYPE Card and a separate page for all content.
+
+**How to apply:** Keep the compact entry aligned with the HYPE Card column, including the stacked large-text layout. Keep names, anonymous counts, and loading/error/retry details on the full page.
 
 Partial preference updates must preserve omitted alert choices. Put initial defaults in creation contracts, not partial-update contracts.
 

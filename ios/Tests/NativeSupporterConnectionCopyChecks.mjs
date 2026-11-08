@@ -24,7 +24,7 @@ test("Fan Base failures hide any count and explain that no current count is avai
   const status = source("NativeSeasonRecordView.swift");
   assert.match(model, /fanBase = nil\s*fanBaseIsLoading = false\s*fanBaseError = nil/);
   assert.match(model, /The latest Fan Base count couldn’t be loaded, so no current count is shown/);
-  assert.match(content, /message: displayedFanBaseError \?\? ""/);
+  assert.match(content, /message: displayedFanBaseError \?\? "Fan Base details aren’t available right now\. Try again\."/);
   assert.match(content, /Task \{ await loadSchedule\(\) \}/);
   assert.match(api, /guard NativeOfflineRuntime\.shared\.online else \{\s*throw NativeOfflineError\.onlineOnly/);
   assert.match(status, /Loading the latest Fan Base count/);

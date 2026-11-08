@@ -50,6 +50,7 @@ struct ContentView: View {
         case editEventCard(String)
         case pendingEventCard(String)
         case hypeCard
+        case fanBase
         case createEvent
         case recordMoments
         case profileSetup
@@ -60,6 +61,7 @@ struct ContentView: View {
             case let .editEventCard(token): return "edit-event-\(token)"
             case let .pendingEventCard(id): return "pending-event-\(id)"
             case .hypeCard: return "hype-card"
+            case .fanBase: return "fan-base"
             case .createEvent: return "create-event"
             case .recordMoments: return "record-moments"
             case .profileSetup: return "athlete-profile-setup"
@@ -228,24 +230,6 @@ struct ContentView: View {
                             if case let .schedule(page, _, _) = displayedState {
                                 if let record = page.record {
                                     NativeSeasonRecordView(record: record)
-                                }
-                            }
-                            if let fanBase = displayedFanBase {
-                                NativeFanBaseView(fanBase: fanBase)
-                            } else if displayedFanBaseIsLoading || displayedFanBaseError != nil {
-                                NativeFanBaseStatusView(
-                                    isLoading: displayedFanBaseIsLoading,
-                                    message: displayedFanBaseError ?? ""
-                                ) {
-#if DEBUG
-                                    if usesFanBaseRefreshFixture {
-                                        fanBaseRefreshFixture.retry()
-                                    } else {
-                                        Task { await loadSchedule() }
-                                    }
-#else
-                                    Task { await loadSchedule() }
-#endif
                                 }
                             }
 #if DEBUG
@@ -490,6 +474,46 @@ struct ContentView: View {
         return timelineDate
     }
 
+    private var fanBasePage: some View {
+        ZStack {
+            NativePageBackground()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Fan Base")
+                        .font(.largeTitle.weight(.black))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(SupporterHomeColors.background)
+                        .accessibilityAddTraits(.isHeader)
+                    if let fanBase = displayedFanBase {
+                        NativeFanBaseView(fanBase: fanBase)
+                    } else {
+                        NativeFanBaseStatusView(
+                            isLoading: displayedFanBaseIsLoading,
+                            message: displayedFanBaseError ?? "Fan Base details aren’t available right now. Try again."
+                        ) {
+#if DEBUG
+                            if usesFanBaseRefreshFixture {
+                                fanBaseRefreshFixture.retry()
+                            } else {
+                                Task { await loadSchedule() }
+                            }
+#else
+                            Task { await loadSchedule() }
+#endif
+                        }
+                    }
+                }
+                .frame(maxWidth: 560, alignment: .leading)
+                .padding(20)
+                .frame(maxWidth: .infinity)
+            }
+            .refreshable { await refreshDashboard() }
+        }
+        .navigationTitle("Fan Base")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("native-fan-base-page")
+    }
+
     @ViewBuilder
     private var athleteHero: some View {
         if case let .schedule(page, _, _) = displayedState {
@@ -513,6 +537,9 @@ struct ContentView: View {
                     hypePrivatePhoto: viewModel.hypeCardPrivatePhoto,
                     hypePreviewFailed: viewModel.hypeCardPreviewError != nil
                         && viewModel.hypeCardPreview == nil,
+                    fanBase: displayedFanBase,
+                    fanBaseIsLoading: displayedFanBaseIsLoading,
+                    showsFanBase: displayedFanBase != nil || displayedFanBaseIsLoading || displayedFanBaseError != nil,
                     onOpenEvent: {
                         if let token = guide?.event.shareToken {
                             heroDestination = .eventCard(token)
@@ -520,7 +547,8 @@ struct ContentView: View {
                             heroDestination = .createEvent
                         }
                     },
-                    onOpenHypeCard: { heroDestination = .hypeCard }
+                    onOpenHypeCard: { heroDestination = .hypeCard },
+                    onOpenFanBase: { heroDestination = .fanBase }
                 )
                 .modifier(SupporterDashboardSectionSurface())
                 .accessibilityElement(children: .contain)
@@ -710,6 +738,8 @@ struct ContentView: View {
                 cachedOwnerPreview: NativeOfflineRuntime.shared.vault.canContinue(subject: clerk?.user?.id)
                     ? viewModel.hypeCardPreview : nil
             )
+        case .fanBase:
+            fanBasePage
         case .createEvent:
             NativeCreateEventCardView(
                 athleteName: schedulePage?.athleteName ?? "your athlete",

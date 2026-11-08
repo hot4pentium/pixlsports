@@ -14,8 +14,12 @@ struct NativeHomeHeroCards: View {
     let hypePhotoURL: String?
     let hypePrivatePhoto: UIImage?
     let hypePreviewFailed: Bool
+    let fanBase: NativeSupporterFanBase?
+    let fanBaseIsLoading: Bool
+    let showsFanBase: Bool
     let onOpenEvent: () -> Void
     let onOpenHypeCard: () -> Void
+    let onOpenFanBase: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -63,16 +67,28 @@ struct NativeHomeHeroCards: View {
                     : "Opens the game-day message board and the next Event Card task.")
             .accessibilityIdentifier("dashboard-message-board-card")
 
-            Button(action: onOpenHypeCard) {
-                hypeCard
+            VStack(spacing: 10) {
+                Button(action: onOpenHypeCard) {
+                    hypeCard
+                }
+                .buttonStyle(SupporterCardPressStyle())
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(hypePreviewFailed
+                    ? "HYPE Card preview did not load. Tap to open the HYPE Card and try again."
+                    : "HYPE Card for \(athleteName)\(teamName.map { ", \($0)" } ?? "")\(hypePrivatePhoto != nil || validHypePhotoURL != nil ? ", with athlete photo" : "").")
+                .accessibilityHint("Opens the athlete’s HYPE Card.")
+                .accessibilityIdentifier("dashboard-hype-card")
+
+                if showsFanBase {
+                    Button(action: onOpenFanBase) {
+                        NativeFanBaseEntryView(fanBase: fanBase, isLoading: fanBaseIsLoading)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens all Fan Base details.")
+                    .accessibilityIdentifier("dashboard-fan-base-entry")
+                }
             }
-            .buttonStyle(SupporterCardPressStyle())
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(hypePreviewFailed
-                ? "HYPE Card preview did not load. Tap to open the HYPE Card and try again."
-                : "HYPE Card for \(athleteName)\(teamName.map { ", \($0)" } ?? "")\(hypePrivatePhoto != nil || validHypePhotoURL != nil ? ", with athlete photo" : "").")
-            .accessibilityHint("Opens the athlete’s HYPE Card.")
-            .accessibilityIdentifier("dashboard-hype-card")
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
