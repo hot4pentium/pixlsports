@@ -29,6 +29,7 @@ private struct NativeHypeCardSideTransition {
 @MainActor
 struct SupporterHypeCardView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var offlineRuntime = NativeOfflineRuntime.shared
     let clerk: Clerk?
     let publicInviteToken: String?
 #if DEBUG
@@ -83,17 +84,66 @@ struct SupporterHypeCardView: View {
     ) {
         self.clerk = clerk
         self.publicInviteToken = publicInviteToken
-        let canUseCachedPreview = publicInviteToken == nil
-            && cachedOwnerPreview != nil
-            && NativeOfflineRuntime.shared.vault.canContinue(subject: clerk?.user?.id)
-        let preview = canUseCachedPreview ? cachedOwnerPreview : nil
+        let subject = clerk?.user?.id
+        let offline = NativeOfflineRuntime.shared
+        let canUseOwnerCache = publicInviteToken == nil
+            && subject.map { offline.vault.canContinue(subject: $0) } == true
+        var storedPreview = cachedOwnerPreview
+        if storedPreview == nil, canUseOwnerCache, let subject,
+           let data = try? offline.vault.read("dashboard-preview", subject: subject) {
+            storedPreview = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: data)
+        }
+        let preview = canUseOwnerCache ? storedPreview : nil
+        var cachedProfile: NativeSupporterProfile?
+        if canUseOwnerCache, let subject,
+           let data = try? offline.vault.read("get/supporter/profile", subject: subject) {
+            cachedProfile = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data)
+        }
+        var cachedIdentityMismatch = preview?.identityMismatch ?? false
+        let cachedCardName = preview?.publicCard?.athleteName ?? preview?.privateCard?.athleteName
+        let normalize: (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        if let cachedCardName, let cachedProfile {
+            let expectedTeam = normalize(cachedProfile.teamName)
+            let cardTeam = normalize(preview?.publicCard?.teamName ?? preview?.privateCard?.teamName ?? "")
+            if normalize(cachedProfile.athleteName) != normalize(cachedCardName)
+                || (!expectedTeam.isEmpty && expectedTeam != cardTeam) {
+                cachedIdentityMismatch = true
+            }
+        }
+        let cachedSettings = preview?.settings
+        let savedDraft: NativeHypeCardSettings?
+        if canUseOwnerCache, let subject {
+            savedDraft = try? NativeAccountLinkClient().loadHypeCardSettingsDraft(subject: subject)
+        } else {
+            savedDraft = nil
+        }
+        let editorSettings = savedDraft ?? cachedSettings
+        var cachedConflict: NativeHypeCardSettings?
+        if let savedDraft, let cachedSettings, savedDraft.revision != cachedSettings.revision {
+            cachedConflict = cachedSettings
+        }
         _card = State(initialValue: preview?.publicCard)
         _privateCard = State(initialValue: preview?.privateCard)
         _privatePhoto = State(initialValue: preview?.privatePhoto.flatMap(UIImage.init(data:)))
+        _athleteProfile = State(initialValue: cachedProfile)
         _settings = State(initialValue: preview?.settings)
-        _settingsAccountSubject = State(initialValue: preview == nil ? nil : clerk?.user?.id)
+        _settingsAccountSubject = State(initialValue: preview == nil ? nil : subject)
+        _settingsDraftRevision = State(initialValue: editorSettings?.revision)
+        _draftShowHypeCard = State(initialValue: editorSettings?.showHypeCard ?? false)
+        _draftShowStats = State(initialValue: editorSettings?.showStats ?? false)
+        _draftShowEvents = State(initialValue: editorSettings?.showEvents ?? false)
+        _draftPaused = State(initialValue: editorSettings?.paused ?? false)
+        _draftFavoriteMoment = State(initialValue: editorSettings?.favoriteMoment ?? "")
+        _settingsRevisionConflict = State(initialValue: cachedConflict)
+        _settingsMessage = State(initialValue: savedDraft == nil
+            ? nil
+            : "Your HYPE Card changes are saved on this iPhone. Review or sync them when PIXL is reachable.")
+        _identityMismatch = State(initialValue: cachedIdentityMismatch)
+        _identityCorrectionId = State(initialValue: preview?.correctionId)
         _loading = State(initialValue: preview == nil)
-        _unavailable = State(initialValue: false)
+        _unavailable = State(initialValue: preview.map {
+            $0.publicCard == nil && $0.privateCard == nil
+        } ?? false)
 #if DEBUG
         self.fixturePublicCard = nil
 #endif
@@ -124,6 +174,21 @@ struct SupporterHypeCardView: View {
                         .fontDesign(.rounded)
                         .foregroundStyle(SupporterHomeColors.background)
                         .accessibilityAddTraits(.isHeader)
+
+                    if !isPublicRecipient, !offlineRuntime.online, card != nil || privateCard != nil {
+                        Label {
+                            Text("Showing the last saved HYPE Card. Settings changes stay on this iPhone until you can sync them to PIXL.")
+                        } icon: {
+                            Image(systemName: "wifi.slash")
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(SupporterHomeColors.accentText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 14))
+                        .accessibilityIdentifier("native-hype-card-offline-status")
+                    }
 
                     if isRefreshing {
                         HStack(spacing: 10) {
@@ -251,6 +316,11 @@ struct SupporterHypeCardView: View {
             guard phase == .active, !loading, !isRefreshing, !isSaving,
                   !isCheckingSettings, !hasUnsavedSettings else { return }
             Task { await loadCard() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nativeOfflineConnectionChanged)) { _ in
+            guard !isPublicRecipient, offlineRuntime.online, hasUnsavedSettings,
+                  settingsMessage?.hasPrefix("Saved on this iPhone.") == true else { return }
+            settingsMessage = "Connection restored. Tap Save HYPE Card settings to sync your saved choices."
         }
         .onDisappear {
             flipTask?.cancel()
