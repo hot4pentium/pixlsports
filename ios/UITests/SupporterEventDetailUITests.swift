@@ -3,6 +3,51 @@ import UIKit
 
 @MainActor
 final class SupporterEventDetailUITests: XCTestCase {
+    func testMainPrepCheckoffRowEditsAndDeletesWithoutOpeningManage() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-event-detail", "--ui-testing-prep-draft", "--prep-long-labels"
+        ]
+        app.launch()
+        defer { app.terminate() }
+        let openEvent = app.buttons["prep-test-open-event"]
+        XCTAssertTrue(openEvent.waitForExistence(timeout: 10))
+        openEvent.tap()
+        XCTAssertTrue(app.buttons["event-card-prep"].waitForExistence(timeout: 10))
+        app.buttons["event-card-prep"].tap()
+
+        let row = assertReachable("native-prep-item-water", in: app)
+        row.tap()
+        XCTAssertEqual(row.value as? String, "Ready")
+        row.press(forDuration: 1)
+        XCTAssertTrue(app.buttons["Edit task"].waitForExistence(timeout: 5))
+        app.buttons["Edit task"].tap()
+        let editor = app.alerts["Edit task"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.textFields.firstMatch.tap()
+        editor.textFields.firstMatch.typeText(" updated")
+        editor.buttons["Save"].tap()
+        XCTAssertTrue(row.label.contains("updated"))
+        XCTAssertEqual(row.value as? String, "Ready", "Renaming must preserve the checkoff.")
+        XCTAssertFalse(app.descendants(matching: .any)["native-prep-management-title"].exists)
+
+        let savedLabel = row.label
+        row.press(forDuration: 1)
+        app.buttons["Edit task"].tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.textFields.firstMatch.tap()
+        editor.textFields.firstMatch.typeText(" cancelled")
+        editor.buttons["Cancel"].tap()
+        XCTAssertEqual(row.label, savedLabel)
+
+        row.press(forDuration: 1)
+        XCTAssertTrue(app.buttons["Delete task"].waitForExistence(timeout: 5))
+        app.buttons["Delete task"].tap()
+        XCTAssertFalse(row.exists)
+        XCTAssertTrue(app.buttons["native-prep-item-cleats"].exists,
+                      "Deleting a task must leave the other checklist items intact.")
+    }
+
     func testCompletedGameOpensShareAndCannotInitiateTracking() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail", "--event-detail-final"]

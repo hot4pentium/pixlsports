@@ -15,6 +15,7 @@ struct NativeEventPrepView: View {
     @State private var newItem = ""
     @State private var editingTaskID: String?
     @State private var editingTaskText = ""
+    @State private var showingQuickTaskEditor = false
     @State private var edited = false
     @State private var prepAutosaveTask: Task<Void, Never>?
     @State private var recoveringPrepDraft = false
@@ -287,6 +288,9 @@ struct NativeEventPrepView: View {
                             ? .opacity
                             : .move(edge: .top).combined(with: .opacity)
                     )
+                    Text("Press and hold a task to edit or delete it.")
+                        .font(.caption)
+                        .foregroundStyle(SupporterHomeColors.muted)
                 }
             } else {
                 HStack(spacing: 10) {
@@ -325,6 +329,13 @@ struct NativeEventPrepView: View {
             .accessibilityIdentifier("native-prep-manage-full")
         }
         .accessibilityIdentifier("native-prep-quick-content")
+        .alert("Edit task", isPresented: $showingQuickTaskEditor) {
+            TextField("Task", text: $editingTaskText)
+                .accessibilityIdentifier("native-prep-quick-edit-text")
+            Button("Save") { saveTaskEntry() }
+                .disabled(!canSubmitTaskEntry)
+            Button("Cancel", role: .cancel) { cancelTaskEdit() }
+        }
     }
 
     private var compactReadinessSummary: some View {
@@ -429,6 +440,19 @@ struct NativeEventPrepView: View {
         .accessibilityValue(item.completed ? "Ready" : "Not ready")
         .accessibilityHint("Mark this task ready or not ready.")
         .accessibilityIdentifier("native-prep-item-\(item.id)")
+        .contextMenu {
+            Button {
+                editQuickTask(item)
+            } label: {
+                Label("Edit task", systemImage: "pencil")
+            }
+            Button("Delete task", role: .destructive) {
+                removeTask(id: item.id)
+            }
+        }
+        .accessibilityHint("Tap to mark ready or not ready. Press and hold to edit or delete.")
+        .accessibilityAction(named: "Edit task") { editQuickTask(item) }
+        .accessibilityAction(named: "Delete task") { removeTask(id: item.id) }
     }
 
     private func prepNavigationLabel(_ title: String, systemImage: String) -> some View {
@@ -466,7 +490,7 @@ struct NativeEventPrepView: View {
                             .accessibilityIdentifier("native-prep-management-title")
                         }
                         prepSections
-                        Text("Press and hold a task to remove it.")
+                        Text("Press and hold a task to edit or remove it.")
                             .font(.caption)
                             .foregroundStyle(SupporterHomeColors.muted)
                         if compactContent {
@@ -704,11 +728,17 @@ struct NativeEventPrepView: View {
         }
     }
 
-    private func beginEditingTask(_ item: NativePrepItem) {
+    private func editQuickTask(_ item: NativePrepItem) {
+        guard model.canEditLocally else { return }
+        beginEditingTask(item, focusEditor: false)
+        showingQuickTaskEditor = true
+    }
+
+    private func beginEditingTask(_ item: NativePrepItem, focusEditor: Bool = true) {
         guard model.canEditLocally else { return }
         editingTaskID = item.id
         editingTaskText = item.label
-        isTaskEditorFocused = true
+        isTaskEditorFocused = focusEditor
     }
 
     private func cancelTaskEdit() {
