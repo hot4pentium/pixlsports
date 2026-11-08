@@ -217,7 +217,7 @@ private struct SupporterFanCardResponse: Decodable {
     let liveTaps: LiveTapSummary
 }
 
-struct NativeEventCardDraft {
+struct NativeEventCardDraft: Codable, Equatable {
     let id: String
     let type: String
     let date: String
@@ -225,6 +225,51 @@ struct NativeEventCardDraft {
     let timezone: String
     let location: String
     let opponent: String
+
+    func matches(_ event: AthleteFanEvent) -> Bool {
+        id == event.eventId
+            && type == event.type
+            && date == event.date
+            && time == event.time
+            && timezone == (event.timezone ?? "")
+            && location == event.location
+            && opponent == event.opponent
+    }
+
+    static func from(_ event: AthleteFanEvent) -> NativeEventCardDraft {
+        NativeEventCardDraft(
+            id: event.eventId,
+            type: event.type,
+            date: event.date,
+            time: event.time,
+            timezone: event.timezone ?? "",
+            location: event.location,
+            opponent: event.opponent
+        )
+    }
+}
+
+enum NativePendingEventCardOperation: String, Codable, Equatable {
+    case create
+    case update
+}
+
+struct NativePendingEventCardChange: Codable, Identifiable, Equatable {
+    var id: String { draft.id }
+    var operation: NativePendingEventCardOperation
+    var draft: NativeEventCardDraft
+    var teamName: String?
+    var athleteName: String
+    var seasonName: String?
+    var shareToken: String?
+    var baseDraft: NativeEventCardDraft?
+    var attemptedDraft: NativeEventCardDraft?
+    var conflictDraft: NativeEventCardDraft?
+    var conflictMessage: String?
+    var lastError: String?
+    var createdAt: Date
+
+    var isConflicted: Bool { conflictMessage != nil }
 }
 
 #if DEBUG
@@ -236,6 +281,7 @@ enum NativeEventCardCreateRetryUITestFixture {
 
     private(set) static var isOnline = false
     private(set) static var savedDrafts: [String: NativeEventCardDraft] = [:]
+    private(set) static var serverDrafts: [String: NativeEventCardDraft] = [:]
     private(set) static var confirmedEventIDs = Set<String>()
     private static var interruptedFirstResponse = false
 
@@ -243,13 +289,17 @@ enum NativeEventCardCreateRetryUITestFixture {
         isOnline = online
     }
 
+    static func saveLocally(_ draft: NativeEventCardDraft) {
+        savedDrafts[draft.id] = draft
+    }
+
     static func create(_ draft: NativeEventCardDraft) throws -> String {
         guard isOnline else { throw NativeOfflineError.onlineOnly }
-        if let existing = savedDrafts[draft.id] {
+        if let existing = serverDrafts[draft.id] {
             return shareToken(for: existing)
         }
 
-        savedDrafts[draft.id] = draft
+        serverDrafts[draft.id] = draft
         if !interruptedFirstResponse {
             interruptedFirstResponse = true
             throw NativeAccountLinkError.message("The first save response was interrupted.")
@@ -259,10 +309,11 @@ enum NativeEventCardCreateRetryUITestFixture {
 
     static func confirm(token: String, draft: NativeEventCardDraft) throws {
         guard isOnline else { throw NativeOfflineError.onlineOnly }
-        guard savedDrafts[draft.id] != nil, token == shareToken(for: draft) else {
+        guard serverDrafts[draft.id] != nil, token == shareToken(for: draft) else {
             throw SupporterHomeAPIError.invalidResponse
         }
         confirmedEventIDs.insert(draft.id)
+        savedDrafts.removeValue(forKey: draft.id)
     }
 
     private static func shareToken(for draft: NativeEventCardDraft) -> String {
@@ -305,6 +356,16 @@ private struct NativeEventCardEditBody: Encodable {
     let timezone: String
     let location: String
     let opponent: String
+    let expected: Expected
+
+    struct Expected: Encodable {
+        let type: String
+        let date: String
+        let time: String
+        let timezone: String
+        let location: String
+        let opponent: String
+    }
 }
 
 private struct NativeAthleteProfileUpdate: Encodable {
@@ -334,6 +395,15 @@ enum SupporterHomeAPI {
 
     static func fetchPrivateSchedule(clerk: Clerk) async throws -> NativeSupporterSchedule {
         let data = try await NativeAccountLinkClient().getData("supporter/schedule", clerk: clerk)
+        return try decodePrivateSchedule(data)
+    }
+
+    static func fetchAuthoritativePrivateSchedule(clerk: Clerk) async throws -> NativeSupporterSchedule {
+        let data = try await NativeAccountLinkClient().getAuthoritativeData("supporter/schedule", clerk: clerk)
+        return try decodePrivateSchedule(data)
+    }
+
+    private static func decodePrivateSchedule(_ data: Data) throws -> NativeSupporterSchedule {
         do {
             let schedule = try JSONDecoder().decode(NativeSupporterSchedule.self, from: data)
             guard schedule.status == "linked" || schedule.status == "unlinked" else {
@@ -403,7 +473,8 @@ enum SupporterHomeAPI {
         teamName: String?,
         athleteName: String,
         seasonName: String?,
-        clerk: Clerk?
+        clerk: Clerk?,
+        forceNetworkAttempt: Bool = false
     ) async throws -> String {
 #if DEBUG
         if NativeEventCardCreateRetryUITestFixture.isRequested {
@@ -441,7 +512,8 @@ enum SupporterHomeAPI {
         let data = try await NativeAccountLinkClient().postData(
             "supporter/event-cards",
             body: body,
-            clerk: clerk
+            clerk: clerk,
+            forceNetworkAttempt: forceNetworkAttempt
         )
         do {
             let response = try JSONDecoder().decode(NativeEventCardCreateResponse.self, from: data)
@@ -457,7 +529,9 @@ enum SupporterHomeAPI {
     static func updateEventCard(
         shareToken: String,
         draft: NativeEventCardDraft,
-        clerk: Clerk
+        expected: NativeEventCardDraft,
+        clerk: Clerk,
+        forceNetworkAttempt: Bool = false
     ) async throws -> String {
         let body = NativeEventCardEditBody(
             eventId: draft.id,
@@ -466,13 +540,22 @@ enum SupporterHomeAPI {
             time: draft.time,
             timezone: draft.timezone,
             location: draft.location,
-            opponent: draft.opponent
+            opponent: draft.opponent,
+            expected: .init(
+                type: expected.type,
+                date: expected.date,
+                time: expected.time,
+                timezone: expected.timezone,
+                location: expected.location,
+                opponent: expected.opponent
+            )
         )
         let data = try await NativeAccountLinkClient().postData(
             "supporter/event-cards/\(shareToken)",
             body: body,
             method: "PATCH",
-            clerk: clerk
+            clerk: clerk,
+            forceNetworkAttempt: forceNetworkAttempt
         )
         do {
             let response = try JSONDecoder().decode(NativeEventCardCreateResponse.self, from: data)
@@ -499,7 +582,7 @@ enum SupporterHomeAPI {
         }
 #endif
         guard let clerk else { throw SupporterHomeAPIError.invalidResponse }
-        let schedule = try await fetchPrivateSchedule(clerk: clerk)
+        let schedule = try await fetchAuthoritativePrivateSchedule(clerk: clerk)
         guard schedule.status == "linked",
               let event = schedule.events.first(where: {
                   $0.shareToken == shareToken && $0.eventId == draft.id

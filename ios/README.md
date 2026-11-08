@@ -141,6 +141,9 @@ is deleted. Web users can also withdraw an approval before iPhone confirmation.
   `ClerkConfig.plist`, containing the HTTPS preview origin without a path.
   They never silently fall back to the published website. Release builds
   default to `https://pixlsports.com` when this setting is absent.
+  Use the public Replit preview host, not `localhost` or a Mac-only address:
+  the iPhone must reach this API directly over the internet, with or without a
+  cable connection to the development Mac.
   Keep the existing publishable key. Codes and bearer tokens are never added
   to browser URLs.
 - Apply the additive DB schema changes and publish the API/web changes before

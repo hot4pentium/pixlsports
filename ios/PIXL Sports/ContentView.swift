@@ -20,6 +20,7 @@ struct ContentView: View {
     @Binding var showingSettings: Bool
 
     @StateObject private var viewModel = SupporterHomeViewModel()
+    @ObservedObject private var offlineRuntime = NativeOfflineRuntime.shared
 #if DEBUG
     @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
     @ObservedObject private var fanBaseRefreshFixture: NativeFanBaseRefreshUITestFixture
@@ -34,6 +35,7 @@ struct ContentView: View {
 
     private enum HeroDestination: Identifiable {
         case eventCard(String)
+        case pendingEventCard(String)
         case hypeCard
         case createEvent
         case recordMoments
@@ -42,6 +44,7 @@ struct ContentView: View {
         var id: String {
             switch self {
             case let .eventCard(token): return "event-\(token)"
+            case let .pendingEventCard(id): return "pending-event-\(id)"
             case .hypeCard: return "hype-card"
             case .createEvent: return "create-event"
             case .recordMoments: return "record-moments"
@@ -261,6 +264,7 @@ struct ContentView: View {
 #endif
                             accountSetupIfNeeded
                             athleteProfileLoadIssue
+                            pendingEventCardSection
                             nextEventSection
                         }
                         .frame(maxWidth: 560, alignment: .leading)
@@ -355,6 +359,13 @@ struct ContentView: View {
                   let reason = NativeEventScheduleChangeReason(rawValue: rawReason),
                   reason.refreshesDashboard else { return }
             eventToolsChanged = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nativeOfflineConnectionChanged)) { _ in
+            guard let clerk, offlineRuntime.online else { return }
+            offlineRuntime.resume(clerk: clerk, force: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nativeEventCardQueueSynced)) { _ in
+            Task { await loadSchedule() }
         }
 #if DEBUG
         .overlay(alignment: .topTrailing) {
@@ -472,10 +483,131 @@ struct ContentView: View {
     }
 
     @ViewBuilder
+    private var pendingEventCardSection: some View {
+        if let clerk, let subject = clerk.user?.id {
+            let changes = offlineRuntime.pendingEventCards(subject: subject)
+            if !changes.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    SupporterEyebrow(text: "SAVED ON THIS IPHONE", color: SupporterHomeColors.accentText)
+                    Text("Event Cards waiting to sync")
+                        .font(.title3.weight(.black))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(SupporterHomeColors.background)
+                    ForEach(changes) { change in
+                        VStack(alignment: .leading, spacing: 10) {
+                            let team = change.teamName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                            let title = change.draft.type == "practice"
+                                ? "Practice · \(change.draft.date)"
+                                : "\(team.isEmpty ? change.athleteName : team) vs. \(change.draft.opponent) · \(change.draft.date)"
+                            Text(title)
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text(change.conflictMessage ?? change.lastError
+                                 ?? "Saved on this iPhone. Waiting for PIXL to confirm the save.")
+                                .font(.footnote)
+                                .foregroundStyle(change.isConflicted ? .orange : SupporterHomeColors.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if change.isConflicted {
+                                if change.conflictDraft != nil {
+                                    Button("Keep my iPhone edits") {
+                                        Task {
+                                            await offlineRuntime.keepLocalEventCardAfterConflict(
+                                                id: change.id,
+                                                subject: subject,
+                                                clerk: clerk
+                                            )
+                                        }
+                                    }
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(SupporterHomeColors.accent)
+                                    .frame(minHeight: 44)
+                                    Button("Use server version") {
+                                        offlineRuntime.discardPendingEventCard(id: change.id, subject: subject)
+                                    }
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(.white.opacity(0.8))
+                                    .frame(minHeight: 44)
+                                } else {
+                                    Button("Create as new Event Card") {
+                                        Task {
+                                            await offlineRuntime.recreatePendingEventCardAsNew(
+                                                id: change.id,
+                                                subject: subject,
+                                                clerk: clerk
+                                            )
+                                        }
+                                    }
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(SupporterHomeColors.accent)
+                                    .frame(minHeight: 44)
+                                    Button("Discard saved draft") {
+                                        offlineRuntime.discardPendingEventCard(id: change.id, subject: subject)
+                                    }
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(.white.opacity(0.8))
+                                    .frame(minHeight: 44)
+                                }
+                            } else {
+                                HStack(spacing: 12) {
+                                    Button("Open saved draft") {
+                                        heroDestination = .pendingEventCard(change.id)
+                                    }
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(SupporterHomeColors.accent)
+                                    .frame(minHeight: 44)
+                                    Button("Try sync") {
+                                        Task {
+                                            await offlineRuntime.retryPendingEventCards(clerk: clerk)
+                                        }
+                                    }
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .frame(minHeight: 44)
+                                }
+                            }
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                }
+                .padding(16)
+                .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 20))
+                .accessibilityIdentifier("native-pending-event-cards")
+            }
+        }
+    }
+
+    @ViewBuilder
     private func heroDestinationView(_ destination: HeroDestination) -> some View {
         switch destination {
         case let .eventCard(token):
             eventDetailScreen(token: token)
+        case let .pendingEventCard(id):
+            if let subject = clerk?.user?.id,
+               let change = offlineRuntime.pendingEventCards(subject: subject).first(where: { $0.id == id }) {
+                NativeCreateEventCardView(
+                    athleteName: change.athleteName,
+                    teamName: change.teamName,
+                    seasonName: change.seasonName,
+                    initialTimezone: change.draft.timezone,
+                    clerk: clerk,
+                    shareToken: change.shareToken,
+                    pendingChange: change,
+                    onCreated: { token in
+                        Task {
+                            await loadSchedule()
+                            heroDestination = .eventCard(token)
+                        }
+                    }
+                )
+            } else {
+                VStack(spacing: 12) {
+                    Text("This saved Event Card draft is no longer available.")
+                    Button("Done") { heroDestination = nil }
+                }
+                .padding()
+            }
         case .hypeCard:
             SupporterHypeCardView(
                 clerk: clerk,

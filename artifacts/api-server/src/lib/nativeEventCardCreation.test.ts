@@ -95,8 +95,8 @@ test("native Event Card creation is account-scoped, redacts prep fields, and saf
     location: "Field 4",
     opponent: "",
   };
-  const updated = await updateNativeSupporterEventCard(who, first.shareToken, updatedDraft);
-  const updateRetry = await updateNativeSupporterEventCard(who, first.shareToken, updatedDraft);
+  const updated = await updateNativeSupporterEventCard(who, first.shareToken, updatedDraft, draft);
+  const updateRetry = await updateNativeSupporterEventCard(who, first.shareToken, updatedDraft, updatedDraft);
   assert.equal(updated.shareToken, first.shareToken);
   assert.equal(updateRetry.shareToken, first.shareToken);
   const updatedEvent = (updateRetry.share.events as Array<Record<string, unknown>>)[0];
@@ -111,9 +111,15 @@ test("native Event Card creation is account-scoped, redacts prep fields, and saf
   assert.equal(updatedEvent?.drinks, "Water");
   assert.equal(updatedEvent?.notes, "Bring cleats");
 
+  await assert.rejects(
+    updateNativeSupporterEventCard(who, first.shareToken, { ...updatedDraft, location: "New field" }, draft),
+    (error: unknown) => Boolean(error && typeof error === "object" && "status" in error && error.status === 409),
+    "A stale offline edit must not overwrite a newer server version.",
+  );
+
   await pool.query("UPDATE account_access SET lifecycle_status='paused' WHERE owner_clerk_user_id=$1", [linkedOwner]);
   await assert.rejects(
-    updateNativeSupporterEventCard(who, first.shareToken, updatedDraft),
+    updateNativeSupporterEventCard(who, first.shareToken, updatedDraft, updatedDraft),
     (error: unknown) => Boolean(error && typeof error === "object" && "status" in error && error.status === 423),
   );
   await pool.query("UPDATE account_access SET lifecycle_status='active' WHERE owner_clerk_user_id=$1", [linkedOwner]);

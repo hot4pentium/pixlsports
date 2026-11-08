@@ -11,6 +11,9 @@ enum NativeOfflineStoragePolicy {
         Set(keys.compactMap { key in
             if key.hasPrefix("outbox/") { return String(key.dropFirst(7)) }
             if key.hasPrefix("draft/") { return String(key.dropFirst(6)) }
+            if key.hasPrefix("pending/event-card/") {
+                return String(key.dropFirst("pending/event-card/".count))
+            }
             return nil
         })
     }

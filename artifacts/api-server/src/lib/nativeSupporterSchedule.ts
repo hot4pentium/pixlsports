@@ -188,6 +188,7 @@ export async function updateNativeSupporterEventCard(
   identity: NativeIdentity,
   shareToken: string,
   draft: NativeEventCardDraft,
+  expected?: Omit<NativeEventCardDraft, "eventId">,
 ): Promise<CreatedNativeEventCard> {
   const tx = await pool.connect();
   try {
@@ -225,6 +226,19 @@ export async function updateNativeSupporterEventCard(
     if (!share || !event || event.id !== draft.eventId
       || (event.type !== "game" && event.type !== "practice")) {
       throw new NativeLinkError(404, "This Event Card is not available to your account.");
+    }
+    if (expected && (
+      event.type !== expected.type
+      || event.date !== expected.date
+      || event.time !== expected.time
+      || event.timezone !== expected.timezone
+      || event.location !== expected.location
+      || event.opponent !== expected.opponent
+    )) {
+      throw new NativeLinkError(
+        409,
+        "This Event Card changed on another device. Review the current version before saving your edits.",
+      );
     }
 
     const updatedEvent = {

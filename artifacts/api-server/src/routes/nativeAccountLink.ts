@@ -306,6 +306,14 @@ const NativeEventCardEditBody = z.object({
   timezone: z.string().min(1).max(100),
   location: z.string().max(300),
   opponent: z.string().max(200),
+  expected: z.object({
+    type: z.enum(["game", "practice"]),
+    date: z.string().length(10),
+    time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+    timezone: z.string().min(1).max(100),
+    location: z.string().max(300),
+    opponent: z.string().max(200),
+  }).strict(),
 }).strict();
 function isValidNativeEventDate(date: string) {
   const parsed = new Date(`${date}T00:00:00.000Z`);
@@ -407,6 +415,7 @@ nativeAccountLinkRouter.patch("/supporter/event-cards/:shareToken", handle(async
     identity(res),
     parsedToken.data,
     parsed.data,
+    parsed.data.expected,
   );
   try {
     await reconcileGameOnShare(updated.share);

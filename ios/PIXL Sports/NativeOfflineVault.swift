@@ -67,6 +67,13 @@ final class NativeOfflineVault {
         Set(Array(index.entries.keys) + (lease?.pendingKeys ?? []))
             .filter { $0.hasPrefix("outbox/") }.map { String($0.dropFirst(7)) }.sorted()
     }
+    var pendingEventCardIDs: [String] {
+        Set(Array(index.entries.keys) + (lease?.pendingKeys ?? []))
+            .filter { $0.hasPrefix("pending/event-card/") }
+            .map { String($0.dropFirst("pending/event-card/".count)) }
+            .filter { UUID(uuidString: $0) != nil }
+            .sorted()
+    }
     var preparedEvents: [String] {
         index.entries.keys.filter { $0.hasPrefix("workspace/") }.map { String($0.dropFirst(10)) }
     }

@@ -30,3 +30,15 @@ persisting pending writes alone does not provide offline app access.
 **How to apply:** Treat offline startup and local work as product requirements,
 while preserving verified native ownership, account isolation, and known access
 revocations. Distinguish work saved on the phone from server-acknowledged sync.
+
+Native Event Card creates and edits must stay in protected on-device storage
+until the server confirms them. Retried edits compare against their original
+server snapshot; conflicts require an explicit choice rather than overwriting
+newer server data.
+
+**Why:** Network indicators alone do not prove that the PIXL API is reachable,
+and losing or duplicating a game-day card is worse than showing a pending save.
+
+**How to apply:** Save the account-scoped draft first, make safe idempotent
+retries when service is reachable, explain whether the issue is connectivity,
+authentication, or server response, and keep local and server versions distinct.

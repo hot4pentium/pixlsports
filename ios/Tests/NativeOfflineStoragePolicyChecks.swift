@@ -6,10 +6,11 @@ struct NativeOfflineStoragePolicyChecks {
             "get/supporter/schedule", "get/supporter/profile", "cache/settings",
             "workspace/queued", "workspace/draft", "workspace/clean",
             "get/supporter/hype-card", "outbox/queued", "draft/draft",
-            "pending/hype-card-settings"
+            "pending/hype-card-settings", "pending/event-card/11111111-1111-4111-8111-111111111111"
         ]
         for key in ["get/supporter/schedule", "get/supporter/profile", "cache/settings",
                     "outbox/queued", "draft/draft", "pending/hype-card-settings",
+                    "pending/event-card/11111111-1111-4111-8111-111111111111",
                     "workspace/queued", "workspace/draft",
                     "unknown/future-recovery", "get/supporter/schedule?variant=1"] {
             precondition(!Policy.isDisposable(key, knownKeys: keys), "Recovery record must survive: \(key)")
@@ -40,6 +41,11 @@ struct NativeOfflineStoragePolicyChecks {
         precondition(Policy.isPending("pending/hype-card-settings"))
         precondition(Policy.pendingEvents(keys: ["pending/hype-card-settings"]).isEmpty,
                      "Account settings drafts must not be mistaken for an Event Card draft.")
+        precondition(
+            Policy.pendingEvents(keys: ["pending/event-card/11111111-1111-4111-8111-111111111111"])
+                == ["11111111-1111-4111-8111-111111111111"],
+            "Pending Event Card IDs must be cataloged as protected work."
+        )
         precondition(Policy.pendingBudget > Policy.cacheBudget)
 
         let lowSpace = NativeOfflineStorageSnapshot(totalBytes: 100, removableBytes: 20,

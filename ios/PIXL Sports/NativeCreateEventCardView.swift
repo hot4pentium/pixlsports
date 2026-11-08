@@ -3,6 +3,7 @@ import ClerkKit
 
 struct NativeCreateEventCardView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
     let athleteName: String
     let teamName: String?
     let seasonName: String?
@@ -10,6 +11,7 @@ struct NativeCreateEventCardView: View {
     let clerk: Clerk?
     let existingEvent: AthleteFanEvent?
     let shareToken: String?
+    let pendingChange: NativePendingEventCardChange?
     let onCreated: (String) -> Void
 
     @State private var eventType = "game"
@@ -20,7 +22,9 @@ struct NativeCreateEventCardView: View {
     @State private var timezone: String
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var localSaveMessage: String?
     @State private var canRetrySave = false
+    @State private var completedEventCallback = false
     @State private var eventID = UUID().uuidString.lowercased()
     @State private var fixtureIsOnline = false
 
@@ -38,6 +42,7 @@ struct NativeCreateEventCardView: View {
         clerk: Clerk?,
         existingEvent: AthleteFanEvent? = nil,
         shareToken: String? = nil,
+        pendingChange: NativePendingEventCardChange? = nil,
         onCreated: @escaping (String) -> Void
     ) {
         self.athleteName = athleteName
@@ -47,15 +52,25 @@ struct NativeCreateEventCardView: View {
         self.clerk = clerk
         self.existingEvent = existingEvent
         self.shareToken = shareToken
+        self.pendingChange = pendingChange
         self.onCreated = onCreated
-        let zone = existingEvent?.timezone ?? initialTimezone ?? TimeZone.current.identifier
+        let pendingDraft = pendingChange?.draft
+        let zone = pendingDraft?.timezone ?? existingEvent?.timezone ?? initialTimezone ?? TimeZone.current.identifier
         _timezone = State(initialValue: zone)
-        _eventType = State(initialValue: existingEvent?.type ?? "game")
-        _eventDate = State(initialValue: Self.dateValue(existingEvent?.date, time: "12:00", timezone: zone) ?? Self.defaultDate(timezone: zone))
-        _eventTime = State(initialValue: Self.dateValue(existingEvent?.date, time: existingEvent?.time ?? "18:00", timezone: zone) ?? Date())
-        _opponent = State(initialValue: existingEvent?.opponent ?? "")
-        _location = State(initialValue: existingEvent?.location ?? "")
-        _eventID = State(initialValue: existingEvent?.eventId ?? UUID().uuidString.lowercased())
+        _eventType = State(initialValue: pendingDraft?.type ?? existingEvent?.type ?? "game")
+        _eventDate = State(initialValue: Self.dateValue(
+            pendingDraft?.date ?? existingEvent?.date,
+            time: "12:00",
+            timezone: zone
+        ) ?? Self.defaultDate(timezone: zone))
+        _eventTime = State(initialValue: Self.dateValue(
+            pendingDraft?.date ?? existingEvent?.date,
+            time: pendingDraft?.time ?? existingEvent?.time ?? "18:00",
+            timezone: zone
+        ) ?? Date())
+        _opponent = State(initialValue: pendingDraft?.opponent ?? existingEvent?.opponent ?? "")
+        _location = State(initialValue: pendingDraft?.location ?? existingEvent?.location ?? "")
+        _eventID = State(initialValue: pendingDraft?.id ?? existingEvent?.eventId ?? UUID().uuidString.lowercased())
     }
 
     private var selectedTimeZone: TimeZone {
@@ -84,7 +99,9 @@ struct NativeCreateEventCardView: View {
         return formatter.string(from: eventTime)
     }
 
-    private var isEditing: Bool { existingEvent != nil && shareToken != nil }
+    private var isEditing: Bool {
+        pendingChange?.operation == .update || (existingEvent != nil && shareToken != nil)
+    }
 
     private var canSaveWithoutClerk: Bool {
 #if DEBUG
@@ -210,12 +227,14 @@ struct NativeCreateEventCardView: View {
                                 fixtureIsOnline = true
                             }
                             .accessibilityIdentifier("native-event-create-fixture-reconnect")
-                            Text("Saved Event Cards: \(NativeEventCardCreateRetryUITestFixture.savedDrafts.count)")
+                            Text("Pending Event Cards: \(NativeEventCardCreateRetryUITestFixture.savedDrafts.count)")
                                 .accessibilityIdentifier("native-event-create-fixture-saved-count")
                             if let savedDraft = NativeEventCardCreateRetryUITestFixture.savedDrafts.values.first {
                                 Text("Saved details: \(savedDraft.opponent) at \(savedDraft.location)")
                                     .accessibilityIdentifier("native-event-create-fixture-saved-details")
                             }
+                            Text("Server Event Cards: \(NativeEventCardCreateRetryUITestFixture.serverDrafts.count)")
+                                .accessibilityIdentifier("native-event-create-fixture-server-count")
                             Text("Confirmed Event Cards: \(NativeEventCardCreateRetryUITestFixture.confirmedEventIDs.count)")
                                 .accessibilityIdentifier("native-event-create-fixture-confirmed-count")
                         }
@@ -224,11 +243,26 @@ struct NativeCreateEventCardView: View {
                     }
 #endif
 
-                    Text(isEditing
-                         ? "Updating an Event Card needs a connection to PIXL. Changes save to your PIXL account."
-                         : "Creating an Event Card needs a connection to PIXL. It saves to your PIXL account, not on this iPhone.")
+                    Text("Event Cards sync to your PIXL account. If PIXL can’t be reached, this iPhone keeps a private draft until it can sync.")
                         .font(.footnote)
                         .foregroundStyle(SupporterHomeColors.lightMuted)
+
+                    if let localSaveMessage {
+                        Text(localSaveMessage)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(SupporterHomeColors.accentText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("native-event-create-local-status")
+                        if canRetrySave {
+                            Button("Try syncing now") {
+                                Task { await saveEventCard(forceNetworkAttempt: true) }
+                            }
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(SupporterHomeColors.background)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("native-event-create-retry")
+                        }
+                    }
 
                     if let errorMessage {
                         VStack(alignment: .leading, spacing: 8) {
@@ -259,7 +293,9 @@ struct NativeCreateEventCardView: View {
                             } else {
                                 Image(systemName: "plus").fontWeight(.black)
                             }
-                            Text(isSaving ? "Saving…" : isEditing ? "Save Changes" : "Create Event Card")
+                            Text(isSaving ? "Saving…" : localSaveMessage != nil
+                                 ? (offline.online ? "Try sync Event Card" : "Save changes on this iPhone")
+                                 : isEditing ? "Save Changes" : "Create Event Card")
                                 .font(.headline.weight(.black))
                         }
                         .foregroundStyle(SupporterHomeColors.background)
@@ -285,10 +321,31 @@ struct NativeCreateEventCardView: View {
         .navigationTitle(isEditing ? "Edit Event Card" : "New Event Card")
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("native-event-card-create")
+        .onAppear {
+            if let pendingChange {
+                localSaveMessage = pendingChange.lastError
+                    ?? "Saved on this iPhone. Waiting to sync with PIXL."
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nativeEventCardQueueSynced)) { _ in
+            guard let clerk, let subject = clerk.user?.id,
+                  localSaveMessage != nil,
+                  !completedEventCallback,
+                  !offline.pendingEventCards(subject: subject).contains(where: { $0.id == eventID }) else { return }
+            if let token = offline.recentlySyncedEventCardToken(id: eventID, subject: subject) {
+                completeSync(token: token)
+                return
+            }
+            Task {
+                guard let schedule = try? await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk),
+                      let event = schedule.events.first(where: { $0.eventId == eventID }) else { return }
+                completeSync(token: event.shareToken)
+            }
+        }
     }
 
     @MainActor
-    private func saveEventCard() async {
+    private func saveEventCard(forceNetworkAttempt: Bool = false) async {
         guard clerk != nil || canSaveWithoutClerk else {
             errorMessage = "Sign in on this iPhone to manage Event Cards."
             return
@@ -309,6 +366,7 @@ struct NativeCreateEventCardView: View {
         }
         isSaving = true
         errorMessage = nil
+        localSaveMessage = nil
         canRetrySave = false
         defer { isSaving = false }
 
@@ -321,52 +379,107 @@ struct NativeCreateEventCardView: View {
             location: cleanLocation,
             opponent: eventType == "practice" ? "" : cleanOpponent
         )
-        do {
-            let token: String
-            if canSaveWithoutClerk {
-                token = try await SupporterHomeAPI.createEventCard(
-                    draft: draft,
-                    teamName: teamName,
-                    athleteName: athleteName,
-                    seasonName: trimmedSeasonName,
-                    clerk: clerk
-                )
-            } else if let shareToken, isEditing, let clerk {
-                token = try await SupporterHomeAPI.updateEventCard(
-                    shareToken: shareToken,
-                    draft: draft,
-                    clerk: clerk
-                )
-            } else if let clerk {
-                token = try await SupporterHomeAPI.createEventCard(
-                    draft: draft,
-                    teamName: teamName,
-                    athleteName: athleteName,
-                    seasonName: trimmedSeasonName,
-                    clerk: clerk
-                )
-            } else {
-                throw SupporterHomeAPIError.invalidResponse
+#if DEBUG
+        if canSaveWithoutClerk {
+            NativeEventCardCreateRetryUITestFixture.saveLocally(draft)
+            localSaveMessage = "Saved on this iPhone. Waiting to sync with PIXL."
+            guard NativeEventCardCreateRetryUITestFixture.isOnline else {
+                canRetrySave = true
+                return
             }
-            try await SupporterHomeAPI.confirmEventCard(
-                shareToken: token,
-                draft: draft,
-                clerk: clerk
-            )
-            onCreated(token)
-            if isEditing { dismiss() }
-        } catch {
-            if let offlineError = error as? NativeOfflineError, offlineError == .onlineOnly {
-                errorMessage = isEditing
-                    ? "A connection to PIXL is required to update this Event Card. Your changes haven’t been saved."
-                    : "A connection to PIXL is required to create this Event Card. It hasn’t been saved yet."
+            do {
+                let token = try NativeEventCardCreateRetryUITestFixture.create(draft)
+                try NativeEventCardCreateRetryUITestFixture.confirm(token: token, draft: draft)
+                localSaveMessage = nil
+                onCreated(token)
+            } catch {
+                localSaveMessage = "Saved on this iPhone. PIXL could not confirm the save yet."
+                canRetrySave = true
+            }
+            return
+        }
+#endif
+        guard let clerk, let subject = clerk.user?.id else {
+            errorMessage = "Sign in on this iPhone before saving an Event Card draft."
+            return
+        }
+        let runtime = NativeOfflineRuntime.shared
+        let queuedChange = runtime.pendingEventCards(subject: subject).first(where: { $0.id == draft.id })
+        let operation = queuedChange?.operation ?? pendingChange?.operation ?? (isEditing ? .update : .create)
+        let baseline = queuedChange?.baseDraft ?? pendingChange?.baseDraft ?? existingEvent.map(NativeEventCardDraft.from)
+        var change = queuedChange ?? pendingChange ?? NativePendingEventCardChange(
+            operation: operation,
+            draft: draft,
+            teamName: teamName,
+            athleteName: athleteName,
+            seasonName: trimmedSeasonName,
+            shareToken: shareToken,
+            baseDraft: baseline,
+            attemptedDraft: nil,
+            conflictDraft: nil,
+            conflictMessage: nil,
+            lastError: nil,
+            createdAt: Date()
+        )
+        guard !change.isConflicted else {
+            errorMessage = change.conflictMessage ?? "Review this Event Card’s saved changes before editing it again."
+            return
+        }
+        change.draft = draft
+        change.lastError = nil
+        var persistedLocally = false
+        do {
+            try runtime.savePendingEventCard(change, subject: subject)
+            persistedLocally = true
+            localSaveMessage = "Saved on this iPhone. Checking PIXL sync…"
+            let syncedTokens: [String: String]
+            if runtime.online || forceNetworkAttempt {
+                syncedTokens = await runtime.retryPendingEventCards(clerk: clerk, onlyID: draft.id)
             } else {
-                errorMessage = isEditing
-                    ? "We couldn’t confirm that this Event Card was updated. Check your connection and try again."
-                    : "We couldn’t confirm that this Event Card was saved. Check your connection and try again."
+                syncedTokens = [:]
+            }
+            if let remaining = runtime.pendingEventCards(subject: subject).first(where: { $0.id == draft.id }) {
+                localSaveMessage = remaining.lastError
+                    ?? (runtime.online
+                        ? "Saved on this iPhone. Waiting to sync with PIXL."
+                        : "Saved on this iPhone. Waiting for a connection to PIXL.")
+                canRetrySave = true
+            } else if !runtime.vault.canContinue(subject: subject) {
+                localSaveMessage = "Reconnect your PIXL account to check this saved Event Card."
+                canRetrySave = true
+            } else if let token = syncedTokens[draft.id]
+                        ?? runtime.recentlySyncedEventCardToken(id: draft.id, subject: subject)
+                        ?? change.shareToken
+                        ?? pendingChange?.shareToken {
+                completeSync(token: token)
+            } else {
+                // The queue may have been cleared after a successful create.
+                // Read the refreshed schedule to obtain its server-issued token.
+                let schedule = try await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk)
+                guard let event = schedule.events.first(where: { $0.eventId == draft.id }) else {
+                    throw SupporterHomeAPIError.eventSaveNotConfirmed
+                }
+                completeSync(token: event.shareToken)
+            }
+        } catch {
+            if persistedLocally {
+                localSaveMessage = runtime.vault.canContinue(subject: subject)
+                    ? "Saved on this iPhone. PIXL sync will retry when you try again."
+                    : "Reconnect your PIXL account to check this saved Event Card."
+            } else {
+                errorMessage = "This Event Card could not be saved on this iPhone. Check the saved-work status and try again."
             }
             canRetrySave = true
         }
+    }
+
+    @MainActor
+    private func completeSync(token: String) {
+        guard !completedEventCallback else { return }
+        completedEventCallback = true
+        localSaveMessage = nil
+        onCreated(token)
+        if isEditing { dismiss() }
     }
 
     private static func dateValue(_ date: String?, time: String, timezone: String) -> Date? {

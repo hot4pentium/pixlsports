@@ -290,7 +290,8 @@ final class NativeAccountLinkClient {
         method: String = "POST",
         apiRoot: Bool = false,
         clerk: Clerk,
-        allowCachedWorkspace: Bool = true
+        allowCachedWorkspace: Bool = true,
+        forceNetworkAttempt: Bool = false
     ) async throws -> Data {
         let offline = NativeOfflineRuntime.shared
         let encoded = try JSONEncoder().encode(body)
@@ -300,7 +301,7 @@ final class NativeAccountLinkClient {
         let shareToken = object?["shareToken"] as? String
         let isWorkspace = !apiRoot && path == "supporter/event-workspace"
         let downloadStamp = isWorkspace ? shareToken.map { offline.workspaceDownloadStamp(for: $0) } : nil
-        if !offline.online || (!clerk.isLoaded && offline.canContinue) {
+        if (!offline.online && !forceNetworkAttempt) || (!clerk.isLoaded && offline.canContinue) {
             if isWorkspace, allowCachedWorkspace, let shareToken,
                let data = try offline.saved("workspace/" + shareToken, subject: clerk.user?.id) { return data }
             throw isWorkspace ? NativeOfflineError.notPrepared : NativeOfflineError.onlineOnly

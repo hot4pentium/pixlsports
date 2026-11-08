@@ -390,11 +390,13 @@ final class SupporterDashboardUITests: XCTestCase {
         location.typeText("North Field")
 
         app.buttons["native-event-create-submit"].tap()
-        let error = app.staticTexts["native-event-create-error"]
-        XCTAssertTrue(error.waitForExistence(timeout: 5))
-        XCTAssertTrue(error.label.contains("A connection to PIXL is required to create this Event Card"))
+        let localStatus = app.staticTexts["native-event-create-local-status"]
+        XCTAssertTrue(localStatus.waitForExistence(timeout: 5))
+        XCTAssertTrue(localStatus.label.contains("Saved on this iPhone"))
+        XCTAssertTrue(localStatus.label.contains("Waiting to sync"))
         XCTAssertTrue(app.buttons["native-event-create-retry"].exists)
-        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Saved Event Cards: 0")
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Pending Event Cards: 1")
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-server-count"].label, "Server Event Cards: 0")
 
         app.buttons["native-event-create-fixture-reconnect"].tap()
         XCTAssertEqual(
@@ -403,13 +405,12 @@ final class SupporterDashboardUITests: XCTestCase {
         )
         app.buttons["native-event-create-retry"].tap()
 
-        let interruptedResponse = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS %@", "We couldn’t confirm that this Event Card was saved")
-        ).firstMatch
+        let interruptedResponse = app.staticTexts["native-event-create-local-status"]
         XCTAssertTrue(interruptedResponse.waitForExistence(timeout: 5))
-        XCTAssertTrue(interruptedResponse.label.contains("We couldn’t confirm that this Event Card was saved"))
+        XCTAssertTrue(interruptedResponse.label.contains("could not confirm the save"))
         XCTAssertTrue(app.buttons["native-event-create-retry"].exists)
-        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Saved Event Cards: 1")
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Pending Event Cards: 1")
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-server-count"].label, "Server Event Cards: 1")
         XCTAssertTrue(
             app.staticTexts["native-event-create-fixture-saved-details"].label.contains("Bears at North Field")
         )
@@ -417,9 +418,10 @@ final class SupporterDashboardUITests: XCTestCase {
         app.buttons["native-event-create-retry"].tap()
         XCTAssertTrue(app.staticTexts["native-event-create-fixture-confirmed-count"]
             .waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Saved Event Cards: 1")
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-saved-count"].label, "Pending Event Cards: 0")
+        XCTAssertEqual(app.staticTexts["native-event-create-fixture-server-count"].label, "Server Event Cards: 1")
         XCTAssertEqual(app.staticTexts["native-event-create-fixture-confirmed-count"].label, "Confirmed Event Cards: 1")
-        XCTAssertFalse(error.exists)
+        XCTAssertFalse(app.staticTexts["native-event-create-error"].exists)
         XCTAssertFalse(app.buttons["native-event-create-retry"].exists)
         app.terminate()
     }
@@ -431,7 +433,7 @@ final class SupporterDashboardUITests: XCTestCase {
 
             XCTAssertTrue(app.staticTexts["Create an Event Card"].waitForExistence(timeout: 5))
             XCTAssertTrue(app.staticTexts[
-                "Creating an Event Card needs a connection to PIXL. It saves to your PIXL account, not on this iPhone."
+                "Event Cards sync to your PIXL account. If PIXL can’t be reached, this iPhone keeps a private draft until it can sync."
             ].exists)
             for (identifier, expectedLabel) in [
                 ("native-event-opponent", "Opponent"),
