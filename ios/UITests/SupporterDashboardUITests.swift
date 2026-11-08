@@ -359,6 +359,28 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testMessageBoardDetailsAndFooterRemainReadableAcrossContentAndTextSizes() {
+        for state in ["upcoming", "guide-upcoming"] {
+            for accessibilityText in [false, true] {
+                let app = launch(state, accessibilityText: accessibilityText)
+                let board = reachable("dashboard-message-board-card", in: app)
+                let hype = reachable("dashboard-hype-card", in: app)
+                XCTAssertGreaterThanOrEqual(board.frame.height, 260)
+                XCTAssertFalse(board.frame.intersects(hype.frame))
+                XCTAssertGreaterThanOrEqual(board.frame.minX, 0)
+                XCTAssertLessThanOrEqual(board.frame.maxX, app.windows.firstMatch.frame.maxX)
+                if state == "guide-upcoming" {
+                    XCTAssertTrue(board.label.contains("Entrance C"),
+                                  "The complete venue remains available to VoiceOver.")
+                }
+                // Retain the real SwiftUI rendering for review of the centered
+                // details, protected footer gap, and large-text line wrapping.
+                retainScreenshot(in: app, name: "Message-Board-\(state)-\(accessibilityText ? "Large" : "Standard")")
+                app.terminate()
+            }
+        }
+    }
+
     func testThreeSquareCardsShareOneRowAndHeroContainsTimeAndPlace() {
         let app = launch("upcoming")
         let hero = reachable("dashboard-message-board-card", in: app)

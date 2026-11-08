@@ -105,6 +105,36 @@ struct NativeHomeHeroCards: View {
             }
             .foregroundStyle(SupporterHomeColors.blue)
 
+            eventDetails
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .layoutPriority(1)
+
+            nextStepFooter
+                .padding(.top, 14)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 260, alignment: .leading)
+        .padding(12)
+        .background(Color(red: 0.96, green: 0.97, blue: 0.94), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+        .overlay(alignment: .trailing) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(SupporterHomeColors.blue.opacity(0.5))
+                .frame(width: 3, height: 34)
+                .padding(.trailing, 1)
+                .accessibilityHidden(true)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .strokeBorder(.white.opacity(0.72), lineWidth: 1)
+        }
+        .supporterSurfaceShadow()
+        .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+    }
+
+    /// The flexible frame centers this non-shrinking group above the footer.
+    private var eventDetails: some View {
+        VStack(alignment: .leading, spacing: 9) {
             if let nextEvent {
                 Text(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone))
                     .font(.caption2.weight(.bold))
@@ -115,7 +145,7 @@ struct NativeHomeHeroCards: View {
                 Text(nextEvent.title)
                     .font(.system(.subheadline, design: .rounded).weight(.black))
                     .foregroundStyle(SupporterHomeColors.background)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Label(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone), systemImage: "clock")
@@ -125,14 +155,15 @@ struct NativeHomeHeroCards: View {
                     Label(nextEvent.location, systemImage: "mappin.and.ellipse")
                         .font(.caption2)
                         .foregroundStyle(SupporterHomeColors.background.opacity(0.75))
-                        .lineLimit(2)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if !nextEvent.opponent.isEmpty && !nextEvent.title.localizedCaseInsensitiveContains(nextEvent.opponent) {
                     Text("vs \(nextEvent.opponent)")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(SupporterHomeColors.background)
-                        .lineLimit(2)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Text("No event yet")
@@ -145,8 +176,12 @@ struct NativeHomeHeroCards: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer(minLength: 0)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
 
+    private var nextStepFooter: some View {
+        VStack(alignment: .leading, spacing: 9) {
             Text("Next Step")
                 .font(.title3.weight(.black))
                 .fontDesign(.rounded)
@@ -167,23 +202,6 @@ struct NativeHomeHeroCards: View {
             .frame(minHeight: 28)
             .background(SupporterHomeColors.accent, in: Capsule())
         }
-        .frame(maxWidth: .infinity, minHeight: 260, alignment: .leading)
-        .padding(12)
-        .background(Color(red: 0.96, green: 0.97, blue: 0.94), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
-        .overlay(alignment: .trailing) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(SupporterHomeColors.blue.opacity(0.5))
-                .frame(width: 3, height: 34)
-                .padding(.trailing, 1)
-                .accessibilityHidden(true)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .strokeBorder(.white.opacity(0.72), lineWidth: 1)
-        }
-        .supporterSurfaceShadow()
-        .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
     }
 
     private var eventStatusLabel: String {

@@ -141,6 +141,13 @@ final class NativeEventToolModel: ObservableObject {
     }
     var canQueueStat: Bool { canEditTrackerLocally && workspace?.game?.status == "live" }
     var pendingFinal: Bool { pendingQueue.contains { $0.command.kind == "finish" } }
+    var trackerIsComplete: Bool {
+        trackerRecoveryStatus == .gameFinished || NativeEventDetailStep.gameIsComplete(
+            workspaceStatus: workspace?.eventStatus,
+            gameStatus: displayedGame?.status,
+            pendingFinal: pendingFinal
+        )
+    }
 
     static func shared(shareToken: String, accountID: String) -> NativeEventToolModel {
         NativeOfflineRuntime.shared.eventModel(token: shareToken, accountID: accountID)

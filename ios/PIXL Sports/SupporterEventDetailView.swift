@@ -16,6 +16,7 @@ struct SupporterEventDetailView: View {
     @State private var selectedStep: NativeEventDetailStep = .prep
     @State private var selectionInitialized = false
     @State private var prepHasUnsavedChanges = false
+    @State private var workspaceGameCompleted = false
     @State private var refreshTask: Task<Void, Never>?
 #if DEBUG
     @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
@@ -46,12 +47,22 @@ struct SupporterEventDetailView: View {
         case unavailable(String)
     }
 
+    private var gameIsComplete: Bool {
+        guard case let .loaded(_, event) = state, event.type == "game" else { return false }
+        return workspaceGameCompleted || NativeEventDetailStep.gameIsComplete(eventStatus: event.status)
+    }
+
+    private var effectiveSelectedStep: NativeEventDetailStep {
+        guard case let .loaded(_, event) = state else { return selectedStep }
+        return selectedStep.permittedSelection(isGame: event.type == "game", isComplete: gameIsComplete)
+    }
+
     private var pageNavigationTitle: String {
         switch state {
         case .loading, .unavailable(_):
             return "Event Details"
         case .loaded(_, _):
-            return selectedStep.title
+            return effectiveSelectedStep.title
         }
     }
 
@@ -95,10 +106,12 @@ struct SupporterEventDetailView: View {
                 TimelineView(.periodic(from: .now, by: 15)) { context in
                     NativeEventStepBar(
                         recommended: recommendedStep(schedule: schedule, event: event, date: context.date),
-                        selected: selectedStep,
+                        selected: effectiveSelectedStep,
                         isGame: event.type == "game",
+                        isComplete: gameIsComplete,
                         actionsEnabled: clerk != nil || fixture != nil,
                         onSelect: { step in
+                            guard step != .trackStats || (event.type == "game" && !gameIsComplete) else { return }
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             selectedStep = step
                         }
@@ -161,6 +174,9 @@ struct SupporterEventDetailView: View {
         .onChange(of: prepHasUnsavedChanges) { _, dirty in
             if !dirty && toolsChanged { scheduleRefresh() }
         }
+        .onChange(of: gameIsComplete) { _, complete in
+            if complete && selectedStep == .trackStats { selectedStep = .share }
+        }
         .onChange(of: scenePhase) { _, phase in
             // Don't remove the destination's NavigationLink while a native tool
             // has unsaved work. Its requests still recheck account access.
@@ -183,9 +199,10 @@ struct SupporterEventDetailView: View {
                 NativeEventToolPanel(
                     schedule: schedule, event: event,
                     clerk: clerk,
-                    selected: selectedStep,
+                    selected: effectiveSelectedStep,
                     fixturePrep: fixture?.prep,
-                    onDirtyChange: { prepHasUnsavedChanges = $0 }
+                    onDirtyChange: { prepHasUnsavedChanges = $0 },
+                    onCompletionChange: { workspaceGameCompleted = $0 }
                 )
                 .id("\(shareToken):\(clerk?.user?.id ?? "fixture")")
                 .id("active-event-tool")
@@ -239,6 +256,7 @@ struct SupporterEventDetailView: View {
             start: start,
             isGame: event.type == "game",
             isLive: event.status == "live" || event.liveTapsActive,
+            isComplete: workspaceGameCompleted || NativeEventDetailStep.gameIsComplete(eventStatus: event.status),
             now: now
         )
     }
@@ -412,8 +430,8 @@ struct SupporterEventDetailView: View {
     }
 
     private func statusBadge(_ event: AthleteFanEvent) -> some View {
-        let isLive = event.status == "live"
-        let label = isLive ? "LIVE NOW" : event.status == "final" ? "COMPLETE" : "UPCOMING"
+        let isLive = !gameIsComplete && event.status == "live"
+        let label = gameIsComplete ? "COMPLETE" : isLive ? "LIVE NOW" : "UPCOMING"
 
         return HStack(spacing: 6) {
             Circle()
@@ -436,7 +454,7 @@ struct SupporterEventDetailView: View {
     }
 
     private func statusText(_ event: AthleteFanEvent) -> String {
-        event.status == "live" ? "Live" : event.status == "final" ? "Complete" : "Upcoming"
+        gameIsComplete ? "Complete" : event.status == "live" ? "Live" : "Upcoming"
     }
 
     private var detailContentMaxWidth: CGFloat {

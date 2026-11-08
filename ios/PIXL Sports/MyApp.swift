@@ -181,7 +181,7 @@ struct MyApp: App {
                                 date: "2026-11-14",
                                 time: "18:30",
                                 type: ProcessInfo.processInfo.arguments.contains("--event-detail-practice") ? "practice" : "game",
-                                status: "live",
+                                status: ProcessInfo.processInfo.arguments.contains("--event-detail-final") ? "final" : "live",
                                 opponent: "The Visiting Team With a Very Long Name",
                                 location: "Northwest Regional Athletic Complex, Field Twenty-Seven, Entrance C",
                                 timezone: "America/Los_Angeles",

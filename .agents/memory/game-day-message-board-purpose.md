@@ -72,3 +72,15 @@ Prep, Track Stats, and Share should each have a distinct visual identity—orang
 **Why:** The user said the current tool pages look the same, asked for clear recognition, and specified these colors.
 
 **How to apply:** Carry each color through its page, action, and selected step. Give Prep a checklist/readiness hierarchy, Track Stats a scorekeeping hierarchy, and Share a sharing-action hierarchy. Preserve the shared workspace and existing save, authorization, and recommendation behavior.
+
+Explicitly completed games must not reopen Track Stats from the event steps, including a game finalized on the phone but not yet synced. Share is the postgame destination; Prep and pending-save recovery remain available. Elapsed schedule time alone does not finalize an unfinished game.
+
+**Why:** The user asked not to allow the tracker tab to be initiated after completion. Offline finalization must have the same user-facing effect without losing outstanding saves.
+
+**How to apply:** Use both event and device workspace completion, not only kickoff timing. Preserve queued commands, retry controls, and management of already-active cheers when leaving tracking.
+
+In the taller dashboard Message Board, keep details left-aligned but vertically centered in the space above the lower Next Step footer, with a protected gap before the footer.
+
+**Why:** The user asked to move the details down to use the increased height, while preserving space above Next Step.
+
+**How to apply:** Keep the status badge clear and let long details and accessibility text reflow; do not change the adjacent HYPE Card or centered Fan Base button.

@@ -3,6 +3,7 @@ import ClerkKit
 import UIKit
 
 struct NativeEventTrackerView: View {
+    @Environment(\.dismiss) private var dismiss
     let event: AthleteFanEvent
     let teamName: String
     let athleteName: String
@@ -45,6 +46,12 @@ struct NativeEventTrackerView: View {
             if model.workspace == nil { await model.load(clerk: clerk) }
         }
         .sheet(isPresented: $showingFinish) { finishSheet }
+        .onChange(of: model.trackerIsComplete) { _, complete in
+            if complete {
+                showingFinish = false
+                if !embedded { dismiss() }
+            }
+        }
     }
 
     private var trackerHeading: String {

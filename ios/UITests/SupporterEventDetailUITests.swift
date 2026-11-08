@@ -3,6 +3,27 @@ import UIKit
 
 @MainActor
 final class SupporterEventDetailUITests: XCTestCase {
+    func testCompletedGameOpensShareAndCannotInitiateTracking() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail", "--event-detail-final"]
+        app.launch()
+        let tracker = app.buttons["event-card-track-stats"]
+        XCTAssertTrue(tracker.waitForExistence(timeout: 10))
+        XCTAssertFalse(tracker.isEnabled)
+        assertSelectedStep("Share", in: app)
+        assertRecommendedStep("Share", in: app)
+        XCTAssertTrue(app.buttons["event-card-prep"].isEnabled)
+        XCTAssertTrue(app.buttons["event-card-share"].isEnabled)
+        XCTAssertFalse(app.buttons["native-event-open-mode-choice"].exists)
+        XCTAssertFalse(app.buttons["native-event-full-tracker"].exists)
+        app.buttons["event-card-prep"].tap()
+        assertSelectedStep("Prep", in: app)
+        app.buttons["event-card-share"].tap()
+        assertSelectedStep("Share", in: app)
+        XCTAssertFalse(tracker.isEnabled)
+        app.terminate()
+    }
+
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

@@ -9,6 +9,7 @@ struct NativeEventToolPanel: View {
     let selected: NativeEventDetailStep
     let fixturePrep: NativeEventWorkspace.Prep?
     let onDirtyChange: (Bool) -> Void
+    let onCompletionChange: (Bool) -> Void
     @StateObject private var workspaceModel: NativeEventToolModel
     @State private var prepVisited = false
     @State private var trackingVisited = false
@@ -16,13 +17,15 @@ struct NativeEventToolPanel: View {
 
     init(schedule: NativeSupporterSchedule, event: AthleteFanEvent, clerk: Clerk?,
          selected: NativeEventDetailStep, fixturePrep: NativeEventWorkspace.Prep?,
-         onDirtyChange: @escaping (Bool) -> Void) {
+         onDirtyChange: @escaping (Bool) -> Void,
+         onCompletionChange: @escaping (Bool) -> Void) {
         self.schedule = schedule
         self.event = event
         self.clerk = clerk
         self.selected = selected
         self.fixturePrep = fixturePrep
         self.onDirtyChange = onDirtyChange
+        self.onCompletionChange = onCompletionChange
 #if DEBUG
         if NativeEventWorkspaceUITestFixture.isRequested {
             _workspaceModel = StateObject(wrappedValue: NativeEventToolModel(uiTestFixture: .shared))
@@ -36,6 +39,22 @@ struct NativeEventToolPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if isComplete, let clerk {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Game complete").font(.headline)
+                    if workspaceModel.pendingFinal {
+                        Text("Final saved on this iPhone · not yet saved to PIXL")
+                            .font(.caption)
+                            .accessibilityIdentifier("native-event-final-pending")
+                    }
+                    if workspaceModel.pendingCount > 0 || workspaceModel.errorMessage != nil
+                        || workspaceModel.trackerRecoveryStatus != nil
+                        || workspaceModel.conflictBlocked || workspaceModel.unreadablePendingData {
+                        NativeToolSaveNotice(model: workspaceModel, clerk: clerk, savedContentName: "Stat Tracker")
+                    }
+                }
+                .accessibilityIdentifier("native-event-completed-game-status")
+            }
             if usesUITestWorkspace {
                 uiTestPrepPanel
             } else if let clerk {
@@ -46,17 +65,19 @@ struct NativeEventToolPanel: View {
                                             onDirtyChange: onDirtyChange)
                             .eventToolVisibility(selected == .prep)
                     }
-                    if event.type == "game", trackingVisited || selected == .trackStats {
+                    if event.type == "game", trackingVisited || selected == .trackStats || (isComplete && event.liveTapsActive) {
                         NativeEventTrackingPanel(
                             event: event, teamName: schedule.teamName ?? "Your team",
                             athleteName: schedule.athleteName ?? "Your athlete", clerk: clerk,
-                            isActive: selected == .trackStats,
+                            isActive: (!isComplete && selected == .trackStats)
+                                || (isComplete && selected == .share && event.liveTapsActive),
                             hasActiveLiveTapsElsewhere: schedule.events.contains {
                                 $0.liveTapsActive && $0.eventId != event.eventId
                             },
                             model: workspaceModel
                         )
-                        .eventToolVisibility(selected == .trackStats)
+                        .eventToolVisibility((!isComplete && selected == .trackStats)
+                            || (isComplete && selected == .share && event.liveTapsActive))
                     }
                     if shareVisited || selected == .share {
                         NativeEventShareView(schedule: schedule, event: event, clerk: clerk, embedded: true)
@@ -94,8 +115,16 @@ struct NativeEventToolPanel: View {
         .accessibilityIdentifier("event-detail-tool-panel")
         .onAppear { rememberSelection() }
         .onChange(of: selected) { _, _ in rememberSelection() }
+        .onChange(of: isComplete, initial: true) { _, complete in onCompletionChange(complete) }
+        .task {
+            if let clerk, workspaceModel.workspace == nil { await workspaceModel.load(clerk: clerk) }
+        }
     }
 
+    private var isComplete: Bool {
+        event.type == "game" && (workspaceModel.trackerIsComplete
+            || NativeEventDetailStep.gameIsComplete(eventStatus: event.status))
+    }
     private var toolAccent: Color {
         NativeEventToolColors.color(for: selected)
     }

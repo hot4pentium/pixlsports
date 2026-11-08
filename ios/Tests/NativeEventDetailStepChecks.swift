@@ -75,6 +75,27 @@ struct NativeEventDetailStepChecks {
             timeZone: losAngeles,
             now: oneMinuteBefore
         ) == .prep, "A future event without a valid start remains on Prep.")
-        print("Native Event Card and Message Board timing checks passed.")
+        for status in ["final", "complete", "completed", " FINAL "] {
+            precondition(NativeEventDetailStep.gameIsComplete(eventStatus: status))
+            precondition(NativeEventDetailStep.gameIsComplete(workspaceStatus: status))
+            precondition(NativeEventDetailStep.gameIsComplete(gameStatus: status))
+        }
+        for status in [nil, "live", "paused", "scheduled", "upcoming"] as [String?] {
+            precondition(!NativeEventDetailStep.gameIsComplete(eventStatus: status))
+        }
+        precondition(NativeEventDetailStep.gameIsComplete(pendingFinal: true),
+                     "An offline finish is complete before the server acknowledges it.")
+        for kickoff: Date? in [nil, start, start.addingTimeInterval(7 * 24 * 3600)] {
+            precondition(NativeEventDetailStep.recommended(
+                start: kickoff, isGame: true, isLive: true, isComplete: true, now: start
+            ) == .share, "Finalization overrides timing, missing dates, and stale live flags.")
+        }
+        precondition(NativeEventDetailStep.trackStats.permittedSelection(isGame: true, isComplete: true) == .share)
+        precondition(NativeEventDetailStep.trackStats.permittedSelection(isGame: false, isComplete: false) == .share)
+        precondition(NativeEventDetailStep.prep.permittedSelection(isGame: true, isComplete: true) == .prep)
+        precondition(NativeEventDetailStep.share.permittedSelection(isGame: true, isComplete: true) == .share)
+        // Even when timing recommends Share, an unfinalized game stays trackable.
+        precondition(NativeEventDetailStep.trackStats.permittedSelection(isGame: true, isComplete: false) == .trackStats)
+        print("Native Event Card completion and Message Board timing checks passed.")
     }
 }

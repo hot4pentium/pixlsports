@@ -4,6 +4,7 @@ struct NativeEventStepBar: View {
     let recommended: NativeEventDetailStep
     let selected: NativeEventDetailStep
     let isGame: Bool
+    let isComplete: Bool
     let actionsEnabled: Bool
     let onSelect: (NativeEventDetailStep) -> Void
 
@@ -21,12 +22,16 @@ struct NativeEventStepBar: View {
                 }
                 .accessibilityIdentifier("event-card-prep")
                 Button {
+                    guard isGame, !isComplete else { return }
                     onSelect(.trackStats)
                 } label: {
                     stepLabel(.trackStats)
                 }
-                .disabled(!isGame)
-                .accessibilityHint(isGame ? "Open this game's statistics." : "Stat tracking is available for games, not practices.")
+                .disabled(!isGame || isComplete)
+                .opacity(isComplete ? 0.45 : 1)
+                .accessibilityHint(isComplete
+                    ? "This game is complete. Use Share for postgame actions."
+                    : isGame ? "Open this game's statistics." : "Stat tracking is available for games, not practices.")
                 .accessibilityIdentifier("event-card-track-stats")
                 Button {
                     onSelect(.share)

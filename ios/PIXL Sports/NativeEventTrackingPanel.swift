@@ -61,6 +61,10 @@ struct NativeEventTrackingPanel: View {
         }
     }
 
+    private var gameIsComplete: Bool {
+        trackerModel.trackerIsComplete || NativeEventDetailStep.gameIsComplete(eventStatus: event.status)
+    }
+
     init(
         event: AthleteFanEvent,
         teamName: String,
@@ -83,21 +87,22 @@ struct NativeEventTrackingPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            if selectedMode == nil {
+            if selectedMode == nil && !gameIsComplete {
                 chooseTrackingToolPrompt
             }
             scorekeepingSection
-                .eventToolVisibility(selectedMode == .statTracker)
+                .eventToolVisibility(!gameIsComplete && selectedMode == .statTracker)
             liveTapsSection
-                .eventToolVisibility(selectedMode == .liveTaps)
+                .eventToolVisibility((!gameIsComplete && selectedMode == .liveTaps)
+                    || (gameIsComplete && event.liveTapsActive))
             if hasVisitedRecordMoments || selectedMode == .recordMoments {
                 recordMomentsSection
-                    .eventToolVisibility(selectedMode == .recordMoments)
+                    .eventToolVisibility(!gameIsComplete && selectedMode == .recordMoments)
             }
         }
         .tint(NativeEventToolColors.trackStats)
         .sheet(isPresented: $showingModePicker, onDismiss: {
-            if recordMomentsAfterPicker {
+            if recordMomentsAfterPicker && !gameIsComplete {
                 recordMomentsAfterPicker = false
                 showingRecordMoments = true
             }
@@ -116,6 +121,13 @@ struct NativeEventTrackingPanel: View {
         }
         .onChange(of: isActive) { _, active in
             if active { presentModePicker() }
+        }
+        .onChange(of: gameIsComplete) { _, complete in
+            if complete {
+                recordMomentsAfterPicker = false
+                showingModePicker = false
+                showingRecordMoments = false
+            }
         }
     }
 
@@ -309,6 +321,7 @@ struct NativeEventTrackingPanel: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.bordered)
+            .disabled(gameIsComplete)
             .accessibilityIdentifier("native-event-full-tracker")
         }
         .accessibilityIdentifier("native-event-scorekeeping-section")
@@ -319,15 +332,15 @@ struct NativeEventTrackingPanel: View {
             HStack {
                 SupporterEyebrow(text: "Live Taps", color: NativeEventToolColors.trackStats)
                 Spacer(minLength: 8)
-                switchToolButton
+                if !gameIsComplete { switchToolButton }
             }
-            if hasVisitedLiveTaps {
+            if hasVisitedLiveTaps || (gameIsComplete && event.liveTapsActive) {
                 NativeEventFanAccessView(
                     event: event,
                     athleteName: athleteName,
                     clerk: clerk,
                     hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere,
-                    isActive: isActive && selectedMode == .liveTaps
+                    isActive: isActive && (selectedMode == .liveTaps || gameIsComplete)
                 )
             }
         }
@@ -366,6 +379,7 @@ struct NativeEventTrackingPanel: View {
     }
 
     private func selectMode(_ mode: TrackingMode) {
+        guard !gameIsComplete else { return }
         if mode == .recordMoments {
             recordMomentsAfterPicker = true
         }
@@ -378,6 +392,7 @@ struct NativeEventTrackingPanel: View {
     }
 
     private func presentModePicker() {
+        guard isActive, !gameIsComplete else { return }
         expandedExplanation = nil
         showingModePicker = true
     }
