@@ -153,6 +153,64 @@ final class NativeAccountLinkClient {
         try NativeAccountLinkEndpoint.load(bundle: bundle)
     }
 
+    func checkAPIConnection(clerk: Clerk) async -> NativeAPIConnectionCheckResult {
+        // Validate the installed destination before requesting a session token.
+        let origin: URL
+        do {
+            origin = try Self.apiOrigin()
+        } catch {
+            return .unreachable
+        }
+        guard clerk.isAuthFlowComplete, let subject = clerk.user?.id else {
+            return .signInRequired
+        }
+
+        let token: String
+        do {
+            guard let currentToken = try await clerk.session?.getToken() else {
+                return .signInRequired
+            }
+            token = currentToken
+        } catch {
+            return .signInRequired
+        }
+        guard clerk.user?.id == subject else { return .signInRequired }
+
+        let url = origin.appendingPathComponent("api")
+            .appendingPathComponent("native")
+            .appendingPathComponent("notifications")
+            .appendingPathComponent("config")
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        request.httpMethod = "GET"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+
+        let response: URLResponse
+        do {
+            let (_, receivedResponse) = try await session.data(for: request)
+            response = receivedResponse
+        } catch {
+            return .unreachable
+        }
+        guard clerk.user?.id == subject, (try? Self.apiOrigin()) == origin else {
+            return .signInRequired
+        }
+        guard let response = response as? HTTPURLResponse else {
+            return .unreachable
+        }
+        if (200..<300).contains(response.statusCode) {
+            return .connected
+        }
+        if response.statusCode == 401 {
+            return .signInRequired
+        }
+        return .serverResponseError(statusCode: response.statusCode)
+    }
+
     func getData(_ path: String, headers: [String: String] = [:], clerk: Clerk) async throws -> Data {
         let offline = NativeOfflineRuntime.shared
         let key = offline.cacheKey(path, headers: headers)

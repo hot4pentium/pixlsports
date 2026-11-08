@@ -8,6 +8,40 @@ extension Notification.Name {
     static let nativeEventCardQueueSynced = Notification.Name("pixl.native.event-card-queue-synced")
 }
 
+enum NativeAPIConnectionCheckResult: Equatable {
+    case connected
+    case signInRequired
+    case unreachable
+    case serverResponseError(statusCode: Int)
+
+    var message: String {
+        switch self {
+        case .connected:
+            "Connected to PIXL Sports."
+        case .signInRequired:
+            "Sign in again to check the PIXL connection."
+        case .unreachable:
+            "Couldn’t reach the PIXL server. Check your connection and try again."
+        case let .serverResponseError(statusCode):
+            "PIXL responded with an error (HTTP \(statusCode)). Try again later."
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .connected: "checkmark.circle.fill"
+        case .signInRequired: "person.crop.circle.badge.exclamationmark"
+        case .unreachable: "wifi.slash"
+        case .serverResponseError: "exclamationmark.triangle.fill"
+        }
+    }
+
+    var succeeded: Bool {
+        if case .connected = self { return true }
+        return false
+    }
+}
+
 /// One foreground coordinator, not one reconnect timer per tap or screen.
 @MainActor
 final class NativeOfflineRuntime: ObservableObject {

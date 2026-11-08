@@ -53,10 +53,19 @@ private final class NativeNotificationSettingsModel: ObservableObject {
     @Published var availability: NativeNotificationAvailability?
     @Published var isLoading = true
     @Published private(set) var isSaving = false
+    @Published private(set) var isCheckingConnection = false
+    @Published private(set) var connectionCheckResult: NativeAPIConnectionCheckResult?
     @Published var isLinked = true
     @Published var errorMessage: String?
 
     private let client = NativeAccountLinkClient()
+
+    func checkConnection(clerk: Clerk) async {
+        guard !isCheckingConnection else { return }
+        isCheckingConnection = true
+        defer { isCheckingConnection = false }
+        connectionCheckResult = await client.checkAPIConnection(clerk: clerk)
+    }
 
     func load(clerk: Clerk) async {
         isLoading = true
@@ -155,6 +164,30 @@ struct NativeNotificationSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("PIXL connection") {
+                    Button {
+                        Task { await model.checkConnection(clerk: clerk) }
+                    } label: {
+                        if model.isCheckingConnection {
+                            Label("Checking PIXL connection", systemImage: "arrow.triangle.2.circlepath")
+                        } else {
+                            Label("Check PIXL connection", systemImage: "network")
+                        }
+                    }
+                    .disabled(model.isCheckingConnection)
+                    .accessibilityIdentifier("native-settings-check-connection")
+
+                    if let result = model.connectionCheckResult {
+                        Label(result.message, systemImage: result.symbolName)
+                            .font(.footnote)
+                            .foregroundStyle(result.succeeded ? .green : .red)
+                            .accessibilityIdentifier("native-settings-connection-result")
+                    }
+                    Text("This makes a secure read-only check and won’t change your account or saved settings.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("iPhone sign-in") {
                     Label("PIXL Sports account", systemImage: "person.crop.circle")
                     Text("Your account keeps your athlete profile, Event Cards, and alert preferences together.")
