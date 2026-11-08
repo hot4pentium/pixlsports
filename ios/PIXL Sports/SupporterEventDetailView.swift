@@ -16,7 +16,6 @@ struct SupporterEventDetailView: View {
     @State private var selectedStep: NativeEventDetailStep = .prep
     @State private var selectionInitialized = false
     @State private var prepHasUnsavedChanges = false
-    @State private var showingEventCardEdit = false
     @State private var refreshTask: Task<Void, Never>?
 #if DEBUG
     @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
@@ -140,29 +139,6 @@ struct SupporterEventDetailView: View {
 #endif
         .task {
             await load()
-        }
-        .sheet(isPresented: $showingEventCardEdit) {
-            NavigationStack {
-                if let clerk, case let .loaded(schedule, event) = state {
-                    NativeCreateEventCardView(
-                        athleteName: schedule.athleteName ?? "your athlete",
-                        teamName: schedule.teamName,
-                        seasonName: schedule.seasonName,
-                        initialTimezone: event.timezone ?? schedule.timezone,
-                        clerk: clerk,
-                        existingEvent: event,
-                        shareToken: shareToken,
-                        onCreated: { _ in Task { await load() } }
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showingEventCardEdit = false }
-                        }
-                    }
-                } else {
-                    ContentUnavailableView("Event Card unavailable", systemImage: "calendar")
-                }
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .nativeEventScheduleChanged)) { notification in
             guard let rawReason = notification.userInfo?[NativeEventScheduleChangeReason.userInfoKey] as? String,
@@ -294,18 +270,6 @@ struct SupporterEventDetailView: View {
         VStack(alignment: .leading, spacing: 13) {
             eventIdentity(schedule: schedule, event: event)
             eventScheduleDetails(schedule: schedule, event: event)
-            if clerk != nil {
-                Button {
-                    showingEventCardEdit = true
-                } label: {
-                    Label("Edit Event Card", systemImage: "pencil")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 13))
-                }
-                .accessibilityIdentifier("event-detail-edit-card")
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)

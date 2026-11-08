@@ -83,7 +83,7 @@ final class NativeOfflineUITests: XCTestCase {
         XCTAssertEqual(task.value as? String, "Ready", "Reconnect must not uncheck a custom task.")
     }
 
-    func testTrackerSaveAcknowledgementArrivesOnlyAfterReconnectResponse() throws {
+    func testTrackerSaveAcknowledgementBecomesSilentOnlyAfterReconnectResponse() throws {
         let event = try configuredEvent()
         let app = XCUIApplication()
         app.launch()
@@ -100,20 +100,22 @@ final class NativeOfflineUITests: XCTestCase {
         app.launch()
         open(event, in: app)
         app.buttons["event-card-track-stats"].tap()
-        let mode = app.buttons["native-event-mode-statTracker"]
+        let mode = app.buttons["native-event-choice-statTracker"]
         if mode.waitForExistence(timeout: 5) { mode.tap() }
         let full = app.buttons["native-event-full-tracker"]
         if full.waitForExistence(timeout: 5) { full.tap() }
 
         let trackerStatus = app.descendants(matching: .any)
             .matching(identifier: "native-event-tracker-save-status").firstMatch
+        let trackerRow = app.descendants(matching: .any)
+            .matching(identifier: "native-event-tracker-save-status-row").firstMatch
         XCTAssertTrue(trackerStatus.waitForExistence(timeout: 10))
         element("native-event-start-game", in: app).tap()
         element("native-event-score-team-add", in: app).tap()
         let offlineSaved = NSPredicate(format: "value CONTAINS[c] %@", "saved on this iPhone")
         let offlineSavedExpectation = XCTNSPredicateExpectation(predicate: offlineSaved, object: trackerStatus)
         XCTAssertEqual(XCTWaiter.wait(for: [offlineSavedExpectation], timeout: 10), .completed)
-        let offlineStatusFrame = trackerStatus.frame
+        let offlineStatusFrame = trackerRow.frame
         app.terminate()
 
         // Hold the first online tracker request briefly so the test can
@@ -134,14 +136,22 @@ final class NativeOfflineUITests: XCTestCase {
                 .localizedCaseInsensitiveContains("Saved to PIXL"),
             "The tracker must not claim server confirmation while its request is pending."
         )
-        XCTAssertEqual(trackerStatus.frame.minY, offlineStatusFrame.minY, accuracy: 1)
-        XCTAssertEqual(trackerStatus.frame.height, offlineStatusFrame.height, accuracy: 1)
+        XCTAssertEqual(trackerRow.frame.minY, offlineStatusFrame.minY, accuracy: 1)
+        XCTAssertEqual(trackerRow.frame.height, offlineStatusFrame.height, accuracy: 1)
 
-        let confirmed = NSPredicate(format: "value CONTAINS[c] %@", "Saved to PIXL")
+        let teamScore = app.staticTexts["native-event-score-team-value"]
+        let scoreBeforeConfirmation = teamScore.frame
+        // The transient notice disappears only once the queue is drained and
+        // there is no error, busy request, or offline state. The heading stays.
+        let confirmed = NSPredicate(format: "exists == false")
         let confirmedExpectation = XCTNSPredicateExpectation(predicate: confirmed, object: trackerStatus)
         XCTAssertEqual(XCTWaiter.wait(for: [confirmedExpectation], timeout: 60), .completed)
-        XCTAssertEqual(trackerStatus.frame.minY, offlineStatusFrame.minY, accuracy: 1)
-        XCTAssertEqual(trackerStatus.frame.height, offlineStatusFrame.height, accuracy: 1)
+        XCTAssertTrue(trackerRow.exists)
+        XCTAssertTrue(app.staticTexts["native-event-tracker-heading"].exists)
+        XCTAssertFalse(app.staticTexts["Saved to PIXL"].exists)
+        XCTAssertEqual(trackerRow.frame.minY, offlineStatusFrame.minY, accuracy: 1)
+        XCTAssertEqual(trackerRow.frame.height, offlineStatusFrame.height, accuracy: 1)
+        XCTAssertEqual(teamScore.frame.minY, scoreBeforeConfirmation.minY, accuracy: 1)
     }
 
     func testFreshGameCanStartScoreAdvanceAndFinishEntirelyOffline() throws {
@@ -157,27 +167,29 @@ final class NativeOfflineUITests: XCTestCase {
         app.launch()
         open(event, in: app)
         app.buttons["event-card-track-stats"].tap()
-        let mode = app.buttons["native-event-mode-statTracker"]
+        let mode = app.buttons["native-event-choice-statTracker"]
         if mode.waitForExistence(timeout: 5) { mode.tap() }
         let full = app.buttons["native-event-full-tracker"]
         if full.waitForExistence(timeout: 5) { full.tap() }
         let trackerStatus = app.descendants(matching: .any)
             .matching(identifier: "native-event-tracker-save-status").firstMatch
+        let trackerRow = app.descendants(matching: .any)
+            .matching(identifier: "native-event-tracker-save-status-row").firstMatch
         XCTAssertTrue(trackerStatus.waitForExistence(timeout: 10))
         let start = element("native-event-start-game", in: app)
-        let statusBeforeStart = trackerStatus.frame
+        let statusBeforeStart = trackerRow.frame
         start.tap()
-        XCTAssertEqual(trackerStatus.frame.minY, statusBeforeStart.minY, accuracy: 1)
-        XCTAssertEqual(trackerStatus.frame.height, statusBeforeStart.height, accuracy: 1)
+        XCTAssertEqual(trackerRow.frame.minY, statusBeforeStart.minY, accuracy: 1)
+        XCTAssertEqual(trackerRow.frame.height, statusBeforeStart.height, accuracy: 1)
 
         let scoreAdd = element("native-event-score-team-add", in: app)
         let teamScore = app.staticTexts["native-event-score-team-value"]
-        let statusBeforeScore = trackerStatus.frame
+        let statusBeforeScore = trackerRow.frame
         let scoreBeforeTap = teamScore.frame
         XCTAssertTrue((trackerStatus.value as? String ?? "").localizedCaseInsensitiveContains("saved on this iPhone"))
         scoreAdd.tap()
-        XCTAssertEqual(trackerStatus.frame.minY, statusBeforeScore.minY, accuracy: 1)
-        XCTAssertEqual(trackerStatus.frame.height, statusBeforeScore.height, accuracy: 1)
+        XCTAssertEqual(trackerRow.frame.minY, statusBeforeScore.minY, accuracy: 1)
+        XCTAssertEqual(trackerRow.frame.height, statusBeforeScore.height, accuracy: 1)
         XCTAssertEqual(teamScore.frame.minY, scoreBeforeTap.minY, accuracy: 1)
         element("native-event-score-team-add", in: app).tap()
         element("native-event-score-opponent-add", in: app).tap()
@@ -193,5 +205,52 @@ final class NativeOfflineUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["native-event-final-pending"].waitForExistence(timeout: 20))
         // This test deliberately leaves a real provisional final for reconnect
         // verification. Use a fresh disposable event for every run.
+    }
+
+    func testStartGameIsCenteredInCompactAndFullTrackerAtBothTextSizes() throws {
+        let event = try configuredEvent()
+        for accessibilityText in [false, true] {
+            assertStartLayout(event, accessibilityText: accessibilityText)
+        }
+    }
+
+    func testNonSoccerStartIsCenteredWithoutFormatPicker() throws {
+        guard let event = ProcessInfo.processInfo.environment["PIXL_OFFLINE_TEST_NON_SOCCER_EVENT_ID"],
+              !event.isEmpty else {
+            throw XCTSkip("Set PIXL_OFFLINE_TEST_NON_SOCCER_EVENT_ID to a fresh non-soccer Event Card.")
+        }
+        for accessibilityText in [false, true] {
+            assertStartLayout(event, accessibilityText: accessibilityText, expectsFormatPicker: false)
+        }
+    }
+
+    private func assertStartLayout(_ event: String, accessibilityText: Bool, expectsFormatPicker: Bool? = nil) {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-share-narrow"]
+        if accessibilityText {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        app.launch()
+        defer { app.terminate() }
+        open(event, in: app)
+        app.buttons["event-card-track-stats"].tap()
+        element("native-event-choice-statTracker", in: app).tap()
+        XCTAssertFalse(app.buttons["event-detail-edit-card"].exists)
+        assertCenteredStart(in: app, expectsFormatPicker: expectsFormatPicker)
+        element("native-event-full-tracker", in: app).tap()
+        assertCenteredStart(in: app, expectsFormatPicker: expectsFormatPicker)
+    }
+
+    private func assertCenteredStart(in app: XCUIApplication, expectsFormatPicker: Bool?) {
+        let start = element("native-event-start-game", in: app)
+        let row = app.descendants(matching: .any)["native-event-start-game-row"]
+        XCTAssertTrue(row.exists)
+        XCTAssertEqual(start.frame.midX, row.frame.midX, accuracy: 1)
+        XCTAssertGreaterThanOrEqual(start.frame.height, 44)
+        XCTAssertTrue(start.isEnabled)
+        XCTAssertFalse(app.staticTexts["Saved to PIXL"].exists)
+        let picker = app.segmentedControls["Soccer format"]
+        if let expectsFormatPicker { XCTAssertEqual(picker.exists, expectsFormatPicker) }
+        if picker.exists { XCTAssertGreaterThanOrEqual(start.frame.minY, picker.frame.maxY) }
     }
 }

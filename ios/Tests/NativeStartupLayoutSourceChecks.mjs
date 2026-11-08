@@ -92,9 +92,9 @@ test("Event Card team identity unwraps optional names before comparing", () => {
   assert.match(identity, /if let teamName = teamName,[\s\S]*?teamName\.caseInsensitiveCompare\(event\.title\)/);
 });
 
-test("Event Card editing provides a fallback when the athlete name is missing", () => {
-  const detail = readFileSync(new URL("../PIXL Sports/SupporterEventDetailView.swift", import.meta.url), "utf8");
-  assert.match(detail, /NativeCreateEventCardView\(\s*athleteName: schedule\.athleteName \?\? "your athlete"/);
+test("dashboard Event Card editing provides a fallback when the athlete name is missing", () => {
+  const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
+  assert.match(content, /NativeCreateEventCardView\(\s*athleteName: page\.athleteName \?\? "your athlete"/);
 });
 
 test("Event Card long-press menus attach to visible cards in both dashboard layouts", () => {
@@ -291,20 +291,37 @@ test("Stat Tracker conflicts preserve local entry without a destructive saved-ve
   assert.doesNotMatch(notice, /Button\("Use saved Stat Tracker"/);
 });
 
-test("Stat Tracker save status stays inline as local and PIXL states change", () => {
+test("Stat Tracker recovery stays inline and successful saves are silent", () => {
   const tracker = readFileSync(new URL("../PIXL Sports/NativeEventTrackerView.swift", import.meta.url), "utf8");
   const content = tracker.slice(tracker.indexOf("private var trackerContent"), tracker.indexOf("private func tracker("));
   const status = tracker.slice(tracker.indexOf("private struct NativeTrackerSaveStatusView"));
   const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
 
-  assert.match(content, /NativeTrackerSaveStatusView\(model: model, clerk: clerk\)\s*if let workspace/);
+  assert.match(content, /NativeTrackerSaveStatusView\(model: model, clerk: clerk, title: trackerHeading, phase: trackerPhase\)\s*if let workspace/);
   assert.doesNotMatch(content, /if !embedded \|\| model\.busy \|\| model\.errorMessage != nil/);
-  assert.match(status, /\.frame\(height: 44\)/);
+  assert.match(status, /@ScaledMetric\(relativeTo: \.caption\) private var rowHeight: CGFloat = 44/);
+  assert.match(status, /\.frame\(height: rowHeight\)/);
+  assert.match(status, /Text\(title\)[\s\S]*?native-event-tracker-heading/);
+  assert.match(status, /if let phase \{[\s\S]*?Text\(phase\)/);
   assert.match(status, /accessibilityIdentifier\("native-event-tracker-save-status"\)/);
-  assert.match(status, /\.onChange\(of: status\.message\) \{ _, message in[\s\S]*?guard status\.announces else \{ return \}[\s\S]*?UIAccessibility\.post\(notification: \.announcement, argument: message\)/);
+  assert.match(status, /\.onChange\(of: status\?\.message\) \{ _, message in[\s\S]*?guard let status, status\.announces, let message else \{ return \}[\s\S]*?UIAccessibility\.post\(notification: \.announcement, argument: message\)/);
   assert.match(status, /Saved on iPhone/);
   assert.match(status, /Saving to PIXL/);
-  assert.match(status, /Saved to PIXL/);
-  assert.match(status, /Color\.clear\.frame\(width: 44, height: 44\)/);
+  assert.doesNotMatch(status, /Saved to PIXL|checkmark\.circle/);
+  assert.match(status, /if model\.workspace != nil \{ return nil \}/);
+  assert.match(status, /if let status \{[\s\S]*?Label\(status\.message/);
+  assert.match(status, /if canRetry \{[\s\S]*?await model\.retry\(clerk: clerk\)[\s\S]*?await model\.load\(clerk: clerk\)/);
+  assert.match(status, /native-event-tracker-save-details/);
   assert.match(prep, /NativeToolSaveNotice\(/);
+});
+
+test("Start game is centered in its own row without changing its eligibility", () => {
+  const tracker = readFileSync(new URL("../PIXL Sports/NativeEventTrackerView.swift", import.meta.url), "utf8");
+  const start = tracker.slice(tracker.indexOf('if workspace.sport == "soccer"'), tracker.indexOf("private func tracker("));
+  assert.match(start, /\.pickerStyle\(\.segmented\)[\s\S]*?HStack \{\s*Spacer\(minLength: 0\)\s*Button \{/);
+  assert.match(start, /Text\(compact \? "Start game" : "Start tracking"\)[\s\S]*?\.multilineTextAlignment\(\.center\)\s*\.frame\(minWidth: 44, minHeight: 44\)/);
+  assert.match(start, /native-event-start-game"\)\s*Spacer\(minLength: 0\)/);
+  assert.match(start, /native-event-start-game-row/);
+  assert.match(start, /await model\.save\("start", clerk: clerk, soccerFormat: workspace\.sport == "soccer" \? soccerFormat : nil\)/);
+  assert.match(start, /\.disabled\(!model\.canEditTrackerLocally[\s\S]*?event\.status == "final"[\s\S]*?workspace\.eventStatus\?\.lowercased\(\) == "final"\)/);
 });

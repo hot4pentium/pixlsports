@@ -8,3 +8,9 @@ Family-facing iOS notices should omit implementation details such as revision mi
 **Why:** The user said families do not need behind-the-scenes details and found technical save and request errors confusing.
 
 **How to apply:** Map request failures to concise, operation-specific messages at the app boundary; do not display raw server data. Preserve explicit confirmation before discarding local changes or replacing saved content.
+
+Routine successful Stat Tracker saves should be silent, without a "Saved to PIXL" banner or success announcement. Keep offline, pending, and actionable failure information inline without shifting the controls or leaving a large empty banner space.
+
+**Why:** The user found recurring save feedback distracting during tracking and questioned the need for the success notification.
+
+**How to apply:** Preserve actual local saves and server acknowledgements; simplify only their presentation. Keep retries and explanations available when a save needs attention.

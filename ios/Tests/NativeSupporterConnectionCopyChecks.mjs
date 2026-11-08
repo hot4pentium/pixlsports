@@ -35,8 +35,8 @@ test("Event Card edits use the protected offline queue with explicit conflict ch
   const detail = source("SupporterEventDetailView.swift");
   const content = source("ContentView.swift");
   const runtime = source("NativeOfflineRuntime.swift");
-  assert.match(detail, /event-detail-edit-card/);
-  assert.match(detail, /existingEvent: event/);
+  assert.doesNotMatch(detail, /event-detail-edit-card/);
+  assert.match(content, /existingEvent: event/);
   assert.match(content, /Text\("Event Cards waiting to sync"\)/);
   assert.match(content, /Keep my iPhone edits/);
   assert.match(content, /Use server version/);

@@ -47,16 +47,24 @@ struct NativeEventTrackerView: View {
         .sheet(isPresented: $showingFinish) { finishSheet }
     }
 
+    private var trackerHeading: String {
+        model.displayedGame?.status.uppercased() ?? (compact ? "Keep score" : "Track stats")
+    }
+
+    private var trackerPhase: String? {
+        guard !compact, let workspace = model.workspace, let game = model.displayedGame else { return nil }
+        return "\(phaseLabel(workspace: workspace, game: game)) \(game.period)"
+    }
+
     private var trackerContent: some View {
             VStack(alignment: .leading, spacing: compact ? 12 : 22) {
                 if !embedded { Text(event.title).font(.title2.bold()) }
-                NativeTrackerSaveStatusView(model: model, clerk: clerk)
+                NativeTrackerSaveStatusView(model: model, clerk: clerk, title: trackerHeading, phase: trackerPhase)
                 if let workspace = model.workspace {
                     if let game = model.displayedGame {
                         tracker(workspace: workspace, game: game)
                     } else {
                         if compact {
-                            Text("Keep score").font(.headline)
                             Text("Start the game to update the team scores. Player stats are optional in the full tracker.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -74,14 +82,24 @@ struct NativeEventTrackerView: View {
                             }
                             .pickerStyle(.segmented)
                         }
-                        Button(compact ? "Start game" : "Start tracking") {
-                            Task { await model.save("start", clerk: clerk, soccerFormat: workspace.sport == "soccer" ? soccerFormat : nil) }
+                        HStack {
+                            Spacer(minLength: 0)
+                            Button {
+                                Task { await model.save("start", clerk: clerk, soccerFormat: workspace.sport == "soccer" ? soccerFormat : nil) }
+                            } label: {
+                                Text(compact ? "Start game" : "Start tracking")
+                                    .multilineTextAlignment(.center)
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!model.canEditTrackerLocally
+                                      || event.status == "final"
+                                      || workspace.eventStatus?.lowercased() == "final")
+                            .accessibilityIdentifier("native-event-start-game")
+                            Spacer(minLength: 0)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!model.canEditTrackerLocally
-                                  || event.status == "final"
-                                  || workspace.eventStatus?.lowercased() == "final")
-                        .accessibilityIdentifier("native-event-start-game")
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("native-event-start-game-row")
                     }
                 }
             }
@@ -89,14 +107,6 @@ struct NativeEventTrackerView: View {
 
     private func tracker(workspace: NativeEventWorkspace, game: NativeEventWorkspace.Game) -> some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text(game.status.uppercased()).font(.caption.bold())
-                Spacer()
-                if !compact {
-                    Text("\(phaseLabel(workspace: workspace, game: game)) \(game.period)")
-                        .font(.headline)
-                }
-            }
             HStack(alignment: .top, spacing: 20) {
                 let canEditScore = game.status == "live" && model.canEditTrackerLocally
                 scoreboard(teamName, score: game.score, opponent: false, editable: canEditScore)
@@ -301,7 +311,10 @@ private struct NativeTrackerSaveStatusView: View {
     @ObservedObject var model: NativeEventToolModel
     @ObservedObject private var offline = NativeOfflineRuntime.shared
     let clerk: Clerk
+    let title: String
+    let phase: String?
     @State private var showingDetails = false
+    @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 44
 
     private struct Status {
         let message: String
@@ -311,7 +324,7 @@ private struct NativeTrackerSaveStatusView: View {
         let announces: Bool
     }
 
-    private var status: Status {
+    private var status: Status? {
         if model.unreadablePendingData {
             return Status(
                 message: "Saved tracker data needs attention",
@@ -384,13 +397,10 @@ private struct NativeTrackerSaveStatusView: View {
                 symbol: "wifi.slash", color: NativeEventToolColors.trackStats, announces: true
             )
         }
-        if model.workspace != nil {
-            return Status(
-                message: "Saved to PIXL",
-                detail: nil,
-                symbol: "checkmark.circle.fill", color: .green, announces: false
-            )
-        }
+        // Successful saves are silent. The game heading occupies this same
+        // stable row, so hiding the notice neither shifts controls nor leaves
+        // an empty banner-sized gap.
+        if model.workspace != nil { return nil }
         return Status(
             message: "Checking PIXL…",
             detail: "Checking the latest tracker status.",
@@ -406,20 +416,35 @@ private struct NativeTrackerSaveStatusView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: status.symbol)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(status.color)
-                .frame(width: 16)
-                .accessibilityHidden(true)
-
-            Text(status.message)
-                .font(.caption.weight(.medium))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityLabel("Stat Tracker save status")
-                .accessibilityValue(status.detail ?? status.message)
-                .accessibilityIdentifier("native-event-tracker-save-status")
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(title)
+                        .font(model.displayedGame == nil ? .headline : .caption.bold())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .accessibilityIdentifier("native-event-tracker-heading")
+                    Spacer(minLength: 4)
+                    if let phase {
+                        Text(phase)
+                            .font(.caption.bold())
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .accessibilityIdentifier("native-event-tracker-phase")
+                    }
+                }
+                if let status {
+                    Label(status.message, systemImage: status.symbol)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(status.color)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Stat Tracker save status")
+                        .accessibilityValue(status.detail ?? status.message)
+                        .accessibilityIdentifier("native-event-tracker-save-status")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if canRetry {
                 Button {
@@ -437,11 +462,9 @@ private struct NativeTrackerSaveStatusView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(model.pendingCount > 0 ? "Retry tracker sync" : "Reload tracker")
                 .accessibilityIdentifier("native-event-tracker-save-retry")
-            } else {
-                Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
             }
 
-            if status.detail != nil {
+            if status?.detail != nil {
                 Button {
                     showingDetails = true
                 } label: {
@@ -451,23 +474,22 @@ private struct NativeTrackerSaveStatusView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Stat Tracker save details")
                 .accessibilityIdentifier("native-event-tracker-save-details")
-            } else {
-                Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
             }
         }
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity)
-        .frame(height: 44)
-        .background(status.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+        .frame(height: rowHeight)
+        .background((status?.color ?? .clear).opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("native-event-tracker-save-status-row")
-        .onChange(of: status.message) { _, message in
-            guard status.announces else { return }
+        .onChange(of: status?.message) { _, message in
+            if message == nil { showingDetails = false }
+            guard let status, status.announces, let message else { return }
             UIAccessibility.post(notification: .announcement, argument: message)
         }
         .alert("Stat Tracker status", isPresented: $showingDetails) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(status.detail ?? status.message)
+            Text(status?.detail ?? status?.message ?? "")
         }
     }
 }
