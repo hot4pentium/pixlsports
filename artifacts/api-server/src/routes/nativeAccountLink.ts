@@ -12,6 +12,7 @@ import {
   GetNativeSupporterScheduleResponse,
   GetAthleteInviteFanBaseResponse,
   PrepareNativeSupporterAccountResponse,
+  DeleteOwnedGameOnCardResponse,
 } from "@workspace/api-zod";
 import { prepareNativeSupporterAccount } from "../lib/nativeAccountPreparation";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
@@ -21,6 +22,7 @@ import {
   loadNativeSupporterSchedule,
   updateNativeSupporterEventCard,
 } from "../lib/nativeSupporterSchedule";
+import { deleteNativeSupporterEventCard } from "../lib/ownedGameOnCardDeletion";
 import {
   correctNativeSupporterHypeCardIdentity,
   loadNativeSupporterHypeCard,
@@ -423,6 +425,19 @@ nativeAccountLinkRouter.patch("/supporter/event-cards/:shareToken", handle(async
     req.log.warn("Native Event Card updated; reminder scheduling needs reconciliation");
   }
   res.json({ shareToken: updated.shareToken, eventId: updated.eventId });
+}));
+nativeAccountLinkRouter.delete("/supporter/event-cards/:shareToken", handle(async (req, res) => {
+  const parsedToken = z.uuid().safeParse(req.params.shareToken);
+  if (!parsedToken.success) throw new NativeLinkError(404, "Event Card not found.");
+  const result = await deleteNativeSupporterEventCard(identity(res), parsedToken.data);
+  if (!result) throw new NativeLinkError(404, "Event Card not found.");
+  const { ownerClerkUserId, ...receipt } = result;
+  try {
+    await queueGameOnOwnerSync(ownerClerkUserId);
+  } catch {
+    req.log.warn("Native Event Card deleted; reminder scheduling needs reconciliation");
+  }
+  res.json(DeleteOwnedGameOnCardResponse.parse(receipt));
 }));
 nativeAccountLinkRouter.get("/supporter/profile", handle(async (_req, res) => {
   res.json(await loadNativeSupporterProfile(identity(res)));

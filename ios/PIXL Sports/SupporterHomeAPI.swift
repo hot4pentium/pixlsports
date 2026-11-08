@@ -258,6 +258,7 @@ struct NativeEventCardDraft: Codable, Equatable {
 enum NativePendingEventCardOperation: String, Codable, Equatable {
     case create
     case update
+    case delete
 }
 
 struct NativePendingEventCardChange: Codable, Identifiable, Equatable {
@@ -485,6 +486,11 @@ private struct NativeEventCardEditBody: Encodable {
     }
 }
 
+private struct NativeEventCardDeletionReceipt: Decodable {
+    let calendarEventDeleted: Bool
+    let calendarEventStatus: String
+}
+
 private struct NativeAthleteProfileUpdate: Encodable {
     let athleteName: String
     let teamName: String
@@ -680,6 +686,28 @@ enum SupporterHomeAPI {
                 throw SupporterHomeAPIError.invalidResponse
             }
             return response.shareToken
+        } catch let error as SupporterHomeAPIError {
+            throw error
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
+    static func deleteEventCard(shareToken: String, clerk: Clerk) async throws {
+        let data = try await NativeAccountLinkClient().postData(
+            "supporter/event-cards/\(shareToken)",
+            body: [String: String](),
+            method: "DELETE",
+            clerk: clerk,
+            forceNetworkAttempt: true
+        )
+        do {
+            let receipt = try JSONDecoder().decode(NativeEventCardDeletionReceipt.self, from: data)
+            guard ["deleted", "not-linked", "unverified", "not-found", "ambiguous"]
+                    .contains(receipt.calendarEventStatus),
+                  receipt.calendarEventDeleted == (receipt.calendarEventStatus == "deleted") else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
         } catch let error as SupporterHomeAPIError {
             throw error
         } catch {

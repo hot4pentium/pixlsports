@@ -22,8 +22,9 @@ import {
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isAccountActive } from "../lib/accountLifecycle";
 import { isIanaTimezone } from "../lib/timezone";
-import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
+import { queueGameOnOwnerSync, reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
 import { GAME_ON_CARD_MARKER } from "../lib/gameOnCard";
+import { deleteOwnedGameOnCard } from "../lib/ownedGameOnCardDeletion";
 
 const router: IRouter = Router();
 // Keep the existing export for callers while the marker lives with shared domain logic.
@@ -280,83 +281,19 @@ router.delete("/game-on-cards/owned/:shareToken", requireAuth, async (req, res):
 
   try {
     const ownerClerkUserId = getRequiredClerkUserId(res);
-    const result = await db.transaction(async (tx) => {
-      const [share] = await tx.select()
-        .from(scheduleSharesTable)
-        .where(and(
-          eq(scheduleSharesTable.id, params.data.shareToken),
-          eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
-        ))
-        .for("update");
-      if (!share || (share.teamSeason !== GAME_ON_CARD_MARKER && !isSingleCardEvent(share.events))) {
-        return null;
-      }
-
-      let calendarEventStatus: "deleted" | "not-linked" | "unverified" | "not-found" | "ambiguous" = "not-linked";
-      const hasAnyAssociation = Boolean(
-        share.calendarProjectId || share.calendarEventId || share.calendarOwnerClerkUserId,
-      );
-      if (hasAnyAssociation) {
-        calendarEventStatus = "unverified";
-        const cardEvent = Array.isArray(share.events) ? share.events[0] as { id?: unknown } | undefined : undefined;
-        if (share.calendarProjectId && share.calendarEventId
-          && cardEvent?.id === share.calendarEventId
-          && share.calendarOwnerClerkUserId === ownerClerkUserId) {
-          const [calendarProject] = await tx.select()
-            .from(cloudProjectsTable)
-            .where(eq(cloudProjectsTable.id, share.calendarProjectId))
-            .for("update");
-          if (calendarProject?.ownerClerkUserId === ownerClerkUserId) {
-            const project = calendarProject.project as { tool?: unknown; events?: unknown };
-            if (project?.tool === "schedule" && Array.isArray(project.events)) {
-              const eventMatches = project.events.filter((event) => (
-                event && typeof event === "object" && "id" in event && event.id === share.calendarEventId
-              ));
-              const linkedShares = await tx.select({ id: scheduleSharesTable.id })
-                .from(scheduleSharesTable)
-                .where(and(
-                  eq(scheduleSharesTable.calendarProjectId, share.calendarProjectId),
-                  eq(scheduleSharesTable.calendarEventId, share.calendarEventId),
-                ));
-              if (eventMatches.length === 0) {
-                calendarEventStatus = "not-found";
-              } else if (eventMatches.length !== 1 || linkedShares.length !== 1) {
-                calendarEventStatus = "ambiguous";
-              } else {
-                const events = project.events.filter((event) => !(
-                  event && typeof event === "object" && "id" in event && event.id === share.calendarEventId
-                ));
-                await tx.update(cloudProjectsTable)
-                  .set({
-                    project: { ...project, events },
-                    revision: sql`${cloudProjectsTable.revision} + 1`,
-                    updatedAt: new Date(),
-                  })
-                  .where(and(
-                    eq(cloudProjectsTable.id, calendarProject.id),
-                    eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
-                  ));
-                calendarEventStatus = "deleted";
-              }
-            }
-          }
-        }
-      }
-
-      const [deleted] = await tx.delete(scheduleSharesTable)
-        .where(and(
-          eq(scheduleSharesTable.id, share.id),
-          eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
-        ))
-        .returning({ id: scheduleSharesTable.id });
-      return deleted
-        ? { calendarEventStatus, calendarEventDeleted: calendarEventStatus === "deleted" }
-        : null;
-    });
+    const result = await deleteOwnedGameOnCard(
+      ownerClerkUserId,
+      params.data.shareToken,
+    );
 
     if (!result) {
       res.status(404).json({ error: "Event Card not found" });
       return;
+    }
+    try {
+      await queueGameOnOwnerSync(ownerClerkUserId);
+    } catch {
+      req.log.warn("Event Card deleted; reminder scheduling needs reconciliation");
     }
     res.json(DeleteOwnedGameOnCardResponse.parse(result));
   } catch (error) {

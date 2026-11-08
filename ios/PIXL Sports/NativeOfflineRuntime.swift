@@ -8,6 +8,11 @@ extension Notification.Name {
     static let nativeEventCardQueueSynced = Notification.Name("pixl.native.event-card-queue-synced")
 }
 
+enum NativeEventCardDeletionStageResult: Equatable {
+    case cancelledLocalDraft
+    case queuedForSync
+}
+
 enum NativeAPIConnectionCheckResult: Equatable {
     case connected
     case signInRequired
@@ -58,6 +63,7 @@ final class NativeOfflineRuntime: ObservableObject {
     private var lastRefresh = Date.distantPast
     private var activeDrains = Set<String>()
     private var activeEventCardSyncs = Set<String>()
+    private var queuedEventCardSyncClerks: [String: Clerk] = [:]
     private var recentlySyncedEventCardTokens: [String: String] = [:]
     private var models: [String: NativeEventToolModel] = [:]
     private var downloadEpochs = NativeOfflineDownloadEpochs()
@@ -223,6 +229,69 @@ final class NativeOfflineRuntime: ObservableObject {
         catch { storageError = "This saved Event Card could not be removed from this iPhone." }
     }
 
+    func stageEventCardDeletion(
+        event: AthleteFanEvent,
+        teamName: String?,
+        athleteName: String,
+        seasonName: String?,
+        subject: String
+    ) throws -> NativeEventCardDeletionStageResult {
+        let draft = NativeEventCardDraft.from(event)
+        var change = pendingEventCards(subject: subject).first(where: { $0.id == event.eventId })
+            ?? NativePendingEventCardChange(
+                operation: .delete,
+                draft: draft,
+                teamName: teamName,
+                athleteName: athleteName,
+                seasonName: seasonName,
+                shareToken: event.shareToken,
+                baseDraft: draft,
+                attemptedDraft: nil,
+                conflictDraft: nil,
+                conflictMessage: nil,
+                lastError: nil,
+                createdAt: Date()
+            )
+
+        if change.operation == .create,
+           change.shareToken == nil,
+           change.attemptedDraft == nil {
+            try removePendingEventCard(id: event.eventId, subject: subject)
+            return .cancelledLocalDraft
+        }
+
+        change.operation = .delete
+        change.draft = draft
+        change.shareToken = event.shareToken
+        change.baseDraft = change.baseDraft ?? draft
+        change.conflictDraft = nil
+        change.conflictMessage = nil
+        change.lastError = nil
+        try savePendingEventCard(change, subject: subject)
+        return .queuedForSync
+    }
+
+    func stagePendingEventCardDeletion(
+        id: String,
+        subject: String
+    ) throws -> NativeEventCardDeletionStageResult {
+        guard var change = pendingEventCards(subject: subject).first(where: { $0.id == id }) else {
+            throw NativeOfflineError.locked
+        }
+        if change.operation == .create,
+           change.shareToken == nil,
+           change.attemptedDraft == nil {
+            try removePendingEventCard(id: id, subject: subject)
+            return .cancelledLocalDraft
+        }
+        change.operation = .delete
+        change.conflictDraft = nil
+        change.conflictMessage = nil
+        change.lastError = nil
+        try savePendingEventCard(change, subject: subject)
+        return .queuedForSync
+    }
+
     func keepLocalEventCardAfterConflict(id: String, subject: String, clerk: Clerk) async {
         guard let change = pendingEventCards(subject: subject).first(where: { $0.id == id }),
               let remote = change.conflictDraft else { return }
@@ -275,8 +344,16 @@ final class NativeOfflineRuntime: ObservableObject {
               vault.canContinue(subject: subject),
               let scope = vault.namespace else { return [:] }
         let syncKey = scope
-        guard activeEventCardSyncs.insert(syncKey).inserted else { return [:] }
-        defer { activeEventCardSyncs.remove(syncKey) }
+        guard activeEventCardSyncs.insert(syncKey).inserted else {
+            queuedEventCardSyncClerks[syncKey] = clerk
+            return [:]
+        }
+        defer {
+            activeEventCardSyncs.remove(syncKey)
+            if let retryClerk = queuedEventCardSyncClerks.removeValue(forKey: syncKey) {
+                Task { await retryPendingEventCards(clerk: retryClerk) }
+            }
+        }
 
         var syncedTokens: [String: String] = [:]
         do {
@@ -292,31 +369,54 @@ final class NativeOfflineRuntime: ObservableObject {
             for change in changes {
                 guard clerk.user?.id == subject, vault.namespace == scope,
                       vault.canContinue(subject: subject) else { return syncedTokens }
-                if change.isConflicted { continue }
-                do {
-                    if let token = try await syncPendingEventCard(
-                        change,
-                        clerk: clerk,
-                        subject: subject,
-                        scope: scope
-                    ) {
-                        syncedTokens[change.id] = token
-                        recentlySyncedEventCardTokens[scope + "|" + change.id] = token
-                        if recentlySyncedEventCardTokens.count > 50,
-                           let oldKey = recentlySyncedEventCardTokens.keys.first(where: { $0 != scope + "|" + change.id }) {
-                            recentlySyncedEventCardTokens.removeValue(forKey: oldKey)
+                for _ in 0..<3 {
+                    guard let current = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+                          !current.isConflicted else { break }
+                    let operation = current.operation
+                    do {
+                        if let token = try await syncPendingEventCard(
+                            current,
+                            clerk: clerk,
+                            subject: subject,
+                            scope: scope
+                        ) {
+                            syncedTokens[change.id] = token
+                            if operation != .delete {
+                                recentlySyncedEventCardTokens[scope + "|" + change.id] = token
+                                if recentlySyncedEventCardTokens.count > 50,
+                                   let oldKey = recentlySyncedEventCardTokens.keys.first(where: {
+                                       $0 != scope + "|" + change.id
+                                   }) {
+                                    recentlySyncedEventCardTokens.removeValue(forKey: oldKey)
+                                }
+                            }
+                            didSyncAny = true
+                            break
                         }
-                        didSyncAny = true
+                    } catch {
+                        guard let latest = pendingEventCards(subject: subject).first(where: { $0.id == change.id }) else {
+                            break
+                        }
+                        // A delete may replace an update/create while its
+                        // request is in flight. Never let that old response
+                        // clear or overwrite the newer tombstone.
+                        guard latest.operation == operation else { continue }
+                        if let accountError = error as? NativeAccountLinkError,
+                           accountError.statusCode == 409,
+                           operation != .delete {
+                            await recordEventCardConflict(
+                                id: change.id,
+                                clerk: clerk,
+                                subject: subject,
+                                scope: scope
+                            )
+                        } else {
+                            recordEventCardFailure(id: change.id, error: error, subject: subject)
+                        }
+                        break
                     }
-                } catch let error as NativeAccountLinkError where error.statusCode == 409 {
-                    await recordEventCardConflict(
-                        id: change.id,
-                        clerk: clerk,
-                        subject: subject,
-                        scope: scope
-                    )
-                } catch {
-                    recordEventCardFailure(id: change.id, error: error, subject: subject)
+                    guard let latest = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+                          latest.operation != operation else { break }
                 }
             }
             if didSyncAny {
@@ -343,6 +443,15 @@ final class NativeOfflineRuntime: ObservableObject {
             guard clerk.user?.id == subject, vault.namespace == scope,
                   vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
 
+            if change.operation == .delete {
+                return try await syncPendingEventCardDeletion(
+                    change,
+                    clerk: clerk,
+                    subject: subject,
+                    scope: scope
+                )
+            }
+
             if change.operation == .create {
                 let submitted = change.attemptedDraft ?? change.draft
                 if change.attemptedDraft == nil {
@@ -359,12 +468,22 @@ final class NativeOfflineRuntime: ObservableObject {
                         clerk: clerk,
                         forceNetworkAttempt: true
                     )
+                    guard let latestAfterCreate = pendingEventCards(subject: subject).first(where: {
+                        $0.id == change.id
+                    }), latestAfterCreate.operation == .create,
+                          latestAfterCreate.attemptedDraft == submitted else { return nil }
+                    change = latestAfterCreate
                     change.shareToken = token
                     change.baseDraft = submitted
                     try savePendingEventCard(change, subject: subject)
                 }
                 guard let token = change.shareToken else { throw SupporterHomeAPIError.invalidResponse }
                 let schedule = try await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk)
+                guard let latestAfterCreateConfirmation = pendingEventCards(subject: subject).first(where: {
+                    $0.id == change.id
+                }), latestAfterCreateConfirmation.operation == .create,
+                      latestAfterCreateConfirmation.attemptedDraft == submitted else { return nil }
+                change = latestAfterCreateConfirmation
                 guard let event = schedule.events.first(where: {
                     $0.shareToken == token && $0.eventId == change.id
                 }) else {
@@ -395,12 +514,16 @@ final class NativeOfflineRuntime: ObservableObject {
                 continue
             }
 
+            guard change.operation == .update else { continue }
             guard let token = change.shareToken, let base = change.baseDraft else {
                 change.conflictMessage = "The saved Event Card edit needs review before it can sync."
                 try savePendingEventCard(change, subject: subject)
                 return nil
             }
             let schedule = try await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk)
+            guard let latestAfterRead = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+                  latestAfterRead.operation == .update else { return nil }
+            change = latestAfterRead
             guard let event = schedule.events.first(where: { $0.shareToken == token && $0.eventId == change.id }) else {
                 change.conflictDraft = nil
                 change.conflictMessage = "This Event Card is no longer on the server. Your edits remain saved on this iPhone."
@@ -443,7 +566,14 @@ final class NativeOfflineRuntime: ObservableObject {
                 clerk: clerk,
                 forceNetworkAttempt: true
             )
+            guard let latestAfterUpdate = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+                  latestAfterUpdate.operation == .update else { return nil }
+            change = latestAfterUpdate
             let confirmedSchedule = try await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk)
+            guard let latestAfterConfirmation = pendingEventCards(subject: subject).first(where: {
+                $0.id == change.id
+            }), latestAfterConfirmation.operation == .update else { return nil }
+            change = latestAfterConfirmation
             guard let confirmed = confirmedSchedule.events.first(where: {
                 $0.shareToken == token && $0.eventId == change.id
             }) else { throw SupporterHomeAPIError.eventSaveNotConfirmed }
@@ -464,6 +594,72 @@ final class NativeOfflineRuntime: ObservableObject {
         return nil
     }
 
+    private func syncPendingEventCardDeletion(
+        _ original: NativePendingEventCardChange,
+        clerk: Clerk,
+        subject: String,
+        scope: String
+    ) async throws -> String? {
+        guard var change = pendingEventCards(subject: subject).first(where: { $0.id == original.id }),
+              change.operation == .delete else { return nil }
+        let schedule = try await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk)
+        guard clerk.user?.id == subject, vault.namespace == scope,
+              vault.canContinue(subject: subject),
+              let latest = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+              latest.operation == .delete else { return nil }
+        change = latest
+
+        let token: String
+        if let shareToken = change.shareToken {
+            guard schedule.events.contains(where: { $0.shareToken == shareToken }) else {
+                try removePendingEventCard(id: change.id, subject: subject)
+                return shareToken
+            }
+            token = shareToken
+        } else {
+            let matchingEvents = schedule.events.filter { $0.eventId == change.id }
+            guard let event = matchingEvents.first else {
+                // The create never reached the server, so cancelling its
+                // tombstone cannot affect a public card or recorded game.
+                try removePendingEventCard(id: change.id, subject: subject)
+                return nil
+            }
+            guard matchingEvents.count == 1,
+                  (change.attemptedDraft ?? change.draft).matches(event) else {
+                change.lastError = "PIXL couldn’t safely identify the Event Card from this iPhone draft. It remains saved here."
+                try savePendingEventCard(change, subject: subject)
+                return nil
+            }
+            token = event.shareToken
+            change.shareToken = token
+            change.baseDraft = NativeEventCardDraft.from(event)
+            try savePendingEventCard(change, subject: subject)
+        }
+
+        guard let current = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+              current.operation == .delete,
+              clerk.user?.id == subject, vault.namespace == scope,
+              vault.canContinue(subject: subject) else { return nil }
+        do {
+            try await SupporterHomeAPI.deleteEventCard(shareToken: token, clerk: clerk)
+        } catch let error as NativeAccountLinkError where error.statusCode == 404 {
+            // A second device may already have removed this exact share.
+        }
+
+        guard let current = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+              current.operation == .delete,
+              clerk.user?.id == subject, vault.namespace == scope,
+              vault.canContinue(subject: subject) else { return nil }
+        let confirmedSchedule = try await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk)
+        guard let confirmedChange = pendingEventCards(subject: subject).first(where: { $0.id == change.id }),
+              confirmedChange.operation == .delete else { return nil }
+        guard !confirmedSchedule.events.contains(where: { $0.shareToken == token }) else {
+            throw SupporterHomeAPIError.eventSaveNotConfirmed
+        }
+        try removePendingEventCard(id: change.id, subject: subject)
+        return token
+    }
+
     private func recordEventCardConflict(
         id: String,
         clerk: Clerk,
@@ -471,11 +667,16 @@ final class NativeOfflineRuntime: ObservableObject {
         scope: String
     ) async {
         guard var change = pendingEventCards(subject: subject).first(where: { $0.id == id }) else { return }
+        let operation = change.operation
         do {
             guard let token = change.shareToken else { return }
             let schedule = try await SupporterHomeAPI.fetchAuthoritativePrivateSchedule(clerk: clerk)
             guard clerk.user?.id == subject, vault.namespace == scope,
-                  vault.canContinue(subject: subject) else { return }
+                  vault.canContinue(subject: subject),
+                  let latest = pendingEventCards(subject: subject).first(where: { $0.id == id }),
+                  latest.operation == operation,
+                  operation != .delete else { return }
+            change = latest
             if let event = schedule.events.first(where: { $0.shareToken == token && $0.eventId == id }) {
                 change.conflictDraft = NativeEventCardDraft.from(event)
                 change.conflictMessage = "This Event Card changed on another device. Choose whether to keep your iPhone edits or use the server version."
@@ -495,32 +696,52 @@ final class NativeOfflineRuntime: ObservableObject {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet, .networkConnectionLost:
-                change.lastError = "PIXL could not be reached. This draft is saved on this iPhone and will retry when you sync."
+                change.lastError = change.operation == .delete
+                    ? "The deletion is saved on this iPhone and will retry when PIXL is reachable."
+                    : "PIXL could not be reached. This draft is saved on this iPhone and will retry when you sync."
             case .timedOut, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed, .secureConnectionFailed:
-                change.lastError = "The PIXL server did not respond. This draft is saved on this iPhone; try syncing again."
+                change.lastError = change.operation == .delete
+                    ? "PIXL did not respond. This deletion is saved on this iPhone; try syncing again."
+                    : "The PIXL server did not respond. This draft is saved on this iPhone; try syncing again."
             default:
-                change.lastError = "PIXL could not confirm the save. This draft is still saved on this iPhone."
+                change.lastError = change.operation == .delete
+                    ? "PIXL could not confirm the deletion. It is still saved on this iPhone."
+                    : "PIXL could not confirm the save. This draft is still saved on this iPhone."
             }
         } else if let accountError = error as? NativeAccountLinkError,
                   let status = accountError.statusCode {
             switch status {
             case 401:
-                change.lastError = "Reconnect your iPhone account to sync this saved Event Card."
+                change.lastError = change.operation == .delete
+                    ? "Reconnect your iPhone account to finish deleting this Event Card."
+                    : "Reconnect your iPhone account to sync this saved Event Card."
             case 403, 409, 423:
                 change.lastError = accountError.localizedDescription
             case 429:
-                change.lastError = "PIXL is rate-limiting requests (HTTP 429). This Event Card remains saved on this iPhone; try again shortly."
+                change.lastError = change.operation == .delete
+                    ? "PIXL is rate-limiting requests (HTTP 429). This deletion will retry shortly."
+                    : "PIXL is rate-limiting requests (HTTP 429). This Event Card remains saved on this iPhone; try again shortly."
             case 400..<500:
-                change.lastError = "PIXL needs a correction before this saved Event Card can sync: \(accountError.localizedDescription)"
+                change.lastError = change.operation == .delete
+                    ? "PIXL needs attention before this deletion can sync: \(accountError.localizedDescription)"
+                    : "PIXL needs a correction before this saved Event Card can sync: \(accountError.localizedDescription)"
             case 500..<600:
-                change.lastError = "PIXL returned a server error (HTTP \(status)). This Event Card remains saved on this iPhone; try again later."
+                change.lastError = change.operation == .delete
+                    ? "PIXL returned a server error (HTTP \(status)). The deletion is saved on this iPhone; try again later."
+                    : "PIXL returned a server error (HTTP \(status)). This Event Card remains saved on this iPhone; try again later."
             default:
-                change.lastError = "PIXL is temporarily unavailable. This Event Card remains saved on this iPhone."
+                change.lastError = change.operation == .delete
+                    ? "PIXL is temporarily unavailable. The deletion is saved on this iPhone."
+                    : "PIXL is temporarily unavailable. This Event Card remains saved on this iPhone."
             }
         } else if error is NativeAccountLinkEndpoint.ConfigurationError {
-            change.lastError = "This iPhone’s PIXL server address could not be checked. The Event Card remains saved here."
+            change.lastError = change.operation == .delete
+                ? "This iPhone’s PIXL server address could not be checked. The deletion remains saved here."
+                : "This iPhone’s PIXL server address could not be checked. The Event Card remains saved here."
         } else {
-            change.lastError = "PIXL could not confirm the save. This draft is still saved on this iPhone."
+            change.lastError = change.operation == .delete
+                ? "PIXL could not confirm the deletion. It is still saved on this iPhone."
+                : "PIXL could not confirm the save. This draft is still saved on this iPhone."
         }
         do { try savePendingEventCard(change, subject: subject) }
         catch { storageError = "The Event Card remains in protected iPhone storage, but its sync status could not be updated." }

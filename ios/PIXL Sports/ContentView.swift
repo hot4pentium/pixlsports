@@ -32,9 +32,22 @@ struct ContentView: View {
     @State private var heroCoverVisible = false
     @State private var showingWeeklyWelcome = false
     @State private var welcomeProgressForPresentation: NativeWeeklyWelcomeProgress?
+    @State private var eventCardToDelete: AthleteFanEvent?
+    @State private var showingEventCardDeleteConfirmation = false
+    @State private var eventCardActionAlert: EventCardActionAlert?
+    @State private var pendingEventCardToDelete: NativePendingEventCardChange?
+    @State private var showingPendingEventCardDeleteConfirmation = false
+    @State private var fixtureDeletedEventIDs = Set<String>()
+
+    private struct EventCardActionAlert: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
+    }
 
     private enum HeroDestination: Identifiable {
         case eventCard(String)
+        case editEventCard(String)
         case pendingEventCard(String)
         case hypeCard
         case createEvent
@@ -44,6 +57,7 @@ struct ContentView: View {
         var id: String {
             switch self {
             case let .eventCard(token): return "event-\(token)"
+            case let .editEventCard(token): return "edit-event-\(token)"
             case let .pendingEventCard(id): return "pending-event-\(id)"
             case .hypeCard: return "hype-card"
             case .createEvent: return "create-event"
@@ -367,6 +381,39 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .nativeEventCardQueueSynced)) { _ in
             Task { await loadSchedule() }
         }
+        .confirmationDialog(
+            "Delete this Event Card?",
+            isPresented: $showingEventCardDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Event Card", role: .destructive) {
+                Task { await deleteSelectedEventCard() }
+            }
+            .accessibilityIdentifier("dashboard-event-delete-confirm")
+            Button("Cancel", role: .cancel) { eventCardToDelete = nil }
+        } message: {
+            Text("This removes the Event Card and turns off its public link. Stats and game history for this date stay saved.")
+        }
+        .confirmationDialog(
+            "Remove this saved Event Card?",
+            isPresented: $showingPendingEventCardDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete saved Event Card", role: .destructive) {
+                Task { await deleteSelectedPendingEventCard() }
+            }
+            .accessibilityIdentifier("dashboard-pending-event-delete-confirm")
+            Button("Cancel", role: .cancel) { pendingEventCardToDelete = nil }
+        } message: {
+            Text("If this card has reached PIXL, its link will be removed when deletion syncs. Recorded stats and game history stay saved.")
+        }
+        .alert(item: $eventCardActionAlert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("Done"))
+            )
+        }
 #if DEBUG
         .overlay(alignment: .topTrailing) {
             if NativeScheduleRefreshUITestProbe.isRequested {
@@ -502,70 +549,94 @@ struct ContentView: View {
                             Text(title)
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.white)
-                            if !change.isConflicted || change.conflictDraft == nil {
-                                Text(change.conflictMessage ?? change.lastError
-                                     ?? "Saved on this iPhone. Waiting for PIXL to confirm the save.")
+                            if change.operation == .delete {
+                                Text(change.lastError ?? "Saved on this iPhone. Waiting for PIXL to remove this Event Card.")
                                     .font(.footnote)
-                                    .foregroundStyle(change.isConflicted ? .orange : SupporterHomeColors.muted)
+                                    .foregroundStyle(change.lastError == nil ? SupporterHomeColors.muted : .orange)
                                     .fixedSize(horizontal: false, vertical: true)
-                            }
-                            if change.isConflicted {
-                                if let remoteDraft = change.conflictDraft {
-                                    NativeEventCardConflictPanel(
-                                        message: change.conflictMessage
-                                            ?? "This Event Card changed on another device.",
-                                        localDraft: change.draft,
-                                        serverDraft: remoteDraft,
-                                        onKeepLocal: {
+                                HStack {
+                                    Button("Try sync") {
+                                        Task { await offlineRuntime.retryPendingEventCards(clerk: clerk, onlyID: change.id) }
+                                    }
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .frame(minHeight: 44)
+                                }
+                            } else {
+                                if !change.isConflicted || change.conflictDraft == nil {
+                                    Text(change.conflictMessage ?? change.lastError
+                                         ?? "Saved on this iPhone. Waiting for PIXL to confirm the save.")
+                                        .font(.footnote)
+                                        .foregroundStyle(change.isConflicted ? .orange : SupporterHomeColors.muted)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                if change.isConflicted {
+                                    if let remoteDraft = change.conflictDraft {
+                                        NativeEventCardConflictPanel(
+                                            message: change.conflictMessage
+                                                ?? "This Event Card changed on another device.",
+                                            localDraft: change.draft,
+                                            serverDraft: remoteDraft,
+                                            onKeepLocal: {
+                                                Task {
+                                                    await offlineRuntime.keepLocalEventCardAfterConflict(
+                                                        id: change.id,
+                                                        subject: subject,
+                                                        clerk: clerk
+                                                    )
+                                                }
+                                            },
+                                            onUseServer: {
+                                                offlineRuntime.discardPendingEventCard(id: change.id, subject: subject)
+                                                Task { await loadSchedule() }
+                                            }
+                                        )
+                                    } else {
+                                        Button("Create as new Event Card") {
                                             Task {
-                                                await offlineRuntime.keepLocalEventCardAfterConflict(
+                                                await offlineRuntime.recreatePendingEventCardAsNew(
                                                     id: change.id,
                                                     subject: subject,
                                                     clerk: clerk
                                                 )
                                             }
-                                        },
-                                        onUseServer: {
+                                        }
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(SupporterHomeColors.accent)
+                                        .frame(minHeight: 44)
+                                        Button("Discard saved draft") {
                                             offlineRuntime.discardPendingEventCard(id: change.id, subject: subject)
-                                            Task { await loadSchedule() }
                                         }
-                                    )
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(.white.opacity(0.8))
+                                        .frame(minHeight: 44)
+                                    }
                                 } else {
-                                    Button("Create as new Event Card") {
-                                        Task {
-                                            await offlineRuntime.recreatePendingEventCardAsNew(
-                                                id: change.id,
-                                                subject: subject,
-                                                clerk: clerk
-                                            )
+                                    HStack(spacing: 12) {
+                                        Button("Open saved draft") {
+                                            heroDestination = .pendingEventCard(change.id)
                                         }
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(SupporterHomeColors.accent)
+                                        .frame(minHeight: 44)
+                                        Button("Try sync") {
+                                            Task {
+                                                await offlineRuntime.retryPendingEventCards(clerk: clerk)
+                                            }
+                                        }
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(.white)
+                                        .frame(minHeight: 44)
                                     }
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(SupporterHomeColors.accent)
-                                    .frame(minHeight: 44)
-                                    Button("Discard saved draft") {
-                                        offlineRuntime.discardPendingEventCard(id: change.id, subject: subject)
-                                    }
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(.white.opacity(0.8))
-                                    .frame(minHeight: 44)
                                 }
-                            } else {
-                                HStack(spacing: 12) {
-                                    Button("Open saved draft") {
-                                        heroDestination = .pendingEventCard(change.id)
+                                if change.operation == .create {
+                                    Button("Delete saved draft", role: .destructive) {
+                                        pendingEventCardToDelete = change
+                                        showingPendingEventCardDeleteConfirmation = true
                                     }
                                     .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(SupporterHomeColors.accent)
                                     .frame(minHeight: 44)
-                                    Button("Try sync") {
-                                        Task {
-                                            await offlineRuntime.retryPendingEventCards(clerk: clerk)
-                                        }
-                                    }
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .frame(minHeight: 44)
+                                    .accessibilityIdentifier("dashboard-pending-event-delete-\(change.id)")
                                 }
                             }
                         }
@@ -586,6 +657,28 @@ struct ContentView: View {
         switch destination {
         case let .eventCard(token):
             eventDetailScreen(token: token)
+        case let .editEventCard(token):
+            if let page = schedulePage,
+               let event = page.events.first(where: { $0.shareToken == token }),
+               canManageEventCards {
+                NativeCreateEventCardView(
+                    athleteName: page.athleteName ?? "your athlete",
+                    teamName: page.teamName,
+                    seasonName: page.seasonName,
+                    initialTimezone: event.timezone ?? page.timezone,
+                    clerk: clerk,
+                    existingEvent: event,
+                    shareToken: token,
+                    onCreated: { updatedToken in
+                        Task {
+                            await loadSchedule()
+                            heroDestination = .eventCard(updatedToken)
+                        }
+                    }
+                )
+            } else {
+                ContentUnavailableView("Event Card unavailable", systemImage: "calendar")
+            }
         case let .pendingEventCard(id):
             if let subject = clerk?.user?.id,
                let change = offlineRuntime.pendingEventCards(subject: subject).first(where: { $0.id == id }) {
@@ -669,6 +762,130 @@ struct ContentView: View {
     private var schedulePage: NativeSupporterSchedule? {
         if case let .schedule(page, _, _) = displayedState { return page }
         return nil
+    }
+
+    private func eventCardIsHidden(_ eventId: String) -> Bool {
+#if DEBUG
+        if fixtureState != nil, fixtureDeletedEventIDs.contains(eventId) { return true }
+#endif
+        guard let subject = clerk?.user?.id else { return false }
+        return offlineRuntime.pendingEventCards(subject: subject).contains {
+            $0.id == eventId && $0.operation == .delete
+        }
+    }
+
+    private var canManageEventCards: Bool {
+#if DEBUG
+        clerk != nil || fixtureState != nil
+#else
+        clerk != nil
+#endif
+    }
+
+    @ViewBuilder
+    private func eventCardManagementMenu(for event: AthleteFanEvent) -> some View {
+        if canManageEventCards {
+            Button {
+                heroDestination = .editEventCard(event.shareToken)
+            } label: {
+                Label("Edit Event Card", systemImage: "pencil")
+            }
+            .accessibilityIdentifier("dashboard-event-edit-action-\(event.eventId)")
+
+            Button(role: .destructive) {
+                eventCardToDelete = event
+                showingEventCardDeleteConfirmation = true
+            } label: {
+                Label("Delete Event Card", systemImage: "trash")
+            }
+            .accessibilityIdentifier("dashboard-event-delete-action-\(event.eventId)")
+        }
+    }
+
+    @MainActor
+    private func deleteSelectedEventCard() async {
+        guard let event = eventCardToDelete else { return }
+        eventCardToDelete = nil
+#if DEBUG
+        if fixtureState != nil {
+            fixtureDeletedEventIDs.insert(event.eventId)
+            eventCardActionAlert = EventCardActionAlert(
+                title: "Event Card deleted",
+                message: "This fictional card was removed. Stats and game history remain unchanged."
+            )
+            return
+        }
+#endif
+        guard let clerk, let subject = clerk.user?.id else {
+            eventCardActionAlert = EventCardActionAlert(
+                title: "Couldn’t delete Event Card",
+                message: "Sign in to the PIXL account that owns this Event Card."
+            )
+            return
+        }
+        do {
+            let result = try offlineRuntime.stageEventCardDeletion(
+                event: event,
+                teamName: schedulePage?.teamName,
+                athleteName: schedulePage?.athleteName ?? "Your athlete",
+                seasonName: schedulePage?.seasonName,
+                subject: subject
+            )
+            if result == .queuedForSync, offlineRuntime.online {
+                await offlineRuntime.retryPendingEventCards(clerk: clerk, onlyID: event.eventId)
+            }
+            let pending = offlineRuntime.pendingEventCards(subject: subject)
+                .first(where: { $0.id == event.eventId && $0.operation == .delete })
+            if let pending {
+                eventCardActionAlert = EventCardActionAlert(
+                    title: "Deletion saved on this iPhone",
+                    message: pending.lastError
+                        ?? "This Event Card is hidden here. PIXL will remove its public link when the deletion syncs. Stats and game history stay saved."
+                )
+            } else {
+                eventCardActionAlert = EventCardActionAlert(
+                    title: result == .cancelledLocalDraft ? "Saved draft removed" : "Event Card deleted",
+                    message: result == .cancelledLocalDraft
+                        ? "The Event Card had not been created on PIXL. Its local draft was removed."
+                        : "The Event Card and its public link were removed. Stats and game history for this date stay saved."
+                )
+            }
+            if offlineRuntime.online, pending == nil {
+                await loadSchedule()
+            }
+        } catch {
+            eventCardActionAlert = EventCardActionAlert(
+                title: "Couldn’t save the deletion",
+                message: "The Event Card is still on this iPhone. Try again when its saved changes are available."
+            )
+        }
+    }
+
+    @MainActor
+    private func deleteSelectedPendingEventCard() async {
+        guard let change = pendingEventCardToDelete,
+              let subject = clerk?.user?.id else { return }
+        pendingEventCardToDelete = nil
+        do {
+            let result = try offlineRuntime.stagePendingEventCardDeletion(id: change.id, subject: subject)
+            if result == .queuedForSync, offlineRuntime.online, let clerk {
+                await offlineRuntime.retryPendingEventCards(clerk: clerk, onlyID: change.id)
+            }
+            let pending = offlineRuntime.pendingEventCards(subject: subject)
+                .first(where: { $0.id == change.id && $0.operation == .delete })
+            eventCardActionAlert = EventCardActionAlert(
+                title: result == .cancelledLocalDraft ? "Saved draft removed" : "Deletion saved",
+                message: pending?.lastError
+                    ?? (pending == nil
+                        ? "This Event Card had not been created on PIXL. Its local draft was removed."
+                        : "This Event Card is hidden on this iPhone. Its public link will be removed when the deletion syncs; recorded stats and game history stay saved.")
+            )
+        } catch {
+            eventCardActionAlert = EventCardActionAlert(
+                title: "Couldn’t update the saved Event Card",
+                message: "The local changes remain on this iPhone. Try again."
+            )
+        }
     }
 
     @ViewBuilder
@@ -826,7 +1043,9 @@ struct ContentView: View {
         case .loading:
             loadingCard
         case let .schedule(page, events, pastEvents):
-            let allEventCards = events + pastEvents
+            let allEventCards = (events + pastEvents).filter {
+                !eventCardIsHidden($0.event.eventId)
+            }
             VStack(alignment: .leading, spacing: 14) {
                 SupporterSectionHeader(
                     eyebrow: "Your season",
@@ -1111,8 +1330,10 @@ struct ContentView: View {
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(SupporterCardPressStyle())
+        .contextMenu { eventCardManagementMenu(for: item.event) }
         .accessibilityIdentifier("dashboard-event-card-\(item.event.eventId)")
         .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : isUpNext ? "UP NEXT, " : "")\(item.event.title), \(item.event.opponent.isEmpty ? "" : "versus \(item.event.opponent), ")\(item.event.formattedFullDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
+        .accessibilityHint("Tap to open Event Card details. Long press for Edit or Delete.")
     }
 
     private func eventDetail(icon: String, text: String) -> some View {
@@ -1152,7 +1373,9 @@ struct ContentView: View {
                         )
                     }
                     .buttonStyle(SupporterCardPressStyle())
+                    .contextMenu { eventCardManagementMenu(for: item.event) }
                     .accessibilityIdentifier("dashboard-event-tile-\(item.event.eventId)")
+                    .accessibilityHint("Tap to open Event Card details. Long press for Edit or Delete.")
                 }
             }
             .accessibilityIdentifier("dashboard-event-grid")

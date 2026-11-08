@@ -492,6 +492,10 @@ struct NativeCreateEventCardView: View {
             lastError: nil,
             createdAt: Date()
         )
+        guard change.operation != .delete else {
+            errorMessage = "This Event Card is queued for deletion and can’t be edited."
+            return
+        }
         guard !change.isConflicted else {
             errorMessage = change.conflictMessage ?? "Review this Event Card’s saved changes before editing it again."
             return

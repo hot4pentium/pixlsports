@@ -332,6 +332,55 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testLongPressEventCardOpensPrefilledEditorInBothDashboardLayouts() {
+        for accessibilityText in [false, true] {
+            let app = launch("upcoming", accessibilityText: accessibilityText)
+            let cardID = accessibilityText
+                ? "dashboard-event-card-fictional-next"
+                : "dashboard-event-tile-fictional-next"
+            let card = reachable(cardID, in: app)
+            card.press(forDuration: 1.1)
+
+            let edit = app.descendants(matching: .any)
+                .matching(identifier: "dashboard-event-edit-action-fictional-next").firstMatch
+            XCTAssertTrue(edit.waitForExistence(timeout: 5), "Long press must offer Edit in both layouts.")
+            edit.tap()
+
+            XCTAssertTrue(app.staticTexts["Edit Event Card"].waitForExistence(timeout: 5))
+            let opponent = app.textFields["native-event-opponent"]
+            XCTAssertTrue(opponent.exists)
+            XCTAssertEqual(opponent.value as? String, "The Visiting Team With a Very Long Name")
+            XCTAssertTrue(app.buttons["native-event-create-submit"].exists)
+            app.terminate()
+        }
+    }
+
+    func testLongPressDeleteRequiresConfirmationAndKeepsTheDateHistory() {
+        for accessibilityText in [false, true] {
+            let app = launch("upcoming", accessibilityText: accessibilityText)
+            let cardID = accessibilityText
+                ? "dashboard-event-card-fictional-next"
+                : "dashboard-event-tile-fictional-next"
+            let card = reachable(cardID, in: app)
+            card.press(forDuration: 1.1)
+
+            let delete = app.descendants(matching: .any)
+                .matching(identifier: "dashboard-event-delete-action-fictional-next").firstMatch
+            XCTAssertTrue(delete.waitForExistence(timeout: 5), "Long press must offer Delete in both layouts.")
+            delete.tap()
+            XCTAssertTrue(app.staticTexts["Delete this Event Card?"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts.containing(
+                NSPredicate(format: "label CONTAINS %@", "Stats and game history for this date stay saved")
+            ).firstMatch.exists)
+            app.buttons["dashboard-event-delete-confirm"].tap()
+
+            XCTAssertTrue(app.alerts.staticTexts["Event Card deleted"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.descendants(matching: .any)[cardID].exists)
+            XCTAssertTrue(app.descendants(matching: .any)["dashboard-event-tile-fictional-later"].exists)
+            app.terminate()
+        }
+    }
+
     func testOnlyNearestUpcomingCardIsLabeledWithAccessibilityText() {
         let app = launch("upcoming", accessibilityText: true)
         XCTAssertTrue(reachable("dashboard-event-card-fictional-next", in: app).label.contains("UP NEXT"))
