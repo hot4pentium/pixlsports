@@ -90,6 +90,11 @@ struct NativeHypeCardFront: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(athleteName), \(teamName), \(seasonName), HYPE Card")
+        .accessibilityValue(
+            privatePhoto != nil ? "Photo saved on this iPhone"
+                : photoURL != nil ? "Photo loads from PIXL"
+                    : "No photo is saved"
+        )
     }
 
     private func fullPhoto(_ image: Image, size: CGSize) -> some View {

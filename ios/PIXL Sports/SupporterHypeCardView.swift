@@ -679,6 +679,12 @@ struct SupporterHypeCardView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(card.athleteName), \(card.teamName), \(card.seasonName), HYPE Card")
         .accessibilityIdentifier("native-hype-card")
+        .accessibilityValue(
+            isPublicRecipient ? "Photo loads from PIXL"
+                : privatePhoto != nil ? "Photo saved on this iPhone"
+                    : photoURL != nil ? "Photo loads from PIXL"
+                        : "No photo is saved"
+        )
     }
 
     @ViewBuilder
@@ -1475,6 +1481,11 @@ struct SupporterHypeCardView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(athleteName), \(teamName), \(seasonName), HYPE Card")
             .accessibilityIdentifier("native-hype-card")
+            .accessibilityValue(
+                privatePhoto != nil ? "Photo saved on this iPhone"
+                    : photoURL != nil ? "Photo loads from PIXL"
+                        : "No photo is saved"
+            )
 
         }
     }
