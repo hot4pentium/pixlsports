@@ -7,37 +7,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
 
-enum NativeRecordMomentArtwork: String, CaseIterable, Identifiable {
-    case clutch = "0_clutch"
-    case domination = "1_domination"
-    case gameChanger = "2_gamechanger"
-    case highlight = "3_highlight"
-    case hustle = "4_hustle"
-    case lockedIn = "5_lockedin"
-    case milestone = "6_milestone"
-    case nextLevel = "7_nextlevel"
-    case unstoppable = "8_unstoppable"
-    case victory = "9_victory"
-
-    var id: String { rawValue }
-    var assetName: String { "RecordMomentIntro_\(rawValue)" }
-
-    var title: String {
-        switch self {
-        case .clutch: return "Clutch"
-        case .domination: return "Domination"
-        case .gameChanger: return "Game Changer"
-        case .highlight: return "Highlight"
-        case .hustle: return "Hustle"
-        case .lockedIn: return "Locked In"
-        case .milestone: return "Milestone"
-        case .nextLevel: return "Next Level"
-        case .unstoppable: return "Unstoppable"
-        case .victory: return "Victory"
-        }
-    }
-}
-
 enum NativeRecordMomentLimits {
     nonisolated static let maximumSourceBytes = 120 * 1024 * 1024
     static let maximumFootageSeconds = 15.0
@@ -60,7 +29,6 @@ enum NativeRecordMomentMediaError: LocalizedError {
     case fileTooLarge
     case cannotReadVideo
     case videoTooShort
-    case missingArtwork
     case exportUnavailable
     case exportFailed
     case photoAccessDenied
@@ -74,8 +42,6 @@ enum NativeRecordMomentMediaError: LocalizedError {
             return "This video couldn’t be opened. Try choosing another one."
         case .videoTooShort:
             return "Choose a video that is at least half a second long."
-        case .missingArtwork:
-            return "That shoutout image isn’t available. Choose another one."
         case .exportUnavailable:
             return "This video can’t be prepared on this iPhone. Try another clip."
         case .exportFailed:

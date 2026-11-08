@@ -202,6 +202,15 @@ test("the chooser offers only seven matching animated intros", () => {
   assert.match(appleChecks, /animated-clutch-landscape/);
   assert.match(appleChecks, /PASS: animated Domination with Stadium Ignition music/);
 });
+test("obsolete still-only intro posters are not bundled or referenced", () => {
+  const root = new URL("../PIXL Sports/Assets.xcassets/", import.meta.url);
+  const staleImageSets = readdirSync(root).filter(name =>
+    name.startsWith("RecordMomentIntro_") && existsSync(new URL(`${name}/Contents.json`, root))
+  );
+  assert.deepEqual(staleImageSets, [], "Legacy still-only intro poster sets should not be bundled");
+  const legacy = read("NativeRecordMomentMedia.swift");
+  assert.doesNotMatch(legacy, /NativeRecordMomentArtwork|RecordMomentIntro_|missingArtwork/);
+});
 test("the exact exported MP4 is previewed, saved, and shared", () => {
   const exportFlow = model.slice(model.indexOf("func export()"), model.indexOf("func save()"));
   const saveFlow = model.slice(model.indexOf("func save()"), model.indexOf("func stopPlayback()"));
