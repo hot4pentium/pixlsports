@@ -44,6 +44,7 @@ final class SupporterHomeViewModel: ObservableObject {
     }
 
     func setAthleteProfile(_ profile: NativeSupporterProfile) {
+        hypePreviewRequestID = UUID()
         athleteProfile = profile
         athleteProfileError = nil
         hasResolvedAthleteProfile = true
@@ -51,6 +52,7 @@ final class SupporterHomeViewModel: ObservableObject {
     }
 
     func resetAthleteProfile() {
+        hypePreviewRequestID = UUID()
         athleteProfile = nil
         athleteProfileError = nil
         hasResolvedAthleteProfile = false
@@ -157,12 +159,14 @@ final class SupporterHomeViewModel: ObservableObject {
            saved.status == "linked" {
             state = .schedule(page: saved, events: upcomingEvents(in: saved, now: Date()),
                               pastEvents: pastEventCards(in: saved, now: Date()))
-            if let data = try? offline.vault.read("get/supporter/profile", subject: previewUserID),
+            if !hasLoadedAthleteProfile,
+               let data = try? offline.vault.read("get/supporter/profile", subject: previewUserID),
                let savedProfile = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data) {
                 athleteProfile = savedProfile
-                hasLoadedAthleteProfile = true
-                hasResolvedAthleteProfile = true
-                hasResolvedInitialSchedule = true
+                // An old unfinished cache must be checked before reopening setup.
+                hasLoadedAthleteProfile = !savedProfile.needsSetup
+                hasResolvedAthleteProfile = !savedProfile.needsSetup
+                hasResolvedInitialSchedule = !savedProfile.needsSetup
             }
             if let data = try? offline.vault.read("dashboard-preview", subject: previewUserID),
                let savedPreview = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: data) {
@@ -182,10 +186,12 @@ final class SupporterHomeViewModel: ObservableObject {
         hypeCardPreviewError = nil
         do {
             var page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
-            guard !Task.isCancelled, clerk.user?.id == previewUserID else { return }
+            guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
+                  clerk.user?.id == previewUserID else { return }
             if page.status == "unlinked" {
                 let ready = try await SupporterHomeAPI.prepareAccount(clerk: clerk)
-                guard !Task.isCancelled, clerk.user?.id == previewUserID else { return }
+                guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
+                      clerk.user?.id == previewUserID else { return }
                 if ready {
                     // Only first-time unlinked startup prepares an account.
                     // Navigation and stat taps never run account provisioning.
@@ -195,7 +201,8 @@ final class SupporterHomeViewModel: ObservableObject {
                     page = try await SupporterHomeAPI.fetchPrivateSchedule(clerk: clerk)
                 }
             }
-            guard clerk.user?.id == previewUserID else { return }
+            guard hypePreviewRequestID == previewRequestID,
+                  clerk.user?.id == previewUserID else { return }
             guard !Task.isCancelled else {
                 finishCancelledScheduleLoad()
                 return
@@ -220,15 +227,23 @@ final class SupporterHomeViewModel: ObservableObject {
                 events: upcomingEvents(in: page, now: now),
                 pastEvents: pastEventCards(in: page, now: now)
             )
-            if forceProfileReload || !hasLoadedAthleteProfile {
+            if forceProfileReload || !hasLoadedAthleteProfile || athleteProfile?.needsSetup == true {
+                let profileRevision = offline.athleteProfileCacheRevision
                 do {
-                    athleteProfile = try await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
+                    let profile = try await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
+                    guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
+                          clerk.user?.id == previewUserID, verifiedScope == offline.vault.namespace,
+                          profileRevision == offline.athleteProfileCacheRevision else { return }
+                    athleteProfile = profile
                     athleteProfileError = nil
                     hasLoadedAthleteProfile = true
                     hasResolvedAthleteProfile = true
                 } catch is CancellationError {
                     return
                 } catch {
+                    guard !Task.isCancelled, hypePreviewRequestID == previewRequestID,
+                          clerk.user?.id == previewUserID, verifiedScope == offline.vault.namespace,
+                          profileRevision == offline.athleteProfileCacheRevision else { return }
                     athleteProfileError = error.localizedDescription
                     hasResolvedAthleteProfile = true
                 }
@@ -298,9 +313,13 @@ final class SupporterHomeViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
             offline.resume(clerk: clerk)
         } catch is CancellationError {
+            guard hypePreviewRequestID == previewRequestID,
+                  clerk.user?.id == previewUserID else { return }
             finishCancelledScheduleLoad()
             return
         } catch let error as URLError {
+            guard hypePreviewRequestID == previewRequestID,
+                  clerk.user?.id == previewUserID else { return }
             guard !Task.isCancelled else {
                 finishCancelledScheduleLoad()
                 return
@@ -314,6 +333,8 @@ final class SupporterHomeViewModel: ObservableObject {
             }
             hasResolvedInitialSchedule = true
         } catch {
+            guard hypePreviewRequestID == previewRequestID,
+                  clerk.user?.id == previewUserID else { return }
             guard !Task.isCancelled else {
                 finishCancelledScheduleLoad()
                 return

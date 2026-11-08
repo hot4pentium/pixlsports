@@ -51,6 +51,7 @@ enum NativeAPIConnectionCheckResult: Equatable {
 /// One foreground coordinator, not one reconnect timer per tap or screen.
 @MainActor
 final class NativeOfflineRuntime: ObservableObject {
+    private(set) var athleteProfileCacheRevision = UUID()
     static let shared = NativeOfflineRuntime()
     @Published private(set) var online = true
     @Published private(set) var usingSavedContent = false
@@ -120,6 +121,12 @@ final class NativeOfflineRuntime: ObservableObject {
         let data = try vault.read(key, subject: subject)
         if data != nil { usingSavedContent = true }
         return data
+    }
+
+    /// A confirmed profile write supersedes profile downloads already in flight.
+    func cacheSavedAthleteProfile(_ data: Data) {
+        athleteProfileCacheRevision = UUID()
+        cache(data, key: "get/supporter/profile")
     }
 
     func cache(_ data: Data, key: String) {

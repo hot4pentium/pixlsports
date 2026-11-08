@@ -569,11 +569,15 @@ enum SupporterHomeAPI {
         }
     }
 
+    @MainActor
     static func saveAthleteProfile(
         _ profile: NativeSupporterProfile,
         completeSetup: Bool = false,
         clerk: Clerk
     ) async throws -> NativeSupporterProfile {
+        let offline = NativeOfflineRuntime.shared
+        let requestScope = offline.vault.namespace
+        let requestSubject = clerk.user?.id
         let data = try await NativeAccountLinkClient().postData(
             "supporter/profile",
             body: NativeAthleteProfileUpdate(
@@ -584,8 +588,13 @@ enum SupporterHomeAPI {
             method: "PATCH",
             clerk: clerk
         )
+        guard requestScope == offline.vault.namespace, requestSubject == clerk.user?.id else {
+            throw NativeOfflineError.locked
+        }
         do {
-            return try JSONDecoder().decode(NativeSupporterProfile.self, from: data)
+            let saved = try JSONDecoder().decode(NativeSupporterProfile.self, from: data)
+            NativeOfflineRuntime.shared.cacheSavedAthleteProfile(data)
+            return saved
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }

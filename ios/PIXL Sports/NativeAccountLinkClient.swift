@@ -289,6 +289,7 @@ final class NativeAccountLinkClient {
     private func networkGetData(_ path: String, headers: [String: String], clerk: Clerk) async throws -> Data {
         let origin = try Self.apiOrigin()
         let requestScope = NativeOfflineVault.shared.namespace
+        let profileRevision = NativeOfflineRuntime.shared.athleteProfileCacheRevision
         guard clerk.isAuthFlowComplete, let subject = clerk.user?.id,
               let token = try await clerk.session?.getToken() else {
             throw NativeAccountLinkError.message("Sign in to the iPhone app again.")
@@ -343,6 +344,7 @@ final class NativeAccountLinkClient {
                 try offline.clear()
             }
         } else if offline.vault.canContinue(subject: subject),
+                  path != "supporter/profile" || profileRevision == offline.athleteProfileCacheRevision,
                   let key = offline.cacheKey(path, headers: headers) {
             offline.cache(data, key: key)
         }
