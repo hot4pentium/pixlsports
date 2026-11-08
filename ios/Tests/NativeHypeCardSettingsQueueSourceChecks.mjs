@@ -8,6 +8,7 @@ const view = read("SupporterHypeCardView.swift");
 const client = read("NativeAccountLinkClient.swift");
 const runtime = read("NativeOfflineRuntime.swift");
 const api = read("SupporterHomeAPI.swift");
+const uiTest = readFileSync(new URL("../UITests/NativeHypeCardOfflineUITests.swift", import.meta.url), "utf8");
 
 test("only an explicit Save creates an automatically syncable settings intent", () => {
   const draftPersistence = view.slice(
@@ -54,4 +55,20 @@ test("uncertain responses and conflicts retain the queued intent for later recon
     completion.indexOf("clearHypeCardSettingsSaveIntent") > completion.indexOf("clearHypeCardSettingsDraft"),
     "The queue remains durable until confirmation and draft cleanup have completed."
   );
+});
+
+test("the Apple UI test exercises an independent remote write and same-field recovery", () => {
+  const uiTestAPI = api.slice(
+    api.indexOf("static func applyNativeHypeCardConflictEditForUITest"),
+    api.indexOf("static func syncQueuedNativeHypeCardSettings"),
+  );
+  assert.match(uiTestAPI, /fetchAuthoritativeNativeHypeCardSettings/);
+  assert.match(uiTestAPI, /showEvents: !latest\.showEvents/);
+  assert.match(uiTestAPI, /favoriteMoment: favoriteMoment/);
+  assert.match(uiTestAPI, /expectedRevision: revision/);
+  assert.match(view, /--ui-testing-hype-card-settings-conflict/);
+  assert.match(view, /applyNativeHypeCardConflictEditForUITest/);
+  assert.match(uiTest, /testReopenedCardMergesRemoteOnlyAndSameFieldSettingsChanges/);
+  assert.match(uiTest, /XCTAssertEqual\([\s\S]*?localChoice/);
+  assert.match(uiTest, /XCTAssertEqual\([\s\S]*?remoteEvents/);
 });

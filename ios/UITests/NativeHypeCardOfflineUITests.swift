@@ -38,6 +38,38 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         }
     }
 
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<20 where !element.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable, "The HYPE Card settings control should be reachable.")
+    }
+
+    private func replaceText(in field: XCUIElement, with value: String, in app: XCUIApplication) {
+        field.tap()
+        if let currentValue = field.value as? String,
+           currentValue != (field.placeholderValue as? String),
+           !currentValue.isEmpty {
+            field.press(forDuration: 1)
+            let selectAll = app.menuItems["Select All"]
+            if selectAll.waitForExistence(timeout: 2) {
+                selectAll.tap()
+                field.typeText(XCUIKeyboardKey.delete.rawValue)
+            } else {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: currentValue.count))
+            }
+        }
+        if !value.isEmpty {
+            field.typeText(value)
+        }
+        let done = app.keyboards.buttons["Done"]
+        if done.waitForExistence(timeout: 2) {
+            done.tap()
+        } else {
+            field.typeText("\n")
+        }
+    }
+
     private func exerciseOfflineRestore(visibility: String) throws {
         try requireVisibility(visibility)
         continueAfterFailure = false
@@ -111,6 +143,137 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
 
     func testHiddenOwnerCardPhotoAndSettingsRestoreOffline() throws {
         try exerciseOfflineRestore(visibility: "hidden")
+    }
+
+    func testReopenedCardMergesRemoteOnlyAndSameFieldSettingsChanges() throws {
+        try requireVisibility("public")
+        continueAfterFailure = false
+
+        let localChoice = "iPhone-\(UUID().uuidString.prefix(8))"
+        let remoteChoice = "Remote-\(UUID().uuidString.prefix(8))"
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-hype-card-settings-conflict",
+            "--ui-testing-hype-card-remote-favorite=\(remoteChoice)"
+        ]
+        app.launch()
+        openOwnerCard(in: app, visibility: "public")
+
+        let eventsToggle = app.switches["native-hype-card-toggle-events"]
+        XCTAssertTrue(eventsToggle.waitForExistence(timeout: 10))
+        reveal(eventsToggle, in: app)
+        guard let initialEvents = eventsToggle.value as? String,
+              initialEvents == "0" || initialEvents == "1" else {
+            XCTFail("The Event Cards setting should expose its current switch value.")
+            app.terminate()
+            return
+        }
+        let remoteEvents = initialEvents == "1" ? "0" : "1"
+
+        let favoriteField = app.textFields["native-hype-card-favorite-moment"]
+        XCTAssertTrue(favoriteField.waitForExistence(timeout: 10))
+        reveal(favoriteField, in: app)
+        let originalFavorite = favoriteField.value as? String ?? ""
+        replaceText(in: favoriteField, with: localChoice, in: app)
+        let localSaveMessage = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND label CONTAINS[c] %@",
+                "native-hype-card-settings-message",
+                "saved on this iPhone"
+            )
+        ).firstMatch
+        XCTAssertTrue(
+            localSaveMessage.waitForExistence(timeout: 10),
+            "The same-field iPhone edit must be saved locally before the remote change."
+        )
+
+        let remoteChange = app.buttons["native-hype-card-simulate-remote-settings-change"]
+        reveal(remoteChange, in: app)
+        remoteChange.tap()
+        XCTAssertTrue(
+            app.staticTexts.matching(
+                NSPredicate(format: "identifier == %@ AND label CONTAINS[c] %@",
+                            "native-hype-card-settings-message", "Other-device settings change applied")
+            ).firstMatch.waitForExistence(timeout: 30),
+            "The independent authenticated update should change PIXL settings."
+        )
+        app.terminate()
+
+        // Reopening fetches the newer server revision and rebases the saved
+        // iPhone draft against it before presenting the editor.
+        app.launchArguments = []
+        app.launch()
+        openOwnerCard(in: app, visibility: "public")
+        let restoredFavorite = app.textFields["native-hype-card-favorite-moment"]
+        XCTAssertTrue(restoredFavorite.waitForExistence(timeout: 10))
+        reveal(restoredFavorite, in: app)
+        XCTAssertEqual(
+            restoredFavorite.value as? String,
+            localChoice,
+            "The conflicting iPhone choice must remain on-device for review."
+        )
+        let restoredEvents = app.switches["native-hype-card-toggle-events"]
+        reveal(restoredEvents, in: app)
+        XCTAssertEqual(
+            restoredEvents.value as? String,
+            remoteEvents,
+            "A remote-only setting must merge into the iPhone draft."
+        )
+        let rebasedMessage = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND label CONTAINS[c] %@",
+                "native-hype-card-settings-message",
+                "Tap Save to sync them"
+            )
+        ).firstMatch
+        XCTAssertTrue(rebasedMessage.waitForExistence(timeout: 10))
+
+        let saveButton = app.buttons["native-hype-card-save-settings"]
+        reveal(saveButton, in: app)
+        saveButton.tap()
+        let syncedMessage = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND label CONTAINS[c] %@",
+                "native-hype-card-settings-message",
+                "HYPE Card changes synced"
+            )
+        ).firstMatch
+        XCTAssertTrue(
+            syncedMessage.waitForExistence(timeout: 30),
+            "Saving the recovered iPhone choice must retain the remote-only field."
+        )
+        XCTAssertEqual(
+            restoredFavorite.value as? String,
+            localChoice,
+            "The synced same-field winner must remain the iPhone's reviewed choice."
+        )
+        XCTAssertEqual(
+            restoredEvents.value as? String,
+            remoteEvents,
+            "Saving the local conflict choice must not undo the remote-only setting."
+        )
+
+        // Restore the dedicated development owner's starting values so reruns
+        // do not accumulate test settings.
+        let finalFavorite = app.textFields["native-hype-card-favorite-moment"]
+        reveal(finalFavorite, in: app)
+        replaceText(in: finalFavorite, with: originalFavorite, in: app)
+        if initialEvents != remoteEvents {
+            let finalEvents = app.switches["native-hype-card-toggle-events"]
+            reveal(finalEvents, in: app)
+            finalEvents.tap()
+        }
+        reveal(saveButton, in: app)
+        saveButton.tap()
+        let restoreDeadline = Date().addingTimeInterval(30)
+        while saveButton.isEnabled && Date() < restoreDeadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+        XCTAssertFalse(
+            saveButton.isEnabled,
+            "The original development settings should be restored and synced."
+        )
+        app.terminate()
     }
 
     func testRevokedLinkCannotRestoreHiddenOwnerCardOffline() throws {

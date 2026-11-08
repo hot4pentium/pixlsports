@@ -21,6 +21,11 @@ PIXL_HYPE_CARD_OFFLINE_VISIBILITY=hidden xcodebuild test \
   -project "ios/PIXL Sports.xcodeproj" -scheme "PIXL Sports" \
   -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
   -only-testing:PIXL\ SportsUITests/NativeHypeCardOfflineUITests/testRevokedLinkCannotRestoreHiddenOwnerCardOffline
+
+PIXL_HYPE_CARD_OFFLINE_VISIBILITY=public xcodebuild test \
+  -project "ios/PIXL Sports.xcodeproj" -scheme "PIXL Sports" \
+  -destination 'platform=iOS Simulator,id=<iPhone simulator UUID>' \
+  -only-testing:PIXL\ SportsUITests/NativeHypeCardOfflineUITests/testReopenedCardMergesRemoteOnlyAndSameFieldSettingsChanges
 ```
 
 Sign in to the matching owner in the simulator before each run, and make sure
@@ -49,6 +54,12 @@ to contact its servers; use the Airplane Mode steps below for that check.
    change; it must not replace either with stale settings. Repeat with the same
    field changed on both devices and verify the iPhone's local edit is preserved
    for review/save rather than silently discarded.
+   The automated UI test runs the equivalent sequence against a dedicated
+   public development owner: it stores a distinct favorite-moment edit locally,
+   applies an independent authenticated PIXL update to that same field and to
+   Event Cards, then relaunches to verify the iPhone choice and remote-only
+   setting are both retained. It saves the rebased draft and restores the
+   development owner's original settings before finishing.
 5. With networking enabled, make the API unreachable. A previously saved card
    and photo must remain visible. An unconfirmed in-flight save must still
    require checking saved status before another cloud write.

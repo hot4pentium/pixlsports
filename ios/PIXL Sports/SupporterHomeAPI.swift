@@ -924,6 +924,30 @@ enum SupporterHomeAPI {
         return saved
     }
 
+#if DEBUG
+    static func applyNativeHypeCardConflictEditForUITest(
+        favoriteMoment: String,
+        clerk: Clerk
+    ) async throws -> NativeHypeCardSettings {
+        let latest = try await fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
+        guard let revision = latest.revision, !revision.isEmpty else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        return try await updateNativeHypeCard(
+            settings: NativeHypeCardSettingsUpdate(
+                showHypeCard: latest.showHypeCard,
+                showStats: latest.showStats,
+                showEvents: !latest.showEvents,
+                paused: latest.paused,
+                favoriteMoment: favoriteMoment,
+                expectedRevision: revision,
+                confirmPublish: false
+            ),
+            clerk: clerk
+        )
+    }
+#endif
+
     /// Sync only a save intent written by the owner's explicit Save action.
     /// Drafts by themselves are never eligible for automatic publication.
     @MainActor

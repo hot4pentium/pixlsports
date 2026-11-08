@@ -824,6 +824,29 @@ struct SupporterHypeCardView: View {
                 .accessibilityIdentifier("native-hype-card-toggle-paused")
                 .disabled(!canEditSettingsDraft)
 
+            TextField(
+                "Favorite moment",
+                text: favoriteMomentBinding,
+                prompt: Text("Add a favorite moment")
+            )
+                .textContentType(.none)
+                .submitLabel(.done)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityLabel("Favorite moment")
+                .accessibilityValue(draftFavoriteMoment)
+                .accessibilityIdentifier("native-hype-card-favorite-moment")
+                .disabled(!canEditSettingsDraft)
+
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-hype-card-settings-conflict") {
+                Button("Simulate other-device settings change", action: simulateOtherDeviceSettingsChange)
+                    .accessibilityIdentifier("native-hype-card-simulate-remote-settings-change")
+            }
+#endif
+
             Button(action: requestSettingsSave) {
                 HStack {
                     if isSaving { ProgressView().tint(SupporterHomeColors.background) }
@@ -953,6 +976,33 @@ struct SupporterHypeCardView: View {
     private var pausedBinding: Binding<Bool> {
         Binding(get: { draftPaused }, set: { draftPaused = $0; persistSettingsDraft() })
     }
+
+    private var favoriteMomentBinding: Binding<String> {
+        Binding(get: { draftFavoriteMoment }, set: { draftFavoriteMoment = $0; persistSettingsDraft() })
+    }
+
+#if DEBUG
+    private func simulateOtherDeviceSettingsChange() {
+        guard let clerk,
+              let favoriteMoment = ProcessInfo.processInfo.arguments.first(where: {
+                  $0.hasPrefix("--ui-testing-hype-card-remote-favorite=")
+              })?.replacingOccurrences(of: "--ui-testing-hype-card-remote-favorite=", with: "") else {
+            settingsMessage = "The other-device test change couldn’t be applied."
+            return
+        }
+        Task {
+            do {
+                _ = try await SupporterHomeAPI.applyNativeHypeCardConflictEditForUITest(
+                    favoriteMoment: favoriteMoment,
+                    clerk: clerk
+                )
+                settingsMessage = "Other-device settings change applied on PIXL."
+            } catch {
+                settingsMessage = "The other-device test change couldn’t be applied."
+            }
+        }
+    }
+#endif
 
     private func persistSettingsDraft() {
         guard canEditSettingsDraft, let subject = settingsAccountSubject else {
