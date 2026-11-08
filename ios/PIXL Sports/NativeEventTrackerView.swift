@@ -1,5 +1,6 @@
 import SwiftUI
 import ClerkKit
+import UIKit
 
 struct NativeEventTrackerView: View {
     let event: AthleteFanEvent
@@ -418,7 +419,6 @@ private struct NativeTrackerSaveStatusView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityLabel("Stat Tracker save status")
                 .accessibilityValue(status.detail ?? status.message)
-                .accessibilityLiveRegion(status.announces ? .polite : .off)
                 .accessibilityIdentifier("native-event-tracker-save-status")
 
             if canRetry {
@@ -460,6 +460,10 @@ private struct NativeTrackerSaveStatusView: View {
         .frame(height: 44)
         .background(status.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("native-event-tracker-save-status-row")
+        .onChange(of: status.message) { _, message in
+            guard status.announces else { return }
+            UIAccessibility.post(notification: .announcement, argument: message)
+        }
         .alert("Stat Tracker status", isPresented: $showingDetails) {
             Button("OK", role: .cancel) {}
         } message: {

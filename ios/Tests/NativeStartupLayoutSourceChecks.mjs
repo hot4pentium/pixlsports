@@ -301,7 +301,7 @@ test("Stat Tracker save status stays inline as local and PIXL states change", ()
   assert.doesNotMatch(content, /if !embedded \|\| model\.busy \|\| model\.errorMessage != nil/);
   assert.match(status, /\.frame\(height: 44\)/);
   assert.match(status, /accessibilityIdentifier\("native-event-tracker-save-status"\)/);
-  assert.match(status, /accessibilityLiveRegion\(status\.announces \? \.polite : \.off\)/);
+  assert.match(status, /\.onChange\(of: status\.message\) \{ _, message in[\s\S]*?guard status\.announces else \{ return \}[\s\S]*?UIAccessibility\.post\(notification: \.announcement, argument: message\)/);
   assert.match(status, /Saved on iPhone/);
   assert.match(status, /Saving to PIXL/);
   assert.match(status, /Saved to PIXL/);
