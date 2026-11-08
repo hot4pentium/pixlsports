@@ -9,9 +9,9 @@ Fan Base remains available on both owner dashboards. It shows saved browser/devi
 
 **How to apply:** Keep owner summaries private and limited to counts and volunteered names. Native access must use the verified account link and selected athlete, never an email match.
 
-On the native dashboard, Fan Base is a small box centered directly beneath the HYPE Card. Tapping it opens a dedicated page with all Fan Base content, rather than expanding the content on the dashboard.
+On the native dashboard, use just a text-only button labeled exactly "Fan Base", centered directly beneath the HYPE Card. Do not add an icon, count, subtitle, or chevron. Tapping it opens a dedicated page with all Fan Base content, rather than expanding the content on the dashboard.
 
-**Why:** The user requested a smaller dashboard entry beneath the HYPE Card and a separate page for all content.
+**Why:** After seeing the summary box, the user clarified: "Just have a button that says 'Fan Base'."
 
 **How to apply:** Keep the compact entry aligned with the HYPE Card column, including the stacked large-text layout. Keep names, anonymous counts, and loading/error/retry details on the full page.
 

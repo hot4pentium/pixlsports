@@ -68,43 +68,20 @@ struct NativeSeasonRecordView: View {
 }
 
 struct NativeFanBaseEntryView: View {
-    let fanBase: NativeSupporterFanBase?
-    let isLoading: Bool
-
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "person.3.fill")
-                .foregroundStyle(SupporterHomeColors.accent)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Fan Base")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                if let fanBase {
-                    Text("\(fanBase.totalFollows) \(fanBase.totalFollows == 1 ? "FOLLOW" : "FOLLOWS")")
-                        .monospacedDigit()
-                        .accessibilityIdentifier("dashboard-fan-base-count")
-                } else {
-                    Text(isLoading ? "Loading…" : "View details")
-                }
+        Text("Fan Base")
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: 160, minHeight: 44)
+            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(SupporterHomeColors.blue.opacity(0.45), lineWidth: 1)
             }
-            .font(.caption)
-            .foregroundStyle(SupporterHomeColors.muted)
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(SupporterHomeColors.muted)
-                .accessibilityHidden(true)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: 260, alignment: .leading)
-        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(SupporterHomeColors.blue.opacity(0.45), lineWidth: 1)
-        }
-        .supporterSurfaceShadow()
     }
 }
 

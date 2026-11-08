@@ -13,8 +13,11 @@ test("the compact Fan Base entry is centered below the HYPE Card", () => {
   assert.ok(hypeStart >= 0 && entryStart > hypeStart);
   assert.match(hero.slice(entryStart), /NativeFanBaseEntryView[\s\S]*?dashboard-fan-base-entry[\s\S]*?frame\(maxWidth: \.infinity, alignment: \.center\)/);
   const entry = fanBase.slice(fanBase.indexOf("struct NativeFanBaseEntryView"), fanBase.indexOf("struct NativeFanBaseView:"));
-  assert.match(entry, /maxWidth: 260/);
-  assert.doesNotMatch(entry, /namedFans|anonymousFollows/);
+  assert.match(entry, /maxWidth: 160, minHeight: 44/);
+  assert.match(entry, /Text\("Fan Base"\)/);
+  assert.match(entry, /\.lineLimit\(1\)/);
+  assert.equal((entry.match(/Text\(/g) ?? []).length, 1);
+  assert.doesNotMatch(entry, /Image\(|FOLLOWS|Loading|View details|namedFans|anonymousFollows/);
   assert.match(content, /onOpenFanBase: \{ heroDestination = \.fanBase \}/);
 });
 

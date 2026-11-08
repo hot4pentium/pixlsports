@@ -168,18 +168,27 @@ final class SupporterDashboardUITests: XCTestCase {
         ]
         app.launch()
 
+        reachable("dashboard-fan-base-entry", in: app).tap()
         XCTAssertTrue(app.staticTexts["3 FOLLOWS"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons["Done"].firstMatch.tap()
         reachable("fan-base-fixture-remote-follow", in: app).tap()
+        reachable("dashboard-fan-base-entry", in: app).tap()
         XCTAssertTrue(app.staticTexts["3 FOLLOWS"].exists,
                       "A remote change must not alter the displayed summary before refresh.")
+        app.navigationBars.buttons["Done"].firstMatch.tap()
         reachable("fan-base-fixture-refresh", in: app).tap()
+        reachable("dashboard-fan-base-entry", in: app).tap()
         XCTAssertTrue(app.staticTexts["4 FOLLOWS"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["3 FOLLOWS"].exists)
 
+        app.navigationBars.buttons["Done"].firstMatch.tap()
         reachable("fan-base-fixture-remote-follow", in: app).tap()
+        reachable("dashboard-fan-base-entry", in: app).tap()
         XCTAssertTrue(app.staticTexts["4 FOLLOWS"].exists,
                       "A remote unfollow must not alter the displayed summary before refresh.")
+        app.navigationBars.buttons["Done"].firstMatch.tap()
         reachable("fan-base-fixture-refresh", in: app).tap()
+        reachable("dashboard-fan-base-entry", in: app).tap()
         XCTAssertTrue(app.staticTexts["3 FOLLOWS"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["4 FOLLOWS"].exists)
         app.terminate()
@@ -196,7 +205,9 @@ final class SupporterDashboardUITests: XCTestCase {
 
         XCTAssertTrue(reachable("dashboard-fan-base-entry", in: app).exists)
         XCTAssertFalse(app.descendants(matching: .any)["dashboard-fan-base"].exists)
+        reachable("dashboard-fan-base-entry", in: app).tap()
         XCTAssertTrue(app.staticTexts["3 FOLLOWS"].exists)
+        app.navigationBars.buttons["Done"].firstMatch.tap()
         reachable("fan-base-fixture-failed-refresh", in: app).tap()
         reachable("fan-base-fixture-refresh", in: app).tap()
         reachable("dashboard-fan-base-entry", in: app).tap()
@@ -225,8 +236,11 @@ final class SupporterDashboardUITests: XCTestCase {
         let entry = reachable("dashboard-fan-base-entry", in: app)
         XCTAssertEqual(entry.frame.midX, hypeCard.frame.midX, accuracy: 2)
         XCTAssertGreaterThanOrEqual(entry.frame.minY, hypeCard.frame.maxY)
-        XCTAssertLessThanOrEqual(entry.frame.width, 261)
+        XCTAssertLessThanOrEqual(entry.frame.width, 161)
         XCTAssertGreaterThanOrEqual(entry.frame.height, 44)
+        XCTAssertLessThanOrEqual(entry.frame.height, 60)
+        XCTAssertEqual(entry.label, "Fan Base")
+        XCTAssertFalse(app.staticTexts["3 FOLLOWS"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["dashboard-fan-base"].exists)
         XCTAssertFalse(app.staticTexts["Casey"].exists)
 

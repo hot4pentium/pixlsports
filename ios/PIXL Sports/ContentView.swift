@@ -537,8 +537,6 @@ struct ContentView: View {
                     hypePrivatePhoto: viewModel.hypeCardPrivatePhoto,
                     hypePreviewFailed: viewModel.hypeCardPreviewError != nil
                         && viewModel.hypeCardPreview == nil,
-                    fanBase: displayedFanBase,
-                    fanBaseIsLoading: displayedFanBaseIsLoading,
                     showsFanBase: displayedFanBase != nil || displayedFanBaseIsLoading || displayedFanBaseError != nil,
                     onOpenEvent: {
                         if let token = guide?.event.shareToken {

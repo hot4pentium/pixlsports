@@ -14,8 +14,6 @@ struct NativeHomeHeroCards: View {
     let hypePhotoURL: String?
     let hypePrivatePhoto: UIImage?
     let hypePreviewFailed: Bool
-    let fanBase: NativeSupporterFanBase?
-    let fanBaseIsLoading: Bool
     let showsFanBase: Bool
     let onOpenEvent: () -> Void
     let onOpenHypeCard: () -> Void
@@ -81,7 +79,7 @@ struct NativeHomeHeroCards: View {
 
                 if showsFanBase {
                     Button(action: onOpenFanBase) {
-                        NativeFanBaseEntryView(fanBase: fanBase, isLoading: fanBaseIsLoading)
+                        NativeFanBaseEntryView()
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens all Fan Base details.")
