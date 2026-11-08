@@ -100,9 +100,10 @@ swiftc -parse-as-library \
 ```
 
 These cover local game projection and reload, attribution, intentional/no-score
-results, period formats, bounded leases, identity mismatch, conflict detection,
-immutable attempted mutations, protected-store failure, and corrupt outbox
-preservation. Existing signed-in Prep UI tests also exercise a lost server response.
+results, period formats, bounded leases, identity mismatch, tracker revision rebase,
+same-game checks, immutable attempted mutations, protected-store failure, and
+corrupt outbox preservation. Existing signed-in Prep UI tests also exercise a lost
+server response.
 
 ## Xcode / device verification
 
@@ -127,9 +128,13 @@ real season game for a test that finishes a tracker.
 7. Repeat with the development response-loss flag
    `--prep-save-lost-response-once` alongside `--ui-testing-signed-in-prep`.
    A retry must use the identical attempted mutation ID and payload.
-8. Edit the same event from a second authorized device before reconnecting the
-   first. Verify explicit conflict status, disabled further tracking, retained
-   pending work, and confirmed discard/server reload. Do not auto-overwrite.
+ 8. Change the same live game from a second authorized device while the first has
+    queued tracker actions. The first phone must keep local tracking enabled, retain
+    the exact attempted command, and rebase only never-sent actions after confirming
+    the same Event Card and game. No **Use saved Stat Tracker** choice may discard it.
+    Then finish the game or replace its account link on the second device: the first
+    phone must preserve its local queue, explain the mismatch, stop new tracker
+    writes, and never send those actions to the finished or replacement game.
 9. Attempt sign-out with pending work, first canceling and then confirming its loss.
    Sign in as another account: neither old content nor queued mutations may appear.
 10. Verify accepted account removal still shows its receipt/support reference even

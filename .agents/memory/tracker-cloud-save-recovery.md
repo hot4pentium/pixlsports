@@ -3,17 +3,17 @@ name: Tracker cloud-save recovery
 description: Recovery rules for locally saved tracker results when cloud sync fails or the server detects a revision conflict.
 ---
 
-Completed tracker results are local-first. Persist retryable cloud failures under the signed-in account so a reload restores both the local result and a visible retry path; clear that state only after the server acknowledges a sync. Persist revision conflicts separately and block automatic retries until the user chooses which history to keep.
+Completed tracker results are local-first. Persist retryable cloud failures under the signed-in account so a reload restores both the local result and a visible retry path; clear that state only after the server acknowledges a sync. For whole-project saves, keep revision conflicts separate and require an explicit history choice before replacing a saved project.
 
 **Why:** In-memory recovery controls disappear on reload, while treating a revision conflict like a transport failure can overwrite newer cloud history.
 
 **How to apply:** When changing completed-game saves, retry handling, or reload hydration, cover account isolation, acknowledgement timing, local-result retention, and conflict recovery as one end-to-end flow.
 
-For native Event Card stat taps, queue each tap durably per account and event, then send commands serially. Keep the in-flight mutation ID and expected revision unchanged until the server acknowledges it; assign the next queued command the acknowledged revision. A stale revision remains a user-visible conflict, not a transport retry.
+For native Event Card tracker taps, queue each action durably per account and Event Card, then send commands serially. Keep an attempted command's ID, payload, and revision unchanged; replay that exact command after uncertain responses and use server receipts to confirm accepted actions. On a recoverable revision conflict, let the owner keep tracking locally, but rebase only never-sent actions after confirming the same account link and live game. Preserve the local queue and explain why sync is paused; never offer a destructive saved-version choice for tracker data. A changed link, different game, or finalized game blocks new writes and syncs without clearing the queue. Keep Prep's conflict flow separate.
 
-**Why:** Rapid taps must remain responsive on slow connections, while retrying a request whose response was lost must not create duplicate game events or overwrite a revision changed on another device.
+**Why:** Game-day tracking cannot stop during a recoverable network or revision conflict, while replaying a request with an uncertain outcome must not duplicate an event or send it to a different game.
 
-**How to apply:** When changing native stat saves or their persistence tests, cover process interruption between queued commands, same-ID retry after an uncertain response, and explicit conflict recovery.
+**How to apply:** When changing native Event Card tracking or its outbox tests, cover relaunch, exact attempted-command replay, ordered rebasing of unsent actions, same-game validation, incompatible-state preservation, and the unchanged Prep flow.
 
 Publish a completed game to the temporary supporter share only after its finalized tracker project is confirmed in the cloud. If that project save fails, keep the share pending; after recovery, publish the final state and let the HYPE Card read the recap from the owner-owned project. A failed final-share update must remain retryable.
 

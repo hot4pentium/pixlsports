@@ -25,6 +25,31 @@ struct NativeEventToolCommand: Codable {
     var notes: String? = nil
 }
 
+enum NativeTrackerRecoveryStatus: String, Codable, Equatable {
+    case revisionConflict
+    case linkChanged
+    case gameChanged
+    case gameFinished
+    case serverRejected
+
+    var permitsLocalEntry: Bool { self == .revisionConflict }
+
+    var message: String {
+        switch self {
+        case .revisionConflict:
+            "PIXL has a newer tracker version. Your actions are saved on this iPhone; keep tracking and try syncing again when ready."
+        case .linkChanged:
+            "This Event Card is now connected to a different PIXL account. Your iPhone changes are still here and will not be sent to that account."
+        case .gameChanged:
+            "The game on PIXL no longer matches this iPhone copy. Your pending actions are still here and will not be sent to a different game."
+        case .gameFinished:
+            "This game is already finished on PIXL. Your pending actions are still saved on this iPhone and were not sent to the final game."
+        case .serverRejected:
+            "PIXL could not apply a pending tracker action. Your changes are still saved on this iPhone; check the event before syncing again."
+        }
+    }
+}
+
 /// Account-scoped durable storage for the native Event Card command outbox.
 /// The model serializes commands in order and writes each queue transition before
 /// sending a request or dropping an acknowledged command.
@@ -33,6 +58,7 @@ final class NativeEventDurableQueue<Command: Codable> {
         var version: Int? = 1
         var commands: [Command]
         var conflictBlocked: Bool
+        var trackerRecoveryStatus: NativeTrackerRecoveryStatus? = nil
     }
 
     private let storageKey: String
@@ -41,6 +67,7 @@ final class NativeEventDurableQueue<Command: Codable> {
     private let protectedWrite: ((Data?) throws -> Void)?
     private(set) var commands: [Command]
     private(set) var conflictBlocked: Bool
+    private(set) var trackerRecoveryStatus: NativeTrackerRecoveryStatus?
     private(set) var storageError: Error?
 
     init(
@@ -48,6 +75,7 @@ final class NativeEventDurableQueue<Command: Codable> {
         defaults: UserDefaults = .standard,
         initialCommands: [Command] = [],
         initialConflictBlocked: Bool = false,
+        initialTrackerRecoveryStatus: NativeTrackerRecoveryStatus? = nil,
         protectedRead: (() throws -> Data?)? = nil,
         protectedWrite: ((Data?) throws -> Void)? = nil,
         validateLegacy: ((Data) throws -> Void)? = nil
@@ -69,6 +97,7 @@ final class NativeEventDurableQueue<Command: Codable> {
         catch {
             commands = []
             conflictBlocked = true
+            trackerRecoveryStatus = nil
             storageError = error
             return
         }
@@ -77,6 +106,7 @@ final class NativeEventDurableQueue<Command: Codable> {
            saved.version == nil || saved.version == 1 {
             commands = saved.commands
             conflictBlocked = saved.conflictBlocked
+            trackerRecoveryStatus = saved.trackerRecoveryStatus
             if protectedWrite != nil {
                 do {
                     try persist()
@@ -86,6 +116,7 @@ final class NativeEventDurableQueue<Command: Codable> {
         } else {
             commands = initialCommands
             conflictBlocked = initialConflictBlocked
+            trackerRecoveryStatus = initialTrackerRecoveryStatus
             if data != nil && (readProtected || initialCommands.isEmpty) {
                 storageError = NativeEventDurableQueueError.unreadableQueue
             } else if !commands.isEmpty {
@@ -97,16 +128,23 @@ final class NativeEventDurableQueue<Command: Codable> {
         }
     }
 
-    func save(commands: [Command], conflictBlocked: Bool) throws {
+    func save(
+        commands: [Command],
+        conflictBlocked: Bool,
+        trackerRecoveryStatus: NativeTrackerRecoveryStatus? = nil
+    ) throws {
         let previousCommands = self.commands
         let previousConflictBlocked = self.conflictBlocked
+        let previousTrackerRecoveryStatus = self.trackerRecoveryStatus
         self.commands = commands
         self.conflictBlocked = conflictBlocked
+        self.trackerRecoveryStatus = trackerRecoveryStatus
         do {
             try persist()
         } catch {
             self.commands = previousCommands
             self.conflictBlocked = previousConflictBlocked
+            self.trackerRecoveryStatus = previousTrackerRecoveryStatus
             throw error
         }
     }
@@ -116,14 +154,15 @@ final class NativeEventDurableQueue<Command: Codable> {
     }
 
     private func persist() throws {
-        guard !commands.isEmpty || conflictBlocked else {
+        guard !commands.isEmpty || conflictBlocked || trackerRecoveryStatus != nil else {
             if let protectedWrite { try protectedWrite(nil) }
             defaults.removeObject(forKey: storageKey)
             storageError = nil
             return
         }
         let data = try JSONEncoder().encode(
-            Snapshot(commands: commands, conflictBlocked: conflictBlocked)
+            Snapshot(commands: commands, conflictBlocked: conflictBlocked,
+                     trackerRecoveryStatus: trackerRecoveryStatus)
         )
         if let protectedWrite {
             try protectedWrite(data)

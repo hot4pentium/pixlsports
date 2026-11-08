@@ -93,7 +93,7 @@
 - [Soccer period formats](soccer-period-formats.md) — ask for halves or quarters on new live soccer games; interpret older format-free games as halves.
 - [Season correction reconciliation](season-correction-reconciliation.md) — cloud finals supersede matching plays only; divergent offline plays require an explicit choice.
 - [Tracker Calendar completion](tracker-calendar-completion.md) — compact completion waits for Calendar Final; failures stay visible and retryable after the card closes.
-- [Tracker cloud-save recovery](tracker-cloud-save-recovery.md) — persist account-scoped retryable failures across reloads; revision conflicts stay blocked for an explicit history choice.
+- [Tracker cloud-save recovery](tracker-cloud-save-recovery.md) — whole-project conflicts need an explicit history choice; native Event Card taps continue locally with immutable retries and same-game-only rebasing.
 - [New-account tour eligibility](new-account-tour-eligibility.md) — first-visit guides require explicit setup eligibility; includes the iPhone weekly welcome.
 - [Game On scheduled caller](game-on-scheduled-caller.md) — choose one free two-minute caller (Cloudflare or cron-job.org), keeping the API on Autoscale and paid add-ons off.
 - [Owner alert idempotency](owner-alert-idempotency.md) — keep one-hour prompts unique across replaced Game On Cards; uncertain sends must not repeat.

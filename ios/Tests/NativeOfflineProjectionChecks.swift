@@ -8,11 +8,14 @@ struct NativeOfflineProjectionChecks {
         NativeEventToolCommand(shareToken: "event", mutationId: UUID().uuidString,
                                linkId: "verified-link", expectedRevision: revision, kind: kind)
     }
-    static func workspace(revision: Int = 0, prepRevision: Int = 0) -> NativeEventWorkspace {
-        .init(linkId: "verified-link", prepRevision: prepRevision, trackerRevision: revision, sport: "soccer",
+    static func workspace(
+        revision: Int = 0, prepRevision: Int = 0,
+        linkId: String = "verified-link", eventStatus: String? = "upcoming"
+    ) -> NativeEventWorkspace {
+        .init(linkId: linkId, prepRevision: prepRevision, trackerRevision: revision, sport: "soccer",
               prep: .init(items: [], notes: ""), rules: .init(phaseLabel: "Half", stats: [
                 .init(id: "goal", label: "Goal", points: 1)
-              ]), game: nil)
+              ]), game: nil, eventStatus: eventStatus)
     }
     static func main() throws {
         let encoder = JSONEncoder()
@@ -98,6 +101,63 @@ struct NativeOfflineProjectionChecks {
         precondition(queue[1].command.expectedRevision == 1 && queue[2].command.expectedRevision == 0)
         precondition(NativeOfflineOutboxPolicy.conflicts([queue[1]], with: workspace(revision: 2)))
         precondition(!NativeOfflineOutboxPolicy.conflicts([queue[1]], with: workspace(revision: 1)))
+
+        var queuedStart = command("start")
+        queuedStart.expectedRevision = 0
+        var queuedStat = command("stat")
+        queuedStat.expectedRevision = 0
+        var rebaseQueue = [
+            NativeQueuedEventToolCommand(command: queuedStart, attempted: false, displayOptimistically: true),
+            NativeQueuedEventToolCommand(command: queuedStat, attempted: false, displayOptimistically: true)
+        ]
+        let latest = workspace(revision: 8)
+        precondition(NativeTrackerOutboxPolicy.incompatibility(
+            rebaseQueue, previous: workspace(), latest: latest, shareToken: "event"
+        ) == nil)
+        NativeTrackerOutboxPolicy.rebaseNeverAttempted(&rebaseQueue, against: latest)
+        precondition(rebaseQueue[0].command.expectedRevision == 8)
+        precondition(rebaseQueue[1].command.expectedRevision == 9,
+                     "Never-attempted tracker actions rebase in order.")
+
+        let immutableAttempt = NativeQueuedEventToolCommand(
+            command: queuedStart, attempted: true, displayOptimistically: true
+        )
+        var behindAttempt = queuedStat
+        behindAttempt.expectedRevision = 4
+        var immutableQueue = [
+            immutableAttempt,
+            NativeQueuedEventToolCommand(command: behindAttempt, attempted: false, displayOptimistically: true)
+        ]
+        let originalAttemptBytes = try encoder.encode(immutableQueue[0])
+        NativeTrackerOutboxPolicy.rebaseNeverAttempted(&immutableQueue, against: latest)
+        let unchangedAttemptAfterRebase = try encoder.encode(immutableQueue[0])
+        precondition(unchangedAttemptAfterRebase == originalAttemptBytes,
+                     "A sent command must retain its exact identifier and payload.")
+        precondition(immutableQueue[1].command.expectedRevision == 4,
+                     "Later changes wait behind an unresolved attempted command.")
+
+        let activeGame = NativeEventProjection.apply(queuedStart, to: workspace())
+        var latestSameGame = workspace(revision: 3)
+        latestSameGame.game = activeGame.game
+        let pendingTap = NativeQueuedEventToolCommand(
+            command: queuedStat, attempted: false, displayOptimistically: true
+        )
+        precondition(NativeTrackerOutboxPolicy.incompatibility(
+            [pendingTap], previous: activeGame, latest: latestSameGame, shareToken: "event"
+        ) == nil, "A matching live game can accept a safe revision rebase.")
+        precondition(NativeTrackerOutboxPolicy.incompatibility(
+            [immutableQueue[0]], previous: workspace(), latest: workspace(linkId: "replacement-link"),
+            shareToken: "event"
+        ) == .linkChanged)
+        var finishedGame = latestSameGame
+        var finished = finishedGame.game!
+        finished.status = "final"
+        finishedGame.game = finished
+        finishedGame.eventStatus = "final"
+        precondition(NativeTrackerOutboxPolicy.incompatibility(
+            [pendingTap], previous: activeGame, latest: finishedGame, shareToken: "event"
+        ) == .gameFinished)
+
         let replacementItems = [NativePrepItem(id: "local", label: "Bring water", completed: true)]
         let replacement = NativeOfflineOutboxPolicy.queueForUserConfirmedPrepReplacement(
             [queue[2]], saved: workspace(prepRevision: 7), shareToken: "event",
@@ -123,7 +183,7 @@ struct NativeOfflineProjectionChecks {
             storageKey: "outbox", defaults: defaults,
             protectedRead: { protectedBytes },
             protectedWrite: { if failWrites { throw Failure.storage }; protectedBytes = $0 })
-        try outbox.save(commands: queue, conflictBlocked: false)
+        try outbox.save(commands: queue, conflictBlocked: false, trackerRecoveryStatus: .revisionConflict)
         let committedBytes = protectedBytes
         failWrites = true
         do { try outbox.save(commands: [], conflictBlocked: false); preconditionFailure("A failed write must throw.") }
@@ -134,6 +194,8 @@ struct NativeOfflineProjectionChecks {
             storageKey: "outbox", defaults: defaults,
             protectedRead: { protectedBytes }, protectedWrite: { protectedBytes = $0 })
         precondition(restored.commands.count == 3)
+        precondition(restored.trackerRecoveryStatus == .revisionConflict,
+                     "Tracker recovery state must survive app relaunch.")
         let restoredAttempt = try encoder.encode(restored.commands[0])
         precondition(restoredAttempt == attemptedBytes)
         protectedBytes = Data("corrupt".utf8)

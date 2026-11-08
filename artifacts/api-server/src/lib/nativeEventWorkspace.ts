@@ -30,6 +30,7 @@ export function nativePrepTemplate(practice: boolean): Item[] {
 export async function nativeEventWorkspace(
   identity: NativeIdentity, shareToken: string, command?: WorkspaceCommand,
   notifyTrackerShare?: (shareToken: string) => Promise<void>,
+  pendingMutationIds: string[] = [],
 ) {
   const tx = await pool.connect();
   let changedShares: string[] = [];
@@ -173,7 +174,11 @@ export async function nativeEventWorkspace(
     const response = {
       linkId: link.id, prepRevision: prep?.revision ?? 0, trackerRevision: project?.revision ?? 0,
       prep: { items: prep?.items ?? nativePrepTemplate(event.type === "practice"), notes: prep?.notes ?? "" },
-      sport, rules: nativeSportRules[sport], game,
+      sport, rules: nativeSportRules[sport], game, eventStatus: String(event.status ?? ""),
+      acknowledgedMutationIds: [...new Set([
+        ...((project?.project.nativeReceipts as Receipt[] | undefined) ?? []),
+        ...((prep?.selected_game?.nativeReceipts as Receipt[] | undefined) ?? []),
+      ].filter((receipt) => pendingMutationIds.includes(receipt.id)).map((receipt) => receipt.id))],
     };
     await tx.query("COMMIT");
     // The data is committed before recipients can fetch the new revision.

@@ -83,6 +83,7 @@ final class NativeEventToolModel: ObservableObject {
     @Published private(set) var prepRecoveryMessage: String?
     @Published private(set) var pendingQueue: [NativeQueuedEventToolCommand] = []
     @Published private(set) var conflictBlocked = false
+    @Published private(set) var trackerRecoveryStatus: NativeTrackerRecoveryStatus?
     @Published private(set) var unreadablePendingData = false
     @Published var reloadGeneration = 0
     private let shareToken: String
@@ -110,6 +111,10 @@ final class NativeEventToolModel: ObservableObject {
     }
 
     var ownsCurrentScope: Bool { scope == offline.vault.namespace && offline.canContinue }
+    private var eventIsFinal: Bool {
+        guard let status = workspace?.eventStatus?.lowercased() else { return false }
+        return ["final", "complete", "completed"].contains(status)
+    }
     var hasPendingPrepCommand: Bool { pendingQueue.contains { $0.command.kind == "prep" } }
     var canKeepLocalPrep: Bool {
         conflictBlocked && !unreadablePendingData && ownsCurrentScope
@@ -121,7 +126,17 @@ final class NativeEventToolModel: ObservableObject {
 #endif
         return workspace != nil && !unreadablePendingData && !conflictBlocked && ownsCurrentScope
     }
-    var canQueueStat: Bool { canEditLocally && workspace?.game?.status == "live" }
+    var canEditTrackerLocally: Bool {
+#if DEBUG
+        if NativeEventWorkspaceUITestFixture.isRequested { return workspace != nil }
+#endif
+        return workspace != nil && !unreadablePendingData
+            && !conflictBlocked
+            && (trackerRecoveryStatus?.permitsLocalEntry ?? true)
+            && !eventIsFinal
+            && ownsCurrentScope
+    }
+    var canQueueStat: Bool { canEditTrackerLocally && workspace?.game?.status == "live" }
     var pendingFinal: Bool { pendingQueue.contains { $0.command.kind == "finish" } }
 
     static func shared(shareToken: String, accountID: String) -> NativeEventToolModel {
@@ -146,10 +161,20 @@ final class NativeEventToolModel: ObservableObject {
         durableQueue = Self.openQueue(storageKey: storageKey, token: shareToken, accountID: accountID, scope: capturedScope)
         pendingQueue = durableQueue.commands
         conflictBlocked = durableQueue.conflictBlocked
+        trackerRecoveryStatus = durableQueue.trackerRecoveryStatus
+        if conflictBlocked,
+           pendingQueue.contains(where: { $0.command.kind != "prep" }),
+           !pendingQueue.contains(where: { $0.command.kind == "prep" }) {
+            // Older builds persisted tracker revision conflicts in the Prep
+            // conflict flag. Migrate them without offering a destructive choice.
+            conflictBlocked = false
+            trackerRecoveryStatus = trackerRecoveryStatus ?? .revisionConflict
+            try? persistPendingQueue()
+        }
         if durableQueue.storageError != nil {
             unreadablePendingData = true
             errorMessage = durableQueue.storageError?.localizedDescription
-        } else if conflictBlocked {
+        } else if conflictBlocked || trackerRecoveryStatus != nil {
             errorMessage = "The tracker changed elsewhere. Your pending changes are still saved on this iPhone."
         } else if !pendingQueue.isEmpty {
             errorMessage = "Checking your saved tracker changes…"
@@ -157,6 +182,26 @@ final class NativeEventToolModel: ObservableObject {
         if let data = try? offline.vault.read("workspace/" + shareToken, subject: accountID),
            let saved = try? JSONDecoder().decode(NativeEventWorkspace.self, from: data) {
             acknowledgedWorkspace = saved
+            let acknowledgedIDs = Set(saved.acknowledgedMutationIds ?? [])
+            if !acknowledgedIDs.isEmpty {
+                let previousQueue = pendingQueue
+                pendingQueue.removeAll {
+                    $0.attempted && $0.command.kind != "prep"
+                        && acknowledgedIDs.contains($0.command.mutationId)
+                }
+                if pendingQueue.count != previousQueue.count {
+                    do { try persistPendingQueue() }
+                    catch {
+                        pendingQueue = previousQueue
+                        try? persistPendingQueue()
+                    }
+                }
+            }
+            if !pendingQueue.contains(where: { $0.command.kind != "prep" }),
+               trackerRecoveryStatus != nil {
+                trackerRecoveryStatus = nil
+                try? persistPendingQueue()
+            }
             reconcileRestoredStatQueue()
             rebuildProjection()
         }
@@ -216,20 +261,103 @@ final class NativeEventToolModel: ObservableObject {
         defer { busy = false }
         var shouldDrain = false
         do {
+            let pendingIDs = pendingQueue
+                .filter(\.attempted)
+                .map(\.command.mutationId)
             let data = try await NativeAccountLinkClient().postData(
-                "supporter/event-workspace", body: ["shareToken": shareToken], clerk: clerk
+                "supporter/event-workspace",
+                body: NativeEventWorkspaceRequest(shareToken: shareToken, pendingMutationIds: pendingIDs),
+                clerk: clerk
             )
             guard scope == offline.vault.namespace else { return }
-            let next = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+            var next = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
             if (durableQueue.storageError as? NativeOfflineError) == .notPrepared {
                 durableQueue = Self.openQueue(storageKey: storageKey, token: shareToken,
                                               accountID: offline.accountID, scope: scope)
                 pendingQueue = durableQueue.commands
                 conflictBlocked = durableQueue.conflictBlocked
+                trackerRecoveryStatus = durableQueue.trackerRecoveryStatus
                 unreadablePendingData = durableQueue.storageError != nil
+                if conflictBlocked,
+                   pendingQueue.contains(where: { $0.command.kind != "prep" }),
+                   !pendingQueue.contains(where: { $0.command.kind == "prep" }) {
+                    conflictBlocked = false
+                    trackerRecoveryStatus = trackerRecoveryStatus ?? .revisionConflict
+                }
+                let restoredIDs = pendingQueue.filter(\.attempted).map(\.command.mutationId)
+                if !restoredIDs.isEmpty, !unreadablePendingData {
+                    let restoredData = try await NativeAccountLinkClient().postData(
+                        "supporter/event-workspace",
+                        body: NativeEventWorkspaceRequest(
+                            shareToken: shareToken, pendingMutationIds: restoredIDs
+                        ),
+                        clerk: clerk, allowCachedWorkspace: false
+                    )
+                    next = try JSONDecoder().decode(NativeEventWorkspace.self, from: restoredData)
+                }
             }
-            if NativeOfflineOutboxPolicy.conflicts(pendingQueue, with: next) { conflictBlocked = true }
-            acknowledgedWorkspace = next
+
+            let previousWorkspace = acknowledgedWorkspace
+            let acknowledgedIDs = Set(next.acknowledgedMutationIds ?? [])
+            let confirmedStarts = pendingQueue.contains {
+                $0.attempted && $0.command.kind == "start"
+                    && acknowledgedIDs.contains($0.command.mutationId)
+            }
+            if pendingQueue.contains(where: {
+                $0.command.kind != "prep" && acknowledgedIDs.contains($0.command.mutationId)
+            }) {
+                let previousQueue = pendingQueue
+                pendingQueue.removeAll {
+                    $0.attempted && $0.command.kind != "prep"
+                        && acknowledgedIDs.contains($0.command.mutationId)
+                }
+                do {
+                    try persistPendingQueue()
+                } catch {
+                    // Keep the durable command if local acknowledgement storage
+                    // fails, but don't project a mutation already present on PIXL.
+                    pendingQueue = previousQueue
+                    for index in pendingQueue.indices
+                    where pendingQueue[index].command.kind != "prep"
+                        && acknowledgedIDs.contains(pendingQueue[index].command.mutationId) {
+                        pendingQueue[index].displayOptimistically = false
+                    }
+                    try? persistPendingQueue()
+                    errorMessage = "PIXL confirmed a saved tracker action, but this iPhone could not update its sync queue yet."
+                }
+            }
+
+            let prepQueue = pendingQueue.filter { $0.command.kind == "prep" }
+            if NativeOfflineOutboxPolicy.conflicts(prepQueue, with: next) {
+                conflictBlocked = true
+            }
+            let trackerQueue = pendingQueue.filter { $0.command.kind != "prep" }
+            let policyBase = confirmedStarts ? next : previousWorkspace
+            let trackerProblem = NativeTrackerOutboxPolicy.incompatibility(
+                pendingQueue, previous: policyBase, latest: next, shareToken: shareToken,
+                acknowledgedMutationIds: acknowledgedIDs
+            )
+            if let trackerProblem {
+                trackerRecoveryStatus = trackerProblem
+                if prepQueue.isEmpty, let previousWorkspace {
+                    // Keep the last compatible game as the projection base.
+                    // Never apply queued actions to a replaced or finalized game.
+                    acknowledgedWorkspace = previousWorkspace
+                    try? offline.vault.write(
+                        JSONEncoder().encode(previousWorkspace), key: "workspace/" + shareToken
+                    )
+                } else {
+                    acknowledgedWorkspace = next
+                }
+            } else {
+                acknowledgedWorkspace = next
+                trackerRecoveryStatus = nil
+                if !trackerQueue.isEmpty {
+                    NativeTrackerOutboxPolicy.rebaseNeverAttempted(&pendingQueue, against: next)
+                }
+                try offline.vault.write(JSONEncoder().encode(next), key: "workspace/" + shareToken)
+            }
+            try persistPendingQueue()
             reconcileRestoredStatQueue()
             rebuildProjection()
             await recoverChecklistDraft(clerk: clerk)
@@ -237,6 +365,8 @@ final class NativeEventToolModel: ObservableObject {
                 errorMessage = "A saved tracker change could not be read. It has not been removed."
             } else if conflictBlocked {
                 errorMessage = "The tracker changed elsewhere. Your pending changes are still saved on this iPhone. Reload before choosing what to keep."
+            } else if let trackerRecoveryStatus {
+                errorMessage = trackerRecoveryStatus.message
             } else {
                 errorMessage = nil
                 shouldDrain = !pendingQueue.isEmpty
@@ -284,11 +414,16 @@ final class NativeEventToolModel: ObservableObject {
         recordScore: Bool? = nil, outcome: String? = nil,
         items: [NativePrepItem]? = nil, notes: String? = nil
     ) async {
-        guard !unreadablePendingData, !conflictBlocked, let workspace else { return }
-        guard canEditLocally else { return }
+        guard !unreadablePendingData, let workspace else { return }
+        if kind == "prep" {
+            guard !conflictBlocked, canEditLocally else { return }
+        } else {
+            guard canEditTrackerLocally else { return }
+        }
         if kind == "stat" {
             guard canQueueStat else { return }
         }
+        if kind == "start", eventIsFinal { return }
         guard pendingQueue.count < Self.maximumPendingCommands else {
             errorMessage = "Sync your saved changes before recording more. The on-device queue is full."
             return
@@ -341,11 +476,7 @@ final class NativeEventToolModel: ObservableObject {
 
     func retry(clerk: Clerk) async {
         guard !busy, !conflictBlocked, !unreadablePendingData, !pendingQueue.isEmpty else { return }
-        guard workspace != nil else {
-            await load(clerk: clerk)
-            return
-        }
-        await drainQueue(clerk: clerk)
+        await load(clerk: clerk)
     }
 
     private func drainQueue(clerk: Clerk) async {
@@ -367,6 +498,7 @@ final class NativeEventToolModel: ObservableObject {
         while !pendingQueue.isEmpty {
             guard !Task.isCancelled, offline.online, scope == offline.vault.namespace,
                   offline.vault.canContinue(subject: clerk.user?.id) else { return }
+            if pendingQueue[0].command.kind != "prep", trackerRecoveryStatus != nil { return }
             if !pendingQueue[0].attempted {
                 guard let workspace = acknowledgedWorkspace else { return }
                 pendingQueue[0].command.expectedRevision =
@@ -432,10 +564,17 @@ final class NativeEventToolModel: ObservableObject {
                     return
                 }
                 if concurrentChange && !pendingQueue.isEmpty {
-                    conflictBlocked = true
+                    if command.kind == "prep" {
+                        conflictBlocked = true
+                    } else {
+                        trackerRecoveryStatus = .revisionConflict
+                        NativeTrackerOutboxPolicy.rebaseNeverAttempted(&pendingQueue, against: next)
+                    }
                     try persistPendingQueue()
                     rebuildProjection()
-                    errorMessage = "This event also changed elsewhere. Remaining changes are saved here for your review."
+                    errorMessage = command.kind == "prep"
+                        ? "This event also changed elsewhere. Remaining Prep changes are saved here for your review."
+                        : NativeTrackerRecoveryStatus.revisionConflict.message
                     return
                 }
                 rebuildProjection()
@@ -449,10 +588,14 @@ final class NativeEventToolModel: ObservableObject {
                     scheduleChange = command
                 }
             } catch {
-                if (error as? NativeAccountLinkError)?.statusCode == 409 {
+                if command.kind != "prep",
+                   (error as? NativeAccountLinkError)?.statusCode == 409 {
+                    await recoverTrackerConflict(clerk: clerk, error: error)
+                } else if command.kind == "prep",
+                          (error as? NativeAccountLinkError)?.statusCode == 409 {
                     conflictBlocked = true
                     try? persistPendingQueue()
-                    errorMessage = "\(error.localizedDescription) Your queued changes are still saved on this iPhone. Discard them only if you want to use the server version."
+                    errorMessage = "\(error.localizedDescription) Your queued Prep changes are still saved on this iPhone."
                 } else {
                     errorMessage = "\(error.localizedDescription) \(pendingCount) pending changes remain saved on this iPhone. Retry when connected."
 #if DEBUG
@@ -465,9 +608,107 @@ final class NativeEventToolModel: ObservableObject {
         }
     }
 
+    private func recoverTrackerConflict(clerk: Clerk, error: Error) async {
+        trackerRecoveryStatus = .revisionConflict
+        errorMessage = NativeTrackerRecoveryStatus.revisionConflict.message
+        try? persistPendingQueue()
+
+        do {
+            let pendingIDs = pendingQueue.filter(\.attempted).map(\.command.mutationId)
+            let request = NativeEventWorkspaceRequest(
+                shareToken: shareToken, pendingMutationIds: pendingIDs
+            )
+            let data = try await NativeAccountLinkClient().postData(
+                "supporter/event-workspace", body: request, clerk: clerk,
+                allowCachedWorkspace: false
+            )
+            guard scope == offline.vault.namespace else { return }
+            let latest = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)
+            let previousWorkspace = acknowledgedWorkspace
+            let acknowledgedIDs = Set(latest.acknowledgedMutationIds ?? [])
+            let confirmedStarts = pendingQueue.contains {
+                $0.attempted && $0.command.kind == "start"
+                    && acknowledgedIDs.contains($0.command.mutationId)
+            }
+            if pendingQueue.contains(where: {
+                $0.command.kind != "prep" && $0.attempted
+                    && acknowledgedIDs.contains($0.command.mutationId)
+            }) {
+                pendingQueue.removeAll {
+                    $0.command.kind != "prep" && $0.attempted
+                        && acknowledgedIDs.contains($0.command.mutationId)
+                }
+            }
+
+            guard pendingQueue.contains(where: { $0.command.kind != "prep" }) else {
+                trackerRecoveryStatus = nil
+                acknowledgedWorkspace = latest
+                try offline.vault.write(JSONEncoder().encode(latest), key: "workspace/" + shareToken)
+                try persistPendingQueue()
+                reconcileRestoredStatQueue()
+                rebuildProjection()
+                errorMessage = nil
+                return
+            }
+
+            if let incompatibility = NativeTrackerOutboxPolicy.incompatibility(
+                pendingQueue, previous: confirmedStarts ? latest : previousWorkspace,
+                latest: latest, shareToken: shareToken, acknowledgedMutationIds: acknowledgedIDs
+            ) {
+                trackerRecoveryStatus = incompatibility
+                if !pendingQueue.contains(where: { $0.command.kind == "prep" }),
+                   let previousWorkspace {
+                    acknowledgedWorkspace = previousWorkspace
+                    try? offline.vault.write(
+                        JSONEncoder().encode(previousWorkspace), key: "workspace/" + shareToken
+                    )
+                } else {
+                    acknowledgedWorkspace = latest
+                }
+            } else {
+                let message = error.localizedDescription.lowercased()
+                trackerRecoveryStatus = message.contains("changed on another device")
+                    || message.contains("reload before making another change")
+                    ? .revisionConflict : .serverRejected
+                if trackerRecoveryStatus == .revisionConflict {
+                    acknowledgedWorkspace = latest
+                    NativeTrackerOutboxPolicy.rebaseNeverAttempted(&pendingQueue, against: latest)
+                    try offline.vault.write(JSONEncoder().encode(latest), key: "workspace/" + shareToken)
+                } else if let previousWorkspace {
+                    acknowledgedWorkspace = previousWorkspace
+                }
+            }
+            try persistPendingQueue()
+            reconcileRestoredStatQueue()
+            rebuildProjection()
+            errorMessage = trackerRecoveryStatus?.message
+        } catch let refreshError as NativeAccountLinkError {
+            if refreshError.statusCode == 404 {
+                trackerRecoveryStatus = .gameChanged
+            } else if let statusCode = refreshError.statusCode,
+                      [401, 403, 409, 410, 423].contains(statusCode) {
+                trackerRecoveryStatus = .serverRejected
+            } else {
+                trackerRecoveryStatus = .revisionConflict
+            }
+            try? persistPendingQueue()
+            errorMessage = trackerRecoveryStatus?.message
+        } catch {
+            // Keep the attempted command immutable and retain the iPhone copy.
+            // A later explicit retry or reconnect will fetch the authoritative state.
+            trackerRecoveryStatus = .revisionConflict
+            try? persistPendingQueue()
+            errorMessage = NativeTrackerRecoveryStatus.revisionConflict.message
+        }
+    }
+
     func discardAndReload(clerk: Clerk) async {
         guard !busy, !drainingQueue, offline.online else {
             errorMessage = "Connect to the internet before using the PIXL version. Your changes are still saved on this iPhone."
+            return
+        }
+        guard !pendingQueue.contains(where: { $0.command.kind != "prep" }) else {
+            errorMessage = "Tracker actions are still saved on this iPhone and cannot be removed by choosing the saved Prep."
             return
         }
         do {
@@ -546,9 +787,12 @@ final class NativeEventToolModel: ObservableObject {
             ) else {
                 throw NativeOfflineError.locked
             }
-            try durableQueue.save(commands: replacementQueue, conflictBlocked: false)
+            try durableQueue.save(
+                commands: replacementQueue, conflictBlocked: false, trackerRecoveryStatus: nil
+            )
             pendingQueue = replacementQueue
             conflictBlocked = false
+            trackerRecoveryStatus = nil
             acknowledgedWorkspace = latest
             rebuildProjection()
             errorMessage = nil
@@ -565,15 +809,26 @@ final class NativeEventToolModel: ObservableObject {
 
     private func persistPendingQueue() throws {
         guard scope == offline.vault.namespace else { throw NativeOfflineError.locked }
-        try durableQueue.save(commands: pendingQueue, conflictBlocked: conflictBlocked)
+        try durableQueue.save(
+            commands: pendingQueue, conflictBlocked: conflictBlocked,
+            trackerRecoveryStatus: trackerRecoveryStatus
+        )
         offline.storageChanged()
     }
 
     private func reconcileRestoredStatQueue() {
         guard !unreadablePendingData,
               let saved = acknowledgedWorkspace else { return }
+        let acknowledgedIDs = Set(saved.acknowledgedMutationIds ?? [])
         for index in pendingQueue.indices
         where pendingQueue[index].attempted {
+            if pendingQueue[index].command.kind != "prep" {
+                // A receipt can remain queued if local acknowledgement storage
+                // failed. Never project it twice over the confirmed server copy.
+                pendingQueue[index].displayOptimistically =
+                    !acknowledgedIDs.contains(pendingQueue[index].command.mutationId)
+                continue
+            }
             let revision = pendingQueue[index].command.kind == "prep" ? saved.prepRevision : saved.trackerRevision
             pendingQueue[index].displayOptimistically =
                 pendingQueue[index].command.expectedRevision >= revision
@@ -615,12 +870,18 @@ struct NativeToolSaveNotice: View {
             && (hasUnsavedChanges || model.hasPendingPrepCommand)
             && onKeepLocalPrep != nil
     }
+    private var canUseSavedPrep: Bool {
+        savedContentName == "Prep"
+            && !model.pendingQueue.contains(where: { $0.command.kind != "prep" })
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !offline.online {
                 Label(savedContentName == "Prep"
                       ? "You're offline. Your Prep changes stay on this iPhone."
+                      : savedContentName == "Stat Tracker"
+                          ? "Offline · tracker actions are saved on this iPhone."
                       : "Offline · changes stay on this iPhone. Live Taps and sharing need a connection.",
                       systemImage: "wifi.slash").font(.caption)
             }
@@ -637,12 +898,29 @@ struct NativeToolSaveNotice: View {
                     .font(.caption)
                     .accessibilityIdentifier("native-tool-pending")
             }
-            if model.conflictBlocked {
-                Label(savedContentName == "Prep"
-                      ? "Your Prep update wasn't saved. It's still on this iPhone."
-                      : model.pendingCount == 1
-                          ? "Your change wasn't saved. It's still on this iPhone."
-                          : "Some changes weren't saved. They're still on this iPhone.",
+            if savedContentName != "Prep", let trackerRecoveryStatus = model.trackerRecoveryStatus {
+                Label("Tracker changes are saved on this iPhone", systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .accessibilityIdentifier("native-tool-save-error")
+                Text(trackerRecoveryStatus.message)
+                    .font(.caption)
+                if model.pendingCount > 0 {
+                    Button(trackerRecoveryStatus.permitsLocalEntry ? "Try again" : "Check again") {
+                        Task { await model.retry(clerk: clerk) }
+                    }
+                    .accessibilityIdentifier("native-tool-save-retry")
+                }
+            } else if model.conflictBlocked && savedContentName != "Prep" {
+                Label(model.hasPendingPrepCommand
+                      ? "A Prep change needs review before queued changes sync."
+                      : "A saved tracker change needs a connection check.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .accessibilityIdentifier("native-tool-save-error")
+                Text(model.errorMessage ?? "Your tracker actions remain saved on this iPhone.")
+                    .font(.caption)
+            } else if model.conflictBlocked {
+                Label("Your Prep update wasn't saved. It's still on this iPhone.",
                       systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .accessibilityIdentifier("native-tool-save-error")
@@ -657,8 +935,13 @@ struct NativeToolSaveNotice: View {
                     }
                     .accessibilityIdentifier("native-tool-keep-prep")
                 }
-                Button("Use saved \(savedContentName)") {
-                    confirmingRecovery = .useSaved
+                if canUseSavedPrep {
+                    Button("Use saved \(savedContentName)") {
+                        confirmingRecovery = .useSaved
+                    }
+                } else {
+                    Text("This iPhone queue also contains tracker actions, so using the saved Prep cannot remove it.")
+                        .font(.caption)
                 }
             } else if let _ = model.errorMessage {
                 Label(model.unreadablePendingData
@@ -677,12 +960,16 @@ struct NativeToolSaveNotice: View {
 #if DEBUG
                     .accessibilityValue(model.uiTestPendingMutationID ?? "")
 #endif
-                    Button("Use saved \(savedContentName)") {
-                        confirmingRecovery = .useSaved
+                    if canUseSavedPrep {
+                        Button("Use saved \(savedContentName)") {
+                            confirmingRecovery = .useSaved
+                        }
                     }
                 } else if model.unreadablePendingData {
-                    Button("Use saved \(savedContentName)") {
-                        confirmingRecovery = .useSaved
+                    if canUseSavedPrep {
+                        Button("Use saved \(savedContentName)") {
+                            confirmingRecovery = .useSaved
+                        }
                     }
                 } else {
                     Button("Try again") { Task { await model.load(clerk: clerk) } }

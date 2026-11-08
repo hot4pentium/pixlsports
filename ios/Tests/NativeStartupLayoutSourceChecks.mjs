@@ -247,3 +247,15 @@ test("Prep save conflicts use simple copy and confirm before replacing local cha
   assert.match(prep, /if model\.workspace != nil && !shouldShowSaveNotice \{ saveFooter \}/);
   assert.match(prep, /if !embedded && model\.workspace != nil && !shouldShowSaveNotice \{\s*saveFooter\s*\}/);
 });
+
+test("Stat Tracker conflicts preserve local entry without a destructive saved-version choice", () => {
+  const tools = readFileSync(new URL("../PIXL Sports/NativeEventTools.swift", import.meta.url), "utf8");
+  const tracker = readFileSync(new URL("../PIXL Sports/NativeEventTrackerView.swift", import.meta.url), "utf8");
+  const notice = tools.slice(tools.indexOf("struct NativeToolSaveNotice: View"));
+  assert.match(tools, /var canEditTrackerLocally[\s\S]*trackerRecoveryStatus\?\.permitsLocalEntry/);
+  assert.match(tools, /NativeTrackerOutboxPolicy\.rebaseNeverAttempted\(&pendingQueue, against: next\)/);
+  assert.match(tools, /acknowledgedMutationIds/);
+  assert.match(tracker, /model\.canEditTrackerLocally/);
+  assert.match(notice, /Tracker changes are saved on this iPhone/);
+  assert.doesNotMatch(notice, /Button\("Use saved Stat Tracker"/);
+});

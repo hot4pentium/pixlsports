@@ -56,6 +56,63 @@ enum NativeOfflineOutboxPolicy {
     }
 }
 
+enum NativeTrackerOutboxPolicy {
+    static func incompatibility(
+        _ queue: [NativeQueuedEventToolCommand],
+        previous: NativeEventWorkspace?,
+        latest: NativeEventWorkspace,
+        shareToken: String,
+        acknowledgedMutationIds: Set<String> = []
+    ) -> NativeTrackerRecoveryStatus? {
+        let tracker = queue.filter {
+            $0.command.kind != "prep" && !acknowledgedMutationIds.contains($0.command.mutationId)
+        }
+        guard let first = tracker.first else { return nil }
+        guard tracker.allSatisfy({
+            $0.command.shareToken == shareToken && $0.command.linkId == latest.linkId
+        }) else { return .linkChanged }
+
+        let status = latest.eventStatus?.lowercased()
+        if status == "final" || status == "complete" || status == "completed"
+            || latest.game?.status == "final" {
+            return .gameFinished
+        }
+
+        if let previousGame = previous?.game {
+            guard let latestGame = latest.game, latestGame.id == previousGame.id else {
+                return .gameChanged
+            }
+            guard latestGame.status == "live" || latestGame.status == "paused" else {
+                return .gameFinished
+            }
+            if tracker.contains(where: { $0.command.kind == "start" }) { return .gameChanged }
+        } else {
+            guard latest.game == nil, first.command.kind == "start" else { return .gameChanged }
+        }
+        return nil
+    }
+
+    /// Only commands that have never been sent may receive a new revision.
+    /// Once an attempted command is in the queue, later tracker commands wait
+    /// behind it and are rebased after its exact retry is acknowledged.
+    static func rebaseNeverAttempted(
+        _ queue: inout [NativeQueuedEventToolCommand],
+        against workspace: NativeEventWorkspace
+    ) {
+        var revision = workspace.trackerRevision
+        var mayRebase = true
+        for index in queue.indices where queue[index].command.kind != "prep" {
+            if queue[index].attempted {
+                mayRebase = false
+                continue
+            }
+            guard mayRebase else { continue }
+            queue[index].command.expectedRevision = revision
+            revision += 1
+        }
+    }
+}
+
 struct NativeEventWorkspace: Codable {
     struct Prep: Codable {
         var items: [NativePrepItem]
@@ -101,6 +158,13 @@ struct NativeEventWorkspace: Codable {
     var prep: Prep
     let rules: Rules
     var game: Game?
+    var eventStatus: String? = nil
+    var acknowledgedMutationIds: [String]? = nil
+}
+
+struct NativeEventWorkspaceRequest: Encodable {
+    let shareToken: String
+    let pendingMutationIds: [String]
 }
 
 /// Pure local projection. Revisions remain the last SERVER revisions; a local

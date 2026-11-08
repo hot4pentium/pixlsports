@@ -238,6 +238,10 @@ test("native stat batches survive an interrupted acknowledgment without duplicat
   const interruptedTap = a.command("stat", state.trackerRevision, { statId: "assist", athlete: true });
   state = await nativeEventWorkspace(a.who, a.shareToken, interruptedTap);
   const acknowledgedRevision = state.trackerRevision;
+  const recoveredReceipt = await nativeEventWorkspace(
+    a.who, a.shareToken, undefined, undefined, [interruptedTap.mutationId],
+  );
+  assert.deepEqual(recoveredReceipt.acknowledgedMutationIds, [interruptedTap.mutationId]);
   state = await nativeEventWorkspace(a.who, a.shareToken, interruptedTap);
   assert.equal(state.trackerRevision, acknowledgedRevision, "retrying an acknowledged tap must not increment the revision");
 

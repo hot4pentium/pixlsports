@@ -50,7 +50,7 @@ struct NativeEventTrackerView: View {
             VStack(alignment: .leading, spacing: compact ? 12 : 22) {
                 if !embedded { Text(event.title).font(.title2.bold()) }
                 if !embedded || model.busy || model.errorMessage != nil || model.pendingCount > 0 {
-                    NativeToolSaveNotice(model: model, clerk: clerk)
+                    NativeToolSaveNotice(model: model, clerk: clerk, savedContentName: "Stat Tracker")
                 }
                 if let workspace = model.workspace {
                     if let game = model.displayedGame {
@@ -79,7 +79,9 @@ struct NativeEventTrackerView: View {
                             Task { await model.save("start", clerk: clerk, soccerFormat: workspace.sport == "soccer" ? soccerFormat : nil) }
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(!model.canEditLocally || event.status == "final")
+                        .disabled(!model.canEditTrackerLocally
+                                  || event.status == "final"
+                                  || workspace.eventStatus?.lowercased() == "final")
                         .accessibilityIdentifier("native-event-start-game")
                     }
                 }
@@ -97,7 +99,7 @@ struct NativeEventTrackerView: View {
                 }
             }
             HStack(alignment: .top, spacing: 20) {
-                let canEditScore = game.status == "live" && model.canEditLocally
+                let canEditScore = game.status == "live" && model.canEditTrackerLocally
                 scoreboard(teamName, score: game.score, opponent: false, editable: canEditScore)
                 scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: game.opponentScore, opponent: true, editable: canEditScore)
             }
@@ -158,22 +160,22 @@ struct NativeEventTrackerView: View {
                     Button(game.status == "live" ? "Pause" : "Resume") {
                         Task { await model.save(game.status == "live" ? "pause" : "resume", clerk: clerk) }
                     }
-                    .disabled(!model.canEditLocally)
+                    .disabled(!model.canEditTrackerLocally)
                     Spacer()
                     Button("Next \(phaseLabel(workspace: workspace, game: game).lowercased())") {
                         Task { await model.save("period", clerk: clerk) }
                     }
                     .accessibilityIdentifier("native-event-next-period")
-                    .disabled(game.status != "live" || !model.canEditLocally)
+                    .disabled(game.status != "live" || !model.canEditTrackerLocally)
                 }
                 Button("Undo last stat") { Task { await model.save("undo", clerk: clerk) } }
-                    .disabled(game.events.isEmpty || game.status != "live" || !model.canEditLocally)
+                    .disabled(game.events.isEmpty || game.status != "live" || !model.canEditTrackerLocally)
             } else if game.status == "paused" {
                 Button("Resume game") {
                     Task { await model.save("resume", clerk: clerk) }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!model.canEditLocally)
+                .disabled(!model.canEditTrackerLocally)
             }
             endGameControl(for: game)
             }
@@ -211,7 +213,7 @@ struct NativeEventTrackerView: View {
             showingFinish = true
         }
         .buttonStyle(.bordered)
-        .disabled(!model.canEditLocally)
+        .disabled(!model.canEditTrackerLocally)
         .accessibilityIdentifier("native-event-end-game")
     }
 
@@ -276,7 +278,7 @@ struct NativeEventTrackerView: View {
                     Text("Finishing saves this game and marks its Event Card complete. It will be read-only in this native tracker.")
                         .font(.footnote)
                 }
-                NativeToolSaveNotice(model: model, clerk: clerk)
+                NativeToolSaveNotice(model: model, clerk: clerk, savedContentName: "Stat Tracker")
                 Button("Confirm finished game") {
                     Task {
                         await model.save("finish", clerk: clerk, recordScore: recordScore, outcome: outcome.isEmpty ? nil : outcome)
@@ -284,7 +286,7 @@ struct NativeEventTrackerView: View {
                     }
                 }
                 .accessibilityIdentifier("native-event-confirm-final")
-                .disabled(!model.canEditLocally)
+                .disabled(!model.canEditTrackerLocally)
             }
             .navigationTitle("Finish game")
             .toolbar {

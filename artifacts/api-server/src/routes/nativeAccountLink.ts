@@ -352,9 +352,14 @@ nativeAccountLinkRouter.post("/supporter/live-taps-access", handle(async (req, r
   res.json(await nativeLiveTapAccess(identity(res), parsed.data.shareToken, parsed.data.action, parsed.data.accessId));
 }));
 nativeAccountLinkRouter.post("/supporter/event-workspace", handle(async (req, res) => {
-  const parsed = z.object({ shareToken: z.uuid() }).strict().safeParse(req.body);
+  const parsed = z.object({
+    shareToken: z.uuid(),
+    pendingMutationIds: z.array(z.uuid()).max(1_000).optional(),
+  }).strict().safeParse(req.body);
   if (!parsed.success) throw new NativeLinkError(400, "Choose a valid Event Card.");
-  res.json(await nativeEventWorkspace(identity(res), parsed.data.shareToken));
+  res.json(await nativeEventWorkspace(
+    identity(res), parsed.data.shareToken, undefined, undefined, parsed.data.pendingMutationIds,
+  ));
 }));
 nativeAccountLinkRouter.post("/supporter/event-workspace-save", handle(async (req, res) => {
   const parsed = nativeWorkspaceCommand.safeParse(req.body);
