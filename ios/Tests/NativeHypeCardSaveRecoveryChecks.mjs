@@ -5,6 +5,60 @@ import test from "node:test";
 const client = readFileSync(new URL("../PIXL Sports/NativeAccountLinkClient.swift", import.meta.url), "utf8");
 const api = readFileSync(new URL("../PIXL Sports/SupporterHomeAPI.swift", import.meta.url), "utf8");
 const view = readFileSync(new URL("../PIXL Sports/SupporterHypeCardView.swift", import.meta.url), "utf8");
+const front = readFileSync(new URL("../PIXL Sports/NativeHypeCardFront.swift", import.meta.url), "utf8");
+
+test("owner HYPE Card startup restores its account-scoped snapshot before requesting PIXL", () => {
+  const init = view.slice(view.indexOf("    init(\n"), view.indexOf("    init(publicInviteToken:"));
+  assert.match(init, /canUseOwnerCache = publicInviteToken == nil/);
+  assert.match(init, /vault\.canContinue\(subject: \$0\)/);
+  assert.match(init, /vault\.read\("dashboard-preview", subject: subject\)/);
+  assert.match(init, /JSONDecoder\(\)\.decode\(NativeSupporterHypeCardPreview\.self/);
+  assert.match(init, /_loading = State\(initialValue: preview == nil\)/);
+  assert.match(init, /loadHypeCardSettingsDraft\(subject: subject\)/);
+  assert.match(init, /editorSettings = savedDraft \?\? cachedSettings/);
+  assert.match(init, /_settingsDraftRevision = State\(initialValue: editorSettings\?\.revision\)/);
+  assert.match(init, /_settingsDraftRecoveryBlocked = State\(initialValue: draftRecoveryBlocked\)/);
+  assert.match(init, /_settingsStatusUnknown = State\(initialValue: confirmationPending\)/);
+  assert.match(init, /cachedConflict = cachedSettings/);
+  assert.doesNotMatch(init, /await|fetchOwnerHypeCardPreview/);
+});
+
+test("the owner screen saves a complete matching preview independently of dashboard loading", () => {
+  const load = view.slice(view.indexOf("private func loadCard"), view.indexOf("private func loadPublicCard"));
+  assert.match(load, /identityMismatch = result\.identityMismatch \|\| !matchesProfile/);
+  assert.match(load, /if !identityMismatch, let data = try\? JSONEncoder\(\)\.encode\(result\)/);
+  assert.match(load, /offlineRuntime\.cache\(data, key: "dashboard-preview"\)/);
+  assert.match(load, /Your saved HYPE Card is shown\. It couldn’t be refreshed right now\./);
+  assert.match(load, /guard !Task\.isCancelled, Self\.ownerSubject\(clerk: clerk\) == requestSubject/);
+});
+
+test("cold offline startup uses only the authenticated root's bounded continuation lease", () => {
+  const subject = view.slice(view.indexOf("private static func ownerSubject"), view.indexOf("private var ownerSubject:"));
+  assert.match(subject, /if let subject = clerk\.user\?\.id \{ return subject \}/);
+  assert.match(subject, /guard !offline\.online \|\| !clerk\.isLoaded,/);
+  assert.match(subject, /offline\.vault\.canContinue\(subject: nil\) else \{ return nil \}/);
+  assert.match(subject, /return offline\.vault\.subject/);
+  assert.match(view, /settingsAccountSubject == ownerSubject/);
+  assert.match(view, /offlineRuntime\.vault\.canContinue\(subject: settingsAccountSubject\)/);
+});
+
+test("published owner fronts use cached photo bytes without giving them to public recipients", () => {
+  const face = view.slice(view.indexOf("private func frontCardFace"), view.indexOf("private func flipFrontContent"));
+  assert.match(face, /privatePhoto: isPublicRecipient \? nil : privatePhoto/);
+  assert.ok(front.indexOf("if let privatePhoto") < front.indexOf("else if let photoURL"));
+});
+
+test("a known-offline save keeps editable local choices without creating an uncertain cloud request", () => {
+  const save = view.slice(view.indexOf("private func saveSettings"), view.indexOf("private func keepSettingsDraft"));
+  const start = save.indexOf("if !offlineRuntime.online");
+  const request = save.indexOf("SupporterHomeAPI.updateNativeHypeCard");
+  assert.ok(start >= 0 && start < request);
+  const local = save.slice(start, request);
+  assert.match(local, /saveHypeCardSettingsDraft\(submittedDraft, subject: subject\)/);
+  assert.match(local, /Saved on this iPhone\./);
+  assert.match(local, /return/);
+  assert.doesNotMatch(local, /markHypeCardSettingsConfirmationPending|settingsStatusUnknown = true|clearHypeCardSettingsDraft/);
+});
 
 test("HYPE Card confirmation marker is stored and read through the account-scoped vault", () => {
   assert.match(client, /hypeCardSettingsConfirmationKey = "pending\/hype-card-settings-confirmation"/);

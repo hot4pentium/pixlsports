@@ -84,7 +84,7 @@ struct SupporterHypeCardView: View {
     ) {
         self.clerk = clerk
         self.publicInviteToken = publicInviteToken
-        let subject = clerk?.user?.id
+        let subject = Self.ownerSubject(clerk: clerk)
         let offline = NativeOfflineRuntime.shared
         let canUseOwnerCache = publicInviteToken == nil
             && subject.map { offline.vault.canContinue(subject: $0) } == true
@@ -111,9 +111,18 @@ struct SupporterHypeCardView: View {
             }
         }
         let cachedSettings = preview?.settings
-        let savedDraft: NativeHypeCardSettings?
+        var savedDraft: NativeHypeCardSettings?
+        var draftRecoveryBlocked = false
+        var confirmationPending = false
         if canUseOwnerCache, let subject {
-            savedDraft = try? NativeAccountLinkClient().loadHypeCardSettingsDraft(subject: subject)
+            do {
+                let client = NativeAccountLinkClient()
+                savedDraft = try client.loadHypeCardSettingsDraft(subject: subject)
+                confirmationPending = try client.hasPendingHypeCardSettingsConfirmation(subject: subject)
+            } catch {
+                savedDraft = nil
+                draftRecoveryBlocked = true
+            }
         } else {
             savedDraft = nil
         }
@@ -124,7 +133,7 @@ struct SupporterHypeCardView: View {
         }
         _card = State(initialValue: preview?.publicCard)
         _privateCard = State(initialValue: preview?.privateCard)
-        _privatePhoto = State(initialValue: preview?.privatePhoto.flatMap(UIImage.init(data:)))
+        _privatePhoto = State(initialValue: cachedIdentityMismatch ? nil : preview?.privatePhoto.flatMap(UIImage.init(data:)))
         _athleteProfile = State(initialValue: cachedProfile)
         _settings = State(initialValue: preview?.settings)
         _settingsAccountSubject = State(initialValue: preview == nil ? nil : subject)
@@ -135,9 +144,13 @@ struct SupporterHypeCardView: View {
         _draftPaused = State(initialValue: editorSettings?.paused ?? false)
         _draftFavoriteMoment = State(initialValue: editorSettings?.favoriteMoment ?? "")
         _settingsRevisionConflict = State(initialValue: cachedConflict)
-        _settingsMessage = State(initialValue: savedDraft == nil
-            ? nil
-            : "Your HYPE Card changes are saved on this iPhone. Review or sync them when PIXL is reachable.")
+        _settingsDraftRecoveryBlocked = State(initialValue: draftRecoveryBlocked)
+        _settingsStatusUnknown = State(initialValue: confirmationPending)
+        _settingsMessage = State(initialValue: draftRecoveryBlocked
+            ? "Saved HYPE Card choices couldn’t be opened on this iPhone. They haven’t been deleted."
+            : confirmationPending ? "A previous HYPE Card save needs confirmation before you can save again."
+                : savedDraft == nil ? nil
+                : "Your HYPE Card changes are saved on this iPhone. Review or sync them when PIXL is reachable.")
         _identityMismatch = State(initialValue: cachedIdentityMismatch)
         _identityCorrectionId = State(initialValue: preview?.correctionId)
         _loading = State(initialValue: preview == nil)
@@ -158,6 +171,19 @@ struct SupporterHypeCardView: View {
 #endif
 
     private var isPublicRecipient: Bool { publicInviteToken != nil }
+
+    // Match the authenticated root's bounded continuation lease while Clerk
+    // restores offline. A loaded, signed-out online session never uses it.
+    private static func ownerSubject(clerk: Clerk?) -> String? {
+        guard let clerk else { return nil }
+        if let subject = clerk.user?.id { return subject }
+        let offline = NativeOfflineRuntime.shared
+        guard !offline.online || !clerk.isLoaded,
+              offline.vault.canContinue(subject: nil) else { return nil }
+        return offline.vault.subject
+    }
+
+    private var ownerSubject: String? { Self.ownerSubject(clerk: clerk) }
 
     var body: some View {
         ZStack {
@@ -636,7 +662,7 @@ struct SupporterHypeCardView: View {
             teamName: card.teamName,
             seasonName: card.seasonName,
             photoURL: photoURL,
-            privatePhoto: nil,
+            privatePhoto: isPublicRecipient ? nil : privatePhoto,
             identityDetails: athleteProfile?.displayDetails ?? ""
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -948,7 +974,8 @@ struct SupporterHypeCardView: View {
     private var canEditSettingsDraft: Bool {
         !settingsDraftRecoveryBlocked && settingsRevisionConflict == nil
             && settingsDraftRevision != nil && settingsAccountSubject != nil
-            && settingsAccountSubject == clerk?.user?.id
+            && settingsAccountSubject == ownerSubject
+            && offlineRuntime.vault.canContinue(subject: settingsAccountSubject)
             && settings?.revision?.isEmpty == false
             && !isSaving && !isCheckingSettings && !settingsStatusUnknown
     }
@@ -998,7 +1025,7 @@ struct SupporterHypeCardView: View {
 
     private func saveSettings(confirmPublish: Bool) async {
         guard let clerk, let subject = settingsAccountSubject,
-              subject == clerk.user?.id, !isSaving, !isCheckingSettings else {
+              subject == ownerSubject, !isSaving, !isCheckingSettings else {
             settingsMessage = "Sign in to the same iPhone account before saving these HYPE Card changes."
             return
         }
@@ -1023,6 +1050,15 @@ struct SupporterHypeCardView: View {
             expectedRevision: expectedRevision,
             confirmPublish: confirmPublish
         )
+        if !offlineRuntime.online || !clerk.isLoaded {
+            do {
+                try NativeAccountLinkClient().saveHypeCardSettingsDraft(submittedDraft, subject: subject)
+                settingsMessage = "Saved on this iPhone. Connect to PIXL and tap Save HYPE Card settings to sync these choices."
+            } catch {
+                settingsMessage = "These choices couldn’t be saved on this iPhone. Keep this screen open and try again."
+            }
+            return
+        }
         do {
             let saved = try await SupporterHomeAPI.updateNativeHypeCard(settings: update, clerk: clerk)
             if saved.hasSameSettings(as: submittedDraft) {
@@ -1585,7 +1621,7 @@ struct SupporterHypeCardView: View {
             errorMessage = "Sign in to the iPhone app again."
             return
         }
-        guard let requestSubject = clerk.user?.id else {
+        guard let requestSubject = Self.ownerSubject(clerk: clerk) else {
             loading = false
             unavailable = true
             card = nil
@@ -1663,9 +1699,19 @@ struct SupporterHypeCardView: View {
         do {
             let result = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
             let profile = try? await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
-            guard !Task.isCancelled, clerk.user?.id == requestSubject else { return }
-            athleteProfile = profile
-            identityMismatch = result.identityMismatch
+            guard !Task.isCancelled, Self.ownerSubject(clerk: clerk) == requestSubject else { return }
+            athleteProfile = profile ?? athleteProfile
+            let normalize: (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            let previewName = result.publicCard?.athleteName ?? result.privateCard?.athleteName
+            let previewTeam = result.publicCard?.teamName ?? result.privateCard?.teamName ?? ""
+            let matchesProfile = previewName.map { name in
+                guard let profile = athleteProfile else { return true }
+                let expectedTeam = normalize(profile.teamName)
+                return !normalize(profile.athleteName).isEmpty
+                    && normalize(name) == normalize(profile.athleteName)
+                    && (expectedTeam.isEmpty || normalize(previewTeam) == expectedTeam)
+            } ?? true
+            identityMismatch = result.identityMismatch || !matchesProfile
             identityCorrectionId = result.correctionId
             let preserveUnsavedDraft = sameSettingsAccount && hasUnsavedSettings
             card = result.publicCard
@@ -1708,8 +1754,8 @@ struct SupporterHypeCardView: View {
                         settingsDraftRecoveryBlocked = true
                         settingsMessage = "Saved HYPE Card choices couldn’t be opened on this iPhone. They haven’t been deleted."
                     } catch {
-                        // The online settings remain available even when this
-                        // device cannot currently access its offline vault.
+                        settingsDraftRecoveryBlocked = true
+                        settingsMessage = "Saved HYPE Card choices couldn’t be opened on this iPhone. They haven’t been deleted."
                     }
                 } else {
                     draftShowHypeCard = false
@@ -1721,7 +1767,12 @@ struct SupporterHypeCardView: View {
                     settingsRevisionConflict = nil
                 }
             }
-            privatePhoto = result.privatePhoto.flatMap(UIImage.init(data:))
+            privatePhoto = identityMismatch ? nil : result.privatePhoto.flatMap(UIImage.init(data:))
+            // The owner screen must prepare its own complete offline copy,
+            // even when it was opened before the dashboard finished loading.
+            if !identityMismatch, let data = try? JSONEncoder().encode(result) {
+                offlineRuntime.cache(data, key: "dashboard-preview")
+            }
             unavailable = result.publicCard == nil && result.privateCard == nil
             loading = false
             errorMessage = nil
@@ -1729,7 +1780,7 @@ struct SupporterHypeCardView: View {
         } catch is CancellationError {
             return
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, Self.ownerSubject(clerk: clerk) == requestSubject else { return }
             loading = false
             let status = (error as? NativeAccountLinkError)?.statusCode
             let accessWasRevoked = [401, 403, 404, 409, 410, 423].contains(status ?? 0)
@@ -1750,7 +1801,7 @@ struct SupporterHypeCardView: View {
             } else if refresh {
                 refreshErrorMessage = "Your HYPE Card preview couldn’t refresh right now. Please try again."
             } else {
-                errorMessage = "We couldn’t load your HYPE Card right now. Please try again."
+                errorMessage = "PIXL couldn’t be reached, and this iPhone doesn’t have a saved HYPE Card yet. Load it once while PIXL is available to keep a copy for offline use."
             }
         }
         if settingsRecoveryAfterRestart, settingsAccountSubject == requestSubject {

@@ -627,7 +627,7 @@ enum SupporterHomeAPI {
 
     static func fetchOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
         let offline = NativeOfflineRuntime.shared
-        if !offline.online,
+        if !offline.online || !clerk.isLoaded,
            let data = try offline.vault.read("dashboard-preview", subject: clerk.user?.id),
            let saved = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: data) { return saved }
         do { return try await fetchOnlineOwnerHypeCardPreview(clerk: clerk) }

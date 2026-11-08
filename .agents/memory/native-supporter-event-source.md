@@ -42,3 +42,15 @@ and losing or duplicating a game-day card is worse than showing a pending save.
 **How to apply:** Save the account-scoped draft first, make safe idempotent
 retries when service is reachable, explain whether the issue is connectivity,
 authentication, or server response, and keep local and server versions distinct.
+
+The owner’s native HYPE Card must remain viewable and manageable without a
+connection after its first verified load, including its photo and saved settings
+choices across relaunch.
+
+**Why:** The user explicitly said the HYPE Card should not rely on connectivity
+to be displayed and managed.
+
+**How to apply:** Keep the last verified card and local edits account-scoped,
+distinguish on-device settings from confirmed public changes, and preserve
+revision conflicts and uncertain-save safeguards. Hosted media and cloud
+publishing still require PIXL; never use an owner's private cache for recipients.

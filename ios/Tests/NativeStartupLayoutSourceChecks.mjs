@@ -165,7 +165,8 @@ test("HYPE Card and photo screens do not show raw server errors", () => {
   assert.match(photo, /Button\("Refresh photo"\)/);
   assert.match(photo, /NavigationLink\("Review HYPE Card"\)/);
   assert.doesNotMatch(hypeCard, /error\.localizedDescription/);
-  assert.match(hypeCard, /We couldn’t load your HYPE Card right now\. Please try again\./);
+  assert.match(hypeCard, /this iPhone doesn’t have a saved HYPE Card yet\./);
+  assert.match(hypeCard, /Load it once while PIXL is available to keep a copy for offline use\./);
   assert.match(hypeCard, /We couldn’t confirm that your HYPE Card settings were saved\. Your choices are still here\. Check saved status when you can\./);
 });
 
