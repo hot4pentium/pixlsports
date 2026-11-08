@@ -95,6 +95,22 @@ final class NativeAccountLinkClient {
         offline.storageChanged()
     }
 
+    /// The save-intent record is written last so its presence means the owner
+    /// explicitly committed the matching local draft for automatic sync.
+    func queueHypeCardSettingsSave(
+        _ intent: NativeHypeCardSettingsSaveIntent,
+        draft: NativeHypeCardSettings,
+        subject: String
+    ) throws {
+        guard intent.desired.hasSameSettings(as: draft),
+              intent.base.revision?.isEmpty == false,
+              !intent.confirmPublish || (intent.desired.showHypeCard && !intent.desired.paused) else {
+            throw NativeOfflineError.protectedStorage
+        }
+        try saveHypeCardSettingsDraft(draft, subject: subject)
+        try saveHypeCardSettingsSaveIntent(intent, subject: subject)
+    }
+
     func loadHypeCardSettingsSaveIntent(subject: String) throws -> NativeHypeCardSettingsSaveIntent? {
         let offline = NativeOfflineRuntime.shared
         guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }

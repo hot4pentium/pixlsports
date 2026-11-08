@@ -345,6 +345,19 @@ struct SupporterHypeCardView: View {
                   !isSaving, !isCheckingSettings else { return }
             Task { await loadCard(refresh: true) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nativeHypeCardSettingsQueueSynced)) { _ in
+            guard !isPublicRecipient, offlineRuntime.online else { return }
+            Task { @MainActor in
+                for _ in 0..<20 {
+                    guard !Task.isCancelled else { return }
+                    if !loading, !isRefreshing, !isSaving, !isCheckingSettings {
+                        await loadCard(refresh: true, syncQueued: false)
+                        return
+                    }
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+            }
+        }
         .onDisappear {
             flipTask?.cancel()
             flipTask = nil
@@ -818,7 +831,8 @@ struct SupporterHypeCardView: View {
             .buttonStyle(.borderedProminent)
             .tint(SupporterHomeColors.accent)
             .foregroundStyle(SupporterHomeColors.background)
-            .disabled(isSaving || isCheckingSettings || !canEditSettingsDraft || !hasUnsavedSettings)
+            .disabled(isSaving || isCheckingSettings || settingsStatusUnknown
+                      || !canEditSettingsDraft || !hasUnsavedSettings)
             .accessibilityIdentifier("native-hype-card-save-settings")
 
             if settingsStatusUnknown {
@@ -948,6 +962,10 @@ struct SupporterHypeCardView: View {
     }
 
     private func requestSettingsSave() {
+        guard !settingsStatusUnknown else {
+            settingsMessage = "Check your saved HYPE Card changes before saving another update."
+            return
+        }
         guard let settings, canEditSettingsDraft else {
             settingsMessage = "Sign in to the same iPhone account before saving these HYPE Card changes."
             return
@@ -963,7 +981,8 @@ struct SupporterHypeCardView: View {
 
     private func saveSettings(confirmPublish: Bool) async {
         guard let clerk, let subject = settingsAccountSubject,
-              subject == ownerSubject, !isSaving, !isCheckingSettings, let base = settings else {
+              subject == ownerSubject, !isSaving, !isCheckingSettings, !settingsStatusUnknown,
+              let base = settings else {
             settingsMessage = "Sign in to the same iPhone account before saving these HYPE Card changes."
             return
         }
@@ -982,8 +1001,7 @@ struct SupporterHypeCardView: View {
                 desired: submittedDraft,
                 confirmPublish: confirmedPublish
             )
-            try client.saveHypeCardSettingsDraft(submittedDraft, subject: subject)
-            try client.saveHypeCardSettingsSaveIntent(intent, subject: subject)
+            try client.queueHypeCardSettingsSave(intent, draft: submittedDraft, subject: subject)
         } catch {
             settingsMessage = "These choices couldn’t be saved on this iPhone. Keep this screen open and try again."
             return
@@ -997,133 +1015,46 @@ struct SupporterHypeCardView: View {
         guard let clerk, clerk.user?.id == subject, settingsAccountSubject == subject,
               offlineRuntime.online, clerk.isLoaded, !isSaving, !settingsStatusUnknown else { return }
         let client = NativeAccountLinkClient()
-        var queuedIntent: NativeHypeCardSettingsSaveIntent
         do {
-            guard let intent = try client.loadHypeCardSettingsSaveIntent(subject: subject) else { return }
-            queuedIntent = intent
+            guard try client.loadHypeCardSettingsSaveIntent(subject: subject) != nil else { return }
         } catch {
             settingsDraftRecoveryBlocked = true
             settingsMessage = "Saved HYPE Card changes couldn’t be opened on this iPhone. They haven’t been deleted."
             return
         }
-        let liveDraft = currentSettingsDraft
-        let liveBase = liveDraft.revision == queuedIntent.base.revision
-            ? queuedIntent.base
-            : (settings ?? queuedIntent.base)
-        let hasNewerLocalDraft = !liveDraft.hasSameSettings(as: queuedIntent.desired)
 
         isSaving = true
         defer { isSaving = false }
-        for attempt in 0..<3 {
-            let latest: NativeHypeCardSettings
-            do {
-                latest = try await SupporterHomeAPI.fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
-                guard clerk.user?.id == subject else { return }
-            } catch {
-                settingsMessage = "Your HYPE Card changes are safe on this iPhone. PIXL will retry when it is reachable."
-                return
-            }
-
-            if latest.hasSameSettings(as: queuedIntent.desired) {
-                await finishQueuedSettingsSync(
-                    subject: subject,
-                    saved: latest,
-                    client: client,
-                    liveDraft: liveDraft,
-                    liveBase: liveBase,
-                    preserveNewerDraft: hasNewerLocalDraft
-                )
-                return
-            }
-
-            guard let revision = latest.revision, !revision.isEmpty else {
-                settingsMessage = "Your HYPE Card changes are safe on this iPhone. PIXL hasn’t confirmed a settings version yet."
-                return
-            }
-            let merged = mergeSettings(base: queuedIntent.base, local: queuedIntent.desired, latest: latest)
-            let rebasedIntent = NativeHypeCardSettingsSaveIntent(
-                base: latest,
-                desired: merged,
-                confirmPublish: queuedIntent.confirmPublish
-            )
-            do {
-                try client.saveHypeCardSettingsSaveIntent(rebasedIntent, subject: subject)
-                if !hasNewerLocalDraft {
-                    try client.saveHypeCardSettingsDraft(merged, subject: subject)
-                }
-            } catch {
-                settingsMessage = "Your HYPE Card changes are safe in this screen, but couldn’t be prepared to sync."
-                return
-            }
-            queuedIntent = rebasedIntent
-            settings = latest
-            if !hasNewerLocalDraft {
-                applySettingsDraft(merged)
-            }
-
-            let favorite = merged.favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let update = NativeHypeCardSettingsUpdate(
-                showHypeCard: merged.showHypeCard,
-                showStats: merged.showStats,
-                showEvents: merged.showEvents,
-                paused: merged.paused,
-                favoriteMoment: favorite?.isEmpty == true ? nil : favorite,
-                expectedRevision: revision,
-                confirmPublish: queuedIntent.confirmPublish
-            )
-            do {
-                let saved = try await SupporterHomeAPI.updateNativeHypeCard(settings: update, clerk: clerk)
-                guard clerk.user?.id == subject else { return }
-                if saved.hasSameSettings(as: merged) {
-                    await finishQueuedSettingsSync(
-                        subject: subject,
-                        saved: saved,
-                        client: client,
-                        liveDraft: liveDraft,
-                        liveBase: liveBase,
-                        preserveNewerDraft: hasNewerLocalDraft
-                    )
-                    return
-                }
+        let saved = await offlineRuntime.syncPendingHypeCardSettings(
+            clerk: clerk,
+            notifyWhenFinished: false
+        )
+        guard clerk.user?.id == subject else { return }
+        do {
+            let remainingIntent = try client.loadHypeCardSettingsSaveIntent(subject: subject)
+            if let saved, remainingIntent == nil {
                 settings = saved
-                settingsMessage = "Your HYPE Card changes are safe on this iPhone. PIXL is still updating."
-                return
-            } catch let error as NativeAccountLinkError where error.statusCode == 409 {
-                try? client.clearHypeCardSettingsConfirmation(subject: subject)
-                settings = latest
-                if attempt == 2 {
-                    settingsMessage = "Your HYPE Card changes are safe on this iPhone. PIXL will retry the sync shortly."
-                    return
+                settingsStatusUnknown = false
+                settingsRecoveryAfterRestart = false
+                settingsRecoveryMarkerFound = false
+                settingsRecoverySnapshot = nil
+                if let draft = try client.loadHypeCardSettingsDraft(subject: subject),
+                   !draft.hasSameSettings(as: saved) {
+                    applySettingsDraft(draft)
+                    settingsMessage = "Earlier changes synced. Your newer choices remain on this iPhone; tap Save to sync them."
+                } else {
+                    applySettings(saved)
+                    settingsMessage = "HYPE Card changes synced to PIXL."
                 }
-            } catch {
-                settingsStatusUnknown = (try? client.hasPendingHypeCardSettingsConfirmation(subject: subject)) ?? false
-                settingsMessage = "Your HYPE Card changes are safe on this iPhone. PIXL will retry when it can confirm the save."
-                return
+            } else {
+                settingsStatusUnknown = try client.hasPendingHypeCardSettingsConfirmation(subject: subject)
+                settingsMessage = settingsStatusUnknown
+                    ? "Your HYPE Card changes are safe on this iPhone. PIXL will confirm the sync when it is reachable."
+                    : "Your HYPE Card changes are saved on this iPhone and will sync automatically."
             }
-        }
-    }
-
-    private func finishQueuedSettingsSync(
-        subject: String,
-        saved: NativeHypeCardSettings,
-        client: NativeAccountLinkClient,
-        liveDraft: NativeHypeCardSettings,
-        liveBase: NativeHypeCardSettings,
-        preserveNewerDraft: Bool
-    ) async {
-        try? client.clearHypeCardSettingsSaveIntent(subject: subject)
-        try? client.clearHypeCardSettingsConfirmation(subject: subject)
-        settings = saved
-        settingsStatusUnknown = false
-        if preserveNewerDraft {
-            let rebased = mergeSettings(base: liveBase, local: liveDraft, latest: saved)
-            try? client.saveHypeCardSettingsDraft(rebased, subject: subject)
-            applySettingsDraft(rebased)
-            settingsMessage = "Earlier changes synced. Your newer choices remain on this iPhone; tap Save to sync them."
-        } else {
-            try? client.clearHypeCardSettingsDraft(subject: subject)
-            applySettings(saved)
-            settingsMessage = "HYPE Card changes synced to PIXL."
+        } catch {
+            settingsDraftRecoveryBlocked = true
+            settingsMessage = "Saved HYPE Card changes couldn’t be opened on this iPhone. They haven’t been deleted."
         }
     }
 
@@ -1558,7 +1489,7 @@ struct SupporterHypeCardView: View {
             .accessibilityHidden(true)
     }
 
-    private func loadCard(refresh: Bool = false) async {
+    private func loadCard(refresh: Bool = false, syncQueued: Bool = true) async {
         if let publicInviteToken {
             await loadPublicCard(inviteToken: publicInviteToken, refresh: refresh)
             return
@@ -1686,7 +1617,11 @@ struct SupporterHypeCardView: View {
                     applySettingsDraft(recovered)
                 }
             } else if preserveUnsavedDraft, let saved = result.settings {
-                if queuedSaveIntent != nil {
+                if queuedSaveIntent == nil, previousDraft.hasSameSettings(as: saved) {
+                    try? NativeAccountLinkClient().clearHypeCardSettingsDraft(subject: requestSubject)
+                    applySettings(saved)
+                    settingsMessage = "HYPE Card changes synced to PIXL."
+                } else if queuedSaveIntent != nil {
                     settingsMessage = "Your HYPE Card changes are saved on this iPhone and will sync automatically."
                 } else {
                     let rebased = mergeSettings(
@@ -1721,6 +1656,9 @@ struct SupporterHypeCardView: View {
                             }
                         } else {
                             applySettings(saved)
+                            if settingsMessage?.contains("will sync automatically") == true {
+                                settingsMessage = "HYPE Card changes synced to PIXL."
+                            }
                         }
                     } catch NativeOfflineError.corrupt {
                         settingsDraftRecoveryBlocked = true
@@ -1775,10 +1713,12 @@ struct SupporterHypeCardView: View {
                 errorMessage = "PIXL couldn’t be reached, and this iPhone doesn’t have a saved HYPE Card yet. Load it once while PIXL is available to keep a copy for offline use."
             }
         }
-        if settingsRecoveryAfterRestart, settingsAccountSubject == requestSubject {
-            await checkSavedSettingsStatus()
-        } else {
-            await syncQueuedSettings(subject: requestSubject)
+        if syncQueued {
+            if settingsRecoveryAfterRestart, settingsAccountSubject == requestSubject {
+                await checkSavedSettingsStatus()
+            } else {
+                await syncQueuedSettings(subject: requestSubject)
+            }
         }
     }
 

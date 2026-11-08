@@ -910,6 +910,136 @@ enum SupporterHomeAPI {
         return saved
     }
 
+    /// Sync only a save intent written by the owner's explicit Save action.
+    /// Drafts by themselves are never eligible for automatic publication.
+    @MainActor
+    static func syncQueuedNativeHypeCardSettings(clerk: Clerk) async throws -> NativeHypeCardSettings? {
+        guard let subject = clerk.user?.id else { return nil }
+        let client = NativeAccountLinkClient()
+        guard var intent = try client.loadHypeCardSettingsSaveIntent(subject: subject) else {
+            return nil
+        }
+        let initialNamespace = NativeOfflineRuntime.shared.vault.namespace
+        guard let initialNamespace,
+              NativeOfflineRuntime.shared.vault.canContinue(subject: subject) else {
+            throw NativeOfflineError.locked
+        }
+
+        for attempt in 0..<3 {
+            let latest = try await fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
+            guard clerk.user?.id == subject,
+                  NativeOfflineRuntime.shared.vault.namespace == initialNamespace,
+                  NativeOfflineRuntime.shared.vault.canContinue(subject: subject) else {
+                throw NativeOfflineError.locked
+            }
+
+            if latest.hasSameSettings(as: intent.desired) {
+                try finishQueuedNativeHypeCardSettings(
+                    subject: subject,
+                    saved: latest,
+                    intent: intent,
+                    client: client
+                )
+                return latest
+            }
+
+            guard let revision = latest.revision, !revision.isEmpty else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
+            let merged = mergeQueuedHypeCardSettings(
+                base: intent.base,
+                local: intent.desired,
+                latest: latest
+            )
+            let rebasedIntent = NativeHypeCardSettingsSaveIntent(
+                base: latest,
+                desired: merged,
+                confirmPublish: intent.confirmPublish
+            )
+            try client.saveHypeCardSettingsSaveIntent(rebasedIntent, subject: subject)
+            let currentDraft = try client.loadHypeCardSettingsDraft(subject: subject)
+            if currentDraft.map({ $0.hasSameSettings(as: intent.desired) }) ?? true {
+                try client.saveHypeCardSettingsDraft(merged, subject: subject)
+            }
+            intent = rebasedIntent
+
+            let favorite = merged.favoriteMoment?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let update = NativeHypeCardSettingsUpdate(
+                showHypeCard: merged.showHypeCard,
+                showStats: merged.showStats,
+                showEvents: merged.showEvents,
+                paused: merged.paused,
+                favoriteMoment: favorite?.isEmpty == true ? nil : favorite,
+                expectedRevision: revision,
+                confirmPublish: intent.confirmPublish
+            )
+            do {
+                let saved = try await updateNativeHypeCard(settings: update, clerk: clerk)
+                guard clerk.user?.id == subject,
+                      NativeOfflineRuntime.shared.vault.namespace == initialNamespace else {
+                    throw NativeOfflineError.locked
+                }
+                guard saved.hasSameSettings(as: merged) else { return nil }
+                try finishQueuedNativeHypeCardSettings(
+                    subject: subject,
+                    saved: saved,
+                    intent: intent,
+                    client: client
+                )
+                return saved
+            } catch let error as NativeAccountLinkError where error.statusCode == 409 {
+                try client.clearHypeCardSettingsConfirmation(subject: subject)
+                if attempt == 2 { return nil }
+            }
+        }
+        return nil
+    }
+
+    private static func finishQueuedNativeHypeCardSettings(
+        subject: String,
+        saved: NativeHypeCardSettings,
+        intent: NativeHypeCardSettingsSaveIntent,
+        client: NativeAccountLinkClient
+    ) throws {
+        let localDraft = try client.loadHypeCardSettingsDraft(subject: subject)
+        try client.clearHypeCardSettingsConfirmation(subject: subject)
+        if let localDraft, !localDraft.hasSameSettings(as: intent.desired) {
+            let base = localDraft.revision == intent.base.revision ? intent.base : saved
+            let preserved = mergeQueuedHypeCardSettings(base: base, local: localDraft, latest: saved)
+            if preserved.hasSameSettings(as: saved) {
+                try client.clearHypeCardSettingsDraft(subject: subject)
+            } else {
+                try client.saveHypeCardSettingsDraft(preserved, subject: subject)
+            }
+        } else {
+            try client.clearHypeCardSettingsDraft(subject: subject)
+        }
+        try client.clearHypeCardSettingsSaveIntent(subject: subject)
+    }
+
+    private static func mergeQueuedHypeCardSettings(
+        base: NativeHypeCardSettings,
+        local: NativeHypeCardSettings,
+        latest: NativeHypeCardSettings
+    ) -> NativeHypeCardSettings {
+        let localHasKnownBase = base.revision != nil
+            && local.revision != nil
+            && local.revision == base.revision
+        return NativeHypeCardSettings(
+            revision: latest.revision,
+            showHypeCard: !localHasKnownBase || local.showHypeCard != base.showHypeCard
+                ? local.showHypeCard : latest.showHypeCard,
+            showStats: !localHasKnownBase || local.showStats != base.showStats
+                ? local.showStats : latest.showStats,
+            showEvents: !localHasKnownBase || local.showEvents != base.showEvents
+                ? local.showEvents : latest.showEvents,
+            paused: !localHasKnownBase || local.paused != base.paused
+                ? local.paused : latest.paused,
+            favoriteMoment: !localHasKnownBase || local.favoriteMoment != base.favoriteMoment
+                ? local.favoriteMoment : latest.favoriteMoment
+        )
+    }
+
     static func fetchAuthoritativeNativeHypeCardSettings(clerk: Clerk) async throws -> NativeHypeCardSettings {
         let client = NativeAccountLinkClient()
         // A fresh linked schedule response renews the offline vault lease so

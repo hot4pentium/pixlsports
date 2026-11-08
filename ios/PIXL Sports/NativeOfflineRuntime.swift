@@ -6,6 +6,7 @@ import ClerkKit
 extension Notification.Name {
     static let nativeOfflineConnectionChanged = Notification.Name("pixl.native.offline.connection")
     static let nativeEventCardQueueSynced = Notification.Name("pixl.native.event-card-queue-synced")
+    static let nativeHypeCardSettingsQueueSynced = Notification.Name("pixl.native.hype-card-settings-queue-synced")
 }
 
 enum NativeEventCardDeletionStageResult: Equatable {
@@ -64,6 +65,7 @@ final class NativeOfflineRuntime: ObservableObject {
     private var activeDrains = Set<String>()
     private var activeEventCardSyncs = Set<String>()
     private var queuedEventCardSyncClerks: [String: Clerk] = [:]
+    private var activeHypeCardSettingsSyncs = Set<String>()
     private var recentlySyncedEventCardTokens: [String: String] = [:]
     private var models: [String: NativeEventToolModel] = [:]
     private var downloadEpochs = NativeOfflineDownloadEpochs()
@@ -789,6 +791,43 @@ final class NativeOfflineRuntime: ObservableObject {
         storageChanged()
     }
     func receivedFreshContent() { usingSavedContent = false }
+
+    /// Settings drafts are never synced here. The API checks for the durable
+    /// save-intent record created only after the owner taps Save.
+    func syncPendingHypeCardSettings(
+        clerk: Clerk,
+        notifyWhenFinished: Bool = true
+    ) async -> NativeHypeCardSettings? {
+        guard online, clerk.isAuthFlowComplete,
+              let subject = clerk.user?.id,
+              vault.canContinue(subject: subject),
+              let scope = vault.namespace else { return nil }
+        guard activeHypeCardSettingsSyncs.insert(scope).inserted else { return nil }
+        let client = NativeAccountLinkClient()
+        guard (try? client.loadHypeCardSettingsSaveIntent(subject: subject)) != nil else {
+            activeHypeCardSettingsSyncs.remove(scope)
+            return nil
+        }
+
+        defer {
+            activeHypeCardSettingsSyncs.remove(scope)
+            if notifyWhenFinished {
+                NotificationCenter.default.post(name: .nativeHypeCardSettingsQueueSynced, object: nil)
+            }
+        }
+        do {
+            let saved = try await SupporterHomeAPI.syncQueuedNativeHypeCardSettings(clerk: clerk)
+            guard clerk.user?.id == subject,
+                  vault.namespace == scope,
+                  vault.canContinue(subject: subject) else { return nil }
+            return saved
+        } catch {
+            // The durable save intent and any uncertain-response marker remain
+            // in the account vault for a later reconnect or relaunch.
+            return nil
+        }
+    }
+
     private func cancelWorker() {
         worker?.cancel()
         worker = nil
@@ -808,6 +847,9 @@ final class NativeOfflineRuntime: ObservableObject {
                 let page = try await verifiedSchedule(clerk: clerk)
                 guard page.status == "linked", vault.canContinue(subject: clerk.user?.id) else { return }
                 let scope = vault.namespace
+                _ = await syncPendingHypeCardSettings(clerk: clerk)
+                guard !Task.isCancelled, vault.namespace == scope,
+                      vault.canContinue(subject: clerk.user?.id) else { return }
                 await retryPendingEventCards(clerk: clerk)
                 guard !Task.isCancelled, vault.namespace == scope,
                       vault.canContinue(subject: clerk.user?.id) else { return }
@@ -817,6 +859,9 @@ final class NativeOfflineRuntime: ObservableObject {
 #endif
                 for delay in [0, 2, 5, 15, 60] {
                     if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
+                    guard !Task.isCancelled, online, vault.namespace == scope,
+                          vault.canContinue(subject: clerk.user?.id) else { return }
+                    _ = await syncPendingHypeCardSettings(clerk: clerk)
                     guard !Task.isCancelled, online, vault.namespace == scope,
                           vault.canContinue(subject: clerk.user?.id) else { return }
                     for token in Set(vault.queuedEvents + vault.checklistDraftEvents).sorted() {
