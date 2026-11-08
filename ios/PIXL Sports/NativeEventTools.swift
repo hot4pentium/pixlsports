@@ -92,6 +92,9 @@ final class NativeEventToolModel: ObservableObject {
     private var drainingQueue = false
     private var acknowledgedWorkspace: NativeEventWorkspace?
     private var scheduledDrain: Task<Void, Never>?
+#if DEBUG
+    private var didApplyUITestTrackerSaveDelay = false
+#endif
     private let offline = NativeOfflineRuntime.shared
     private var scope: String?
     private static let maximumPendingCommands = 1_000
@@ -513,6 +516,13 @@ final class NativeEventToolModel: ObservableObject {
 
             let command = pendingQueue[0].command
             do {
+#if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("--ui-testing-delay-tracker-save"),
+                   command.kind != "prep", !didApplyUITestTrackerSaveDelay {
+                    didApplyUITestTrackerSaveDelay = true
+                    try? await Task.sleep(for: .seconds(20))
+                }
+#endif
                 let data = try await NativeAccountLinkClient().postData(
                     "supporter/event-workspace-save", body: command, clerk: clerk
                 )

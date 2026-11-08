@@ -7,7 +7,7 @@ import UIKit
 final class NativeOfflineUITests: XCTestCase {
     private func configuredEvent() throws -> String {
         guard let value = ProcessInfo.processInfo.environment["PIXL_OFFLINE_TEST_EVENT_ID"], !value.isEmpty else {
-            throw XCTSkip("Set PIXL_OFFLINE_TEST_EVENT_ID to a disposable upcoming event and sign in online first.")
+            throw XCTSkip("Set PIXL_OFFLINE_TEST_EVENT_ID to a fresh disposable upcoming Event Card and sign in online first.")
         }
         continueAfterFailure = false
         return value
@@ -81,6 +81,67 @@ final class NativeOfflineUITests: XCTestCase {
         element("native-prep-manage-full", in: app).tap()
         XCTAssertTrue(task.waitForExistence(timeout: 15))
         XCTAssertEqual(task.value as? String, "Ready", "Reconnect must not uncheck a custom task.")
+    }
+
+    func testTrackerSaveAcknowledgementArrivesOnlyAfterReconnectResponse() throws {
+        let event = try configuredEvent()
+        let app = XCUIApplication()
+        app.launch()
+        defer { app.terminate() }
+
+        // Fetch the authorized workspace before disconnecting. This must be a
+        // disposable upcoming Event Card, since the test starts a game on it.
+        open(event, in: app)
+        app.buttons["event-card-prep"].tap()
+        _ = element("native-prep-checklist-toggle", in: app)
+        app.terminate()
+
+        app.launchArguments = ["--ui-testing-force-offline"]
+        app.launch()
+        open(event, in: app)
+        app.buttons["event-card-track-stats"].tap()
+        let mode = app.buttons["native-event-mode-statTracker"]
+        if mode.waitForExistence(timeout: 5) { mode.tap() }
+        let full = app.buttons["native-event-full-tracker"]
+        if full.waitForExistence(timeout: 5) { full.tap() }
+
+        let trackerStatus = app.descendants(matching: .any)
+            .matching(identifier: "native-event-tracker-save-status").firstMatch
+        XCTAssertTrue(trackerStatus.waitForExistence(timeout: 10))
+        element("native-event-start-game", in: app).tap()
+        element("native-event-score-team-add", in: app).tap()
+        let offlineSaved = NSPredicate(format: "value CONTAINS[c] %@", "saved on this iPhone")
+        let offlineSavedExpectation = XCTNSPredicateExpectation(predicate: offlineSaved, object: trackerStatus)
+        XCTAssertEqual(XCTWaiter.wait(for: [offlineSavedExpectation], timeout: 10), .completed)
+        let offlineStatusFrame = trackerStatus.frame
+        app.terminate()
+
+        // Hold the first online tracker request briefly so the test can
+        // observe the pending state before a server response can acknowledge it.
+        app.launchArguments = ["--ui-testing-delay-tracker-save"]
+        app.launch()
+        open(event, in: app)
+        app.buttons["event-card-track-stats"].tap()
+        if mode.waitForExistence(timeout: 5) { mode.tap() }
+        if full.waitForExistence(timeout: 5) { full.tap() }
+
+        XCTAssertTrue(trackerStatus.waitForExistence(timeout: 10))
+        let saving = NSPredicate(format: "value CONTAINS[c] %@", "while PIXL confirms them")
+        let savingExpectation = XCTNSPredicateExpectation(predicate: saving, object: trackerStatus)
+        XCTAssertEqual(XCTWaiter.wait(for: [savingExpectation], timeout: 30), .completed)
+        XCTAssertFalse(
+            (trackerStatus.value as? String ?? "")
+                .localizedCaseInsensitiveContains("Saved to PIXL"),
+            "The tracker must not claim server confirmation while its request is pending."
+        )
+        XCTAssertEqual(trackerStatus.frame.minY, offlineStatusFrame.minY, accuracy: 1)
+        XCTAssertEqual(trackerStatus.frame.height, offlineStatusFrame.height, accuracy: 1)
+
+        let confirmed = NSPredicate(format: "value CONTAINS[c] %@", "Saved to PIXL")
+        let confirmedExpectation = XCTNSPredicateExpectation(predicate: confirmed, object: trackerStatus)
+        XCTAssertEqual(XCTWaiter.wait(for: [confirmedExpectation], timeout: 60), .completed)
+        XCTAssertEqual(trackerStatus.frame.minY, offlineStatusFrame.minY, accuracy: 1)
+        XCTAssertEqual(trackerStatus.frame.height, offlineStatusFrame.height, accuracy: 1)
     }
 
     func testFreshGameCanStartScoreAdvanceAndFinishEntirelyOffline() throws {
