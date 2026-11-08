@@ -84,6 +84,24 @@ test("event-step tools omit the Edit Event Card button", () => {
   assert.doesNotMatch(detail, /NativeCreateEventCardView\(/);
 });
 
+test("Event Card long-press menus attach to visible cards in both dashboard layouts", () => {
+  const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
+  const compactStart = content.indexOf("private func compactEventCard");
+  const compactEnd = content.indexOf("private func eventDetail", compactStart);
+  const compact = content.slice(compactStart, compactEnd);
+  const compactLabel = compact.slice(compact.indexOf("label: {"), compact.indexOf(".buttonStyle(SupporterCardPressStyle())"));
+  const gridStart = content.indexOf("private func eventGrid");
+  const gridEnd = content.indexOf("private func eventDateBadge", gridStart);
+  const grid = content.slice(gridStart, gridEnd);
+  const gridLabel = grid.slice(grid.indexOf("label: {"), grid.indexOf(".buttonStyle(SupporterCardPressStyle())"));
+  const menu = content.slice(content.indexOf("private func eventCardManagementMenu"), content.indexOf("@MainActor", content.indexOf("private func eventCardManagementMenu")));
+
+  assert.match(compactLabel, /\.contextMenu \{ eventCardManagementMenu\(for: item\.event\) \}/);
+  assert.match(gridLabel, /\.contextMenu \{ eventCardManagementMenu\(for: item\.event\) \}/);
+  assert.match(menu, /Label\("Edit Event Card", systemImage: "pencil"\)/);
+  assert.match(menu, /Label\("Delete Event Card", systemImage: "trash"\)/);
+});
+
 test("trailing toolbar labels reserve padding inside their native containers", () => {
   const components = readFileSync(new URL("../PIXL Sports/SupporterHomeComponents.swift", import.meta.url), "utf8");
   assert.match(components, /\.padding\(\.horizontal, iconOnly \? 10 : 14\)/);

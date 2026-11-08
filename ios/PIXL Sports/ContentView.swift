@@ -1252,6 +1252,7 @@ struct ContentView: View {
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(timing == .live ? "Happening now" : "Up next"), \(page.athleteName ?? "your athlete"), \(page.teamName ?? "team"), \(headline), \(event.formattedDate(timezone: zone)), \(event.formattedTime(timezone: zone)), \(location.isEmpty ? "Location to be announced" : event.location). Tap to view details.")
+            .contextMenu { eventCardManagementMenu(for: event) }
     }
 
     private func compactEventCard(page: NativeSupporterSchedule, item: SupporterScheduleItem, isUpNext: Bool = false) -> some View {
@@ -1328,9 +1329,9 @@ struct ContentView: View {
             }
             .supporterSurfaceShadow()
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .contextMenu { eventCardManagementMenu(for: item.event) }
         }
         .buttonStyle(SupporterCardPressStyle())
-        .contextMenu { eventCardManagementMenu(for: item.event) }
         .accessibilityIdentifier("dashboard-event-card-\(item.event.eventId)")
         .accessibilityLabel("\(item.timing == .complete ? "Complete, " : item.timing == .live ? "Live, " : isUpNext ? "UP NEXT, " : "")\(item.event.title), \(item.event.opponent.isEmpty ? "" : "versus \(item.event.opponent), ")\(item.event.formattedFullDate(timezone: zone)), \(item.event.formattedTime(timezone: zone)). View Event Card details.")
         .accessibilityHint("Tap to open Event Card details. Long press for Edit or Delete.")
@@ -1371,9 +1372,9 @@ struct ContentView: View {
                             event: item.event, timezone: page.timezone,
                             timing: item.timing, isUpNext: item.id == nextUpcomingID
                         )
+                        .contextMenu { eventCardManagementMenu(for: item.event) }
                     }
                     .buttonStyle(SupporterCardPressStyle())
-                    .contextMenu { eventCardManagementMenu(for: item.event) }
                     .accessibilityIdentifier("dashboard-event-tile-\(item.event.eventId)")
                     .accessibilityHint("Tap to open Event Card details. Long press for Edit or Delete.")
                 }
