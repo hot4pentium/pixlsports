@@ -79,6 +79,17 @@ Explicitly completed games must not reopen Track Stats from the event steps, inc
 
 **How to apply:** Use both event and device workspace completion, not only kickoff timing. Preserve queued commands, retry controls, and management of already-active cheers when leaving tracking.
 
+The entire native Track Stats tab must stay unavailable until ten minutes before
+the game's scheduled start, including its tool chooser.
+
+**Why:** The user explicitly chose “Entire Track Stats tab” rather than limiting
+only stat tracking while allowing early Live Taps.
+
+**How to apply:** Apply the same opening time to the tab's Stats, Live Taps, and
+Record Moments choices, without gating standalone clip creation elsewhere.
+Explain when the tab opens and keep Prep and Share available. Completed games
+remain locked, and existing sessions and unsynced data must not be discarded.
+
 In the taller dashboard Message Board, keep details left-aligned but vertically centered in the space above the lower Next Step footer, with a protected gap before the footer.
 
 **Why:** The user asked to move the details down to use the increased height, while preserving space above Next Step.
