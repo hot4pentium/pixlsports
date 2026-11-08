@@ -1,10 +1,10 @@
 ---
 name: HYPE Card settings conflicts
-description: Why iPhone and PIXL HYPE Card settings use a settings-scoped version check.
+description: How iPhone HYPE Card edits stay local and merge safely with PIXL.
 ---
 
-Use optimistic concurrency based only on the editable HYPE Card settings, and preserve the iPhone draft when a newer PIXL version is detected. Do not use a generic invite timestamp that changes for unrelated card activity.
+Keep the iPhone as the working copy. Persist an explicit save intent in the signed-in account's encrypted local vault before sending it. If PIXL has newer settings, merge field by field: retain iPhone changes to fields the owner edited and keep remote-only changes. Retry with PIXL's latest settings revision; do not offer a choice between an "iPhone version" and a "PIXL version." Unsubmitted local drafts stay on the phone and are not sent until the owner taps Save.
 
-**Why:** A new database revision field is unnecessary, and unrelated invite updates should not block a settings save. The settings themselves provide a stable version for the exact fields being edited.
+**Why:** The owner wants all HYPE Card features on iPhone without choosing between separate versions, while concurrent edits still must not silently erase one another.
 
-**How to apply:** When adding or changing HYPE Card settings, include them in the version calculation and keep conflict resolution explicit so neither device silently overwrites the other.
+**How to apply:** Use settings-only revisions for stale-write protection. Preserve queued intent through offline periods, relaunches, and uncertain network results; clear it only after PIXL confirms the requested settings.

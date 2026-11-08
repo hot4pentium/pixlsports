@@ -55,6 +55,12 @@ struct NativeHypeCardSettings: Codable, Equatable {
     }
 }
 
+struct NativeHypeCardSettingsSaveIntent: Codable {
+    let base: NativeHypeCardSettings
+    let desired: NativeHypeCardSettings
+    let confirmPublish: Bool
+}
+
 struct NativeHypeCardSettingsUpdate: Encodable {
     let showHypeCard: Bool
     let showStats: Bool

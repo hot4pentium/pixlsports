@@ -21,7 +21,7 @@
 - [Supporter dashboard browser coverage](supporter-dashboard-browser-coverage.md) — isolate narrow card checks from long tracker journeys; card-flip focus follows the visible face.
 - [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.
 - [Supporter profile propagation](supporter-profile-propagation.md) — live HYPE Cards follow the verified owner's profile; saved designs and published snapshots remain authored independently.
-- [HYPE Card settings conflicts](hype-card-settings-conflicts.md) — conflict versions should track only editable HYPE Card settings, not unrelated invite changes.
+- [HYPE Card settings conflicts](hype-card-settings-conflicts.md) — keep the iPhone as the working copy; queue saves locally and automatically merge field changes against PIXL.
 - [Browser route coverage](browser-route-coverage.md) — cross-route browser checks should use stable test IDs and tolerate presentation-copy casing.
 - [Shared live browser checks](shared-live-browser-checks.md) — test open spectator refreshes, including derived public links that change independently of tracker revisions.
 - [Chromium browser diagnostics](chromium-browser-diagnostics.md) — CDP release checks should preserve bounded process output and page lifecycle failures through shared monitors.

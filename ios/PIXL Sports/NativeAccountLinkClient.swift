@@ -46,6 +46,7 @@ private final class NativeLinkRedirectGuard: NSObject, URLSessionTaskDelegate, @
 final class NativeAccountLinkClient {
     private let session: URLSession
     private static let hypeCardSettingsDraftKey = "pending/hype-card-settings"
+    private static let hypeCardSettingsSaveIntentKey = "pending/hype-card-settings-save"
     private static let hypeCardSettingsConfirmationKey = "pending/hype-card-settings-confirmation"
 
     init() {
@@ -81,6 +82,36 @@ final class NativeAccountLinkClient {
         let offline = NativeOfflineRuntime.shared
         guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
         try offline.vault.write(nil, key: Self.hypeCardSettingsDraftKey)
+        offline.storageChanged()
+    }
+
+    func saveHypeCardSettingsSaveIntent(
+        _ intent: NativeHypeCardSettingsSaveIntent,
+        subject: String
+    ) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        try offline.vault.write(JSONEncoder().encode(intent), key: Self.hypeCardSettingsSaveIntentKey)
+        offline.storageChanged()
+    }
+
+    func loadHypeCardSettingsSaveIntent(subject: String) throws -> NativeHypeCardSettingsSaveIntent? {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        guard let data = try offline.vault.read(Self.hypeCardSettingsSaveIntentKey, subject: subject) else {
+            return nil
+        }
+        do {
+            return try JSONDecoder().decode(NativeHypeCardSettingsSaveIntent.self, from: data)
+        } catch {
+            throw NativeOfflineError.corrupt
+        }
+    }
+
+    func clearHypeCardSettingsSaveIntent(subject: String) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        try offline.vault.write(nil, key: Self.hypeCardSettingsSaveIntentKey)
         offline.storageChanged()
     }
 

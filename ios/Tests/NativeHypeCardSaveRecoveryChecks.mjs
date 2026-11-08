@@ -15,11 +15,12 @@ test("owner HYPE Card startup restores its account-scoped snapshot before reques
   assert.match(init, /JSONDecoder\(\)\.decode\(NativeSupporterHypeCardPreview\.self/);
   assert.match(init, /_loading = State\(initialValue: preview == nil\)/);
   assert.match(init, /loadHypeCardSettingsDraft\(subject: subject\)/);
+  assert.match(init, /loadHypeCardSettingsSaveIntent\(subject: subject\)/);
   assert.match(init, /editorSettings = savedDraft \?\? cachedSettings/);
   assert.match(init, /_settingsDraftRevision = State\(initialValue: editorSettings\?\.revision\)/);
   assert.match(init, /_settingsDraftRecoveryBlocked = State\(initialValue: draftRecoveryBlocked\)/);
   assert.match(init, /_settingsStatusUnknown = State\(initialValue: confirmationPending\)/);
-  assert.match(init, /cachedConflict = cachedSettings/);
+  assert.doesNotMatch(view, /Use PIXL version|Keep my iPhone draft|The PIXL version is loaded/);
   assert.doesNotMatch(init, /await|fetchOwnerHypeCardPreview/);
 });
 
@@ -48,16 +49,25 @@ test("published owner fronts use cached photo bytes without giving them to publi
   assert.ok(front.indexOf("if let privatePhoto") < front.indexOf("else if let photoURL"));
 });
 
-test("a known-offline save keeps editable local choices without creating an uncertain cloud request", () => {
-  const save = view.slice(view.indexOf("private func saveSettings"), view.indexOf("private func keepSettingsDraft"));
-  const start = save.indexOf("if !offlineRuntime.online");
-  const request = save.indexOf("SupporterHomeAPI.updateNativeHypeCard");
-  assert.ok(start >= 0 && start < request);
-  const local = save.slice(start, request);
-  assert.match(local, /saveHypeCardSettingsDraft\(submittedDraft, subject: subject\)/);
-  assert.match(local, /Saved on this iPhone\./);
-  assert.match(local, /return/);
-  assert.doesNotMatch(local, /markHypeCardSettingsConfirmationPending|settingsStatusUnknown = true|clearHypeCardSettingsDraft/);
+test("a settings save is stored locally first and then syncs automatically when online", () => {
+  const save = view.slice(view.indexOf("private func saveSettings"), view.indexOf("private func syncQueuedSettings"));
+  assert.ok(save.indexOf("saveHypeCardSettingsDraft") < save.indexOf("saveHypeCardSettingsSaveIntent"));
+  assert.ok(save.indexOf("saveHypeCardSettingsSaveIntent") < save.indexOf("syncQueuedSettings"));
+  assert.match(save, /Saved on this iPhone\. It will sync automatically/);
+  assert.match(view, /private func syncQueuedSettings\(subject: String\) async/);
+  assert.match(view, /offlineRuntime\.online, clerk\.isLoaded/);
+  assert.match(client, /hypeCardSettingsSaveIntentKey = "pending\/hype-card-settings-save"/);
+});
+
+test("queued HYPE Card saves are encrypted and scoped to the signed-in account", () => {
+  const save = client.slice(
+    client.indexOf("func saveHypeCardSettingsSaveIntent"),
+    client.indexOf("func markHypeCardSettingsConfirmationPending"),
+  );
+  assert.match(save, /canContinue\(subject: subject\)/);
+  assert.match(save, /vault\.write\(JSONEncoder\(\)\.encode\(intent\), key: Self\.hypeCardSettingsSaveIntentKey\)/);
+  assert.match(save, /vault\.read\(Self\.hypeCardSettingsSaveIntentKey, subject: subject\)/);
+  assert.match(save, /vault\.write\(nil, key: Self\.hypeCardSettingsSaveIntentKey\)/);
 });
 
 test("HYPE Card confirmation marker is stored and read through the account-scoped vault", () => {
@@ -94,7 +104,7 @@ test("a HYPE Card mutation is marked before network send and cleared only after 
   assert.ok(update.indexOf("JSONDecoder().decode") < update.indexOf("clearHypeCardSettingsConfirmation"));
 });
 
-test("restart recovery checks authoritative settings and keeps a retry when PIXL is unavailable", () => {
+test("restart recovery preserves local choices and retries an explicitly saved change", () => {
   const load = view.slice(view.indexOf("private func loadCard"), view.lastIndexOf("\n}"));
   const recovery = view.slice(
     view.indexOf("private func reconcileSettingsAfterRestart"),
@@ -102,10 +112,13 @@ test("restart recovery checks authoritative settings and keeps a retry when PIXL
   );
   assert.match(load, /hasPendingHypeCardSettingsConfirmation/);
   assert.match(load, /await checkSavedSettingsStatus\(\)/);
+  assert.match(load, /await syncQueuedSettings\(subject: requestSubject\)/);
   assert.match(recovery, /fetchAuthoritativeNativeHypeCardSettings/);
   assert.match(recovery, /settingsStatusUnknown = true/);
-  assert.match(recovery, /applySettingsDraft\(preservedDraft\)/);
-  assert.match(recovery, /preservedDraft\.revision != saved\.revision/);
+  assert.match(recovery, /loadHypeCardSettingsSaveIntent\(subject: subject\)/);
+  assert.match(recovery, /await syncQueuedSettings\(subject: subject\)/);
+  assert.match(recovery, /localDraft\.hasSameSettings\(as: queuedIntent\.desired\)/);
+  assert.match(recovery, /Tap Save to sync them/);
   assert.doesNotMatch(recovery, /if\s+markerFound\s*\{\s*try client\.clearHypeCardSettingsDraft/);
   assert.doesNotMatch(recovery, /settingsRecoveryMarkerFound\s*\|\|\s*\(try/);
   assert.match(view, /settingsStatusRecoveryNotice/);
@@ -121,13 +134,32 @@ test("authoritative settings fetch refreshes the linked account before clearing 
   assert.ok(fetch.indexOf('getAuthoritativeData("supporter/schedule"') < fetch.indexOf('getAuthoritativeData("supporter/hype-card"'));
 });
 
-test("cross-device settings conflicts preserve the iPhone draft and require an explicit PIXL choice", () => {
+test("cross-device settings changes merge automatically without a version-choice screen", () => {
   assert.match(api, /let expectedRevision: String/);
-  assert.match(view, /expectedRevision: expectedRevision/);
+  assert.match(view, /expectedRevision: revision/);
   assert.match(view, /error\.statusCode == 409/);
-  assert.match(view, /settingsRevisionConflict = latest/);
-  assert.match(view, /settingsConflictNotice\(settingsRevisionConflict\)/);
-  assert.match(view, /Text\(isCheckingSettings \? "Loading PIXL version…" : "Use PIXL version"\)/);
-  assert.match(view, /settingsDraftRevision != saved\.revision/);
+  assert.match(view, /for attempt in 0\.\.<3/);
+  assert.match(view, /mergeSettings\(base: queuedIntent\.base, local: queuedIntent\.desired, latest: latest\)/);
+  assert.match(view, /hasNewerLocalDraft/);
+  assert.doesNotMatch(view, /settingsConflictNotice|settingsRevisionConflict|Use PIXL version|The PIXL version is loaded/);
+  assert.match(view, /settingsDraftRevision != nil/);
   assert.match(view, /guard clerk != nil, !isSaving, !isCheckingSettings else \{ return \}/);
+  const editable = view.slice(view.indexOf("private var canEditSettingsDraft"), view.indexOf("private var showHypeCardBinding"));
+  assert.doesNotMatch(editable, /settingsStatusUnknown/);
+});
+
+test("local drafts are removed only after PIXL confirms the queued settings", () => {
+  const sync = view.slice(
+    view.indexOf("private func syncQueuedSettings"),
+    view.indexOf("private func mergeSettings"),
+  );
+  assert.match(sync, /latest\.hasSameSettings\(as: queuedIntent\.desired\)/);
+  assert.match(sync, /saved\.hasSameSettings\(as: merged\)/);
+  const finish = view.slice(
+    view.indexOf("private func finishQueuedSettingsSync"),
+    view.indexOf("private func mergeSettings"),
+  );
+  assert.match(finish, /clearHypeCardSettingsSaveIntent/);
+  assert.match(finish, /preserveNewerDraft/);
+  assert.match(finish, /clearHypeCardSettingsDraft/);
 });
