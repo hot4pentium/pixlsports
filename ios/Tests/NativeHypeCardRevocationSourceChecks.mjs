@@ -13,10 +13,13 @@ const uiTest = readFileSync(
 );
 
 test("a confirmed unlinked owner-card response clears the offline vault", () => {
+  const fetchOnlineStart = api.indexOf("private static func fetchOnlineOwnerHypeCardPreview");
   const unlinkedBranch = api.slice(
     api.indexOf('if reference.status == "unlinked"'),
     api.indexOf('guard reference.status == "no-card"'),
   );
+  const onlineFetcher = api.slice(fetchOnlineStart, api.indexOf('if reference.status == "unlinked"', fetchOnlineStart));
+  assert.match(onlineFetcher, /let offline = NativeOfflineRuntime\.shared/);
   assert.match(unlinkedBranch, /try offline\.clear\(\)/);
   assert.doesNotMatch(unlinkedBranch, /privateCard: reference|privatePhoto: reference|settings: reference/);
 });

@@ -84,6 +84,14 @@ test("event-step tools omit the Edit Event Card button", () => {
   assert.doesNotMatch(detail, /NativeCreateEventCardView\(/);
 });
 
+test("Event Card team identity unwraps optional names before comparing", () => {
+  const detail = readFileSync(new URL("../PIXL Sports/SupporterEventDetailView.swift", import.meta.url), "utf8");
+  const identityStart = detail.indexOf("private func eventIdentityName");
+  const identityEnd = detail.indexOf("private func eventScheduleDetails", identityStart);
+  const identity = detail.slice(identityStart, identityEnd);
+  assert.match(identity, /if let teamName = teamName,[\s\S]*?teamName\.caseInsensitiveCompare\(event\.title\)/);
+});
+
 test("Event Card long-press menus attach to visible cards in both dashboard layouts", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   const compactStart = content.indexOf("private func compactEventCard");

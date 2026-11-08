@@ -376,12 +376,11 @@ struct SupporterEventDetailView: View {
 
     private func eventIdentityName(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
         let teamName = schedule.teamName?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hasDistinctTeamName = teamName.map {
-            !$0.isEmpty && $0.caseInsensitiveCompare(event.title) != .orderedSame
-        } ?? false
 
         return VStack(alignment: .leading, spacing: 2) {
-            if hasDistinctTeamName, let teamName {
+            if let teamName = teamName,
+               !teamName.isEmpty,
+               teamName.caseInsensitiveCompare(event.title) != .orderedSame {
                 Text(teamName)
                     .font(.system(size: eventTitlePointSize, weight: .black, design: .rounded))
                     .tracking(-0.4)

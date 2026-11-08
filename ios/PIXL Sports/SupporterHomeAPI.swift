@@ -786,6 +786,7 @@ enum SupporterHomeAPI {
     }
 
     private static func fetchOnlineOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
+        let offline = NativeOfflineRuntime.shared
         let client = NativeAccountLinkClient()
         let data = try await client.getData("supporter/hype-card", clerk: clerk)
         let reference: NativeHypeCardReference
