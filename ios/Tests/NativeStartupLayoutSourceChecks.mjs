@@ -92,6 +92,11 @@ test("Event Card team identity unwraps optional names before comparing", () => {
   assert.match(identity, /if let teamName = teamName,[\s\S]*?teamName\.caseInsensitiveCompare\(event\.title\)/);
 });
 
+test("Event Card editing provides a fallback when the athlete name is missing", () => {
+  const detail = readFileSync(new URL("../PIXL Sports/SupporterEventDetailView.swift", import.meta.url), "utf8");
+  assert.match(detail, /NativeCreateEventCardView\(\s*athleteName: schedule\.athleteName \?\? "your athlete"/);
+});
+
 test("Event Card long-press menus attach to visible cards in both dashboard layouts", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   const compactStart = content.indexOf("private func compactEventCard");

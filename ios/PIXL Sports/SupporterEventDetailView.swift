@@ -145,7 +145,7 @@ struct SupporterEventDetailView: View {
             NavigationStack {
                 if let clerk, case let .loaded(schedule, event) = state {
                     NativeCreateEventCardView(
-                        athleteName: schedule.athleteName,
+                        athleteName: schedule.athleteName ?? "your athlete",
                         teamName: schedule.teamName,
                         seasonName: schedule.seasonName,
                         initialTimezone: event.timezone ?? schedule.timezone,
