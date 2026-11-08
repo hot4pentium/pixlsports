@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { NativeOwnerLiveTapsContext } from './nativeOwnerLiveTapsContext';
 import type { NativePrivateHypeCard } from './nativePrivateHypeCard';
 import type { NativeSupporterHypeCardSettings } from './nativeSupporterHypeCardSettings';
 import type { NativeSupporterHypeCardStatus } from './nativeSupporterHypeCardStatus';
@@ -17,4 +18,5 @@ export interface NativeSupporterHypeCard {
   correctionId?: string;
   privatePreview?: NativePrivateHypeCard;
   settings?: NativeSupporterHypeCardSettings;
+  ownerLiveTaps?: NativeOwnerLiveTapsContext;
 }

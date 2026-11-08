@@ -18,6 +18,7 @@ struct SupporterEventDetailView: View {
     @State private var prepHasUnsavedChanges = false
     @State private var workspaceGameCompleted = false
     @State private var refreshTask: Task<Void, Never>?
+    @State private var accessDate = Date()
 #if DEBUG
     @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
 #endif
@@ -53,8 +54,14 @@ struct SupporterEventDetailView: View {
     }
 
     private var effectiveSelectedStep: NativeEventDetailStep {
-        guard case let .loaded(_, event) = state else { return selectedStep }
-        return selectedStep.permittedSelection(isGame: event.type == "game", isComplete: gameIsComplete)
+        guard case let .loaded(schedule, event) = state else { return selectedStep }
+        return selectedStep.permittedSelection(isGame: event.type == "game", isComplete: gameIsComplete,
+            trackingAvailable: trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed)
+    }
+
+    private var trackingAvailable: Bool {
+        guard case let .loaded(schedule, event) = state else { return false }
+        return trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed
     }
 
     private var pageNavigationTitle: String {
@@ -103,7 +110,7 @@ struct SupporterEventDetailView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if case let .loaded(schedule, event) = state {
-                TimelineView(.periodic(from: .now, by: 15)) { context in
+                TimelineView(.periodic(from: .now, by: 1)) { context in
                     NativeEventStepBar(
                         recommended: recommendedStep(schedule: schedule, event: event, date: context.date),
                         selected: effectiveSelectedStep,
@@ -111,10 +118,12 @@ struct SupporterEventDetailView: View {
                         isComplete: gameIsComplete,
                         actionsEnabled: clerk != nil || fixture != nil,
                         onSelect: { step in
-                            guard step != .trackStats || (event.type == "game" && !gameIsComplete) else { return }
+                            guard step != .trackStats || trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed else { return }
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             selectedStep = step
-                        }
+                        },
+                        trackingAccess: trackingAccess(schedule: schedule, event: event, date: context.date),
+                        trackingTimeZone: TimeZone(identifier: event.timezone ?? schedule.timezone ?? "") ?? .current
                     )
 #if DEBUG
                     .onChange(of: context.date, initial: true) { _, date in
@@ -181,7 +190,22 @@ struct SupporterEventDetailView: View {
             // Don't remove the destination's NavigationLink while a native tool
             // has unsaved work. Its requests still recheck account access.
             guard phase == .active, detailsVisible else { return }
+            accessDate = Date()
             Task { await load() }
+        }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
+            guard case let .loaded(schedule, event) = state else { return }
+            if trackingAccess(schedule: schedule, event: event, date: date)
+                != trackingAccess(schedule: schedule, event: event, date: accessDate) {
+                accessDate = date
+            }
+        }
+        .onChange(of: trackingAvailable) { _, available in
+            guard case let .loaded(_, event) = state, !available, selectedStep == .trackStats else { return }
+            // A schedule change can close the tab. Make the safe selection
+            // persistent so the timer cannot later interrupt a Prep draft.
+            selectedStep = selectedStep.permittedSelection(
+                isGame: event.type == "game", isComplete: gameIsComplete, trackingAvailable: false)
         }
     }
 
@@ -202,7 +226,8 @@ struct SupporterEventDetailView: View {
                     selected: effectiveSelectedStep,
                     fixturePrep: fixture?.prep,
                     onDirtyChange: { prepHasUnsavedChanges = $0 },
-                    onCompletionChange: { workspaceGameCompleted = $0 }
+                    onCompletionChange: { workspaceGameCompleted = $0 },
+                    trackingAllowed: trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed
                 )
                 .id("\(shareToken):\(clerk?.user?.id ?? "fixture")")
                 .id("active-event-tool")
@@ -261,6 +286,18 @@ struct SupporterEventDetailView: View {
         )
     }
 
+    private func trackingAccess(schedule: NativeSupporterSchedule, event: AthleteFanEvent,
+                                date: Date) -> NativeEventTrackingAccess {
+        let start = event.parsedStart(timezone: event.timezone ?? schedule.timezone)
+        var now = fixture?.now ?? date
+#if DEBUG
+        if NativeEventWorkspaceUITestFixture.isRequested, let start {
+            now = NativeEventWorkspaceUITestFixture.shared.timelineDate(date, eventStart: start)
+        }
+#endif
+        return .resolve(start: start, isGame: event.type == "game", isComplete: gameIsComplete, now: now)
+    }
+
     @ViewBuilder
     private func trackerScreen(schedule: NativeSupporterSchedule, event: AthleteFanEvent) -> some View {
         if let clerk, event.type == "game" {
@@ -268,7 +305,7 @@ struct SupporterEventDetailView: View {
                 event: event,
                 teamName: schedule.teamName ?? "Your team",
                 athleteName: schedule.athleteName ?? "Athlete",
-                clerk: clerk
+                clerk: clerk, scheduleTimeZone: schedule.timezone
             )
         } else {
             ContentUnavailableView("Game statistics unavailable", systemImage: "chart.bar.fill")

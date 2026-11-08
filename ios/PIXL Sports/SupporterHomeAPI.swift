@@ -33,6 +33,14 @@ struct NativeHypeCardReference: Decodable {
     let correctionId: String?
     let privatePreview: NativePrivateHypeCard?
     let settings: NativeHypeCardSettings?
+    var ownerLiveTaps: NativeOwnerLiveTapsContext? = nil
+}
+
+struct NativeOwnerLiveTapsContext: Decodable {
+    let status: String
+    let sport: String
+    let inviteToken: String?
+    var ownerOnly: Bool? = nil
 }
 
 struct NativeHypeCardSettings: Codable, Equatable {
@@ -751,6 +759,37 @@ enum SupporterHomeAPI {
         }
     }
 
+    static func fetchOwnerLiveTapsContext(clerk: Clerk) async throws -> NativeOwnerLiveTapsContext {
+        let data = try await NativeAccountLinkClient().getAuthoritativeData("supporter/hype-card", clerk: clerk)
+        let reference = try JSONDecoder().decode(NativeHypeCardReference.self, from: data)
+        guard let context = reference.ownerLiveTaps else {
+            switch reference.status {
+            case "unlinked":
+                throw NativeAccountLinkError.message("Sign in again to reconnect your athlete.")
+            case "mismatch":
+                throw NativeAccountLinkError.message("The saved athlete doesn’t match this profile. Review the athlete details in Settings.")
+            case "no-card":
+                throw NativeAccountLinkError.message("Your athlete setup needs attention. Review the athlete details in Settings.")
+            default:
+                throw NativeAccountLinkError.message("We couldn’t check Live Taps access. Try again with a connection.")
+            }
+        }
+        switch context.status {
+        case "paused":
+            throw NativeAccountLinkError.message("Live Taps is paused. Review your HYPE Card settings.")
+        case "expired":
+            throw NativeAccountLinkError.message("This HYPE Card’s access has expired.")
+        case "ready":
+            guard let token = context.inviteToken,
+                  token.range(of: "^[A-Za-z0-9_-]{1,128}$", options: .regularExpression) != nil else {
+                throw SupporterHomeAPIError.invalidResponse
+            }
+            return context
+        default:
+            throw SupporterHomeAPIError.invalidResponse
+        }
+    }
+
     static func fetchPublicHypeCard(clerk: Clerk) async throws -> NativePublicHypeCard? {
         let client = NativeAccountLinkClient()
         let data = try await client.getData("supporter/hype-card", clerk: clerk)
@@ -1137,15 +1176,21 @@ enum SupporterHomeAPI {
         return (schedule, event)
     }
 
-    static func fetchLiveTapSummary(inviteToken: String) async throws -> (sport: String, summary: LiveTapSummary) {
+    static func fetchLiveTapSummary(inviteToken: String, ownerClerk: Clerk? = nil) async throws -> (sport: String, summary: LiveTapSummary) {
         try Task.checkCancellation()
-        let data = try await NativeAccountLinkClient().publicRequest(
-            "athlete-invites/\(inviteToken)/fan"
-        )
+        let data: Data
+        if let ownerClerk {
+            data = try await NativeAccountLinkClient().getAuthoritativeData(
+                "athlete-invites/\(inviteToken)/live-taps", apiRoot: true, clerk: ownerClerk
+            )
+        } else {
+            data = try await NativeAccountLinkClient().publicRequest("athlete-invites/\(inviteToken)/fan")
+        }
         try Task.checkCancellation()
         do {
-            let card = try JSONDecoder().decode(SupporterFanCardResponse.self, from: data)
-            return (card.sport, card.liveTaps)
+            struct SummaryResponse: Decodable { let sport: String; let liveTaps: LiveTapSummary }
+            let summary = try JSONDecoder().decode(SummaryResponse.self, from: data)
+            return (summary.sport, summary.liveTaps)
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }

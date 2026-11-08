@@ -49,6 +49,8 @@ import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
 import { notifyAthleteInviteHypeOwner } from "../lib/athleteInviteHypeNotification";
 import { getAthleteLiveTapsSummary, visibleLiveTapSummary } from "../lib/athleteLiveTaps";
+import { sql as privatePauseSql } from "drizzle-orm";
+import { hasNativeStarterPrivacyPause, nativeStarterPauseFingerprint } from "../lib/nativeStarterPrivacyPause";
 import { completeLiveTapSession, completedLiveTapSessions } from "../lib/liveTapCompletions";
 import { athletePhotoRevision } from "../lib/athletePhotoRevision";
 import { sanitizeAthleteInvitePhoto } from "../lib/athleteInvitePhoto";
@@ -199,10 +201,26 @@ async function startNativeEventLive(
   return db.transaction(async (tx) => {
     const [currentInvite] = await tx.select().from(athleteInvitesTable)
       .where(eq(athleteInvitesTable.id, invite.id)).for("update");
-    if (!currentInvite || currentInvite.paused) {
+    if (!currentInvite) {
       return { status: 404, error: "Athlete HYPE Card not found." };
     }
+    const privateStarter = currentInvite.paused
+      && await hasNativeStarterPrivacyPause(ownerClerkUserId, currentInvite.publicToken, tx);
+    if (currentInvite.paused && !privateStarter) {
+      return { status: 403, error: "Live Taps is paused. Review your HYPE Card settings." };
+    }
     const now = new Date();
+    if (privateStarter) {
+      // Preserve the default-private distinction for older untouched starters
+      // before updating the live pointer. Explicit pauses clear this marker.
+      await tx.execute(privatePauseSql`UPDATE native_accounts
+        SET profile_metadata=jsonb_set(profile_metadata,'{nativeStarterPrivatePause}',
+          to_jsonb(${nativeStarterPauseFingerprint(currentInvite.publicToken)}::text),true)
+        WHERE owner_id=${ownerClerkUserId}`);
+    }
+    if (currentInvite.seasonEndsAt <= now) {
+      return { status: 410, error: "This HYPE Card’s access has expired." };
+    }
 
     const scheduleRows = await tx.select({ events: scheduleSharesTable.events })
       .from(scheduleSharesTable)
@@ -1015,6 +1033,33 @@ router.delete("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pr
   res.status(204).end();
 });
 
+router.get("/athlete-invites/:inviteToken/live-taps", requireAuthOrNativeOwner, async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const params = GetAthleteFanCardParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "This athlete’s Live Taps is unavailable." });
+    return;
+  }
+  const [invite] = await db.select().from(athleteInvitesTable).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  ));
+  if (!invite) {
+    res.status(404).json({ error: "This athlete’s Live Taps is unavailable." });
+    return;
+  }
+  if (invite.paused && !(await hasNativeStarterPrivacyPause(invite.ownerClerkUserId, invite.publicToken))) {
+    res.status(403).json({ error: "Live Taps is paused. Review your HYPE Card settings." });
+    return;
+  }
+  if (invite.seasonEndsAt <= new Date()) {
+    res.status(410).json({ error: "This HYPE Card’s access has expired." });
+    return;
+  }
+  const owned = await ownedInviteResponse(invite);
+  res.json({ sport: owned.sport, liveTaps: owned.liveTaps });
+});
+
 router.post("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, async (req, res): Promise<void> => {
   const params = StartAthleteInviteLiveParams.safeParse(req.params);
   const bodyWasProvided = req.body !== undefined;
@@ -1031,9 +1076,8 @@ router.post("/athlete-invites/:inviteToken/live", requireAuthOrNativeOwner, asyn
   const [invite] = await db.select().from(athleteInvitesTable).where(and(
     eq(athleteInvitesTable.publicToken, params.data.inviteToken),
     eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
-    eq(athleteInvitesTable.paused, false),
   ));
-  if (!invite) {
+  if (!invite || (invite.paused && !(parsedBody?.success && "eventId" in parsedBody.data))) {
     res.status(404).json({ error: "Athlete Hype Page not found" });
     return;
   }

@@ -6,6 +6,7 @@ import { ObjectNotFoundError, ObjectStorageService } from "./objectStorage";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { summarizeFanBase } from "./athleteInviteFanBase";
 import { getAthleteLiveTapsSummary } from "./athleteLiveTaps";
+import { hasNativeStarterPrivacyPause } from "./nativeStarterPrivacyPause";
 
 export type NativeHypeCardReference = {
   status: "unlinked" | "no-card" | "hidden" | "mismatch" | "available";
@@ -13,6 +14,12 @@ export type NativeHypeCardReference = {
   correctionId?: string;
   privatePreview?: NativePrivateHypeCard;
   settings?: NativeHypeCardSettings;
+  ownerLiveTaps?: {
+    status: "ready" | "paused" | "expired";
+    sport: string;
+    inviteToken?: string;
+    ownerOnly?: boolean;
+  };
 };
 
 export type NativeHypeCardSettings = {
@@ -41,6 +48,7 @@ export type NativePrivateHypeCard = {
 export type SelectedAthlete = {
   athleteName: string;
   teamName: string;
+  sport?: string;
 };
 
 export type NativeHypeCardIdentityCorrection = {
@@ -93,6 +101,7 @@ async function selectedProfile(ownerClerkUserId: string): Promise<SelectedAthlet
   return {
     athleteName: typeof metadata.athleteName === "string" ? metadata.athleteName.trim() : "",
     teamName: typeof metadata.teamName === "string" ? metadata.teamName.trim() : "",
+    sport: typeof metadata.sport === "string" ? metadata.sport.trim().toLowerCase() : undefined,
   };
 }
 
@@ -103,6 +112,7 @@ async function selectedProfile(ownerClerkUserId: string): Promise<SelectedAthlet
 export async function loadNativeSupporterHypeCard(
   identity: NativeIdentity,
   lookupProfile: ProfileLookup = selectedProfile,
+  includeOwnerLiveTaps = false,
 ): Promise<NativeHypeCardReference> {
   const linked = await pool.query<{ owner_clerk_user_id: string }>(
     `SELECT owner_clerk_user_id
@@ -148,6 +158,7 @@ export async function loadNativeSupporterHypeCard(
       sport: string;
       live_taps_season_id: string | null;
       paused: boolean;
+      live_taps_available: boolean;
       show_hype_card: boolean;
       show_stats: boolean;
       show_events: boolean;
@@ -157,7 +168,8 @@ export async function loadNativeSupporterHypeCard(
     }>(
       `SELECT id, public_token, athlete_name, team_name, season_name, paused, show_hype_card,
               show_stats, show_events,
-              favorite_moment, photo_object_path, cutout_object_path, sport, live_taps_season_id
+              favorite_moment, photo_object_path, cutout_object_path, sport, live_taps_season_id,
+              season_ends_at > NOW() AS live_taps_available
        FROM athlete_invites
        WHERE owner_clerk_user_id=$1
        ORDER BY created_at DESC`,
@@ -167,7 +179,8 @@ export async function loadNativeSupporterHypeCard(
     const team = normalize(profile.teamName);
     const matches = invites.rows.filter((candidate) =>
       normalize(candidate.athlete_name) === athlete
-      && (!team || normalize(candidate.team_name) === team),
+      && (!team || normalize(candidate.team_name) === team)
+      && (!profile.sport || candidate.sport === profile.sport),
     );
 
     if (!team && new Set(matches.map((candidate) => normalize(candidate.team_name))).size > 1) {
@@ -193,9 +206,19 @@ export async function loadNativeSupporterHypeCard(
       };
     }
     await tx.query("COMMIT");
+    // This private context never changes publication settings or the separate
+    // public token contract. Identity mismatches above never receive it.
+    const privateStarter = includeOwnerLiveTaps && invite.paused
+      && await hasNativeStarterPrivacyPause(owner, invite.public_token, tx);
+    const ownerLiveTaps: NativeHypeCardReference["ownerLiveTaps"] = !includeOwnerLiveTaps ? undefined
+      : invite.paused && !privateStarter ? { status: "paused", sport: invite.sport }
+      : !invite.live_taps_available ? { status: "expired", sport: invite.sport }
+      : { status: "ready", sport: invite.sport, inviteToken: invite.public_token,
+          ...(privateStarter ? { ownerOnly: true } : {}) };
     if (invite.paused || !invite.show_hype_card) {
       return {
         status: "hidden",
+        ...(ownerLiveTaps ? { ownerLiveTaps } : {}),
         privatePreview: {
           athleteName: invite.athlete_name,
           teamName: invite.team_name,
@@ -209,6 +232,7 @@ export async function loadNativeSupporterHypeCard(
     }
     return {
       status: "available",
+      ...(ownerLiveTaps ? { ownerLiveTaps } : {}),
       inviteToken: invite.public_token,
       settings: settingsFor(invite),
     };
@@ -490,6 +514,14 @@ export async function updateNativeSupporterHypeCard(
     }
 
     const favoriteMoment = update.favoriteMoment?.trim() || null;
+    if (update.paused) {
+      await tx.query(
+        `UPDATE native_accounts SET profile_metadata=jsonb_set(
+           profile_metadata,'{nativeStarterPrivatePause}','null'::jsonb,true
+         ),updated_at=NOW() WHERE owner_id=$1`,
+        [owner],
+      );
+    }
     await tx.query(
       `UPDATE athlete_invites
        SET show_hype_card=$1, show_stats=$2, show_events=$3, paused=$4,

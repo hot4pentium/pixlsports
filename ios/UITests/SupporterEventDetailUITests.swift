@@ -48,6 +48,42 @@ final class SupporterEventDetailUITests: XCTestCase {
                       "Deleting a task must leave the other checklist items intact.")
     }
 
+    func testEarlyGameLocksEntireTrackingTabWithoutBlockingPrepOrShare() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft"]
+        app.launch()
+        let tracker = app.buttons["event-card-track-stats"]
+        XCTAssertTrue(tracker.waitForExistence(timeout: 10))
+        XCTAssertFalse(tracker.isEnabled)
+        XCTAssertTrue(app.staticTexts["event-tracking-locked-message"].exists)
+        assertSelectedStep("Prep", in: app)
+        assertRecommendedStep("Prep", in: app)
+        XCTAssertTrue(app.buttons["event-card-prep"].isEnabled)
+        app.buttons["event-card-share"].tap()
+        assertSelectedStep("Share", in: app)
+        XCTAssertFalse(app.otherElements["native-event-mode-choice-sheet"].exists)
+        XCTAssertFalse(app.buttons["native-event-full-tracker"].exists)
+        app.buttons["event-card-prep"].tap()
+        assertSelectedStep("Prep", in: app)
+        app.terminate()
+    }
+
+    func testTrackingTabUnlocksAutomaticallyWithoutLeavingPrep() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft", "--event-detail-unlock"]
+        app.launch()
+        let tracker = app.buttons["event-card-track-stats"]
+        XCTAssertTrue(tracker.waitForExistence(timeout: 10))
+        XCTAssertFalse(tracker.isEnabled)
+        let unlocked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: tracker)
+        XCTAssertEqual(XCTWaiter.wait(for: [unlocked], timeout: 25), .completed)
+        assertSelectedStep("Prep", in: app)
+        XCTAssertFalse(app.staticTexts["event-tracking-locked-message"].exists)
+        tracker.tap()
+        assertSelectedStep("Track Stats", in: app)
+        app.terminate()
+    }
+
     func testCompletedGameOpensShareAndCannotInitiateTracking() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail", "--event-detail-final"]

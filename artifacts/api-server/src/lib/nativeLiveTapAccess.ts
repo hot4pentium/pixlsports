@@ -50,6 +50,12 @@ export async function nativeLiveTapAccess(
     if (!invite) throw new NativeLinkError(404, "No athlete HYPE Card is available.");
 
     if (action === "create") {
+      if (invite.paused) {
+        throw new NativeLinkError(403, "Fan QR sharing is unavailable while your public HYPE Card page is paused.");
+      }
+      if (!invite.available) {
+        throw new NativeLinkError(410, "This HYPE Card’s access has expired.");
+      }
       const eventId = card.events[0]!.id;
       const sessionMatchesEvent = invite.game_id === eventId
         || invite.game?.sourceEventId === eventId

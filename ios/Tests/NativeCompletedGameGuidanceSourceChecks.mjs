@@ -16,27 +16,27 @@ test("completion uses explicit final states and the durable offline finish", () 
   assert.match(step, /if isGame && isComplete \{ return \.share \}/);
   assert.match(step, /pendingFinal \|\| \[eventStatus, workspaceStatus, gameStatus\]/);
   assert.match(step, /\["final", "complete", "completed"\]/);
-  const policy = step.slice(step.indexOf("static func gameIsComplete"));
+  const policy = step.slice(step.indexOf("static func gameIsComplete"), step.indexOf("func permittedSelection"));
   assert.doesNotMatch(policy, /Date\(|timeIntervalSince|elapsed/);
   assert.match(model, /var trackerIsComplete:[\s\S]*?trackerRecoveryStatus == \.gameFinished[\s\S]*?workspaceStatus: workspace\?\.eventStatus,[\s\S]*?gameStatus: displayedGame\?\.status,[\s\S]*?pendingFinal: pendingFinal/);
 });
 
 test("the event tab is visibly and accessibly disabled, with guarded selection", () => {
-  assert.match(bar, /\.disabled\(!isGame \|\| isComplete\)/);
-  assert.match(bar, /\.opacity\(isComplete \? 0\.45 : 1\)/);
+  assert.match(bar, /\.disabled\(!isGame \|\| isComplete \|\| !trackingAccess\.isAllowed\)/);
+  assert.match(bar, /\.opacity\(isComplete \|\| !trackingAccess\.isAllowed \? 0\.45 : 1\)/);
   assert.match(bar, /This game is complete\. Use Share/);
-  assert.match(bar, /guard isGame, !isComplete else \{ return \}/);
-  assert.match(detail, /guard step != \.trackStats \|\| \(event.type == "game" && !gameIsComplete\)/);
+  assert.match(bar, /guard isGame, !isComplete, trackingAccess\.isAllowed else \{ return \}/);
+  assert.match(detail, /guard step != \.trackStats \|\| trackingAccess\(schedule: schedule, event: event, date: Date\(\)\)\.isAllowed/);
   assert.match(detail, /selected: effectiveSelectedStep/);
   assert.match(detail, /onChange\(of: gameIsComplete\)[\s\S]*?selectedStep = \.share/);
   assert.match(detail, /onCompletionChange: \{ workspaceGameCompleted = \$0 \}/);
 });
 
 test("completion blocks chooser and full tracker while preserving save recovery", () => {
-  assert.match(tracking, /guard isActive, !gameIsComplete else \{ return \}/);
-  assert.match(tracking, /guard !gameIsComplete else \{ return \}/);
-  assert.match(tracking, /\.disabled\(gameIsComplete\)[\s\S]*?native-event-full-tracker/);
-  assert.match(tracking, /eventToolVisibility\(!gameIsComplete && selectedMode == \.statTracker\)/);
+  assert.match(tracking, /guard isActive, trackingAllowed, !gameIsComplete else \{ return \}/);
+  assert.match(tracking, /private func selectMode[\s\S]*?guard isActive, trackingAllowed, !gameIsComplete/);
+  assert.match(tracking, /\.disabled\(gameIsComplete \|\| !trackingAllowed\)[\s\S]*?native-event-full-tracker/);
+  assert.match(tracking, /eventToolVisibility\(trackingAllowed && !gameIsComplete && selectedMode == \.statTracker\)/);
   assert.match(tracking, /onChange\(of: gameIsComplete\)[\s\S]*?showingModePicker = false/);
   assert.match(read("NativeEventTrackerView.swift"), /onChange\(of: model\.trackerIsComplete\)[\s\S]*?if !embedded \{ dismiss\(\) \}/);
   assert.match(panel, /onChange\(of: isComplete, initial: true\)[\s\S]*?onCompletionChange\(complete\)/);
@@ -46,10 +46,10 @@ test("completion blocks chooser and full tracker while preserving save recovery"
 });
 
 test("already-active Live Taps retain their controls through Share without reopening the chooser", () => {
-  assert.match(panel, /isComplete && selected == \.share && event\.liveTapsActive/);
-  assert.match(tracking, /if !gameIsComplete \{ switchToolButton \}/);
-  assert.match(tracking, /hasVisitedLiveTaps \|\| \(gameIsComplete && event\.liveTapsActive\)/);
-  assert.match(tracking, /isActive: isActive && \(selectedMode == \.liveTaps \|\| gameIsComplete\)/);
+  assert.match(panel, /\(isComplete \|\| !trackingAllowed\) && selected == \.share && event\.liveTapsActive/);
+  assert.match(tracking, /if !gameIsComplete && trackingAllowed \{ switchToolButton \}/);
+  assert.match(tracking, /hasVisitedLiveTaps \|\| \(\(gameIsComplete \|\| !trackingAllowed\) && event\.liveTapsActive\)/);
+  assert.match(tracking, /isActive: isActive && \(selectedMode == \.liveTaps \|\| gameIsComplete \|\| !trackingAllowed\)/);
 });
 
 test("Message Board details center in flexible space with a protected bottom footer", () => {

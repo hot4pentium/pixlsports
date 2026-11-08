@@ -281,12 +281,13 @@ final class NativeAccountLinkClient {
     func getAuthoritativeData(
         _ path: String,
         headers: [String: String] = [:],
+        apiRoot: Bool = false,
         clerk: Clerk
     ) async throws -> Data {
-        try await networkGetData(path, headers: headers, clerk: clerk)
+        try await networkGetData(path, headers: headers, apiRoot: apiRoot, clerk: clerk)
     }
 
-    private func networkGetData(_ path: String, headers: [String: String], clerk: Clerk) async throws -> Data {
+    private func networkGetData(_ path: String, headers: [String: String], apiRoot: Bool = false, clerk: Clerk) async throws -> Data {
         let origin = try Self.apiOrigin()
         let requestScope = NativeOfflineVault.shared.namespace
         let profileRevision = NativeOfflineRuntime.shared.athleteProfileCacheRevision
@@ -298,12 +299,13 @@ final class NativeAccountLinkClient {
         let components = path.split(separator: "/", omittingEmptySubsequences: false)
         guard !components.isEmpty,
               components.allSatisfy({
-                  String($0).range(of: "^[a-z-]+$", options: .regularExpression) != nil
+                  String($0).range(of: apiRoot ? "^[A-Za-z0-9_-]+$" : "^[a-z-]+$", options: .regularExpression) != nil
               }) else {
             throw NativeAccountLinkError.message("The PIXL Sports request could not be prepared.")
         }
 
-        var url = origin.appendingPathComponent("api").appendingPathComponent("native")
+        var url = origin.appendingPathComponent("api")
+        if !apiRoot { url = url.appendingPathComponent("native") }
         for component in components {
             url = url.appendingPathComponent(String(component))
         }

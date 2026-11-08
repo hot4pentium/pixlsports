@@ -608,7 +608,7 @@ struct SupporterLiveTapsView: View {
                 if summary == nil { error = "Open this game with a connection first so it’s ready for offline cheers." }
                 return
             }
-            let result = try await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: inviteToken)
+            let result = try await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: inviteToken, ownerClerk: ownerClerk)
             guard !Task.isCancelled, key == refreshKey, outboxScope == scope else { return }
             guard result.sport == sport else {
                 summary = nil

@@ -19,6 +19,7 @@ import {
   statTrackerSharesTable,
 } from "@workspace/db";
 import { isAccountActive } from "../lib/accountLifecycle";
+import { hasNativeStarterPrivacyPause } from "../lib/nativeStarterPrivacyPause";
 import { getAthleteLiveTapsSummary, isLiveTapCheerForSport, visibleLiveTapSummary } from "../lib/athleteLiveTaps";
 import { visibleLiveTapReceipt } from "../lib/liveTapGameRef";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth, requireAuthOrNativeOwner } from "../middlewares/requireAuth";
@@ -145,9 +146,17 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
     res.status(400).json({ error: "Saved cheers must include their original game." });
     return;
   }
+  const callerId = typeof res.locals.clerkUserId === "string"
+    ? getRequiredClerkUserId(res) : getOptionalClerkUserId(req);
   const [invite] = await db.select().from(athleteInvitesTable)
     .where(eq(athleteInvitesTable.publicToken, params.data.inviteToken));
-  if (!invite || invite.paused || !(await isAccountActive(invite.ownerClerkUserId))) {
+  if (invite && invite.seasonEndsAt <= new Date()) {
+    res.status(410).json({ error: "This HYPE Card’s access has expired." });
+    return;
+  }
+  const privateOwner = invite && callerId === invite.ownerClerkUserId
+    && await hasNativeStarterPrivacyPause(invite.ownerClerkUserId, invite.publicToken);
+  if (!invite || (invite.paused && !privateOwner) || !(await isAccountActive(invite.ownerClerkUserId))) {
     res.status(404).json({ error: "This Hype Card is unavailable for Live Taps." });
     return;
   }
@@ -156,8 +165,6 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
     return;
   }
 
-  const callerId = typeof res.locals.clerkUserId === "string"
-    ? getRequiredClerkUserId(res) : getOptionalClerkUserId(req);
   const tokenHash = body.data.accessToken ? hashAccessToken(body.data.accessToken) : null;
   const result = await db.transaction(async (tx) => {
     const [currentInvite] = await tx.select({
@@ -168,7 +175,10 @@ router.post("/athlete-invites/:inviteToken/live-taps", (req, res, next) => {
       seasonName: athleteInvitesTable.seasonName,
       liveTapsSeasonId: athleteInvitesTable.liveTapsSeasonId,
     }).from(athleteInvitesTable).where(eq(athleteInvitesTable.id, invite.id)).for("update");
-    if (!currentInvite || currentInvite.paused) return "unavailable" as const;
+    if (!currentInvite || (currentInvite.paused && !(callerId === currentInvite.ownerClerkUserId
+      && await hasNativeStarterPrivacyPause(currentInvite.ownerClerkUserId, invite.publicToken, tx)))) {
+      return "unavailable" as const;
+    }
 
     let accessLinkId: string | null = null;
     if (callerId !== currentInvite.ownerClerkUserId) {

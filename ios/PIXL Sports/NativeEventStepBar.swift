@@ -7,6 +7,8 @@ struct NativeEventStepBar: View {
     let isComplete: Bool
     let actionsEnabled: Bool
     let onSelect: (NativeEventDetailStep) -> Void
+    var trackingAccess: NativeEventTrackingAccess = .available
+    var trackingTimeZone: TimeZone = .current
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -22,16 +24,16 @@ struct NativeEventStepBar: View {
                 }
                 .accessibilityIdentifier("event-card-prep")
                 Button {
-                    guard isGame, !isComplete else { return }
+                    guard isGame, !isComplete, trackingAccess.isAllowed else { return }
                     onSelect(.trackStats)
                 } label: {
                     stepLabel(.trackStats)
                 }
-                .disabled(!isGame || isComplete)
-                .opacity(isComplete ? 0.45 : 1)
+                .disabled(!isGame || isComplete || !trackingAccess.isAllowed)
+                .opacity(isComplete || !trackingAccess.isAllowed ? 0.45 : 1)
                 .accessibilityHint(isComplete
                     ? "This game is complete. Use Share for postgame actions."
-                    : isGame ? "Open this game's statistics." : "Stat tracking is available for games, not practices.")
+                    : isGame ? trackingAccess.message(timeZone: trackingTimeZone) : "Stat tracking is available for games, not practices.")
                 .accessibilityIdentifier("event-card-track-stats")
                 Button {
                     onSelect(.share)
@@ -42,6 +44,13 @@ struct NativeEventStepBar: View {
             }
             .disabled(!actionsEnabled)
             .buttonStyle(.plain)
+            if isGame, !isComplete, !trackingAccess.isAllowed {
+                Text(trackingAccess.message(timeZone: trackingTimeZone))
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("event-tracking-locked-message")
+            }
         }
         .frame(maxWidth: 560)
         .padding(.horizontal, 18)

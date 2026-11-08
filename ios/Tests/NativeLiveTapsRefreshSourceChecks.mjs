@@ -21,7 +21,7 @@ test("one lifecycle-owned task drives bounded, non-overlapping refreshes", () =>
 
 test("hidden retained tools and inactive scenes cannot continue polling", () => {
   assert.match(view, /active: isActive && scenePhase == \.active/);
-  assert.match(source("NativeEventTrackingPanel.swift"), /NativeEventFanAccessView\([\s\S]*?isActive: isActive && selectedMode == \.liveTaps/);
+  assert.match(source("NativeEventTrackingPanel.swift"), /NativeEventFanAccessView\([\s\S]*?isActive: isActive && \(selectedMode == \.liveTaps \|\| gameIsComplete \|\| !trackingAllowed\)/);
   assert.match(source("NativeEventFanAccessView.swift"), /SupporterLiveTapsView\([\s\S]*?isActive: isActive/);
   assert.match(view, /online: offline\.online, generation: refreshGeneration/);
 });

@@ -1802,6 +1802,25 @@ paths:
   /athlete-invites/{inviteToken}/live-taps:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: getOwnedAthleteLiveTaps
+      tags: [athlete-invites]
+      summary: Read the verified owner's Live Taps without publishing the HYPE Card
+      responses:
+        "200":
+          description: Private owner session and cheer totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeOwnerLiveTapsSummary"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Live Taps is paused or account access is unavailable
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          description: This card's access has expired
     post:
       operationId: sendAthleteLiveTap
       tags: [athlete-invites]
@@ -5709,6 +5728,26 @@ components:
           $ref: "#/components/schemas/NativePrivateHypeCard"
         settings:
           $ref: "#/components/schemas/NativeSupporterHypeCardSettings"
+        ownerLiveTaps:
+          $ref: "#/components/schemas/NativeOwnerLiveTapsContext"
+    NativeOwnerLiveTapsContext:
+      type: object
+      description: Authenticated owner-only context for the profile's matching athlete. Does not enable public HYPE Card access.
+      required: [status, sport]
+      properties:
+        status: { type: string, enum: [ready, paused, expired] }
+        sport: { type: string }
+        inviteToken: { type: string, description: Present only when Live Taps is available to the verified owner. }
+        ownerOnly:
+          type: boolean
+          description: Default starter privacy remains paused. Only verified owner cheers are available; fan QR sharing still requires unpausing the public page.
+    NativeOwnerLiveTapsSummary:
+      type: object
+      required: [sport, liveTaps]
+      properties:
+        sport: { type: string }
+        liveTaps:
+          $ref: "#/components/schemas/AthleteInviteLiveTaps"
     NativeHypeCardIdentityCorrection:
       type: object
       required: [correctionId, confirm]

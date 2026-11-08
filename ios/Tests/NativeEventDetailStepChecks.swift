@@ -7,7 +7,10 @@ struct NativeEventDetailStepChecks {
         let cases: [(TimeInterval, NativeEventDetailStep)] = [
             (-7 * 24 * 3600, .prep),
             (-3601, .prep),
-            (-3600, .trackStats),
+            (-3600, .prep),
+            (-601, .prep),
+            (-600, .trackStats),
+            (-599, .trackStats),
             (0, .trackStats),
             (3599, .trackStats),
             (3600, .share),
@@ -31,7 +34,7 @@ struct NativeEventDetailStepChecks {
         }
         precondition(NativeEventDetailStep.recommended(
             start: start, isGame: true, isLive: true, now: start.addingTimeInterval(-1)
-        ) == .prep, "A future event marked live remains on Prep.")
+        ) == .trackStats, "A future event inside the ten-minute window can open game-day tools.")
         precondition(NativeEventDetailStep.recommended(
             start: start, isGame: true, isLive: true, now: start.addingTimeInterval(7200)
         ) == .share, "An event outside the active window returns to Share.")
@@ -46,7 +49,10 @@ struct NativeEventDetailStepChecks {
         let eventDate = "2026-11-13"
         let guideCases: [(TimeInterval, NativeEventDetailStep?)] = [
             (-3601, .prep),
-            (-3600, .trackStats),
+            (-3600, .prep),
+            (-601, .prep),
+            (-600, .trackStats),
+            (-599, .trackStats),
             (0, .trackStats),
             (3599, .trackStats),
             (3600, .share),
@@ -68,7 +74,7 @@ struct NativeEventDetailStepChecks {
             start: timedStart,
             timeZone: losAngeles,
             now: oneMinuteBefore
-        ) == .prep, "A future event remains on Prep even near the UTC date boundary.")
+        ) == .trackStats, "The ten-minute window also applies near the UTC date boundary.")
         precondition(NativeEventGuideTiming.gameRecommendation(
             eventDate: "2026-11-14",
             start: nil,
@@ -96,6 +102,32 @@ struct NativeEventDetailStepChecks {
         precondition(NativeEventDetailStep.share.permittedSelection(isGame: true, isComplete: true) == .share)
         // Even when timing recommends Share, an unfinalized game stays trackable.
         precondition(NativeEventDetailStep.trackStats.permittedSelection(isGame: true, isComplete: false) == .trackStats)
+        for offset: TimeInterval in [-1800, -601, -600.001] {
+            let access = NativeEventTrackingAccess.resolve(
+                start: start, isGame: true, isComplete: false, now: start.addingTimeInterval(offset))
+            precondition(!access.isAllowed)
+            precondition(NativeEventDetailStep.trackStats.permittedSelection(
+                isGame: true, isComplete: false, trackingAvailable: access.isAllowed) == .prep)
+        }
+        for offset: TimeInterval in [-600, -599, 0, 7200] {
+            precondition(NativeEventTrackingAccess.resolve(
+                start: start, isGame: true, isComplete: false, now: start.addingTimeInterval(offset)).isAllowed)
+        }
+        precondition(NativeEventTrackingAccess.resolve(start: nil, isGame: true, isComplete: false) == .missingStart)
+        precondition(NativeEventTrackingAccess.resolve(start: nil, isGame: true, isComplete: true) == .complete)
+        precondition(NativeEventTrackingAccess.resolve(start: start, isGame: false, isComplete: false) == .notGame)
+        // Absolute instants keep the opening boundary stable across the repeated
+        // fall-back hour, spring-forward gap, and a date boundary in Los Angeles.
+        for instant in ["2026-11-01T05:05:00Z", "2026-11-01T06:05:00Z",
+                        "2026-03-08T07:05:00Z", "2026-11-14T07:05:00Z"] {
+            let kickoff = ISO8601DateFormatter().date(from: instant)!
+            precondition(!NativeEventTrackingAccess.resolve(start: kickoff, isGame: true, isComplete: false,
+                now: kickoff.addingTimeInterval(-601)).isAllowed)
+            precondition(NativeEventTrackingAccess.resolve(start: kickoff, isGame: true, isComplete: false,
+                now: kickoff.addingTimeInterval(-600)).isAllowed)
+        }
+        let closed = NativeEventTrackingAccess.tooEarly(start.addingTimeInterval(-600))
+        precondition(closed.message(timeZone: losAngeles).contains("10 minutes"))
         print("Native Event Card completion and Message Board timing checks passed.")
     }
 }

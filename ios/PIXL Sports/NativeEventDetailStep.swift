@@ -38,7 +38,7 @@ enum NativeEventDetailStep: String, CaseIterable {
         if isLive, elapsed >= 0, elapsed < 2 * 60 * 60 {
             return .trackStats
         }
-        if elapsed < -60 * 60 { return .prep }
+        if elapsed < -10 * 60 { return .prep }
         if elapsed < 60 * 60 { return .trackStats }
         // Historical details remain shareable. The dashboard independently
         // advances to the next event after its two-hour active window.
@@ -60,7 +60,43 @@ enum NativeEventDetailStep: String, CaseIterable {
         }
     }
 
-    func permittedSelection(isGame: Bool, isComplete: Bool) -> Self {
-        self == .trackStats && (!isGame || isComplete) ? .share : self
+    func permittedSelection(isGame: Bool, isComplete: Bool, trackingAvailable: Bool = true) -> Self {
+        guard self == .trackStats else { return self }
+        if !isGame || isComplete { return .share }
+        return trackingAvailable ? self : .prep
+    }
+}
+
+enum NativeEventTrackingAccess: Equatable {
+    case available
+    case tooEarly(Date)
+    case missingStart
+    case complete
+    case notGame
+
+    static func resolve(start: Date?, isGame: Bool, isComplete: Bool,
+                        now: Date = Date()) -> Self {
+        guard isGame else { return .notGame }
+        guard !isComplete else { return .complete }
+        guard let start else { return .missingStart }
+        let opensAt = start.addingTimeInterval(-10 * 60)
+        return now >= opensAt ? .available : .tooEarly(opensAt)
+    }
+
+    var isAllowed: Bool { self == .available }
+
+    func message(timeZone: TimeZone = .current) -> String {
+        switch self {
+        case .available: return "Open this game’s tools."
+        case .complete: return "This game is complete. Use Share for postgame actions."
+        case .notGame: return "Game-day tracking is available for games, not practices."
+        case .missingStart: return "Add a valid game start time to open Track Stats."
+        case let .tooEarly(date):
+            let formatter = DateFormatter()
+            formatter.timeZone = timeZone
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return "Track Stats opens 10 minutes before game time · \(formatter.string(from: date))."
+        }
     }
 }

@@ -413,7 +413,7 @@ test('Showcase responsive geometry stays compact across owner/public route impor
     await stop(chromium);
     await stop(vite);
     await Promise.all([sourcePath, htmlPath, configPath].map((path) => rm(path, { force: true })));
-    await rm(profile, { recursive: true, force: true });
+    await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 
@@ -475,7 +475,8 @@ test('Showcase responsive geometry remains usable at 200% text', { timeout: 120_
     await stop(chromium);
     await stop(vite);
     await Promise.all([sourcePath, htmlPath, configPath].map((path) => rm(path, { force: true })));
-    await rm(profile, { recursive: true, force: true });
+    // Chromium can briefly finish profile writes after its process exits.
+    await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 

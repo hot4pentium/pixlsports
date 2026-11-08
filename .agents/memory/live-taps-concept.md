@@ -5,6 +5,18 @@ description: The original game-day interaction idea behind Live Taps.
 
 Live Taps is scoped to one athlete. Family members can tap sport-specific, preloaded cheer options to add to a tally. Do not add teammate selection or treat the cheers as official stats.
 
+Native owner tools must not depend on making the athlete’s HYPE Card public. Explicit pauses, expiration and account restrictions still apply.
+
+**Why:** Athlete setup creates a private starter card; requiring public visibility to cheer incorrectly asks an already-provisioned family to set up or publish a Showcase.
+
+**How to apply:** Resolve the matching private athlete for verified owner actions. Keep public-card visibility and fan QR consent independent; private owner access never grants public access.
+
+Default starter privacy must remain paused while private owner cheers work. It is distinct from an explicit owner-requested pause, which must still block Live Taps. Fan QR sharing stays blocked while the public page is paused.
+
+**Why:** Automatically unpausing a starter to repair cheering could expose an athlete’s private page or photo. Treating the automatic privacy pause as an explicit owner choice instead prevents fresh accounts from using their own tools.
+
+**How to apply:** Keep the default-private distinction server-owned and tied to the original starter. Explicit pause saves must revoke that exception atomically; never infer permission from hidden visibility alone.
+
 **Why:** The user clarified that the goal is a tally of sport-specific cheers from family members, not adding other athletes as tap targets.
 
 **How to apply:** Keep the interaction separate from stat tracking and video. Family members may cheer for the athlete; do not turn a tap into a tracked play or teammate feature.

@@ -4568,7 +4568,13 @@ export const GetNativeSupporterHypeCardResponse = zod.object({
   "showEvents": zod.boolean(),
   "paused": zod.boolean(),
   "favoriteMoment": zod.string().max(getNativeSupporterHypeCardResponseSettingsFavoriteMomentMax).nullable()
-}).optional()
+}).optional(),
+  "ownerLiveTaps": zod.object({
+  "status": zod.enum(['ready', 'paused', 'expired']),
+  "sport": zod.string(),
+  "inviteToken": zod.string().optional().describe('Present only when Live Taps is available to the verified owner.'),
+  "ownerOnly": zod.boolean().optional().describe('Default starter privacy remains paused. Only verified owner cheers are available; fan QR sharing still requires unpausing the public page.')
+}).optional().describe('Authenticated owner-only context for the profile\'s matching athlete. Does not enable public HYPE Card access.')
 })
 
 
@@ -4792,6 +4798,80 @@ export const GetAthleteInviteEventNotificationProgressResponse = zod.object({
   "failed": zod.number().int().min(getAthleteInviteEventNotificationProgressResponseFailedMin),
   "pending": zod.number().int().min(getAthleteInviteEventNotificationProgressResponsePendingMin),
   "remaining": zod.number().int().min(getAthleteInviteEventNotificationProgressResponseRemainingMin)
+})
+
+
+/**
+ * @summary Read the verified owner's Live Taps without publishing the HYPE Card
+ */
+export const getOwnedAthleteLiveTapsPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetOwnedAthleteLiveTapsParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getOwnedAthleteLiveTapsPathInviteTokenRegExp)
+})
+
+export const getOwnedAthleteLiveTapsResponseLiveTapsCompletedSessionsItemCheersItemCountMin = 0;
+
+export const getOwnedAthleteLiveTapsResponseLiveTapsCheersItemCountMin = 0;
+
+export const getOwnedAthleteLiveTapsResponseLiveTapsSeasonCheersItemCountMin = 0;
+
+export const getOwnedAthleteLiveTapsResponseLiveTapsArchivedSeasonsItemCheersItemCountMin = 0;
+
+
+
+export const GetOwnedAthleteLiveTapsResponse = zod.object({
+  "sport": zod.string(),
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "gameRef": zod.string().nullish().describe('Opaque invite-scoped session matching key.'),
+  "receipt": zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
+  "cheerKey": zod.string()
+}).optional(),
+  "completedSessions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "gameId": zod.string(),
+  "gameRef": zod.string().optional().describe('Opaque session matching key; independent of Event Card IDs.'),
+  "eventId": zod.string().nullable(),
+  "athleteName": zod.string(),
+  "eventTitle": zod.string(),
+  "sport": zod.string(),
+  "seasonId": zod.string().nullable(),
+  "endedAt": zod.coerce.date().nullable().describe('Hidden in recipient responses when the owner hides Events.'),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getOwnedAthleteLiveTapsResponseLiveTapsCompletedSessionsItemCheersItemCountMin)
+}))
+})).optional(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getOwnedAthleteLiveTapsResponseLiveTapsCheersItemCountMin)
+})),
+  "seasonCheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getOwnedAthleteLiveTapsResponseLiveTapsSeasonCheersItemCountMin)
+})),
+  "archivedSeasons": zod.array(zod.object({
+  "seasonName": zod.string(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getOwnedAthleteLiveTapsResponseLiveTapsArchivedSeasonsItemCheersItemCountMin)
+}))
+})).optional()
+})
 })
 
 

@@ -10,6 +10,7 @@ struct NativeEventTrackerView: View {
     let clerk: Clerk
     let embedded: Bool
     let compact: Bool
+    let scheduleTimeZone: String?
     @StateObject private var model: NativeEventToolModel
     @State private var attribution = "athlete"
     @State private var opponentPossession = false
@@ -18,15 +19,18 @@ struct NativeEventTrackerView: View {
     @State private var showingFinish = false
     @State private var recordScore = false
     @State private var outcome = ""
+    @State private var accessDate = Date()
 
     init(event: AthleteFanEvent, teamName: String, athleteName: String, clerk: Clerk,
-         model: NativeEventToolModel? = nil, embedded: Bool = false, compact: Bool = false) {
+         model: NativeEventToolModel? = nil, embedded: Bool = false, compact: Bool = false,
+         scheduleTimeZone: String? = nil) {
         self.event = event
         self.teamName = teamName
         self.athleteName = athleteName
         self.clerk = clerk
         self.embedded = embedded
         self.compact = compact
+        self.scheduleTimeZone = scheduleTimeZone
         _model = StateObject(wrappedValue: model ?? NativeEventToolModel.shared(
             shareToken: event.shareToken, accountID: clerk.user?.id ?? NativeOfflineRuntime.shared.accountID
         ))
@@ -34,7 +38,11 @@ struct NativeEventTrackerView: View {
 
     var body: some View {
         Group {
-            if embedded {
+            if !trackingAccess.isAllowed {
+                Text(trackingAccess.message(timeZone: TimeZone(identifier: event.timezone ?? scheduleTimeZone ?? "") ?? .current))
+                    .padding(20)
+                    .accessibilityIdentifier("native-full-tracker-locked")
+            } else if embedded {
                 trackerContent
             } else {
                 ScrollView { trackerContent.padding(20) }
@@ -42,16 +50,30 @@ struct NativeEventTrackerView: View {
         }
         .eventToolNavigationTitle("Track Stats", embedded: embedded)
         .tint(NativeEventToolColors.trackStats)
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
+            if access(at: date) != access(at: accessDate) { accessDate = date }
+        }
         .task {
             if model.workspace == nil { await model.load(clerk: clerk) }
         }
         .sheet(isPresented: $showingFinish) { finishSheet }
+        .onChange(of: trackingAccess) { _, access in
+            if !access.isAllowed { showingFinish = false }
+        }
         .onChange(of: model.trackerIsComplete) { _, complete in
             if complete {
                 showingFinish = false
                 if !embedded { dismiss() }
             }
         }
+    }
+
+    private var trackingAccess: NativeEventTrackingAccess { access(at: Date()) }
+
+    private func access(at date: Date) -> NativeEventTrackingAccess {
+        .resolve(start: event.parsedStart(timezone: event.timezone ?? scheduleTimeZone), isGame: event.type == "game",
+                 isComplete: model.trackerIsComplete || NativeEventDetailStep.gameIsComplete(eventStatus: event.status),
+                 now: date)
     }
 
     private var trackerHeading: String {

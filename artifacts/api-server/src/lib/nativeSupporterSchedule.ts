@@ -5,6 +5,7 @@ import { GAME_ON_CARD_MARKER } from "./gameOnCard";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { computeHypeCardShareStats, isHypeCardSport } from "./hypeCardShareStats";
 import { nativeSeasonGames } from "./nativeSeasonStats";
+import { hasNativeStarterPrivacyPause } from "./nativeStarterPrivacyPause";
 
 type NativeSupporterEvent = ReturnType<typeof mapAthleteEventSummaries>[number] & {
   liveTapsActive: boolean;
@@ -384,7 +385,7 @@ export async function loadNativeSupporterSchedule(
       : null;
     const liveTapsActive = Boolean(
       invite
-      && !invite.paused
+      && (!invite.paused || await hasNativeStarterPrivacyPause(owner, invite.public_token, tx))
       && liveShare
       && liveGame
       && liveGame.status !== "final"

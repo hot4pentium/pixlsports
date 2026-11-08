@@ -56,6 +56,48 @@ async function savedCardState(ownerIds: string[]) {
   return { cards: cards.rows, snapshots: snapshots.rows };
 }
 
+test("private native athlete context permits owner Live Taps without publishing or changing the card", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  const token = randomBytes(18).toString("base64url");
+  await addInvite(linkedOwner, "Jordan", "Wolves", token);
+  await pool.query("UPDATE athlete_invites SET show_hype_card=false WHERE owner_clerk_user_id=$1", [linkedOwner]);
+  const before = await savedCardState([linkedOwner]);
+  const reference = await loadNativeSupporterHypeCard(who,
+    async () => ({ athleteName: "Jordan", teamName: "Wolves", sport: "soccer" }), true);
+  assert.equal(reference.status, "hidden");
+  assert.equal(reference.inviteToken, undefined, "the public-reference contract stays private");
+  assert.deepEqual(reference.ownerLiveTaps, { status: "ready", sport: "soccer", inviteToken: token });
+  assert.deepEqual(await savedCardState([linkedOwner]), before, "reading owner access must not publish or mutate");
+});
+
+test("owner Live Taps context distinguishes pause, expiry, identity and sport mismatches", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await addInvite(linkedOwner, "Jordan", "Wolves", randomBytes(18).toString("base64url"));
+  const lookup = async () => ({ athleteName: "Jordan", teamName: "Wolves", sport: "soccer" });
+  await pool.query("UPDATE athlete_invites SET paused=true WHERE owner_clerk_user_id=$1", [linkedOwner]);
+  const paused = await loadNativeSupporterHypeCard(who, lookup, true);
+  assert.deepEqual(paused.ownerLiveTaps, { status: "paused", sport: "soccer" });
+  await pool.query("UPDATE athlete_invites SET paused=false, season_ends_at=NOW()-INTERVAL '1 day' WHERE owner_clerk_user_id=$1", [linkedOwner]);
+  const expired = await loadNativeSupporterHypeCard(who, lookup, true);
+  assert.deepEqual(expired.ownerLiveTaps, { status: "expired", sport: "soccer" });
+  for (const selected of [
+    { athleteName: "Other athlete", teamName: "Wolves", sport: "soccer" },
+    { athleteName: "Jordan", teamName: "Another team", sport: "soccer" },
+    { athleteName: "Jordan", teamName: "Wolves", sport: "basketball" },
+  ]) {
+    const mismatch = await loadNativeSupporterHypeCard(who, async () => selected, true);
+    assert.equal(mismatch.status, "mismatch");
+    assert.equal(mismatch.ownerLiveTaps, undefined);
+  }
+  const unlinked = await loadNativeSupporterHypeCard(identity(), lookup, true);
+  assert.equal(unlinked.status, "unlinked");
+  assert.equal(unlinked.ownerLiveTaps, undefined);
+});
+
 function settingsValues(settings: NativeHypeCardSettings | undefined) {
   assert.ok(settings);
   assert.match(settings.revision, /^[a-f0-9]{64}$/);

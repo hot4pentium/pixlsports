@@ -3213,6 +3213,27 @@ export interface NativeSupporterHypeCardSettings {
   favoriteMoment: string | null;
 }
 
+export type NativeOwnerLiveTapsContextStatus = typeof NativeOwnerLiveTapsContextStatus[keyof typeof NativeOwnerLiveTapsContextStatus];
+
+
+export const NativeOwnerLiveTapsContextStatus = {
+  ready: 'ready',
+  paused: 'paused',
+  expired: 'expired',
+} as const;
+
+/**
+ * Authenticated owner-only context for the profile's matching athlete. Does not enable public HYPE Card access.
+ */
+export interface NativeOwnerLiveTapsContext {
+  status: NativeOwnerLiveTapsContextStatus;
+  sport: string;
+  /** Present only when Live Taps is available to the verified owner. */
+  inviteToken?: string;
+  /** Default starter privacy remains paused. Only verified owner cheers are available; fan QR sharing still requires unpausing the public page. */
+  ownerOnly?: boolean;
+}
+
 export interface NativeSupporterHypeCard {
   status: NativeSupporterHypeCardStatus;
   /** Present only when the owner has enabled public HYPE Card access. */
@@ -3221,6 +3242,12 @@ export interface NativeSupporterHypeCard {
   correctionId?: string;
   privatePreview?: NativePrivateHypeCard;
   settings?: NativeSupporterHypeCardSettings;
+  ownerLiveTaps?: NativeOwnerLiveTapsContext;
+}
+
+export interface NativeOwnerLiveTapsSummary {
+  sport: string;
+  liveTaps: AthleteInviteLiveTaps;
 }
 
 export interface NativeHypeCardIdentityCorrection {

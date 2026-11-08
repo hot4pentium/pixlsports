@@ -116,6 +116,7 @@ import type {
   NativeLinkDecisionInput,
   NativeLinkProofInput,
   NativeLinkState,
+  NativeOwnerLiveTapsSummary,
   NativeSeasonStats,
   NativeSupporterEventCardCreate,
   NativeSupporterEventCardCreateResponse,
@@ -7104,6 +7105,83 @@ export function useGetAthleteInviteEventNotificationProgress<TData = Awaited<Ret
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAthleteInviteEventNotificationProgressQueryOptions(inviteToken,shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOwnedAthleteLiveTapsUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/live-taps`
+}
+
+/**
+ * @summary Read the verified owner's Live Taps without publishing the HYPE Card
+ */
+export const getOwnedAthleteLiveTaps = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<NativeOwnerLiveTapsSummary> => {
+
+  return customFetch<NativeOwnerLiveTapsSummary>(getGetOwnedAthleteLiveTapsUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnedAthleteLiveTapsQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/live-taps`
+    ] as const;
+    }
+
+
+export const getGetOwnedAthleteLiveTapsQueryOptions = <TData = Awaited<ReturnType<typeof getOwnedAthleteLiveTaps>>, TError = ErrorType<void | NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnedAthleteLiveTaps>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnedAthleteLiveTapsQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnedAthleteLiveTaps>>> = ({ signal }) => getOwnedAthleteLiveTaps(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnedAthleteLiveTaps>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnedAthleteLiveTapsQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnedAthleteLiveTaps>>>
+export type GetOwnedAthleteLiveTapsQueryError = ErrorType<void | NotFoundResponse>
+
+
+/**
+ * @summary Read the verified owner's Live Taps without publishing the HYPE Card
+ */
+
+export function useGetOwnedAthleteLiveTaps<TData = Awaited<ReturnType<typeof getOwnedAthleteLiveTaps>>, TError = ErrorType<void | NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnedAthleteLiveTaps>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnedAthleteLiveTapsQueryOptions(inviteToken,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

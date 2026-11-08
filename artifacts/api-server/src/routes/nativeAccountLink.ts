@@ -457,7 +457,7 @@ nativeAccountLinkRouter.patch("/supporter/profile", handle(async (req, res) => {
 }));
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate").set("Pragma", "no-cache");
-  res.json(GetNativeSupporterHypeCardResponse.parse(await loadNativeSupporterHypeCard(identity(res))));
+  res.json(GetNativeSupporterHypeCardResponse.parse(await loadNativeSupporterHypeCard(identity(res), undefined, true)));
 }));
 nativeAccountLinkRouter.get("/supporter/season-stats", handle(async (_req, res) => {
   const schedule = await loadNativeSupporterSchedule(identity(res), true);

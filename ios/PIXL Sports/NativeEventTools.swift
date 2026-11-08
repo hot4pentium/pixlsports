@@ -41,7 +41,10 @@ final class NativeEventWorkspaceUITestFixture: ObservableObject {
     private init() {}
 
     func timelineDate(_ date: Date, eventStart: Date) -> Date {
-        eventStart.addingTimeInterval(-2 * 60 * 60 + date.timeIntervalSince(launchedAt) + clockOffset)
+        if ProcessInfo.processInfo.arguments.contains("--event-detail-unlock") {
+            return eventStart.addingTimeInterval(-615 + date.timeIntervalSince(launchedAt) + clockOffset)
+        }
+        return eventStart.addingTimeInterval(-2 * 60 * 60 + date.timeIntervalSince(launchedAt) + clockOffset)
     }
 
     func advanceClock() { clockOffset += 2 * 60 * 60 }

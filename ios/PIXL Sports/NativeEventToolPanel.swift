@@ -10,6 +10,7 @@ struct NativeEventToolPanel: View {
     let fixturePrep: NativeEventWorkspace.Prep?
     let onDirtyChange: (Bool) -> Void
     let onCompletionChange: (Bool) -> Void
+    let trackingAllowed: Bool
     @StateObject private var workspaceModel: NativeEventToolModel
     @State private var prepVisited = false
     @State private var trackingVisited = false
@@ -18,7 +19,8 @@ struct NativeEventToolPanel: View {
     init(schedule: NativeSupporterSchedule, event: AthleteFanEvent, clerk: Clerk?,
          selected: NativeEventDetailStep, fixturePrep: NativeEventWorkspace.Prep?,
          onDirtyChange: @escaping (Bool) -> Void,
-         onCompletionChange: @escaping (Bool) -> Void) {
+         onCompletionChange: @escaping (Bool) -> Void,
+         trackingAllowed: Bool = true) {
         self.schedule = schedule
         self.event = event
         self.clerk = clerk
@@ -26,6 +28,7 @@ struct NativeEventToolPanel: View {
         self.fixturePrep = fixturePrep
         self.onDirtyChange = onDirtyChange
         self.onCompletionChange = onCompletionChange
+        self.trackingAllowed = trackingAllowed
 #if DEBUG
         if NativeEventWorkspaceUITestFixture.isRequested {
             _workspaceModel = StateObject(wrappedValue: NativeEventToolModel(uiTestFixture: .shared))
@@ -39,9 +42,9 @@ struct NativeEventToolPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if isComplete, let clerk {
+            if isComplete || (!trackingAllowed && workspaceModel.pendingCount > 0), let clerk {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Game complete").font(.headline)
+                    Text(isComplete ? "Game complete" : "Saved game changes").font(.headline)
                     if workspaceModel.pendingFinal {
                         Text("Final saved on this iPhone · not yet saved to PIXL")
                             .font(.caption)
@@ -65,19 +68,21 @@ struct NativeEventToolPanel: View {
                                             onDirtyChange: onDirtyChange)
                             .eventToolVisibility(selected == .prep)
                     }
-                    if event.type == "game", trackingVisited || selected == .trackStats || (isComplete && event.liveTapsActive) {
+                    if event.type == "game", trackingVisited || selected == .trackStats || ((isComplete || !trackingAllowed) && event.liveTapsActive) {
                         NativeEventTrackingPanel(
                             event: event, teamName: schedule.teamName ?? "Your team",
                             athleteName: schedule.athleteName ?? "Your athlete", clerk: clerk,
-                            isActive: (!isComplete && selected == .trackStats)
-                                || (isComplete && selected == .share && event.liveTapsActive),
+                            isActive: (trackingAllowed && !isComplete && selected == .trackStats)
+                                || ((isComplete || !trackingAllowed) && selected == .share && event.liveTapsActive),
                             hasActiveLiveTapsElsewhere: schedule.events.contains {
                                 $0.liveTapsActive && $0.eventId != event.eventId
                             },
-                            model: workspaceModel
+                            model: workspaceModel,
+                            trackingAllowed: trackingAllowed,
+                            scheduleTimeZone: schedule.timezone
                         )
-                        .eventToolVisibility((!isComplete && selected == .trackStats)
-                            || (isComplete && selected == .share && event.liveTapsActive))
+                        .eventToolVisibility((trackingAllowed && !isComplete && selected == .trackStats)
+                            || ((isComplete || !trackingAllowed) && selected == .share && event.liveTapsActive))
                     }
                     if shareVisited || selected == .share {
                         NativeEventShareView(schedule: schedule, event: event, clerk: clerk, embedded: true)

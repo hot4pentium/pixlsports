@@ -11,6 +11,7 @@ struct NativeEventFanAccessView: View {
     let clerk: Clerk
     let hasActiveLiveTapsElsewhere: Bool
     var isActive: Bool = true
+    var sessionManagementOnly: Bool = false
     @State private var grant: Grant?
     @State private var fanURL: URL?
     @State private var links: [AccessLink] = []
@@ -23,7 +24,7 @@ struct NativeEventFanAccessView: View {
     @State private var liveTapsEndError: String?
     @State private var error: String?
     @State private var liveTapsStartError: String?
-    @State private var hypeCard: NativePublicHypeCard?
+    @State private var hypeCard: NativeOwnerLiveTapsContext?
     @State private var soccerPeriodFormat: String?
     @State private var pendingRevocation: String?
     @State private var celebration: NativeLiveTapCelebration?
@@ -47,6 +48,7 @@ struct NativeEventFanAccessView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if !sessionManagementOnly {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
                     Label("Fan QR handoff", systemImage: "qrcode")
@@ -115,10 +117,16 @@ struct NativeEventFanAccessView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(busy || endingLiveTaps || endedLiveTaps || !event.liveTapsActive)
+                .disabled(busy || endingLiveTaps || endedLiveTaps || !event.liveTapsActive || hypeCard?.ownerOnly == true)
                 .accessibilityIdentifier("native-live-taps-create-qr")
                 if !event.liveTapsActive {
                     Text("Start Live Taps for this Event Card before creating fan access.")
+                        .font(.caption)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if hypeCard?.ownerOnly == true {
+                    Text("Your starter HYPE Card is private. Owner cheers work here; fan QR sharing stays off while the public page is paused.")
                         .font(.caption)
                         .foregroundStyle(SupporterHomeColors.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -151,6 +159,7 @@ struct NativeEventFanAccessView: View {
                 }
                 .font(.subheadline)
             }
+            }
             Divider().overlay(Color.white.opacity(0.12))
             Label("Live Taps session", systemImage: "hands.clap")
                 .font(.headline)
@@ -158,6 +167,7 @@ struct NativeEventFanAccessView: View {
             if event.liveTapsActive, !endedLiveTaps,
                let inviteToken = event.liveTapsInviteToken,
                let sport = event.liveTapsSport {
+                if !sessionManagementOnly {
                 SupporterLiveTapsView(
                     inviteToken: inviteToken, sport: sport,
                     athleteName: athleteName, eventTitle: event.title,
@@ -170,6 +180,7 @@ struct NativeEventFanAccessView: View {
                     .foregroundStyle(SupporterHomeColors.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("native-live-taps-stats-pause-note")
+                }
                 Button(role: .destructive) {
                     showingEndConfirmation = true
                 } label: {
@@ -203,6 +214,10 @@ struct NativeEventFanAccessView: View {
                 Text("Refresh this Event Card to reopen the fan taps.")
                     .font(.caption)
                     .foregroundStyle(SupporterHomeColors.muted)
+            } else if sessionManagementOnly {
+                Text("Use Share to end an existing Live Taps session. New game-day tools open 10 minutes before game time.")
+                    .font(.caption)
+                    .foregroundStyle(SupporterHomeColors.muted)
             } else if hasActiveLiveTapsElsewhere {
                 Label("Live Taps is already active for another Event Card.", systemImage: "pause.circle")
                     .font(.subheadline)
@@ -216,7 +231,7 @@ struct NativeEventFanAccessView: View {
                     .font(.caption)
                     .foregroundStyle(SupporterHomeColors.muted)
                 if loadingHypeCard {
-                    ProgressView("Checking your HYPE Card…")
+                    ProgressView("Checking your athlete’s Live Taps access…")
                 } else if let hypeCard {
                     if hypeCard.sport == "soccer" {
                         HStack(spacing: 8) {
@@ -235,9 +250,10 @@ struct NativeEventFanAccessView: View {
                     .disabled(startingLiveTaps || (hypeCard.sport == "soccer" && soccerPeriodFormat == nil))
                     .accessibilityIdentifier("native-live-taps-start")
                 } else {
-                    Text("Set up a Player Showcase before starting Live Taps.")
+                    Button("Refresh athlete access") { Task { await loadHypeCard() } }
                         .font(.caption)
                         .foregroundStyle(SupporterHomeColors.muted)
+                        .disabled(loadingHypeCard)
                 }
                 if startingLiveTaps { ProgressView("Starting Live Taps…") }
                 if let liveTapsStartError {
@@ -248,14 +264,14 @@ struct NativeEventFanAccessView: View {
         .tint(SupporterHomeColors.accent)
         .task {
             await perform("list")
-            if !event.liveTapsActive && !hasActiveLiveTapsElsewhere { await loadHypeCard() }
+            if !sessionManagementOnly && !hasActiveLiveTapsElsewhere { await loadHypeCard() }
             await recoverCelebration()
         }
         .onChange(of: event.liveTapsActive) { _, isActive in
             if isActive {
                 endedLiveTaps = false
                 Task { await perform("list") }
-            } else if hypeCard == nil && !hasActiveLiveTapsElsewhere {
+            } else if !sessionManagementOnly && hypeCard == nil && !hasActiveLiveTapsElsewhere {
                 Task { await loadHypeCard() }
             }
         }
@@ -336,15 +352,18 @@ struct NativeEventFanAccessView: View {
     }
 
     private func loadHypeCard() async {
-        guard !loadingHypeCard, !event.liveTapsActive else { return }
+        guard !sessionManagementOnly, !loadingHypeCard,
+              let subject = clerk.user?.id else { return }
         loadingHypeCard = true
+        hypeCard = nil
+        liveTapsStartError = nil
         defer { loadingHypeCard = false }
         do {
-            hypeCard = try await SupporterHomeAPI.fetchPublicHypeCard(clerk: clerk)
-            if hypeCard == nil || hypeCard?.inviteToken == nil {
-                liveTapsStartError = "No active Player Showcase is available for Live Taps."
-            }
+            let context = try await SupporterHomeAPI.fetchOwnerLiveTapsContext(clerk: clerk)
+            guard clerk.user?.id == subject, !Task.isCancelled else { return }
+            hypeCard = context
         } catch {
+            guard clerk.user?.id == subject else { return }
             liveTapsStartError = error.localizedDescription
         }
     }
@@ -368,7 +387,7 @@ struct NativeEventFanAccessView: View {
                 liveTapsEndError = "Your cheers are waiting to send. Let them finish before ending Live Taps."
                 return
             }
-            let current = try await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: inviteToken)
+            let current = try await SupporterHomeAPI.fetchLiveTapSummary(inviteToken: inviteToken, ownerClerk: clerk)
             let gameID = outbox.snapshot(scope)?.endingGameID ?? current.summary.gameId
             guard let gameID else {
                 await recoverCelebration()
@@ -424,7 +443,7 @@ struct NativeEventFanAccessView: View {
     }
 
     private func startLiveTaps(sport: String) async {
-        guard !startingLiveTaps, !event.liveTapsActive, !hasActiveLiveTapsElsewhere,
+        guard !sessionManagementOnly, !startingLiveTaps, !event.liveTapsActive, !hasActiveLiveTapsElsewhere,
               let hypeCard, let inviteToken = hypeCard.inviteToken else { return }
         guard sport != "soccer" || soccerPeriodFormat != nil else { return }
         startingLiveTaps = true

@@ -1,5 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { PoolClient } from "@workspace/db";
+import { isNativeProfileOwner } from "./nativeOwnerMetadata";
+import { nativeStarterPauseFingerprint } from "./nativeStarterPrivacyPause";
 
 export const starterSports = ["soccer", "basketball", "volleyball", "football", "baseball", "softball"] as const;
 export function savedStarterSport(value: unknown): string | undefined {
@@ -49,5 +51,8 @@ export async function assignNativeStarterCard(
   // race. Its authored card remains authoritative.
   const card = rows[0] ?? await findNativeOwnerCard(tx, owner);
   if (!card) throw new Error("The private starter HYPE Card could not be assigned.");
+  if (rows[0] && isNativeProfileOwner(owner)) {
+    metadata.nativeStarterPrivatePause = nativeStarterPauseFingerprint(card.public_token);
+  }
   return card;
 }
