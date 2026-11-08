@@ -100,8 +100,24 @@ final class NativeOfflineUITests: XCTestCase {
         if mode.waitForExistence(timeout: 5) { mode.tap() }
         let full = app.buttons["native-event-full-tracker"]
         if full.waitForExistence(timeout: 5) { full.tap() }
-        element("native-event-start-game", in: app).tap()
-        element("native-event-score-team-add", in: app).tap()
+        let trackerStatus = app.descendants(matching: .any)
+            .matching(identifier: "native-event-tracker-save-status").firstMatch
+        XCTAssertTrue(trackerStatus.waitForExistence(timeout: 10))
+        let start = element("native-event-start-game", in: app)
+        let statusBeforeStart = trackerStatus.frame
+        start.tap()
+        XCTAssertEqual(trackerStatus.frame.minY, statusBeforeStart.minY, accuracy: 1)
+        XCTAssertEqual(trackerStatus.frame.height, statusBeforeStart.height, accuracy: 1)
+
+        let scoreAdd = element("native-event-score-team-add", in: app)
+        let teamScore = app.staticTexts["native-event-score-team-value"]
+        let statusBeforeScore = trackerStatus.frame
+        let scoreBeforeTap = teamScore.frame
+        XCTAssertTrue((trackerStatus.value as? String ?? "").localizedCaseInsensitiveContains("saved on this iPhone"))
+        scoreAdd.tap()
+        XCTAssertEqual(trackerStatus.frame.minY, statusBeforeScore.minY, accuracy: 1)
+        XCTAssertEqual(trackerStatus.frame.height, statusBeforeScore.height, accuracy: 1)
+        XCTAssertEqual(teamScore.frame.minY, scoreBeforeTap.minY, accuracy: 1)
         element("native-event-score-team-add", in: app).tap()
         element("native-event-score-opponent-add", in: app).tap()
         element("native-event-next-period", in: app).tap()

@@ -49,9 +49,7 @@ struct NativeEventTrackerView: View {
     private var trackerContent: some View {
             VStack(alignment: .leading, spacing: compact ? 12 : 22) {
                 if !embedded { Text(event.title).font(.title2.bold()) }
-                if !embedded || model.busy || model.errorMessage != nil || model.pendingCount > 0 {
-                    NativeToolSaveNotice(model: model, clerk: clerk, savedContentName: "Stat Tracker")
-                }
+                NativeTrackerSaveStatusView(model: model, clerk: clerk)
                 if let workspace = model.workspace {
                     if let game = model.displayedGame {
                         tracker(workspace: workspace, game: game)
@@ -294,6 +292,178 @@ struct NativeEventTrackerView: View {
                     Button("Cancel") { showingFinish = false }
                 }
             }
+        }
+    }
+}
+
+private struct NativeTrackerSaveStatusView: View {
+    @ObservedObject var model: NativeEventToolModel
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
+    let clerk: Clerk
+    @State private var showingDetails = false
+
+    private struct Status {
+        let message: String
+        let detail: String?
+        let symbol: String
+        let color: Color
+        let announces: Bool
+    }
+
+    private var status: Status {
+        if model.unreadablePendingData {
+            return Status(
+                message: "Saved tracker data needs attention",
+                detail: "A saved tracker change couldn’t be read. It hasn’t been removed.",
+                symbol: "exclamationmark.triangle.fill", color: .orange, announces: true
+            )
+        }
+        if let recovery = model.trackerRecoveryStatus {
+            return Status(
+                message: "Saved on iPhone · PIXL needs attention",
+                detail: recovery.message,
+                symbol: "exclamationmark.triangle.fill", color: .orange, announces: true
+            )
+        }
+        if model.conflictBlocked {
+            return Status(
+                message: "Sync paused · review Prep",
+                detail: "A Prep change needs review before tracker changes can sync.",
+                symbol: "exclamationmark.triangle.fill", color: .orange, announces: true
+            )
+        }
+        if model.errorMessage != nil {
+            if model.pendingCount > 0 {
+                return Status(
+                    message: "Saved on iPhone · PIXL hasn’t confirmed",
+                    detail: "We couldn’t confirm these changes reached PIXL. They’re still saved on this iPhone.",
+                    symbol: "exclamationmark.triangle.fill", color: .orange, announces: true
+                )
+            }
+            return Status(
+                message: model.workspace == nil ? "Couldn’t load tracker" : "Tracker status needs attention",
+                detail: "We couldn’t confirm the latest tracker status. Try again when you’re connected.",
+                symbol: "exclamationmark.triangle.fill", color: .orange, announces: true
+            )
+        }
+        if model.pendingCount > 0 {
+            if !offline.online {
+                return Status(
+                    message: "Saved on iPhone · waiting for connection",
+                    detail: "Your tracker actions are saved on this iPhone and will sync when a connection is available.",
+                    symbol: "wifi.slash", color: NativeEventToolColors.trackStats, announces: true
+                )
+            }
+            if model.busy {
+                return Status(
+                    message: "Saving to PIXL…",
+                    detail: "Your tracker actions are saved on this iPhone while PIXL confirms them.",
+                    symbol: "arrow.triangle.2.circlepath",
+                    color: NativeEventToolColors.trackStats, announces: false
+                )
+            }
+            return Status(
+                message: "Saved on iPhone · waiting to sync",
+                detail: "Your tracker actions are stored on this iPhone and waiting to sync.",
+                symbol: "iphone", color: NativeEventToolColors.trackStats, announces: false
+            )
+        }
+        if model.busy {
+            return Status(
+                message: "Checking PIXL…",
+                detail: "Checking the latest tracker status.",
+                symbol: "arrow.triangle.2.circlepath",
+                color: NativeEventToolColors.trackStats, announces: false
+            )
+        }
+        if !offline.online || offline.usingSavedContent {
+            return Status(
+                message: "Using saved iPhone copy",
+                detail: "This tracker is using the saved iPhone copy. Reconnect to confirm the latest PIXL status.",
+                symbol: "wifi.slash", color: NativeEventToolColors.trackStats, announces: true
+            )
+        }
+        if model.workspace != nil {
+            return Status(
+                message: "Saved to PIXL",
+                detail: nil,
+                symbol: "checkmark.circle.fill", color: .green, announces: false
+            )
+        }
+        return Status(
+            message: "Checking PIXL…",
+            detail: "Checking the latest tracker status.",
+            symbol: "arrow.triangle.2.circlepath",
+            color: NativeEventToolColors.trackStats, announces: false
+        )
+    }
+
+    private var canRetry: Bool {
+        offline.online && !model.busy && !model.unreadablePendingData && !model.conflictBlocked
+            && (model.pendingCount > 0 || model.errorMessage != nil)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: status.symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(status.color)
+                .frame(width: 16)
+                .accessibilityHidden(true)
+
+            Text(status.message)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel("Stat Tracker save status")
+                .accessibilityValue(status.detail ?? status.message)
+                .accessibilityLiveRegion(status.announces ? .polite : .off)
+                .accessibilityIdentifier("native-event-tracker-save-status")
+
+            if canRetry {
+                Button {
+                    Task {
+                        if model.pendingCount > 0 {
+                            await model.retry(clerk: clerk)
+                        } else {
+                            await model.load(clerk: clerk)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(model.pendingCount > 0 ? "Retry tracker sync" : "Reload tracker")
+                .accessibilityIdentifier("native-event-tracker-save-retry")
+            } else {
+                Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
+            }
+
+            if status.detail != nil {
+                Button {
+                    showingDetails = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Stat Tracker save details")
+                .accessibilityIdentifier("native-event-tracker-save-details")
+            } else {
+                Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
+        .background(status.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("native-event-tracker-save-status-row")
+        .alert("Stat Tracker status", isPresented: $showingDetails) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(status.detail ?? status.message)
         }
     }
 }

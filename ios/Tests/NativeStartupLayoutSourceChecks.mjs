@@ -259,3 +259,21 @@ test("Stat Tracker conflicts preserve local entry without a destructive saved-ve
   assert.match(notice, /Tracker changes are saved on this iPhone/);
   assert.doesNotMatch(notice, /Button\("Use saved Stat Tracker"/);
 });
+
+test("Stat Tracker save status stays inline as local and PIXL states change", () => {
+  const tracker = readFileSync(new URL("../PIXL Sports/NativeEventTrackerView.swift", import.meta.url), "utf8");
+  const content = tracker.slice(tracker.indexOf("private var trackerContent"), tracker.indexOf("private func tracker("));
+  const status = tracker.slice(tracker.indexOf("private struct NativeTrackerSaveStatusView"));
+  const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
+
+  assert.match(content, /NativeTrackerSaveStatusView\(model: model, clerk: clerk\)\s*if let workspace/);
+  assert.doesNotMatch(content, /if !embedded \|\| model\.busy \|\| model\.errorMessage != nil/);
+  assert.match(status, /\.frame\(height: 44\)/);
+  assert.match(status, /accessibilityIdentifier\("native-event-tracker-save-status"\)/);
+  assert.match(status, /accessibilityLiveRegion\(status\.announces \? \.polite : \.off\)/);
+  assert.match(status, /Saved on iPhone/);
+  assert.match(status, /Saving to PIXL/);
+  assert.match(status, /Saved to PIXL/);
+  assert.match(status, /Color\.clear\.frame\(width: 44, height: 44\)/);
+  assert.match(prep, /NativeToolSaveNotice\(/);
+});
