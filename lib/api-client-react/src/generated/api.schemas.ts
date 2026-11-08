@@ -3264,6 +3264,36 @@ export interface NativeSeasonRecord {
   seasonName: string | null;
 }
 
+export type NativeSeasonStatsGameStats = {[key: string]: number};
+
+export type NativeSeasonStatsGameAthleteStats = {[key: string]: number};
+
+export interface NativeSeasonStatsGame {
+  id: string;
+  /** @nullable */
+  sourceEventId: string | null;
+  date: string;
+  opponent: string;
+  /** @minimum 0 */
+  score: number;
+  /** @minimum 0 */
+  opponentScore: number;
+  scoreRecorded: boolean;
+  stats: NativeSeasonStatsGameStats;
+  athleteStats: NativeSeasonStatsGameAthleteStats;
+}
+
+export interface NativeSeasonStats {
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  /** @nullable */
+  sport: string | null;
+  /** @nullable */
+  trackerProjectId: string | null;
+  games: NativeSeasonStatsGame[];
+}
+
 export type NativeSupporterScheduleStatus = typeof NativeSupporterScheduleStatus[keyof typeof NativeSupporterScheduleStatus];
 
 
@@ -3848,6 +3878,10 @@ sport: GearSport;
  * @maxLength 120
  */
 athleteName?: string;
+};
+
+export type GetNativeSupporterSeasonStats403 = {
+  error: string;
 };
 
 export type ListHypeCardSharesParams = {

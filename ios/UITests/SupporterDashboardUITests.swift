@@ -2,6 +2,36 @@ import XCTest
 
 @MainActor
 final class SupporterDashboardUITests: XCTestCase {
+    func testSeasonStatsFeatureOpensChartsComparisonsAndGameDetails() {
+        let app = launch("upcoming")
+        let card = reachable("dashboard-season-stats", in: app)
+        let record = app.descendants(matching: .any)["dashboard-season-record"].firstMatch
+        XCTAssertTrue(record.exists)
+        XCTAssertGreaterThanOrEqual(card.frame.minY, record.frame.maxY)
+        card.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["native-season-stats-page"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["season-stats-chart"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["season-stats-comparisons"].exists)
+        app.segmentedControls["season-stats-scope"].buttons["Team"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["season-stats-chart"].exists)
+        reachable("season-stats-game-fixture-5", in: app).tap()
+        XCTAssertTrue(app.descendants(matching: .any)["season-stats-game-detail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Athlete stats"].exists)
+        XCTAssertTrue(app.staticTexts["Team stats"].exists)
+        retainScreenshot(in: app, name: "Season-Stats-Game-Detail")
+        app.terminate()
+    }
+
+    func testSeasonStatsEmptyStateDoesNotInventAChart() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-dashboard", "--dashboard-state=empty", "--season-stats-empty"]
+        app.launch()
+        reachable("dashboard-season-stats", in: app).tap()
+        XCTAssertTrue(app.staticTexts["No completed games yet"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["season-stats-chart"].exists)
+        app.terminate()
+    }
+
     func testStartupDiagnosticRendersAfterSDKConfiguration() {
         let app = XCUIApplication()
         app.launchArguments = ["--diagnose-startup"]

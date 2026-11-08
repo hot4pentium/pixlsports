@@ -52,7 +52,7 @@ const CORRECTABLE_STAT_IDS: Record<HypeCardSport, ReadonlySet<string>> = {
   volleyball: new Set(["kill", "ace", "block", "dig", "assist", "service-error", "reception"]),
 };
 
-function collectCorrectedAthleteStats(value: unknown, sport: HypeCardSport, stats: Record<string, number>) {
+export function collectCorrectedAthleteStats(value: unknown, sport: HypeCardSport, stats: Record<string, number>) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const correction = value as { athleteStats?: unknown; correctedAt?: unknown };
   if (typeof correction.correctedAt !== "string" || !Number.isFinite(Date.parse(correction.correctedAt))) return null;

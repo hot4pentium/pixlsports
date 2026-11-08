@@ -75,6 +75,7 @@ import type {
   Error,
   GameOnCard,
   GearSport,
+  GetNativeSupporterSeasonStats403,
   GetNotificationSubscriptionStatusParams,
   GetSportGearForAthleteParams,
   HealthStatus,
@@ -115,6 +116,7 @@ import type {
   NativeLinkDecisionInput,
   NativeLinkProofInput,
   NativeLinkState,
+  NativeSeasonStats,
   NativeSupporterEventCardCreate,
   NativeSupporterEventCardCreateResponse,
   NativeSupporterHypeCard,
@@ -5865,6 +5867,83 @@ export function useGetNativeSupporterSchedule<TData = Awaited<ReturnType<typeof 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetNativeSupporterScheduleQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetNativeSupporterSeasonStatsUrl = () => {
+
+
+
+
+  return `/api/native/supporter/season-stats`
+}
+
+/**
+ * @summary Read private season history for the verified native owner
+ */
+export const getNativeSupporterSeasonStats = async ( options?: Parameters<typeof customFetch>[1]): Promise<NativeSeasonStats> => {
+
+  return customFetch<NativeSeasonStats>(getGetNativeSupporterSeasonStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNativeSupporterSeasonStatsQueryKey = () => {
+    return [
+    `/api/native/supporter/season-stats`
+    ] as const;
+    }
+
+
+export const getGetNativeSupporterSeasonStatsQueryOptions = <TData = Awaited<ReturnType<typeof getNativeSupporterSeasonStats>>, TError = ErrorType<UnauthorizedResponse | GetNativeSupporterSeasonStats403>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterSeasonStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNativeSupporterSeasonStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNativeSupporterSeasonStats>>> = ({ signal }) => getNativeSupporterSeasonStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterSeasonStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNativeSupporterSeasonStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getNativeSupporterSeasonStats>>>
+export type GetNativeSupporterSeasonStatsQueryError = ErrorType<UnauthorizedResponse | GetNativeSupporterSeasonStats403>
+
+
+/**
+ * @summary Read private season history for the verified native owner
+ */
+
+export function useGetNativeSupporterSeasonStats<TData = Awaited<ReturnType<typeof getNativeSupporterSeasonStats>>, TError = ErrorType<UnauthorizedResponse | GetNativeSupporterSeasonStats403>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNativeSupporterSeasonStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNativeSupporterSeasonStatsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

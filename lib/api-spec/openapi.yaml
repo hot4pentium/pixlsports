@@ -1429,6 +1429,29 @@ paths:
                 $ref: "#/components/schemas/NativeSupporterSchedule"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /native/supporter/season-stats:
+    get:
+      operationId: getNativeSupporterSeasonStats
+      tags: [athlete-invites]
+      summary: Read private season history for the verified native owner
+      responses:
+        "200":
+          description: Final games from the selected tracker, regardless of public HYPE Card visibility
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeSeasonStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Private account access unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
   /native/supporter/fan-base:
     get:
       operationId: getNativeSupporterFanBase
@@ -5718,6 +5741,36 @@ components:
         gamesPlayed: { type: integer, minimum: 0 }
         sport: { type: ["string", "null"] }
         seasonName: { type: ["string", "null"] }
+    NativeSeasonStats:
+      type: object
+      required: [athleteName, teamName, seasonName, sport, trackerProjectId, games]
+      properties:
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        sport: { type: ["string", "null"] }
+        trackerProjectId: { type: ["string", "null"] }
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/NativeSeasonStatsGame"
+    NativeSeasonStatsGame:
+      type: object
+      required: [id, sourceEventId, date, opponent, score, opponentScore, scoreRecorded, stats, athleteStats]
+      properties:
+        id: { type: string }
+        sourceEventId: { type: ["string", "null"] }
+        date: { type: string }
+        opponent: { type: string }
+        score: { type: integer, minimum: 0 }
+        opponentScore: { type: integer, minimum: 0 }
+        scoreRecorded: { type: boolean }
+        stats:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+        athleteStats:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
     NativeSupporterSchedule:
       type: object
       required: [status, athleteName, teamName, seasonName, timezone, events, record]

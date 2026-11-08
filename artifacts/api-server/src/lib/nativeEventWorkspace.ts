@@ -173,6 +173,7 @@ export async function nativeEventWorkspace(
     }
     const response = {
       linkId: link.id, prepRevision: prep?.revision ?? 0, trackerRevision: project?.revision ?? 0,
+      trackerProjectId: project?.id ?? null,
       prep: { items: prep?.items ?? nativePrepTemplate(event.type === "practice"), notes: prep?.notes ?? "" },
       sport, rules: nativeSportRules[sport], game, eventStatus: String(event.status ?? ""),
       acknowledgedMutationIds: [...new Set([

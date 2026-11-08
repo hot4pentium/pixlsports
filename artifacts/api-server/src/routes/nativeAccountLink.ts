@@ -13,6 +13,7 @@ import {
   GetAthleteInviteFanBaseResponse,
   PrepareNativeSupporterAccountResponse,
   DeleteOwnedGameOnCardResponse,
+  GetNativeSupporterSeasonStatsResponse,
 } from "@workspace/api-zod";
 import { prepareNativeSupporterAccount } from "../lib/nativeAccountPreparation";
 import { nativeAccountLinkService as service, limitNativeLinkAction } from "../lib/nativeAccountLink";
@@ -457,6 +458,14 @@ nativeAccountLinkRouter.patch("/supporter/profile", handle(async (req, res) => {
 nativeAccountLinkRouter.get("/supporter/hype-card", handle(async (_req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate").set("Pragma", "no-cache");
   res.json(GetNativeSupporterHypeCardResponse.parse(await loadNativeSupporterHypeCard(identity(res))));
+}));
+nativeAccountLinkRouter.get("/supporter/season-stats", handle(async (_req, res) => {
+  const schedule = await loadNativeSupporterSchedule(identity(res), true);
+  if (schedule.status !== "linked" || !schedule.seasonStats) {
+    throw new NativeLinkError(403, "Sign in to your PIXL account to view season stats.");
+  }
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate").set("Pragma", "no-cache");
+  res.json(GetNativeSupporterSeasonStatsResponse.parse(schedule.seasonStats));
 }));
 nativeAccountLinkRouter.patch("/supporter/hype-card", handle(async (req, res) => {
   const parsed = UpdateNativeSupporterHypeCardBody.strict().safeParse(req.body);

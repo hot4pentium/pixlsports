@@ -110,7 +110,7 @@ final class NativeOfflineRuntime: ObservableObject {
     }
 
     func cacheKey(_ path: String, headers: [String: String] = [:]) -> String? {
-        guard ["supporter/schedule", "supporter/profile", "supporter/hype-card",
+        guard ["supporter/schedule", "supporter/profile", "supporter/season-stats", "supporter/hype-card",
                "supporter/hype-card/cutout-photo"].contains(path) else { return nil }
         let suffix = headers.sorted { $0.key < $1.key }.map { $0.key + "=" + $0.value }.joined(separator: "&")
         return "get/" + path + (suffix.isEmpty ? "" : "?" + suffix)

@@ -151,3 +151,4 @@
 - [Family-facing save messages](family-facing-save-messages.md) — state what is saved and the next choice without exposing sync or revision details.
 - [HYPE Card settings revisions](hype-card-settings-revisions.md) — concurrency revisions fingerprint the authoritative settings, not the card timestamp.
 - [Fan Base consent and privacy](fan-base-consent.md) — owner counts represent device follows; optional names and alert consent remain independent.
+- [Private iPhone Season Stats](private-season-stats.md) — dashboard entry below Game Record; preserve private, project-scoped history and athlete/team attribution.

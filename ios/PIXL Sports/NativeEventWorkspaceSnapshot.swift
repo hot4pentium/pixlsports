@@ -149,6 +149,10 @@ struct NativeEventWorkspace: Codable {
         var stats: [String: Int]
         var opponentStats: [String: Int]?
         var events: [Play]
+        var date: String? = nil
+        var opponent: String? = nil
+        var sourceEventId: String? = nil
+        var liveTapsOnly: Bool? = nil
         var hasRecordedScore: Bool { scoreRecorded ?? (score != 0 || opponentScore != 0) }
     }
     let linkId: String
@@ -160,6 +164,7 @@ struct NativeEventWorkspace: Codable {
     var game: Game?
     var eventStatus: String? = nil
     var acknowledgedMutationIds: [String]? = nil
+    var trackerProjectId: String? = nil
 }
 
 struct NativeEventWorkspaceRequest: Encodable {

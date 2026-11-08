@@ -4,6 +4,7 @@ import { AthleteEventShareRow, AthleteTrackerShareRow, gameIdsFromAthleteEventSh
 import { GAME_ON_CARD_MARKER } from "./gameOnCard";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { computeHypeCardShareStats, isHypeCardSport } from "./hypeCardShareStats";
+import { nativeSeasonGames } from "./nativeSeasonStats";
 
 type NativeSupporterEvent = ReturnType<typeof mapAthleteEventSummaries>[number] & {
   liveTapsActive: boolean;
@@ -13,6 +14,11 @@ type NativeSupporterEvent = ReturnType<typeof mapAthleteEventSummaries>[number] 
 };
 
 export interface NativeSupporterScheduleResponse {
+  seasonStats?: {
+    athleteName: string; teamName: string; seasonName: string;
+    sport: string | null; trackerProjectId: string | null;
+    games: ReturnType<typeof nativeSeasonGames>;
+  };
   status: "unlinked" | "linked";
   /** Verified native link, never an email-derived owner identifier. */
   linkId?: string | null;
@@ -282,6 +288,7 @@ export async function updateNativeSupporterEventCard(
 
 export async function loadNativeSupporterSchedule(
   identity: NativeIdentity,
+  includeSeasonStats = false,
 ): Promise<NativeSupporterScheduleResponse> {
   const tx = await pool.connect();
   try {
@@ -336,8 +343,8 @@ export async function loadNativeSupporterSchedule(
 
     const invite = invites[0];
     const projects = invite && isHypeCardSport(invite.sport)
-      ? (await tx.query<{ project: { tool?: string; games?: unknown[] }; updated_at: Date }>(
-        `SELECT project, updated_at FROM cloud_projects
+      ? (await tx.query<{ id: string; project: { tool?: string; games?: unknown[] }; updated_at: Date }>(
+        `SELECT id::text AS id, project, updated_at FROM cloud_projects
          WHERE owner_clerk_user_id=$1 AND project->>'tool'='stat-tracker'
            AND ($2::text IS NULL OR id::text=$2)
          ORDER BY updated_at DESC`,
@@ -406,6 +413,23 @@ export async function loadNativeSupporterSchedule(
       events,
       record,
     };
+    if (includeSeasonStats) {
+      // Include the selected active tracker even before its first final reaches
+      // the server, so the phone can overlay a queued offline finish.
+      const historyTracker = invite?.tracker_project_id ? tracker : projects.find(({ project }) =>
+        Array.isArray(project.games) && project.games.some((game) => game
+          && typeof game === "object" && !Array.isArray(game)
+          && (game as { sport?: unknown }).sport === invite?.sport));
+      response.seasonStats = {
+        athleteName: invite?.athlete_name ?? "",
+        teamName: invite?.team_name ?? "",
+        seasonName: invite?.season_name ?? "",
+        sport: invite?.sport ?? null,
+        trackerProjectId: historyTracker?.id ?? null,
+        games: historyTracker && invite && isHypeCardSport(invite.sport)
+          ? nativeSeasonGames(historyTracker.project, invite.sport) : [],
+      };
+    }
     await tx.query("COMMIT");
     return response;
   } catch (error) {

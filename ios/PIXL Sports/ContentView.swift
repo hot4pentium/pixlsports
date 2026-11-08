@@ -51,6 +51,7 @@ struct ContentView: View {
         case pendingEventCard(String)
         case hypeCard
         case fanBase
+        case seasonStats
         case createEvent
         case recordMoments
         case profileSetup
@@ -62,6 +63,7 @@ struct ContentView: View {
             case let .pendingEventCard(id): return "pending-event-\(id)"
             case .hypeCard: return "hype-card"
             case .fanBase: return "fan-base"
+            case .seasonStats: return "season-stats"
             case .createEvent: return "create-event"
             case .recordMoments: return "record-moments"
             case .profileSetup: return "athlete-profile-setup"
@@ -231,6 +233,13 @@ struct ContentView: View {
                                 if let record = page.record {
                                     NativeSeasonRecordView(record: record)
                                 }
+                                Button {
+                                    heroDestination = .seasonStats
+                                } label: {
+                                    NativeSeasonStatsLaunchCard()
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("dashboard-season-stats")
                             }
 #if DEBUG
                             if usesFanBaseRefreshFixture {
@@ -738,6 +747,8 @@ struct ContentView: View {
             )
         case .fanBase:
             fanBasePage
+        case .seasonStats:
+            NativeSeasonStatsView(clerk: clerk, schedule: schedulePage)
         case .createEvent:
             NativeCreateEventCardView(
                 athleteName: schedulePage?.athleteName ?? "your athlete",

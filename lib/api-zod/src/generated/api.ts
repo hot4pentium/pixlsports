@@ -4309,6 +4309,39 @@ export const GetNativeSupporterScheduleResponse = zod.object({
 
 
 /**
+ * @summary Read private season history for the verified native owner
+ */
+export const getNativeSupporterSeasonStatsResponseGamesItemScoreMin = 0;
+
+export const getNativeSupporterSeasonStatsResponseGamesItemOpponentScoreMin = 0;
+
+export const getNativeSupporterSeasonStatsResponseGamesItemStatsMinOne = 0;
+
+export const getNativeSupporterSeasonStatsResponseGamesItemAthleteStatsMinOne = 0;
+
+
+
+export const GetNativeSupporterSeasonStatsResponse = zod.object({
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
+  "sport": zod.string().nullable(),
+  "trackerProjectId": zod.string().nullable(),
+  "games": zod.array(zod.object({
+  "id": zod.string(),
+  "sourceEventId": zod.string().nullable(),
+  "date": zod.string(),
+  "opponent": zod.string(),
+  "score": zod.number().int().min(getNativeSupporterSeasonStatsResponseGamesItemScoreMin),
+  "opponentScore": zod.number().int().min(getNativeSupporterSeasonStatsResponseGamesItemOpponentScoreMin),
+  "scoreRecorded": zod.boolean(),
+  "stats": zod.record(zod.string(), zod.number().int().min(getNativeSupporterSeasonStatsResponseGamesItemStatsMinOne)),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(getNativeSupporterSeasonStatsResponseGamesItemAthleteStatsMinOne))
+}))
+})
+
+
+/**
  * Resolves only the verified linked web account and selected athlete. Does not return a private card identifier, push endpoint, or fan token.
  * @summary Get the linked iPhone owner's private Fan Base
  */
