@@ -3,11 +3,11 @@ name: Simplified interactive HYPE Card
 description: User-requested full-photo card direction and the boundary with separately authored graphics.
 ---
 
-Align the PWA with iOS wherever practical, including simplifying the HYPE Card design and flow. Treat the native card as the reference for shared interactions and presentation.
+The user expects the PWA and iOS to feel like one product, matching shared mobile journeys, structure, wording, and behavior as closely as platform limits allow. Use iOS as the reference for shared flows; retain browser capabilities and separate iOS/PWA account data boundaries. Do not present confusing choices between “phone” and “PIXL” versions.
 
-**Why:** The user wants the PWA to mirror iOS as much as possible while establishing a coherent experience for Android.
+**Why:** The user says the current PWA and iOS feel like two different products.
 
-**How to apply:** Reuse the approved iOS HYPE Card structure and interaction model in the PWA; preserve saved card artwork and independent PWA capabilities unless the user specifically asks to remove them.
+**How to apply:** Reuse the iOS flow as the parity target for shared features, including the HYPE Card structure and interaction model. Preserve saved card artwork and independent PWA capabilities unless the user specifically asks to remove them; keep native-only APIs distinct when browser platform limits require it.
 
 No-photo HYPE Card placeholders show the silhouette without the athlete's initial or initials. Keep the athlete's name on the lower-third nameplate.
 
