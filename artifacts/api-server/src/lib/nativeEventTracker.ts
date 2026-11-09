@@ -47,6 +47,8 @@ export type NativeSport = keyof typeof nativeSportRules;
 export interface NativePlay {
   id: string; statId: string; attribution?: string; possessionSide?: string;
   period: number; createdAt: string; yards?: number; playId?: string;
+  /** Actual points contributed by this play; absent on historical records. */
+  scoreDelta?: number;
 }
 export interface NativeGame {
   [key: string]: unknown;
@@ -76,6 +78,8 @@ export const nativeWorkspaceCommand = z.object({
     completed: z.boolean(), section: z.string().max(100).nullish(),
   }).strict()).max(100).optional(),
   notes: z.string().max(4000).optional(),
+  // Omission preserves the semantics/fingerprint of commands saved by older apps.
+  scoringVersion: z.literal(2).optional(),
 }).strict();
 export type WorkspaceCommand = z.infer<typeof nativeWorkspaceCommand>;
 const fail = (message: string): never => { throw new NativeLinkError(409, message); };
@@ -131,7 +135,7 @@ export function applyNativeTrackerCommand(
     const otherTeam = game.sport === "football" && command.opponent === true;
     const target = otherTeam ? (game.opponentStats ??= {}) : game.stats;
     target[stat.id] = (target[stat.id] ?? 0) + 1;
-    const teamPoints = otherTeam || !command.athlete ? stat.points : 0;
+    const teamPoints = command.scoringVersion === 2 || otherTeam || !command.athlete ? stat.points : 0;
     game[otherTeam ? "opponentScore" : "score"] += teamPoints;
     game.scoreRecorded = game.scoreRecorded === true || teamPoints > 0;
     const yards = game.sport === "football" ? command.yards ?? 0 : 0;
@@ -143,6 +147,7 @@ export function applyNativeTrackerCommand(
     game.events.push({
       id: randomUUID(), statId: stat.id, period: game.period, createdAt: new Date().toISOString(),
       attribution: otherTeam ? "team" : command.athlete ? "athlete" : "team",
+      scoreDelta: teamPoints,
       ...(game.sport === "football" ? { possessionSide: otherTeam ? "opponent" : "athlete", yards } : {}),
     });
     return game;
@@ -156,8 +161,9 @@ export function applyNativeTrackerCommand(
       const target = otherTeam ? (game.opponentStats ??= {}) : game.stats;
       target[play.statId] = Math.max(0, (target[play.statId] ?? 0) - 1);
       const side = otherTeam ? "opponentScore" : "score";
-      const points = otherTeam || play.attribution !== "athlete"
-        ? rules.stats.find((s) => s.id === play.statId)?.points ?? 0 : 0;
+      // Metadata-free historical athlete plays did not add scoreboard points.
+      const points = play.scoreDelta ?? (otherTeam || play.attribution !== "athlete"
+        ? rules.stats.find((s) => s.id === play.statId)?.points ?? 0 : 0);
       game[side] = Math.max(0, game[side] - points);
       const metric = yardMetric(play.statId);
       if (game.sport === "football" && metric) {

@@ -98,7 +98,8 @@ async function fixture(sport = "soccer", type = "game") {
     owner, GAME_ON_CARD_MARKER, JSON.stringify([{ id: eventId, type, date: "2099-11-01", time: "18:00", opponent: "Bears", location: "Field 2", status: "upcoming" }]),
   ])).rows[0].id as string;
   const command = (kind: WorkspaceCommand["kind"], revision: number, rest: Partial<WorkspaceCommand> = {}): WorkspaceCommand => ({
-    kind, mutationId: randomUUID(), shareToken, linkId, expectedRevision: revision, ...rest,
+    kind, mutationId: randomUUID(), shareToken, linkId, expectedRevision: revision,
+    ...(kind === "stat" ? { scoringVersion: 2 as const } : {}), ...rest,
   });
   return { owner, who, linkId, eventId, shareToken, command };
 }
@@ -191,19 +192,20 @@ test("native tracking preserves prior games, athlete attribution, revisions, and
   const gameID = state.game?.id;
   const athleteGoal = a.command("stat", state.trackerRevision, { statId: "goal", athlete: true });
   state = await nativeEventWorkspace(a.who, a.shareToken, athleteGoal);
-  assert.equal(state.game?.score, 0, "athlete-only stats must not change the team scoreboard");
-  assert.equal(state.game?.scoreRecorded, false);
+  assert.equal(state.game?.score, 1, "the athlete goal also contributes one team point");
+  assert.equal(state.game?.scoreRecorded, true);
   assert.equal(state.game?.events[0]?.attribution, "athlete");
   state = await nativeEventWorkspace(a.who, a.shareToken, a.command("stat", state.trackerRevision, { statId: "goal", athlete: false }));
-  assert.equal(state.game?.score, 1);
+  assert.equal(state.game?.score, 2);
   const beforeRetry = state.trackerRevision;
   state = await nativeEventWorkspace(a.who, a.shareToken, athleteGoal);
   assert.equal(state.trackerRevision, beforeRetry);
+  assert.equal(state.game?.score, 2, "replaying the athlete goal must not add its point again");
   assert.equal(state.game?.events.length, 2, "a retry after another saved action must not duplicate the original tap");
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, { ...athleteGoal, statId: "assist" }), denied(409));
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("undo", 1)), denied(409));
   state = await nativeEventWorkspace(a.who, a.shareToken, a.command("undo", state.trackerRevision));
-  assert.equal(state.game?.score, 0);
+  assert.equal(state.game?.score, 1);
   assert.equal(state.game?.events.length, 1);
   state = await nativeEventWorkspace(a.who, a.shareToken, a.command("pause", state.trackerRevision));
   await assert.rejects(nativeEventWorkspace(a.who, a.shareToken, a.command("stat", state.trackerRevision, { statId: "goal" })), denied(409));
@@ -216,7 +218,7 @@ test("native tracking preserves prior games, athlete attribution, revisions, and
   const finish = a.command("finish", state.trackerRevision, { recordScore: false });
   state = await nativeEventWorkspace(a.who, a.shareToken, finish);
   assert.equal(state.game?.status, "final");
-  assert.equal(state.game?.outcome, undefined, "an unrecorded 0–0 scoreboard must not become a tie");
+  assert.equal(state.game?.outcome, undefined, "finishing without recording a score must not invent a result");
   assert.equal(state.game?.id, gameID);
   const stored = (await pool.query("SELECT project FROM cloud_projects WHERE owner_clerk_user_id=$1", [a.owner])).rows[0].project;
   assert.equal(stored.customField, "keep");
@@ -257,6 +259,48 @@ test("native stat batches survive an interrupted acknowledgment without duplicat
     denied(409),
     "stale batches remain explicit revision conflicts",
   );
+});
+
+test("scoring taps and legacy retries survive lost acknowledgements without double points", async () => {
+  const a = await fixture("football");
+  let state = await nativeEventWorkspace(a.who, a.shareToken, a.command("start", 0));
+  const legacy = a.command("stat", state.trackerRevision, {
+    statId: "touchdown", athlete: true, scoringVersion: undefined,
+  });
+  state = await nativeEventWorkspace(a.who, a.shareToken, legacy);
+  assert.equal(state.game?.score, 0);
+  const athlete = a.command("stat", state.trackerRevision, { statId: "touchdown", athlete: true });
+  state = await nativeEventWorkspace(a.who, a.shareToken, athlete);
+  assert.equal(state.game?.score, 6);
+  const team = a.command("stat", state.trackerRevision, { statId: "touchdown", athlete: false });
+  state = await nativeEventWorkspace(a.who, a.shareToken, team);
+  const opponent = a.command("stat", state.trackerRevision, {
+    statId: "touchdown", athlete: true, opponent: true,
+  });
+  state = await nativeEventWorkspace(a.who, a.shareToken, opponent);
+  const revision = state.trackerRevision;
+  for (const retry of [athlete, legacy, team, opponent]) {
+    state = await nativeEventWorkspace(a.who, a.shareToken, retry);
+    assert.equal(state.trackerRevision, revision);
+    assert.equal(state.game?.score, 12);
+    assert.equal(state.game?.opponentScore, 6);
+    assert.equal(state.game?.events.length, 4);
+  }
+  const reopened = await nativeEventWorkspace(a.who, a.shareToken, undefined, undefined,
+    [legacy, athlete, team, opponent].map((c) => c.mutationId));
+  assert.equal(reopened.game?.score, 12);
+  assert.equal(reopened.game?.stats.touchdown, 3);
+  assert.equal(reopened.game?.events.filter((p) => p.attribution === "athlete").length, 2);
+  assert.deepEqual(reopened.game?.events.map((p) => p.scoreDelta), [0, 6, 6, 6]);
+  assert.equal(reopened.acknowledgedMutationIds.length, 4);
+  await assert.rejects(nativeEventWorkspace(a.who, a.shareToken,
+    { ...legacy, scoringVersion: 2 }), denied(409), "never upgrade an already-attempted old command");
+  for (const [home, away] of [[12, 0], [6, 0], [0, 0], [0, 0]]) {
+    state = await nativeEventWorkspace(a.who, a.shareToken, a.command("undo", state.trackerRevision));
+    assert.equal(state.game?.score, home);
+    assert.equal(state.game?.opponentScore, away);
+  }
+  assert.equal(state.game?.events.length, 0);
 });
 
 test("score-only games persist both scores without player stats and finalize the same Event Card", async () => {

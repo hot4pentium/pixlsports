@@ -136,6 +136,7 @@ struct NativeEventWorkspace: Codable {
             let period: Int
             let yards: Int?
             var playId: String? = nil
+            var scoreDelta: Int? = nil
         }
         let id: String
         let sport: String
@@ -215,13 +216,14 @@ enum NativeEventProjection {
                     stats[stat.id, default: 0] += 1
                     game.opponentStats = stats
                 } else { game.stats[stat.id, default: 0] += 1 }
-                let points = other || command.athlete != true ? stat.points : 0
+                let points = command.scoringVersion == 2 || other || command.athlete != true ? stat.points : 0
                 if other { game.opponentScore += points } else { game.score += points }
                 game.scoreRecorded = game.scoreRecorded == true || points > 0
                 game.events.append(.init(id: command.mutationId, statId: stat.id,
                                         attribution: other || command.athlete != true ? "team" : "athlete",
                                         possessionSide: game.sport == "football" ? (other ? "opponent" : "athlete") : nil,
-                                        period: game.period, yards: game.sport == "football" ? command.yards ?? 0 : nil))
+                                        period: game.period, yards: game.sport == "football" ? command.yards ?? 0 : nil,
+                                        scoreDelta: points))
             case "undo":
                 if let last = game.events.last {
                     let removed = game.events.filter { play in
@@ -230,14 +232,14 @@ enum NativeEventProjection {
                     let removedIDs = Set(removed.map(\.id))
                     game.events.removeAll { removedIDs.contains($0.id) }
                     for play in removed {
-                    let other = play.possessionSide == "opponent"
+                    let other = game.sport == "football" && play.possessionSide == "opponent"
                     if other {
                         var stats = game.opponentStats ?? [:]
                         stats[play.statId] = max(0, (stats[play.statId] ?? 0) - 1)
                         game.opponentStats = stats
                     } else { game.stats[play.statId] = max(0, (game.stats[play.statId] ?? 0) - 1) }
-                    let points = play.attribution == "athlete" && !other ? 0 :
-                        (saved.rules.stats.first { $0.id == play.statId }?.points ?? 0)
+                    let points = play.scoreDelta ?? (play.attribution == "athlete" && !other ? 0 :
+                        (saved.rules.stats.first { $0.id == play.statId }?.points ?? 0))
                     if other { game.opponentScore = max(0, game.opponentScore - points) }
                     else { game.score = max(0, game.score - points) }
                     }

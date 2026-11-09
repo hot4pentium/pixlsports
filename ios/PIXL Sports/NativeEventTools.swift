@@ -473,6 +473,7 @@ final class NativeEventToolModel: ObservableObject {
         command.outcome = outcome
         command.items = items
         command.notes = notes
+        if kind == "stat" { command.scoringVersion = 2 }
         let previousQueue = pendingQueue
         let queued = NativeQueuedEventToolCommand(command: command, attempted: false, displayOptimistically: true)
         if kind == "prep", let last = pendingQueue.last, !last.attempted, last.command.kind == "prep" {

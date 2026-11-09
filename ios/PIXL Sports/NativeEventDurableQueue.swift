@@ -23,6 +23,8 @@ struct NativeEventToolCommand: Codable {
     var outcome: String? = nil
     var items: [NativePrepItem]? = nil
     var notes: String? = nil
+    // Nil is intentional for restored legacy commands; never rewrite a retry.
+    var scoringVersion: Int? = nil
 }
 
 enum NativeTrackerRecoveryStatus: String, Codable, Equatable {

@@ -5,8 +5,10 @@ struct NativeOfflineProjectionChecks {
     enum Failure: Error { case storage, ownership }
 
     static func command(_ kind: String, revision: Int = 0) -> NativeEventToolCommand {
-        NativeEventToolCommand(shareToken: "event", mutationId: UUID().uuidString,
-                               linkId: "verified-link", expectedRevision: revision, kind: kind)
+        var result = NativeEventToolCommand(shareToken: "event", mutationId: UUID().uuidString,
+                                            linkId: "verified-link", expectedRevision: revision, kind: kind)
+        if kind == "stat" { result.scoringVersion = 2 }
+        return result
     }
     static func workspace(
         revision: Int = 0, prepRevision: Int = 0,
@@ -30,14 +32,15 @@ struct NativeOfflineProjectionChecks {
         goal.statId = "goal"
         goal.athlete = true
         saved = NativeEventProjection.apply(goal, to: saved)
-        precondition(saved.game?.stats["goal"] == 1 && saved.game?.score == 0)
+        precondition(saved.game?.stats["goal"] == 1 && saved.game?.score == 1)
+        precondition(saved.game?.scoreRecorded == true && saved.game?.events.last?.scoreDelta == 1)
         goal = command("stat")
         goal.statId = "goal"
         goal.athlete = false
         saved = NativeEventProjection.apply(goal, to: saved)
-        precondition(saved.game?.score == 1)
+        precondition(saved.game?.score == 2)
         saved = NativeEventProjection.apply(command("undo"), to: saved)
-        precondition(saved.game?.score == 0 && saved.game?.stats["goal"] == 1)
+        precondition(saved.game?.score == 1 && saved.game?.stats["goal"] == 1)
         var score = command("score")
         score.delta = 2
         saved = NativeEventProjection.apply(score, to: saved)
@@ -55,7 +58,7 @@ struct NativeOfflineProjectionChecks {
         precondition(saved.game?.outcome == "win" && saved.game?.status == "final")
         precondition(saved.trackerRevision == 0, "Local projection must not invent server revisions.")
         let roundTrip = try decoder.decode(NativeEventWorkspace.self, from: encoder.encode(saved))
-        precondition(roundTrip.game?.score == 2 && roundTrip.game?.events.count == 1)
+        precondition(roundTrip.game?.score == 3 && roundTrip.game?.events.count == 1)
         finish.recordScore = false
         finish.outcome = nil
         let unscored = NativeEventProjection.apply(finish, to: NativeEventProjection.apply(start, to: workspace()))

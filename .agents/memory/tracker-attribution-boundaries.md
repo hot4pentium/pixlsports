@@ -42,3 +42,16 @@ score regardless of whether the Athlete or Team increment was used.
 check both server and offline projection, undo, legacy-event compatibility and
 retry idempotency. Do not preserve the older athlete-score-exclusion behavior as
 the intended product rule.
+
+Legacy queued actions deliberately keep their original scoring interpretation,
+including ones never sent. Only actions created by the updated app adopt the new
+policy; release the compatible backend before the iPhone build.
+
+**Why:** Changing an old attempted payload breaks idempotent receipts, and
+upgrading unsent old actions can unexpectedly change a score the owner already
+managed under the old policy. Historical athlete plays also cannot be assumed to
+have contributed scoreboard points.
+
+**How to apply:** Version new scoring behavior, retain actual per-play point
+contributions for undo, and never backfill historical totals or migrate old
+outbox payloads just to enable the new rule.

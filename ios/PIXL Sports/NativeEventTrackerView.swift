@@ -369,8 +369,8 @@ struct NativeEventTrackerView: View {
         let name = mode.ownerName(athlete: athleteName, team: teamName, opponent: opponentName)
         let detail: String
         switch mode {
-        case .athlete: detail = "Taps record individual stats for \(athleteName)."
-        case .team: detail = "Taps count for the team only. Score buttons update the scoreboard."
+        case .athlete: detail = "Taps record \(athleteName)'s stats. Scoring plays also update the team score."
+        case .team: detail = "Taps record team stats, not individual stats. Scoring plays update the team score."
         case .opponent: detail = "Opponent plays stay separate from your athlete and team."
         }
         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
