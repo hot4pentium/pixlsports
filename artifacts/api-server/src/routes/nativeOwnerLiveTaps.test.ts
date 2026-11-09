@@ -10,6 +10,24 @@ import { nativeAccountLinkRouter } from "./nativeAccountLink";
 import { GAME_ON_CARD_MARKER } from "../lib/gameOnCard";
 import { assignNativeStarterCard } from "../lib/nativeStarterHypeCard";
 import { loadNativeSupporterHypeCard, updateNativeSupporterHypeCard } from "../lib/nativeSupporterHypeCard";
+import { hasNativeStarterPrivacyPause, nativeStarterPauseFingerprint } from "../lib/nativeStarterPrivacyPause";
+
+// Observe actual PostgreSQL lock dependencies, not elapsed time or request
+// launch order. The deadline only bounds a failed test; it never orders writes.
+async function waitForBlockedQuery(blocker: number, queryFragment: string): Promise<number> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const { rows } = await pool.query<{ pid: number }>(
+      `SELECT pid FROM pg_stat_activity
+       WHERE datname=current_database() AND $1=ANY(pg_blocking_pids(pid))
+         AND position($2 IN query)>0`,
+      [blocker, queryFragment],
+    );
+    if (rows[0]) return rows[0].pid;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.fail(`No blocked ${queryFragment} query observed behind backend ${blocker}`);
+}
 
 test("verified native owner starts, reads and cheers on a private starter before creating a matching fan QR", async (t) => {
   const issuer = `https://native-taps-${randomUUID()}.clerk.accounts.dev`;
@@ -140,9 +158,169 @@ test("verified native owner starts, reads and cheers on a private starter before
       ...values, paused, expectedRevision: revision, confirmPublish: false,
     });
   };
+  for (const legacy of [false, true]) {
+    for (const pauseFirst of [true, false]) {
+      await t.test(`${legacy ? "legacy untouched" : "marked"} starter: ${pauseFirst ? "pause" : "cheer"} commits first`, async () => {
+        // Restore only this test owner's starter provenance. Legacy starters
+        // have no marker and rely on equal timestamps, not an explicit pause.
+        await pool.query(
+          `UPDATE native_accounts SET profile_metadata=$2::jsonb WHERE owner_id=$1`,
+          [owner, JSON.stringify({
+            ...metadata,
+            nativeStarterPrivatePause: legacy ? undefined : nativeStarterPauseFingerprint(token),
+          })],
+        );
+        await pool.query(
+          "UPDATE athlete_invites SET paused=true,updated_at=created_at WHERE public_token=$1", [token],
+        );
+        assert.equal(await hasNativeStarterPrivacyPause(owner, token), true);
+        const start = await request(livePath, "POST", { eventId, soccerPeriodFormat: "halves" });
+        assert.ok([200, 201].includes(start.status), await start.text());
+        // Starting safely upgrades legacy provenance. Restore a historical
+        // untouched live row to exercise fallback during the cheer itself.
+        if (legacy) {
+          assert.equal(await hasNativeStarterPrivacyPause(owner, token), true);
+          await pool.query(
+            "UPDATE native_accounts SET profile_metadata=profile_metadata-'nativeStarterPrivatePause' WHERE owner_id=$1",
+            [owner],
+          );
+          await pool.query("UPDATE athlete_invites SET updated_at=created_at WHERE public_token=$1", [token]);
+        }
+        const currentSummary = await request(summaryPath);
+        assert.equal(currentSummary.status, 200);
+        const { liveTaps } = await currentSummary.json() as typeof summary;
+        const savedCheer = {
+          cheerKey: liveTaps.cheers[0]!.key, gameId: liveTaps.gameId,
+          clientMutationId: randomUUID(), expectedEventId: eventId,
+        };
+        const earlierCheer = { ...savedCheer, clientMutationId: randomUUID() };
+        const acknowledged = await request(summaryPath, "POST", earlierCheer);
+        assert.equal(acknowledged.status, 201);
+        const earlierReceipt = (await acknowledged.json()).receipt;
+        assert.equal(earlierReceipt.id, earlierCheer.clientMutationId);
+        if (legacy) await pool.query(
+          "UPDATE athlete_invites SET updated_at=created_at WHERE public_token=$1", [token],
+        );
+        const current = await loadNativeSupporterHypeCard({ issuer, subject });
+        assert.ok(current.settings);
+        const { revision, ...values } = current.settings;
+        const pauseBody = { ...values, paused: true, expectedRevision: revision, confirmPublish: false };
+        const state = async () => (await pool.query(
+          `SELECT ai.paused,ai.live_tracker_share_token AS pointer,
+                  na.profile_metadata ? 'nativeStarterPrivatePause' AS has_marker,
+                  na.profile_metadata->'nativeStarterPrivatePause' AS marker
+           FROM athlete_invites ai JOIN native_accounts na ON na.owner_id=ai.owner_clerk_user_id
+           WHERE ai.public_token=$1`, [token],
+        )).rows[0];
+        const before = await state();
+        assert.ok(before.pointer);
+        assert.equal(before.has_marker, !legacy);
+        const countGame = async () => Number((await pool.query(
+          `SELECT count(*) AS total FROM athlete_invite_live_taps
+           WHERE invite_id=(SELECT id FROM athlete_invites WHERE public_token=$1) AND game_id=$2`,
+          [token, savedCheer.gameId],
+        )).rows[0].total);
+        const beforeCount = await countGame();
+        const gate = await pool.connect();
+        let pause: Promise<Response> | undefined;
+        let cheerInFlight: Promise<Response> | undefined;
+        try {
+          await gate.query("BEGIN");
+          const gatePid = (await gate.query("SELECT pg_backend_pid() AS pid")).rows[0].pid as number;
+          await gate.query("SELECT id FROM stat_tracker_shares WHERE id=$1 FOR UPDATE", [before.pointer]);
+          if (pauseFirst) {
+            pause = request("/native/supporter/hype-card", "PATCH", pauseBody);
+            // Pause has already written the tombstone and cleared the pointer
+            // inside its transaction, but cannot commit until share deletion.
+            const pausePid = await waitForBlockedQuery(gatePid, "DELETE FROM stat_tracker_shares");
+            cheerInFlight = request(summaryPath, "POST", savedCheer);
+            await waitForBlockedQuery(pausePid, 'for update');
+          } else {
+            cheerInFlight = request(summaryPath, "POST", savedCheer);
+            const cheerPid = await waitForBlockedQuery(gatePid, '"stat_tracker_shares"');
+            pause = request("/native/supporter/hype-card", "PATCH", pauseBody);
+            await waitForBlockedQuery(cheerPid, "FOR UPDATE");
+          }
+          assert.deepEqual(await state(), before,
+            "other connections must see the complete pre-pause state until commit");
+          assert.equal(await hasNativeStarterPrivacyPause(owner, token), true);
+          await gate.query("COMMIT");
+          const [paused, cheered] = await Promise.all([pause, cheerInFlight]);
+          assert.equal(paused.status, 200, await paused.text());
+          assert.equal(cheered.status, pauseFirst ? 404 : 201, await cheered.text());
+        } finally {
+          await gate.query("ROLLBACK");
+          gate.release();
+          await Promise.allSettled([pause, cheerInFlight].filter(Boolean));
+        }
+        assert.deepEqual(await state(), { paused: true, pointer: null, has_marker: true, marker: null },
+          "explicit settings must commit the tombstone and cleared live pointer together");
+        assert.equal(await hasNativeStarterPrivacyPause(owner, token), false);
+        assert.equal((await pool.query("SELECT id FROM stat_tracker_shares WHERE id=$1", [before.pointer])).rowCount, 0);
+        const finalCount = beforeCount + (pauseFirst ? 0 : 1);
+        assert.equal(await countGame(), finalCount);
+        // Privacy wins even over receipt retries. A refusal never removes an
+        // earlier receipt or turns a saved pending cheer into a delivered one.
+        for (const body of [earlierCheer, savedCheer, { ...savedCheer, clientMutationId: randomUUID() }]) {
+          assert.equal((await request(summaryPath, "POST", body)).status, 404);
+        }
+        assert.equal((await request(summaryPath)).status, 403);
+        assert.equal((await request(livePath, "POST", { eventId, soccerPeriodFormat: "halves" })).status, 403);
+        assert.equal(await countGame(), finalCount);
+        assert.equal((await pool.query(
+          "SELECT count(*)::int AS total FROM athlete_invite_live_taps WHERE id=$1",
+          [earlierCheer.clientMutationId],
+        )).rows[0].total, 1);
+
+        // Even equal timestamps cannot resurrect legacy fallback after an
+        // explicit saved pause: the JSON null is a deliberate tombstone.
+        await pool.query("UPDATE athlete_invites SET updated_at=created_at WHERE public_token=$1", [token]);
+        assert.equal(await hasNativeStarterPrivacyPause(owner, token), false);
+        assert.equal((await request(summaryPath, "POST", savedCheer)).status, 404);
+
+        // A later event cannot absorb the same locally saved game/event IDs.
+        await setPause(false);
+        const nextEventId = randomUUID();
+        await pool.query(
+          "UPDATE schedule_shares SET events=events || $2::jsonb WHERE id=$1",
+          [shareId, JSON.stringify([{
+            id: nextEventId, type: "game", status: "scheduled", date: now.toISOString().slice(0, 10),
+            time: now.toISOString().slice(11, 16), timezone: "UTC", opponent: "Owls",
+          }])],
+        );
+        const nextStart = await request(livePath, "POST", { eventId: nextEventId, soccerPeriodFormat: "halves" });
+        assert.ok([200, 201].includes(nextStart.status), await nextStart.text());
+        const nextSummaryResponse = await request(summaryPath);
+        const nextSummary = await nextSummaryResponse.json() as typeof summary;
+        assert.notEqual(nextSummary.liveTaps.gameId, savedCheer.gameId);
+        const retried = await request(summaryPath, "POST", savedCheer);
+        assert.equal(retried.status, pauseFirst ? 409 : 201);
+        if (!pauseFirst) {
+          assert.equal((await retried.json()).receipt.gameId, savedCheer.gameId);
+        }
+        const wrongEvent = { ...savedCheer, gameId: nextSummary.liveTaps.gameId, clientMutationId: randomUUID() };
+        assert.equal((await request(summaryPath, "POST", wrongEvent)).status, 409);
+        assert.equal((await pool.query(
+          `SELECT count(*)::int AS total FROM athlete_invite_live_taps
+           WHERE invite_id=(SELECT id FROM athlete_invites WHERE public_token=$1) AND game_id=$2`,
+          [token, nextSummary.liveTaps.gameId],
+        )).rows[0].total, 0);
+        assert.equal(await countGame(), finalCount);
+        await setPause(true);
+        await pool.query(
+          `UPDATE schedule_shares SET events=(
+             SELECT jsonb_agg(event) FROM jsonb_array_elements(events) event WHERE event->>'id'=$2
+           ) WHERE id=$1`,
+          [shareId, eventId],
+        );
+      });
+    }
+  }
   // A separate explicit settings action may enable fan access without
   // publishing the HYPE Card itself. Startup must never perform it.
   await setPause(false);
+  const resumed = await request(livePath, "POST", { eventId, soccerPeriodFormat: "halves" });
+  assert.ok([200, 201].includes(resumed.status), await resumed.text());
   const qr = await request("/native/supporter/live-taps-access", "POST", { action: "create", shareToken: shareId });
   assert.ok([200, 201].includes(qr.status), await qr.text());
   const settings = (await pool.query("SELECT show_hype_card,paused FROM athlete_invites WHERE public_token=$1", [token])).rows[0];

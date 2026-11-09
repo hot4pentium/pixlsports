@@ -64,3 +64,16 @@ test("summary API checks cancellation before requesting and after receiving", ()
   assert.match(fetch, /publicRequest\(\s*"athlete-invites\/\\\(inviteToken\)\/fan"/);
   assert.doesNotMatch(fetch, /sendLiveTap|method: "POST"/);
 });
+
+test("public-page pause refusals preserve saved cheers for attention, not silent deletion", () => {
+  const outbox = source("NativeLiveTapOutbox.swift");
+  const refusal = outbox.slice(outbox.indexOf("let status = (error as? NativeAccountLinkError)"),
+    outbox.indexOf("failures[scope, default: 0] += 1"));
+  assert.match(refusal, /\[400, 401, 403, 404, 409, 410, 422, 423\]\.contains\(status\)/);
+  assert.match(refusal, /next\.pending\[index\]\.gameId == item\.gameId/);
+  assert.match(refusal, /next\.pending\[index\]\.needsAttention = true/);
+  assert.match(refusal, /try commit\(next\)/);
+  assert.match(refusal, /They are still saved here/);
+  assert.doesNotMatch(refusal, /removeAll|remove\(|discard\(|acknowledge\(|pending\s*=/);
+  assert.match(outbox, /gameId: item\.gameId, clientMutationId: item\.id, expectedEventId: session\.eventId/);
+});
