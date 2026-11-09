@@ -188,3 +188,30 @@ run without Foundation. It covers conservative removal, pending/recovery catalog
 protection, per-account key sets, and low-storage thresholds. This does not replace
 the signed-app acceptance checks in
 `Tests/native-offline-storage-device-checks.md`.
+
+## Event Card local-save handoff
+
+Dashboard create/edit screens return to the dashboard after the protected local
+write succeeds, without waiting for the API. Pending Event Cards appear below
+the dashboard header with their date, time, location, edit action, and existing
+recovery/deletion controls. Sync runs independently of the dismissed editor;
+confirmation refreshes the schedule without reopening a different screen.
+A failed protected write must leave the form open with an error.
+
+Required signed-iPhone acceptance checks (not executed by the source checks):
+
+1. Load the signed-in schedule once, then disconnect the network. Create an
+   event. Confirm the editor closes and the event appears on the dashboard.
+2. Force-quit and relaunch offline. Confirm the same event, date, time, location,
+   and edits remain available, without showing another account's events.
+3. Repeat while the API returns 502 but the phone still has internet. Confirm
+   saving does not wait for the failed request and the event remains editable.
+4. Restore API access. Confirm the existing event syncs once, the normal
+   schedule replaces its pending entry, and no editor opens unexpectedly.
+5. Confirm a protected-storage failure keeps the editor open and does not
+   falsely report a save.
+
+Development preview availability is separate from published API availability.
+Before customer distribution, verify the installed build's API origin, native
+sign-in issuer, and intended account/data environment together. Do not change
+only the origin or replace the local Clerk configuration blindly.

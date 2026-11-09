@@ -13,6 +13,7 @@ struct NativeCreateEventCardView: View {
     let shareToken: String?
     let pendingChange: NativePendingEventCardChange?
     let onCreated: (String) -> Void
+    let onSavedLocally: (() -> Void)?
 
     @State private var eventType = "game"
     @State private var eventDate: Date
@@ -44,7 +45,8 @@ struct NativeCreateEventCardView: View {
         existingEvent: AthleteFanEvent? = nil,
         shareToken: String? = nil,
         pendingChange: NativePendingEventCardChange? = nil,
-        onCreated: @escaping (String) -> Void
+        onCreated: @escaping (String) -> Void,
+        onSavedLocally: (() -> Void)? = nil
     ) {
         self.athleteName = athleteName
         self.teamName = teamName
@@ -55,6 +57,7 @@ struct NativeCreateEventCardView: View {
         self.shareToken = shareToken
         self.pendingChange = pendingChange
         self.onCreated = onCreated
+        self.onSavedLocally = onSavedLocally
         let pendingDraft = pendingChange?.draft
         let zone = pendingDraft?.timezone ?? existingEvent?.timezone ?? initialTimezone ?? TimeZone.current.identifier
         _timezone = State(initialValue: zone)
@@ -506,6 +509,21 @@ struct NativeCreateEventCardView: View {
         do {
             try runtime.savePendingEventCard(change, subject: subject)
             persistedLocally = true
+            if let onSavedLocally {
+                // The protected local write completes the user's save. Do not
+                // hold the editor open or navigate again after cloud recovery.
+                completedEventCallback = true
+                onSavedLocally()
+                if runtime.online || forceNetworkAttempt {
+                    // This unstructured task survives the editor's dismissal.
+                    // The runtime rechecks account ownership and keeps failures
+                    // in the durable queue for later retries.
+                    Task {
+                        _ = await runtime.retryPendingEventCards(clerk: clerk, onlyID: draft.id)
+                    }
+                }
+                return
+            }
             localSaveMessage = "Saved on this iPhone. Checking PIXL sync…"
             let syncedTokens: [String: String]
             if runtime.online || forceNetworkAttempt {

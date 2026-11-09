@@ -226,6 +226,7 @@ struct ContentView: View {
                                 .modifier(SupporterDashboardSectionSurface())
                                 .accessibilityElement(children: .contain)
                                 .accessibilityIdentifier("dashboard-header-section")
+                            pendingEventCardSection
                             athleteHero
                             Button {
                                 heroDestination = .recordMoments
@@ -279,7 +280,6 @@ struct ContentView: View {
 #endif
                             accountSetupIfNeeded
                             athleteProfileLoadIssue
-                            pendingEventCardSection
                             nextEventSection
                         }
                         .frame(maxWidth: 560, alignment: .leading)
@@ -597,6 +597,17 @@ struct ContentView: View {
                             Text(title)
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.white)
+                            Label(
+                                "\(change.draft.time) · \(change.draft.timezone)",
+                                systemImage: "clock"
+                            )
+                            .font(.subheadline)
+                            .foregroundStyle(SupporterHomeColors.muted)
+                            if !change.draft.location.isEmpty {
+                                Label(change.draft.location, systemImage: "mappin.and.ellipse")
+                                    .font(.subheadline)
+                                    .foregroundStyle(SupporterHomeColors.muted)
+                            }
                             if change.operation == .delete {
                                 Text(change.lastError ?? "Saved on this iPhone. Waiting for PIXL to remove this Event Card.")
                                     .font(.footnote)
@@ -661,7 +672,7 @@ struct ContentView: View {
                                     }
                                 } else {
                                     HStack(spacing: 12) {
-                                        Button("Open saved draft") {
+                                        Button("Edit Event Card") {
                                             heroDestination = .pendingEventCard(change.id)
                                         }
                                         .font(.subheadline.weight(.bold))
@@ -722,7 +733,8 @@ struct ContentView: View {
                             await loadSchedule()
                             heroDestination = .eventCard(updatedToken)
                         }
-                    }
+                    },
+                    onSavedLocally: { heroDestination = nil }
                 )
             } else {
                 ContentUnavailableView("Event Card unavailable", systemImage: "calendar")
@@ -743,7 +755,8 @@ struct ContentView: View {
                             await loadSchedule()
                             heroDestination = .eventCard(token)
                         }
-                    }
+                    },
+                    onSavedLocally: { heroDestination = nil }
                 )
             } else {
                 VStack(spacing: 12) {
@@ -775,7 +788,8 @@ struct ContentView: View {
                         await loadSchedule()
                         heroDestination = .eventCard(token)
                     }
-                }
+                },
+                onSavedLocally: { heroDestination = nil }
             )
         case .recordMoments:
             NativeRecordMomentsView(
