@@ -130,13 +130,16 @@
   gap: 14px;
   margin-bottom: 13px;
 }
-.game-on-collection__toolbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.game-on-collection__toolbar-left { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-width: 0; max-width: 100%; }
 .game-on-collection__rail-label { color: #d9eaff; white-space: nowrap; }
 .game-on-collection__count {
+  min-width: 0;
+  max-width: 100%;
   padding-left: 12px;
   border-left: 1px solid rgba(193, 220, 250, .28);
   color: #9fbad4;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .game-on-collection__search {
   position: relative;

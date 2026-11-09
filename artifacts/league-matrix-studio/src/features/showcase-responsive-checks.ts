@@ -363,15 +363,18 @@ async function editor(browser: Browser, width: number) {
   await browser.wait(`document.querySelector('[data-testid="fan-card-appearance-manager"]')`);
   await bounded(browser, byId('fan-card-appearance-manager'), 360);
   await proportion(browser, byId('classic-card-preview-surface'), 2 / 3);
-  const selectors = ['classic-card-preview-surface', 'appearance-navigation-preview', 'hype-card-template-cyclers', 'photo-position-controls'];
+  const selectors = ['classic-card-preview-surface', 'appearance-navigation-preview', 'card-style-picker', 'photo-position-controls'];
   const boxes = [];
   for (const id of selectors) boxes.push(await rect(browser, byId(id)));
   for (let i = 1; i < boxes.length; i++) {
     assert.ok(boxes[i].y >= boxes[i - 1].bottom - 1, `Editor sequence must stay single-column at ${width}px: ${JSON.stringify(boxes)}`);
   }
-  const arrows = await browser.evaluate(`Array.from(document.querySelectorAll('[data-testid="hype-card-template-cyclers"] button')).map(el=>el.dataset.testid)`);
-  assert.equal(arrows.length, 4, 'frame and lower-third each have previous/next controls');
-  for (const id of arrows) await click(browser, byId(id));
+  const styles = await browser.evaluate(`Array.from(document.querySelectorAll('[data-testid="card-style-picker"] button')).map(el=>el.dataset.testid)`);
+  assert.equal(styles.length, 3, 'the simplified editor offers three coordinated card styles');
+  for (const id of styles) {
+    await click(browser, byId(id));
+    assert.equal(await browser.evaluate(`document.querySelector(${JSON.stringify(byId(id))}).getAttribute('aria-pressed')`), 'true', `${id} becomes the selected card style`);
+  }
   const sliders = await browser.evaluate(`Array.from(document.querySelectorAll('[data-testid="photo-position-controls"] input[type="range"]')).map(el=>el.dataset.testid)`);
   assert.equal(sliders.length, 3, 'horizontal, vertical, and scale sliders remain available');
   for (const id of sliders) {

@@ -1110,6 +1110,36 @@
   text-align: left;
 }
 
+.fan-base-entry {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 8px auto 0;
+  padding: 8px 18px;
+  border: 1px solid #416891;
+  border-radius: 999px;
+  background: #122b4d;
+  color: #fff;
+  font: 700 14px/1.2 "DM Sans", sans-serif;
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.fan-base-entry:hover { background: #1b3e68; }
+.fan-base-entry:focus-visible { outline: 3px solid #b8f45c; outline-offset: 3px; }
+.supporter-game-on-summary--mobile .supporter-game-on-summary__hype-slot {
+  flex-direction: column;
+}
+.supporter-game-on-summary__hype-slot > .supporter-hype-preview {
+  flex: 1 1 auto;
+  height: auto;
+}
+
 .supporter-game-on-summary__fan-base-heading {
   display: flex;
   align-items: baseline;

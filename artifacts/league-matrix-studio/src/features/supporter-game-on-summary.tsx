@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { SupporterGameRecord } from './supporter-game-record-model';
 import type { Sport } from './stat-tracker';
-import { FanBaseOwnerCard } from './fan-base-owner-card';
+import { FanBaseEntry } from './fan-base-owner-card';
 
 export type { SupporterGameRecord } from './supporter-game-record-model';
 
@@ -91,6 +91,7 @@ export function SupporterGameOnSummary({
               {eventSection}
               <div className="supporter-game-on-summary__hype-slot" data-testid="mobile-hype-card-slot">
                 {mobileHypeCard}
+                <FanBaseEntry inviteToken={fanBaseInviteToken} />
               </div>
             </div>
           );
@@ -131,7 +132,6 @@ export function SupporterGameOnSummary({
               ? `${record.gamesPlayed} scored ${record.gamesPlayed === 1 ? 'game' : 'games'} tracked`
               : 'Score completed games to build your record'}
           </p>
-          <FanBaseOwnerCard inviteToken={fanBaseInviteToken} />
         </section>
       </div>
       {isMobile && seasonStatsHref && (

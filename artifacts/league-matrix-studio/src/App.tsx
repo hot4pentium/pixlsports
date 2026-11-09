@@ -263,6 +263,9 @@ const SupporterDashboardView = lazy(() =>
 const PlayerShowcasePage = lazy(() =>
   import('@/features/player-showcase').then(({ PlayerShowcasePage }) => ({ default: PlayerShowcasePage })),
 );
+const SupporterFanBasePage = lazy(() =>
+  import('@/features/supporter-fan-base-page').then(({ SupporterFanBasePage }) => ({ default: SupporterFanBasePage })),
+);
 const AthleteStudioShell = lazy(() =>
   import('@/features/player-showcase').then(({ AthleteStudioShell }) => ({ default: AthleteStudioShell })),
 );
@@ -1313,6 +1316,15 @@ function PlayerShowcaseStudioPage() {
   if (isAthleteEditorAccount(user)) return <AthleteShowcaseHome />;
   if (getUserRole(user) !== 'fan') return <Redirect to="/studio/setup" />;
   return <StudioLayout><PlayerShowcasePage key={user?.id} userId={user?.id ?? null} profile={profile} /></StudioLayout>;
+}
+
+function FanBaseStudioPage() {
+  const { user, isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return <RouteLoadingState />;
+  if (!isSignedIn || !user) return <Redirect to={`/sign-in?redirect_url=${encodeURIComponent('/studio/fan-base')}`} />;
+  if (isAthleteEditorAccount(user)) return <Redirect to="/studio/player-showcase" />;
+  if (getUserRole(user) !== 'fan') return <Redirect to="/studio/setup" />;
+  return <StudioLayout><SupporterFanBasePage key={user.id} userId={user.id} profile={supporterProfileFromUser(user)} /></StudioLayout>;
 }
 
 function SupporterStudio() {
@@ -4176,6 +4188,7 @@ function ApplicationRoutes() {
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
+              <Route path="/studio/fan-base" component={FanBaseStudioPage} />
               <Route path="/card-editor/design"><ExistingAccountCardEditorPage design /></Route>
               <Route path="/card-editor"><ExistingAccountCardEditorPage /></Route>
               <Route path="/studio/player-showcase/hype-card" component={AthleteFanCardAppearancePage} />

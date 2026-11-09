@@ -1,10 +1,25 @@
 import { useUser } from '@clerk/react';
+import { Link } from 'wouter';
 import {
   getGetAthleteInviteFanBaseQueryKey,
   useGetAthleteInviteFanBase,
 } from '@workspace/api-client-react';
 
-export function FanBaseOwnerCard({ inviteToken }: { inviteToken?: string }) {
+export function FanBaseEntry({ inviteToken }: { inviteToken?: string }) {
+  if (!inviteToken) return null;
+  return (
+    <Link
+      href={`/studio/fan-base?card=${encodeURIComponent(inviteToken)}`}
+      className="fan-base-entry"
+      data-testid="link-dashboard-fan-base"
+      aria-label="Fan Base, view all details"
+    >
+      Fan Base
+    </Link>
+  );
+}
+
+export function FanBaseOwnerCard({ inviteToken, showAccessError = false }: { inviteToken?: string; showAccessError?: boolean }) {
   const { user, isLoaded } = useUser();
   const query = useGetAthleteInviteFanBase(inviteToken ?? '', {
     query: {
@@ -17,7 +32,10 @@ export function FanBaseOwnerCard({ inviteToken }: { inviteToken?: string }) {
   const fanBase = query.data;
   const error = query.error as { status?: number; response?: { status?: number } } | null;
   const status = error?.status ?? error?.response?.status;
-  if (!isLoaded || !user?.id || !inviteToken || (status && [401, 403, 404, 423].includes(status))) return null;
+  if (!isLoaded || !user?.id || !inviteToken) return null;
+  if (status && [401, 403, 404, 423].includes(status)) {
+    return showAccessError ? <p role="status">Fan Base is not available for this card. Return to Supporter Hub to choose your current card.</p> : null;
+  }
   if (!fanBase || query.isError) {
     return (
       <section className="supporter-game-on-summary__fan-base" aria-label="Fan Base" data-testid="fan-base-owner">

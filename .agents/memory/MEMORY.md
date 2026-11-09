@@ -45,7 +45,7 @@
 - [Hype manager task drafts](hype-manager-task-drafts.md) — keep task panels mounted; immediate visibility saves must not overwrite or implicitly save an unfinished time zone.
 - [Approved Hype manager layout](approved-hype-manager-layout.md) — the owner-only wallet-style task cards are approved; their chevrons should toggle panels open and closed.
 - [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.
-- [Approved dashboard visual direction](approved-dashboard-visual-direction.md) — native iOS uses a white textured canvas with blue containers; the PWA retains its navy sports-editorial theme.
+- [Approved dashboard visual direction](approved-dashboard-visual-direction.md) — shared mobile PWA screens now follow the iOS light textured canvas and navy/blue containers; retain desktop capabilities.
 - [Dashboard mockup boundary](dashboard-mockup-boundary.md) — fill the existing supporter dashboard layout with fictional data; do not redesign it as a new app shell or landing page.
 - [Planner push notifications](planner-push-notifications.md) — server-side planner reminders use the device time zone and durable delivery keys.
 - [Owner event-day announcements](owner-event-day-announcements.md) — Autoscale event-day sharing uses an in-app owner reminder and confirmable manual follower push, never an owner timer.

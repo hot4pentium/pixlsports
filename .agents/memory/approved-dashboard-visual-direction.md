@@ -3,11 +3,11 @@ name: Approved dashboard visual direction
 description: The visual direction approved for future Pixl Sports supporter dashboard refinements.
 ---
 
-The web/PWA supporter dashboard retains its navy sports-editorial foundation, blue-to-navy gradients, connected chevron week path, bright current-step treatment, and responsive mobile hierarchy. Native iOS screens use a white, lightly textured page canvas with blue container surfaces; Prep, Track Stats, and Share keep their orange, light-blue, and green accents.
+Use the iPhone experience as the reference for shared PWA mobile screens: a white, lightly textured page canvas with navy/blue container surfaces. Prep, Track Stats, and Share keep their orange, light-blue, and green accents. Preserve useful desktop capabilities and bounded layouts rather than forcing a phone-sized interface everywhere.
 
-**Why:** The user wants the native app to use a white page background while keeping blue boxes and containers across screens.
+**Why:** The user now wants the PWA to look and operate as closely as possible to iOS, saying the two currently feel like different products. This supersedes the earlier PWA-only navy backdrop direction.
 
-**How to apply:** Apply the light canvas and blue surfaces across native iOS screens and sheets, preserve designed card artwork and step accents, and leave the web/PWA navy theme unchanged.
+**How to apply:** Align shared mobile journeys to the iOS canvas, containers, terminology, and actions. Preserve authored card artwork, account boundaries, and genuine browser-only or desktop capabilities.
 
 Use soft navy shadows beneath native blue containers and major cards to add separation from the white canvas. Keep shadows off small controls.
 

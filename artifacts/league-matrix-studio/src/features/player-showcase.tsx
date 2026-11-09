@@ -66,7 +66,8 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
   return (
     <div className="ps" data-testid="page-player-showcase">
       <section className="ps__stage-wrap ps__stage-wrap--card-only" aria-labelledby="ps-dyn" data-testid="section-dynamic-showcase">
-        <h1 id="ps-dyn" className="ps__section-title"><span>Player Showcase</span></h1>
+        <p className="ps__eyebrow">Player Showcase</p>
+        <h1 id="ps-dyn" className="ps__section-title">HYPE Card</h1>
         <p className="ps__card-only-intro">One athlete. One season. Your HYPE Card.</p>
         <div className="ps__card-only" role="region" aria-label={`${profile.athleteName || 'Athlete'} HYPE Card Showcase`}>
           {cardPicker}
@@ -196,7 +197,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     }
   };
   return (
-    <>
+    <div className="ps-owner-canvas">
       <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pt-5 sm:px-8">
         <BackNavigationLink
           href="/studio"
@@ -235,7 +236,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         )}
         <AthleteEditorInvitationPanel inviteToken={inviteToken ?? null} />
       </div>
-    </>
+    </div>
   );
 }
 

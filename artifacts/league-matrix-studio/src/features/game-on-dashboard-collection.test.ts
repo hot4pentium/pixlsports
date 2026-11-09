@@ -32,6 +32,18 @@ test('Event Card Stat Tracker opens the game-day choice before either path', () 
   assert.doesNotMatch(handler, /createGameSession|localStorage|startLiveTaps/);
 });
 
+test('saving a local Event Card refreshes the draft list before selecting its saved identity', () => {
+  const dashboard = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+  const start = dashboard.indexOf('const handleGameOnCardChanged =');
+  const end = dashboard.indexOf('const saveDashboardChecklistProgress =', start);
+  const handler = dashboard.slice(start, end);
+  assert.match(handler, /setLocalGameOnCardDrafts\(readOfflineGameOnCardDrafts\(userId\)\)/);
+  assert.ok(
+    handler.indexOf('setLocalGameOnCardDrafts') < handler.indexOf('setNewCardDraft(null)'),
+    'the dashboard must refresh persisted local drafts when replacing the temporary editor',
+  );
+});
+
 test('unselected Stat Tracker and Share actions stay neutral while an open tracker remains distinct', () => {
   for (const action of ['tracker', 'share']) {
     const rule = styles.match(new RegExp(`\\.game-on-collection__actions \\.game-on-collection__action--${action} \\{([^}]*)\\}`))?.[1];

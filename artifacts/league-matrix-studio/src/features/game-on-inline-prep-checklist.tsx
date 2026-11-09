@@ -525,19 +525,15 @@ export function GameOnInlinePrepChecklist({
         />
       </label>
 
+      {(storageUnavailable || syncStatus === 'error' || (sharedError && checklist.shareToken)) && (
       <p className="game-on-prep__save-status" role="status" aria-live="polite" aria-atomic="true">
         {storageUnavailable
           ? 'This browser is blocking storage. Prep changes will not be recovered after reload.'
-          : syncStatus === 'saving'
-            ? 'Saving checklist changes to collaborators…'
-            : syncStatus === 'error'
+          : syncStatus === 'error'
               ? 'Shared checklist sync failed. Your edits remain here; retry to send them again.'
-              : sharedError && checklist.shareToken
-                ? 'Could not load the shared checklist. Local changes are not being used to replace it.'
-                : syncStatus === 'saved'
-                  ? 'Changes saved locally and synced to collaborators.'
-                  : `${completed} of ${checklist.items.length} items complete. Progress saves on this device.`}
+              : 'Could not load the shared checklist. Local changes are not being used to replace it.'}
       </p>
+      )}
       {syncStatus === 'error' && (
         <button type="button" className="game-on-prep__retry" onClick={retrySharedSave} data-testid={`button-retry-card-prep-sync-${event.id}`}>
           Retry shared sync

@@ -252,9 +252,31 @@
 
 @media (max-width: 1023px) {
   .pixl-locker-dashboard > header {
+    flex-wrap: wrap;
+    gap: 8px;
     background: linear-gradient(90deg, #08162c, #0c2140) !important;
     border-bottom: 1px solid var(--locker-line);
     box-shadow: 0 8px 22px rgba(2, 9, 20, .24);
+  }
+
+  .pixl-locker-dashboard > header > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pixl-locker-dashboard > header > div:first-child {
+    flex: 1 1 76px;
+  }
+
+  .pixl-locker-dashboard > header > div:first-child img {
+    max-width: 100%;
+    height: auto;
+    max-height: 28px;
+  }
+
+  .pixl-locker-dashboard > header > div:nth-child(2) {
+    flex: 0 0 auto;
+    margin-left: auto;
   }
 
   .pixl-locker-dashboard > header [data-testid="btn-mobile-open-profile"] {

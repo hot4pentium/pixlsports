@@ -79,6 +79,7 @@ import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './track
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
+import { FanBaseEntry } from './fan-base-owner-card';
 import { SupporterEventGuidanceMessageBoard } from './supporter-event-guidance-message-board';
 import { SupporterHypeCardPreview } from './supporter-hype-card-preview';
 import { NotificationSettings } from './notification-settings';
@@ -666,7 +667,10 @@ export function SupporterDashboardView({
         setGameOnCardOutcome((current) => current === outcome ? '' : current);
       }, 8000);
     }
-    if (userId) setLocalGameOnCards(readSavedGameOnCards(userId));
+    if (userId) {
+      setLocalGameOnCards(readSavedGameOnCards(userId));
+      setLocalGameOnCardDrafts(readOfflineGameOnCardDrafts(userId));
+    }
     void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
     if (creatingFromDraft) {
       if (selectedId && draftId) {
@@ -1509,6 +1513,7 @@ export function SupporterDashboardView({
                 failed={Boolean(userId) && athleteInvitesQuery.isError}
                 onRetry={() => { void athleteInvitesQuery.refetch(); }}
               />
+              <FanBaseEntry inviteToken={savedFanCard?.inviteToken} />
             </div>
           </section>
           <section className="combined-actions-card" aria-label="Quick links" data-testid="dashboard-primary-actions-desktop">

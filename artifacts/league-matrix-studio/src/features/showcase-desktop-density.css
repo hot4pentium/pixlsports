@@ -116,3 +116,15 @@
   :root .public-showcase--card-only .public-showcase__hero { grid-template-columns: minmax(0, 1fr); width: min(440px, calc(100% - 48px)); gap: 20px; }
   :root .public-showcase--card-only .public-showcase__visual { margin-inline: auto; width: 100%; }
 }
+
+/* iOS-aligned Showcase on desktop: same single column, bounded 2:3 card. */
+@media (min-width: 768px) {
+  :root .ps__stage-wrap--card-only { width: min(100%, 440px); padding: 8px 0 16px; }
+  :root .ps__card-only { max-width: 440px; }
+  :root .ps__card-only-panel { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 0; }
+  :root .ps__card-only-art { width: 260px; margin-inline: auto; box-shadow: 0 14px 30px rgba(0,0,0,.28); }
+  :root .ps__card-links { width: 100%; align-items: stretch; }
+  :root .ps__card-links .ps__link { width: 100%; justify-content: center; border-radius: 12px; }
+  :root .ps__card-unavailable { padding: 20px; }
+  .ps-desktop-bounded { max-width: 520px !important; }
+}

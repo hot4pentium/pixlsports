@@ -85,3 +85,44 @@
 .ps__card-only-art{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin-inline:auto;overflow:hidden;border:1px solid rgba(192,220,248,.3);background:#102b4d;box-shadow:15px 20px 0 rgba(2,10,24,.38),0 20px 45px rgba(0,0,0,.28);container-type:inline-size}
 .ps__card-only-art .living-card-simple-face{position:absolute;inset:0}
 @media(max-width:720px){.ps__stage-wrap--card-only{padding-inline:14px}.ps__card-only-panel{grid-template-columns:minmax(0,1fr);gap:20px;padding:18px}.ps__card-only-heading{gap:14px}.ps__card-only-heading .ps__card-links{width:100%}.ps__card-only-art{width:min(78%,330px)}}
+
+/* iOS HYPE Card screen alignment: single bounded column, eyebrow + title, portrait card, actions below. */
+.ps__stage-wrap--card-only{width:min(100%,520px);padding:20px 16px 28px}
+.ps__eyebrow{margin:0 0 6px;color:#55a4ff;font:800 11px/1.2 "DM Sans",sans-serif;letter-spacing:.18em;text-transform:uppercase}
+.ps__stage-wrap--card-only .ps__section-title{margin:0 0 6px;font-size:clamp(30px,8vw,40px);color:#f3f6fa}
+.ps__card-only{display:grid;gap:16px;max-width:520px}
+.ps__card-only>.ps__card-picker{width:100%;margin:0}
+.ps__card-only-panel{grid-template-columns:minmax(0,1fr);gap:16px;padding:0;border:0;background:none}
+.ps__card-only-panel>.ps__card-only-art{order:1}
+.ps__card-only-panel>.ps__card-only-heading{order:2;gap:12px}
+.ps__card-only-panel>:not(.ps__card-only-art):not(.ps__card-only-heading){order:3}
+.ps__card-only-art{width:100%;max-width:520px;border-radius:19px;border:1.5px solid rgba(40,120,245,.85);box-shadow:0 18px 36px rgba(0,0,0,.32)}
+.ps__card-only-team{font-size:clamp(20px,6vw,26px)}
+.ps__card-only-heading .ps__card-links{width:100%}
+.ps__card-links .ps__link{border-radius:14px;min-height:48px}
+.ps__card-unavailable{width:100%;max-width:none;border-left:0;border:1px solid rgba(85,164,255,.3);border-radius:20px;background:#102b4d;padding:20px;box-shadow:0 14px 30px rgba(0,0,0,.22)}
+.ps__card-unavailable .ps__link{border-radius:14px}
+.ps__card-picker select{border-radius:12px}
+.ps__profile-edit{justify-content:center;width:100%;margin:16px 0 0;border-radius:14px;min-height:48px}
+.ps__stage-wrap--card-only *{overflow-wrap:anywhere}
+@media(max-width:300px){.ps__stage-wrap--card-only{padding-inline:8px}.ps__card-links .ps__link{letter-spacing:.04em;font-size:12px;padding:8px}.ps__card-unavailable{padding:14px}.ps__profile-edit{font-size:10px;padding:0 8px}}
+@media(prefers-reduced-motion:reduce){.ps__card-links .ps__link,.ps__profile-edit{transition:none}.ps__card-links .ps__link:hover,.ps__profile-edit:hover{transform:none}}
+
+/* Owner Player Showcase only: iOS light subtle-grid canvas with navy containers. */
+.ps-owner-canvas{position:relative;isolation:isolate;min-height:100%;background-color:#f3f5f6;background-image:linear-gradient(90deg,rgba(16,43,77,.05) 1px,transparent 1px),linear-gradient(rgba(16,43,77,.05) 1px,transparent 1px);background-size:42px 42px;color:#102b4d}
+.ps-owner-canvas>.ps-desktop-bounded:first-child a,.ps-owner-canvas>.ps-desktop-bounded:first-child a *{color:#102b4d}
+.ps-owner-canvas>.ps-desktop-bounded:first-child a:hover{color:#2878f5}
+.ps-owner-canvas .ps__eyebrow{color:#1f63c9}
+.ps-owner-canvas .ps__stage-wrap--card-only .ps__section-title{color:#0b1f3a}
+.ps-owner-canvas .ps__card-only-intro{color:#3d5370}
+.ps-owner-canvas .ps__card-only>.ps__card-picker{color:#102b4d}
+.ps-owner-canvas .ps__card-only-panel>.ps__card-only-heading{padding:16px;border-radius:20px;background:linear-gradient(145deg,#102b4d,#0b1f3a);box-shadow:0 12px 26px rgba(15,35,64,.16)}
+.ps-owner-canvas .ps__card-links .ps__link--secondary{background:#1a4374;border-color:#2878f5;color:#f3f6fa}
+.ps-owner-canvas .ps__card-only-art{box-shadow:0 16px 32px rgba(11,31,58,.24)}
+.ps-owner-canvas .ps__card-unavailable{box-shadow:0 12px 26px rgba(15,35,64,.16)}
+.ps-owner-canvas .ps__card-unavailable>.ps__card-picker{color:#b6c9de}
+.ps-owner-canvas .ps__profile-edit{background:#102b4d;border-color:#2878f5;color:#f3f6fa}
+.ps-owner-canvas .ps__profile-edit:focus-visible,.ps-owner-canvas a:focus-visible,.ps-owner-canvas button:focus-visible,.ps-owner-canvas select:focus-visible{outline:3px solid #2878f5;outline-offset:3px}
+.ps-owner-canvas [data-testid="panel-share-public-showcase"]{border-radius:20px;background:linear-gradient(145deg,#102b4d,#0b1f3a);color:#f3f6fa;box-shadow:0 12px 26px rgba(15,35,64,.16)}
+.ps-owner-canvas [data-testid="panel-share-public-showcase"] .text-primary{color:#8ec2ff}
+.ps-owner-canvas [data-testid="panel-share-public-showcase"] button{border-radius:12px}

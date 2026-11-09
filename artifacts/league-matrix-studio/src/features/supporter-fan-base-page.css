@@ -1,0 +1,17 @@
+.fan-base-page {
+  min-height: 80dvh;
+  padding: 24px 16px 48px;
+  color: #12213a;
+  background-color: #f4f7fb;
+  background-image: linear-gradient(#0b1f3a08 1px, transparent 1px), linear-gradient(90deg, #0b1f3a08 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+.fan-base-page__content { width: 100%; max-width: 520px; min-width: 0; margin: auto; }
+.fan-base-page__eyebrow { margin: 28px 0 8px; color: #405f05; font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.fan-base-page h1 { margin: 0 0 24px; font-size: clamp(30px, 8vw, 42px); font-weight: 900; line-height: 1.1; overflow-wrap: anywhere; }
+.fan-base-page__panel { min-width: 0; padding: 22px; border: 1px solid #416891; border-radius: 22px; background: linear-gradient(145deg, #15375e, #12213a); color: #fff; box-shadow: 0 16px 32px #03112425; overflow-wrap: anywhere; }
+.fan-base-page__panel h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.fan-base-page__panel button { min-height: 44px; margin-top: 12px; padding: 8px 18px; border-radius: 999px; background: #b8f45c; color: #12213a; font-weight: 800; }
+.fan-base-page__panel :is(button, select):focus-visible { outline: 3px solid #72c9ff; outline-offset: 3px; }
+.fan-base-page__panel select { display: block; width: 100%; min-width: 0; min-height: 44px; margin-top: 8px; padding: 10px; border-radius: 10px; background: #243e60; color: #fff; }
+.fan-base-page .supporter-game-on-summary__fan-base-heading { flex-wrap: wrap; }
