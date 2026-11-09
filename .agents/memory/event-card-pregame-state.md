@@ -48,3 +48,16 @@ will learn availability when they tap Track Stats.
 
 **How to apply:** Remove only the navigation copy and its space; retain the
 ten-minute access rule, clickable game-tool chooser and always-available recording.
+
+Shared HYPE Card event labels must agree with the owner's calendar display, and
+user-visible event times must use 12-hour AM/PM format.
+
+**Why:** The user reported that a received HYPE Card still called an event from
+the previous day Live while the owner's card showed Complete, and explicitly
+requested 12-hour times.
+
+**How to apply:** Use the event's saved time zone and the native owner's display
+phases for public calendar labels, rather than trusting stale persisted Live
+values. Calendar Complete is not permission to finalize a tracker or invent a
+score. Preserve private tools' actual lifecycle, format saved wall times without
+converting them to a recipient's zone, and keep existing public-card refreshes.

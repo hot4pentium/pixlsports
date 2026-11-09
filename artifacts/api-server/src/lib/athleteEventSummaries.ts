@@ -1,3 +1,5 @@
+import { isIanaTimezone, scheduledEventStart } from "./timezone";
+
 export interface AthleteEventShareRow {
   id: string;
   title: string;
@@ -48,7 +50,9 @@ export function gameIdsFromAthleteEventShares(shares: AthleteEventShareRow[]): s
 export function mapAthleteEventSummaries(
   shares: AthleteEventShareRow[],
   trackerRows: AthleteTrackerShareRow[],
+  options: { now?: Date; timezone?: string | null; normalizeDisplayStatus?: boolean } = {},
 ): AthleteEventSummary[] {
+  const now = options.now ?? new Date();
   const trackerStatusByGame = new Map<string, string>();
   for (const tracker of trackerRows) {
     const game = tracker.game && typeof tracker.game === "object" && !Array.isArray(tracker.game)
@@ -66,11 +70,27 @@ export function mapAthleteEventSummaries(
     const type = event.type as "game" | "practice";
     const eventStatus = event.status === "final" || event.status === "live" ? event.status : "upcoming";
     const trackerStatus = type === "game" ? trackerStatusByGame.get(event.id) : undefined;
-    const status = eventStatus === "final" || trackerStatus === "final"
+    let status: AthleteEventSummary["status"] = eventStatus === "final" || trackerStatus === "final"
       ? "final"
       : eventStatus === "live" || trackerStatus === "live"
         ? "live"
         : "upcoming";
+    const timezone = isIanaTimezone(event.timezone) ? event.timezone
+      : isIanaTimezone(options.timezone) ? options.timezone : undefined;
+    const start = timezone && typeof event.time === "string"
+      ? scheduledEventStart(event.date, event.time, timezone) : null;
+    if (options.normalizeDisplayStatus !== false && status !== "final" && start) {
+      // Calendar display only: match the owner's Share/Complete phase without
+      // changing a tracker, its score, or its actual finalization state.
+      const completeAfter = (type === "game" ? 1 : 3) * 3_600_000;
+      status = now.getTime() < start.getTime() ? "upcoming"
+        : now.getTime() - start.getTime() >= completeAfter ? "final" : "live";
+    } else if (options.normalizeDisplayStatus !== false && status !== "final"
+      && now.getTime() - Date.parse(`${event.date}T00:00:00Z`) >= 48 * 3_600_000) {
+      // A legacy card with no usable zone/time cannot remain live indefinitely.
+      // Two full days are safely past its window in every supported time zone.
+      status = "final";
+    }
 
     return [{
       shareToken: share.id,
@@ -82,18 +102,7 @@ export function mapAthleteEventSummaries(
       status,
       opponent: typeof event.opponent === "string" ? event.opponent : "",
       location: typeof event.location === "string" ? event.location : "",
-      ...(typeof event.timezone === "string" && isValidTimeZone(event.timezone)
-        ? { timezone: event.timezone }
-        : {}),
+      ...(timezone ? { timezone } : {}),
     }];
   });
-}
-
-function isValidTimeZone(value: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
 }

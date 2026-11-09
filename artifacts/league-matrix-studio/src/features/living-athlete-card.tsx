@@ -34,7 +34,7 @@ import {
   type PersonalTally,
 } from './cheer-journal';
 import { CheerCelebrationDialog, FanCheersSummary } from './cheer-celebration';
-import { athleteLocalDate, hasEventToday, recentUpcomingAthleteEvents } from './athlete-event-links';
+import { athleteEventTimeDisplay, athleteLocalDate, hasEventToday, recentUpcomingAthleteEvents } from './athlete-event-links';
 import { normalizeCardAppearance, resolveHypeCardAthleteName } from './hype-card-appearance';
 import { getUserProfile } from './supporter-dashboard-model';
 import { SharedHypeCardLoading } from './shared-hype-card-loading';
@@ -821,7 +821,7 @@ export function LivingAthleteCardPage({
                           const eventLabel = event.status === 'live'
                             ? 'Live'
                             : event.status === 'final'
-                              ? 'Final'
+                              ? 'Complete'
                               : event.date < eventDate ? 'Recent' : 'Upcoming';
                           return (
                             <li className="living-card-event" data-status={event.status} key={`${event.shareToken}-${event.eventId}`} data-testid={`card-living-event-${event.shareToken}`}>
@@ -829,7 +829,7 @@ export function LivingAthleteCardPage({
                               <h3>{event.opponent ? `vs ${event.opponent}` : event.title}</h3>
                               {event.opponent && <p className="living-card-event-title">{event.title}</p>}
                               <dl>
-                                <div><dt>Time</dt><dd>{event.time || 'To be announced'}</dd></div>
+                                <div><dt>Time</dt><dd>{athleteEventTimeDisplay(event.time) || 'To be announced'}</dd></div>
                                 <div><dt>Location</dt><dd>{event.location || 'To be announced'}</dd></div>
                               </dl>
                             </li>

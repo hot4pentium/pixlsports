@@ -3,10 +3,19 @@ import test from 'node:test';
 import type { AthleteInviteEventSummary } from '@workspace/api-client-react';
 import {
   athleteLocalDate,
+  athleteEventTimeDisplay,
   gameOnHref,
   hasEventToday,
   recentUpcomingAthleteEvents,
 } from './athlete-event-links';
+
+test('shared event times consistently use 12-hour AM/PM without changing the wall time', () => {
+  for (const [input, expected] of [
+    ['00:00', '12:00 AM'], ['12:00', '12:00 PM'], ['21:05', '9:05 PM'],
+    ['9:05 pm', '9:05 PM'], ['09:05', '9:05 AM'], ['23:59', '11:59 PM'],
+    ['', ''], ['TBA', 'TBA'], ['25:00', '25:00'], ['12:65', '12:65'],
+  ]) assert.equal(athleteEventTimeDisplay(input!), expected);
+});
 
 const event: AthleteInviteEventSummary = {
   shareToken: 'marked_card', eventId: 'game-7', title: 'Saturday fixture',

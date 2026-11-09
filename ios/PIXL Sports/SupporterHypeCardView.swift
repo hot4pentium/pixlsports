@@ -1484,7 +1484,7 @@ struct SupporterHypeCardView: View {
                         HStack {
                             Text(event.type.uppercased())
                             Spacer()
-                            Text(event.status.uppercased())
+                            Text(event.status == "final" ? "COMPLETE" : event.status.uppercased())
                         }
                         .font(.caption2.weight(.bold))
                         .tracking(0.8)
@@ -1492,7 +1492,7 @@ struct SupporterHypeCardView: View {
                         Text(event.opponent.isEmpty ? event.title : "vs \(event.opponent)")
                             .font(.headline.weight(.bold))
                             .foregroundStyle(.white)
-                        Text([formattedHypeDate(event.date), event.time, event.location]
+                        Text([formattedHypeDate(event.date), nativeEventTimeDisplay(event.time), event.location]
                             .filter { !$0.isEmpty }
                             .joined(separator: " · "))
                             .font(.subheadline)

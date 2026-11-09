@@ -392,7 +392,11 @@ export async function loadNativeSupporterSchedule(
       && liveGame.liveTapsEnded !== true
       && liveGame.sport === invite.sport,
     );
-    const events: NativeSupporterEvent[] = mapAthleteEventSummaries(shareRows, trackerRows).map((event) => {
+    // Private tools need the stored tracker lifecycle, not the public calendar's
+    // time-derived Complete marker. The native UI computes its own display phase.
+    const events: NativeSupporterEvent[] = mapAthleteEventSummaries(
+      shareRows, trackerRows, { normalizeDisplayStatus: false },
+    ).map((event) => {
       const activeEventId = typeof liveGame?.sourceEventId === "string"
         ? liveGame.sourceEventId : liveShare?.game_id;
       const isActiveEvent = liveTapsActive && event.type === "game" && event.eventId === activeEventId;

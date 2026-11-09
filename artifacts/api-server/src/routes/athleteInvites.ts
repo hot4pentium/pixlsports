@@ -447,7 +447,7 @@ function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
   };
 }
 
-async function availableAthleteEvents(ownerClerkUserId: string) {
+async function availableAthleteEvents(ownerClerkUserId: string, timezone?: string | null) {
   const ownerShares = await db.select({ share: scheduleSharesTable })
     .from(scheduleSharesTable)
     .where(and(
@@ -471,7 +471,7 @@ async function availableAthleteEvents(ownerClerkUserId: string) {
       inArray(statTrackerSharesTable.gameId, gameIds),
     ));
   }
-  return mapAthleteEventSummaries(shares, trackerRows);
+  return mapAthleteEventSummaries(shares, trackerRows, { timezone });
 }
 
 async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
@@ -507,7 +507,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
         gt(statTrackerSharesTable.expiresAt, new Date()),
       )).then(([share]) => share ?? null)
       : Promise.resolve(null),
-    invite.showEvents ? availableAthleteEvents(invite.ownerClerkUserId) : Promise.resolve([]),
+    invite.showEvents ? availableAthleteEvents(invite.ownerClerkUserId, invite.timezone) : Promise.resolve([]),
   ]);
   const latestImage = latestImages[0] ?? null;
   const latestVideo = videos[0] ?? null;
@@ -641,7 +641,7 @@ async function ownedInviteResponse(invite: InviteRow) {
       : null,
     photoRevision: athletePhotoRevision(invite.photoObjectPath),
     cardAppearance: invite.cardAppearance ?? null,
-    events: invite.showEvents ? await availableAthleteEvents(invite.ownerClerkUserId) : [],
+    events: invite.showEvents ? await availableAthleteEvents(invite.ownerClerkUserId, invite.timezone) : [],
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt,
   };

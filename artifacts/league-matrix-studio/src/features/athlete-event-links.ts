@@ -1,5 +1,14 @@
 import type { AthleteInviteEventSummary } from '@workspace/api-client-react';
 
+export function athleteEventTimeDisplay(time: string) {
+  const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(time.trim());
+  if (!match) return time;
+  let hour = Number(match[1]);
+  if (Number(match[2]) > 59 || (match[3] ? hour < 1 || hour > 12 : hour > 23)) return time;
+  if (match[3]) hour = hour % 12 + (match[3].toUpperCase() === 'PM' ? 12 : 0);
+  return `${hour % 12 || 12}:${match[2]} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
 export function gameOnHref(shareToken: string) {
   return `/game-on/${encodeURIComponent(shareToken)}`;
 }

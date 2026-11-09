@@ -598,7 +598,7 @@ struct ContentView: View {
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.white)
                             Label(
-                                "\(change.draft.time) · \(change.draft.timezone)",
+                                "\(nativeEventTimeDisplay(change.draft.time)) · \(change.draft.timezone)",
                                 systemImage: "clock"
                             )
                             .font(.subheadline)

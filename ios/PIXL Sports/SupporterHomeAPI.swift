@@ -211,6 +211,23 @@ struct NativeHypeStats: Codable {
     let updatedAt: String
 }
 
+/// Display a saved wall-clock time without converting it to the viewer's zone.
+func nativeEventTimeDisplay(_ value: String) -> String {
+    guard !value.isEmpty else { return value }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.isLenient = false
+    for pattern in ["HH:mm", "H:mm", "h:mm a"] {
+        formatter.dateFormat = pattern
+        if let date = formatter.date(from: value.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            formatter.dateFormat = "h:mm a"
+            return formatter.string(from: date)
+        }
+    }
+    return value
+}
+
 struct NativeHypeEvent: Codable, Identifiable {
     let shareToken: String
     let eventId: String
@@ -1540,14 +1557,7 @@ extension AthleteFanEvent {
     }
 
     func formattedTime(timezone: String?) -> String {
-        guard let start = parsedStart(timezone: timezone) else {
-            return time.isEmpty ? "Time to be announced" : time
-        }
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.timeZone = TimeZone(identifier: timezone ?? "") ?? .current
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: start)
+        time.isEmpty ? "Time to be announced" : nativeEventTimeDisplay(time)
     }
 
     func parsedStart(timezone: String?) -> Date? {
