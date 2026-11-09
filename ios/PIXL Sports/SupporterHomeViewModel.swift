@@ -437,6 +437,12 @@ final class SupporterHomeViewModel: ObservableObject {
             let start = event.parsedStart(timezone: zone.identifier)
             guard event.date <= today else { return nil }
             if event.date == today {
+                if event.type == "game",
+                   NativeEventGuideTiming.gameRecommendation(
+                    eventDate: event.date, start: start, timeZone: zone, now: now
+                   ) == .share {
+                    return SupporterScheduleItem(event: event, timing: .complete, start: start)
+                }
                 if let start {
                     let settledAfter: TimeInterval = event.type == "game" ? 2 * 60 * 60 : 3 * 60 * 60
                     guard now.timeIntervalSince(start) >= settledAfter else { return nil }

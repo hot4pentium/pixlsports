@@ -9,6 +9,16 @@ The supporter dashboard event panel is sourced from Event Cards, including stand
 
 **How to apply:** Derive the list from the existing Event Card entries, including published shares with no schedule link, filter to upcoming game/practice cards, and sort chronologically.
 
+Keep a same-day game in the Event Cards section while its dashboard guidance is
+in the After Event/Share stage; do not leave a gap before the settled past-card
+window begins.
+
+**Why:** The dashboard advanced to After Event before the Event Cards list's
+two-hour past-card threshold, temporarily hiding an event that remained active.
+
+**How to apply:** Treat the Share recommendation as a completed-list card until
+the settled past-card cutoff takes over, with no overlap or missing interval.
+
 The mobile space beside the HYPE Card must always provide guidance. A live event offers an action to open its Event Card. Without a live or upcoming Event Card, offer only Create Event Card, not Open tracker or Continue tracking. A standalone tracker session must not override this panel's Event Card guidance.
 
 **Why:** The user said, “This space needs to always provide guidance to the user,” then corrected the tracker fallback: “If there is no event card, then obviously there is no game to track.”

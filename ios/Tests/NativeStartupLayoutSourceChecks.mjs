@@ -188,9 +188,10 @@ test("passed Event Cards stay in the season list without an age cutoff", () => {
   const content = readFileSync(new URL("../PIXL Sports/ContentView.swift", import.meta.url), "utf8");
   const pastCards = homeModel.slice(homeModel.indexOf("private func pastEventCards"));
   assert.match(pastCards, /guard event\.date <= today else \{ return nil \}/);
+  assert.match(pastCards, /if event\.type == "game"[\s\S]*?NativeEventGuideTiming\.gameRecommendation\([\s\S]*?\) == \.share\s*\{\s*return SupporterScheduleItem\(event: event, timing: \.complete, start: start\)/);
   assert.doesNotMatch(pastCards, /\bcutoff\b|30 \* 24/);
   assert.doesNotMatch(homeModel, /guard event\.status != "final" else \{ return nil \}/);
-  assert.match(content, /let allEventCards = events \+ pastEvents/);
+  assert.match(content, /let allEventCards = \(?events \+ pastEvents\)?\.filter/);
 });
 
 test("HYPE Card and photo screens do not show raw server errors", () => {
