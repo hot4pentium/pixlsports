@@ -9,11 +9,11 @@ Event Cards are the backbone of the supporter experience. Opening the selected c
 
 **How to apply:** use the Event Card as the entry point for stage-specific work, preserve event identity through each destination, and offer creation when no future card exists. The timing rules below determine which action is primary.
 
-Event Cards should show “Starting Soon” during the one-hour pregame capture window and switch to “Live” at the event’s scheduled start in its saved time zone. The tracker may still treat that pregame window as capture-eligible. Resolve nonexistent spring-forward wall times by moving forward by the clock gap; resolve repeated fall-back wall times to their earlier instant. The badge and capture window must use that same resolved start.
+Event Card display timing stays separate from tool availability: the dashboard can open Track Stats ten minutes before kickoff, but the card remains “Starting Soon” until its scheduled start in the saved time zone, then becomes “Live.” Resolve nonexistent spring-forward wall times by moving forward by the clock gap; resolve repeated fall-back wall times to their earlier instant. The badge and tool window must use that same resolved start.
 
-**Why:** The early stage was useful for preparing and capturing game data, but reusing it for the card’s visible badge announced a game as live before kickoff. DST ambiguity also needs one stable instant so the pregame window and Live transition cannot disagree.
+**Why:** The user limited Track Stats access to the final ten minutes before a game. Announcing a future game as live is misleading, and DST ambiguity needs one stable instant so the tool window and Live transition cannot disagree.
 
-**How to apply:** Keep schedule-card display timing distinct from tracker/preparation timing, and test both against the event’s IANA time zone at capture-window and kickoff boundaries, including skipped and repeated local times.
+**How to apply:** Keep schedule-card display timing distinct from tracker access, and test both against the event’s IANA time zone at the ten-minute access boundary and kickoff, including skipped and repeated local times.
 
 Event Cards stop being active two hours after their scheduled start in the saved time zone, including cards whose persisted status still says Live. With no future Event Card, the bulletin board must offer Create Event Card; passed games must not recommend Prep.
 
@@ -21,11 +21,11 @@ Event Cards stop being active two hours after their scheduled start in the saved
 
 **How to apply:** Bound active Event Card guidance without automatically finalizing tracker data or changing the tracker's independent capture rules. Keep every passed Event Card in the season list as a completed calendar marker, regardless of age or stale saved status; only the nearest future card may say “Up Next.”
 
-For games, highlight Stat Tracker starting one hour before kickoff and through the first hour after it starts; highlight Share from +1 hour until +2 hours. At +2 hours, advance to the next upcoming Event Card and highlight Prep, or show Create Event Card if none remains.
+For games, highlight Stat Tracker from ten minutes before kickoff through the first hour after it starts; highlight Share from +1 hour until +2 hours. When the next future game reaches its ten-minute Track Stats window, move dashboard guidance to it even if an earlier game is still active. Keep earlier completed Event Cards visible and tappable for their own tools. At +2 hours, advance to the next upcoming Event Card and highlight Prep, or show Create Event Card if none remains.
 
-**Why:** The user requested this timed Event Card action rhythm to make the next useful action clear at each game stage.
+**Why:** The user requested a ten-minute Track Stats limit and automatic focus on the next close event, while confirming that earlier Event Cards remain useful for accessing their tools.
 
-**How to apply:** Derive the phase from scheduled date, time, and saved time zone, not persisted event status or a saved completion timestamp. Keep practice preparation separate, and do not create a Share highlight when the card has no Share action.
+**How to apply:** Derive the phase from scheduled date, time, and saved time zone, not persisted event status or a saved completion timestamp. Keep the nearest future card labeled “Up Next” until kickoff; do not hide or delete earlier cards, change saved stats, or create a Share highlight when the card has no Share action.
 
 Use the saturated blue action fill only for the currently recommended action. A permanently blue Prep button reads as highlighted even when Stat Tracker or Share is recommended.
 

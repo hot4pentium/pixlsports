@@ -527,9 +527,10 @@ struct ContentView: View {
     private var athleteHero: some View {
         if case let .schedule(page, _, _) = displayedState {
             TimelineView(.periodic(from: .now, by: 60)) { context in
+                let guideNow = guideReferenceDate(for: context.date)
                 let guide = SupporterHomeViewModel.featuredGuideEvent(
                     in: page,
-                    now: guideReferenceDate(for: context.date)
+                    now: guideNow
                 )
                 NativeHomeHeroCards(
                     athleteName: profileValue(viewModel.athleteProfile?.athleteName, fallback: page.athleteName) ?? "Your athlete",
@@ -539,7 +540,7 @@ struct ContentView: View {
                     scheduleTimezone: page.timezone,
                     nextEvent: guide?.event,
                     eventTiming: guide?.timing,
-                    eventStartsInFuture: guide?.start.map { $0 > context.date } ?? false,
+                    eventStartsInFuture: guide?.start.map { $0 > guideNow } ?? false,
                     seasonName: viewModel.hypeCardPreview?.publicCard?.seasonName
                         ?? viewModel.hypeCardPreview?.privateCard?.seasonName ?? page.seasonName ?? "",
                     hypePhotoURL: viewModel.hypeCardPreview?.publicCard?.photoUrl

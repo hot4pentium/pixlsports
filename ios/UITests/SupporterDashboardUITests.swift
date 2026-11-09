@@ -432,6 +432,78 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testNextEventTakesDashboardFocusWhenItsTrackWindowOpens() {
+        for accessibilityText in [false, true] {
+            let before = launch("guide-close-events-before-pregame", accessibilityText: accessibilityText)
+            let beforeBoard = reachable("dashboard-message-board-card", in: before)
+            XCTAssertTrue(beforeBoard.label.contains("Earlier 6:30 Game"), beforeBoard.label)
+            XCTAssertFalse(beforeBoard.label.contains("Next 7:15 Game"), beforeBoard.label)
+            let earlierBefore = reachable(
+                accessibilityText
+                    ? "dashboard-event-card-fictional-close-earlier"
+                    : "dashboard-event-tile-fictional-close-earlier",
+                in: before
+            )
+            let nextBefore = reachable(
+                accessibilityText
+                    ? "dashboard-event-card-fictional-close-next"
+                    : "dashboard-event-tile-fictional-close-next",
+                in: before
+            )
+            XCTAssertFalse(earlierBefore.label.contains("UP NEXT"))
+            XCTAssertTrue(nextBefore.label.contains("UP NEXT"))
+            before.terminate()
+
+            let atWindow = launch("guide-close-events-pregame", accessibilityText: accessibilityText)
+            let board = reachable("dashboard-message-board-card", in: atWindow)
+            XCTAssertTrue(board.label.contains("Next 7:15 Game"), board.label)
+            XCTAssertFalse(board.label.contains("Earlier 6:30 Game"), board.label)
+            XCTAssertTrue(board.label.contains("Starting soon"), board.label)
+
+            let earlier = reachable(
+                accessibilityText
+                    ? "dashboard-event-card-fictional-close-earlier"
+                    : "dashboard-event-tile-fictional-close-earlier",
+                in: atWindow
+            )
+            let next = reachable(
+                accessibilityText
+                    ? "dashboard-event-card-fictional-close-next"
+                    : "dashboard-event-tile-fictional-close-next",
+                in: atWindow
+            )
+            XCTAssertFalse(earlier.label.contains("UP NEXT"))
+            XCTAssertTrue(next.label.contains("UP NEXT"))
+            atWindow.terminate()
+        }
+    }
+
+    func testCompletedCloseEventRemainsTappableAfterDashboardFocusMovesOn() {
+        for accessibilityText in [false, true] {
+            let app = launch("guide-close-events-history", accessibilityText: accessibilityText)
+            let board = reachable("dashboard-message-board-card", in: app)
+            XCTAssertTrue(board.label.contains("Next 9:05 Game"), board.label)
+            XCTAssertTrue(board.label.contains("Starting soon"), board.label)
+            XCTAssertFalse(board.label.contains("Completed 6:30 Game"), board.label)
+
+            let completed = reachable(
+                accessibilityText
+                    ? "dashboard-event-card-fictional-close-completed"
+                    : "dashboard-event-tile-fictional-close-completed",
+                in: app
+            )
+            XCTAssertTrue(completed.label.contains("COMPLETE"), completed.label)
+            XCTAssertFalse(completed.label.contains("UP NEXT"), completed.label)
+            completed.tap()
+
+            let detailTitle = app.staticTexts["event-detail-title"]
+            XCTAssertTrue(detailTitle.waitForExistence(timeout: 5))
+            XCTAssertTrue(detailTitle.label.contains("Completed 6:30 Game"), detailTitle.label)
+            XCTAssertTrue(app.buttons["event-card-share"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
     func testLongPressEventCardOpensPrefilledEditorInBothDashboardLayouts() {
         for accessibilityText in [false, true] {
             let app = launch("upcoming", accessibilityText: accessibilityText)

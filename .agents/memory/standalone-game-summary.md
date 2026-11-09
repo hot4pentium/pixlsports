@@ -3,11 +3,11 @@ name: Upcoming Event Card list
 description: Use Event Card entries for the supporter dashboard upcoming panel without requiring Calendar records.
 ---
 
-The supporter dashboard event panel is sourced from Event Cards, including standalone published cards without Calendar links. Prioritize a currently live game or practice over future cards, then show upcoming cards in date order. Exclude completed or past cards from the upcoming list.
+The supporter dashboard event panel is sourced from Event Cards, including standalone published cards without Calendar links. Keep the Event Cards list chronological and completed cards available. For the main dashboard guidance, prioritize a future game when its ten-minute Track Stats window opens, even if an earlier game is still active; keep the earlier card tappable for its tools.
 
-**Why:** The user clarified that this view uses Event Cards only and that the 8:30 PM item is standalone; Calendar is not used for this flow.
+**Why:** The user clarified that this view uses Event Cards only and that standalone cards do not require Calendar links. They chose automatic focus on the upcoming event while retaining access to tools from past cards.
 
-**How to apply:** Derive the list from the existing Event Card entries, including published shares with no schedule link, filter to upcoming game/practice cards, and sort chronologically.
+**How to apply:** Derive the list from existing Event Card entries, including published shares with no schedule link. Keep past cards visible and tappable, label only the nearest future card “Up Next,” and base main guidance on schedule time rather than saved status.
 
 Keep a same-day game in the Event Cards section while its dashboard guidance is
 in the After Event/Share stage; do not leave a gap before the settled past-card
