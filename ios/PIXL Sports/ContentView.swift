@@ -23,6 +23,7 @@ struct ContentView: View {
     @ObservedObject private var offlineRuntime = NativeOfflineRuntime.shared
 #if DEBUG
     @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
+    @ObservedObject private var dashboardClock: SupporterDashboardClock
     @ObservedObject private var fanBaseRefreshFixture: NativeFanBaseRefreshUITestFixture
     private let usesFanBaseRefreshFixture: Bool
 #endif
@@ -87,6 +88,7 @@ struct ContentView: View {
         self._showingSettings = showingSettings
 #if DEBUG
         self.fixtureState = nil
+        self._dashboardClock = ObservedObject(wrappedValue: SupporterDashboardFixtures.clock)
         self._fanBaseRefreshFixture = ObservedObject(
             wrappedValue: NativeFanBaseRefreshUITestFixture(startLoaded: false)
         )
@@ -106,6 +108,7 @@ struct ContentView: View {
         self._showingAccountLink = showingAccountLink
         self._showingSettings = showingSettings
         self.fixtureState = fixtureState
+        self._dashboardClock = ObservedObject(wrappedValue: SupporterDashboardFixtures.clock)
         self._fanBaseRefreshFixture = ObservedObject(
             wrappedValue: fanBaseRefreshFixture
                 ?? NativeFanBaseRefreshUITestFixture(startLoaded: false)
@@ -135,7 +138,12 @@ struct ContentView: View {
 
     private var displayedState: SupporterHomeViewModel.State {
 #if DEBUG
-        if let fixtureState { return fixtureState }
+        if let fixtureState {
+            if SupporterDashboardFixtures.isClockControlled {
+                return SupporterDashboardFixtures.state(now: dashboardClock.now)
+            }
+            return fixtureState
+        }
 #endif
         return viewModel.state
     }
@@ -477,6 +485,9 @@ struct ContentView: View {
     private func guideReferenceDate(for timelineDate: Date) -> Date {
 #if DEBUG
         if fixtureState != nil {
+            if SupporterDashboardFixtures.isClockControlled {
+                return dashboardClock.now
+            }
             return SupporterDashboardFixtures.fixedGuideNow ?? timelineDate
         }
 #endif

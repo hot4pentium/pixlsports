@@ -5,11 +5,17 @@ import Combine
 /// Local fictional content only. These screens cannot request account or schedule data.
 @MainActor
 enum SupporterDashboardFixtures {
+    static let clock = SupporterDashboardClock(initialDate: fixedGuideNow ?? Date())
+
     static var isRequested: Bool {
         ProcessInfo.processInfo.arguments.contains("--ui-testing-dashboard")
     }
 
-    static var state: SupporterHomeViewModel.State {
+    static var isClockControlled: Bool {
+        ProcessInfo.processInfo.arguments.contains("--dashboard-state=guide-close-events-clock")
+    }
+
+    static func state(now: Date? = nil) -> SupporterHomeViewModel.State {
         let arguments = ProcessInfo.processInfo.arguments
         let name = arguments.first(where: { $0.hasPrefix("--dashboard-state=") })?
             .replacingOccurrences(of: "--dashboard-state=", with: "") ?? "upcoming"
@@ -55,13 +61,14 @@ enum SupporterDashboardFixtures {
                 ],
                 pastEvents: []
             )
-        case "guide-close-events-before-pregame", "guide-close-events-pregame":
+        case "guide-close-events-before-pregame", "guide-close-events-pregame", "guide-close-events-clock":
+            let clockBoundaryFixture = name == "guide-close-events-clock"
             let earlier = guideGame(
                 status: "live",
                 id: "fictional-close-earlier",
-                title: "Earlier 6:30 Game",
+                title: clockBoundaryFixture ? "Earlier 7:05 Game" : "Earlier 6:30 Game",
                 date: "2026-11-08",
-                time: "18:30",
+                time: clockBoundaryFixture ? "19:05" : "18:30",
                 timezone: "America/New_York"
             )
             // Deliberately stale status: the scheduled time remains authoritative.
@@ -73,10 +80,10 @@ enum SupporterDashboardFixtures {
                 time: "19:15",
                 timezone: "America/New_York"
             )
-            let now = fixedGuideNow ?? Date()
+            let referenceDate = now ?? fixedGuideNow ?? Date()
             return .schedule(
                 page: page(events: [earlier, next], timezone: "America/New_York"),
-                events: [earlier, next].compactMap { scheduledGameItem($0, now: now) },
+                events: [earlier, next].compactMap { scheduledGameItem($0, now: referenceDate) },
                 pastEvents: []
             )
         case "guide-close-events-history":
@@ -147,6 +154,7 @@ enum SupporterDashboardFixtures {
             "guide-postgame": "2026-11-14T04:00:00Z",
             "guide-close-events-before-pregame": "2026-11-09T00:04:59Z",
             "guide-close-events-pregame": "2026-11-09T00:05:00Z",
+            "guide-close-events-clock": "2026-11-09T00:04:59Z",
             "guide-close-events-history": "2026-11-09T01:55:00Z"
         ]
         guard let timestamp = timestamps[state] else { return nil }
@@ -248,16 +256,44 @@ enum SupporterDashboardFixtures {
     }
 }
 
+@MainActor
+final class SupporterDashboardClock: ObservableObject {
+    @Published private(set) var now: Date
+
+    init(initialDate: Date) {
+        now = initialDate
+    }
+
+    func advanceToTenMinuteWindow() {
+        now = now.addingTimeInterval(1)
+    }
+}
+
 struct SupporterDashboardFixtureView: View {
     @State private var showingConnection = false
 
     var body: some View {
         ContentView(
-            fixtureState: SupporterDashboardFixtures.state,
+            fixtureState: SupporterDashboardFixtures.state(),
             showingAccountLink: $showingConnection,
             showingSettings: .constant(false)
         )
         .frame(maxWidth: ProcessInfo.processInfo.arguments.contains("--dashboard-narrow") ? 320 : .infinity)
+        .safeAreaInset(edge: .bottom) {
+            if SupporterDashboardFixtures.isClockControlled {
+                HStack {
+                    Spacer()
+                    Button("Advance to ten-minute window") {
+                        SupporterDashboardFixtures.clock.advanceToTenMinuteWindow()
+                    }
+                    .font(.caption.weight(.semibold))
+                    .padding(8)
+                    .background(.white, in: Capsule())
+                }
+                .padding(8)
+                .accessibilityIdentifier("dashboard-fixture-advance-clock")
+            }
+        }
         .sheet(isPresented: $showingConnection) {
             NavigationStack {
                 Text("Fictional account connection preview. No account is accessed.")
@@ -368,7 +404,7 @@ struct NativeFanBaseRefreshFixtureView: View {
 
     var body: some View {
         ContentView(
-            fixtureState: SupporterDashboardFixtures.state,
+            fixtureState: SupporterDashboardFixtures.state(),
             fanBaseRefreshFixture: fixture,
             showingAccountLink: $showingConnection,
             showingSettings: .constant(false)

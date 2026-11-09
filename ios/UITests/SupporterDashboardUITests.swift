@@ -478,6 +478,64 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testNextEventTakesDashboardFocusWithoutRelaunchingAtItsTrackWindow() {
+        for accessibilityText in [false, true] {
+            let app = launch("guide-close-events-clock", accessibilityText: accessibilityText)
+            let board = reachable("dashboard-message-board-card", in: app)
+            XCTAssertTrue(board.label.contains("Earlier 7:05 Game"), board.label)
+            XCTAssertFalse(board.label.contains("Next 7:15 Game"), board.label)
+
+            let earlierID = accessibilityText
+                ? "dashboard-event-card-fictional-close-earlier"
+                : "dashboard-event-tile-fictional-close-earlier"
+            let nextID = accessibilityText
+                ? "dashboard-event-card-fictional-close-next"
+                : "dashboard-event-tile-fictional-close-next"
+            let earlierBefore = reachable(earlierID, in: app)
+            let nextBefore = reachable(nextID, in: app)
+            XCTAssertTrue(earlierBefore.label.contains("UP NEXT"), earlierBefore.label)
+            XCTAssertFalse(nextBefore.label.contains("UP NEXT"), nextBefore.label)
+
+            let advanceClock = app.buttons["dashboard-fixture-advance-clock"]
+            XCTAssertTrue(advanceClock.waitForExistence(timeout: 5))
+            advanceClock.tap()
+
+            let heroUpdated = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label CONTAINS %@", "Next 7:15 Game"),
+                object: board
+            )
+            let upNextUpdated = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label CONTAINS %@", "UP NEXT"),
+                object: app.descendants(matching: .any)[nextID].firstMatch
+            )
+            let previousUpNextCleared = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label CONTAINS[c] %@", "Live"),
+                object: app.descendants(matching: .any)[earlierID].firstMatch
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [heroUpdated, upNextUpdated, previousUpNextCleared], timeout: 5),
+                .completed
+            )
+            XCTAssertEqual(app.state, .runningForeground, "The same dashboard session remains open.")
+
+            let boardAfter = reachable("dashboard-message-board-card", in: app)
+            XCTAssertTrue(boardAfter.label.contains("Next 7:15 Game"), boardAfter.label)
+            XCTAssertFalse(boardAfter.label.contains("Earlier 7:05 Game"), boardAfter.label)
+            XCTAssertTrue(boardAfter.label.contains("Starting soon"), boardAfter.label)
+
+            let earlierAfter = reachable(earlierID, in: app)
+            let nextAfter = reachable(nextID, in: app)
+            XCTAssertFalse(earlierAfter.label.contains("UP NEXT"), earlierAfter.label)
+            XCTAssertTrue(nextAfter.label.contains("UP NEXT"), nextAfter.label)
+            XCTAssertEqual(
+                [earlierAfter, nextAfter].filter { $0.label.contains("UP NEXT") }.count,
+                1,
+                "Only the next future Event Card is labeled Up Next."
+            )
+            app.terminate()
+        }
+    }
+
     func testCompletedCloseEventRemainsTappableAfterDashboardFocusMovesOn() {
         for accessibilityText in [false, true] {
             let app = launch("guide-close-events-history", accessibilityText: accessibilityText)
