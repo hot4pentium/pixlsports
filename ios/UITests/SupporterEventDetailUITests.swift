@@ -916,6 +916,11 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(shareHypeCard.frame.height, 44)
         XCTAssertLessThanOrEqual(shareDetails.frame.width, detailsScroll.frame.width)
         XCTAssertLessThanOrEqual(shareHypeCard.frame.width, detailsScroll.frame.width)
+        XCTAssertGreaterThanOrEqual(
+            shareHypeCard.frame.minY - shareDetails.frame.maxY,
+            20,
+            "Separate event sharing from the Athlete Showcase action."
+        )
 
         let dateForShare = fullShareDate(from: date)
         shareDetails = revealShareAction("native-event-share-details", in: app)
