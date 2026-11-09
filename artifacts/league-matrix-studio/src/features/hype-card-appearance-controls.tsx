@@ -55,6 +55,38 @@ export function HypeCardDesignPicker({ appearance, onChange, disabled = false, v
   );
 }
 
+const simplifiedCardStyleIds: HypeCardTemplateId[] = ['velocity', 'varsity', 'spotlight'];
+
+export function HypeCardSimpleStylePicker({ appearance, onChange, disabled = false }: {
+  appearance: HypeCardAppearance;
+  onChange: (next: HypeCardAppearance) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <fieldset disabled={disabled} data-testid="card-style-picker">
+      <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Choose a card style</legend>
+      <div className="grid grid-cols-3 gap-2">
+        {HYPE_CARD_TEMPLATES.filter((template) => simplifiedCardStyleIds.includes(template.id)).map((template) => (
+          <button
+            key={template.id}
+            type="button"
+            aria-pressed={appearance.design === template.id && appearance.lowerThirdTemplate === template.id}
+            onClick={() => onChange(normalizeCardAppearance({
+              ...switchCardAppearanceDesign(appearance, template.id),
+              lowerThirdTemplate: template.id,
+            }))}
+            className="flex min-h-11 min-w-0 flex-col gap-1 rounded-lg border border-white/25 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:bg-white/15 disabled:opacity-50"
+            data-testid={`button-card-style-${template.id}`}
+          >
+            <span className="block w-full"><Thumb frame={template.id} lowerThird={template.id} border={template.primaryColor} accent={template.secondaryColor} /></span>
+            <span className="text-xs font-black leading-tight text-white" data-testid="card-style-name">{template.name}</span>
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export function HypeCardLowerThirdPicker({ appearance, onChange, disabled = false }: {
   appearance: HypeCardAppearance;
   onChange: (next: HypeCardAppearance) => void;

@@ -13,7 +13,7 @@ import { simpleCardLogoSrc } from './simple-hype-card-brand';
 import { buildSimpleHypeCardArtwork, HYPE_TEMPLATE_CARD_H, HYPE_TEMPLATE_CARD_W } from './simple-hype-card-artwork';
 import type { UserProfile } from './supporter-dashboard-model';
 import { ClassicHypeCardPreview } from './classic-hype-card-preview';
-import { HypeCardPhotoPositionSliders, HypeCardTemplateCyclers } from './hype-card-appearance-controls';
+import { HypeCardPhotoPositionSliders, HypeCardSimpleStylePicker } from './hype-card-appearance-controls';
 import antonFontUrl from '../assets/anton-regular.ttf?url';
 import './showcase-desktop-density.css';
 
@@ -244,7 +244,7 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
         </div>
         <p className="fan-card-editor__status mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
         <div className="fan-card-editor__templates mx-auto mt-3 w-full max-w-[320px]">
-          <HypeCardTemplateCyclers appearance={currentAppearance} onChange={updateAppearance} disabled={busy} />
+          <HypeCardSimpleStylePicker appearance={currentAppearance} onChange={updateAppearance} disabled={busy} />
         </div>
       </div>
       <div className="fan-card-editor__controls space-y-5">
