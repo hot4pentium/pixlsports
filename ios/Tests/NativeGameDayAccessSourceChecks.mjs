@@ -4,6 +4,14 @@ import test from "node:test";
 
 const read = (name) => readFileSync(new URL(`../PIXL Sports/${name}.swift`, import.meta.url), "utf8");
 
+test("native timer publishers explicitly import Combine", () => {
+  for (const name of ["SupporterEventDetailView", "NativeEventTrackerView", "NativeOfflineRuntime"]) {
+    const source = read(name);
+    assert.match(source, /Timer\.publish[\s\S]*?\.autoconnect\(\)/);
+    assert.match(source, /^import Combine$/m, `${name} needs Combine for autoconnect().`);
+  }
+});
+
 test("one inclusive policy guards timed tools without locking the chooser or recording", () => {
   const policy = read("NativeEventDetailStep");
   assert.match(policy, /addingTimeInterval\(-10 \* 60\)/);
