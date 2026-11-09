@@ -101,8 +101,8 @@ struct NativeEventTrackerView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             HStack(alignment: .top, spacing: 20) {
-                                scoreboard(teamName, score: 0, opponent: false, editable: false)
-                                scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: 0, opponent: true, editable: false)
+                                scoreboard(teamName, score: 0, opponent: false, editable: false, showsControls: false)
+                                scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: 0, opponent: true, editable: false, showsControls: false)
                             }
                         } else {
                             Text("Track \(workspace.sport.capitalized) for \(athleteName). Each tap saves to your existing PIXL game history.")
@@ -141,8 +141,8 @@ struct NativeEventTrackerView: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 20) {
                 let canEditScore = game.status == "live" && model.canEditTrackerLocally
-                scoreboard(teamName, score: game.score, opponent: false, editable: canEditScore)
-                scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: game.opponentScore, opponent: true, editable: canEditScore)
+                scoreboard(teamName, score: game.score, opponent: false, editable: canEditScore, showsControls: game.status == "live")
+                scoreboard(event.opponent.isEmpty ? "Opponent" : event.opponent, score: game.opponentScore, opponent: true, editable: canEditScore, showsControls: game.status == "live")
             }
             if game.status == "final" {
                 if model.pendingFinal {
@@ -258,13 +258,13 @@ struct NativeEventTrackerView: View {
         .accessibilityIdentifier("native-event-end-game")
     }
 
-    private func scoreboard(_ label: String, score: Int, opponent: Bool, editable: Bool) -> some View {
+    private func scoreboard(_ label: String, score: Int, opponent: Bool, editable: Bool, showsControls: Bool) -> some View {
         VStack(spacing: 8) {
             Text(label).font(.subheadline.bold()).multilineTextAlignment(.center)
             Text("\(score)")
                 .font(.system(.largeTitle, design: .rounded).bold())
                 .accessibilityIdentifier("native-event-score-\(opponent ? "opponent" : "team")-value")
-            if editable {
+            if showsControls {
                 HStack {
                     Button { adjustScore(opponent: opponent, delta: -1) } label: {
                         Image(systemName: "minus.circle.fill").font(.title2).frame(minWidth: 44, minHeight: 44)
@@ -278,6 +278,7 @@ struct NativeEventTrackerView: View {
                     .accessibilityIdentifier("native-event-score-\(opponent ? "opponent" : "team")-add")
                      .accessibilityLabel("Increase \(label) score")
                 }
+                .disabled(!editable)
                 .accessibilityLabel("\(label) score")
             }
         }

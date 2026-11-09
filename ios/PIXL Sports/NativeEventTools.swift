@@ -138,8 +138,10 @@ final class NativeEventToolModel: ObservableObject {
 #if DEBUG
         if NativeEventWorkspaceUITestFixture.isRequested { return workspace != nil }
 #endif
+        // A Prep conflict pauses the shared sender, not durable local scoring.
+        // Tracker/account/game safety checks still apply independently.
         return workspace != nil && !unreadablePendingData
-            && !conflictBlocked
+            && (!conflictBlocked || hasPendingPrepCommand)
             && (trackerRecoveryStatus?.permitsLocalEntry ?? true)
             && !eventIsFinal
             && ownsCurrentScope
