@@ -98,12 +98,13 @@ struct SupporterHypeCardView: View {
            let data = try? offline.vault.read("dashboard-preview", subject: subject) {
             storedPreview = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: data)
         }
-        let preview = canUseOwnerCache ? storedPreview : nil
+        var preview = canUseOwnerCache ? storedPreview : nil
         var cachedProfile: NativeSupporterProfile?
         if canUseOwnerCache, let subject,
            let data = try? offline.vault.read("get/supporter/profile", subject: subject) {
             cachedProfile = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data)
         }
+        if let cachedProfile { preview = preview?.followingProfile(cachedProfile) }
         var cachedIdentityMismatch = preview?.identityMismatch ?? false
         let cachedCardName = preview?.publicCard?.athleteName ?? preview?.privateCard?.athleteName
         let normalize: (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
@@ -1690,10 +1691,11 @@ struct SupporterHypeCardView: View {
             settingsMessage = "Checking your saved HYPE Card changes with PIXL."
         }
         do {
-            let result = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
+            var result = try await SupporterHomeAPI.fetchOwnerHypeCardPreview(clerk: clerk)
             let profile = try? await SupporterHomeAPI.fetchAthleteProfile(clerk: clerk)
             guard !Task.isCancelled, Self.ownerSubject(clerk: clerk) == requestSubject else { return }
             athleteProfile = profile ?? athleteProfile
+            if let athleteProfile { result = result.followingProfile(athleteProfile) }
             let normalize: (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
             let previewName = result.publicCard?.athleteName ?? result.privateCard?.athleteName
             let previewTeam = result.publicCard?.teamName ?? result.privateCard?.teamName ?? ""

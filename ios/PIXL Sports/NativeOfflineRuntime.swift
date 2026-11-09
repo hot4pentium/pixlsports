@@ -128,6 +128,14 @@ final class NativeOfflineRuntime: ObservableObject {
     func cacheSavedAthleteProfile(_ data: Data) {
         athleteProfileCacheRevision = UUID()
         cache(data, key: "get/supporter/profile")
+        if let subject = vault.subject,
+           vault.canContinue(subject: subject),
+           let profile = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data),
+           let previewData = try? vault.read("dashboard-preview", subject: subject),
+           let preview = try? JSONDecoder().decode(NativeSupporterHypeCardPreview.self, from: previewData),
+           let updated = try? JSONEncoder().encode(preview.followingProfile(profile)) {
+            cache(updated, key: "dashboard-preview")
+        }
     }
 
     func cache(_ data: Data, key: String, workspace: NativeEventWorkspace? = nil) {

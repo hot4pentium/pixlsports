@@ -7,17 +7,17 @@ Supporter profile athlete details should automatically seed new or local fan-too
 
 **Why:** A live card represents the athlete’s current identity, while saved and published content may represent a deliberate past design or a different game. Only the invite owner controls identity updates.
 
-Native profile saves may update a live invite’s athlete/team identity only when it still matches the previous profile. They must not change HYPE Card visibility, pause, media, or publication settings.
+An explicit owner save in native Settings automatically updates the owner's live HYPE Card name, even after an earlier rename left it mismatched. The HYPE Card always uses the Settings name; a nickname can be entered there, not in a separate card-only field. No identity confirmation is required for this save. Visibility, pause, media, and publication settings remain unchanged.
 
-**Why:** Profile details and consent to publish are separate choices; completing athlete setup must never make a private card public.
+**Why:** The user chose “Always match the Settings name” and “Sync automatically on save” after a transient identity-confirmation prompt prevented a rename. Profile details and consent to publish remain separate choices.
 
-**How to apply:** Read the normalized supporter profile at tool entry. On live-card routes, apply identity only after confirming invite ownership and a match with the previous profile. Persist identity corrections through an owner-only write, update no publication controls, and preserve authored cloud/share data unless the user explicitly edits it.
+**How to apply:** Preserve verified ownership and setup-retry safeguards. Persist live-card identity in the explicit profile-save flow; show queued profile names in owner-only caches until reconnect. Never apply local owner overrides to public recipients, authored exports, or published snapshots.
 
-When an existing live HYPE Card identity does not match the selected profile, do not repair it during profile save. Show both identities and require an explicit owner confirmation; the repair changes only athlete/team identity, never artwork, media, visibility, pause, or published snapshots.
+Legacy identity-repair endpoints still require verified owner authorization. Ordinary Settings name saves must not depend on that separate repair dialog or token.
 
-**Why:** Legacy mismatches need a recovery path without silently claiming a card for a different athlete or changing the owner’s sharing choices.
+**Why:** The owner explicitly authorized automatic Settings-name propagation, not any relaxation of access controls or changes to sharing choices.
 
-**How to apply:** Keep mismatch detection separate from profile updates. Bind the confirmation to the card shown to the owner, re-check that it is still mismatched, and leave authored artwork and share snapshots unchanged.
+**How to apply:** Keep repair authorization tests intact while covering repeated profile renames, pre-existing mismatches, offline queued names, and unchanged privacy and authored content.
 
 When the owner creates their first HYPE Card, automatically copy their saved Athlete Profile photo. Preserve the private original and publish only an independently stored, sanitized card copy. Do not backfill existing cards or replace their chosen photos when profile photos change.
 

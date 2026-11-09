@@ -105,8 +105,8 @@ struct NativeHypeCardIdentityCorrectionResult: Decodable {
 }
 
 struct NativePrivateHypeCard: Codable {
-    let athleteName: String
-    let teamName: String
+    var athleteName: String
+    var teamName: String
     let seasonName: String
     let favoriteMoment: String?
     let hasPhoto: Bool
@@ -120,11 +120,30 @@ struct NativeSupporterHypeCardPreview: Codable {
     let settings: NativeHypeCardSettings?
     let identityMismatch: Bool
     let correctionId: String?
+
+    /// Owner-only presentation follows the saved Settings profile, including
+    /// queued edits. Never apply this to a public recipient or authored export.
+    func followingProfile(_ profile: NativeSupporterProfile) -> Self {
+        guard !profile.athleteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return self
+        }
+        var publicPreview = publicCard
+        var privatePreview = privateCard
+        publicPreview?.athleteName = profile.athleteName
+        privatePreview?.athleteName = profile.athleteName
+        if !profile.teamName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            publicPreview?.teamName = profile.teamName
+            privatePreview?.teamName = profile.teamName
+        }
+        return Self(publicCard: publicPreview, privateCard: privatePreview,
+                    privatePhoto: privatePhoto, settings: settings,
+                    identityMismatch: false, correctionId: nil)
+    }
 }
 
 struct NativePublicHypeCard: Codable {
-    let athleteName: String
-    let teamName: String
+    var athleteName: String
+    var teamName: String
     let seasonName: String
     let sport: String
     let photoUrl: String?
@@ -586,7 +605,22 @@ enum SupporterHomeAPI {
     }
 
     static func fetchAthleteProfile(clerk: Clerk) async throws -> NativeSupporterProfile {
+        let subjectAtStart = clerk.user?.id
+        let scopeAtStart = NativeOfflineRuntime.shared.vault.namespace
+        let client = NativeAccountLinkClient()
+        if let subject = clerk.user?.id,
+           let pending = try client.pendingAthleteProfileChange(subject: subject) {
+            return pending.desired
+        }
         let data = try await NativeAccountLinkClient().getData("supporter/profile", clerk: clerk)
+        guard clerk.user?.id == subjectAtStart,
+              NativeOfflineRuntime.shared.vault.namespace == scopeAtStart else {
+            throw NativeOfflineError.locked
+        }
+        if let subject = clerk.user?.id,
+           let pending = try client.pendingAthleteProfileChange(subject: subject) {
+            return pending.desired
+        }
         do {
             return try JSONDecoder().decode(NativeSupporterProfile.self, from: data)
         } catch {
@@ -683,12 +717,11 @@ enum SupporterHomeAPI {
 
         guard var current = try client.pendingAthleteProfileChange(subject: subject) else { return remote }
         guard !current.isConflicted else { return current.desired }
-        if remote.hasSameAthleteDetails(as: current.desired) {
-            try client.clearAthleteProfileChange(subject: subject)
-            offline.cacheSavedAthleteProfile(remoteData)
-            return remote
-        }
-        guard remote.hasSameAthleteDetails(as: current.base) else {
+        // Re-submit an already matching profile too: an earlier interrupted
+        // rename may have left its live card stale. The owner PATCH reconciles
+        // both identities without requiring the separate repair confirmation.
+        let remoteMatchesDesired = remote.hasSameAthleteDetails(as: current.desired)
+        guard remoteMatchesDesired || remote.hasSameAthleteDetails(as: current.base) else {
             current.conflictProfile = remote
             current.conflictMessage = "Your iPhone edits and the saved PIXL profile are different. Choose which version to keep."
             current.lastError = nil
@@ -708,7 +741,7 @@ enum SupporterHomeAPI {
                     position: submitted.position,
                     sport: submitted.sport,
                     completeSetup: false,
-                    expectedProfile: NativeAthleteProfileVersion(current.base)
+                    expectedProfile: NativeAthleteProfileVersion(remoteMatchesDesired ? remote : current.base)
                 ),
                 method: "PATCH",
                 clerk: clerk
@@ -1036,6 +1069,23 @@ enum SupporterHomeAPI {
     }
 
     static func fetchOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
+        let subjectAtStart = clerk.user?.id
+        let scopeAtStart = NativeOfflineRuntime.shared.vault.namespace
+        let preview = try await fetchStoredOwnerHypeCardPreview(clerk: clerk)
+        let offline = NativeOfflineRuntime.shared
+        guard clerk.user?.id == subjectAtStart, offline.vault.namespace == scopeAtStart else {
+            throw NativeOfflineError.locked
+        }
+        guard let subject = clerk.user?.id,
+              offline.vault.canContinue(subject: subject),
+              let data = try? offline.vault.read("get/supporter/profile", subject: subject),
+              let profile = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data) else {
+            return preview
+        }
+        return preview.followingProfile(profile)
+    }
+
+    private static func fetchStoredOwnerHypeCardPreview(clerk: Clerk) async throws -> NativeSupporterHypeCardPreview {
         let offline = NativeOfflineRuntime.shared
         if !offline.online || !clerk.isLoaded,
            let data = try offline.vault.read("dashboard-preview", subject: clerk.user?.id),

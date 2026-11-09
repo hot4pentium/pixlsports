@@ -365,11 +365,16 @@ test("optional fields may be blank and do not erase a saved HYPE Card team", asy
   assert.equal(saved.rows[0]?.team_name, "Tigers");
 });
 
-test("profile updates do not silently replace an already mismatched HYPE Card identity", async () => {
+test("an explicit owner profile save also updates an already mismatched live HYPE Card", async () => {
   const who = identity();
   const linkedOwner = await owner();
   await link(who, linkedOwner);
   await invite(linkedOwner, "Another athlete", "Wolves");
+  await pool.query(
+    `UPDATE athlete_invites SET paused=true, show_hype_card=false,
+     show_stats=false, show_events=false, favorite_moment='Keep this moment'
+     WHERE owner_clerk_user_id=$1`, [linkedOwner],
+  );
   const metadata = new Map<string, Record<string, unknown>>([
     [linkedOwner, { athleteName: "Jordan", teamName: "Tigers" }],
   ]);
@@ -387,9 +392,22 @@ test("profile updates do not silently replace an already mismatched HYPE Card id
     [linkedOwner],
   );
   assert.deepEqual(saved.rows[0], {
-    athlete_name: "Another athlete",
-    team_name: "Wolves",
+    athlete_name: "Jordan",
+    team_name: "Tigers 26",
   });
+  for (const athleteName of ["Ace", "Jordan Lee"]) {
+    await service.update(who, {
+      athleteName, teamName: "Tigers 26", jerseyNumber: "", position: "",
+    });
+    const latest = await pool.query(
+      `SELECT athlete_name, paused, show_hype_card, show_stats, show_events, favorite_moment
+       FROM athlete_invites WHERE owner_clerk_user_id=$1`, [linkedOwner],
+    );
+    assert.deepEqual(latest.rows[0], {
+      athlete_name: athleteName, paused: true, show_hype_card: false,
+      show_stats: false, show_events: false, favorite_moment: "Keep this moment",
+    });
+  }
 });
 
 test("unlinked or ineligible identities cannot read or update a web profile", async () => {

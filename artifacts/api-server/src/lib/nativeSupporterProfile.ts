@@ -153,9 +153,9 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
         const oldMetadata = metadataRecord(user.unsafeMetadata);
         const oldProfile = profileFromMetadata(oldMetadata);
 
-        // Keep an existing live HYPE Card aligned only when its identity still
-        // matches the saved profile. This changes identity fields alone; all
-        // visibility, pause, media, and publication settings remain untouched.
+        // An explicit owner profile save is authority to rename their live card,
+        // including a card left mismatched by an earlier interrupted rename.
+        // Publication, artwork, media and privacy fields remain untouched.
         const existingInvite = await findNativeOwnerCard(tx, owner);
         const invite = existingInvite ?? await assignNativeStarterCard(tx, owner, profile, oldMetadata);
         const completingSetup = input.completeSetup === true || !oldProfile.athleteName || !existingInvite;
@@ -175,14 +175,7 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
               : {}),
           };
         }
-        const inviteMatchesSavedProfile = Boolean(
-          invite
-          && oldProfile.athleteName
-          && normalizedIdentity(invite.athlete_name) === normalizedIdentity(oldProfile.athleteName)
-          && (!oldProfile.teamName
-            || normalizedIdentity(invite.team_name) === normalizedIdentity(oldProfile.teamName)),
-        );
-        if (!completingSetup && inviteMatchesSavedProfile) {
+        if (!completingSetup) {
           const nextInviteTeam = profile.teamName || invite.team_name;
           if (
             invite.athlete_name !== profile.athleteName

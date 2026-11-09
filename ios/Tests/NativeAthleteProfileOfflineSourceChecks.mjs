@@ -39,7 +39,8 @@ test("queued profiles sync only after linked-account confirmation and preserve c
   assert.match(api, /fetchAuthoritativePrivateSchedule\(clerk: clerk\)/);
   assert.match(api, /remote\.hasSameAthleteDetails\(as: current\.base\)/);
   assert.match(api, /conflictProfile = remote/);
-  assert.match(api, /expectedProfile: NativeAthleteProfileVersion\(current\.base\)/);
+  assert.match(api, /expectedProfile: NativeAthleteProfileVersion\(remoteMatchesDesired \? remote : current\.base\)/);
+  assert.match(api, /guard remoteMatchesDesired \|\| remote\.hasSameAthleteDetails\(as: current\.base\)/);
   assert.match(server, /sameProfileVersion\(oldProfile, input\.expectedProfile\)/);
   assert.match(server, /NativeLinkError\(409/);
   assert.match(spec, /NativeSupporterProfileVersion/);
