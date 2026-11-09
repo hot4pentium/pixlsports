@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
+import express from "express";
 import { pool } from "@workspace/db";
 import {
   createNativeSupporterProfileService,
@@ -8,6 +9,7 @@ import {
 } from "./nativeSupporterProfile";
 import type { NativeIdentity } from "./nativeIdentity";
 import { createNativeAthletePhotoService } from "./nativeAthletePhoto";
+import athleteInvitesRouter from "../routes/athleteInvites";
 
 const owners: string[] = [];
 const nativeSubjects: string[] = [];
@@ -62,11 +64,155 @@ function createService(metadataByOwner: Map<string, Record<string, unknown>>) {
 }
 
 after(async () => {
+  await pool.query("DELETE FROM hype_card_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_editor_access WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_invites WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM native_account_links WHERE native_subject=ANY($1::text[])", [nativeSubjects]);
   await pool.query("DELETE FROM account_access WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.end();
+});
+
+test("owner profile edits update the live HYPE Card for owners and recipients without rewriting authored content", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  const inviteToken = await invite(linkedOwner, "Jordan", "Tigers");
+  const cardAppearance = {
+    design: "spotlight",
+    borderColor: "#123456",
+    accentColor: "#ABCDEF",
+    accentLinked: false,
+    athleteX: 0.14,
+    athleteY: -0.02,
+    athleteScale: 1.1,
+    jerseyNumber: "7",
+    position: "Forward",
+  };
+  const liveCard = await pool.query(
+    `UPDATE athlete_invites
+     SET show_hype_card=true, show_stats=false, show_schedule=false,
+         show_events=false, paused=false, hypes_enabled=false,
+         card_appearance=$2::jsonb, favorite_moment='Keep this authored moment'
+     WHERE owner_clerk_user_id=$1
+     RETURNING id`,
+    [linkedOwner, JSON.stringify(cardAppearance)],
+  );
+  const publishedManifest = {
+    athleteName: "Jordan",
+    teamName: "Tigers",
+    headline: "A published moment",
+    authoredAt: "2099-01-01T00:00:00.000Z",
+  };
+  const publishedShareToken = randomBytes(18).toString("base64url");
+  await pool.query(
+    `INSERT INTO hype_card_shares
+      (owner_clerk_user_id, public_token, slug, title, manifest, share_mode,
+       media_type, athlete_name, sport, expires_at)
+     VALUES ($1,$2,'authored-moment','Authored moment',$3::jsonb,
+       'card','image','Jordan','soccer',NOW() + INTERVAL '30 days')`,
+    [linkedOwner, publishedShareToken, JSON.stringify(publishedManifest)],
+  );
+
+  const metadata = new Map<string, Record<string, unknown>>([
+    [linkedOwner, { athleteName: "Jordan", teamName: "Tigers", seasonName: "26", unrelatedFlag: true }],
+  ]);
+  const { service } = createService(metadata);
+  const savedProfile = await service.update(who, {
+    athleteName: "Jordan Lee",
+    teamName: "Tigers 26",
+    jerseyNumber: "7",
+    position: "Forward",
+  });
+  assert.deepEqual(savedProfile, {
+    athleteName: "Jordan Lee",
+    teamName: "Tigers 26",
+    jerseyNumber: "7",
+    position: "Forward",
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteInvitesRouter);
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const ownerCardUrl = `http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}`;
+  try {
+    const ownerResponse = await fetch(ownerCardUrl, { headers: { "x-test-user": linkedOwner } });
+    assert.equal(ownerResponse.status, 200);
+    const ownerCard = await ownerResponse.json() as {
+      athleteName: string;
+      teamName: string;
+      cardAppearance: unknown;
+    };
+    assert.deepEqual(
+      [ownerCard.athleteName, ownerCard.teamName],
+      ["Jordan Lee", "Tigers 26"],
+      "The owner read should show the saved profile identity on the live card.",
+    );
+    assert.deepEqual(ownerCard.cardAppearance, cardAppearance);
+
+    const recipientResponse = await fetch(`${ownerCardUrl}/fan`);
+    assert.equal(recipientResponse.status, 200);
+    const recipientCard = await recipientResponse.json() as {
+      athleteName: string;
+      teamName: string;
+    };
+    assert.deepEqual(
+      [recipientCard.athleteName, recipientCard.teamName],
+      ["Jordan Lee", "Tigers 26"],
+      "A recipient's public live-card read should show the same saved profile identity.",
+    );
+
+    const authoredCard = await pool.query<{
+      card_appearance: unknown;
+      favorite_moment: string | null;
+      show_hype_card: boolean;
+      show_stats: boolean;
+      show_schedule: boolean;
+      show_events: boolean;
+      paused: boolean;
+      hypes_enabled: boolean;
+    }>(
+      `SELECT card_appearance, favorite_moment, show_hype_card, show_stats,
+              show_schedule, show_events, paused, hypes_enabled
+       FROM athlete_invites WHERE id=$1`,
+      [liveCard.rows[0].id],
+    );
+    assert.deepEqual(authoredCard.rows[0], {
+      card_appearance: cardAppearance,
+      favorite_moment: "Keep this authored moment",
+      show_hype_card: true,
+      show_stats: false,
+      show_schedule: false,
+      show_events: false,
+      paused: false,
+      hypes_enabled: false,
+    });
+    const publishedSnapshot = await pool.query<{
+      athlete_name: string | null;
+      manifest: unknown;
+    }>(
+      "SELECT athlete_name, manifest FROM hype_card_shares WHERE public_token=$1",
+      [publishedShareToken],
+    );
+    assert.deepEqual(publishedSnapshot.rows[0], {
+      athlete_name: "Jordan",
+      manifest: publishedManifest,
+    }, "A previously published moment keeps its authored athlete details.");
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
 });
 
 test("linked owner can load and update athlete profile without publishing a private HYPE Card", async () => {

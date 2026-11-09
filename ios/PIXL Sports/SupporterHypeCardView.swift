@@ -574,7 +574,10 @@ struct SupporterHypeCardView: View {
     private var editAthleteDetailsButton: some View {
         if showsAthleteDetailsShortcut, !isPublicRecipient, let clerk, settings != nil {
             NavigationLink {
-                NativeAthleteProfileView(clerk: clerk, onSaved: { athleteProfile = $0 })
+                NativeAthleteProfileView(clerk: clerk, onSaved: { savedProfile in
+                    athleteProfile = savedProfile
+                    Task { await loadCard(refresh: true) }
+                })
             } label: {
                 Label("Edit Athlete Details", systemImage: "person.text.rectangle")
                     .frame(maxWidth: .infinity, minHeight: 46)

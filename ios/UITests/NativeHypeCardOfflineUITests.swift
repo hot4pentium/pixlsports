@@ -161,7 +161,15 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
 
         let profileNavigationBar = app.navigationBars["Athlete profile"]
         XCTAssertTrue(profileNavigationBar.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.textFields["native-athlete-profile-name"].waitForExistence(timeout: 10))
+        let athleteName = app.textFields["native-athlete-profile-name"]
+        XCTAssertTrue(athleteName.waitForExistence(timeout: 10))
+        let teamName = app.textFields["native-athlete-profile-team"]
+        XCTAssertTrue(teamName.waitForExistence(timeout: 10))
+        let suffix = String(UUID().uuidString.prefix(6))
+        let updatedAthleteName = "Profile Test \(suffix)"
+        let updatedTeamName = "Updated Team \(suffix)"
+        replaceText(in: athleteName, with: updatedAthleteName, in: app)
+        replaceText(in: teamName, with: updatedTeamName, in: app)
         let save = app.buttons["native-athlete-profile-save"]
         XCTAssertTrue(save.isEnabled, "A linked owner with a saved athlete name can save the existing editor.")
         save.tap()
@@ -182,6 +190,17 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         XCTAssertTrue(
             app.descendants(matching: .any)["native-hype-card-athlete-profile"].exists,
             "The owner profile summary should remain available after the editor returns."
+        )
+        let updatedCardIdentity = app.descendants(matching: .any)["native-hype-card"].matching(
+            NSPredicate(
+                format: "label CONTAINS %@ AND label CONTAINS %@",
+                updatedAthleteName,
+                updatedTeamName
+            )
+        ).firstMatch
+        XCTAssertTrue(
+            updatedCardIdentity.waitForExistence(timeout: 30),
+            "The open owner HYPE Card should refresh to the newly saved profile identity."
         )
     }
 
