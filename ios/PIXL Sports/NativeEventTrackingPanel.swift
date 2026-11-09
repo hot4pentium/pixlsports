@@ -240,7 +240,7 @@ struct NativeEventTrackingPanel: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Group {
                         if mode == .recordMoments {
-                            Text("Available anytime")
+                            Text("Available")
                         } else {
                             NativeToolAvailabilityText(access: effectiveTrackingAccess,
                                 timeZone: TimeZone(identifier: event.timezone ?? scheduleTimeZone ?? "") ?? .current,
@@ -437,10 +437,6 @@ struct NativeEventTrackingPanel: View {
 
     private var effectiveTrackingAccess: NativeEventTrackingAccess {
         gameIsComplete ? .complete : trackingAccess
-    }
-
-    private var availabilityMessage: String {
-        effectiveTrackingAccess.message(timeZone: TimeZone(identifier: event.timezone ?? scheduleTimeZone ?? "") ?? .current)
     }
 
     private func modeAllowed(_ mode: TrackingMode) -> Bool {

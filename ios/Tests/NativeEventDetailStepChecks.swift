@@ -127,11 +127,10 @@ struct NativeEventDetailStepChecks {
                 now: kickoff.addingTimeInterval(-600)).isAllowed)
         }
         let closed = NativeEventTrackingAccess.tooEarly(start.addingTimeInterval(-600))
-        precondition(closed.message(timeZone: losAngeles).contains("10 minutes"))
-        precondition(closed.message(timeZone: losAngeles).contains(
-            losAngeles.abbreviation(for: start.addingTimeInterval(-600))!))
-        precondition(NativeEventTrackingAccess.missingStart.message().contains("Record Moments"))
-        precondition(NativeEventTrackingAccess.complete.message().contains("Record Moments"))
+        precondition(closed.message(timeZone: losAngeles) == "Available within 10 minutes of start")
+        precondition(NativeEventTrackingAccess.available.message() == "Available")
+        precondition(NativeEventTrackingAccess.missingStart.message() == "Add a game start time")
+        precondition(NativeEventTrackingAccess.complete.message() == "Game complete")
         print("Native Event Card completion and Message Board timing checks passed.")
     }
 }

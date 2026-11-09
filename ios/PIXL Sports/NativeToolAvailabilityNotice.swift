@@ -66,12 +66,15 @@ struct NativeToolAvailabilityNotice: View {
             .buttonStyle(.bordered)
             .disabled((!canRemind && !reminders.selected.contains(shareToken)) || reminders.busy.contains(shareToken))
             .accessibilityIdentifier("native-tool-availability-reminder")
-            Text(reminders.errorMessage ?? reminders.messages[shareToken] ?? defaultMessage)
-                .font(.caption)
-                .foregroundStyle(SupporterHomeColors.muted)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: 36, alignment: .topLeading)
-                .accessibilityIdentifier("native-tool-reminder-status")
+            let status = reminders.errorMessage ?? reminders.messages[shareToken] ?? defaultMessage
+            if !status.isEmpty {
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 36, alignment: .topLeading)
+                    .accessibilityIdentifier("native-tool-reminder-status")
+            }
         }
         .task(id: subject) { if subject != nil { await reminders.reconcile() } }
     }
@@ -79,13 +82,12 @@ struct NativeToolAvailabilityNotice: View {
     private var buttonTitle: String {
         if reminders.busy.contains(shareToken) { return "Scheduling…" }
         if reminders.selected.contains(shareToken) { return "Cancel reminder" }
-        if case .available = access { return "Available now" }
+        if case .available = access { return "Available" }
         if case .complete = access { return "Game complete" }
         return "Notify me"
     }
 
     private var defaultMessage: String {
-        canRemind ? "Optional: one reminder on this iPhone when Stats and Live Taps open."
-            : "Record Moments is available anytime. Tracking follows the game’s schedule."
+        canRemind ? "Optional reminder" : ""
     }
 }

@@ -91,6 +91,9 @@ inline, and offer an optional per-event local reminder. Do not force navigation
 or dismiss recording when timing/completion changes. Keep Prep, Share, recovery,
 and ending existing cheers reachable. Completed games cannot restart tracking;
 local pending schedule edits and finalization have the same authority as synced data.
+Keep availability labels short and nonrepetitive: “Available” or “Available
+within 10 minutes of start.” Use a concise missing-start or completed status only
+when those states need explanation.
 
 In the taller dashboard Message Board, keep details left-aligned but vertically centered in the space above the lower Next Step footer, with a protected gap before the footer.
 

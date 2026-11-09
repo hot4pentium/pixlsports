@@ -64,6 +64,17 @@ test("categories share capacity and confirmations follow accepted iOS requests",
   has(coordinator, /components\.timeZone = calendar\.timeZone/, "absolute UTC trigger");
 });
 
+test("chooser status stays to short availability labels", () => {
+  const access = read("NativeEventDetailStep");
+  has(access, /case \.available: return "Available"/, "short unlocked label");
+  has(access, /case \.tooEarly: return "Available within 10 minutes of start"/, "short pregame label");
+  assert.ok(!/Stats and Live Taps are available now|Record Moments is always available|Stats and Live Taps open 10 minutes/.test(access));
+  const notice = read("NativeToolAvailabilityNotice");
+  assert.ok(!/Record Moments is available anytime|Tracking follows the game/.test(notice));
+  has(notice, /if !status\.isEmpty/, "omit duplicate empty reminder explanation");
+  assert.ok(!/Available anytime/.test(read("NativeEventTrackingPanel")));
+});
+
 test("availability stays inline in foreground and account cleanup cancels private alerts", () => {
   const push = read("NativePushRegistrationCoordinator");
   has(push, /categoryIdentifier == "PIXL_TOOL_AVAILABILITY"[\s\S]*?completionHandler\(\[\]\)/, "no redundant foreground banner");

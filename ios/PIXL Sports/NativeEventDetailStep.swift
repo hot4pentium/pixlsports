@@ -88,17 +88,11 @@ enum NativeEventTrackingAccess: Equatable {
 
     func message(timeZone: TimeZone = .current) -> String {
         switch self {
-        case .available: return "Stats and Live Taps are available now. Record Moments is always available."
-        case .complete: return "This game is complete. New tracking is closed; Record Moments is still available."
-        case .notGame: return "Game-day tracking is available for games, not practices."
-        case .missingStart: return "Add a valid game start time for Stats and Live Taps. Record Moments is available now."
-        case let .tooEarly(date):
-            let formatter = DateFormatter()
-            formatter.timeZone = timeZone
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
-            let zone = timeZone.abbreviation(for: date) ?? timeZone.identifier
-            return "Stats and Live Taps open 10 minutes before game time · \(formatter.string(from: date)) \(zone)."
+        case .available: return "Available"
+        case .complete: return "Game complete"
+        case .notGame: return "Game only"
+        case .missingStart: return "Add a game start time"
+        case .tooEarly: return "Available within 10 minutes of start"
         }
     }
 }
