@@ -3,6 +3,7 @@ import { assertLinkableWebAccount } from "./nativeAccountLink";
 import { readNativeOwnerMetadata, writeNativeOwnerMetadata } from "./nativeOwnerMetadata";
 import { NativeLinkError, type NativeIdentity } from "./nativeIdentity";
 import { assignNativeStarterCard, findNativeOwnerCard, savedStarterSport } from "./nativeStarterHypeCard";
+import { isIanaTimezone } from "./timezone";
 
 export type NativeSupporterProfile = {
   athleteName: string;
@@ -15,6 +16,7 @@ export type NativeSupporterProfile = {
 
 type ProfileInput = NativeSupporterProfile & {
   completeSetup?: boolean;
+  timezone?: string;
   expectedProfile?: NativeSupporterProfile;
 };
 type ClerkUser = { unsafeMetadata?: unknown };
@@ -145,6 +147,9 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
     async update(identity: NativeIdentity, input: ProfileInput): Promise<NativeSupporterProfile> {
       let profile = normalizeProfile(input);
       assertValidProfile(profile);
+      if (input.timezone !== undefined && !isIanaTimezone(input.timezone)) {
+        throw new NativeLinkError(400, "Choose a valid time zone.");
+      }
 
       return withLinkedOwner(identity, "UPDATE", async (tx, owner) => {
         // The verified link is locked for update, serializing iPhone setup
@@ -157,6 +162,9 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
         // including a card left mismatched by an earlier interrupted rename.
         // Publication, artwork, media and privacy fields remain untouched.
         const existingInvite = await findNativeOwnerCard(tx, owner);
+        if (!existingInvite && !isIanaTimezone(oldMetadata.timezone) && input.timezone) {
+          oldMetadata.timezone = input.timezone;
+        }
         const invite = existingInvite ?? await assignNativeStarterCard(tx, owner, profile, oldMetadata);
         const completingSetup = input.completeSetup === true || !oldProfile.athleteName || !existingInvite;
         if (!completingSetup && input.expectedProfile
@@ -164,6 +172,22 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
           throw new NativeLinkError(409, "The athlete profile changed on another device.");
         }
         if (completingSetup) {
+          const setupTimezone = isIanaTimezone(oldMetadata.timezone) ? oldMetadata.timezone
+            : isIanaTimezone(invite.timezone) ? invite.timezone : input.timezone;
+          if (input.timezone !== undefined && setupTimezone) {
+            oldMetadata.timezone = setupTimezone;
+            // Capture the account zone without opting into alerts or replacing
+            // preferences saved by another device. Fill only a legacy null zone.
+            await tx.query(
+              `INSERT INTO planner_notification_preferences
+                 (owner_clerk_user_id, one_hour_before, day_of, timezone)
+               VALUES ($1,false,false,$2)
+               ON CONFLICT (owner_clerk_user_id) DO UPDATE
+                 SET timezone=EXCLUDED.timezone
+                 WHERE planner_notification_preferences.timezone IS NULL`,
+              [owner, setupTimezone],
+            );
+          }
           // Existing cards win interrupted/concurrent setup, even if a retry
           // submits a different athlete. This never changes the authored card.
           profile = {

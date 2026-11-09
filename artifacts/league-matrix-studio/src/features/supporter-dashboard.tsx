@@ -73,7 +73,7 @@ import {
   type OfflineGameOnCardDraft,
   type SavedGameOnCard,
 } from './game-on-card-storage';
-import { getBrowserTimeZone } from './game-on-timezone';
+import { resolveGameOnTimeZone } from './game-on-timezone';
 import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
 import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
@@ -628,7 +628,7 @@ export function SupporterDashboardView({
       type: 'game',
       date: '',
       time: '',
-      timezone: getBrowserTimeZone(),
+      timezone: resolveGameOnTimeZone(savedFanCard?.timezone ?? undefined),
       location: '',
       opponent: '',
       status: 'upcoming',

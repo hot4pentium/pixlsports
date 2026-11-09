@@ -8,3 +8,12 @@ Reminder choices and the selected alert time zone belong to the signed-in accoun
 **Why:** Users may have multiple devices in different zones, so a device's latest subscription cannot define the account's schedule. Event-local one-hour timing and account-local morning timing serve different purposes. Missing choices must not become opt-in when a scheduler starts.
 
 **How to apply:** Keep consent and day-of zone in account preferences, retain the event zone for one-hour timing, and use a deterministically selected subscription zone only for legacy fallback. Never infer consent from app installation or a push subscription.
+
+Capture the device's IANA time zone during onboarding and let the user confirm
+or change it. Keep a saved account default stable when the user travels.
+
+**Why:** The user explicitly asked to capture the time zone during onboarding.
+
+**How to apply:** Use the saved default for new Event Cards without changing
+existing events, overwriting previously chosen account zones on setup retries,
+or treating time-zone capture as permission to enable reminders.

@@ -4396,6 +4396,8 @@ export const updateNativeSupporterProfileBodyJerseyNumberMax = 40;
 
 export const updateNativeSupporterProfileBodyPositionMax = 100;
 
+export const updateNativeSupporterProfileBodyTimezoneMax = 100;
+
 export const updateNativeSupporterProfileBodyExpectedProfileAthleteNameMax = 100;
 
 export const updateNativeSupporterProfileBodyExpectedProfileTeamNameMax = 160;
@@ -4413,6 +4415,7 @@ export const UpdateNativeSupporterProfileBody = zod.object({
   "position": zod.string().max(updateNativeSupporterProfileBodyPositionMax).describe('Optional.'),
   "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional(),
   "completeSetup": zod.boolean().optional().describe('Initial native setup or its retry. Reuses an existing owner card\'s identity rather than overwriting it.'),
+  "timezone": zod.string().min(1).max(updateNativeSupporterProfileBodyTimezoneMax).optional().describe('IANA time zone detected and confirmed during onboarding. Seeds new account defaults without changing existing events or reminder consent.'),
   "expectedProfile": zod.object({
   "athleteName": zod.string().max(updateNativeSupporterProfileBodyExpectedProfileAthleteNameMax),
   "teamName": zod.string().max(updateNativeSupporterProfileBodyExpectedProfileTeamNameMax),

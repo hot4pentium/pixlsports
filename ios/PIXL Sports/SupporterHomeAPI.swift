@@ -543,6 +543,7 @@ private struct NativeAthleteProfileUpdate: Encodable {
     let sport: String?
     let completeSetup: Bool
     var expectedProfile: NativeAthleteProfileVersion?
+    var timezone: String? = nil
 }
 
 private struct NativeAthleteProfileVersion: Encodable {
@@ -650,6 +651,7 @@ enum SupporterHomeAPI {
         _ profile: NativeSupporterProfile,
         completeSetup: Bool = false,
         baseProfile: NativeSupporterProfile? = nil,
+        setupTimezone: String? = nil,
         clerk: Clerk
     ) async throws -> NativeSupporterProfile {
         let offline = NativeOfflineRuntime.shared
@@ -689,7 +691,8 @@ enum SupporterHomeAPI {
             body: NativeAthleteProfileUpdate(
                 athleteName: profile.athleteName, teamName: profile.teamName,
                 jerseyNumber: profile.jerseyNumber, position: profile.position,
-                sport: profile.sport, completeSetup: completeSetup, expectedProfile: nil
+                sport: profile.sport, completeSetup: completeSetup, expectedProfile: nil,
+                timezone: completeSetup ? setupTimezone : nil
             ),
             method: "PATCH",
             clerk: clerk

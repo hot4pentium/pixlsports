@@ -1,3 +1,4 @@
+import { getBrowserTimeZone, getGameOnTimeZoneOptions, isIanaTimeZone } from './features/game-on-timezone';
 import {
   useCreateScheduleShare,
   useDeleteScheduleShare,
@@ -3587,6 +3588,10 @@ export function RoleSelectionPage() {
   const [athleteName, setAthleteName] = useState(existingProfile.athleteName);
   const [sport, setSport] = useState<Sport | ''>(existingProfile.sport ?? '');
   const [seasonName, setSeasonName] = useState(existingProfile.seasonName);
+  const [setupTimezone, setSetupTimezone] = useState(() => {
+    const saved = user?.unsafeMetadata?.timezone;
+    return typeof saved === 'string' && isIanaTimeZone(saved) ? saved : getBrowserTimeZone();
+  });
   const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState('');
   const updateAccountAccess = useUpdateAccountAccess();
@@ -3606,6 +3611,10 @@ export function RoleSelectionPage() {
     const cleanSeasonName = seasonName.trim();
     if (!cleanName || !cleanTeam || !cleanAthleteName || !sport || !cleanSeasonName) {
       setError('Add your name, team, athlete name, sport, and season to continue.');
+      return;
+    }
+    if (!isIanaTimeZone(setupTimezone)) {
+      setError('Choose a valid time zone to continue.');
       return;
     }
 
@@ -3643,7 +3652,7 @@ export function RoleSelectionPage() {
                 teamName: cleanTeam,
                 seasonName: cleanSeasonName,
                 seasonEndsAt,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+                timezone: setupTimezone,
                 sport,
                 trackerProjectId: null,
                 scheduleProjectId: null,
@@ -3676,6 +3685,7 @@ export function RoleSelectionPage() {
             athleteName: assignedCard.athleteName,
             sport: assignedCard.sport,
             seasonName: assignedCard.seasonName,
+            timezone: assignedCard.timezone || setupTimezone,
             ...(dashboardChecklistStateAfterSetup(
               user.unsafeMetadata,
               Boolean(existingProfile.role && existingProfile.teamName && existingProfile.displayName),
@@ -3796,6 +3806,22 @@ export function RoleSelectionPage() {
                     className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
                     data-testid="input-profile-season"
                   />
+                </label>
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Time zone
+                  <select
+                    value={setupTimezone}
+                    onChange={(event) => setSetupTimezone(event.target.value)}
+                    className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                    data-testid="input-profile-timezone"
+                  >
+                    {getGameOnTimeZoneOptions(setupTimezone).map((zone) => (
+                      <option key={zone} value={zone}>{zone.replaceAll('_', ' ')}</option>
+                    ))}
+                  </select>
+                  <span className="mt-2 block text-xs font-medium normal-case tracking-normal">
+                    Detected from your device. You can choose a different time zone for each event.
+                  </span>
                 </label>
               </div>
               <div className="mt-7 border-l-4 border-primary bg-primary/10 px-4 py-3 clip-angled-sm">

@@ -10,12 +10,12 @@ export function savedStarterSport(value: unknown): string | undefined {
 
 export type NativeStarterCard = {
   public_token: string; athlete_name: string; team_name: string;
-  sport: string; season_name: string;
+  sport: string; season_name: string; timezone: string | null;
 };
 
 export async function findNativeOwnerCard(tx: PoolClient, owner: string) {
   const { rows } = await tx.query<NativeStarterCard>(
-    `SELECT public_token, athlete_name, team_name, sport, season_name
+    `SELECT public_token, athlete_name, team_name, sport, season_name, timezone
      FROM athlete_invites WHERE owner_clerk_user_id=$1 ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
     [owner],
   );
@@ -43,7 +43,7 @@ export async function assignNativeStarterCard(
         season_ends_at, sport, timezone, show_hype_card, show_stats, show_schedule, show_events, paused)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,false,false,false,true)
      ON CONFLICT (owner_clerk_user_id) DO NOTHING
-     RETURNING public_token, athlete_name, team_name, sport, season_name`,
+     RETURNING public_token, athlete_name, team_name, sport, season_name, timezone`,
     [owner, randomBytes(24).toString("base64url"), profile.athleteName, profile.teamName,
       seasonName, seasonEnd, sport, timezone],
   );

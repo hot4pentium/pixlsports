@@ -22,6 +22,7 @@ struct NativeAthleteProfileView: View {
     @State private var savedProfile: NativeSupporterProfile?
     @State private var pendingChange: NativePendingAthleteProfileChange?
     @State private var sport: String?
+    @State private var setupTimezone = TimeZone.current.identifier
     @State private var profileSubject: String?
     @State private var profileNamespace: String?
 
@@ -173,6 +174,19 @@ struct NativeAthleteProfileView: View {
                     }
                 }
 
+                if isInitialSetup {
+                    Section("Time zone") {
+                        Picker("Your time zone", selection: $setupTimezone) {
+                            ForEach(Array(Set(TimeZone.knownTimeZoneIdentifiers + [setupTimezone])).sorted(), id: \.self) { zone in
+                                Text(zone.replacingOccurrences(of: "_", with: " ")).tag(zone)
+                            }
+                        }
+                        .accessibilityIdentifier("native-athlete-profile-timezone")
+                        Text("Detected from your iPhone. You can choose a different time zone for each event.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 if !isInitialSetup {
                     NativeAthletePhotoSection(clerk: clerk, profileIsSaved: savedProfile == editedProfile)
                         .id(clerk.user?.id)
@@ -319,6 +333,7 @@ struct NativeAthleteProfileView: View {
                 profile,
                 completeSetup: isInitialSetup,
                 baseProfile: pendingChange?.base ?? savedProfile,
+                setupTimezone: isInitialSetup ? setupTimezone : nil,
                 clerk: clerk
             )
             guard clerk.user?.id == subject,

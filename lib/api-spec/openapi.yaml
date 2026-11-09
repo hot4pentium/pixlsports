@@ -5877,6 +5877,11 @@ components:
         completeSetup:
           type: boolean
           description: Initial native setup or its retry. Reuses an existing owner card's identity rather than overwriting it.
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: IANA time zone detected and confirmed during onboarding. Seeds new account defaults without changing existing events or reminder consent.
         expectedProfile:
           $ref: "#/components/schemas/NativeSupporterProfileVersion"
     NativeSupporterProfileVersion:

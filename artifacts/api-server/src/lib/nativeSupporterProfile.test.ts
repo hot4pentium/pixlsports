@@ -64,6 +64,7 @@ function createService(metadataByOwner: Map<string, Record<string, unknown>>) {
 }
 
 after(async () => {
+  await pool.query("DELETE FROM planner_notification_preferences WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM hype_card_shares WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_editor_access WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
   await pool.query("DELETE FROM athlete_invites WHERE owner_clerk_user_id=ANY($1::text[])", [owners]);
@@ -459,6 +460,7 @@ test("first native setup assigns one private softball card using saved season an
   const { service } = createService(metadata);
   const saved = await service.update(who, {
     athleteName: " Jordan ", teamName: "", jerseyNumber: "#12", position: "Pitcher", completeSetup: true,
+    timezone: "America/Los_Angeles",
   });
   assert.deepEqual(saved, {
     athleteName: "Jordan", teamName: "", jerseyNumber: "12", position: "Pitcher", sport: "softball",
@@ -485,6 +487,64 @@ test("first native setup assigns one private softball card using saved season an
   const photoState = await photos.state(who);
   assert.equal(photoState.cardId, card.id);
   assert.equal(photoState.hasPhoto, false);
+});
+
+test("native onboarding captures the detected zone for the starter and account without enabling alerts", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  const metadata = new Map<string, Record<string, unknown>>([[id, {}]]);
+  const { service } = createService(metadata);
+  await service.update(who, {
+    athleteName: "Jordan", teamName: "Tigers", jerseyNumber: "", position: "",
+    completeSetup: true, timezone: "America/Los_Angeles",
+  });
+  const card = (await pool.query("SELECT timezone FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rows[0];
+  const preferences = (await pool.query(
+    "SELECT timezone,one_hour_before,day_of FROM planner_notification_preferences WHERE owner_clerk_user_id=$1", [id],
+  )).rows[0];
+  assert.equal(card.timezone, "America/Los_Angeles");
+  assert.equal(metadata.get(id)?.timezone, "America/Los_Angeles");
+  assert.deepEqual(preferences, { timezone: "America/Los_Angeles", one_hour_before: false, day_of: false });
+});
+
+test("onboarding retries preserve an existing account zone, card, and alert consent", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  await invite(id, "Jordan", "Tigers");
+  await pool.query("UPDATE athlete_invites SET timezone='America/New_York' WHERE owner_clerk_user_id=$1", [id]);
+  await pool.query(
+    "INSERT INTO planner_notification_preferences(owner_clerk_user_id,one_hour_before,day_of,timezone) VALUES ($1,true,false,'America/Chicago')", [id],
+  );
+  const metadata = new Map<string, Record<string, unknown>>([
+    [id, { athleteName: "Jordan", teamName: "Tigers", timezone: "America/New_York" }],
+  ]);
+  const { service } = createService(metadata);
+  await service.update(who, {
+    athleteName: "Jordan", teamName: "Tigers", jerseyNumber: "", position: "",
+    completeSetup: true, timezone: "Asia/Tokyo",
+  });
+  assert.equal(metadata.get(id)?.timezone, "America/New_York");
+  assert.equal((await pool.query("SELECT timezone FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rows[0].timezone, "America/New_York");
+  assert.deepEqual((await pool.query(
+    "SELECT timezone,one_hour_before,day_of FROM planner_notification_preferences WHERE owner_clerk_user_id=$1", [id],
+  )).rows[0], { timezone: "America/Chicago", one_hour_before: true, day_of: false });
+});
+
+test("an invalid onboarding zone is rejected before creating a card or preferences", async () => {
+  const who = identity();
+  const id = await owner();
+  await link(who, id);
+  const metadata = new Map<string, Record<string, unknown>>([[id, {}]]);
+  const { service, writes } = createService(metadata);
+  await assert.rejects(service.update(who, {
+    athleteName: "Jordan", teamName: "", jerseyNumber: "", position: "",
+    completeSetup: true, timezone: "Not/A_Zone",
+  }), /valid time zone/);
+  assert.equal(writes.length, 0);
+  assert.equal((await pool.query("SELECT 1 FROM athlete_invites WHERE owner_clerk_user_id=$1", [id])).rowCount, 0);
+  assert.equal((await pool.query("SELECT 1 FROM planner_notification_preferences WHERE owner_clerk_user_id=$1", [id])).rowCount, 0);
 });
 
 test("setup retries reuse an authored public card without rewriting its identity, media, or settings", async () => {

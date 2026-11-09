@@ -32,5 +32,11 @@ export interface NativeSupporterProfileUpdate {
   sport?: NativeSupporterProfileUpdateSport;
   /** Initial native setup or its retry. Reuses an existing owner card's identity rather than overwriting it. */
   completeSetup?: boolean;
+  /**
+     * IANA time zone detected and confirmed during onboarding. Seeds new account defaults without changing existing events or reminder consent.
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone?: string;
   expectedProfile?: NativeSupporterProfileVersion;
 }
