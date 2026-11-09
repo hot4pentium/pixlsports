@@ -2594,7 +2594,7 @@ test('Event Card sharing sends the selected card link and copies it when sharing
     ), true, 'Share should be offered on the opened card, not the compact grid tile');
     const trackerStateColors = await connection.evaluate<{ inactive: string; initiallyExpanded: string | null }>(`(() => {
       const tracker = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]');
-      if (!(tracker instanceof HTMLButtonElement)) throw new Error('The Stat Tracker action is unavailable');
+      if (!(tracker instanceof HTMLButtonElement)) throw new Error('The Track Stats action is unavailable');
       const initiallyExpanded = tracker.getAttribute('aria-expanded');
       const inactive = getComputedStyle(tracker).backgroundColor;
       return { inactive, initiallyExpanded };
@@ -2602,7 +2602,7 @@ test('Event Card sharing sends the selected card link and copies it when sharing
     assert.deepEqual(trackerStateColors, {
       inactive: 'rgb(231, 242, 255)',
       initiallyExpanded: 'false',
-    }, 'Stat Tracker should be neutral by default');
+    }, 'Track Stats should be neutral by default');
 
     await connection.evaluate(`(() => {
       window.__eventCardOriginalNavigatorProps = {
@@ -2792,8 +2792,29 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         active: getComputedStyle(document.querySelector('[data-testid="link-mobile-parent-week"]')).color,
         inactive: getComputedStyle(document.querySelector('[data-testid="link-mobile-player-showcase"]')).color
       }))()`, page.sessionId);
-      assert.equal(supporterTabColors.active, 'rgb(255, 255, 255)', 'the active mobile section tab remains readable on the Locker header');
-      assert.equal(supporterTabColors.inactive, 'rgb(169, 191, 216)', 'the inactive mobile section tab remains readable on the Locker header');
+      assert.equal(supporterTabColors.active, 'rgb(18, 33, 58)', 'the active mobile section tab uses the native dark-ink color on the light canvas');
+      assert.equal(supporterTabColors.inactive, 'rgb(83, 101, 124)', 'the inactive mobile section tab remains readable on the light canvas');
+      const sharedDashboardPlacement = await connection.evaluate<{
+        canvas: string;
+        seasonStatsVisible: boolean;
+        seasonStatsFollowsRecord: boolean;
+        seasonStatsLabel: string;
+      }>(`(() => {
+        const root = document.querySelector('.supporter-dashboard-mobile-shell');
+        const record = root?.querySelector('.supporter-game-on-summary__record');
+        const seasonStats = root?.querySelector('[data-testid="link-mobile-season-stats-card"]');
+        return {
+          canvas: root ? getComputedStyle(root).backgroundColor : '',
+          seasonStatsVisible: Boolean(seasonStats?.getClientRects().length),
+          seasonStatsFollowsRecord: Boolean(record && seasonStats
+            && (record.compareDocumentPosition(seasonStats) & Node.DOCUMENT_POSITION_FOLLOWING)),
+          seasonStatsLabel: seasonStats?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+        };
+      })()`, page.sessionId);
+      assert.equal(sharedDashboardPlacement.canvas, 'rgb(244, 247, 251)', 'the PWA mobile canvas follows the native light grid treatment');
+      assert.equal(sharedDashboardPlacement.seasonStatsVisible, true, 'Season Stats is a visible dashboard feature card');
+      assert.equal(sharedDashboardPlacement.seasonStatsFollowsRecord, true, 'Season Stats appears immediately after Game Record');
+      assert.match(sharedDashboardPlacement.seasonStatsLabel, /Season Stats/);
       const result = await connection.evaluate<{
         dashboardVisible: boolean;
         viewportOverflow: boolean;
@@ -2950,7 +2971,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         dashboardOverflow: false,
         headerPosition: 'sticky',
         headerZIndex: '70',
-        headerTop: 0,
+        headerTop: 12,
         headerTopAfterScroll: 0,
         heroClearsHeader: true,
         athleteCardRemoved: true,
@@ -3231,7 +3252,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       detailVisible: true,
       factsVisible: true,
       editorOnFront: false,
-      options: ['Prep', 'Stat Tracker'],
+      options: ['Prep', 'Track Stats'],
       optionsAreTouchFriendly: true,
     });
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-edit-event-arrow-"]'))
@@ -3295,7 +3316,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="heading-event-card-game-day-mode-"]'))
         .some((heading) => heading.getClientRects().length > 0 && document.activeElement === heading)`,
       page.sessionId,
-    ), true, 'choosing Stat Tracker should open the choice panel and focus its heading');
+    ), true, 'choosing Track Stats should open the choice panel and focus its heading');
     assert.equal(await connection.evaluate(
       `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__flip-back'))
         .some((panel) => panel.getClientRects().length > 0
@@ -3303,7 +3324,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           && panel.querySelector('[data-testid="event-card-stat-tracker-option"]')
           && panel.querySelector('.event-card-live-taps h4')?.textContent?.trim() === 'Live Taps only')`,
       page.sessionId,
-    ), true, 'the Event Card Stat Tracker panel should clearly offer stats and Live Taps as separate choices');
+    ), true, 'the Event Card Track Stats panel should clearly offer stats and Live Taps as separate choices');
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-close-stat-tracker-"]'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
@@ -4237,7 +4258,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       statsEventType: '',
       statsLabel: 'View stats',
       prepHref: '/studio/checklist?gameId=game-1&eventType=game',
-      trackerAction: 'Open Stat Tracker',
+      trackerAction: 'Open Track Stats',
       hypeQuickLinksRemoved: true,
       oldPanelsRemoved: true,
     });
@@ -6320,19 +6341,19 @@ test(openPanel === 'details'
       `Prep must not retain its suggested styling after the handoff; got ${JSON.stringify(prepVisualState)}`);
     assert.notEqual(prepVisualState?.background, 'rgb(40, 120, 245)',
       `Prep must no longer use the bright blue suggested-action fill; got ${JSON.stringify(prepVisualState)}`);
-    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Live. Suggested next: Stat Tracker.')`);
-    assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.');
+    await wait(`document.querySelector('[data-testid="status-game-on-recommendation"]')?.textContent.includes('is now Live. Suggested next: Track Stats.')`);
+    assert.equal(await readAnnouncement(), 'Event Card vs Rivals is now Live. Suggested next: Track Stats.');
     await assertOpenPanelAnnouncement();
     assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
-      'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
+      'Event Card vs Rivals is now Live. Suggested next: Track Stats.',
     ], `the Live transition must update the existing region exactly once while ${openPanel} is open`);
     await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
     await connection.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page.sessionId);
     assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
-      'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
+      'Event Card vs Rivals is now Live. Suggested next: Track Stats.',
     ], 'an unchanged Live recommendation must not announce again or reset the draft');
     await assertOpenPanelAnnouncement();
-    const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.';
+    const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Track Stats.';
     assert.equal(await readAnnouncement(), liveAnnouncement,
       'the open Live Event Card should have announced its stage before the full-dialog round trip');
     await connection.evaluate(`(() => {
@@ -6480,7 +6501,7 @@ test(openPanel === 'details'
       };
       await connection.evaluate(`document.querySelector('${dialogSelector} [data-testid="button-close-card-prep-${eventId}"]').click()`, page.sessionId);
       await wait(`document.activeElement?.matches('${dialogSelector} [data-testid="button-open-card-prep-draft:${eventId}"]')`);
-      const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.';
+      const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Track Stats.';
       const liveChanges = [liveAnnouncement];
       await assertPrepFlip(false, '', liveChanges, `button-open-stat-tracker-draft:${eventId}`);
       await connection.evaluate(`window.__setSupporterDashboardEvents([{
@@ -6517,7 +6538,7 @@ test(openPanel === 'details'
       const editArrowTestId = `button-edit-event-arrow-draft:${eventId}`;
       const editArrowSelector = `${dialogSelector} [data-testid="${editArrowTestId}"]`;
       const editorHeadingSelector = `${dialogSelector} [data-testid="game-on-inline-calendar-draft:${eventId}"] .game-on-inline__section h3`;
-      const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.';
+      const liveAnnouncement = 'Event Card vs Rivals is now Live. Suggested next: Track Stats.';
       const liveChanges = [liveAnnouncement];
       const assertDetailsFlip = async (editorOpen: boolean) => {
         await connection!.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))', page!.sessionId);
@@ -6683,7 +6704,7 @@ test(openPanel === 'details'
     assert.deepEqual(await getSuggestedActions(), [], 'a past game may retain its stats link without suggesting it over the current journey');
     await assertOpenPanelAnnouncement();
     assert.deepEqual(await connection.evaluate('window.__recommendationChanges', page.sessionId), [
-      'Event Card vs Rivals is now Live. Suggested next: Stat Tracker.',
+      'Event Card vs Rivals is now Live. Suggested next: Track Stats.',
       'Event Card vs Rivals is now Complete. Suggested next: No suggested action.',
     ], 'each stage or action change must update the mounted live region exactly once');
     await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
@@ -6803,7 +6824,7 @@ test(openPanel === 'details'
         page.sessionId,
       ),
       false,
-      'practice cards must not expose a Stat Tracker action',
+      'practice cards must not expose a Track Stats action',
     );
     await assertNotSuggestedInAccessibleName(`button-edit-event-arrow-draft:${practiceId}`);
   } finally {
@@ -7672,7 +7693,7 @@ function ProfilePropagationHarness() {
   };
   const fanToolNav = createElement('nav', { 'data-testid': 'fan-tool-nav', className: 'flex gap-3 p-4' },
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-dashboard', onClick: () => setRoute('dashboard') }, 'Dashboard'),
-    createElement('button', { type: 'button', 'data-testid': 'button-test-open-stat-tracker', onClick: () => setRoute('tracker') }, 'Stat Tracker'),
+    createElement('button', { type: 'button', 'data-testid': 'button-test-open-stat-tracker', onClick: () => setRoute('tracker') }, 'Track Stats'),
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-athlete-fan-card', onClick: () => setRoute('fan-card') }, 'HYPE Card'),
     createElement('button', { type: 'button', 'data-testid': 'button-test-edit-profile', onClick: openProfile }, 'Profile'),
   );
@@ -9073,8 +9094,8 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     })()`, page.sessionId);
     assert.equal(primaryRoutes.calendar, 'Edit event details');
     assert.match(primaryRoutes.prep, /^\/studio\/checklist(?:\?|$)/);
-    assert.equal(primaryRoutes.stats, 'Open Stat Tracker');
-    assert.equal(primaryRoutes.statsBackground, 'rgb(231, 242, 255)', 'Stat Tracker should use a neutral style before opening');
+    assert.equal(primaryRoutes.stats, 'Open Track Stats');
+    assert.equal(primaryRoutes.statsBackground, 'rgb(231, 242, 255)', 'Track Stats should use a neutral style before opening');
     assert.equal(primaryRoutes.trackerExpanded, 'false');
     assert.equal(primaryRoutes.dashboardStatsPath, '/studio/stat-tracker');
     assert.equal(await connection.evaluate<boolean>(`(() => {

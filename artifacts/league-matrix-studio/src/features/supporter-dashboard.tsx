@@ -1317,7 +1317,7 @@ export function SupporterDashboardView({
       {/* MOBILE VIEW */}
       <div className="supporter-dashboard-mobile-shell pixl-locker-dashboard relative z-0 min-h-dvh w-full pixl-dashboard-mobile flex-col">
         {/* Mobile Header */}
-        <header className="bg-white flex items-center justify-between px-4 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
+        <header className="mx-4 mt-3 flex min-h-[72px] shrink-0 items-center justify-between rounded-2xl border border-white/10 bg-[#0B1F3A] px-4 py-2 shadow-[0_14px_32px_rgba(3,17,36,.22)] relative z-10" data-testid="mobile-header">
           <div className="flex items-center gap-2">
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-6 w-auto object-contain" />
           </div>
@@ -1350,7 +1350,7 @@ export function SupporterDashboardView({
             >
               <div className="flex flex-col gap-2">
                 <Link href="/studio" className="flex items-center justify-between bg-[#12213A] p-4 text-lg font-display tracking-wide text-white" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-home">
-                  GAME DAY HUB <ArrowRight className="h-5 w-5 text-[#55A4FF]" />
+                  SUPPORTER HUB <ArrowRight className="h-5 w-5 text-[#55A4FF]" />
                 </Link>
                 {onSignOut && (
                   <button type="button" onClick={() => { setMobileMenuOpen(false); onSignOut(); }} className="flex w-full items-center justify-between bg-black/5 p-4 text-left text-lg font-display tracking-wide text-destructive" data-testid="btn-mobile-dashboard-sign-out">
@@ -1362,7 +1362,7 @@ export function SupporterDashboardView({
           )}
         </header>
 
-        <nav aria-label="Supporter sections" className="flex gap-1 border-b border-black/10 px-4 pt-3" data-testid="mobile-supporter-tabs">
+        <nav aria-label="Supporter sections" className="mx-4 mt-3 flex gap-1 rounded-xl border border-[#12213A]/10 bg-white/75 px-2 pt-1 shadow-sm" data-testid="mobile-supporter-tabs">
           <Link href="/studio" aria-current="page" className="border-b-2 border-[#55A4FF] px-3 py-3 text-sm font-bold text-[#12213A]" data-testid="link-mobile-parent-week">
             Supporter Hub
           </Link>
@@ -1379,6 +1379,7 @@ export function SupporterDashboardView({
             sport={recordSport}
             record={gameRecord}
             fanBaseInviteToken={savedFanCard?.inviteToken}
+            seasonStatsHref={dashboardStatsHref}
             headerAction={!isDesktopDashboard ? dashboardChecklist : undefined}
             installReminder={<DashboardInstallReminder action={installAction} showInstructions={showInstallInstructions} onInstall={handleInstallPrompt} variant="mobile" />}
             mobileHypeCard={
@@ -1422,18 +1423,6 @@ export function SupporterDashboardView({
             statTrackerTeamName={profile.teamName}
             onCompleteScheduledGame={onCompleteScheduledGame}
           />
-          <section className="combined-actions-card" aria-label="Quick links" data-testid="dashboard-primary-actions-mobile">
-            <div className="combined-actions-card__heading">
-              <span className="combined-actions-card__heading-mark" aria-hidden="true" />
-              <span>Quick links</span>
-            </div>
-            <div className="combined-actions-card__grid combined-actions-card__grid--single" data-testid="dashboard-primary-actions-grid">
-              <Link href={dashboardStatsHref} className="combined-actions-card__stats-link" data-testid="link-mobile-independent-stats">
-                <ArrowLeft size={16} aria-hidden="true" />
-                <span>View stats</span>
-              </Link>
-            </div>
-          </section>
           {selectionSyncError && <p role="status" className="text-sm text-red-700" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
           {ownedGameOnCardsQuery.isError && userId && (
             <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>

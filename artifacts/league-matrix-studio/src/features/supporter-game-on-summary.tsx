@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'wouter';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { SupporterGameRecord } from './supporter-game-record-model';
 import type { Sport } from './stat-tracker';
@@ -18,6 +20,7 @@ type SupporterGameOnSummaryProps = {
   children: ReactNode;
   mobileHypeCard?: ReactNode;
   fanBaseInviteToken?: string;
+  seasonStatsHref?: string;
 };
 
 export function SupporterGameOnSummary({
@@ -32,6 +35,7 @@ export function SupporterGameOnSummary({
   children,
   mobileHypeCard,
   fanBaseInviteToken,
+  seasonStatsHref,
 }: SupporterGameOnSummaryProps) {
   const isMobile = variant === 'mobile';
   const showHeader = isMobile || Boolean(headerAction || installReminder || showSeasonKicker);
@@ -104,8 +108,8 @@ export function SupporterGameOnSummary({
           data-testid={`supporter-game-record-${variant}`}
         >
           <div className="supporter-game-on-summary__record-heading">
-            <span>TRACKED GAMES</span>
-            <h2>RECORD</h2>
+            <span>SEASON</span>
+            <h2>GAME RECORD</h2>
             <p>{sport ? `${sport} · completed games` : 'Completed games'}</p>
           </div>
           <div className="supporter-game-on-summary__record-stats">
@@ -130,6 +134,19 @@ export function SupporterGameOnSummary({
           <FanBaseOwnerCard inviteToken={fanBaseInviteToken} />
         </section>
       </div>
+      {isMobile && seasonStatsHref && (
+        <Link
+          href={seasonStatsHref}
+          className="mx-4 mb-4 flex min-h-[72px] items-center justify-between gap-4 rounded-2xl border border-[#29486d] bg-gradient-to-r from-[#102b50] to-[#0b1f3a] px-5 py-4 text-white shadow-[0_12px_28px_rgba(3,17,36,.22)] transition-colors hover:border-[#72c9ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2878f5]"
+          data-testid="link-mobile-season-stats-card"
+        >
+          <span className="flex min-w-0 flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[.16em] text-[#72c9ff]">Season insights</span>
+            <span className="font-display text-xl font-black">Season Stats</span>
+          </span>
+          <ArrowRight className="h-5 w-5 shrink-0 text-[#b8f45c]" aria-hidden="true" />
+        </Link>
+      )}
     </section>
   );
 }

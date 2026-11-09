@@ -172,7 +172,7 @@ export function SupporterHypeCardPreview({
                 {reconnectError && <p role="alert">{reconnectError}</p>}
               </div>
             )}
-            <p className="text-xs text-white/70">Use the Player Showcase tab to set up, view, and manage your HYPE Card.</p>
+            <p className="text-xs text-white/70">Open Player Showcase to set up, view, and manage your HYPE Card.</p>
           </div>
         ) : (
           <div className="supporter-hype-preview__card-wrap">

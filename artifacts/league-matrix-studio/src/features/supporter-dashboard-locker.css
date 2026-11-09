@@ -42,9 +42,13 @@
 
 .supporter-dashboard-mobile-shell.pixl-locker-dashboard {
   min-height: 100dvh;
-  background:
-    radial-gradient(ellipse at 88% 4%, rgba(75, 151, 225, .18), transparent 25rem),
-    linear-gradient(180deg, #08162c, #071329 42rem);
+  color: #12213a;
+  background-color: #f4f7fb;
+  background-image:
+    radial-gradient(ellipse at 88% 4%, rgba(40, 120, 245, .06), transparent 25rem),
+    linear-gradient(rgba(11, 31, 58, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 31, 58, .035) 1px, transparent 1px);
+  background-size: auto, 36px 36px, 36px 36px;
 }
 
 .supporter-dashboard-desktop-shell.pixl-locker-dashboard {
@@ -260,21 +264,21 @@
   }
 
   .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] {
-    border-color: var(--locker-line);
-    background: rgba(8, 22, 44, .92);
+    border-color: rgba(18, 33, 58, .12);
+    background: rgba(255, 255, 255, .82);
   }
 
   .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] a {
-    color: var(--locker-muted);
+    color: #53657c;
   }
 
   .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] a[aria-current="page"] {
-    border-color: var(--locker-lime) !important;
-    color: #fff;
+    border-color: #2878f5 !important;
+    color: #12213a;
   }
 
   .pixl-locker-dashboard > nav[data-testid="mobile-supporter-tabs"] a:not([aria-current="page"]):hover {
-    color: var(--locker-ice);
+    color: #12213a;
   }
 
   .pixl-locker-dashboard .supporter-game-on-summary--mobile {

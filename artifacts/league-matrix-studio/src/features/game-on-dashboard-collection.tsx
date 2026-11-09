@@ -212,7 +212,7 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
     const actionLabel = suggestedAction === 'prep' ? 'Prep'
       : suggestedAction === 'stats' ? 'View stats'
         : suggestedAction === 'share' ? 'Share'
-          : suggestedAction === 'none' ? 'No suggested action' : 'Stat Tracker';
+          : suggestedAction === 'none' ? 'No suggested action' : 'Track Stats';
     if (previous.status === statusLabel && previous.action === suggestedAction) {
       if (previous.title !== title && previous.announced) {
         setRecommendationAnnouncement(`Event Card ${title} is now ${statusLabel}. Suggested next: ${actionLabel}.`);
@@ -391,14 +391,14 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
                         type="button"
                         className={`game-on-collection__action--tracker${suggestedAction === 'tracker' ? ' game-on-collection__action--suggested' : ''}`}
                         onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
-                        aria-label={suggestedAction === 'tracker' ? 'Open Stat Tracker. Suggested next.' : 'Open Stat Tracker'}
+                        aria-label={suggestedAction === 'tracker' ? 'Open Track Stats. Suggested next.' : 'Open Track Stats'}
                         aria-expanded={trackerOpen}
                         aria-controls={trackerPanelId}
                         data-testid={`button-open-stat-tracker-${card.id}`}
                         data-suggested-next={suggestedAction === 'tracker' ? 'true' : undefined}
                       >
                         <Activity size={15} aria-hidden="true" />
-                        <span>Stat Tracker</span>
+                        <span>Track Stats</span>
                         {suggestedAction === 'tracker' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                       </button>
                 )}
@@ -487,7 +487,7 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
               <section className="game-on-collection__tracker-stat-option" aria-labelledby={`tracker-stat-option-title-${eventId}`} data-testid="event-card-stat-tracker-option">
                 <div>
                   <p className="game-on-collection__tracker-option-eyebrow">Track stats</p>
-                  <h4 id={`tracker-stat-option-title-${eventId}`}>Full Stat Tracker</h4>
+                  <h4 id={`tracker-stat-option-title-${eventId}`}>Full tracker</h4>
                   <p>Log game plays and stats for the season.</p>
                 </div>
                 <Link
@@ -495,7 +495,7 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
                   className="game-on-collection__tracker-stat-link"
                   data-testid={`link-open-stat-tracker-${card.id}`}
                 >
-                  Open Stat Tracker
+                  Open full tracker
                 </Link>
               </section>
               <EventCardLiveTaps
@@ -833,7 +833,7 @@ export function GameOnDashboardCollection({
                       : `Game${selectedCard.opponent ? ` vs ${selectedCard.opponent}` : ''}`}
                   </DialogTitle>
                   <DialogDescription id={`game-on-card-dialog-description-${dialogId}`} className="sr-only">
-                    Review this Event Card and open its preparation, event details, or stat tracker.
+                    Review this Event Card and open Prep, Track Stats, or event details.
                   </DialogDescription>
                   <DialogClose className="game-on-collection__dialog-close" aria-label="Close Event Card">
                     <X size={18} aria-hidden="true" />
