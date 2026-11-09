@@ -145,6 +145,46 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         try exerciseOfflineRestore(visibility: "hidden")
     }
 
+    func testOwnerCanOpenAndSaveAthleteDetailsFromHypeCard() throws {
+        try requireVisibility("public")
+        continueAfterFailure = false
+
+        let app = XCUIApplication()
+        app.launch()
+        defer { app.terminate() }
+        openOwnerCard(in: app, visibility: "public")
+
+        let editAthleteDetails = app.buttons["native-hype-card-edit-athlete-details"]
+        XCTAssertTrue(editAthleteDetails.waitForExistence(timeout: 10))
+        reveal(editAthleteDetails, in: app)
+        editAthleteDetails.tap()
+
+        let profileNavigationBar = app.navigationBars["Athlete profile"]
+        XCTAssertTrue(profileNavigationBar.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.textFields["native-athlete-profile-name"].waitForExistence(timeout: 10))
+        let save = app.buttons["native-athlete-profile-save"]
+        XCTAssertTrue(save.isEnabled, "A linked owner with a saved athlete name can save the existing editor.")
+        save.tap()
+
+        let editorDismissed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: profileNavigationBar
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [editorDismissed], timeout: 30),
+            .completed,
+            "Saving the existing athlete profile should dismiss its editor."
+        )
+        XCTAssertTrue(
+            app.buttons["native-hype-card-edit-athlete-details"].waitForExistence(timeout: 30),
+            "Saving athlete details should return to the owner HYPE Card page."
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["native-hype-card-athlete-profile"].exists,
+            "The owner profile summary should remain available after the editor returns."
+        )
+    }
+
     func testReopenedCardMergesRemoteOnlyAndLocallyEditedSettings() throws {
         try requireVisibility("public")
         continueAfterFailure = false

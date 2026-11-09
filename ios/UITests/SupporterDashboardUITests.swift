@@ -63,6 +63,7 @@ final class SupporterDashboardUITests: XCTestCase {
         XCTAssertFalse(app.buttons["native-hype-card-side-events"].exists)
         XCTAssertFalse(app.staticTexts["Owner controls"].exists)
         XCTAssertFalse(app.buttons["native-hype-card-toggle-public"].exists)
+        XCTAssertFalse(app.buttons["native-hype-card-edit-athlete-details"].exists)
 
         videos.tap()
         XCTAssertTrue(app.buttons["native-public-hype-card-done"].exists)

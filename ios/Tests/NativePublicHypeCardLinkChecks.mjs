@@ -14,6 +14,7 @@ const entitlements = read("../PIXL Sports/PIXL Sports.entitlements");
 const project = read("../PIXL Sports.xcodeproj/project.pbxproj");
 const replit = read("../../.replit");
 const webApp = read("../../artifacts/league-matrix-studio/src/App.tsx");
+const home = read("../PIXL Sports/ContentView.swift");
 
 test("the published host associates the HYPE Card route with the iOS app", () => {
   assert.deepEqual(association.applinks.details[0].appIDs, ["4A3BQUR9MQ.com.pixlsports"]);
@@ -41,4 +42,14 @@ test("recipient loading is public, read-only, and leaves browser fallback in pla
   assert.match(card, /if !isPublicRecipient, settings != nil/);
   assert.match(card, /if isPublicRecipient \{/);
   assert.match(webApp, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
+});
+
+test("athlete details shortcut opens the existing editor only on the owner card", () => {
+  assert.match(card, /publicCardContent\(card\)\s*editAthleteDetailsButton/);
+  assert.match(card, /private var editAthleteDetailsButton: some View/);
+  assert.match(home, /\.hypeCard:[\s\S]*?showsAthleteDetailsShortcut: true/);
+  assert.match(card, /if showsAthleteDetailsShortcut, !isPublicRecipient, let clerk, settings != nil/);
+  assert.match(card, /NativeAthleteProfileView\(clerk: clerk, onSaved: \{ athleteProfile = \$0 \}\)/);
+  assert.match(card, /native-hype-card-edit-athlete-details/);
+  assert.match(card, /Edit these details here or in Settings/);
 });

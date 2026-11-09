@@ -32,6 +32,7 @@ struct SupporterHypeCardView: View {
     @ObservedObject private var offlineRuntime = NativeOfflineRuntime.shared
     let clerk: Clerk?
     let publicInviteToken: String?
+    private let showsAthleteDetailsShortcut: Bool
 #if DEBUG
     private let fixturePublicCard: NativePublicHypeCard?
 #endif
@@ -81,10 +82,12 @@ struct SupporterHypeCardView: View {
         clerk: Clerk?,
         publicInviteToken: String? = nil,
         cachedOwnerPreview: NativeSupporterHypeCardPreview? = nil,
-        focusPauseSetting: Bool = false
+        focusPauseSetting: Bool = false,
+        showsAthleteDetailsShortcut: Bool = false
     ) {
         self.clerk = clerk
         self.publicInviteToken = publicInviteToken
+        self.showsAthleteDetailsShortcut = showsAthleteDetailsShortcut
         _focusPauseSettingOnOpen = State(initialValue: focusPauseSetting)
         let subject = Self.ownerSubject(clerk: clerk)
         let offline = NativeOfflineRuntime.shared
@@ -166,6 +169,7 @@ struct SupporterHypeCardView: View {
     init(publicInviteToken: String, fixturePublicCard: NativePublicHypeCard) {
         self.clerk = nil
         self.publicInviteToken = publicInviteToken
+        self.showsAthleteDetailsShortcut = false
         self.fixturePublicCard = fixturePublicCard
     }
 #endif
@@ -393,6 +397,7 @@ struct SupporterHypeCardView: View {
                 .frame(maxWidth: .infinity, minHeight: 240)
         } else if let card {
             publicCardContent(card)
+            editAthleteDetailsButton
             if let cheers = card.liveTaps {
                 NativeFanCheersView(summary: cheers)
             }
@@ -420,6 +425,7 @@ struct SupporterHypeCardView: View {
                 photoURL: nil,
                 privatePhoto: privatePhoto
             )
+            editAthleteDetailsButton
             if let cheers = privateCard.liveTaps {
                 NativeFanCheersView(summary: cheers)
             }
@@ -549,7 +555,7 @@ struct SupporterHypeCardView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(SupporterHomeColors.muted)
             }
-            Text("Edit these details in Settings. They do not change HYPE Card privacy.")
+            Text("Edit these details here or in Settings. HYPE Card privacy stays unchanged.")
                 .font(.caption)
                 .foregroundStyle(SupporterHomeColors.muted)
         }
@@ -562,6 +568,20 @@ struct SupporterHypeCardView: View {
         }
         .supporterSurfaceShadow()
         .accessibilityIdentifier("native-hype-card-athlete-profile")
+    }
+
+    @ViewBuilder
+    private var editAthleteDetailsButton: some View {
+        if showsAthleteDetailsShortcut, !isPublicRecipient, let clerk, settings != nil {
+            NavigationLink {
+                NativeAthleteProfileView(clerk: clerk, onSaved: { athleteProfile = $0 })
+            } label: {
+                Label("Edit Athlete Details", systemImage: "person.text.rectangle")
+                    .frame(maxWidth: .infinity, minHeight: 46)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("native-hype-card-edit-athlete-details")
+        }
     }
 
     private var availableSides: [NativeHypeCardSide] {

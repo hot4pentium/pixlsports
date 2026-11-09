@@ -743,7 +743,8 @@ struct ContentView: View {
             SupporterHypeCardView(
                 clerk: clerk,
                 cachedOwnerPreview: NativeOfflineRuntime.shared.vault.canContinue(subject: clerk?.user?.id)
-                    ? viewModel.hypeCardPreview : nil
+                    ? viewModel.hypeCardPreview : nil,
+                showsAthleteDetailsShortcut: true
             )
         case .fanBase:
             fanBasePage
