@@ -3,6 +3,12 @@ name: Simplified interactive HYPE Card
 description: User-requested full-photo card direction and the boundary with separately authored graphics.
 ---
 
+Align the PWA with iOS wherever practical, including simplifying the HYPE Card design and flow. Treat the native card as the reference for shared interactions and presentation.
+
+**Why:** The user wants the PWA to mirror iOS as much as possible while establishing a coherent experience for Android.
+
+**How to apply:** Reuse the approved iOS HYPE Card structure and interaction model in the PWA; preserve saved card artwork and independent PWA capabilities unless the user specifically asks to remove them.
+
 No-photo HYPE Card placeholders show the silhouette without the athlete's initial or initials. Keep the athlete's name on the lower-third nameplate.
 
 **Why:** The user explicitly requested removing the player initial from the HYPE Card placeholder.
