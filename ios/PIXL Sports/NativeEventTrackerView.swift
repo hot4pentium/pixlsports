@@ -139,6 +139,12 @@ struct NativeEventTrackerView: View {
 
     private func tracker(workspace: NativeEventWorkspace, game: NativeEventWorkspace.Game) -> some View {
         VStack(alignment: .leading, spacing: 20) {
+            if !compact {
+                Text("TEAM SCOREBOARD")
+                    .font(.caption.weight(.heavy))
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("native-event-team-scoreboard-title")
+            }
             HStack(alignment: .top, spacing: 20) {
                 let canEditScore = game.status == "live" && model.canEditTrackerLocally
                 scoreboard(teamName, score: game.score, opponent: false, editable: canEditScore, showsControls: game.status == "live")
@@ -161,18 +167,9 @@ struct NativeEventTrackerView: View {
                     Toggle("Opponent possession", isOn: $opponentPossession)
                     Stepper("Yards on next play: \(yards)", value: $yards, in: 0...100)
                 }
-                Picker("Stat attribution", selection: $attribution) {
-                    Text(athleteName).tag("athlete")
-                    Text("Team").tag("team")
-                }
-                .pickerStyle(.segmented)
-                .disabled(opponentPossession)
-                Text(opponentPossession
-                     ? "Opponent plays are kept separate from your athlete."
-                     : "Athlete taps record individual stats. Team taps and score controls update the team scoreboard.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                modePicker
+                modeBanner
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(Array(workspace.rules.stats.prefix(compact ? 4 : workspace.rules.stats.count))) { stat in
                         Button {
                             Task {
@@ -180,23 +177,17 @@ struct NativeEventTrackerView: View {
                                                  athlete: attribution == "athlete", opponent: opponentPossession, yards: yards)
                             }
                         } label: {
-                            VStack(spacing: 6) {
-                                Text(stat.label).font(.subheadline.bold()).multilineTextAlignment(.center)
-                                Text("\(statTotal(game: game, statID: stat.id))")
-                                    .font(.title2.bold())
-                                if !opponentPossession {
-                                    Text("\(athleteCount(game: game, statID: stat.id)) athlete")
-                                        .font(.caption2)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, minHeight: compact ? 72 : 92)
-                            .background(NativeEventToolColors.trackStats.opacity(0.16), in: RoundedRectangle(cornerRadius: 16))
+                            statTileLabel(stat.label, game: game, statID: stat.id)
                         }
                         .buttonStyle(.plain)
                         .disabled(!model.canQueueStat)
-                        .accessibilityLabel("Record \(stat.label), \(opponentPossession ? "opponent" : attribution == "athlete" ? athleteName : teamName)")
+                        .accessibilityLabel("Record \(stat.label) for \(trackerMode.ownerName(athlete: athleteName, team: teamName, opponent: opponentName))")
+                        .accessibilityValue(statTileAccessibilityValue(game: game, statID: stat.id))
+                        .accessibilityHint(trackerMode.title + " mode")
+                        .accessibilityIdentifier("native-event-stat-tile-\(trackerMode.rawValue)-\(stat.id)")
                     }
                 }
+                .accessibilityIdentifier("native-event-stat-grid-\(trackerMode.rawValue)")
                 HStack {
                     Button(game.status == "live" ? "Pause" : "Resume") {
                         Task { await model.save(game.status == "live" ? "pause" : "resume", clerk: clerk) }
@@ -287,6 +278,190 @@ struct NativeEventTrackerView: View {
 
     private func adjustScore(opponent: Bool, delta: Int) {
         Task { await model.save("score", clerk: clerk, opponent: opponent, delta: delta) }
+    }
+
+    // MARK: - Tracker mode presentation (presentation only; save semantics unchanged)
+
+    private enum TrackerMode: String {
+        case athlete, team, opponent
+
+        var title: String {
+            switch self {
+            case .athlete: return "Athlete"
+            case .team: return "Team"
+            case .opponent: return "Opponent"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .athlete: return "person.fill"
+            case .team: return "person.3.fill"
+            case .opponent: return "shield.lefthalf.filled"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .athlete: return NativeEventToolColors.trackStats
+            case .team: return NativeEventToolColors.prep
+            case .opponent: return Color.secondary
+            }
+        }
+
+        func ownerName(athlete: String, team: String, opponent: String) -> String {
+            switch self {
+            case .athlete: return athlete
+            case .team: return team
+            case .opponent: return opponent
+            }
+        }
+    }
+
+    private var trackerMode: TrackerMode {
+        opponentPossession ? .opponent : (attribution == "athlete" ? .athlete : .team)
+    }
+
+    private var opponentName: String { event.opponent.isEmpty ? "Opponent" : event.opponent }
+
+    private var modeSelectionInk: Color { Color(red: 0.06, green: 0.10, blue: 0.18) }
+
+    private var modePicker: some View {
+        HStack(spacing: 10) {
+            modeChoice(.athlete, value: "athlete", name: athleteName)
+            modeChoice(.team, value: "team", name: teamName)
+        }
+        .disabled(opponentPossession)
+        .opacity(opponentPossession ? 0.5 : 1)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Stat attribution")
+        .accessibilityIdentifier("native-event-tracker-mode-picker")
+    }
+
+    private func modeChoice(_ mode: TrackerMode, value: String, name: String) -> some View {
+        let selected = !opponentPossession && attribution == value
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return Button { attribution = value } label: {
+            HStack(spacing: 8) {
+                Image(systemName: selected ? "checkmark.circle.fill" : mode.symbol)
+                    .font(.body.weight(.semibold))
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(mode.title.uppercased())
+                        .font(.caption2.weight(.heavy))
+                        .tracking(0.8)
+                    Text(name)
+                        .font(.subheadline.bold())
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(selected ? modeSelectionInk : Color.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .background(selected ? mode.color : mode.color.opacity(0.10), in: shape)
+            .overlay(shape.strokeBorder(mode.color, lineWidth: selected ? 0 : 1.5))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(mode.title) mode, \(name)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("native-event-tracker-mode-\(value)")
+    }
+
+    private var modeBanner: some View {
+        let mode = trackerMode
+        let name = mode.ownerName(athlete: athleteName, team: teamName, opponent: opponentName)
+        let detail: String
+        switch mode {
+        case .athlete: detail = "Taps record individual stats for \(athleteName)."
+        case .team: detail = "Taps count for the team only. Score buttons update the scoreboard."
+        case .opponent: detail = "Opponent plays stay separate from your athlete and team."
+        }
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return HStack(alignment: .top, spacing: 12) {
+            Image(systemName: mode.symbol)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(mode == .athlete ? modeSelectionInk : Color.primary)
+                .frame(width: 40, height: 40)
+                .background(mode == .athlete ? mode.color : mode.color.opacity(0.14), in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("TRACKING \(mode.title.uppercased())")
+                    .font(.caption.weight(.heavy))
+                    .tracking(1)
+                    .foregroundStyle(.primary)
+                Text(name)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(mode == .athlete ? mode.color.opacity(0.14) : Color.clear, in: shape)
+        .overlay(
+            shape.strokeBorder(mode.color.opacity(mode == .opponent ? 0.6 : 1),
+                               style: StrokeStyle(lineWidth: mode == .athlete ? 0 : 1.5,
+                                                  dash: mode == .opponent ? [6, 4] : []))
+        )
+        .overlay(alignment: .leading) {
+            if mode == .athlete {
+                Rectangle().fill(mode.color).frame(width: 5).clipShape(shape)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("native-event-tracker-mode-banner-\(mode.rawValue)")
+    }
+
+    private func statTileLabel(_ label: String, game: NativeEventWorkspace.Game, statID: String) -> some View {
+        let mode = trackerMode
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let total = statTotal(game: game, statID: statID)
+        return VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: mode.symbol).font(.caption2.weight(.bold))
+                Text(mode.title.uppercased())
+                    .font(.caption2.weight(.heavy))
+                    .tracking(0.6)
+            }
+            .foregroundStyle(.primary)
+            .accessibilityHidden(true)
+            Text(label).font(.subheadline.bold()).multilineTextAlignment(.center)
+            Text("\(total)")
+                .font(.system(.title2, design: .rounded).bold())
+                .monospacedDigit()
+            Text(mode == .opponent ? "opponent total" : "team total")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            if mode != .opponent {
+                Text("\(athleteCount(game: game, statID: statID)) by \(athleteName)")
+                    .font(.caption2.weight(mode == .athlete ? .bold : .regular))
+                    .foregroundStyle(mode == .athlete ? Color.primary : Color.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, minHeight: compact ? 72 : 108)
+        .background(mode == .athlete ? mode.color.opacity(0.16) : mode.color.opacity(0.05), in: shape)
+        .overlay(
+            shape.strokeBorder(mode.color.opacity(mode == .athlete ? 0 : 0.7),
+                               style: StrokeStyle(lineWidth: 1.5, dash: mode == .opponent ? [6, 4] : []))
+        )
+        .contentShape(shape)
+    }
+
+    private func statTileAccessibilityValue(game: NativeEventWorkspace.Game, statID: String) -> String {
+        let total = statTotal(game: game, statID: statID)
+        if trackerMode == .opponent { return "\(total) opponent total" }
+        return "\(total) team total, \(athleteCount(game: game, statID: statID)) by \(athleteName)"
     }
 
     private func athleteCount(game: NativeEventWorkspace.Game, statID: String) -> Int {
