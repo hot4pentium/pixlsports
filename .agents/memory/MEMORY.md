@@ -137,6 +137,7 @@
 - [Tracker attribution boundaries](tracker-attribution-boundaries.md) — recipient scoreboards name the team; athlete snapshots and opponent possession stats stay distinct.
 - [iOS account boundaries](native-ios-first-flow.md) — new iOS profiles are separate from PWA data; preserve existing linked owners and never infer ownership from email.
 - [Native supporter event source](native-supporter-event-source.md) — private iPhone schedules, Event Cards, and hidden HYPE Card previews stay behind the verified account link.
+- [Native development API diagnostics](native-development-api-diagnostics.md) — a stopped development API caused iPhone 502s; confirm the installed destination before investigating production.
 - [Landing install section](landing-install-section.md) — keep PWA install guidance in its own prominent, energetic, graphics-led section.
 - [Patch batch recovery](patch-batch-recovery.md) — after any failed multi-file patch, inspect every targeted file because partial application is possible.
 - [Starter HYPE Card setup](starter-hype-card-setup.md) — onboarding assigns an editable private starter; softball keeps its own sport.
