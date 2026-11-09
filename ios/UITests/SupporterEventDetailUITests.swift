@@ -58,8 +58,13 @@ final class SupporterEventDetailUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
         openSignedInPrep(eventID: eventID, in: app)
-        let availability = app.staticTexts["event-tracking-locked-message"]
-        XCTAssertEqual(availability.label, early ? "Available within 10 minutes of start" : "Available")
+        XCTAssertFalse(app.staticTexts["event-tracking-locked-message"].exists)
+        app.buttons["event-card-track-stats"].tap()
+        let statChoice = app.buttons["native-event-choice-statTracker"]
+        XCTAssertTrue(statChoice.waitForExistence(timeout: 5))
+        XCTAssertEqual(statChoice.isEnabled, !early)
+        app.buttons["Not now"].tap()
+        app.buttons["event-card-prep"].tap()
         let row = assertReachable("native-prep-item-\(itemID)", in: app)
         XCTAssertEqual(row.value as? String, "Not ready")
         let original = row.frame
@@ -141,7 +146,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         let tracker = app.buttons["event-card-track-stats"]
         XCTAssertTrue(tracker.waitForExistence(timeout: 10))
         XCTAssertTrue(tracker.isEnabled)
-        XCTAssertTrue(app.staticTexts["event-tracking-locked-message"].exists)
+        XCTAssertFalse(app.staticTexts["event-tracking-locked-message"].exists)
         assertSelectedStep("Prep", in: app)
         assertRecommendedStep("Prep", in: app)
         XCTAssertTrue(app.buttons["event-card-prep"].isEnabled)
@@ -169,9 +174,9 @@ final class SupporterEventDetailUITests: XCTestCase {
         let tracker = app.buttons["event-card-track-stats"]
         XCTAssertTrue(tracker.waitForExistence(timeout: 10))
         XCTAssertTrue(tracker.isEnabled)
-        let status = app.staticTexts["event-tracking-locked-message"]
+        let status = app.staticTexts["event-detail-recommended-step"]
         let unlocked = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label CONTAINS %@", "available now"), object: status)
+            predicate: NSPredicate(format: "label == %@", "Next: Track Stats"), object: status)
         XCTAssertEqual(XCTWaiter.wait(for: [unlocked], timeout: 25), .completed)
         assertSelectedStep("Prep", in: app)
         tracker.tap()

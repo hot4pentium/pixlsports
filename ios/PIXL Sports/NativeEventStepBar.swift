@@ -9,7 +9,6 @@ struct NativeEventStepBar: View {
     let onSelect: (NativeEventDetailStep) -> Void
     var trackingAccess: NativeEventTrackingAccess = .available
     var trackingTimeZone: TimeZone = .current
-    var trackingOpensAt: Date? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -44,14 +43,6 @@ struct NativeEventStepBar: View {
             }
             .disabled(!actionsEnabled)
             .buttonStyle(.plain)
-            if isGame {
-                NativeToolAvailabilityText(access: trackingAccess, timeZone: trackingTimeZone,
-                    opensAt: trackingOpensAt, identifier: "event-tracking-locked-message")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.8))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(minHeight: 42, alignment: .topLeading)
-            }
         }
         .frame(maxWidth: 560)
         .padding(.horizontal, 18)

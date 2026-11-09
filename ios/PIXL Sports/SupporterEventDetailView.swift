@@ -129,8 +129,7 @@ struct SupporterEventDetailView: View {
                             selectedStep = step
                         },
                         trackingAccess: trackingAccess(schedule: schedule, event: event, date: context.date),
-                        trackingTimeZone: TimeZone(identifier: event.timezone ?? schedule.timezone ?? "") ?? .current,
-                        trackingOpensAt: event.parsedStart(timezone: event.timezone ?? schedule.timezone)?.addingTimeInterval(-600)
+                        trackingTimeZone: TimeZone(identifier: event.timezone ?? schedule.timezone ?? "") ?? .current
                     )
 #if DEBUG
                     .onChange(of: context.date, initial: true) { _, date in

@@ -106,6 +106,14 @@ test("chooser status stays to short availability labels", () => {
     "VoiceOver receives the same short status");
 });
 
+test("step navigation omits timing copy and reserved space while the chooser retains availability", () => {
+  const bar = read("NativeEventStepBar");
+  assert.ok(!/NativeToolAvailabilityText|event-tracking-locked-message|minHeight: 42|trackingOpensAt/.test(bar));
+  has(bar, /onSelect\(\.trackStats\)/, "Track Stats still opens the chooser");
+  has(bar, /\.disabled\(!isGame\)/, "only practices disable the game-tool action");
+  has(read("NativeEventTrackingPanel"), /NativeToolAvailabilityNotice\(/, "availability and reminder remain inside Track Stats");
+});
+
 test("reminder button uses readable filled states instead of a faint system border", () => {
   const notice = read("NativeToolAvailabilityNotice");
   has(notice, /buttonStyle\(SupporterPrimaryButtonStyle\(/, "explicit dark text on a filled button");

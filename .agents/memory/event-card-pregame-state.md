@@ -38,3 +38,13 @@ Only the nearest upcoming Event Card should display “Up Next.” Later future 
 **Why:** The user repeatedly requested that later scheduled games not also be called “Up Next.”
 
 **How to apply:** Choose the next upcoming card once from the chronologically ordered dashboard list, excluding Live and Complete cards. Keep the same exclusive badge rule in the three-column grid and the large-text layout.
+
+Do not show a ten-minute availability message or reserve a status row beneath the
+Prep / Track Stats / Share navigation. Keep timing explanations and optional
+reminders inside the tool chooser opened by Track Stats.
+
+**Why:** The user said the warning beneath navigation is unnecessary because users
+will learn availability when they tap Track Stats.
+
+**How to apply:** Remove only the navigation copy and its space; retain the
+ten-minute access rule, clickable game-tool chooser and always-available recording.
