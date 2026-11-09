@@ -32,3 +32,20 @@ test("Prep recovery does not prevent locally saved tracker taps", () => {
   assert.match(save, /if kind == "prep" \{\s*guard !conflictBlocked, canEditLocally/);
   assert.match(save, /try persistPendingQueue\(\)[\s\S]*?rebuildProjection\(\)[\s\S]*?await drainQueue/);
 });
+
+test("tracker reconciliation never treats a cache fallback as a changed game", () => {
+  const load = tools.slice(tools.indexOf("func load(clerk:"), tools.indexOf("private func recoverChecklistDraft("));
+  const firstRead = load.slice(load.indexOf("let data = try await"), load.indexOf("var next ="));
+  assert.match(firstRead, /NativeEventWorkspaceRequest\(shareToken: shareToken, pendingMutationIds: pendingIDs\)/);
+  assert.match(firstRead, /allowCachedWorkspace: false/);
+  assert.match(load, /NativeTrackerOutboxPolicy\.incompatibility/);
+  // A failed network read does not replace the local game, classify it as
+  // incompatible, remove queued taps, or offer a destructive reload.
+  const failure = load.slice(load.lastIndexOf("} catch {"));
+  assert.match(failure, /errorMessage = error\.localizedDescription/);
+  assert.doesNotMatch(failure, /acknowledgedWorkspace =|workspace =|pendingQueue\.remove|trackerRecoveryStatus =/);
+  const restore = tools.slice(tools.indexOf("init(shareToken:"), tools.indexOf("private static func openQueue"));
+  assert.match(restore, /offline\.vault\.read\("workspace\/" \+ shareToken/);
+  assert.match(restore, /acknowledgedWorkspace = saved/);
+  assert.match(restore, /rebuildProjection\(\)/);
+});

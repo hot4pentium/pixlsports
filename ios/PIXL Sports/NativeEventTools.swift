@@ -284,7 +284,11 @@ final class NativeEventToolModel: ObservableObject {
             let data = try await NativeAccountLinkClient().postData(
                 "supporter/event-workspace",
                 body: NativeEventWorkspaceRequest(shareToken: shareToken, pendingMutationIds: pendingIDs),
-                clerk: clerk
+                clerk: clerk,
+                // The cached workspace already supplied our local projection.
+                // Only a fresh response may establish a changed/finalized game
+                // or acknowledge actions. A failed refresh leaves that copy intact.
+                allowCachedWorkspace: false
             )
             guard scope == offline.vault.namespace else { return }
             var next = try JSONDecoder().decode(NativeEventWorkspace.self, from: data)

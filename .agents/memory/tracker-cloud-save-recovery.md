@@ -15,6 +15,12 @@ For native Event Card tracker taps, queue each action durably per account and Ev
 
 **How to apply:** When changing native Event Card tracking or its outbox tests, cover relaunch, exact attempted-command replay, ordered rebasing of unsent actions, same-game validation, incompatible-state preservation, and the unchanged Prep flow.
 
+Cached workspaces may restore the local tracker display, but must not establish that the server changed or finalized a game, or acknowledge queued actions. Those reconciliation decisions require a fresh server response; a failed refresh must leave the local projection and pending actions intact.
+
+**Why:** A transport fallback can return an older cached game (or no game), which is not evidence that the live server replaced the game being scored.
+
+**How to apply:** Keep display restoration separate from authoritative tracker reconciliation, including offline resume and retry paths.
+
 Publish a completed game to the temporary supporter share only after its finalized tracker project is confirmed in the cloud. If that project save fails, keep the share pending; after recovery, publish the final state and let the HYPE Card read the recap from the owner-owned project. A failed final-share update must remain retryable.
 
 **Why:** The HYPE Card reads durable summaries from the cloud tracker project, while finalizing the temporary share removes its live scoreboard. Publishing the share first can briefly leave the card with neither the live board nor the new recap.
