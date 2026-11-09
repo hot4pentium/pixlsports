@@ -39,7 +39,35 @@ test("reminder identities, consumed attempts and opt-ins survive time edits with
   has(coordinator, /if let fire = entry\.attemptedFire, fire > Date\(\), !entry\.consumed/, "known future cancellations can move");
   has(coordinator, /func eventChanged[\s\S]*?if deleted \{[\s\S]*?cancel\(token: token/, "deletion cancels synchronously");
   has(runtime, /try vault\.write\(JSONEncoder\(\)\.encode\(change\), key: key\)[\s\S]*?\.eventChanged\(/, "durable local edit before alert update");
-  has(runtime, /func storageChanged[\s\S]*?NativeToolAvailabilityReminderCoordinator\.shared\.reconcile/, "offline Final and queue changes reconcile");
+  has(runtime, /func storageChanged\(remindersChanged: Bool = false\)/, "general queue changes do not rebuild reminders");
+  const tools = read("NativeEventTools");
+  has(tools, /try durableQueue\.save\([\s\S]*?offline\.storageChanged\(\)\s*reminderStateChanged\(\)/, "durable Final invalidates before projection");
+  has(tools, /complete: trackerIsComplete,[\s\S]*?unreadable: unreadablePendingData/, "completion and unreadable state remain reminder inputs");
+  has(tools, /workspace = projected\s*reminderStateChanged\(\)/, "confirmed and restored completion re-evaluate");
+});
+
+test("score-only changes skip reminder work without weakening relevant invalidations", () => {
+  const policy = read("NativeReminderInvalidationPolicy");
+  const client = read("NativeAccountLinkClient");
+  has(client, /offline\.cache\(data, key: "workspace\/" \+ shareToken, workspace: workspace\)/, "reuse decoded workspace, no additional vault read");
+  has(runtime, /if impact\.routine \{[\s\S]*?NativeLocalEventReminderCoordinator\.shared\.reconcile/, "routine work is input-gated");
+  has(runtime, /if impact\.availability \{[\s\S]*?\.invalidate\(event: token\)/, "availability work is input-gated");
+  has(runtime, /let impact: NativeReminderInvalidationPolicy\.Impact = cacheWritten\s*\? reminderInvalidation\.cache/, "failed writes cannot seed a successful cache signature");
+  has(policy, /struct Workspace: Equatable \{\s*let linkID: String\s*let complete: Bool\s*\}/, "score/revision/prep excluded from reminder signature");
+  has(policy, /key == "get\/supporter\/schedule" \{ return \.all \}/, "schedule always invalidates");
+  has(runtime, /try vault\.verify[\s\S]*?reminderInvalidation\.reset/, "verified lease changes reset optimization");
+  has(runtime, /func removePendingEventCard[\s\S]*?storageChanged\(remindersChanged: true\)/, "discarding edits restores kickoff");
+  has(coordinator, /loadedScope != vault\.namespace \|\| token == nil/, "unknown accounts and broad changes do not skip checks");
+  has(coordinator, /selected\.contains\(\$0\)/, "unrelated event writes do not load selected future games");
+  const invalidate = coordinator.slice(coordinator.indexOf("func invalidate"), coordinator.indexOf("private func valid("));
+  assert.ok(!/vault\.read|notificationSettings|pendingNotificationRequests/.test(invalidate), "invalidations must be cheap");
+  has(invalidate, /generation \+= 1[\s\S]*?removePendingNotificationRequests[\s\S]*?guard !running, !invalidationScheduled/, "fence and cancel synchronously before coalescing");
+  has(coordinator, /workspaceStatus: workspace\.eventStatus, gameStatus: workspace\.game\?\.status/, "server Final cannot be hidden by a stale loaded model");
+  for (const source of [coordinator, routine]) {
+    for (const counter of ["rebuilds", "workspaceReads", "settingsQueries", "pendingQueries", "adds"]) {
+      has(source, new RegExp(`workCounts\\.${counter} \\+= 1`), `profile ${counter} at actual work sites`);
+    }
+  }
 });
 
 test("reconciliation cannot erase another reminder category", () => {

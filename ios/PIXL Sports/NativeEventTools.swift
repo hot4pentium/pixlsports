@@ -87,7 +87,9 @@ final class NativeEventToolModel: ObservableObject {
     @Published private(set) var pendingQueue: [NativeQueuedEventToolCommand] = []
     @Published private(set) var conflictBlocked = false
     @Published private(set) var trackerRecoveryStatus: NativeTrackerRecoveryStatus?
-    @Published private(set) var unreadablePendingData = false
+    @Published private(set) var unreadablePendingData = false {
+        didSet { if unreadablePendingData != oldValue { reminderStateChanged() } }
+    }
     @Published var reloadGeneration = 0
     private let shareToken: String
     private let storageKey: String
@@ -834,6 +836,14 @@ final class NativeEventToolModel: ObservableObject {
             trackerRecoveryStatus: trackerRecoveryStatus
         )
         offline.storageChanged()
+        reminderStateChanged()
+    }
+
+    private func reminderStateChanged() {
+        // Includes a durable pending finish before its optimistic projection.
+        guard ownsCurrentScope else { return }
+        offline.toolReminderStateChanged(token: shareToken, complete: trackerIsComplete,
+            unreadable: unreadablePendingData)
     }
 
     private func reconcileRestoredStatQueue() {
@@ -862,6 +872,7 @@ final class NativeEventToolModel: ObservableObject {
             projected = NativeEventProjection.apply(queued.command, to: projected)
         }
         workspace = projected
+        reminderStateChanged()
     }
 
     private func postScheduleChange(for command: NativeEventToolCommand) {

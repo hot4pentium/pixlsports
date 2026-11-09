@@ -72,6 +72,7 @@ final class NativeOfflineRuntime: ObservableObject {
     private var downloadEpochs = NativeOfflineDownloadEpochs()
     private var workerID = UUID()
     private var expiryClock: AnyCancellable?
+    private var reminderInvalidation = NativeReminderInvalidationPolicy()
 
     var accountID: String { vault.subject ?? "signed-out" }
     var canContinue: Bool { vault.canContinue() }
@@ -129,18 +130,34 @@ final class NativeOfflineRuntime: ObservableObject {
         cache(data, key: "get/supporter/profile")
     }
 
-    func cache(_ data: Data, key: String) {
+    func cache(_ data: Data, key: String, workspace: NativeEventWorkspace? = nil) {
+        var cacheWritten = false
         do {
             try vault.write(data, key: key)
             if key.hasPrefix("workspace/") {
                 try vault.allowAutomaticDownload(String(key.dropFirst(10)), subject: vault.subject)
             }
+            cacheWritten = true
             storageError = nil
         }
-        catch { storageError = error.localizedDescription }
+        catch {
+            storageError = error.localizedDescription
+            reminderInvalidation.reset(scope: vault.namespace)
+        }
 #if os(iOS)
-        Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
-        Task { await NativeToolAvailabilityReminderCoordinator.shared.reconcile() }
+        let impact: NativeReminderInvalidationPolicy.Impact = cacheWritten
+            ? reminderInvalidation.cache(key: key, scope: vault.namespace,
+            workspace: workspace.map {
+                .init(linkID: $0.linkId, complete: NativeEventDetailStep.gameIsComplete(
+                    workspaceStatus: $0.eventStatus, gameStatus: $0.game?.status))
+            }) : .all
+        if impact.routine {
+            Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
+        }
+        if impact.availability {
+            let token = key.hasPrefix("workspace/") ? String(key.dropFirst(10)) : nil
+            NativeToolAvailabilityReminderCoordinator.shared.invalidate(event: token)
+        }
 #endif
     }
 
@@ -148,6 +165,7 @@ final class NativeOfflineRuntime: ObservableObject {
         do {
             let previous = vault.namespace
             try vault.verify(token: token, subject: subject, schedule: schedule)
+            reminderInvalidation.reset(scope: vault.namespace)
             if previous != nil, previous != vault.namespace {
                 cancelWorker()
                 models.removeAll()
@@ -178,6 +196,7 @@ final class NativeOfflineRuntime: ObservableObject {
 
     func clear() throws {
         cancelWorker()
+        reminderInvalidation.reset(scope: nil)
         downloadEpochs.invalidate(event: nil)
         try vault.clear()
         models.removeAll()
@@ -197,10 +216,21 @@ final class NativeOfflineRuntime: ObservableObject {
     }
     func claim(_ token: String) -> Bool { activeDrains.insert(token).inserted }
     func release(_ token: String) { activeDrains.remove(token) }
-    func storageChanged() {
+    func storageChanged(remindersChanged: Bool = false) {
         objectWillChange.send()
 #if os(iOS)
-        Task { await NativeToolAvailabilityReminderCoordinator.shared.reconcile() }
+        if remindersChanged {
+            NativeToolAvailabilityReminderCoordinator.shared.invalidate(event: nil)
+        }
+#endif
+    }
+
+    func toolReminderStateChanged(token: String, complete: Bool, unreadable: Bool) {
+#if os(iOS)
+        if reminderInvalidation.tool(token: token, scope: vault.namespace,
+            state: .init(complete: complete, unreadable: unreadable)) {
+            NativeToolAvailabilityReminderCoordinator.shared.invalidate(event: token)
+        }
 #endif
     }
 
@@ -264,6 +294,9 @@ final class NativeOfflineRuntime: ObservableObject {
         if let token = reminderToken {
             NativeToolAvailabilityReminderCoordinator.shared.eventChanged(
                 token: token, subject: subject, deleted: change.operation == .delete)
+        } else {
+            // A missing/corrupt schedule cannot justify retaining stale alerts.
+            NativeToolAvailabilityReminderCoordinator.shared.invalidate(event: nil)
         }
 #endif
         storageChanged()
@@ -274,7 +307,7 @@ final class NativeOfflineRuntime: ObservableObject {
             throw NativeOfflineError.locked
         }
         try vault.write(nil, key: "pending/event-card/" + id)
-        storageChanged()
+        storageChanged(remindersChanged: true)
     }
 
     func discardPendingEventCard(id: String, subject: String) {
@@ -810,7 +843,13 @@ final class NativeOfflineRuntime: ObservableObject {
             throw NativeOfflineError.locked
         }
         cancelWorker()
-        defer { storageChanged() }
+        defer {
+            reminderInvalidation.reset(scope: vault.namespace)
+            storageChanged(remindersChanged: true)
+#if os(iOS)
+            Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
+#endif
+        }
         let removed = try vault.storageSnapshot(subject: subject).events.filter {
             !$0.protected && (token == nil || $0.id == token)
         }
@@ -839,7 +878,7 @@ final class NativeOfflineRuntime: ObservableObject {
             throw NativeOfflineError.protectedStorage
         }
         try vault.allowAutomaticDownload(token, subject: clerk.user?.id)
-        storageChanged()
+        storageChanged(remindersChanged: true)
     }
     func receivedFreshContent() { usingSavedContent = false }
 

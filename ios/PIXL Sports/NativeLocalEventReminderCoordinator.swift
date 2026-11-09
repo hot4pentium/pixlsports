@@ -18,6 +18,9 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
     private var generation = 0
     private var running = false
     private var dirty = false
+#if DEBUG
+    var workCounts = NativeReminderWorkCounts()
+#endif
     @Published private(set) var isEnabled = false
     @Published private(set) var status = ""
     @Published private(set) var errorMessage: String?
@@ -115,6 +118,9 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
     }
 
     private func rebuild() async {
+#if DEBUG
+        workCounts.rebuilds += 1
+#endif
         guard isSelected, var saved = state(), saved.enabled,
               let scope = vault.namespace, let lease = vault.lease else {
             cancel()
@@ -123,8 +129,14 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
         isEnabled = true
         generation += 1
         let revision = generation
+#if DEBUG
+        workCounts.settingsQueries += 1
+#endif
         let settings = await center.notificationSettings()
         guard revision == generation, scope == vault.namespace, vault.canContinue() else { return }
+#if DEBUG
+        workCounts.pendingQueries += 1
+#endif
         let pending = await center.pendingNotificationRequests()
         guard revision == generation, scope == vault.namespace, vault.canContinue() else { return }
         let routineIDs = pending.filter { $0.identifier.hasPrefix(Self.prefix) }.map(\.identifier)
@@ -144,9 +156,12 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
             saved.consumed = saved.consumed.filter { $0.value > now }
             let prepared = Set(vault.preparedEvents)
             let events = schedule.events.filter {
-                prepared.contains($0.shareToken) && ["game", "practice"].contains($0.type)
-                    && !["completed", "cancelled", "canceled", "final"].contains($0.status)
-                    && (try? vault.read("workspace/" + $0.shareToken)) != nil
+                guard prepared.contains($0.shareToken), ["game", "practice"].contains($0.type),
+                      !["completed", "cancelled", "canceled", "final"].contains($0.status) else { return false }
+#if DEBUG
+                workCounts.workspaceReads += 1
+#endif
+                return (try? vault.read("workspace/" + $0.shareToken)) != nil
             }.map {
                 NativeLocalReminderPlan.Event(id: $0.eventId, date: $0.date,
                     start: NativeLocalReminderPlan.localInstant(date: $0.date, time: $0.time,
@@ -178,6 +193,9 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
                 calendar.timeZone = TimeZone(secondsFromGMT: 0)!
                 var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: reminder.fire)
                 components.timeZone = calendar.timeZone
+#if DEBUG
+                workCounts.adds += 1
+#endif
                 try await center.add(UNNotificationRequest(
                     identifier: Self.prefix + reminder.id, content: content,
                     trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))

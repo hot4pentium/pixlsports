@@ -27,3 +27,13 @@ not erase a separate opt-in or create duplicate cross-channel delivery.
 **How to apply:** Keep consent, request identities, capacity reservations, and
 category cleanup separate. Account lock/clear still cancels private alerts.
 Persist consumed attempts conservatively rather than replaying uncertain alerts.
+
+Reminder performance optimizations should cache only transient input signatures,
+not notification acceptance or verified authority.
+
+**Why:** Score writes cannot change a future tool opening, but stale OS snapshots
+or account authority could falsely confirm an alert or retain a private request.
+
+**How to apply:** Preserve full checks on relevant changes and reset optimizations
+on verification/account/download boundaries. Completion and unreadable pending
+work remain invalidating inputs even without a server response.

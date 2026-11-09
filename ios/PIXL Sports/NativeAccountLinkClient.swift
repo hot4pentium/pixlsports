@@ -432,8 +432,8 @@ final class NativeAccountLinkClient {
             }
             if (isWorkspace || path == "supporter/event-workspace-save"), let shareToken,
                offline.vault.canContinue(subject: clerk.user?.id),
-               (try? JSONDecoder().decode(NativeEventWorkspace.self, from: data)) != nil {
-                offline.cache(data, key: "workspace/" + shareToken)
+               let workspace = try? JSONDecoder().decode(NativeEventWorkspace.self, from: data) {
+                offline.cache(data, key: "workspace/" + shareToken, workspace: workspace)
                 offline.receivedFreshContent()
             }
             return data

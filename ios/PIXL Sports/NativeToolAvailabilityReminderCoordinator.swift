@@ -17,6 +17,11 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
     private var running = false
     private var dirty = false
     private var emptySweepScope: String?
+    private var loadedScope: String?
+    private var invalidationScheduled = false
+#if DEBUG
+    var workCounts = NativeReminderWorkCounts()
+#endif
     @Published private(set) var selected = Set<String>()
     @Published private(set) var confirmed = Set<String>()
     @Published private(set) var busy = Set<String>()
@@ -43,6 +48,29 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
     private func persist(_ state: State) throws {
         try vault.write(JSONEncoder().encode(state), key: key)
         selected = Set(state.selections.filter { !$0.value.consumed }.keys)
+        loadedScope = vault.namespace
+    }
+
+    /// Event-scoped invalidation never reads the vault or asks iOS about
+    /// unrelated scores. Unknown account state always takes the full path.
+    func invalidate(event token: String?) {
+        guard loadedScope != vault.namespace || token == nil
+                || token.map({ selected.contains($0) }) == true else { return }
+        // Fence an in-flight OS add immediately, before the scheduled rebuild.
+        generation += 1
+        dirty = true
+        if let token, let scope = vault.namespace {
+            center.removePendingNotificationRequests(withIdentifiers: [
+                NativeToolAvailabilityReminderPlan.requestID(scope: scope, token: token)
+            ])
+            confirmed.remove(token)
+        }
+        guard !running, !invalidationScheduled else { return }
+        invalidationScheduled = true
+        Task {
+            invalidationScheduled = false
+            await reconcile()
+        }
     }
 
     private func valid(_ revision: Int, _ scope: String, _ subject: String) -> Bool {
@@ -84,8 +112,14 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
                 result[event.shareToken] = Context(eventID: event.eventId, start: nil, ended: true)
                 continue
             }
-            guard prepared.contains(event.shareToken),
-                  let data = try vault.read("workspace/" + event.shareToken, subject: subject) else {
+            guard prepared.contains(event.shareToken) else {
+                result[event.shareToken] = Context(eventID: event.eventId, start: nil, ended: false)
+                continue
+            }
+#if DEBUG
+            workCounts.workspaceReads += 1
+#endif
+            guard let data = try vault.read("workspace/" + event.shareToken, subject: subject) else {
                 result[event.shareToken] = Context(eventID: event.eventId, start: nil, ended: false)
                 continue
             }
@@ -98,7 +132,9 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
                 date: draft?.date ?? event.date, time: draft?.time ?? event.time,
                 timezone: draft?.timezone ?? event.timezone ?? schedule.timezone)
             result[event.shareToken] = Context(eventID: event.eventId, start: start,
-                ended: model.trackerIsComplete || (draft.map { $0.type != "game" } ?? false))
+                ended: model.trackerIsComplete || NativeEventDetailStep.gameIsComplete(
+                    workspaceStatus: workspace.eventStatus, gameStatus: workspace.game?.status)
+                    || (draft.map { $0.type != "game" } ?? false))
         }
         return result
     }
@@ -209,6 +245,7 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
         messages = [:]
         errorMessage = nil
         emptySweepScope = nil
+        loadedScope = nil
         center.removeAllPendingNotificationRequests()
         center.removeAllDeliveredNotifications()
     }
@@ -226,6 +263,9 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
     }
 
     private func rebuild() async {
+#if DEBUG
+        workCounts.rebuilds += 1
+#endif
         guard let scope = vault.namespace, let subject = vault.subject,
               let lease = vault.lease, vault.canContinue(subject: subject) else {
             cancelForAccount()
@@ -234,10 +274,15 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
         let revision = generation
         do {
             var state = try load()
+            selected = Set(state.selections.filter { !$0.value.consumed }.keys)
+            loadedScope = scope
             if state.selections.values.allSatisfy({ $0.consumed }) {
                 selected = []
                 confirmed = []
                 if emptySweepScope != scope {
+#if DEBUG
+                    workCounts.pendingQueries += 1
+#endif
                     let pending = await center.pendingNotificationRequests()
                     guard valid(revision, scope, subject) else { return }
                     center.removePendingNotificationRequests(withIdentifiers:
@@ -255,8 +300,14 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
                 !$0.value.consumed && ($0.value.attemptedFire.map { $0 > now } ?? true)
             }.keys)
             let eventContexts = try contexts(subject: subject, tokens: activeTokens)
+#if DEBUG
+            workCounts.settingsQueries += 1
+#endif
             let settings = await center.notificationSettings()
             guard valid(revision, scope, subject) else { return }
+#if DEBUG
+            workCounts.pendingQueries += 1
+#endif
             let pending = await center.pendingNotificationRequests()
             guard valid(revision, scope, subject) else { return }
             let authorized = [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus)
@@ -339,6 +390,9 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
                     var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fire)
                     components.timeZone = calendar.timeZone
                     do {
+#if DEBUG
+                        workCounts.adds += 1
+#endif
                         try await center.add(UNNotificationRequest(identifier: id, content: content,
                             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
                     } catch {
@@ -359,6 +413,9 @@ final class NativeToolAvailabilityReminderCoordinator: ObservableObject {
             guard valid(revision, scope, subject) else { return }
             confirmed = []
             errorMessage = "Reminders couldn’t be checked. \(error.localizedDescription)"
+#if DEBUG
+            workCounts.pendingQueries += 1
+#endif
             let pending = await center.pendingNotificationRequests()
             guard valid(revision, scope, subject) else { return }
             center.removePendingNotificationRequests(withIdentifiers:
