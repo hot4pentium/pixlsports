@@ -266,7 +266,7 @@ struct NativeEventTrackingPanel: View {
         .disabled(!modeAllowed(mode))
         .opacity(modeAllowed(mode) ? 1 : 0.65)
         .accessibilityLabel(mode.title)
-        .accessibilityHint(modeAllowed(mode) ? "Use \(mode.title) for this event." : availabilityMessage)
+        .accessibilityHint(modeAllowed(mode) ? "Use \(mode.title) for this event." : effectiveTrackingAccess.message())
         .accessibilityIdentifier("native-event-choice-\(mode.rawValue)")
     }
 

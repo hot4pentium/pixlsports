@@ -100,7 +100,10 @@ test("chooser status stays to short availability labels", () => {
   const notice = read("NativeToolAvailabilityNotice");
   assert.ok(!/Record Moments is available anytime|Tracking follows the game/.test(notice));
   has(notice, /if !status\.isEmpty/, "omit duplicate empty reminder explanation");
-  assert.ok(!/Available anytime/.test(read("NativeEventTrackingPanel")));
+  const panel = read("NativeEventTrackingPanel");
+  assert.ok(!/Available anytime|availabilityMessage/.test(panel));
+  has(panel, /\.accessibilityHint\(modeAllowed\(mode\) \?[\s\S]*?effectiveTrackingAccess\.message\(\)/,
+    "VoiceOver receives the same short status");
 });
 
 test("availability stays inline in foreground and account cleanup cancels private alerts", () => {
