@@ -239,11 +239,11 @@ export function FanCardAppearanceManager({ invite, profile, athleteEditor = fals
   return (
     <div className="fan-card-editor mx-auto grid w-full max-w-[360px] gap-6" data-testid="fan-card-appearance-manager">
       <div className="min-w-0">
-        <div className="fan-card-editor__preview mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl" data-testid="appearance-preview">
+        <div className="fan-card-editor__preview mx-auto w-full max-w-[320px] overflow-hidden rounded-2xl" data-testid="appearance-preview">
           <ClassicHypeCardPreview athleteName={displayAthleteName} teamName={invite.teamName} photoUrl={invite.photoUrl} appearance={currentAppearance} cardHref={cardHref} />
         </div>
         <p className="fan-card-editor__status mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
-        <div className="fan-card-editor__templates mx-auto mt-3 w-full max-w-[360px]">
+        <div className="fan-card-editor__templates mx-auto mt-3 w-full max-w-[320px]">
           <HypeCardTemplateCyclers appearance={currentAppearance} onChange={updateAppearance} disabled={busy} />
         </div>
       </div>

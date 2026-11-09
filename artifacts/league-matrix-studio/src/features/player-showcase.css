@@ -79,6 +79,9 @@
 .ps__card-only-heading{display:grid;min-width:0;gap:22px}
 .ps__card-only-kicker{margin:0;color:#dff56f;font:800 12px/1 "Barlow Condensed",sans-serif;letter-spacing:.2em;text-transform:uppercase}
 .ps__card-only-team{margin:8px 0 0;overflow-wrap:anywhere;color:#dce8f5;font:700 clamp(23px,4vw,36px)/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase}
-.ps__card-only-art{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin-inline:auto;overflow:hidden;border:1px solid rgba(192,220,248,.3);background:#102b4d;box-shadow:15px 20px 0 rgba(2,10,24,.38),0 20px 45px rgba(0,0,0,.28)}
+.ps__profile-edit{display:inline-flex;min-height:44px;align-items:center;gap:9px;margin:0 0 20px;padding:0 15px;border:1px solid rgba(142,203,255,.46);background:rgba(16,43,77,.7);color:#e8f3fc;font-size:11px;font-weight:800;letter-spacing:.1em;text-decoration:none;text-transform:uppercase;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.ps__profile-edit:hover{transform:translateY(-1px);border-color:#dff56f;background:#12365c}
+.ps__profile-edit:focus-visible{outline:3px solid #dff56f;outline-offset:3px}
+.ps__card-only-art{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin-inline:auto;overflow:hidden;border:1px solid rgba(192,220,248,.3);background:#102b4d;box-shadow:15px 20px 0 rgba(2,10,24,.38),0 20px 45px rgba(0,0,0,.28);container-type:inline-size}
 .ps__card-only-art .living-card-simple-face{position:absolute;inset:0}
 @media(max-width:720px){.ps__stage-wrap--card-only{padding-inline:14px}.ps__card-only-panel{grid-template-columns:minmax(0,1fr);gap:20px;padding:18px}.ps__card-only-heading{gap:14px}.ps__card-only-heading .ps__card-links{width:100%}.ps__card-only-art{width:min(78%,330px)}}

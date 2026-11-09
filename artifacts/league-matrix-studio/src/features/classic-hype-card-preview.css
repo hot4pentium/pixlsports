@@ -11,7 +11,7 @@
 }
 .classic-card-preview-surface {
   position: relative;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   container-type: inline-size;
   border: 1px solid #9fcaef62;

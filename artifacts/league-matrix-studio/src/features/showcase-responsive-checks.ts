@@ -177,6 +177,9 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
       for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) await readable(browser, byId(id), true);
       await expectAccessible(browser, byId('link-showcase-card-edit'), 'link', 'Edit HYPE Card');
       await expectAccessible(browser, byId('link-showcase-card-public'), 'link', 'Open public card');
+      await expectAccessible(browser, byId('link-showcase-athlete-details'), 'link', 'Edit Athlete Details');
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-athlete-details"]')?.getAttribute('href')?.endsWith('/studio/profile?section=athlete')`), true, 'athlete details action should open the existing profile section at any artifact base path');
+      assert.equal(await browser.evaluate(`(() => { const card = document.querySelector('[data-testid="showcase-card-art"]'); const edit = document.querySelector('[data-testid="link-showcase-athlete-details"]'); return Boolean(card && edit && (card.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), true, 'athlete details action should follow the card');
       await expectAccessible(browser, byId('button-copy-public-showcase'), 'button', 'Copy link');
     } else {
       await bounded(browser, '.ps__card-unavailable', 460, false);
@@ -227,7 +230,7 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     await browser.wait(`document.querySelector('[data-testid="fan-card-appearance-manager"]')`);
     await bounded(browser, '.ps-owner-manage', desktop ? 880 : width);
     await bounded(browser, byId('fan-card-appearance-manager'), 360);
-    await proportion(browser, byId('classic-card-preview-surface'), 3 / 4);
+    await proportion(browser, byId('classic-card-preview-surface'), 2 / 3);
     await readable(browser, byId('button-hype-manager-design'), true);
   } else {
     await browser.wait(`document.querySelector('#living-card-display')`);
@@ -359,7 +362,7 @@ async function cardSides(browser: Browser) {
 async function editor(browser: Browser, width: number) {
   await browser.wait(`document.querySelector('[data-testid="fan-card-appearance-manager"]')`);
   await bounded(browser, byId('fan-card-appearance-manager'), 360);
-  await proportion(browser, byId('classic-card-preview-surface'), 3 / 4);
+  await proportion(browser, byId('classic-card-preview-surface'), 2 / 3);
   const selectors = ['classic-card-preview-surface', 'appearance-navigation-preview', 'hype-card-template-cyclers', 'photo-position-controls'];
   const boxes = [];
   for (const id of selectors) boxes.push(await rect(browser, byId(id)));

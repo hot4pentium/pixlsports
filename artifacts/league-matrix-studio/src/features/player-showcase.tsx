@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Copy, ExternalLink, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, Check, Copy, ExternalLink, Pencil, ShieldCheck, Zap } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useClerk, useUser } from '@clerk/react';
 import { useState, type ReactNode } from 'react';
@@ -29,6 +29,7 @@ export interface PlayerShowcaseContentProps {
   linkedCard?: PublicAthleteFanCard | null;
   cardStatus?: 'loading' | 'ready' | 'unavailable' | 'not-linked' | 'not-shared' | 'ambiguous';
   cardEditHref?: string;
+  profileEditHref?: string;
   cardPublicHref?: string;
   cardCandidates?: readonly OwnedAthleteInvite[];
   selectedCardToken?: string;
@@ -40,7 +41,7 @@ function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', cardPublicHref, cardCandidates = [], selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', profileEditHref, cardPublicHref, cardCandidates = [], selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
   const card = cardStatus === 'ready' ? linkedCard ?? null : null;
   const privateCheers = cardCandidates.find(candidate => candidate.inviteToken === selectedCardToken)?.liveTaps;
   const cardPicker = cardCandidates.length > 1 && onSelectCard ? (
@@ -124,6 +125,9 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
           )}
           {!card && privateCheers && cardStatus === 'not-shared' && <FanCheersSummary liveTaps={privateCheers} />}
         </div>
+        {profileEditHref && <Link href={profileEditHref} className="ps__profile-edit" data-testid="link-showcase-athlete-details">
+          <Pencil size={16} aria-hidden="true" /> Edit Athlete Details
+        </Link>}
       </section>
     </div>
   );
@@ -209,6 +213,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           else void invitesQuery.refetch();
         }}
         cardEditHref={cardSettingsHref}
+        profileEditHref="/studio/profile?section=athlete"
         cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}?from=player-showcase` : undefined} />
       <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         {publicShowcaseUrl && (

@@ -90,9 +90,8 @@
   :root .ps__card-links .ps__link svg { width: 20px; height: 20px; flex-basis: 20px; padding: 3px; }
   :root .ps__card-unavailable .ps__link { min-height: 44px; padding: 8px 16px; font-size: 13px; }
 
-  /* Card design editor (owner manage "design" panel and athlete /card-editor/design).
-     Keeps the single centered column: preview + 4 buttons, frame/lower-third arrows, photo sliders. */
-  :root .fan-card-editor { max-width: 320px; gap: 16px; }
+  /* Design editor: centered portrait preview, then its complete, unchanged control set. */
+  :root .fan-card-editor { max-width: 360px; gap: 16px; }
   :root .fan-card-editor__preview,
   :root .fan-card-editor__templates { max-width: 320px; }
   :root .fan-card-editor__status { margin-top: 6px; font-size: 10px; }

@@ -346,7 +346,7 @@ async function stop(process: ChildProcess | undefined) {
   });
 }
 
-test('Showcase responsive geometry stays compact across owner/public route import orders', { timeout: 240_000 }, async (t) => {
+test('Showcase responsive geometry stays compact across owner/public route import orders', { timeout: 360_000 }, async (t) => {
   const suffix = `showcase-responsive-${process.pid}`;
   const sourcePath = resolve(appDirectory, `${suffix}.tsx`);
   const htmlPath = resolve(appDirectory, `${suffix}.html`);

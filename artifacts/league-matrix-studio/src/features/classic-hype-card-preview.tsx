@@ -151,7 +151,7 @@ export function ClassicHypeCardPreview({ athleteName, teamName, photoUrl, appear
   const cardAppearance = normalizeCardAppearance(appearance);
   return (
     <div data-testid="classic-card-preview-stack">
-      <div className="classic-card-preview-surface" data-testid="classic-card-preview-surface" data-design={cardAppearance.design} role="img" aria-label={`HYPE Card preview for ${athleteName}`} style={{ aspectRatio: '3 / 4', position: 'relative' }}>
+      <div className="classic-card-preview-surface" data-testid="classic-card-preview-surface" data-design={cardAppearance.design} role="img" aria-label={`HYPE Card preview for ${athleteName}`} style={{ aspectRatio: '2 / 3', position: 'relative' }}>
         <LivingAthleteCardFront athleteName={athleteName} teamName={teamName} photoUrl={photoUrl} appearance={cardAppearance} />
       </div>
       <HypeCardPreviewNavigation cardHref={cardHref} />

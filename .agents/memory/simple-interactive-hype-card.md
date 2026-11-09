@@ -15,6 +15,12 @@ Interactive athlete HYPE Cards use the full original photo in a 2:3 portrait fra
 
 **How to apply:** Keep the interactive front, owner preview, and JPG export consistent. Preserve horizontal and vertical photo adjustment. Legacy premium artwork and separately authored moment graphics are independent; do not delete their saved designs or expand this simplification into that separate editor. Owner-preview links must not discard an unsaved appearance draft.
 
+Keep web owner and editor previews bound to the saved-appearance renderer used by the public card, including selected templates, lower thirds, identity, and photo placement. A simplified preview must not make saved design controls appear ineffective or disagree with the shared card.
+
+**Why:** A separate front renderer can ignore saved appearance choices and make the preview, editor controls, and shared card disagree.
+
+**How to apply:** Keep the web owner/editor/public rendering paths consistent and use the 2:3 front frame. Verify that appearance edits visibly update the preview.
+
 The HYPE Card walkthrough should not ask for a custom moment. Leave the headline blank for new cards, use a clear “HYPE Card” fallback in names, preserve saved legacy headline values, and keep separate media clip naming fields.
 
 **Why:** The user said a custom moment input is not needed for the HYPE Card.
