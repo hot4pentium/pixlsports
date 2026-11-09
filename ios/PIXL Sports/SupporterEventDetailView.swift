@@ -212,11 +212,6 @@ struct SupporterEventDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 eventCard(schedule: schedule, event: event)
-                if prepHasUnsavedChanges {
-                    Label("Prep has unsaved edits", systemImage: "pencil.circle")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(SupporterHomeColors.accentText)
-                }
                 NativeEventToolPanel(
                     schedule: schedule, event: event,
                     clerk: clerk,

@@ -99,6 +99,7 @@ final class NativeEventToolModel: ObservableObject {
     private var scheduledDrain: Task<Void, Never>?
 #if DEBUG
     private var didApplyUITestTrackerSaveDelay = false
+    private var didApplyUITestPrepSaveDelay = false
 #endif
     private let offline = NativeOfflineRuntime.shared
     private var scope: String?
@@ -124,6 +125,7 @@ final class NativeEventToolModel: ObservableObject {
         return ["final", "complete", "completed"].contains(status)
     }
     var hasPendingPrepCommand: Bool { pendingQueue.contains { $0.command.kind == "prep" } }
+    var hasPendingTrackerCommand: Bool { pendingQueue.contains { $0.command.kind != "prep" } }
     var canKeepLocalPrep: Bool {
         conflictBlocked && !unreadablePendingData && ownsCurrentScope
             && pendingQueue.allSatisfy { $0.command.kind == "prep" }
@@ -193,8 +195,6 @@ final class NativeEventToolModel: ObservableObject {
             errorMessage = durableQueue.storageError?.localizedDescription
         } else if conflictBlocked || trackerRecoveryStatus != nil {
             errorMessage = "The tracker changed elsewhere. Your pending changes are still saved on this iPhone."
-        } else if !pendingQueue.isEmpty {
-            errorMessage = "Checking your saved tracker changes…"
         }
         if let data = try? offline.vault.read("workspace/" + shareToken, subject: accountID),
            let saved = try? JSONDecoder().decode(NativeEventWorkspace.self, from: data) {
@@ -535,6 +535,12 @@ final class NativeEventToolModel: ObservableObject {
             let command = pendingQueue[0].command
             do {
 #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("--ui-testing-signed-in-prep"),
+                   ProcessInfo.processInfo.arguments.contains("--ui-testing-delay-prep-save"),
+                   command.kind == "prep", !didApplyUITestPrepSaveDelay {
+                    didApplyUITestPrepSaveDelay = true
+                    try? await Task.sleep(for: .seconds(3))
+                }
                 if ProcessInfo.processInfo.arguments.contains("--ui-testing-delay-tracker-save"),
                    command.kind != "prep", !didApplyUITestTrackerSaveDelay {
                     didApplyUITestTrackerSaveDelay = true

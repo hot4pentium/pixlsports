@@ -19,6 +19,7 @@ struct NativeEventPrepView: View {
     @State private var edited = false
     @State private var prepAutosaveTask: Task<Void, Never>?
     @State private var recoveringPrepDraft = false
+    @State private var draftWriteFailed = false
     @State private var confirmingLeave = false
     @State private var isManagingFullPrep = false
     @State private var isChecklistExpanded = true
@@ -112,13 +113,6 @@ struct NativeEventPrepView: View {
                 .listRowBackground(SupporterHomeColors.panel)
             }
             if model.workspace != nil {
-                if showCompletionCelebration {
-                    Section {
-                        completionCelebration
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                }
                 Section {
                     readinessSummary
                 }
@@ -307,10 +301,6 @@ struct NativeEventPrepView: View {
                 }
             }
 
-            if showCompletionCelebration {
-                completionCelebration
-            }
-
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { isManagingFullPrep = true }
             } label: {
@@ -356,47 +346,12 @@ struct NativeEventPrepView: View {
     }
 
     private var completionCelebration: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "party.popper.fill")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(NativeEventToolColors.prep)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Prep complete!")
-                    .font(.headline.weight(.black))
-                    .foregroundStyle(.white)
-                Text(event.type == "practice" ? "You're ready for practice." : "You're ready for game day.")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SupporterHomeColors.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "sparkles")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(NativeEventToolColors.prep)
-                .accessibilityHidden(true)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [NativeEventToolColors.prep.opacity(0.22), NativeEventToolColors.prep.opacity(0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 17, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .strokeBorder(NativeEventToolColors.prep.opacity(0.48), lineWidth: 1)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("native-prep-completion-celebration")
-        .transition(
-            reduceMotion
-                ? .opacity
-                : .scale(scale: 0.96).combined(with: .opacity)
-        )
+        Image(systemName: "checkmark.seal.fill")
+            .font(.title2.weight(.bold))
+            .foregroundStyle(NativeEventToolColors.prep)
+            .accessibilityLabel("Prep complete")
+            .accessibilityIdentifier("native-prep-completion-celebration")
+            .allowsHitTesting(false)
     }
 
     private func quickChecklistItem(_ item: NativePrepItem) -> some View {
@@ -518,9 +473,9 @@ struct NativeEventPrepView: View {
         .preferredColorScheme(.light)
         .eventToolNavigationTitle("Prep", embedded: embedded)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(hasUnsavedEdits)
+        .navigationBarBackButtonHidden(hasManualUnsavedEdits)
         .toolbar {
-            if hasUnsavedEdits {
+            if hasManualUnsavedEdits {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { confirmingLeave = true }
                 }
@@ -535,7 +490,7 @@ struct NativeEventPrepView: View {
             if model.workspace == nil, let clerk { await model.load(clerk: clerk) }
             applySavedPrep()
         }
-        .onChange(of: hasUnsavedEdits) { _, value in onDirtyChange(value) }
+        .onChange(of: hasManualUnsavedEdits) { _, value in onDirtyChange(value) }
 #if DEBUG
         .safeAreaInset(edge: .top) {
             if NativeEventWorkspaceUITestFixture.isRequested,
@@ -590,6 +545,12 @@ struct NativeEventPrepView: View {
             || (editingTaskID != nil && hasUnsavedTaskEntry)
     }
 
+    // Checklist edits already have a durable autosave draft. Only notes and
+    // unfinished text entry need a manual-save navigation warning.
+    private var hasManualUnsavedEdits: Bool {
+        notesDirty || hasUnsavedTaskEntry || draftWriteFailed
+    }
+
     private var readinessSummary: some View {
         readinessHeader(compact: false)
     }
@@ -613,6 +574,8 @@ struct NativeEventPrepView: View {
                         Text("\(readyCount)")
                             .font(.system(size: compact ? 18 : 22, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
+                            .opacity(showCompletionCelebration ? 0 : 1)
+                        if showCompletionCelebration { completionCelebration }
                     }
                     .frame(width: compact ? 46 : 58, height: compact ? 46 : 58)
                     .accessibilityHidden(true)
@@ -743,16 +706,11 @@ struct NativeEventPrepView: View {
         scheduleChecklistAutosave()
 
         if !items[index].completed {
-            withAnimation(checklistAnimation) {
-                if compactContent { isChecklistExpanded = true }
-                showCompletionCelebration = false
-            }
+            showCompletionCelebration = false
         } else if !wasComplete && isChecklistComplete {
-            withAnimation(checklistAnimation) {
-                isChecklistExpanded = false
-                showCompletionCelebration = true
-                completionCelebrationID += 1
-            }
+            // Keep the tapped row in place, including the final checkoff.
+            showCompletionCelebration = true
+            completionCelebrationID += 1
         }
     }
 
@@ -830,7 +788,7 @@ struct NativeEventPrepView: View {
     @discardableResult
     private func persistDraft() -> Bool {
         guard clerk != nil else { return true }
-        guard model.ownsCurrentScope else { return false }
+        guard model.ownsCurrentScope else { draftWriteFailed = true; return false }
         do {
             let dirty = items != model.workspace?.prep.items
             let data = dirty || notesDirty ? try JSONEncoder().encode(
@@ -838,8 +796,10 @@ struct NativeEventPrepView: View {
                           baseRevision: model.workspace?.prepRevision)) : nil
             try NativeOfflineVault.shared.write(data, key: "draft/" + event.shareToken)
             NativeOfflineRuntime.shared.storageChanged()
+            draftWriteFailed = false
             return true
         } catch {
+            draftWriteFailed = true
             model.errorMessage = "These edits are not saved on this iPhone. \(error.localizedDescription)"
             return false
         }

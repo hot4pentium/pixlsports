@@ -3,6 +3,92 @@ import UIKit
 
 @MainActor
 final class SupporterEventDetailUITests: XCTestCase {
+    func testPrepCheckoffsKeepRowsStationaryInFullEventDetails() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft", "--prep-long-labels"]
+        app.launch()
+        defer { app.terminate() }
+        assertReachable("prep-test-open-event", in: app).tap()
+        assertReachable("event-card-prep", in: app).tap()
+        let row = assertReachable("native-prep-item-water", in: app)
+        let original = row.frame
+        let hero = app.descendants(matching: .any)["event-detail-hero"].firstMatch
+        let heroY = hero.frame.minY
+        for value in ["Ready", "Not ready", "Ready", "Not ready"] {
+            row.tap()
+            XCTAssertEqual(row.value as? String, value)
+            assertPrepRowStationary(row, original: original, heroY: heroY, in: app)
+        }
+        XCTAssertFalse(app.buttons["Leave without saving"].exists)
+    }
+
+    func testSignedInEarlyPrepCheckoffsStayStationaryDuringSaving() throws {
+        try checkSignedInSilentPrep(environmentKey: "PIXL_PREP_EARLY_TEST_EVENT_ID", early: true)
+    }
+
+    func testSignedInAvailablePrepCheckoffsStayStationaryDuringSaving() throws {
+        try checkSignedInSilentPrep(environmentKey: "PIXL_PREP_AVAILABLE_TEST_EVENT_ID", early: false)
+    }
+
+    private func assertPrepRowStationary(
+        _ row: XCUIElement, original: CGRect, heroY: CGFloat, in app: XCUIApplication
+    ) {
+        XCTAssertTrue(row.isHittable)
+        XCTAssertEqual(row.frame.minX, original.minX, accuracy: 1.5)
+        XCTAssertEqual(row.frame.minY, original.minY, accuracy: 1.5,
+                       "Saving must not push the row or change the scroll offset.")
+        XCTAssertEqual(row.frame.height, original.height, accuracy: 1.5)
+        let hero = app.descendants(matching: .any)["event-detail-hero"].firstMatch
+        XCTAssertEqual(hero.frame.minY, heroY, accuracy: 1.5, "The event scroll position must stay fixed.")
+        for text in ["Prep has unsaved edits", "Saved game changes", "Prep saved", "Saving 1 change…"] {
+            XCTAssertFalse(app.staticTexts[text].exists)
+        }
+        XCTAssertFalse(app.descendants(matching: .any)["native-tool-pending"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["native-event-completed-game-status"].exists)
+    }
+
+    private func checkSignedInSilentPrep(environmentKey: String, early: Bool) throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let eventID = environment[environmentKey], !eventID.isEmpty,
+              let itemID = environment["PIXL_PREP_TEST_ITEM_ID"], !itemID.isEmpty else {
+            throw XCTSkip("Set \(environmentKey) and PIXL_PREP_TEST_ITEM_ID for a disposable game and unchecked task; sign in to its owner first.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-signed-in-prep", "--ui-testing-delay-prep-save"]
+        app.launch()
+        defer { app.terminate() }
+        openSignedInPrep(eventID: eventID, in: app)
+        let availability = app.staticTexts["event-tracking-locked-message"]
+        XCTAssertEqual(availability.label, early ? "Available within 10 minutes of start" : "Available")
+        let row = assertReachable("native-prep-item-\(itemID)", in: app)
+        XCTAssertEqual(row.value as? String, "Not ready")
+        let original = row.frame
+        let heroY = app.descendants(matching: .any)["event-detail-hero"].firstMatch.frame.minY
+        row.tap()
+        XCTAssertEqual(row.value as? String, "Ready")
+        for _ in 0..<12 {
+            assertPrepRowStationary(row, original: original, heroY: heroY, in: app)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        // Rapid reversals while the first authenticated save is delayed must
+        // preserve the final selection, not the earlier server acknowledgement.
+        row.tap()
+        XCTAssertEqual(row.value as? String, "Not ready")
+        row.tap()
+        XCTAssertEqual(row.value as? String, "Ready")
+        assertPrepRowStationary(row, original: original, heroY: heroY, in: app)
+        waitForPrepSavedAfterChange(in: app)
+        assertPrepRowStationary(row, original: original, heroY: heroY, in: app)
+        app.terminate()
+        app.launch()
+        openSignedInPrep(eventID: eventID, in: app)
+        XCTAssertEqual(assertReachable("native-prep-item-\(itemID)", in: app).value as? String, "Ready")
+        assertReachable("native-prep-item-\(itemID)", in: app).tap()
+        waitForPrepSavedAfterChange(in: app)
+        reopenSignedInPrep(eventID: eventID, in: app)
+        XCTAssertEqual(assertReachable("native-prep-item-\(itemID)", in: app).value as? String, "Not ready")
+    }
+
     func testMainPrepCheckoffRowEditsAndDeletesWithoutOpeningManage() {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -641,7 +727,8 @@ final class SupporterEventDetailUITests: XCTestCase {
             XCTAssertTrue(error.label.contains("Test server committed Prep"))
             XCTAssertTrue(error.label.contains("response dropped before acknowledgement"))
             XCTAssertTrue(error.label.contains("saved on this iPhone"))
-            XCTAssertTrue(app.descendants(matching: .any)["native-tool-pending"].exists)
+            XCTAssertFalse(app.descendants(matching: .any)["native-tool-pending"].exists,
+                           "Failure recovery must not reintroduce routine saving notices.")
             XCTAssertFalse(save.isEnabled, "Use the retained-command retry, not a new save.")
             XCTAssertTrue(reachableFromAbove(itemIdentifier, in: app).isEnabled,
                           "Durably queued work must not prevent another local checklist edit.")
@@ -1245,7 +1332,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
     }
 
-    func testCompletingPrepCelebratesCollapsesChecklistAndAddingTaskReopensIt() {
+    func testCompletingPrepKeepsChecklistExpandedAndAddingTaskKeepsRowsAvailable() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft"]
         app.launch()
@@ -1259,15 +1346,12 @@ final class SupporterEventDetailUITests: XCTestCase {
 
         assertReachable("native-prep-item-water", in: app).tap()
         assertReachable("native-prep-item-cleats", in: app).tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["native-prep-completion-celebration"]
-                .waitForExistence(timeout: 5)
-        )
         let checklist = assertReachable("native-prep-checklist-toggle", in: app)
         XCTAssertTrue(checklist.label.localizedCaseInsensitiveContains("prep"))
         XCTAssertFalse(app.staticTexts["Your checklist"].exists)
-        XCTAssertTrue((checklist.value as? String ?? "").contains("Collapsed"))
-        XCTAssertFalse(app.buttons["native-prep-item-water"].exists)
+        XCTAssertTrue((checklist.value as? String ?? "").contains("Expanded"))
+        XCTAssertTrue(app.buttons["native-prep-item-water"].exists,
+                      "Completing Prep must not remove the last tapped task.")
 
         assertReachable("native-prep-manage-full", in: app).tap()
         let addTask = assertReachable("native-prep-add-task", in: app)
@@ -1359,10 +1443,6 @@ final class SupporterEventDetailUITests: XCTestCase {
         let fifth = revealPrepControl("native-prep-item-snack", in: app)
         XCTAssertEqual(fifth.value as? String, "Not ready")
         fifth.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["native-prep-completion-celebration"]
-                .waitForExistence(timeout: 5)
-        )
         let notes = revealPrepControl("native-prep-notes", in: app)
         notes.tap()
         notes.typeText(" local draft ")
@@ -1378,8 +1458,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         retainPrepScreenshot(in: app, name: "Back to Content — \(accessibility ? "AX XXXL" : "default")")
         back.tap()
         let checklist = revealPrepControl("native-prep-checklist-toggle", in: app)
-        XCTAssertTrue((checklist.value as? String ?? "").contains("Collapsed"))
-        checklist.tap()
+        XCTAssertTrue((checklist.value as? String ?? "").contains("Expanded"))
         _ = revealPrepControl("native-prep-item-water", in: app)
         XCTAssertTrue(
             (revealPrepControl("native-prep-checklist-toggle", in: app).value as? String ?? "")

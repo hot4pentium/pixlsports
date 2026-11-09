@@ -44,7 +44,7 @@ struct NativeEventToolPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if isComplete || (!trackingAllowed && workspaceModel.pendingCount > 0), let clerk {
+            if showsTrackerRecovery, let clerk {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(isComplete ? "Game complete" : "Saved game changes").font(.headline)
                     if workspaceModel.pendingFinal {
@@ -133,6 +133,10 @@ struct NativeEventToolPanel: View {
     private var isComplete: Bool {
         event.type == "game" && (workspaceModel.trackerIsComplete
             || NativeEventDetailStep.gameIsComplete(eventStatus: event.status))
+    }
+    private var showsTrackerRecovery: Bool {
+        selected != .prep && (isComplete
+            || (!trackingAllowed && workspaceModel.hasPendingTrackerCommand))
     }
     private var toolAccent: Color {
         NativeEventToolColors.color(for: selected)
