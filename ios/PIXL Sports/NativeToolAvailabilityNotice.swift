@@ -43,6 +43,10 @@ struct NativeToolAvailabilityNotice: View {
         return false
     }
 
+    private var reminderDisabled: Bool {
+        (!canRemind && !reminders.selected.contains(shareToken)) || reminders.busy.contains(shareToken)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             NativeToolAvailabilityText(access: access, timeZone: timeZone,
@@ -61,16 +65,19 @@ struct NativeToolAvailabilityNotice: View {
             } label: {
                 Label(buttonTitle, systemImage: reminders.selected.contains(shareToken) ? "bell.slash" : "bell")
                     .font(.subheadline.weight(.semibold))
-                    .frame(minHeight: 44)
             }
-            .buttonStyle(.bordered)
-            .disabled((!canRemind && !reminders.selected.contains(shareToken)) || reminders.busy.contains(shareToken))
+            .buttonStyle(SupporterPrimaryButtonStyle(
+                fillColor: reminderDisabled
+                    ? Color(red: 0.87, green: 0.90, blue: 0.94)
+                    : SupporterHomeColors.accent
+            ))
+            .disabled(reminderDisabled)
             .accessibilityIdentifier("native-tool-availability-reminder")
             let status = reminders.errorMessage ?? reminders.messages[shareToken] ?? defaultMessage
             if !status.isEmpty {
                 Text(status)
                     .font(.caption)
-                    .foregroundStyle(SupporterHomeColors.muted)
+                    .foregroundStyle(SupporterHomeColors.lightMuted)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(minHeight: 36, alignment: .topLeading)
                     .accessibilityIdentifier("native-tool-reminder-status")

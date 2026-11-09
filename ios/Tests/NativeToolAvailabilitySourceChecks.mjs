@@ -106,6 +106,15 @@ test("chooser status stays to short availability labels", () => {
     "VoiceOver receives the same short status");
 });
 
+test("reminder button uses readable filled states instead of a faint system border", () => {
+  const notice = read("NativeToolAvailabilityNotice");
+  has(notice, /buttonStyle\(SupporterPrimaryButtonStyle\(/, "explicit dark text on a filled button");
+  has(notice, /fillColor: reminderDisabled[\s\S]*?Color\(red: 0\.87, green: 0\.90, blue: 0\.94\)[\s\S]*?SupporterHomeColors\.accent/, "neutral disabled fill and lime enabled fill");
+  has(notice, /\.disabled\(reminderDisabled\)/, "retain reminder eligibility");
+  has(notice, /foregroundStyle\(SupporterHomeColors\.lightMuted\)/, "supporting text contrasts with the light canvas");
+  assert.ok(!/\.buttonStyle\(\.bordered\)/.test(notice));
+});
+
 test("availability stays inline in foreground and account cleanup cancels private alerts", () => {
   const push = read("NativePushRegistrationCoordinator");
   has(push, /categoryIdentifier == "PIXL_TOOL_AVAILABILITY"[\s\S]*?completionHandler\(\[\]\)/, "no redundant foreground banner");

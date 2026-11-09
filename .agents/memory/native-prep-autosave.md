@@ -3,9 +3,9 @@ name: Native Prep autosave
 description: Native checklist task changes save automatically, while event notes use explicit Save Prep.
 ---
 
-Native Prep task additions, removals, and checkoffs should autosave after a short debounce. Keep event-note edits on the explicit Save Prep action. Routine online save feedback must stay in a fixed-height footer; reserve the larger status panel for offline or error states.
+Native Prep task additions, removals, and checkoffs should autosave after a short debounce. Keep event-note edits on the explicit Save Prep action. Routine saving and saved messages must be silent: no text above the checklist or status footer. Reserve visible notices for offline or error states that need attention.
 
-**Why:** The user reported that a newly added task’s completion reverted after reloading; a separate save tap made task completion easy to miss. They also reported a screen jolt on each tap because the routine save notice changed the checklist layout.
+**Why:** The user reported that a newly added task’s completion reverted after reloading; a separate save tap made task completion easy to miss. They also reported a screen jolt on each tap and explicitly said routine saved text is unnecessary: “It just needs to work.”
 
 **How to apply:** Save the complete checklist through the shared event-workspace command after a short debounce, flush a pending autosave when the app backgrounds, preserve the retryable on-device queue, and show pending or failed saves clearly. Do not replay completion celebrations when restoring saved state.
 

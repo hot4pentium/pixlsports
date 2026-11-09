@@ -898,6 +898,7 @@ struct NativeToolSaveNotice: View {
     let clerk: Clerk
     var hasUnsavedChanges = false
     var savedContentName = "version"
+    var showsRoutineActivity = true
     var onKeepLocalPrep: (() async -> Void)? = nil
     private enum RecoveryChoice: Equatable { case keepLocalPrep, useSaved }
     @State private var confirmingRecovery: RecoveryChoice?
@@ -922,12 +923,12 @@ struct NativeToolSaveNotice: View {
                       : "Offline · changes stay on this iPhone. Live Taps and sharing need a connection.",
                       systemImage: "wifi.slash").font(.caption)
             }
-            if model.busy {
+            if showsRoutineActivity && model.busy {
                 HStack {
                     ProgressView()
                     Text(model.pendingCount > 0 ? model.pendingDescription : "Loading your event…")
                 }
-            } else if model.pendingCount > 0,
+            } else if showsRoutineActivity, model.pendingCount > 0,
                       !model.conflictBlocked,
                       !model.unreadablePendingData,
                       model.errorMessage == nil {

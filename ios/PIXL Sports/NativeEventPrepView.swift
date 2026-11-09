@@ -106,7 +106,7 @@ struct NativeEventPrepView: View {
                 Section {
                     NativeToolSaveNotice(
                         model: model, clerk: clerk, hasUnsavedChanges: edited,
-                        savedContentName: "Prep", onKeepLocalPrep: { await keepLocalPrepChanges() }
+                        savedContentName: "Prep", showsRoutineActivity: false, onKeepLocalPrep: { await keepLocalPrepChanges() }
                     )
                 }
                 .listRowBackground(SupporterHomeColors.panel)
@@ -266,7 +266,7 @@ struct NativeEventPrepView: View {
             if let clerk, shouldShowSaveNotice {
                 NativeToolSaveNotice(
                     model: model, clerk: clerk, hasUnsavedChanges: edited,
-                    savedContentName: "Prep", onKeepLocalPrep: { await keepLocalPrepChanges() }
+                    savedContentName: "Prep", showsRoutineActivity: false, onKeepLocalPrep: { await keepLocalPrepChanges() }
                 )
             }
 
@@ -504,7 +504,6 @@ struct NativeEventPrepView: View {
                             .accessibilityIdentifier("native-prep-back-to-content")
                         }
                     }
-                    if model.workspace != nil && !shouldShowSaveNotice { saveFooter }
                 }
             } else {
                 Form { prepSections }
@@ -515,11 +514,6 @@ struct NativeEventPrepView: View {
         .scrollDismissesKeyboard(.interactively)
         .background {
             if !embedded { NativePageBackground() }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !embedded && model.workspace != nil && !shouldShowSaveNotice {
-                saveFooter
-            }
         }
         .preferredColorScheme(.light)
         .eventToolNavigationTitle("Prep", embedded: embedded)
@@ -653,6 +647,14 @@ struct NativeEventPrepView: View {
             .disabled(!canSave)
             .opacity(canSave ? 1 : 0.5)
             .accessibilityIdentifier("native-prep-save")
+#if DEBUG
+            .accessibilityValue(
+                prepAutosaveTask == nil && !model.busy && model.pendingCount == 0
+                    && model.errorMessage == nil && !hasUnsavedEdits
+                    && !model.conflictBlocked && !model.unreadablePendingData
+                    ? "acknowledged" : "pending"
+            )
+#endif
 
             Button(action: toggleChecklist) {
                 Image(systemName: isChecklistExpanded ? "chevron.up" : "chevron.down")
@@ -670,33 +672,6 @@ struct NativeEventPrepView: View {
 
     private var canSave: Bool {
         edited && model.canEditLocally && notes.count <= 4000
-    }
-
-    private var saveStatusText: String {
-        if model.conflictBlocked { return "Prep update wasn't saved" }
-        if model.errorMessage != nil { return "See the message above" }
-        if prepAutosaveTask != nil || model.busy { return "Saving…" }
-        if model.pendingCount > 0 { return "Changes still need saving" }
-        if !offline.online { return "Offline · saved copy on this iPhone" }
-        if hasUnsavedEdits { return "Unsaved changes" }
-        return "Prep saved"
-    }
-
-    private var saveFooter: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(saveStatusText)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(SupporterHomeColors.muted)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(minHeight: 16, alignment: .leading)
-                .accessibilityIdentifier("native-prep-save-status")
-                .transaction { $0.animation = nil }
-        }
-        .frame(maxWidth: 560)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity)
     }
 
     private func saveTaskEntry() {

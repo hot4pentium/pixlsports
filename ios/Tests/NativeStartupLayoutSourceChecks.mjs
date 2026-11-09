@@ -68,7 +68,12 @@ test("routine Prep saves do not insert a changing status panel", () => {
   assert.match(prep, /private var shouldShowSaveNotice: Bool/);
   assert.match(prep, /model\.errorMessage != nil \|\| model\.conflictBlocked \|\| model\.unreadablePendingData \|\| !offline\.online/);
   assert.equal((prep.match(/if let clerk, shouldShowSaveNotice/g) || []).length, 2);
-  assert.match(prep, /Text\(saveStatusText\)[\s\S]*?\.frame\(minHeight: 16, alignment: \.leading\)/);
+  assert.doesNotMatch(prep, /Text\(saveStatusText\)|saveFooter|Prep saved/);
+  assert.equal((prep.match(/savedContentName: "Prep", showsRoutineActivity: false/g) || []).length, 2);
+  const tools = readFileSync(new URL("../PIXL Sports/NativeEventTools.swift", import.meta.url), "utf8");
+  const notice = tools.slice(tools.indexOf("struct NativeToolSaveNotice: View"));
+  assert.match(notice, /if showsRoutineActivity && model\.busy/);
+  assert.match(notice, /else if showsRoutineActivity, model\.pendingCount > 0/);
 });
 
 test("long-press edit updates the selected Prep task in place", () => {
@@ -281,8 +286,7 @@ test("Prep save conflicts use simple copy and confirm before replacing local cha
   assert.doesNotMatch(pendingDescription, /PIXL|sync|revision/);
   assert.match(pendingDescription, /still need/);
   assert.doesNotMatch(prep, /Needs attention|not yet saved to PIXL|waiting to sync/);
-  assert.match(prep, /if model\.workspace != nil && !shouldShowSaveNotice \{ saveFooter \}/);
-  assert.match(prep, /if !embedded && model\.workspace != nil && !shouldShowSaveNotice \{\s*saveFooter\s*\}/);
+  assert.doesNotMatch(prep, /saveFooter|saveStatusText/);
 });
 
 test("Stat Tracker conflicts preserve local entry without a destructive saved-version choice", () => {

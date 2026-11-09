@@ -1112,21 +1112,19 @@ final class SupporterEventDetailUITests: XCTestCase {
     }
 
     private func waitForPrepSaved(in app: XCUIApplication) {
-        XCTAssertTrue(app.staticTexts["Prep saved"].waitForExistence(timeout: 30),
-                      "Saving must receive the authenticated server acknowledgement.")
+        let save = assertReachable("native-prep-save", in: app)
+        let acknowledged = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "acknowledged"), object: save
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [acknowledged], timeout: 30), .completed,
+                       "Saving must receive the authenticated server acknowledgement without a visible saved notice.")
+        XCTAssertFalse(app.staticTexts["Prep saved"].exists)
         XCTAssertFalse(app.staticTexts["Unsaved changes"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["native-tool-save-error"].exists)
         XCTAssertFalse(assertReachable("native-prep-save", in: app).isEnabled)
     }
 
     private func waitForPrepSavedAfterChange(in app: XCUIApplication) {
-        let unsaved = app.staticTexts["Unsaved changes"]
-        let changesSettled = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false"),
-            object: unsaved
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [changesSettled], timeout: 30), .completed,
-                       "Checklist edits should save without requiring a manual Save tap.")
         waitForPrepSaved(in: app)
     }
 
