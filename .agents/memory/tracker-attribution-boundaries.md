@@ -30,3 +30,15 @@ advance beside the current half, set, inning or quarter at the top.
 
 **How to apply:** Keep athlete-only counts in Athlete mode and preserve shared
 team totals and existing pause/advance command safeguards.
+
+A scoring play entered for the athlete must also add its points to the team
+score once. For example, one athlete touchdown is one athlete touchdown and six
+team points, not a second Team-mode tap.
+
+**Why:** The user explicitly clarified that points should apply to the overall
+score regardless of whether the Athlete or Team increment was used.
+
+**How to apply:** Treat attribution and score contribution as separate concerns;
+check both server and offline projection, undo, legacy-event compatibility and
+retry idempotency. Do not preserve the older athlete-score-exclusion behavior as
+the intended product rule.
