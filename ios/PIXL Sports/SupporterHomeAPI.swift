@@ -776,7 +776,7 @@ enum SupporterHomeAPI {
         }
         switch context.status {
         case "paused":
-            throw NativeAccountLinkError.message("Live Taps is paused. Review your HYPE Card settings.")
+            throw NativeAccountLinkError.liveTapsPaused
         case "expired":
             throw NativeAccountLinkError.message("This HYPE Card’s access has expired.")
         case "ready":
@@ -975,7 +975,6 @@ enum SupporterHomeAPI {
 
 #if DEBUG
     static func applyNativeHypeCardConflictEditForUITest(
-        favoriteMoment: String,
         clerk: Clerk
     ) async throws -> NativeHypeCardSettings {
         let latest = try await fetchAuthoritativeNativeHypeCardSettings(clerk: clerk)
@@ -988,7 +987,7 @@ enum SupporterHomeAPI {
                 showStats: latest.showStats,
                 showEvents: !latest.showEvents,
                 paused: latest.paused,
-                favoriteMoment: favoriteMoment,
+                favoriteMoment: latest.favoriteMoment,
                 expectedRevision: revision,
                 confirmPublish: false
             ),

@@ -30,6 +30,9 @@ backend checks on Linux do not establish that the iPhone journey works.
    disabled with an explanation while the page is paused.
    Separately unpause the public page in Settings without enabling HYPE Card
    sharing, then create a QR and verify that it targets this event.
+   When Live Taps is paused, use its new action to open HYPE Card settings.
+   Confirm iPhone scrolls directly to Pause public page; only the owner's
+   explicit toggle change and Save unpause the page.
 4. While tracking, reschedule the event beyond ten minutes and background/resume.
    The chooser and recorder remain available; Stats, new Live Taps, and the full
    tracker are locked. Queued stats and cheers remain. End/recover cheers from Share.

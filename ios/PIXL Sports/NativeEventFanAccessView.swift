@@ -24,6 +24,7 @@ struct NativeEventFanAccessView: View {
     @State private var liveTapsEndError: String?
     @State private var error: String?
     @State private var liveTapsStartError: String?
+    @State private var isLiveTapsPaused = false
     @State private var hypeCard: NativeOwnerLiveTapsContext?
     @State private var soccerPeriodFormat: String?
     @State private var pendingRevocation: String?
@@ -257,7 +258,19 @@ struct NativeEventFanAccessView: View {
                 }
                 if startingLiveTaps { ProgressView("Starting Live Taps…") }
                 if let liveTapsStartError {
-                    Text(liveTapsStartError).font(.subheadline).foregroundStyle(.orange)
+                    Text(isLiveTapsPaused ? "Live Taps is paused." : liveTapsStartError)
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                    if isLiveTapsPaused {
+                        NavigationLink {
+                            SupporterHypeCardView(clerk: clerk, focusPauseSetting: true)
+                        } label: {
+                            Label("Open Pause public page setting", systemImage: "arrow.up.right")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("native-live-taps-open-pause-setting")
+                    }
                 }
             }
         }
@@ -357,6 +370,7 @@ struct NativeEventFanAccessView: View {
         loadingHypeCard = true
         hypeCard = nil
         liveTapsStartError = nil
+        isLiveTapsPaused = false
         defer { loadingHypeCard = false }
         do {
             let context = try await SupporterHomeAPI.fetchOwnerLiveTapsContext(clerk: clerk)
@@ -364,7 +378,7 @@ struct NativeEventFanAccessView: View {
             hypeCard = context
         } catch {
             guard clerk.user?.id == subject else { return }
-            liveTapsStartError = error.localizedDescription
+            setLiveTapsStartError(error)
         }
     }
 
@@ -448,6 +462,7 @@ struct NativeEventFanAccessView: View {
         guard sport != "soccer" || soccerPeriodFormat != nil else { return }
         startingLiveTaps = true
         liveTapsStartError = nil
+        isLiveTapsPaused = false
         defer { startingLiveTaps = false }
         do {
             let client = NativeAccountLinkClient()
@@ -471,8 +486,18 @@ struct NativeEventFanAccessView: View {
                 userInfo: [NativeEventScheduleChangeReason.userInfoKey: reason.rawValue]
             )
         } catch {
-            liveTapsStartError = error.localizedDescription
+            setLiveTapsStartError(error)
         }
+    }
+
+    private func setLiveTapsStartError(_ error: Error) {
+        liveTapsStartError = error.localizedDescription
+        guard let linkError = error as? NativeAccountLinkError,
+              case .liveTapsPaused = linkError else {
+            isLiveTapsPaused = false
+            return
+        }
+        isLiveTapsPaused = true
     }
 
     private func perform(_ action: String, id: String? = nil) async {

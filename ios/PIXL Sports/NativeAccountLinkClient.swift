@@ -18,6 +18,7 @@ private struct NativeAccountLinkFailure: Decodable {
 enum NativeAccountLinkError: LocalizedError {
     case message(String)
     case serverStatus(Int, String)
+    case liveTapsPaused
 
     var statusCode: Int? {
         guard case let .serverStatus(status, _) = self else { return nil }
@@ -28,6 +29,8 @@ enum NativeAccountLinkError: LocalizedError {
         switch self {
         case let .message(message), let .serverStatus(_, message):
             return message
+        case .liveTapsPaused:
+            return "Live Taps is paused. Review your HYPE Card settings."
         }
     }
 }

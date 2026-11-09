@@ -61,6 +61,15 @@ When Track Stats opens, ask the supporter to choose Stat Tracker or Live Taps in
 
 **How to apply:** Keep the scorekeeping state and any Live Taps session/QR state alive while switching modes; do not start either tool until selected.
 
+When Live Taps is unavailable because the public HYPE Card is paused, link
+directly to its “Pause public page” owner toggle. Never unpause it automatically.
+
+**Why:** The user asked for a direct route from the paused Live Taps message to
+the setting that controls the restriction, without bypassing their privacy choice.
+
+**How to apply:** Preserve owner authentication, open the HYPE Card settings at
+the toggle, and require the owner to save the change before fan access resumes.
+
 All mounted event editors must share one workspace command/recovery owner, including Prep and both tracker presentations.
 
 **Why:** Separate controllers can overwrite or clear the same event-scoped pending-save journal. A tracker retry or discard must also never erase an unrelated unsaved Prep draft.

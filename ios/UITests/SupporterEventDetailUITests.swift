@@ -945,8 +945,8 @@ final class SupporterEventDetailUITests: XCTestCase {
                           "The linked owner can manage the selected HYPE Card.")
             XCTAssertTrue(app.switches["native-hype-card-toggle-public"].exists,
                           "Visibility controls are present for the owner, not the public card.")
-            XCTAssertTrue(app.textFields["native-hype-card-favorite-moment"].exists,
-                          "The owner can edit the card’s supported favorite-moment content.")
+            XCTAssertFalse(app.textFields["native-hype-card-favorite-moment"].exists,
+                           "HYPE Card settings do not show the unused Favorite moment field.")
             let refresh = app.buttons["native-hype-card-refresh"]
             XCTAssertTrue(refresh.waitForExistence(timeout: 10),
                           "Families can refresh the private preview while it is open.")

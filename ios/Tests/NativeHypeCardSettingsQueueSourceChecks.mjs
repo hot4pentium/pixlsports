@@ -57,18 +57,26 @@ test("uncertain responses and conflicts retain the queued intent for later recon
   );
 });
 
-test("the Apple UI test exercises an independent remote write and same-field recovery", () => {
+test("the Apple UI test exercises an independent remote write and keeps the editor-only value hidden", () => {
   const uiTestAPI = api.slice(
     api.indexOf("static func applyNativeHypeCardConflictEditForUITest"),
     api.indexOf("static func syncQueuedNativeHypeCardSettings"),
   );
   assert.match(uiTestAPI, /fetchAuthoritativeNativeHypeCardSettings/);
   assert.match(uiTestAPI, /showEvents: !latest\.showEvents/);
-  assert.match(uiTestAPI, /favoriteMoment: favoriteMoment/);
+  assert.match(uiTestAPI, /favoriteMoment: latest\.favoriteMoment/);
   assert.match(uiTestAPI, /expectedRevision: revision/);
   assert.match(view, /--ui-testing-hype-card-settings-conflict/);
   assert.match(view, /applyNativeHypeCardConflictEditForUITest/);
-  assert.match(uiTest, /testReopenedCardMergesRemoteOnlyAndSameFieldSettingsChanges/);
-  assert.match(uiTest, /XCTAssertEqual\([\s\S]*?localChoice/);
+  assert.match(uiTest, /testReopenedCardMergesRemoteOnlyAndLocallyEditedSettings/);
+  assert.match(uiTest, /native-hype-card-favorite-moment/);
+  assert.match(uiTest, /XCTAssertEqual\([\s\S]*?localStats/);
   assert.match(uiTest, /XCTAssertEqual\([\s\S]*?remoteEvents/);
+});
+
+test("removing the HYPE Card input preserves legacy saved values", () => {
+  assert.doesNotMatch(view, /TextField\(\s*"Favorite moment"|native-hype-card-favorite-moment/);
+  assert.match(view, /favoriteMoment: favorite\.isEmpty \? nil : favorite/);
+  assert.match(view, /draftFavoriteMoment = saved\.favoriteMoment \?\? ""/);
+  assert.match(view, /favoriteMoment: !localHasKnownBase \|\| local\.favoriteMoment != base\.favoriteMoment[\s\S]*?latest\.favoriteMoment/);
 });

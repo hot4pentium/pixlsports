@@ -75,14 +75,17 @@ struct SupporterHypeCardView: View {
     @State private var refreshErrorMessage: String?
     @State private var loading = true
     @State private var isRefreshing = false
+    @State private var focusPauseSettingOnOpen = false
 
     init(
         clerk: Clerk?,
         publicInviteToken: String? = nil,
-        cachedOwnerPreview: NativeSupporterHypeCardPreview? = nil
+        cachedOwnerPreview: NativeSupporterHypeCardPreview? = nil,
+        focusPauseSetting: Bool = false
     ) {
         self.clerk = clerk
         self.publicInviteToken = publicInviteToken
+        _focusPauseSettingOnOpen = State(initialValue: focusPauseSetting)
         let subject = Self.ownerSubject(clerk: clerk)
         let offline = NativeOfflineRuntime.shared
         let canUseOwnerCache = publicInviteToken == nil
@@ -186,95 +189,106 @@ struct SupporterHypeCardView: View {
         ZStack {
             NativePageBackground()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    SupporterEyebrow(
-                        text: isPublicRecipient ? "Shared HYPE Card" : "Player Showcase",
-                        color: SupporterHomeColors.accentText
-                    )
-                    Text("HYPE Card")
-                        .font(.largeTitle.weight(.black))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(SupporterHomeColors.background)
-                        .accessibilityAddTraits(.isHeader)
-
-                    if !isPublicRecipient, !offlineRuntime.online, card != nil || privateCard != nil {
-                        Label {
-                            Text("Showing the last saved HYPE Card. Settings changes stay on this iPhone until you can sync them to PIXL.")
-                        } icon: {
-                            Image(systemName: "wifi.slash")
-                        }
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(SupporterHomeColors.accentText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 14))
-                        .accessibilityIdentifier("native-hype-card-offline-status")
-                    }
-
-                    if isRefreshing {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                                .tint(SupporterHomeColors.accent)
-                            Text("Refreshing preview…")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(SupporterHomeColors.muted)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("native-hype-card-refreshing")
-                    }
-
-                    if let refreshErrorMessage {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label(
-                                isPublicRecipient ? "This HYPE Card couldn’t refresh" : "The preview couldn’t refresh",
-                                systemImage: "exclamationmark.triangle.fill"
-                            )
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.white)
-                            Text(refreshErrorMessage)
-                                .font(.body)
-                                .foregroundStyle(SupporterHomeColors.muted)
-                            Button("Try again") {
-                                Task { await loadCard(refresh: true) }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(SupporterHomeColors.accent)
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        SupporterEyebrow(
+                            text: isPublicRecipient ? "Shared HYPE Card" : "Player Showcase",
+                            color: SupporterHomeColors.accentText
+                        )
+                        Text("HYPE Card")
+                            .font(.largeTitle.weight(.black))
+                            .fontDesign(.rounded)
                             .foregroundStyle(SupporterHomeColors.background)
-                            .disabled(isRefreshing)
-                            .accessibilityIdentifier("hype-card-refresh-retry")
+                            .accessibilityAddTraits(.isHeader)
+
+                        if !isPublicRecipient, !offlineRuntime.online, card != nil || privateCard != nil {
+                            Label {
+                                Text("Showing the last saved HYPE Card. Settings changes stay on this iPhone until you can sync them to PIXL.")
+                            } icon: {
+                                Image(systemName: "wifi.slash")
+                            }
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(SupporterHomeColors.accentText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 14))
+                            .accessibilityIdentifier("native-hype-card-offline-status")
                         }
-                        .padding(18)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
-                        .supporterSurfaceShadow()
-                        .accessibilityIdentifier("native-hype-card-refresh-error")
-                    }
 
-                    if !isPublicRecipient, identityMismatch {
-                        identityMismatchRecovery
-                    }
-                    if !isPublicRecipient, let identityCorrectionMessage {
-                        Text(identityCorrectionMessage)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(identityCorrectionMessage.lowercased().contains("couldn’t")
-                                             || identityCorrectionMessage.lowercased().contains("unable")
-                                             ? .red : SupporterHomeColors.accentText)
-                            .accessibilityIdentifier("native-hype-card-identity-message")
-                    }
+                        if isRefreshing {
+                            HStack(spacing: 10) {
+                                ProgressView()
+                                    .tint(SupporterHomeColors.accent)
+                                Text("Refreshing preview…")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(SupporterHomeColors.muted)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("native-hype-card-refreshing")
+                        }
 
-                    content
-                    if settingsStatusUnknown && settings == nil {
-                        settingsStatusRecoveryNotice
+                        if let refreshErrorMessage {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label(
+                                    isPublicRecipient ? "This HYPE Card couldn’t refresh" : "The preview couldn’t refresh",
+                                    systemImage: "exclamationmark.triangle.fill"
+                                )
+                                    .font(.headline.weight(.bold))
+                                    .foregroundStyle(.white)
+                                Text(refreshErrorMessage)
+                                    .font(.body)
+                                    .foregroundStyle(SupporterHomeColors.muted)
+                                Button("Try again") {
+                                    Task { await loadCard(refresh: true) }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(SupporterHomeColors.accent)
+                                .foregroundStyle(SupporterHomeColors.background)
+                                .disabled(isRefreshing)
+                                .accessibilityIdentifier("hype-card-refresh-retry")
+                            }
+                            .padding(18)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(SupporterHomeColors.panel, in: RoundedRectangle(cornerRadius: 20))
+                            .supporterSurfaceShadow()
+                            .accessibilityIdentifier("native-hype-card-refresh-error")
+                        }
+
+                        if !isPublicRecipient, identityMismatch {
+                            identityMismatchRecovery
+                        }
+                        if !isPublicRecipient, let identityCorrectionMessage {
+                            Text(identityCorrectionMessage)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(identityCorrectionMessage.lowercased().contains("couldn’t")
+                                                 || identityCorrectionMessage.lowercased().contains("unable")
+                                                 ? .red : SupporterHomeColors.accentText)
+                                .accessibilityIdentifier("native-hype-card-identity-message")
+                        }
+
+                        content
+                        if settingsStatusUnknown && settings == nil {
+                            settingsStatusRecoveryNotice
+                        }
                     }
+                    .frame(maxWidth: 520, alignment: .leading)
+                    .padding(20)
+                    .frame(maxWidth: .infinity, alignment: .top)
                 }
-                .frame(maxWidth: 520, alignment: .leading)
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .top)
+                .scrollIndicators(.hidden)
+                .task(id: "\(settings?.revision ?? "")|\(identityMismatch)") {
+                    guard focusPauseSettingOnOpen, settings?.revision != nil, !identityMismatch else { return }
+                    await Task.yield()
+                    guard !Task.isCancelled, focusPauseSettingOnOpen else { return }
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        scrollProxy.scrollTo("native-hype-card-toggle-paused", anchor: .center)
+                    }
+                    focusPauseSettingOnOpen = false
+                }
             }
-            .scrollIndicators(.hidden)
         }
         .navigationTitle("HYPE Card")
         .navigationBarTitleDisplayMode(.inline)
@@ -822,22 +836,7 @@ struct SupporterHypeCardView: View {
             Toggle("Pause public page", isOn: pausedBinding)
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-paused")
-                .disabled(!canEditSettingsDraft)
-
-            TextField(
-                "Favorite moment",
-                text: favoriteMomentBinding,
-                prompt: Text("Add a favorite moment")
-            )
-                .textContentType(.none)
-                .submitLabel(.done)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
-                .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-                .accessibilityLabel("Favorite moment")
-                .accessibilityValue(draftFavoriteMoment)
-                .accessibilityIdentifier("native-hype-card-favorite-moment")
+                .id("native-hype-card-toggle-paused")
                 .disabled(!canEditSettingsDraft)
 
 #if DEBUG
@@ -977,23 +976,15 @@ struct SupporterHypeCardView: View {
         Binding(get: { draftPaused }, set: { draftPaused = $0; persistSettingsDraft() })
     }
 
-    private var favoriteMomentBinding: Binding<String> {
-        Binding(get: { draftFavoriteMoment }, set: { draftFavoriteMoment = $0; persistSettingsDraft() })
-    }
-
 #if DEBUG
     private func simulateOtherDeviceSettingsChange() {
-        guard let clerk,
-              let favoriteMoment = ProcessInfo.processInfo.arguments.first(where: {
-                  $0.hasPrefix("--ui-testing-hype-card-remote-favorite=")
-              })?.replacingOccurrences(of: "--ui-testing-hype-card-remote-favorite=", with: "") else {
+        guard let clerk else {
             settingsMessage = "The other-device test change couldn’t be applied."
             return
         }
         Task {
             do {
                 _ = try await SupporterHomeAPI.applyNativeHypeCardConflictEditForUITest(
-                    favoriteMoment: favoriteMoment,
                     clerk: clerk
                 )
                 settingsMessage = "Other-device settings change applied on PIXL."

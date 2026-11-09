@@ -145,17 +145,12 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         try exerciseOfflineRestore(visibility: "hidden")
     }
 
-    func testReopenedCardMergesRemoteOnlyAndSameFieldSettingsChanges() throws {
+    func testReopenedCardMergesRemoteOnlyAndLocallyEditedSettings() throws {
         try requireVisibility("public")
         continueAfterFailure = false
 
-        let localChoice = "iPhone-\(UUID().uuidString.prefix(8))"
-        let remoteChoice = "Remote-\(UUID().uuidString.prefix(8))"
         let app = XCUIApplication()
-        app.launchArguments = [
-            "--ui-testing-hype-card-settings-conflict",
-            "--ui-testing-hype-card-remote-favorite=\(remoteChoice)"
-        ]
+        app.launchArguments = ["--ui-testing-hype-card-settings-conflict"]
         app.launch()
         openOwnerCard(in: app, visibility: "public")
 
@@ -170,11 +165,19 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         }
         let remoteEvents = initialEvents == "1" ? "0" : "1"
 
-        let favoriteField = app.textFields["native-hype-card-favorite-moment"]
-        XCTAssertTrue(favoriteField.waitForExistence(timeout: 10))
-        reveal(favoriteField, in: app)
-        let originalFavorite = favoriteField.value as? String ?? ""
-        replaceText(in: favoriteField, with: localChoice, in: app)
+        let statsToggle = app.switches["native-hype-card-toggle-stats"]
+        XCTAssertTrue(statsToggle.waitForExistence(timeout: 10))
+        reveal(statsToggle, in: app)
+        guard let initialStats = statsToggle.value as? String,
+              initialStats == "0" || initialStats == "1" else {
+            XCTFail("The stats setting should expose its current switch value.")
+            app.terminate()
+            return
+        }
+        let localStats = initialStats == "1" ? "0" : "1"
+        XCTAssertFalse(app.textFields["native-hype-card-favorite-moment"].exists,
+                       "HYPE Card settings should not show the removed Favorite moment field.")
+        statsToggle.tap()
         let localSaveMessage = app.descendants(matching: .any).matching(
             NSPredicate(
                 format: "identifier == %@ AND label CONTAINS[c] %@",
@@ -184,7 +187,7 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(
             localSaveMessage.waitForExistence(timeout: 10),
-            "The same-field iPhone edit must be saved locally before the remote change."
+            "The iPhone setting should be saved locally before the remote change."
         )
 
         let remoteChange = app.buttons["native-hype-card-simulate-remote-settings-change"]
@@ -204,14 +207,11 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         app.launchArguments = []
         app.launch()
         openOwnerCard(in: app, visibility: "public")
-        let restoredFavorite = app.textFields["native-hype-card-favorite-moment"]
-        XCTAssertTrue(restoredFavorite.waitForExistence(timeout: 10))
-        reveal(restoredFavorite, in: app)
-        XCTAssertEqual(
-            restoredFavorite.value as? String,
-            localChoice,
-            "The conflicting iPhone choice must remain on-device for review."
-        )
+        XCTAssertFalse(app.textFields["native-hype-card-favorite-moment"].exists)
+        let restoredStats = app.switches["native-hype-card-toggle-stats"]
+        reveal(restoredStats, in: app)
+        XCTAssertEqual(restoredStats.value as? String, localStats,
+                       "The local iPhone setting should remain available for review.")
         let restoredEvents = app.switches["native-hype-card-toggle-events"]
         reveal(restoredEvents, in: app)
         XCTAssertEqual(
@@ -240,13 +240,9 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(
             syncedMessage.waitForExistence(timeout: 30),
-            "Saving the recovered iPhone choice must retain the remote-only field."
+            "Saving the recovered iPhone choice must retain remote-only settings."
         )
-        XCTAssertEqual(
-            restoredFavorite.value as? String,
-            localChoice,
-            "The synced same-field winner must remain the iPhone's reviewed choice."
-        )
+        XCTAssertEqual(restoredStats.value as? String, localStats)
         XCTAssertEqual(
             restoredEvents.value as? String,
             remoteEvents,
@@ -255,9 +251,10 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
 
         // Restore the dedicated development owner's starting values so reruns
         // do not accumulate test settings.
-        let finalFavorite = app.textFields["native-hype-card-favorite-moment"]
-        reveal(finalFavorite, in: app)
-        replaceText(in: finalFavorite, with: originalFavorite, in: app)
+        if initialStats != localStats {
+            reveal(restoredStats, in: app)
+            restoredStats.tap()
+        }
         if initialEvents != remoteEvents {
             let finalEvents = app.switches["native-hype-card-toggle-events"]
             reveal(finalEvents, in: app)
