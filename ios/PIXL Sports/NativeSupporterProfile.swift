@@ -15,6 +15,14 @@ struct NativeSupporterProfile: Codable, Equatable {
             || athleteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    func hasSameAthleteDetails(as other: NativeSupporterProfile) -> Bool {
+        athleteName == other.athleteName
+            && teamName == other.teamName
+            && jerseyNumber == other.jerseyNumber
+            && position == other.position
+            && sport == other.sport
+    }
+
     var displayDetails: String {
         [
             jerseyNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -27,4 +35,15 @@ struct NativeSupporterProfile: Codable, Equatable {
         .compactMap { $0 }
         .joined(separator: " · ")
     }
+}
+
+struct NativePendingAthleteProfileChange: Codable, Equatable {
+    var base: NativeSupporterProfile
+    var desired: NativeSupporterProfile
+    var conflictProfile: NativeSupporterProfile?
+    var conflictMessage: String?
+    var lastError: String?
+    var createdAt: Date
+
+    var isConflicted: Bool { conflictMessage != nil }
 }

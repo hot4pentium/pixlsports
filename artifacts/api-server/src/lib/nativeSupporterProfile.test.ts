@@ -215,6 +215,41 @@ test("owner profile edits update the live HYPE Card for owners and recipients wi
   }
 });
 
+test("stale athlete profile edits are rejected instead of replacing a newer device update", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  await invite(linkedOwner, "Jordan", "Tigers");
+  const metadata = new Map<string, Record<string, unknown>>([
+    [linkedOwner, {
+      athleteName: "Jordan", teamName: "Tigers", jerseyNumber: "12",
+      position: "Forward", sport: "soccer",
+    }],
+  ]);
+  const { service } = createService(metadata);
+  const base: NativeSupporterProfile = {
+    athleteName: "Jordan", teamName: "Tigers", jerseyNumber: "12",
+    position: "Forward", sport: "soccer",
+  };
+  await service.update(who, {
+    athleteName: "Jordan Lee", teamName: "Tigers", jerseyNumber: "12",
+    position: "Forward", sport: "soccer", expectedProfile: base,
+  });
+
+  await assert.rejects(service.update(who, {
+    athleteName: "Jordan", teamName: "Tigers 26", jerseyNumber: "12",
+    position: "Forward", sport: "soccer", expectedProfile: base,
+  }), (error: any) => error.status === 409);
+  assert.equal(metadata.get(linkedOwner)?.athleteName, "Jordan Lee");
+  assert.equal(metadata.get(linkedOwner)?.teamName, "Tigers");
+  const card = await pool.query(
+    "SELECT athlete_name,team_name FROM athlete_invites WHERE owner_clerk_user_id=$1",
+    [linkedOwner],
+  );
+  assert.equal(card.rows[0].athlete_name, "Jordan Lee");
+  assert.equal(card.rows[0].team_name, "Tigers");
+});
+
 test("linked owner can load and update athlete profile without publishing a private HYPE Card", async () => {
   const who = identity();
   const linkedOwner = await owner();

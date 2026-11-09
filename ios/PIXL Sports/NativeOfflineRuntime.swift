@@ -937,6 +937,9 @@ final class NativeOfflineRuntime: ObservableObject {
                 let page = try await verifiedSchedule(clerk: clerk)
                 guard page.status == "linked", vault.canContinue(subject: clerk.user?.id) else { return }
                 let scope = vault.namespace
+                _ = try? await SupporterHomeAPI.syncQueuedAthleteProfile(clerk: clerk)
+                guard !Task.isCancelled, vault.namespace == scope,
+                      vault.canContinue(subject: clerk.user?.id) else { return }
                 _ = await syncPendingHypeCardSettings(clerk: clerk)
                 guard !Task.isCancelled, vault.namespace == scope,
                       vault.canContinue(subject: clerk.user?.id) else { return }

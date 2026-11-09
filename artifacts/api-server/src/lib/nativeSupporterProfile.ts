@@ -13,7 +13,10 @@ export type NativeSupporterProfile = {
   requiresSetup?: boolean;
 };
 
-type ProfileInput = NativeSupporterProfile & { completeSetup?: boolean };
+type ProfileInput = NativeSupporterProfile & {
+  completeSetup?: boolean;
+  expectedProfile?: NativeSupporterProfile;
+};
 type ClerkUser = { unsafeMetadata?: unknown };
 
 type Dependencies = {
@@ -56,6 +59,16 @@ function normalizeProfile(input: ProfileInput): NativeSupporterProfile {
     position: input.position.trim(),
     ...(input.sport !== undefined ? { sport: input.sport } : {}),
   };
+}
+
+function sameProfileVersion(left: NativeSupporterProfile, right: NativeSupporterProfile) {
+  const a = normalizeProfile(left);
+  const b = normalizeProfile(right);
+  return a.athleteName === b.athleteName
+    && a.teamName === b.teamName
+    && a.jerseyNumber === b.jerseyNumber
+    && a.position === b.position
+    && a.sport === b.sport;
 }
 
 function normalizedIdentity(value: string) {
@@ -146,6 +159,10 @@ export function createNativeSupporterProfileService(dependencies: Dependencies =
         const existingInvite = await findNativeOwnerCard(tx, owner);
         const invite = existingInvite ?? await assignNativeStarterCard(tx, owner, profile, oldMetadata);
         const completingSetup = input.completeSetup === true || !oldProfile.athleteName || !existingInvite;
+        if (!completingSetup && input.expectedProfile
+            && !sameProfileVersion(oldProfile, input.expectedProfile)) {
+          throw new NativeLinkError(409, "The athlete profile changed on another device.");
+        }
         if (completingSetup) {
           // Existing cards win interrupted/concurrent setup, even if a retry
           // submits a different athlete. This never changes the authored card.

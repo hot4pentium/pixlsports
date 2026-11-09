@@ -51,6 +51,7 @@ final class NativeAccountLinkClient {
     private static let hypeCardSettingsDraftKey = "pending/hype-card-settings"
     private static let hypeCardSettingsSaveIntentKey = "pending/hype-card-settings-save"
     private static let hypeCardSettingsConfirmationKey = "pending/hype-card-settings-confirmation"
+    private static let athleteProfileChangeKey = "pending/athlete-profile"
 
     init() {
         let configuration = URLSessionConfiguration.ephemeral
@@ -59,6 +60,62 @@ final class NativeAccountLinkClient {
         configuration.urlCache = nil
         configuration.timeoutIntervalForRequest = 20
         session = URLSession(configuration: configuration, delegate: NativeLinkRedirectGuard(), delegateQueue: nil)
+    }
+
+    func pendingAthleteProfileChange(subject: String) throws -> NativePendingAthleteProfileChange? {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        guard let data = try offline.vault.read(Self.athleteProfileChangeKey, subject: subject) else {
+            return nil
+        }
+        do {
+            return try JSONDecoder().decode(NativePendingAthleteProfileChange.self, from: data)
+        } catch {
+            throw NativeOfflineError.corrupt
+        }
+    }
+
+    func queueAthleteProfileChange(
+        _ desired: NativeSupporterProfile,
+        base: NativeSupporterProfile,
+        subject: String
+    ) throws -> NativePendingAthleteProfileChange {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject),
+              offline.vault.subject == subject else { throw NativeOfflineError.locked }
+        let existing = try pendingAthleteProfileChange(subject: subject)
+        guard existing?.isConflicted != true else { throw NativeOfflineError.pendingWork }
+        let change = NativePendingAthleteProfileChange(
+            base: existing?.base ?? base,
+            desired: desired,
+            conflictProfile: nil,
+            conflictMessage: nil,
+            lastError: nil,
+            createdAt: existing?.createdAt ?? Date()
+        )
+        try offline.vault.write(JSONEncoder().encode(change), key: Self.athleteProfileChangeKey)
+        offline.cacheSavedAthleteProfile(try JSONEncoder().encode(desired))
+        offline.storageChanged()
+        return change
+    }
+
+    func updateAthleteProfileChange(
+        _ change: NativePendingAthleteProfileChange,
+        subject: String
+    ) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject),
+              offline.vault.subject == subject else { throw NativeOfflineError.locked }
+        try offline.vault.write(JSONEncoder().encode(change), key: Self.athleteProfileChangeKey)
+        offline.storageChanged()
+    }
+
+    func clearAthleteProfileChange(subject: String) throws {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.vault.canContinue(subject: subject),
+              offline.vault.subject == subject else { throw NativeOfflineError.locked }
+        try offline.vault.write(nil, key: Self.athleteProfileChangeKey)
+        offline.storageChanged()
     }
 
     func saveHypeCardSettingsDraft(_ draft: NativeHypeCardSettings, subject: String) throws {

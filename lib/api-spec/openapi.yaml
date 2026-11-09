@@ -5877,6 +5877,20 @@ components:
         completeSetup:
           type: boolean
           description: Initial native setup or its retry. Reuses an existing owner card's identity rather than overwriting it.
+        expectedProfile:
+          $ref: "#/components/schemas/NativeSupporterProfileVersion"
+    NativeSupporterProfileVersion:
+      type: object
+      required: [athleteName, teamName, jerseyNumber, position]
+      description: The profile version the iPhone read before editing. The server rejects stale edits instead of overwriting newer changes.
+      properties:
+        athleteName: { type: string, maxLength: 100 }
+        teamName: { type: string, maxLength: 160 }
+        jerseyNumber: { type: string, maxLength: 40 }
+        position: { type: string, maxLength: 100 }
+        sport:
+          type: string
+          enum: [soccer, basketball, volleyball, football, baseball, softball]
     NativeSupporterEventCardCreateResponse:
       type: object
       required: [shareToken, eventId]

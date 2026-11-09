@@ -506,6 +506,23 @@ private struct NativeAthleteProfileUpdate: Encodable {
     let position: String
     let sport: String?
     let completeSetup: Bool
+    var expectedProfile: NativeAthleteProfileVersion?
+}
+
+private struct NativeAthleteProfileVersion: Encodable {
+    let athleteName: String
+    let teamName: String
+    let jerseyNumber: String
+    let position: String
+    let sport: String?
+
+    init(_ profile: NativeSupporterProfile) {
+        athleteName = profile.athleteName
+        teamName = profile.teamName
+        jerseyNumber = profile.jerseyNumber
+        position = profile.position
+        sport = profile.sport
+    }
 }
 
 enum SupporterHomeAPI {
@@ -581,17 +598,47 @@ enum SupporterHomeAPI {
     static func saveAthleteProfile(
         _ profile: NativeSupporterProfile,
         completeSetup: Bool = false,
+        baseProfile: NativeSupporterProfile? = nil,
         clerk: Clerk
     ) async throws -> NativeSupporterProfile {
         let offline = NativeOfflineRuntime.shared
         let requestScope = offline.vault.namespace
         let requestSubject = clerk.user?.id
+        if !completeSetup {
+            guard let subject = requestSubject,
+                  offline.vault.canContinue(subject: subject),
+                  let requestScope else { throw NativeOfflineError.locked }
+            let client = NativeAccountLinkClient()
+            let cachedBase = try? offline.vault.read("get/supporter/profile", subject: subject)
+                .flatMap { try? JSONDecoder().decode(NativeSupporterProfile.self, from: $0) }
+            _ = try client.queueAthleteProfileChange(
+                profile, base: baseProfile ?? cachedBase ?? profile, subject: subject
+            )
+            // Queue first so a dropped response or an offline transition never
+            // loses the family's edits. The sync routine re-confirms the link
+            // and checks the server's current profile before sending a PATCH.
+            guard offline.online else { return profile }
+            do {
+                _ = try await syncQueuedAthleteProfile(clerk: clerk)
+            } catch {
+                // The encrypted queue remains authoritative and will be retried
+                // only after a later authenticated, linked-schedule check.
+            }
+            guard requestScope == offline.vault.namespace,
+                  requestSubject == clerk.user?.id else { throw NativeOfflineError.locked }
+            if try client.pendingAthleteProfileChange(subject: subject) == nil,
+               let data = try? offline.vault.read("get/supporter/profile", subject: subject),
+               let saved = try? JSONDecoder().decode(NativeSupporterProfile.self, from: data) {
+                return saved
+            }
+            return profile
+        }
         let data = try await NativeAccountLinkClient().postData(
             "supporter/profile",
             body: NativeAthleteProfileUpdate(
                 athleteName: profile.athleteName, teamName: profile.teamName,
                 jerseyNumber: profile.jerseyNumber, position: profile.position,
-                sport: profile.sport, completeSetup: completeSetup
+                sport: profile.sport, completeSetup: completeSetup, expectedProfile: nil
             ),
             method: "PATCH",
             clerk: clerk
@@ -606,6 +653,176 @@ enum SupporterHomeAPI {
         } catch {
             throw SupporterHomeAPIError.invalidResponse
         }
+    }
+
+    @MainActor
+    static func syncQueuedAthleteProfile(clerk: Clerk) async throws -> NativeSupporterProfile? {
+        let offline = NativeOfflineRuntime.shared
+        guard offline.online, clerk.isAuthFlowComplete,
+              let subject = clerk.user?.id,
+              offline.vault.canContinue(subject: subject),
+              let scope = offline.vault.namespace else { return nil }
+        let client = NativeAccountLinkClient()
+        guard let pending = try client.pendingAthleteProfileChange(subject: subject) else { return nil }
+
+        // A reachable network is not sufficient: require a fresh, authenticated
+        // linked schedule before reading or mutating the private profile.
+        let schedule = try await fetchAuthoritativePrivateSchedule(clerk: clerk)
+        guard schedule.status == "linked",
+              clerk.user?.id == subject,
+              offline.vault.namespace == scope,
+              offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+
+        let remoteData = try await client.getAuthoritativeData("supporter/profile", clerk: clerk)
+        let remote: NativeSupporterProfile
+        do { remote = try JSONDecoder().decode(NativeSupporterProfile.self, from: remoteData) }
+        catch { throw SupporterHomeAPIError.invalidResponse }
+        guard clerk.user?.id == subject,
+              offline.vault.namespace == scope,
+              offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+
+        guard var current = try client.pendingAthleteProfileChange(subject: subject) else { return remote }
+        guard !current.isConflicted else { return current.desired }
+        if remote.hasSameAthleteDetails(as: current.desired) {
+            try client.clearAthleteProfileChange(subject: subject)
+            offline.cacheSavedAthleteProfile(remoteData)
+            return remote
+        }
+        guard remote.hasSameAthleteDetails(as: current.base) else {
+            current.conflictProfile = remote
+            current.conflictMessage = "Your iPhone edits and the saved PIXL profile are different. Choose which version to keep."
+            current.lastError = nil
+            try client.updateAthleteProfileChange(current, subject: subject)
+            offline.cacheSavedAthleteProfile(try JSONEncoder().encode(current.desired))
+            return current.desired
+        }
+
+        let submitted = current.desired
+        do {
+            let response = try await client.postData(
+                "supporter/profile",
+                body: NativeAthleteProfileUpdate(
+                    athleteName: submitted.athleteName,
+                    teamName: submitted.teamName,
+                    jerseyNumber: submitted.jerseyNumber,
+                    position: submitted.position,
+                    sport: submitted.sport,
+                    completeSetup: false,
+                    expectedProfile: NativeAthleteProfileVersion(current.base)
+                ),
+                method: "PATCH",
+                clerk: clerk
+            )
+            let saved: NativeSupporterProfile
+            do { saved = try JSONDecoder().decode(NativeSupporterProfile.self, from: response) }
+            catch { throw SupporterHomeAPIError.invalidResponse }
+            guard clerk.user?.id == subject,
+                  offline.vault.namespace == scope,
+                  offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+            if let latest = try client.pendingAthleteProfileChange(subject: subject) {
+                if latest.desired.hasSameAthleteDetails(as: submitted) {
+                    try client.clearAthleteProfileChange(subject: subject)
+                } else {
+                    var rebased = latest
+                    rebased.base = saved
+                    rebased.conflictProfile = nil
+                    rebased.conflictMessage = nil
+                    rebased.lastError = nil
+                    try client.updateAthleteProfileChange(rebased, subject: subject)
+                }
+            }
+            offline.cacheSavedAthleteProfile(response)
+            // A newer local edit, if any, remains the visible working copy.
+            if let latest = try client.pendingAthleteProfileChange(subject: subject) {
+                offline.cacheSavedAthleteProfile(try JSONEncoder().encode(latest.desired))
+                return latest.desired
+            }
+            return saved
+        } catch {
+            if (error as? NativeAccountLinkError)?.statusCode == 409 {
+                do {
+                    let latestSchedule = try await fetchAuthoritativePrivateSchedule(clerk: clerk)
+                    guard latestSchedule.status == "linked",
+                          clerk.user?.id == subject,
+                          offline.vault.namespace == scope,
+                          offline.vault.canContinue(subject: subject) else {
+                        throw NativeOfflineError.locked
+                    }
+                    let latestData = try await client.getAuthoritativeData("supporter/profile", clerk: clerk)
+                    let latestRemote = try JSONDecoder().decode(NativeSupporterProfile.self, from: latestData)
+                    guard var latest = try client.pendingAthleteProfileChange(subject: subject),
+                          latest.desired.hasSameAthleteDetails(as: submitted),
+                          !latestRemote.hasSameAthleteDetails(as: latest.base),
+                          clerk.user?.id == subject,
+                          offline.vault.namespace == scope,
+                          offline.vault.canContinue(subject: subject) else { throw error }
+                    latest.conflictProfile = latestRemote
+                    latest.conflictMessage = "Your iPhone edits and the saved PIXL profile are different. Choose which version to keep."
+                    latest.lastError = nil
+                    try client.updateAthleteProfileChange(latest, subject: subject)
+                    offline.cacheSavedAthleteProfile(try JSONEncoder().encode(latest.desired))
+                    return latest.desired
+                } catch {
+                    // A revoked link or unavailable profile read is not a
+                    // profile conflict. Keep the queued edit without showing
+                    // data from an account that is no longer confirmed.
+                }
+            }
+            if var latest = try? client.pendingAthleteProfileChange(subject: subject), latest != pending {
+                latest.lastError = "PIXL could not confirm the latest profile change. It remains saved on this iPhone."
+                try? client.updateAthleteProfileChange(latest, subject: subject)
+            } else {
+                current.lastError = "PIXL could not confirm the profile change. It remains saved on this iPhone."
+                try? client.updateAthleteProfileChange(current, subject: subject)
+            }
+            if let latest = try? client.pendingAthleteProfileChange(subject: subject),
+               clerk.user?.id == subject, offline.vault.namespace == scope {
+                offline.cacheSavedAthleteProfile(try JSONEncoder().encode(latest.desired))
+            }
+            throw error
+        }
+    }
+
+    @MainActor
+    static func resolveQueuedAthleteProfileConflict(
+        keepIPhoneVersion: Bool,
+        clerk: Clerk
+    ) async throws -> NativeSupporterProfile {
+        let offline = NativeOfflineRuntime.shared
+        guard let subject = clerk.user?.id,
+              offline.vault.canContinue(subject: subject),
+              let scope = offline.vault.namespace else { throw NativeOfflineError.locked }
+        let client = NativeAccountLinkClient()
+        guard var change = try client.pendingAthleteProfileChange(subject: subject),
+              change.isConflicted,
+              let remote = change.conflictProfile else { throw NativeOfflineError.corrupt }
+
+        if !keepIPhoneVersion {
+            let data = try JSONEncoder().encode(remote)
+            try client.clearAthleteProfileChange(subject: subject)
+            offline.cacheSavedAthleteProfile(data)
+            guard clerk.user?.id == subject, offline.vault.namespace == scope else {
+                throw NativeOfflineError.locked
+            }
+            return remote
+        }
+
+        change.base = remote
+        change.conflictProfile = nil
+        change.conflictMessage = nil
+        change.lastError = nil
+        try client.updateAthleteProfileChange(change, subject: subject)
+        guard offline.online else { return change.desired }
+        _ = try await syncQueuedAthleteProfile(clerk: clerk)
+        guard clerk.user?.id == subject, offline.vault.namespace == scope,
+              offline.vault.canContinue(subject: subject) else { throw NativeOfflineError.locked }
+        if let remaining = try client.pendingAthleteProfileChange(subject: subject) {
+            return remaining.desired
+        }
+        if let bytes = try offline.vault.read("get/supporter/profile", subject: subject) {
+            return try JSONDecoder().decode(NativeSupporterProfile.self, from: bytes)
+        }
+        return change.desired
     }
 
     static func createEventCard(

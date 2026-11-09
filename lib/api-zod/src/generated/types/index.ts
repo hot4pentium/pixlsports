@@ -252,6 +252,8 @@ export * from './nativeSupporterProfile';
 export * from './nativeSupporterProfileSport';
 export * from './nativeSupporterProfileUpdate';
 export * from './nativeSupporterProfileUpdateSport';
+export * from './nativeSupporterProfileVersion';
+export * from './nativeSupporterProfileVersionSport';
 export * from './nativeSupporterSchedule';
 export * from './nativeSupporterScheduleEventsItem';
 export * from './nativeSupporterScheduleStatus';

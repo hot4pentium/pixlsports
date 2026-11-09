@@ -3409,6 +3409,33 @@ export const NativeSupporterProfileUpdateSport = {
   softball: 'softball',
 } as const;
 
+export type NativeSupporterProfileVersionSport = typeof NativeSupporterProfileVersionSport[keyof typeof NativeSupporterProfileVersionSport];
+
+
+export const NativeSupporterProfileVersionSport = {
+  soccer: 'soccer',
+  basketball: 'basketball',
+  volleyball: 'volleyball',
+  football: 'football',
+  baseball: 'baseball',
+  softball: 'softball',
+} as const;
+
+/**
+ * The profile version the iPhone read before editing. The server rejects stale edits instead of overwriting newer changes.
+ */
+export interface NativeSupporterProfileVersion {
+  /** @maxLength 100 */
+  athleteName: string;
+  /** @maxLength 160 */
+  teamName: string;
+  /** @maxLength 40 */
+  jerseyNumber: string;
+  /** @maxLength 100 */
+  position: string;
+  sport?: NativeSupporterProfileVersionSport;
+}
+
 export interface NativeSupporterProfileUpdate {
   /**
      * @minLength 1
@@ -3433,6 +3460,7 @@ export interface NativeSupporterProfileUpdate {
   sport?: NativeSupporterProfileUpdateSport;
   /** Initial native setup or its retry. Reuses an existing owner card's identity rather than overwriting it. */
   completeSetup?: boolean;
+  expectedProfile?: NativeSupporterProfileVersion;
 }
 
 export interface NativeSupporterEventCardCreateResponse {

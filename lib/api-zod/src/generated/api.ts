@@ -4396,6 +4396,14 @@ export const updateNativeSupporterProfileBodyJerseyNumberMax = 40;
 
 export const updateNativeSupporterProfileBodyPositionMax = 100;
 
+export const updateNativeSupporterProfileBodyExpectedProfileAthleteNameMax = 100;
+
+export const updateNativeSupporterProfileBodyExpectedProfileTeamNameMax = 160;
+
+export const updateNativeSupporterProfileBodyExpectedProfileJerseyNumberMax = 40;
+
+export const updateNativeSupporterProfileBodyExpectedProfilePositionMax = 100;
+
 
 
 export const UpdateNativeSupporterProfileBody = zod.object({
@@ -4404,7 +4412,14 @@ export const UpdateNativeSupporterProfileBody = zod.object({
   "jerseyNumber": zod.string().max(updateNativeSupporterProfileBodyJerseyNumberMax).describe('Optional; a leading # is removed.'),
   "position": zod.string().max(updateNativeSupporterProfileBodyPositionMax).describe('Optional.'),
   "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional(),
-  "completeSetup": zod.boolean().optional().describe('Initial native setup or its retry. Reuses an existing owner card\'s identity rather than overwriting it.')
+  "completeSetup": zod.boolean().optional().describe('Initial native setup or its retry. Reuses an existing owner card\'s identity rather than overwriting it.'),
+  "expectedProfile": zod.object({
+  "athleteName": zod.string().max(updateNativeSupporterProfileBodyExpectedProfileAthleteNameMax),
+  "teamName": zod.string().max(updateNativeSupporterProfileBodyExpectedProfileTeamNameMax),
+  "jerseyNumber": zod.string().max(updateNativeSupporterProfileBodyExpectedProfileJerseyNumberMax),
+  "position": zod.string().max(updateNativeSupporterProfileBodyExpectedProfilePositionMax),
+  "sport": zod.enum(['soccer', 'basketball', 'volleyball', 'football', 'baseball', 'softball']).optional()
+}).optional().describe('The profile version the iPhone read before editing. The server rejects stale edits instead of overwriting newer changes.')
 })
 
 export const updateNativeSupporterProfileResponseAthleteNameMax = 100;

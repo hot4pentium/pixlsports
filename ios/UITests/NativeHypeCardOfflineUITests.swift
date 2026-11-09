@@ -204,6 +204,88 @@ final class NativeHypeCardOfflineUITests: XCTestCase {
         )
     }
 
+    func testAthleteProfileEditsRemainAvailableAfterOfflineRelaunch() throws {
+        try requireVisibility("public")
+        continueAfterFailure = false
+
+        let app = XCUIApplication()
+        app.launch()
+        openOwnerCard(in: app, visibility: "public")
+        let initialEdit = app.buttons["native-hype-card-edit-athlete-details"]
+        XCTAssertTrue(initialEdit.waitForExistence(timeout: 10))
+        reveal(initialEdit, in: app)
+        initialEdit.tap()
+        let nameField = app.textFields["native-athlete-profile-name"]
+        let teamField = app.textFields["native-athlete-profile-team"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10))
+        XCTAssertTrue(teamField.waitForExistence(timeout: 10))
+        let originalName = nameField.value as? String ?? ""
+        let rawTeam = teamField.value as? String ?? ""
+        let originalTeam = rawTeam == teamField.placeholderValue ? "" : rawTeam
+        XCTAssertFalse(originalName.isEmpty)
+        let updatedName = "Offline Profile \(UUID().uuidString.prefix(6))"
+        let updatedTeam = "Offline Team \(UUID().uuidString.prefix(6))"
+        reveal(app.buttons["native-athlete-profile-save"], in: app)
+        app.terminate()
+
+        app.launchArguments = ["--ui-testing-force-offline"]
+        app.launch()
+        openOwnerCard(in: app, visibility: "public")
+        let edit = app.buttons["native-hype-card-edit-athlete-details"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 10))
+        reveal(edit, in: app)
+        edit.tap()
+        let offlineName = app.textFields["native-athlete-profile-name"]
+        let offlineTeam = app.textFields["native-athlete-profile-team"]
+        XCTAssertTrue(offlineName.waitForExistence(timeout: 10))
+        XCTAssertEqual(offlineName.value as? String, originalName)
+        replaceText(in: offlineName, with: updatedName, in: app)
+        replaceText(in: offlineTeam, with: updatedTeam, in: app)
+        app.buttons["native-athlete-profile-save"].tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["native-hype-card-athlete-profile-pending"]
+                .waitForExistence(timeout: 15),
+            "The saved local profile change should remain visible while offline."
+        )
+        app.terminate()
+
+        app.launch()
+        openOwnerCard(in: app, visibility: "public")
+        let reopenEdit = app.buttons["native-hype-card-edit-athlete-details"]
+        reveal(reopenEdit, in: app)
+        reopenEdit.tap()
+        let restoredName = app.textFields["native-athlete-profile-name"]
+        XCTAssertTrue(restoredName.waitForExistence(timeout: 10))
+        XCTAssertEqual(restoredName.value as? String, updatedName)
+        XCTAssertEqual(app.textFields["native-athlete-profile-team"].value as? String, updatedTeam)
+        XCTAssertTrue(app.descendants(matching: .any)["native-athlete-profile-pending"].exists)
+
+        // Let the authenticated reconnect worker drain the edit, then restore
+        // the dedicated test owner's original values.
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        openOwnerCard(in: app, visibility: "public")
+        let pending = app.descendants(matching: .any)["native-hype-card-athlete-profile-pending"]
+        let synced = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: pending)
+        XCTAssertEqual(XCTWaiter.wait(for: [synced], timeout: 60), .completed)
+        let restoreEdit = app.buttons["native-hype-card-edit-athlete-details"]
+        XCTAssertTrue(restoreEdit.waitForExistence(timeout: 10))
+        reveal(restoreEdit, in: app)
+        restoreEdit.tap()
+        let restoreName = app.textFields["native-athlete-profile-name"]
+        let restoreTeam = app.textFields["native-athlete-profile-team"]
+        XCTAssertTrue(restoreName.waitForExistence(timeout: 10))
+        replaceText(in: restoreName, with: originalName, in: app)
+        replaceText(in: restoreTeam, with: originalTeam, in: app)
+        app.buttons["native-athlete-profile-save"].tap()
+        let editor = app.navigationBars["Athlete profile"]
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: editor)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 30), .completed)
+        app.terminate()
+    }
+
     func testReopenedCardMergesRemoteOnlyAndLocallyEditedSettings() throws {
         try requireVisibility("public")
         continueAfterFailure = false

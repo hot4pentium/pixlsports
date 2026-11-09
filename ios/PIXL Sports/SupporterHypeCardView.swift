@@ -358,6 +358,16 @@ struct SupporterHypeCardView: View {
                   !isCheckingSettings else { return }
             Task { await loadCard() }
         }
+        .onChange(of: clerk?.user?.id) { _, _ in
+            athleteProfile = nil
+            card = nil
+            privateCard = nil
+            privatePhoto = nil
+            settings = nil
+            settingsAccountSubject = nil
+            loading = true
+            Task { await loadCard() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .nativeOfflineConnectionChanged)) { _ in
             guard !isPublicRecipient, offlineRuntime.online, !loading, !isRefreshing,
                   !isSaving, !isCheckingSettings else { return }
@@ -558,6 +568,17 @@ struct SupporterHypeCardView: View {
             Text("Edit these details here or in Settings. HYPE Card privacy stays unchanged.")
                 .font(.caption)
                 .foregroundStyle(SupporterHomeColors.muted)
+            if let pending = pendingAthleteProfileChange {
+                Label(
+                    pending.isConflicted
+                        ? "Profile edits need review before they can sync."
+                        : "Profile edits are saved on this iPhone and waiting to sync.",
+                    systemImage: pending.isConflicted ? "exclamationmark.triangle.fill" : "arrow.triangle.2.circlepath"
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(pending.isConflicted ? .orange : SupporterHomeColors.accent)
+                .accessibilityIdentifier("native-hype-card-athlete-profile-pending")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -568,6 +589,12 @@ struct SupporterHypeCardView: View {
         }
         .supporterSurfaceShadow()
         .accessibilityIdentifier("native-hype-card-athlete-profile")
+    }
+
+    private var pendingAthleteProfileChange: NativePendingAthleteProfileChange? {
+        guard let subject = clerk?.user?.id,
+              offlineRuntime.vault.canContinue(subject: subject) else { return nil }
+        return try? NativeAccountLinkClient().pendingAthleteProfileChange(subject: subject)
     }
 
     @ViewBuilder
@@ -1583,6 +1610,7 @@ struct SupporterHypeCardView: View {
         }
         guard let requestSubject = Self.ownerSubject(clerk: clerk) else {
             loading = false
+            athleteProfile = nil
             unavailable = true
             card = nil
             privateCard = nil
@@ -1593,6 +1621,7 @@ struct SupporterHypeCardView: View {
         }
         let sameSettingsAccount = settingsAccountSubject == requestSubject
         if !sameSettingsAccount {
+            athleteProfile = nil
             card = nil
             privateCard = nil
             privatePhoto = nil
