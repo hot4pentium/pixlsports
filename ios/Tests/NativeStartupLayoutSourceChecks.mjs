@@ -307,10 +307,10 @@ test("Stat Tracker recovery stays inline and successful saves are silent", () =>
   const status = tracker.slice(tracker.indexOf("private struct NativeTrackerSaveStatusView"));
   const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
 
-  assert.match(content, /NativeTrackerSaveStatusView\(model: model, clerk: clerk, title: trackerHeading, phase: trackerPhase\)\s*if let workspace/);
+  assert.match(content, /NativeTrackerSaveStatusView\(model: model, clerk: clerk, title: trackerHeading,\s*phase: trackerPhase, advanceLabel: trackerAdvanceLabel\)\s*if let workspace/);
   assert.doesNotMatch(content, /if !embedded \|\| model\.busy \|\| model\.errorMessage != nil/);
   assert.match(status, /@ScaledMetric\(relativeTo: \.caption\) private var rowHeight: CGFloat = 44/);
-  assert.match(status, /\.frame\(height: rowHeight\)/);
+  assert.match(status, /\.frame\(height: rowHeight \+ \(showsGameControls \? 24 : 0\)\)/);
   assert.match(status, /Text\(title\)[\s\S]*?native-event-tracker-heading/);
   assert.match(status, /if let phase \{[\s\S]*?Text\(phase\)/);
   assert.match(status, /accessibilityIdentifier\("native-event-tracker-save-status"\)/);

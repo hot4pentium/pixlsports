@@ -64,3 +64,23 @@ test("selected-mode text uses dark ink with accessible contrast on both accent f
     assert.ok(ratio >= 4.5, `${name} contrast ${ratio.toFixed(2)} must exceed 4.5:1`);
   }
 });
+
+test("team tiles omit athlete counts both visually and in spoken values", () => {
+  const tile = between("private func statTileLabel(", "private func statTileAccessibilityValue(");
+  assert.match(tile, /if mode == \.athlete \{\s*Text\("\\\(athleteCount/);
+  assert.doesNotMatch(tile, /if mode != \.opponent/);
+  assert.match(source, /if trackerMode == \.team \{ return "\\\(total\) team total" \}/);
+});
+
+test("pause and period advance live in the top status header rather than below the tiles", () => {
+  const content = between("private var trackerContent:", "private func tracker(");
+  const game = between("private func tracker(", "private func endGameControl(");
+  const status = source.slice(source.indexOf("private struct NativeTrackerSaveStatusView"));
+  assert.match(content, /phase: trackerPhase, advanceLabel: trackerAdvanceLabel/);
+  assert.match(status, /native-event-tracker-heading[\s\S]*?Button\(game\.status == "live" \? "Pause" : "Resume"\)[\s\S]*?Spacer\(minLength: 4\)/);
+  assert.match(status, /native-event-tracker-phase[\s\S]*?Button\(advanceLabel\)[\s\S]*?model\.save\("period", clerk: clerk\)/);
+  assert.match(status, /\.disabled\(model\.displayedGame\?\.status != "live" \|\| !model\.canEditTrackerLocally\)/);
+  assert.doesNotMatch(game, /native-event-next-period|native-event-pause-resume|Button\(game\.status == "live" \? "Pause"/);
+  assert.match(source, /return "Next \\\(phaseLabel\(workspace: workspace, game: game\)\.lowercased\(\)\)"/);
+  assert.match(source, /game\.sport == "soccer" && game\.soccerPeriodFormat == "quarters" \? "Quarter" : workspace\.rules\.phaseLabel/);
+});

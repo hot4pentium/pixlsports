@@ -21,3 +21,12 @@ know which one they are on.
 
 **How to apply:** Preserve this distinction when restyling the full tracker and
 keep its non-color cues available to VoiceOver and color-blind users.
+
+Team stat tiles must omit the athlete's individual count, including their spoken
+values. In the full tracker, keep Pause/Resume beside LIVE/PAUSED and period
+advance beside the current half, set, inning or quarter at the top.
+
+**Why:** The user requested these exact simplifications and control positions.
+
+**How to apply:** Keep athlete-only counts in Athlete mode and preserve shared
+team totals and existing pause/advance command safeguards.

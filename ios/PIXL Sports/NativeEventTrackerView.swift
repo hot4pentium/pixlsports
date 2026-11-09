@@ -88,10 +88,16 @@ struct NativeEventTrackerView: View {
         return "\(phaseLabel(workspace: workspace, game: game)) \(game.period)"
     }
 
+    private var trackerAdvanceLabel: String? {
+        guard !compact, let workspace = model.workspace, let game = model.displayedGame else { return nil }
+        return "Next \(phaseLabel(workspace: workspace, game: game).lowercased())"
+    }
+
     private var trackerContent: some View {
             VStack(alignment: .leading, spacing: compact ? 12 : 22) {
                 if !embedded { Text(event.title).font(.title2.bold()) }
-                NativeTrackerSaveStatusView(model: model, clerk: clerk, title: trackerHeading, phase: trackerPhase)
+                NativeTrackerSaveStatusView(model: model, clerk: clerk, title: trackerHeading,
+                                            phase: trackerPhase, advanceLabel: trackerAdvanceLabel)
                 if let workspace = model.workspace {
                     if let game = model.displayedGame {
                         tracker(workspace: workspace, game: game)
@@ -188,18 +194,6 @@ struct NativeEventTrackerView: View {
                     }
                 }
                 .accessibilityIdentifier("native-event-stat-grid-\(trackerMode.rawValue)")
-                HStack {
-                    Button(game.status == "live" ? "Pause" : "Resume") {
-                        Task { await model.save(game.status == "live" ? "pause" : "resume", clerk: clerk) }
-                    }
-                    .disabled(!model.canEditTrackerLocally)
-                    Spacer()
-                    Button("Next \(phaseLabel(workspace: workspace, game: game).lowercased())") {
-                        Task { await model.save("period", clerk: clerk) }
-                    }
-                    .accessibilityIdentifier("native-event-next-period")
-                    .disabled(game.status != "live" || !model.canEditTrackerLocally)
-                }
                 Button("Undo last stat") { Task { await model.save("undo", clerk: clerk) } }
                     .disabled(game.events.isEmpty || game.status != "live" || !model.canEditTrackerLocally)
             } else if game.status == "paused" {
@@ -439,7 +433,7 @@ struct NativeEventTrackerView: View {
             Text(mode == .opponent ? "opponent total" : "team total")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            if mode != .opponent {
+            if mode == .athlete {
                 Text("\(athleteCount(game: game, statID: statID)) by \(athleteName)")
                     .font(.caption2.weight(mode == .athlete ? .bold : .regular))
                     .foregroundStyle(mode == .athlete ? Color.primary : Color.secondary)
@@ -461,6 +455,7 @@ struct NativeEventTrackerView: View {
     private func statTileAccessibilityValue(game: NativeEventWorkspace.Game, statID: String) -> String {
         let total = statTotal(game: game, statID: statID)
         if trackerMode == .opponent { return "\(total) opponent total" }
+        if trackerMode == .team { return "\(total) team total" }
         return "\(total) team total, \(athleteCount(game: game, statID: statID)) by \(athleteName)"
     }
 
@@ -521,8 +516,14 @@ private struct NativeTrackerSaveStatusView: View {
     let clerk: Clerk
     let title: String
     let phase: String?
+    let advanceLabel: String?
     @State private var showingDetails = false
     @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 44
+
+    private var showsGameControls: Bool {
+        guard advanceLabel != nil, let game = model.displayedGame else { return false }
+        return game.status == "live" || game.status == "paused"
+    }
 
     private struct Status {
         let message: String
@@ -631,13 +632,34 @@ private struct NativeTrackerSaveStatusView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .accessibilityIdentifier("native-event-tracker-heading")
+                    if showsGameControls, let game = model.displayedGame {
+                        Button(game.status == "live" ? "Pause" : "Resume") {
+                            Task { await model.save(game.status == "live" ? "pause" : "resume", clerk: clerk) }
+                        }
+                        .font(.caption.bold())
+                        .buttonStyle(.bordered)
+                        .frame(minHeight: 44)
+                        .disabled(!model.canEditTrackerLocally)
+                        .accessibilityIdentifier("native-event-pause-resume")
+                    }
                     Spacer(minLength: 4)
                     if let phase {
-                        Text(phase)
-                            .font(.caption.bold())
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .accessibilityIdentifier("native-event-tracker-phase")
+                        VStack(spacing: 0) {
+                            Text(phase)
+                                .font(.caption.bold())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .accessibilityIdentifier("native-event-tracker-phase")
+                            if showsGameControls, let advanceLabel {
+                                Button(advanceLabel) {
+                                    Task { await model.save("period", clerk: clerk) }
+                                }
+                                .font(.caption.bold())
+                                .buttonStyle(.bordered)
+                                .disabled(model.displayedGame?.status != "live" || !model.canEditTrackerLocally)
+                                .accessibilityIdentifier("native-event-next-period")
+                            }
+                        }
                     }
                 }
                 if let status {
@@ -686,7 +708,9 @@ private struct NativeTrackerSaveStatusView: View {
         }
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity)
-        .frame(height: rowHeight)
+        // Reserve the controls' height independently of transient save messages.
+        // Compact scorekeeping retains its existing 44-point status row.
+        .frame(height: rowHeight + (showsGameControls ? 24 : 0))
         .background((status?.color ?? .clear).opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("native-event-tracker-save-status-row")
         .onChange(of: status?.message) { _, message in
