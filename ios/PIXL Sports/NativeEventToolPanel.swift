@@ -11,6 +11,7 @@ struct NativeEventToolPanel: View {
     let onDirtyChange: (Bool) -> Void
     let onCompletionChange: (Bool) -> Void
     let trackingAllowed: Bool
+    let trackingAccess: NativeEventTrackingAccess
     @StateObject private var workspaceModel: NativeEventToolModel
     @State private var prepVisited = false
     @State private var trackingVisited = false
@@ -20,7 +21,7 @@ struct NativeEventToolPanel: View {
          selected: NativeEventDetailStep, fixturePrep: NativeEventWorkspace.Prep?,
          onDirtyChange: @escaping (Bool) -> Void,
          onCompletionChange: @escaping (Bool) -> Void,
-         trackingAllowed: Bool = true) {
+          trackingAllowed: Bool = true, trackingAccess: NativeEventTrackingAccess = .available) {
         self.schedule = schedule
         self.event = event
         self.clerk = clerk
@@ -29,6 +30,7 @@ struct NativeEventToolPanel: View {
         self.onDirtyChange = onDirtyChange
         self.onCompletionChange = onCompletionChange
         self.trackingAllowed = trackingAllowed
+        self.trackingAccess = trackingAccess
 #if DEBUG
         if NativeEventWorkspaceUITestFixture.isRequested {
             _workspaceModel = StateObject(wrappedValue: NativeEventToolModel(uiTestFixture: .shared))
@@ -72,16 +74,18 @@ struct NativeEventToolPanel: View {
                         NativeEventTrackingPanel(
                             event: event, teamName: schedule.teamName ?? "Your team",
                             athleteName: schedule.athleteName ?? "Your athlete", clerk: clerk,
-                            isActive: (trackingAllowed && !isComplete && selected == .trackStats)
+                            isActive: selected == .trackStats
                                 || ((isComplete || !trackingAllowed) && selected == .share && event.liveTapsActive),
+                            chooserAvailable: selected == .trackStats,
                             hasActiveLiveTapsElsewhere: schedule.events.contains {
                                 $0.liveTapsActive && $0.eventId != event.eventId
                             },
                             model: workspaceModel,
                             trackingAllowed: trackingAllowed,
-                            scheduleTimeZone: schedule.timezone
+                            scheduleTimeZone: schedule.timezone,
+                            trackingAccess: trackingAccess
                         )
-                        .eventToolVisibility((trackingAllowed && !isComplete && selected == .trackStats)
+                        .eventToolVisibility(selected == .trackStats
                             || ((isComplete || !trackingAllowed) && selected == .share && event.liveTapsActive))
                     }
                     if shareVisited || selected == .share {
@@ -150,6 +154,16 @@ struct NativeEventToolPanel: View {
                                 embedded: true, compactContent: true,
                                 onDirtyChange: onDirtyChange)
                 .eventToolVisibility(selected == .prep)
+        }
+        if event.type == "game", trackingVisited || selected == .trackStats {
+            NativeEventTrackingPanel(
+                event: event, teamName: schedule.teamName ?? "Your team",
+                athleteName: schedule.athleteName ?? "Your athlete", clerk: nil,
+                isActive: selected == .trackStats, chooserAvailable: selected == .trackStats,
+                model: workspaceModel, trackingAllowed: trackingAllowed,
+                scheduleTimeZone: schedule.timezone, trackingAccess: trackingAccess
+            )
+            .eventToolVisibility(selected == .trackStats)
         }
 #endif
     }

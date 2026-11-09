@@ -239,7 +239,7 @@ struct NativeNotificationSettingsView: View {
                         Text("Connect your PIXL account from the home screen before setting Event Card alerts.")
                             .foregroundStyle(.secondary)
                     } else {
-                        Toggle("Allow alerts on this iPhone", isOn: Binding(
+                        Toggle("Allow event-day and one-hour alerts", isOn: Binding(
                             get: { pushCoordinator.isEnabled || localReminders.isSelected },
                             set: { enabled in Task { await setDeviceAlerts(enabled) } }
                         ))
@@ -328,7 +328,7 @@ struct NativeNotificationSettingsView: View {
                 }
 
                 Section {
-                    Text("Turning off alerts here removes this iPhone’s notification registration. Your account preferences and other devices remain unchanged.")
+                    Text("Turning off event-day and one-hour alerts removes this iPhone’s push registration. Your account preferences and other devices remain unchanged. Optional game-day tool reminders are managed separately in each Event Card.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

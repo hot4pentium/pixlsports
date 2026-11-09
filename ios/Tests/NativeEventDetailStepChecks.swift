@@ -96,7 +96,7 @@ struct NativeEventDetailStepChecks {
                 start: kickoff, isGame: true, isLive: true, isComplete: true, now: start
             ) == .share, "Finalization overrides timing, missing dates, and stale live flags.")
         }
-        precondition(NativeEventDetailStep.trackStats.permittedSelection(isGame: true, isComplete: true) == .share)
+        precondition(NativeEventDetailStep.trackStats.permittedSelection(isGame: true, isComplete: true) == .trackStats)
         precondition(NativeEventDetailStep.trackStats.permittedSelection(isGame: false, isComplete: false) == .share)
         precondition(NativeEventDetailStep.prep.permittedSelection(isGame: true, isComplete: true) == .prep)
         precondition(NativeEventDetailStep.share.permittedSelection(isGame: true, isComplete: true) == .share)
@@ -107,7 +107,7 @@ struct NativeEventDetailStepChecks {
                 start: start, isGame: true, isComplete: false, now: start.addingTimeInterval(offset))
             precondition(!access.isAllowed)
             precondition(NativeEventDetailStep.trackStats.permittedSelection(
-                isGame: true, isComplete: false, trackingAvailable: access.isAllowed) == .prep)
+                isGame: true, isComplete: false, trackingAvailable: access.isAllowed) == .trackStats)
         }
         for offset: TimeInterval in [-600, -599, 0, 7200] {
             precondition(NativeEventTrackingAccess.resolve(
@@ -128,6 +128,10 @@ struct NativeEventDetailStepChecks {
         }
         let closed = NativeEventTrackingAccess.tooEarly(start.addingTimeInterval(-600))
         precondition(closed.message(timeZone: losAngeles).contains("10 minutes"))
+        precondition(closed.message(timeZone: losAngeles).contains(
+            losAngeles.abbreviation(for: start.addingTimeInterval(-600))!))
+        precondition(NativeEventTrackingAccess.missingStart.message().contains("Record Moments"))
+        precondition(NativeEventTrackingAccess.complete.message().contains("Record Moments"))
         print("Native Event Card completion and Message Board timing checks passed.")
     }
 }

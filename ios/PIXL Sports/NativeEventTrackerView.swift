@@ -4,6 +4,7 @@ import UIKit
 
 struct NativeEventTrackerView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
     let event: AthleteFanEvent
     let teamName: String
     let athleteName: String
@@ -68,10 +69,11 @@ struct NativeEventTrackerView: View {
         }
     }
 
-    private var trackingAccess: NativeEventTrackingAccess { access(at: Date()) }
+    private var trackingAccess: NativeEventTrackingAccess { access(at: max(accessDate, Date())) }
 
     private func access(at date: Date) -> NativeEventTrackingAccess {
-        .resolve(start: event.parsedStart(timezone: event.timezone ?? scheduleTimeZone), isGame: event.type == "game",
+        guard let current = offline.workingEvent(event, subject: clerk.user?.id) else { return .complete }
+        return .resolve(start: current.parsedStart(timezone: current.timezone ?? scheduleTimeZone), isGame: current.type == "game",
                  isComplete: model.trackerIsComplete || NativeEventDetailStep.gameIsComplete(eventStatus: event.status),
                  now: date)
     }

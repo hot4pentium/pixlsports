@@ -140,6 +140,7 @@ final class NativeOfflineRuntime: ObservableObject {
         catch { storageError = error.localizedDescription }
 #if os(iOS)
         Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
+        Task { await NativeToolAvailabilityReminderCoordinator.shared.reconcile() }
 #endif
     }
 
@@ -159,6 +160,7 @@ final class NativeOfflineRuntime: ObservableObject {
             accessGeneration += 1
 #if os(iOS)
             Task { await NativeLocalEventReminderCoordinator.shared.reconcile() }
+            Task { await NativeToolAvailabilityReminderCoordinator.shared.reconcile() }
 #endif
         } catch { storageError = error.localizedDescription }
     }
@@ -195,7 +197,12 @@ final class NativeOfflineRuntime: ObservableObject {
     }
     func claim(_ token: String) -> Bool { activeDrains.insert(token).inserted }
     func release(_ token: String) { activeDrains.remove(token) }
-    func storageChanged() { objectWillChange.send() }
+    func storageChanged() {
+        objectWillChange.send()
+#if os(iOS)
+        Task { await NativeToolAvailabilityReminderCoordinator.shared.reconcile() }
+#endif
+    }
 
     func recentlySyncedEventCardToken(id: String, subject: String) -> String? {
         guard vault.canContinue(subject: subject), let scope = vault.namespace else { return nil }
@@ -216,12 +223,49 @@ final class NativeOfflineRuntime: ObservableObject {
         return changes.sorted { $0.createdAt < $1.createdAt }
     }
 
+    /// UI timing follows the same verified local working copy as the reminder.
+    /// The canonical cached schedule is never rewritten by an unsynced edit.
+    func workingEvent(_ event: AthleteFanEvent, subject: String?) -> AthleteFanEvent? {
+        guard let subject, vault.canContinue(subject: subject) else { return event }
+        var base = event
+        if let bytes = try? vault.read("get/supporter/schedule", subject: subject),
+           let schedule = try? JSONDecoder().decode(NativeSupporterSchedule.self, from: bytes) {
+            guard schedule.linkId == vault.lease?.linkId,
+                  let canonical = schedule.events.first(where: {
+                      $0.shareToken == event.shareToken && $0.eventId == event.eventId
+                  }) else { return nil }
+            base = canonical
+        }
+        guard let change = pendingEventCards(subject: subject).first(where: {
+            $0.id == base.eventId && ($0.shareToken == nil || $0.shareToken == base.shareToken)
+        }) else { return base }
+        guard change.operation != .delete else { return nil }
+        let draft = change.draft
+        return AthleteFanEvent(
+            shareToken: base.shareToken, eventId: base.eventId, title: base.title,
+            date: draft.date, time: draft.time, type: draft.type, status: base.status,
+            opponent: draft.opponent, location: draft.location, timezone: draft.timezone,
+            liveTapsActive: base.liveTapsActive, liveTapsOnly: base.liveTapsOnly,
+            liveTapsInviteToken: base.liveTapsInviteToken, liveTapsSport: base.liveTapsSport)
+    }
+
     func savePendingEventCard(_ change: NativePendingEventCardChange, subject: String) throws {
         guard UUID(uuidString: change.id) != nil,
               vault.canContinue(subject: subject),
               vault.subject == subject else { throw NativeOfflineError.locked }
         let key = "pending/event-card/" + change.id
         try vault.write(JSONEncoder().encode(change), key: key)
+#if os(iOS)
+        var reminderToken = change.shareToken
+        if reminderToken == nil, let bytes = try? vault.read("get/supporter/schedule", subject: subject),
+           let schedule = try? JSONDecoder().decode(NativeSupporterSchedule.self, from: bytes) {
+            reminderToken = schedule.events.first(where: { $0.eventId == change.id })?.shareToken
+        }
+        if let token = reminderToken {
+            NativeToolAvailabilityReminderCoordinator.shared.eventChanged(
+                token: token, subject: subject, deleted: change.operation == .delete)
+        }
+#endif
         storageChanged()
     }
 
@@ -965,6 +1009,7 @@ final class NativeOfflineRuntime: ObservableObject {
         if removed > 0 { preparation += " · \(removed) removed downloads need an online download" }
 #if os(iOS)
         await NativeLocalEventReminderCoordinator.shared.reconcile()
+        await NativeToolAvailabilityReminderCoordinator.shared.reconcile()
 #endif
     }
 }

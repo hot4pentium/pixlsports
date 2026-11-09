@@ -7,11 +7,13 @@ struct NativeEventTrackingPanel: View {
     let event: AthleteFanEvent
     let teamName: String
     let athleteName: String
-    let clerk: Clerk
+    let clerk: Clerk?
     let isActive: Bool
+    let chooserAvailable: Bool
     let hasActiveLiveTapsElsewhere: Bool
     let trackingAllowed: Bool
     let scheduleTimeZone: String?
+    let trackingAccess: NativeEventTrackingAccess
     @StateObject private var trackerModel: NativeEventToolModel
     @State private var selectedMode: TrackingMode?
     @State private var hasVisitedStatTracker = false
@@ -71,29 +73,33 @@ struct NativeEventTrackingPanel: View {
         event: AthleteFanEvent,
         teamName: String,
         athleteName: String,
-        clerk: Clerk,
+        clerk: Clerk?,
         isActive: Bool,
+        chooserAvailable: Bool = true,
         hasActiveLiveTapsElsewhere: Bool = false,
         model: NativeEventToolModel? = nil,
         trackingAllowed: Bool = true,
-        scheduleTimeZone: String? = nil
+        scheduleTimeZone: String? = nil,
+        trackingAccess: NativeEventTrackingAccess = .available
     ) {
         self.event = event
         self.teamName = teamName
         self.athleteName = athleteName
         self.clerk = clerk
         self.isActive = isActive
+        self.chooserAvailable = chooserAvailable
         self.hasActiveLiveTapsElsewhere = hasActiveLiveTapsElsewhere
         self.trackingAllowed = trackingAllowed
         self.scheduleTimeZone = scheduleTimeZone
+        self.trackingAccess = trackingAccess
         _trackerModel = StateObject(wrappedValue: model ?? NativeEventToolModel.shared(
-            shareToken: event.shareToken, accountID: clerk.user?.id ?? NativeOfflineRuntime.shared.accountID
+            shareToken: event.shareToken, accountID: clerk?.user?.id ?? NativeOfflineRuntime.shared.accountID
         ))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            if selectedMode == nil && !gameIsComplete && trackingAllowed {
+            if selectedMode == nil && chooserAvailable {
                 chooseTrackingToolPrompt
             }
             scorekeepingSection
@@ -103,21 +109,21 @@ struct NativeEventTrackingPanel: View {
                     || ((gameIsComplete || !trackingAllowed) && event.liveTapsActive))
             if hasVisitedRecordMoments || selectedMode == .recordMoments {
                 recordMomentsSection
-                    .eventToolVisibility(trackingAllowed && !gameIsComplete && selectedMode == .recordMoments)
+                    .eventToolVisibility(chooserAvailable && selectedMode == .recordMoments)
             }
         }
         .tint(NativeEventToolColors.trackStats)
         .sheet(isPresented: $showingModePicker, onDismiss: {
-            if recordMomentsAfterPicker && trackingAllowed && isActive && !gameIsComplete {
+            if recordMomentsAfterPicker && chooserAvailable && isActive {
                 recordMomentsAfterPicker = false
                 showingRecordMoments = true
             }
         }) {
-            if trackingAllowed && isActive && !gameIsComplete { modePickerSheet }
+            if chooserAvailable && isActive { modePickerSheet }
         }
         .fullScreenCover(isPresented: $showingRecordMoments) {
             NavigationStack {
-                if trackingAllowed && isActive && !gameIsComplete {
+                if chooserAvailable && isActive {
                     NativeRecordMomentsView(athleteName: athleteName, eventTitle: event.title)
                 }
             }
@@ -125,24 +131,19 @@ struct NativeEventTrackingPanel: View {
             .preferredColorScheme(.light)
         }
         .onAppear {
-            if isActive { presentModePicker() }
+            if isActive && selectedMode == nil { presentModePicker() }
         }
         .onChange(of: isActive) { _, active in
-            if active { presentModePicker() }
+            if active && selectedMode == nil { presentModePicker() }
+        }
+        .onChange(of: chooserAvailable) { _, available in
+            if available && isActive && !showingRecordMoments && !recordMomentsAfterPicker { presentModePicker() }
         }
         .onChange(of: gameIsComplete) { _, complete in
-            if complete {
-                recordMomentsAfterPicker = false
-                showingModePicker = false
-                showingRecordMoments = false
-            }
+            if complete { closeUnavailableTrackingMode() }
         }
         .onChange(of: trackingAllowed) { _, allowed in
-            if !allowed {
-                showingModePicker = false
-                showingRecordMoments = false
-                recordMomentsAfterPicker = false
-            }
+            if !allowed { closeUnavailableTrackingMode() }
         }
     }
 
@@ -158,6 +159,7 @@ struct NativeEventTrackingPanel: View {
                         .foregroundStyle(SupporterHomeColors.lightMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                availabilityNotice
                 modeChoice(.statTracker)
                 modeChoice(.liveTaps)
                 modeChoice(.recordMoments)
@@ -236,9 +238,23 @@ struct NativeEventTrackingPanel: View {
                         .font(.caption)
                         .foregroundStyle(SupporterHomeColors.muted)
                         .fixedSize(horizontal: false, vertical: true)
+                    Group {
+                        if mode == .recordMoments {
+                            Text("Available anytime")
+                        } else {
+                            NativeToolAvailabilityText(access: effectiveTrackingAccess,
+                                timeZone: TimeZone(identifier: event.timezone ?? scheduleTimeZone ?? "") ?? .current,
+                                opensAt: event.parsedStart(timezone: event.timezone ?? scheduleTimeZone)?.addingTimeInterval(-600),
+                                identifier: "native-event-choice-availability-\(mode.rawValue)")
+                        }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(modeAllowed(mode) ? SupporterHomeColors.accent : SupporterHomeColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 36, alignment: .topLeading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "arrow.right")
+                Image(systemName: modeAllowed(mode) ? "arrow.right" : "lock.fill")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(NativeEventToolColors.trackStats)
                     .accessibilityHidden(true)
@@ -247,8 +263,10 @@ struct NativeEventTrackingPanel: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!modeAllowed(mode))
+        .opacity(modeAllowed(mode) ? 1 : 0.65)
         .accessibilityLabel(mode.title)
-        .accessibilityHint("Use \(mode.title) for this event.")
+        .accessibilityHint(modeAllowed(mode) ? "Use \(mode.title) for this event." : availabilityMessage)
         .accessibilityIdentifier("native-event-choice-\(mode.rawValue)")
     }
 
@@ -287,6 +305,7 @@ struct NativeEventTrackingPanel: View {
             Text("Choose Track Stats, Live Taps, or Record Moments.")
                 .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
+            availabilityNotice
             Button("Choose an option", action: presentModePicker)
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("native-event-open-mode-choice")
@@ -304,7 +323,7 @@ struct NativeEventTrackingPanel: View {
                 Spacer(minLength: 8)
                 switchToolButton
             }
-            if hasVisitedStatTracker {
+            if hasVisitedStatTracker, let clerk {
                 NativeEventTrackerView(
                     event: event, teamName: teamName, athleteName: athleteName,
                     clerk: clerk, model: trackerModel, embedded: true, compact: true,
@@ -327,17 +346,19 @@ struct NativeEventTrackingPanel: View {
                 .accessibilityIdentifier("native-event-scorekeeping-card")
             }
             NavigationLink {
+                if let clerk {
                 NativeEventTrackerView(
                     event: event, teamName: teamName, athleteName: athleteName,
                     clerk: clerk, model: trackerModel, scheduleTimeZone: scheduleTimeZone
                 )
+                }
             } label: {
                 Label("Open full tracker", systemImage: "chart.bar.xaxis")
                     .font(.subheadline.weight(.bold))
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.bordered)
-            .disabled(gameIsComplete || !trackingAllowed)
+            .disabled(gameIsComplete || !trackingAllowed || clerk == nil)
             .accessibilityIdentifier("native-event-full-tracker")
         }
         .accessibilityIdentifier("native-event-scorekeeping-section")
@@ -350,14 +371,14 @@ struct NativeEventTrackingPanel: View {
                 Spacer(minLength: 8)
                 if !gameIsComplete && trackingAllowed { switchToolButton }
             }
-            if hasVisitedLiveTaps || ((gameIsComplete || !trackingAllowed) && event.liveTapsActive) {
+            if hasVisitedLiveTaps || ((gameIsComplete || !trackingAllowed) && event.liveTapsActive), let clerk {
                 NativeEventFanAccessView(
                     event: event,
                     athleteName: athleteName,
                     clerk: clerk,
                     hasActiveLiveTapsElsewhere: hasActiveLiveTapsElsewhere,
                     isActive: isActive && (selectedMode == .liveTaps || gameIsComplete || !trackingAllowed),
-                    sessionManagementOnly: !trackingAllowed
+                    sessionManagementOnly: gameIsComplete || !trackingAllowed
                 )
             }
         }
@@ -396,7 +417,7 @@ struct NativeEventTrackingPanel: View {
     }
 
     private func selectMode(_ mode: TrackingMode) {
-        guard isActive, trackingAllowed, !gameIsComplete else { return }
+        guard isActive, chooserAvailable, modeAllowed(mode) else { return }
         if mode == .recordMoments {
             recordMomentsAfterPicker = true
         }
@@ -409,9 +430,36 @@ struct NativeEventTrackingPanel: View {
     }
 
     private func presentModePicker() {
-        guard isActive, trackingAllowed, !gameIsComplete else { return }
+        guard isActive, chooserAvailable else { return }
         expandedExplanation = nil
         showingModePicker = true
+    }
+
+    private var effectiveTrackingAccess: NativeEventTrackingAccess {
+        gameIsComplete ? .complete : trackingAccess
+    }
+
+    private var availabilityMessage: String {
+        effectiveTrackingAccess.message(timeZone: TimeZone(identifier: event.timezone ?? scheduleTimeZone ?? "") ?? .current)
+    }
+
+    private func modeAllowed(_ mode: TrackingMode) -> Bool {
+        mode == .recordMoments || (trackingAllowed && !gameIsComplete && effectiveTrackingAccess.isAllowed)
+    }
+
+    private func closeUnavailableTrackingMode() {
+        // The chooser and local video editor stay mounted. Only the timed tool
+        // selection is reset; no tracker commands, cheers, or drafts are removed.
+        if selectedMode == .statTracker || selectedMode == .liveTaps { selectedMode = nil }
+    }
+
+    private var availabilityNotice: some View {
+        NativeToolAvailabilityNotice(
+            access: effectiveTrackingAccess,
+            timeZone: TimeZone(identifier: event.timezone ?? scheduleTimeZone ?? "") ?? .current,
+            shareToken: event.shareToken, subject: clerk?.user?.id,
+            opensAt: event.parsedStart(timezone: event.timezone ?? scheduleTimeZone)?.addingTimeInterval(-600)
+        )
     }
 }
 

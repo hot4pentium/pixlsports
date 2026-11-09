@@ -48,13 +48,13 @@ final class SupporterEventDetailUITests: XCTestCase {
                       "Deleting a task must leave the other checklist items intact.")
     }
 
-    func testEarlyGameLocksEntireTrackingTabWithoutBlockingPrepOrShare() {
+    func testEarlyGameKeepsChooserAndRecordMomentsAvailable() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft"]
         app.launch()
         let tracker = app.buttons["event-card-track-stats"]
         XCTAssertTrue(tracker.waitForExistence(timeout: 10))
-        XCTAssertFalse(tracker.isEnabled)
+        XCTAssertTrue(tracker.isEnabled)
         XCTAssertTrue(app.staticTexts["event-tracking-locked-message"].exists)
         assertSelectedStep("Prep", in: app)
         assertRecommendedStep("Prep", in: app)
@@ -65,6 +65,14 @@ final class SupporterEventDetailUITests: XCTestCase {
         XCTAssertFalse(app.buttons["native-event-full-tracker"].exists)
         app.buttons["event-card-prep"].tap()
         assertSelectedStep("Prep", in: app)
+        tracker.tap()
+        let record = app.buttons["native-event-choice-recordMoments"]
+        XCTAssertTrue(record.waitForExistence(timeout: 5))
+        XCTAssertTrue(record.isEnabled)
+        XCTAssertFalse(app.buttons["native-event-choice-statTracker"].isEnabled)
+        XCTAssertFalse(app.buttons["native-event-choice-liveTaps"].isEnabled)
+        assertModeChooserReachable("native-event-choice-recordMoments", in: app).tap()
+        XCTAssertTrue(app.navigationBars["Record Moments"].waitForExistence(timeout: 5))
         app.terminate()
     }
 
@@ -74,13 +82,16 @@ final class SupporterEventDetailUITests: XCTestCase {
         app.launch()
         let tracker = app.buttons["event-card-track-stats"]
         XCTAssertTrue(tracker.waitForExistence(timeout: 10))
-        XCTAssertFalse(tracker.isEnabled)
-        let unlocked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: tracker)
+        XCTAssertTrue(tracker.isEnabled)
+        let status = app.staticTexts["event-tracking-locked-message"]
+        let unlocked = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "available now"), object: status)
         XCTAssertEqual(XCTWaiter.wait(for: [unlocked], timeout: 25), .completed)
         assertSelectedStep("Prep", in: app)
-        XCTAssertFalse(app.staticTexts["event-tracking-locked-message"].exists)
         tracker.tap()
-        assertSelectedStep("Track Stats", in: app)
+        XCTAssertTrue(app.buttons["native-event-choice-statTracker"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["native-event-choice-statTracker"].isEnabled)
+        XCTAssertTrue(app.buttons["native-event-choice-recordMoments"].isEnabled)
         app.terminate()
     }
 
@@ -90,7 +101,7 @@ final class SupporterEventDetailUITests: XCTestCase {
         app.launch()
         let tracker = app.buttons["event-card-track-stats"]
         XCTAssertTrue(tracker.waitForExistence(timeout: 10))
-        XCTAssertFalse(tracker.isEnabled)
+        XCTAssertTrue(tracker.isEnabled)
         assertSelectedStep("Share", in: app)
         assertRecommendedStep("Share", in: app)
         XCTAssertTrue(app.buttons["event-card-prep"].isEnabled)
@@ -101,7 +112,32 @@ final class SupporterEventDetailUITests: XCTestCase {
         assertSelectedStep("Prep", in: app)
         app.buttons["event-card-share"].tap()
         assertSelectedStep("Share", in: app)
-        XCTAssertFalse(tracker.isEnabled)
+        XCTAssertTrue(tracker.isEnabled)
+        tracker.tap()
+        let record = app.buttons["native-event-choice-recordMoments"]
+        XCTAssertTrue(record.waitForExistence(timeout: 5))
+        XCTAssertTrue(record.isEnabled)
+        XCTAssertFalse(app.buttons["native-event-choice-statTracker"].isEnabled)
+        XCTAssertFalse(app.buttons["native-event-choice-liveTaps"].isEnabled)
+        assertModeChooserReachable("native-event-choice-recordMoments", in: app).tap()
+        XCTAssertTrue(app.navigationBars["Record Moments"].waitForExistence(timeout: 5))
+        app.terminate()
+    }
+
+    func testRecordingSurvivesAutomaticToolUnlock() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-event-detail", "--ui-testing-prep-draft", "--event-detail-unlock"]
+        app.launch()
+        let tracker = app.buttons["event-card-track-stats"]
+        XCTAssertTrue(tracker.waitForExistence(timeout: 10))
+        tracker.tap()
+        assertModeChooserReachable("native-event-choice-recordMoments", in: app).tap()
+        let recorder = app.navigationBars["Record Moments"]
+        XCTAssertTrue(recorder.waitForExistence(timeout: 5))
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: recorder)
+        dismissed.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 20), .completed)
+        XCTAssertTrue(recorder.exists)
         app.terminate()
     }
 

@@ -50,6 +50,7 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
     /// handoff. A short quiet window excludes any already in-flight push.
     func activate(preferences: NativeLocalReminderPreferences) async throws {
         guard vault.canContinue() else { throw NativeOfflineError.locked }
+        generation += 1
         var consumed = state()?.consumed ?? [:]
         for reminder in state()?.planned ?? [] where reminder.fire <= Date() {
             consumed[reminder.id] = reminder.expires
@@ -81,16 +82,7 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
                 UserDefaults.standard.set(latest, forKey: Self.resumePushKey(scope: scope))
             }
         }
-        // This native app's only pending requests are its event reminders.
-        center.removeAllPendingNotificationRequests()
-        if disable || resetSelection {
-            center.removeAllDeliveredNotifications()
-        } else {
-            center.getDeliveredNotifications { notifications in
-                let ids = notifications.map(\.request.identifier).filter { $0.hasPrefix("pixl.native.event.") }
-                UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
-            }
-        }
+        cancelRoutineNotifications()
         if disable {
             do {
                 if var saved = state() {
@@ -129,11 +121,15 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
             return
         }
         isEnabled = true
+        generation += 1
         let revision = generation
         let settings = await center.notificationSettings()
         guard revision == generation, scope == vault.namespace, vault.canContinue() else { return }
+        let pending = await center.pendingNotificationRequests()
+        guard revision == generation, scope == vault.namespace, vault.canContinue() else { return }
+        let routineIDs = pending.filter { $0.identifier.hasPrefix(Self.prefix) }.map(\.identifier)
         guard [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) else {
-            center.removeAllPendingNotificationRequests()
+            center.removePendingNotificationRequests(withIdentifiers: routineIDs)
             status = "Reminders paused. Allow notifications in iPhone Settings."
             return
         }
@@ -157,15 +153,19 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
                         timezone: $0.timezone ?? schedule.timezone ?? saved.preferences.timezone),
                     title: $0.title, type: $0.type, timezone: $0.timezone ?? schedule.timezone)
             }
-            let reminders = NativeLocalReminderPlan.reminders(events: events, preferences: saved.preferences,
+            let foreignCount = pending.filter {
+                !$0.identifier.hasPrefix(Self.prefix)
+                    && !$0.identifier.hasPrefix(NativeToolAvailabilityReminderCoordinator.prefix)
+            }.count
+            let reminders = Array(NativeLocalReminderPlan.reminders(events: events, preferences: saved.preferences,
                 now: now, notBefore: saved.notBefore,
                 leaseEnd: lease.verifiedAt.addingTimeInterval(7 * 24 * 3600),
-                consumedIDs: Set(saved.consumed.keys))
+                consumedIDs: Set(saved.consumed.keys)).prefix(max(0, 48 - foreignCount)))
             saved.planned = reminders
             // Persist intent before handing it to iOS. Interrupted work may skip
             // an alert, but cannot replay one on the next launch.
             try persist(saved)
-            center.removeAllPendingNotificationRequests()
+            center.removePendingNotificationRequests(withIdentifiers: routineIDs)
             for reminder in reminders {
                 guard revision == generation, scope == vault.namespace, vault.canContinue() else { return }
                 let content = UNMutableNotificationContent()
@@ -189,8 +189,27 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
             status = "\(reminders.count) reminders saved on this iPhone. Refresh online before offline access expires."
             errorMessage = nil
         } catch {
-            center.removeAllPendingNotificationRequests()
+            guard revision == generation, scope == vault.namespace else { return }
+            cancelRoutineNotifications()
             errorMessage = "Reminders could not be saved: \(error.localizedDescription)"
+        }
+    }
+
+    private func cancelRoutineNotifications() {
+        // Remove known requests synchronously before vault lock, and sweep only
+        // this category. Fence late callbacks so a new rebuild cannot be erased.
+        let ids = (state()?.planned ?? []).map { Self.prefix + $0.id }
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        let revision = generation
+        Task { @MainActor in
+            let pending = await center.pendingNotificationRequests()
+            guard revision == generation else { return }
+            center.removePendingNotificationRequests(withIdentifiers:
+                pending.filter { $0.identifier.hasPrefix(Self.prefix) }.map(\.identifier))
+            let delivered = await center.deliveredNotifications()
+            guard revision == generation else { return }
+            center.removeDeliveredNotifications(withIdentifiers:
+                delivered.map(\.request.identifier).filter { $0.hasPrefix(Self.prefix) })
         }
     }
 }

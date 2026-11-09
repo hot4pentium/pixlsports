@@ -45,7 +45,12 @@ final class NativePushAppDelegate: NSObject, UIApplicationDelegate, UNUserNotifi
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.banner, .sound, .badge])
+        if notification.request.content.categoryIdentifier == "PIXL_TOOL_AVAILABILITY" {
+            // This category already updates inline while the app is open.
+            completionHandler([])
+        } else {
+            completionHandler([.banner, .sound, .badge])
+        }
     }
 
     private static var apnsEnvironment: String {
@@ -277,6 +282,7 @@ final class NativePushRegistrationCoordinator: ObservableObject {
     /// Do not attempt another authenticated unregister after session revocation.
     func clearAfterAccountRemoval() {
         NativeLocalEventReminderCoordinator.shared.cancel(disable: true, resetSelection: true)
+        NativeToolAvailabilityReminderCoordinator.shared.cancelForAccount()
         UserDefaults.standard.set(false, forKey: Self.enabledKey)
         UserDefaults.standard.removeObject(forKey: Self.tokenKey)
         UserDefaults.standard.removeObject(forKey: Self.environmentKey)

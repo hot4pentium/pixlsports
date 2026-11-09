@@ -6,6 +6,36 @@ struct NativeLocalReminderPreferences: Codable {
     var timezone: String?
 }
 
+/// Independent of event-day/one-hour consent and APNs handoff. A remembered
+/// attempt at a past instant is consumed even if delivery was uncertain.
+enum NativeToolAvailabilityReminderPlan {
+    static let limit = 16
+
+    struct Selection: Codable, Equatable {
+        let eventID: String
+        let shareToken: String
+        var attemptedFire: Date?
+        var consumed = false
+    }
+
+    static func opening(start: Date?, now: Date, leaseEnd: Date,
+                        selection: Selection) -> Date? {
+        guard !selection.consumed,
+              selection.attemptedFire.map({ $0 > now }) ?? true,
+              let start, start <= leaseEnd else { return nil }
+        let fire = start.addingTimeInterval(-600)
+        return fire > now && fire <= leaseEnd ? fire : nil
+    }
+
+    static func requestID(scope: String, token: String) -> String {
+        "pixl.native.availability." + scope + "." + token
+    }
+
+    static func capacity(otherCategoryCount: Int) -> Int {
+        max(0, limit - max(0, otherCategoryCount))
+    }
+}
+
 /// Pure timing policy, shared by device scheduling and command-line checks.
 enum NativeLocalReminderPlan {
     struct Event {

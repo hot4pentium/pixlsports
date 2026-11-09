@@ -3,8 +3,8 @@ name: Native local reminder handoff
 description: Why local reminders replace a phone's server destination instead of supplementing it.
 ---
 
-Local reminders and APNs must never independently cover the same iPhone event
-reminder. Selecting local mode replaces only that phone's server destination;
+Local reminders and APNs must never independently cover the same iPhone event-day
+or one-hour reminder. Selecting local mode replaces only that phone's server destination;
 it does not change account-wide consent or any PWA/native ownership binding.
 
 **Why:** APNs and local notification delivery have no shared transactional
@@ -16,3 +16,14 @@ window, and consumed-alert suppression. Returning to remote delivery must not
 replay still-eligible reminders that may have fired locally. Any stronger handoff
 must coordinate both delivery channels, not silently register APNs on reconnect.
 Permission and physical offline delivery still require Apple device validation.
+
+Per-event tool-availability reminders are local-only and independent of ordinary
+event-day/one-hour consent or delivery mode. They do not participate in APNs handoff.
+
+**Why:** The user chose an optional alert when Stats and Live Taps open. This is a
+different moment from existing reminders; changing normal alert preferences must
+not erase a separate opt-in or create duplicate cross-channel delivery.
+
+**How to apply:** Keep consent, request identities, capacity reservations, and
+category cleanup separate. Account lock/clear still cancels private alerts.
+Persist consumed attempts conservatively rather than replaying uncertain alerts.

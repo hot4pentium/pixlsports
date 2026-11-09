@@ -9,6 +9,7 @@ struct NativeEventStepBar: View {
     let onSelect: (NativeEventDetailStep) -> Void
     var trackingAccess: NativeEventTrackingAccess = .available
     var trackingTimeZone: TimeZone = .current
+    var trackingOpensAt: Date? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -24,16 +25,15 @@ struct NativeEventStepBar: View {
                 }
                 .accessibilityIdentifier("event-card-prep")
                 Button {
-                    guard isGame, !isComplete, trackingAccess.isAllowed else { return }
+                    guard isGame else { return }
                     onSelect(.trackStats)
                 } label: {
                     stepLabel(.trackStats)
                 }
-                .disabled(!isGame || isComplete || !trackingAccess.isAllowed)
-                .opacity(isComplete || !trackingAccess.isAllowed ? 0.45 : 1)
-                .accessibilityHint(isComplete
-                    ? "This game is complete. Use Share for postgame actions."
-                    : isGame ? trackingAccess.message(timeZone: trackingTimeZone) : "Stat tracking is available for games, not practices.")
+                .disabled(!isGame)
+                .accessibilityHint(isGame
+                    ? "Choose a game-day tool. \(trackingAccess.message(timeZone: trackingTimeZone))"
+                    : "Stat tracking is available for games, not practices.")
                 .accessibilityIdentifier("event-card-track-stats")
                 Button {
                     onSelect(.share)
@@ -44,12 +44,13 @@ struct NativeEventStepBar: View {
             }
             .disabled(!actionsEnabled)
             .buttonStyle(.plain)
-            if isGame, !isComplete, !trackingAccess.isAllowed {
-                Text(trackingAccess.message(timeZone: trackingTimeZone))
+            if isGame {
+                NativeToolAvailabilityText(access: trackingAccess, timeZone: trackingTimeZone,
+                    opensAt: trackingOpensAt, identifier: "event-tracking-locked-message")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("event-tracking-locked-message")
+                    .frame(minHeight: 42, alignment: .topLeading)
             }
         }
         .frame(maxWidth: 560)

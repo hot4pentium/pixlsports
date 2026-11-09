@@ -6,6 +6,7 @@ import UIKit
 struct SupporterEventDetailView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ObservedObject private var offline = NativeOfflineRuntime.shared
     let clerk: Clerk?
     let shareToken: String
     let fixture: Fixture?
@@ -59,9 +60,9 @@ struct SupporterEventDetailView: View {
             trackingAvailable: trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed)
     }
 
-    private var trackingAvailable: Bool {
-        guard case let .loaded(schedule, event) = state else { return false }
-        return trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed
+    private func workingEvent(_ event: AthleteFanEvent) -> AthleteFanEvent? {
+        if fixture != nil { return event }
+        return offline.workingEvent(event, subject: clerk?.user?.id)
     }
 
     private var pageNavigationTitle: String {
@@ -98,7 +99,11 @@ struct SupporterEventDetailView: View {
                     .supporterSurfaceShadow()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case let .loaded(schedule, event):
-                    eventDetails(schedule: schedule, event: event)
+                    if let current = workingEvent(event) {
+                        eventDetails(schedule: schedule, event: current)
+                    } else {
+                        unavailable("This Event Card was deleted on this iPhone. Your saved stats and history are kept.")
+                    }
                 case let .unavailable(message):
                     unavailable(message)
                 }
@@ -109,7 +114,7 @@ struct SupporterEventDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if case let .loaded(schedule, event) = state {
+            if case let .loaded(schedule, storedEvent) = state, let event = workingEvent(storedEvent) {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     NativeEventStepBar(
                         recommended: recommendedStep(schedule: schedule, event: event, date: context.date),
@@ -118,12 +123,13 @@ struct SupporterEventDetailView: View {
                         isComplete: gameIsComplete,
                         actionsEnabled: clerk != nil || fixture != nil,
                         onSelect: { step in
-                            guard step != .trackStats || trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed else { return }
+                            guard step != .trackStats || event.type == "game" else { return }
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             selectedStep = step
                         },
                         trackingAccess: trackingAccess(schedule: schedule, event: event, date: context.date),
-                        trackingTimeZone: TimeZone(identifier: event.timezone ?? schedule.timezone ?? "") ?? .current
+                        trackingTimeZone: TimeZone(identifier: event.timezone ?? schedule.timezone ?? "") ?? .current,
+                        trackingOpensAt: event.parsedStart(timezone: event.timezone ?? schedule.timezone)?.addingTimeInterval(-600)
                     )
 #if DEBUG
                     .onChange(of: context.date, initial: true) { _, date in
@@ -183,9 +189,6 @@ struct SupporterEventDetailView: View {
         .onChange(of: prepHasUnsavedChanges) { _, dirty in
             if !dirty && toolsChanged { scheduleRefresh() }
         }
-        .onChange(of: gameIsComplete) { _, complete in
-            if complete && selectedStep == .trackStats { selectedStep = .share }
-        }
         .onChange(of: scenePhase) { _, phase in
             // Don't remove the destination's NavigationLink while a native tool
             // has unsaved work. Its requests still recheck account access.
@@ -199,13 +202,6 @@ struct SupporterEventDetailView: View {
                 != trackingAccess(schedule: schedule, event: event, date: accessDate) {
                 accessDate = date
             }
-        }
-        .onChange(of: trackingAvailable) { _, available in
-            guard case let .loaded(_, event) = state, !available, selectedStep == .trackStats else { return }
-            // A schedule change can close the tab. Make the safe selection
-            // persistent so the timer cannot later interrupt a Prep draft.
-            selectedStep = selectedStep.permittedSelection(
-                isGame: event.type == "game", isComplete: gameIsComplete, trackingAvailable: false)
         }
     }
 
@@ -227,7 +223,8 @@ struct SupporterEventDetailView: View {
                     fixturePrep: fixture?.prep,
                     onDirtyChange: { prepHasUnsavedChanges = $0 },
                     onCompletionChange: { workspaceGameCompleted = $0 },
-                    trackingAllowed: trackingAccess(schedule: schedule, event: event, date: Date()).isAllowed
+                    trackingAllowed: trackingAccess(schedule: schedule, event: event, date: max(accessDate, Date())).isAllowed,
+                    trackingAccess: trackingAccess(schedule: schedule, event: event, date: max(accessDate, Date()))
                 )
                 .id("\(shareToken):\(clerk?.user?.id ?? "fixture")")
                 .id("active-event-tool")
@@ -288,14 +285,15 @@ struct SupporterEventDetailView: View {
 
     private func trackingAccess(schedule: NativeSupporterSchedule, event: AthleteFanEvent,
                                 date: Date) -> NativeEventTrackingAccess {
-        let start = event.parsedStart(timezone: event.timezone ?? schedule.timezone)
+        guard let current = workingEvent(event) else { return .complete }
+        let start = current.parsedStart(timezone: current.timezone ?? schedule.timezone)
         var now = fixture?.now ?? date
 #if DEBUG
         if NativeEventWorkspaceUITestFixture.isRequested, let start {
             now = NativeEventWorkspaceUITestFixture.shared.timelineDate(date, eventStart: start)
         }
 #endif
-        return .resolve(start: start, isGame: event.type == "game", isComplete: gameIsComplete, now: now)
+        return .resolve(start: start, isGame: current.type == "game", isComplete: gameIsComplete, now: now)
     }
 
     @ViewBuilder

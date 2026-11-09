@@ -73,22 +73,24 @@ Prep, Track Stats, and Share should each have a distinct visual identity—orang
 
 **How to apply:** Carry each color through its page, action, and selected step. Give Prep a checklist/readiness hierarchy, Track Stats a scorekeeping hierarchy, and Share a sharing-action hierarchy. Preserve the shared workspace and existing save, authorization, and recommendation behavior.
 
-Explicitly completed games must not reopen Track Stats from the event steps, including a game finalized on the phone but not yet synced. Share is the postgame destination; Prep and pending-save recovery remain available. Elapsed schedule time alone does not finalize an unfinished game.
+Explicitly completed games must not restart stat tracking or Live Taps, including a game finalized on the phone but not yet synced. Share is the recommended postgame destination; the Track Stats chooser remains clickable for Record Moments. Prep and pending-save recovery remain available. Elapsed schedule time alone does not finalize an unfinished game.
 
-**Why:** The user asked not to allow the tracker tab to be initiated after completion. Offline finalization must have the same user-facing effect without losing outstanding saves.
+**Why:** The user wants completed tracking protected while retaining recording at any time. Offline finalization must have the same effect without losing outstanding saves.
 
 **How to apply:** Use both event and device workspace completion, not only kickoff timing. Preserve queued commands, retry controls, and management of already-active cheers when leaving tracking.
 
-The entire native Track Stats tab must stay unavailable until ten minutes before
-the game's scheduled start, including its tool chooser.
+Keep the native Track Stats destination clickable. Gate only stat tracking and
+starting Live Taps until ten minutes before kickoff; Record Moments is always
+available through the chooser, including after completion or with a missing start.
 
-**Why:** The user explicitly chose “Entire Track Stats tab” rather than limiting
-only stat tracking while allowing early Live Taps.
+**Why:** The user revised the earlier whole-tab lock so families can still make
+clips and see when the other tools become available.
 
-**How to apply:** Apply the same opening time to the tab's Stats, Live Taps, and
-Record Moments choices, without gating standalone clip creation elsewhere.
-Explain when the tab opens and keep Prep and Share available. Completed games
-remain locked, and existing sessions and unsynced data must not be discarded.
+**How to apply:** Explain the opening time in the event's time zone, update it
+inline, and offer an optional per-event local reminder. Do not force navigation
+or dismiss recording when timing/completion changes. Keep Prep, Share, recovery,
+and ending existing cheers reachable. Completed games cannot restart tracking;
+local pending schedule edits and finalization have the same authority as synced data.
 
 In the taller dashboard Message Board, keep details left-aligned but vertically centered in the space above the lower Next Step footer, with a protected gap before the footer.
 

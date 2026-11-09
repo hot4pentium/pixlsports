@@ -21,23 +21,24 @@ test("completion uses explicit final states and the durable offline finish", () 
   assert.match(model, /var trackerIsComplete:[\s\S]*?trackerRecoveryStatus == \.gameFinished[\s\S]*?workspaceStatus: workspace\?\.eventStatus,[\s\S]*?gameStatus: displayedGame\?\.status,[\s\S]*?pendingFinal: pendingFinal/);
 });
 
-test("the event tab is visibly and accessibly disabled, with guarded selection", () => {
-  assert.match(bar, /\.disabled\(!isGame \|\| isComplete \|\| !trackingAccess\.isAllowed\)/);
-  assert.match(bar, /\.opacity\(isComplete \|\| !trackingAccess\.isAllowed \? 0\.45 : 1\)/);
-  assert.match(bar, /This game is complete\. Use Share/);
-  assert.match(bar, /guard isGame, !isComplete, trackingAccess\.isAllowed else \{ return \}/);
-  assert.match(detail, /guard step != \.trackStats \|\| trackingAccess\(schedule: schedule, event: event, date: Date\(\)\)\.isAllowed/);
+test("the event tab stays clickable for Record Moments without forced navigation", () => {
+  assert.match(bar, /\.disabled\(!isGame\)/);
+  assert.doesNotMatch(bar, /\.disabled\([^)]*(isComplete|trackingAccess)/);
+  assert.match(bar, /guard isGame else \{ return \}/);
+  assert.match(detail, /guard step != \.trackStats \|\| event\.type == "game"/);
   assert.match(detail, /selected: effectiveSelectedStep/);
-  assert.match(detail, /onChange\(of: gameIsComplete\)[\s\S]*?selectedStep = \.share/);
+  assert.doesNotMatch(detail, /if complete && selectedStep == \.trackStats/);
   assert.match(detail, /onCompletionChange: \{ workspaceGameCompleted = \$0 \}/);
 });
 
-test("completion blocks chooser and full tracker while preserving save recovery", () => {
-  assert.match(tracking, /guard isActive, trackingAllowed, !gameIsComplete else \{ return \}/);
-  assert.match(tracking, /private func selectMode[\s\S]*?guard isActive, trackingAllowed, !gameIsComplete/);
-  assert.match(tracking, /\.disabled\(gameIsComplete \|\| !trackingAllowed\)[\s\S]*?native-event-full-tracker/);
+test("completion blocks timed tools but keeps recording and save recovery", () => {
+  assert.match(tracking, /private func selectMode[\s\S]*?guard isActive, chooserAvailable, modeAllowed\(mode\)/);
+  assert.match(tracking, /mode == \.recordMoments \|\| \(trackingAllowed && !gameIsComplete/);
+  assert.match(tracking, /\.disabled\(gameIsComplete \|\| !trackingAllowed \|\| clerk == nil\)/);
   assert.match(tracking, /eventToolVisibility\(trackingAllowed && !gameIsComplete && selectedMode == \.statTracker\)/);
-  assert.match(tracking, /onChange\(of: gameIsComplete\)[\s\S]*?showingModePicker = false/);
+  assert.match(tracking, /onChange\(of: gameIsComplete\)[\s\S]*?closeUnavailableTrackingMode\(\)/);
+  const availabilityChanges = tracking.slice(tracking.indexOf(".onChange(of: gameIsComplete"), tracking.indexOf("private var modePickerSheet"));
+  assert.doesNotMatch(availabilityChanges, /showingRecordMoments = false|recordMomentsAfterPicker = false/);
   assert.match(read("NativeEventTrackerView.swift"), /onChange\(of: model\.trackerIsComplete\)[\s\S]*?if !embedded \{ dismiss\(\) \}/);
   assert.match(panel, /onChange\(of: isComplete, initial: true\)[\s\S]*?onCompletionChange\(complete\)/);
   assert.match(panel, /if workspaceModel\.pendingFinal[\s\S]*?native-event-final-pending/);

@@ -297,6 +297,7 @@ final class NativeOfflineVault {
     func lock() throws {
 #if os(iOS)
         NativeLocalEventReminderCoordinator.shared.cancel()
+        NativeToolAvailabilityReminderCoordinator.shared.cancelForAccount()
 #endif
         if let namespace { UserDefaults.standard.set(true, forKey: "pixl.native.offline.denied." + namespace) }
         lease?.locked = true
@@ -308,6 +309,7 @@ final class NativeOfflineVault {
     func clear() throws {
 #if os(iOS)
         NativeLocalEventReminderCoordinator.shared.cancel(resetSelection: true)
+        NativeToolAvailabilityReminderCoordinator.shared.cancelForAccount()
 #endif
         // Deny continuation even if later file cleanup is interrupted.
         if let namespace { UserDefaults.standard.set(true, forKey: "pixl.native.offline.denied." + namespace) }

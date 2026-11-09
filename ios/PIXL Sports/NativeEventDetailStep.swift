@@ -62,8 +62,9 @@ enum NativeEventDetailStep: String, CaseIterable {
 
     func permittedSelection(isGame: Bool, isComplete: Bool, trackingAvailable: Bool = true) -> Self {
         guard self == .trackStats else { return self }
-        if !isGame || isComplete { return .share }
-        return trackingAvailable ? self : .prep
+        // This destination also contains Record Moments. Timing and completion
+        // restrict individual tracking tools, not navigation to the chooser.
+        return isGame ? self : .share
     }
 }
 
@@ -87,16 +88,17 @@ enum NativeEventTrackingAccess: Equatable {
 
     func message(timeZone: TimeZone = .current) -> String {
         switch self {
-        case .available: return "Open this game’s tools."
-        case .complete: return "This game is complete. Use Share for postgame actions."
+        case .available: return "Stats and Live Taps are available now. Record Moments is always available."
+        case .complete: return "This game is complete. New tracking is closed; Record Moments is still available."
         case .notGame: return "Game-day tracking is available for games, not practices."
-        case .missingStart: return "Add a valid game start time to open Track Stats."
+        case .missingStart: return "Add a valid game start time for Stats and Live Taps. Record Moments is available now."
         case let .tooEarly(date):
             let formatter = DateFormatter()
             formatter.timeZone = timeZone
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
-            return "Track Stats opens 10 minutes before game time · \(formatter.string(from: date))."
+            let zone = timeZone.abbreviation(for: date) ?? timeZone.identifier
+            return "Stats and Live Taps open 10 minutes before game time · \(formatter.string(from: date)) \(zone)."
         }
     }
 }
