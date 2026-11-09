@@ -10,6 +10,7 @@ struct NativeHomeHeroCards: View {
     let scheduleTimezone: String?
     let nextEvent: AthleteFanEvent?
     let eventTiming: SupporterEventTiming?
+    let eventStartsInFuture: Bool
     let seasonName: String
     let hypePhotoURL: String?
     let hypePrivatePhoto: UIImage?
@@ -39,10 +40,17 @@ struct NativeHomeHeroCards: View {
         guard let nextEvent else {
             return "Game-day message board. Next step: create an Event Card. No upcoming Event Card is available. Tap to create one."
         }
-        let status = eventTiming == .live ? "Live now" : eventTiming == .complete ? "After the event" : "Upcoming"
+        let status: String
+        if eventTiming == .live {
+            status = eventStartsInFuture ? "Starting soon" : "Live now"
+        } else {
+            status = eventTiming == .complete ? "After the event" : "Upcoming"
+        }
         let action = eventTiming == .upcoming
             ? "Tap to open \(nextEvent.type == "practice" ? "practice" : "game") prep for this Event Card."
-            : "Tap to open the Event Card."
+            : eventStartsInFuture
+                ? "Tap to open the Event Card. Track Stats is available before kickoff."
+                : "Tap to open the Event Card."
         return "Game-day message board. Next step: \(timingTitle.lowercased()). \(status), \(nextEvent.title), \(nextEvent.formattedDate(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.formattedTime(timezone: nextEvent.timezone ?? scheduleTimezone)), \(nextEvent.opponent), \(nextEvent.location). \(action)"
     }
 
@@ -208,7 +216,7 @@ struct NativeHomeHeroCards: View {
         guard let nextEvent else { return "GAME-DAY MESSAGE BOARD" }
         let eventKind = nextEvent.type == "practice" ? "PRACTICE" : "GAME"
         switch eventTiming {
-        case .live: return "\(eventKind) · LIVE NOW"
+        case .live: return "\(eventKind) · \(eventStartsInFuture ? "STARTING SOON" : "LIVE NOW")"
         case .complete: return "\(eventKind) · AFTER EVENT"
         case .upcoming, .none: return "UPCOMING \(eventKind)"
         }

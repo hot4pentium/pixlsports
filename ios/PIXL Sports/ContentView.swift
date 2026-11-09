@@ -539,6 +539,7 @@ struct ContentView: View {
                     scheduleTimezone: page.timezone,
                     nextEvent: guide?.event,
                     eventTiming: guide?.timing,
+                    eventStartsInFuture: guide?.start.map { $0 > context.date } ?? false,
                     seasonName: viewModel.hypeCardPreview?.publicCard?.seasonName
                         ?? viewModel.hypeCardPreview?.privateCard?.seasonName ?? page.seasonName ?? "",
                     hypePhotoURL: viewModel.hypeCardPreview?.publicCard?.photoUrl

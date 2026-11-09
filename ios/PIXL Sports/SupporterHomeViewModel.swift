@@ -117,6 +117,11 @@ final class SupporterHomeViewModel: ObservableObject {
         }
 
         return candidates.sorted { left, right in
+            let leftIsFuturePregame = left.timing == .live && left.start.map { $0 > now } == true
+            let rightIsFuturePregame = right.timing == .live && right.start.map { $0 > now } == true
+            if leftIsFuturePregame != rightIsFuturePregame {
+                return leftIsFuturePregame
+            }
             if left.timing != right.timing {
                 switch (left.timing, right.timing) {
                 case (.live, _): return true
@@ -138,6 +143,15 @@ final class SupporterHomeViewModel: ObservableObject {
                 ? left.event.time < right.event.time
                 : left.event.date < right.event.date
         }.first
+    }
+
+    static func dashboardCardTiming(
+        for recommendation: NativeEventDetailStep,
+        start: Date?,
+        now: Date
+    ) -> SupporterEventTiming {
+        if let start, start > now { return .upcoming }
+        return recommendation == .trackStats ? .live : .upcoming
     }
 
     func load(clerk: Clerk, forceProfileReload: Bool = false) async {
@@ -377,8 +391,11 @@ final class SupporterHomeViewModel: ObservableObject {
                     eventDate: event.date, start: start, timeZone: zone, now: now
                 ) else { return nil }
                 if recommendation == .share { return nil }
-                return SupporterScheduleItem(event: event,
-                    timing: recommendation == .trackStats ? .live : .upcoming, start: start)
+                return SupporterScheduleItem(
+                    event: event,
+                    timing: Self.dashboardCardTiming(for: recommendation, start: start, now: now),
+                    start: start
+                )
             }
 
             guard event.date >= today else { return nil }
