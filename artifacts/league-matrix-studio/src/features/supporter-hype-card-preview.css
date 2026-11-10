@@ -49,6 +49,10 @@
 .supporter-hype-preview__share-trigger:hover { background: #143861; }
 .supporter-hype-preview__share-trigger:focus-visible { outline: 2px solid #a1d1ff; outline-offset: 2px; }
 .supporter-hype-preview__surface {
+  --ln-panel: #14243a;
+  --ln-bg: #0c182b;
+  --ln-accent: #c5f43b;
+  --ln-rounded: ui-rounded, "Nunito Sans", system-ui, sans-serif;
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 4;
@@ -57,18 +61,10 @@
   border-radius: 4.5%;
   background: #10243d;
 }
-.supporter-hype-preview__surface > .living-card-face { position: absolute; inset: 0; }
-.supporter-hype-preview__surface[data-design="velocity"],
-.supporter-hype-preview__surface[data-design="varsity"],
-.supporter-hype-preview__surface[data-design="pixel-edge"] {
-  border-radius: 0;
-  clip-path: polygon(4% 0,96% 0,100% 3%,100% 97%,96% 100%,4% 100%,0 97%,0 3%);
+.supporter-hype-preview__surface > .lc-native-front {
+  border-radius: inherit;
+  box-shadow: none;
 }
-.supporter-hype-preview__surface .living-card-athlete-name { font-size: 12cqw; line-height: .98; overflow-wrap: anywhere; }
-.supporter-hype-preview__surface .living-card-team-name { font-size: 3.8cqw; letter-spacing: .08em; }
-.supporter-hype-preview__surface .living-card-photo-watermark { font-size: 15cqw; }
-.supporter-hype-preview__surface .living-card-photo-fallback span { font-size: 50cqw; }
-.supporter-hype-preview__surface .living-card-photo-fallback small { font-size: 4cqw; letter-spacing: 0; }
 .supporter-hype-preview__state {
   display: flex;
   flex: 1;

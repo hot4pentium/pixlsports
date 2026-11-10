@@ -27,6 +27,12 @@ Keep web owner and editor previews bound to the saved-appearance renderer used b
 
 **How to apply:** Keep the web owner/editor/public rendering paths consistent and use the 2:3 front frame. Verify that appearance edits visibly update the preview.
 
+The PWA dashboard preview uses the basic iOS full-photo front, without decorative frames or angular lower-third panels. Preserve the saved photo positioning and athlete identity without changing stored artwork.
+
+**Why:** The user explicitly asked to remove the framed dashboard HYPE Card and show the basic layout.
+
+**How to apply:** Match the dashboard preview to the native-style Showcase front; retain the paired dashboard card sizing and its link to the owner Showcase.
+
 The HYPE Card walkthrough should not ask for a custom moment. Leave the headline blank for new cards, use a clear “HYPE Card” fallback in names, preserve saved legacy headline values, and keep separate media clip naming fields.
 
 **Why:** The user said a custom moment input is not needed for the HYPE Card.

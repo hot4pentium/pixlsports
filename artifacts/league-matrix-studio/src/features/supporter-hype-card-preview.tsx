@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import type { OwnedAthleteInvite } from '@workspace/api-client-react';
-import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { LivingAthleteCardFront, NativeHypeCardFront } from './living-athlete-card-front';
 import { normalizeCardAppearance } from './hype-card-appearance';
 import './supporter-hype-card-preview.css';
 
@@ -31,7 +31,7 @@ type Props = {
   onRetry: () => void;
 };
 
-/** A saved front only: editing, flipping, and sharing stay on the full card. */
+/** The iOS-style front only; the dashboard card opens the owner Showcase. */
 export function SupporterHypeCardPreview({
   placement = 'mobile',
   card,
@@ -192,14 +192,13 @@ export function SupporterHypeCardPreview({
               aria-label={`${card.athleteName}'s HYPE Card preview`}
               data-testid={isMobile ? 'link-mobile-hype-preview' : 'link-desktop-hype-preview'}
             >
-              <div className="supporter-hype-preview__surface" data-design={appearance?.design ?? 'velocity'}>
-                <LivingAthleteCardFront
+              <div className="supporter-hype-preview__surface">
+                <NativeHypeCardFront
                   athleteName={card.athleteName}
                   teamName={card.teamName}
-                  sport={card.sport}
+                  seasonName={card.seasonName}
                   appearance={appearance}
                   photoUrl={card.photoUrl === failedPhoto ? null : card.photoUrl}
-                  cutoutUrl={card.cutoutUrl}
                   onPhotoError={() => setFailedPhoto(card.photoUrl)}
                 />
               </div>

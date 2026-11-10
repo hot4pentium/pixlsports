@@ -14,6 +14,18 @@ test('the dashboard HYPE Card remains the Showcase entry without a separate mobi
   assert.match(app, /<Route path="\/studio\/player-showcase"><PlayerShowcaseStudioPage \/><\/Route>/);
 });
 
+test('dashboard HYPE Cards use the basic iOS front without decorative frames', () => {
+  const source = readFileSync(new URL('./supporter-hype-card-preview.tsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('./supporter-hype-card-preview.css', import.meta.url), 'utf8');
+  const dashboard = source.slice(source.indexOf('<div className="supporter-hype-preview__surface">'), source.indexOf('<DialogTrigger asChild>'));
+  assert.match(dashboard, /<NativeHypeCardFront/);
+  assert.doesNotMatch(dashboard, /<LivingAthleteCardFront|cutoutUrl|data-design/);
+  assert.match(dashboard, /seasonName=\{card\.seasonName\}/);
+  assert.match(dashboard, /appearance=\{appearance\}/, 'saved photo placement and athlete details are preserved');
+  assert.doesNotMatch(css, /clip-path: polygon|surface\[data-design/);
+  assert.match(css, /surface > \.lc-native-front\s*\{[^}]*box-shadow: none/);
+});
+
 test('the studio toolbar keeps the home destination without a Player Showcase tab', () => {
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   const layout = app.slice(app.indexOf('function StudioLayout'), app.indexOf('\n\nfunction Studio('));
