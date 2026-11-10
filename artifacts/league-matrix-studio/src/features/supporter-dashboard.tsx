@@ -1,6 +1,7 @@
 import { lazy, Suspense, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { BackNavigationLink } from '@/components/back-navigation-link';
+import { AdminEntryLink } from './admin-console';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
@@ -1356,6 +1357,10 @@ export function SupporterDashboardView({
                 <Link href="/studio" className="flex items-center justify-between bg-[#12213A] p-4 text-lg font-display tracking-wide text-white" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-home">
                   SUPPORTER HUB <ArrowRight className="h-5 w-5 text-[#55A4FF]" />
                 </Link>
+                <AdminEntryLink
+                  className="flex items-center justify-between bg-[#12213A] p-4 text-lg font-display tracking-wide text-white"
+                  onClick={() => setMobileMenuOpen(false)}
+                />
                 {onSignOut && (
                   <button type="button" onClick={() => { setMobileMenuOpen(false); onSignOut(); }} className="flex w-full items-center justify-between bg-black/5 p-4 text-left text-lg font-display tracking-wide text-destructive" data-testid="btn-mobile-dashboard-sign-out">
                     SIGN OUT <ArrowRight className="h-5 w-5" />

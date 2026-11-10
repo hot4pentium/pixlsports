@@ -48,6 +48,17 @@ test('the studio toolbar keeps the home destination without a Player Showcase ta
   assert.doesNotMatch(layout, /AdminEntryLink/, 'the toolbar should not expose an admin tab');
 });
 
+test('the dashboard hamburger retains the server-verified administrator link', () => {
+  const dashboard = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+  const admin = readFileSync(new URL('./admin-console.tsx', import.meta.url), 'utf8');
+  const menu = dashboard.slice(dashboard.indexOf('id="mobile-dashboard-menu"'), dashboard.indexOf('</nav>', dashboard.indexOf('id="mobile-dashboard-menu"')));
+  const entry = admin.slice(admin.indexOf('export function AdminEntryLink'));
+  assert.match(menu, /<AdminEntryLink[\s\S]*?onClick=\{\(\) => setMobileMenuOpen\(false\)\}/);
+  assert.match(entry, /useGetAdminSession/);
+  assert.match(entry, /if \(!isSignedIn \|\| !admin\.data\?\.isAdmin\) return null/);
+  assert.match(entry, /href="\/studio\/admin"/);
+});
+
 test('the private owner HYPE Card screen shares its direct link and saves all owner privacy choices', () => {
   const source = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
   assert.match(source, /ownerExperience/);

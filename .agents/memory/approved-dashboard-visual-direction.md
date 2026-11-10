@@ -9,6 +9,12 @@ Use the iPhone experience as the reference for shared PWA mobile screens: a whit
 
 **How to apply:** Align shared mobile journeys to the iOS canvas, containers, terminology, and actions. Preserve authored card artwork, account boundaries, and genuine browser-only or desktop capabilities.
 
+Preserve an administrator-only console entry in the dashboard hamburger menu when simplifying navigation.
+
+**Why:** The public-site menu and dashboard menu are separate; keeping the admin link only on public pages left it undiscoverable from the user's dashboard.
+
+**How to apply:** Reuse the existing server-verified administrator visibility check, without granting new permissions or adding an admin tab for regular users.
+
 Keep the PWA owner Showcase focused on HYPE Card, Edit Athlete Details (including the card photo), Fan Cheers, Share HYPE Card, and HYPE Card settings. Enter it from the dashboard card, without a separate Showcase tab or duplicate Edit HYPE Card button. Leave frame and lower-third customization out for now; preserve invited-athlete editing access.
 
 **Why:** The user wants one consistent iOS/PWA product and explicitly deferred design customization to simplify the owner process.
