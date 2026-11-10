@@ -31,7 +31,7 @@ test("Clerk form construction has a stable observation boundary and theme", () =
     withoutComments.indexOf("struct NativeClerkSignInForm"),
     withoutComments.indexOf("struct NativeLaunchSplashView"),
   );
-  assert.match(form, /AuthView\(isDismissible: false, mode: mode\)/);
+  assert.match(form, /AuthView\(mode: mode, isDismissible: false\)/);
   assert.match(form, /private static let theme: ClerkTheme/);
   assert.doesNotMatch(form, /@(?:AppStorage|ObservedObject|Environment)\b/);
   assert.match(authBody, /NativeClerkSignInForm\(mode: authEntryChoice\.clerkMode\)\s*\.id/);

@@ -358,7 +358,7 @@ struct NativeClerkSignInForm: View {
     var mode: AuthView.Mode = .signInOrUp
 
     var body: some View {
-        AuthView(isDismissible: false, mode: mode)
+        AuthView(mode: mode, isDismissible: false)
             .environment(\.clerkTheme, Self.theme)
     }
 
