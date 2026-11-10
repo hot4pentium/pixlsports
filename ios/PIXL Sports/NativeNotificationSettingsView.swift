@@ -507,4 +507,209 @@ struct NativeNotificationSettingsView: View {
         }
     }
 }
+
+@MainActor
+struct NativeOnboardingNotificationSettingsView: View {
+    let clerk: Clerk
+    let initialTimezone: String?
+    let onComplete: () -> Void
+
+    @EnvironmentObject private var pushCoordinator: NativePushRegistrationCoordinator
+    @ObservedObject private var localReminders = NativeLocalEventReminderCoordinator.shared
+    @StateObject private var model = NativeNotificationSettingsModel()
+    @State private var oneHourBefore = false
+    @State private var dayOf = false
+    @State private var timezone = TimeZone.current.identifier
+    @State private var allowAlerts = false
+    @State private var remindersWithoutReception = false
+    @State private var isSaving = false
+
+    init(clerk: Clerk, initialTimezone: String? = nil, onComplete: @escaping () -> Void) {
+        self.clerk = clerk
+        self.initialTimezone = initialTimezone
+        self.onComplete = onComplete
+        _timezone = State(initialValue: initialTimezone ?? TimeZone.current.identifier)
+    }
+
+    private var timezoneOptions: [String] {
+        Array(Set([TimeZone.current.identifier] + TimeZone.knownTimeZoneIdentifiers)).sorted()
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Text("Choose when PIXL Sports should remind you about upcoming Event Cards. You can change these choices later in Settings.")
+                    .font(.body)
+            }
+
+            Section("Event Card alerts") {
+                Toggle("Allow event-day and one-hour alerts", isOn: Binding(
+                    get: { allowAlerts },
+                    set: { enabled in
+                        allowAlerts = enabled
+                        if !enabled { remindersWithoutReception = false }
+                    }
+                ))
+                    .disabled(model.isLoading || isSaving || !model.isLinked)
+                    .accessibilityIdentifier("native-onboarding-alerts-enabled")
+
+                Toggle("Remind me without reception", isOn: Binding(
+                    get: { remindersWithoutReception },
+                    set: { enabled in
+                        remindersWithoutReception = enabled
+                        if enabled { allowAlerts = true }
+                        else if localReminders.isSelected {
+                            allowAlerts = pushCoordinator.isEnabled
+                        }
+                    }
+                ))
+                .disabled(model.isLoading || isSaving || !model.isLinked || !allowAlerts)
+                .accessibilityIdentifier("native-onboarding-alerts-offline")
+
+                Toggle("One hour before", isOn: $oneHourBefore)
+                    .disabled(model.isLoading || isSaving || !model.isLinked)
+                    .accessibilityIdentifier("native-onboarding-alert-one-hour")
+
+                Toggle("Event day", isOn: $dayOf)
+                    .disabled(model.isLoading || isSaving || !model.isLinked)
+                    .accessibilityIdentifier("native-onboarding-alert-day-of")
+
+                Picker("Event-day time zone", selection: $timezone) {
+                    ForEach(timezoneOptions, id: \.self) { zone in
+                        Text(zone.replacingOccurrences(of: "_", with: " ")).tag(zone)
+                    }
+                }
+                .pickerStyle(.menu)
+                .disabled(model.isLoading || isSaving || !model.isLinked)
+                .accessibilityIdentifier("native-onboarding-alert-timezone")
+
+                Text("Event-day alerts arrive at 7:00 a.m. in this time zone. One-hour alerts follow each event’s time zone.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Saved reminders work with verified Event Cards downloaded on this iPhone. Connect once to prepare them.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if model.isLoading {
+                    ProgressView("Loading alert settings")
+                } else if !model.isLinked {
+                    Text("Your athlete setup is saved. Reconnect to load alert settings, or choose Not now and set them up later.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let availability = model.availability, !availability.available {
+                    Label("iPhone push delivery is not configured on this server yet.", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                } else if let availability = model.availability, !availability.scheduledDeliveryEnabled {
+                    Label("The scheduled reminder service is not active yet. These choices can be saved, but alerts will not arrive.", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+
+                if let error = pushCoordinator.errorMessage ?? model.errorMessage {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("native-onboarding-alert-error")
+                }
+
+                if model.errorMessage != nil {
+                    Button("Try again") {
+                        Task { await loadSettings() }
+                    }
+                    .disabled(model.isLoading || isSaving)
+                    .accessibilityIdentifier("native-onboarding-alert-retry")
+                }
+            }
+
+            Section {
+                Button {
+                    Task { await saveAndContinue() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text(allowAlerts ? "Save and enable alerts" : "Save alert settings")
+                                .fontWeight(.semibold)
+                        }
+                        Spacer()
+                    }
+                }
+                .disabled(model.isLoading || model.isSaving || isSaving || !model.isLinked || model.errorMessage != nil)
+                .accessibilityIdentifier("native-onboarding-alert-save")
+            }
+        }
+        .navigationTitle("Event Card alerts")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Not now", action: onComplete)
+                    .disabled(isSaving || model.isSaving)
+                    .accessibilityIdentifier("native-onboarding-alert-skip")
+            }
+        }
+        .task { await loadSettings() }
+        .interactiveDismissDisabled()
+        .preferredColorScheme(.light)
+        .accessibilityIdentifier("native-onboarding-alert-settings")
+    }
+
+    private func loadSettings() async {
+        await model.load(clerk: clerk)
+        guard model.errorMessage == nil, model.isLinked else { return }
+        oneHourBefore = model.preferences.oneHourBefore
+        dayOf = model.preferences.dayOf
+        timezone = model.preferences.timezone ?? initialTimezone ?? TimeZone.current.identifier
+        await pushCoordinator.configure(clerk: clerk)
+        allowAlerts = pushCoordinator.isEnabled || localReminders.isSelected
+        remindersWithoutReception = localReminders.isSelected
+    }
+
+    private func saveAndContinue() async {
+        guard !isSaving, model.isLinked else { return }
+        isSaving = true
+        defer { isSaving = false }
+
+        await model.save(
+            oneHourBefore: oneHourBefore,
+            dayOf: dayOf,
+            timezone: timezone,
+            clerk: clerk
+        )
+        guard model.errorMessage == nil else { return }
+
+        do {
+            try await localReminders.updatePreferences(.init(
+                oneHourBefore: model.preferences.oneHourBefore,
+                dayOf: model.preferences.dayOf,
+                timezone: model.preferences.timezone
+            ))
+        } catch {
+            pushCoordinator.errorMessage = "Alert preferences were saved, but this iPhone could not refresh its saved reminders."
+            return
+        }
+
+        if remindersWithoutReception {
+            await pushCoordinator.setLocalReminders(true, clerk: clerk)
+            guard localReminders.isSelected else { return }
+        } else {
+            if localReminders.isSelected {
+                await pushCoordinator.setLocalReminders(false, clerk: clerk)
+                guard !localReminders.isSelected else { return }
+            }
+            if allowAlerts {
+                let enabled = await pushCoordinator.enable(clerk: clerk)
+                guard enabled else { return }
+            } else if pushCoordinator.isEnabled {
+                guard await pushCoordinator.disable(clerk: clerk) else { return }
+            }
+        }
+
+        onComplete()
+    }
+}
 #endif

@@ -14,15 +14,16 @@ const splash = withoutComments.slice(withoutComments.indexOf("struct NativeLaunc
 
 test("authentication root does not wrap child navigation in another stack or scroll viewport", () => {
   assert.ok(authBody.includes("ContentView("));
-  assert.ok(authBody.includes("NativeClerkSignInForm()"));
+  assert.ok(authBody.includes("NativeAuthEntryChoiceView"));
+  assert.ok(authBody.includes("NativeClerkSignInForm(mode: authEntryChoice.clerkMode)"));
   assert.doesNotMatch(authBody, /\bAuthView\(/);
   assert.doesNotMatch(authBody, /\b(?:NavigationStack|GeometryReader|ScrollView)\s*[{(]/);
-  assert.match(authBody, /accessibilityIdentifier\("native-sign-in-screen"\)/);
+  assert.match(authBody, /accessibilityIdentifier\("native-auth-screen"\)/);
 });
 
 test("the native sign-in hero and form have a clear gap without nested scrolling", () => {
   const source = readFileSync(new URL("../PIXL Sports/NativeAuthRootView.swift", import.meta.url), "utf8");
-  assert.match(source, /VStack\(spacing: 20\) \{\s*signInHeader\s*NativeClerkSignInForm\(\)/);
+  assert.match(source, /VStack\(spacing: 20\) \{\s*signInHeader\s*if let authEntryChoice/);
 });
 
 test("Clerk form construction has a stable observation boundary and theme", () => {
@@ -30,10 +31,22 @@ test("Clerk form construction has a stable observation boundary and theme", () =
     withoutComments.indexOf("struct NativeClerkSignInForm"),
     withoutComments.indexOf("struct NativeLaunchSplashView"),
   );
-  assert.match(form, /AuthView\(isDismissible: false\)/);
+  assert.match(form, /AuthView\(isDismissible: false, mode: mode\)/);
   assert.match(form, /private static let theme: ClerkTheme/);
   assert.doesNotMatch(form, /@(?:AppStorage|ObservedObject|Environment)\b/);
-  assert.match(authBody, /NativeClerkSignInForm\(\)\s*\.id\(authPresentationID\)/);
+  assert.match(authBody, /NativeClerkSignInForm\(mode: authEntryChoice\.clerkMode\)\s*\.id/);
+});
+
+test("signed-out users can choose sign-in or account creation and return to the choice screen", () => {
+  const source = readFileSync(new URL("../PIXL Sports/NativeAuthRootView.swift", import.meta.url), "utf8");
+  assert.match(source, /case \.signIn: return \.signIn/);
+  assert.match(source, /case \.signUp: return \.signUp/);
+  assert.match(source, /Text\("Sign in or create an account with email or Google/);
+  assert.match(source, /case \.signIn: return "Sign in"/);
+  assert.match(source, /case \.signUp: return "Create account"/);
+  assert.match(source, /authEntryChoice = nil/);
+  assert.match(source, /Label\("Back to sign-in options", systemImage: "chevron\.left"\)/);
+  assert.match(source, /accessibilityIdentifier\(choice == \.signIn \? "native-auth-choose-sign-in" : "native-auth-choose-sign-up"\)/);
 });
 
 test("first-paint splash centers without observing geometry", () => {

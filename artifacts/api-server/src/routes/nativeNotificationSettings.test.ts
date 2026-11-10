@@ -5,12 +5,14 @@ import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import express from "express";
 import { pool } from "@workspace/db";
 import { digest } from "../lib/nativeAccountLink";
+import { nativeSignupExternalId } from "../lib/nativeAccountPreparation";
 import { nativeAccountLinkRouter } from "./nativeAccountLink";
 import { previewNativeAccountDeletion, requestNativeAccountDeletion } from "../lib/nativeAccountDeletion";
 
 const issuer = "https://native-notification-fixture.clerk.accounts.dev";
-const ownerClerkUserId = `native-notification-owner-${randomUUID()}`;
 const nativeSubject = `user_native${randomUUID().replaceAll("-", "")}`;
+// Match the owner identity created for a standalone iPhone signup.
+const ownerClerkUserId = nativeSignupExternalId({ issuer, subject: nativeSubject });
 const deviceIds = [randomUUID(), randomUUID()];
 const deviceTokens = [randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", ""),
   randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "")];
@@ -178,7 +180,8 @@ async function sessionToken(sessionId: string) {
     .sign(privateKey);
 }
 
-test("linked iPhone sessions reload shared preferences and unregister only their own delivery target", async () => {
+test("standalone iPhone owners reload alert preferences and unregister only their own delivery target", async () => {
+  assert.match(ownerClerkUserId, /^pixl-ios:/);
   await pool.query(
     `INSERT INTO native_account_links (native_issuer,native_subject,owner_clerk_user_id,account_label)
      VALUES ($1,$2,$3,$4)`,

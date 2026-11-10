@@ -56,6 +56,7 @@ struct ContentView: View {
         case createEvent
         case recordMoments
         case profileSetup
+        case notificationSetup
 
         var id: String {
             switch self {
@@ -68,11 +69,13 @@ struct ContentView: View {
             case .createEvent: return "create-event"
             case .recordMoments: return "record-moments"
             case .profileSetup: return "athlete-profile-setup"
+            case .notificationSetup: return "event-card-alert-setup"
             }
         }
 
         var showsDoneButton: Bool {
             if case .profileSetup = self { return false }
+            if case .notificationSetup = self { return false }
             if case .recordMoments = self { return false }
             return true
         }
@@ -197,8 +200,12 @@ struct ContentView: View {
         guard case .schedule = displayedState,
               viewModel.hasResolvedAthleteProfile,
               viewModel.athleteProfileError == nil,
-              viewModel.athleteProfile?.needsSetup == false,
-              let progress = weeklyWelcomeProgress, progress.isPending else { return }
+              viewModel.athleteProfile?.needsSetup == false else { return }
+        if let progress = weeklyWelcomeProgress, progress.isNotificationSetupPending {
+            heroDestination = .notificationSetup
+            return
+        }
+        guard let progress = weeklyWelcomeProgress, progress.isPending else { return }
         welcomeProgressForPresentation = progress
         showingWeeklyWelcome = true
     }
@@ -813,7 +820,28 @@ struct ContentView: View {
             } else {
                 ContentUnavailableView("Athlete profile unavailable", systemImage: "person.crop.circle")
             }
+        case .notificationSetup:
+#if os(iOS)
+            if let clerk {
+                NativeOnboardingNotificationSettingsView(
+                    clerk: clerk,
+                    initialTimezone: schedulePage?.timezone,
+                    onComplete: acknowledgeNotificationSetup
+                )
+            } else {
+                ContentUnavailableView("Event Card alerts unavailable", systemImage: "bell")
+            }
+#else
+            ContentUnavailableView("Event Card alerts are available on iPhone", systemImage: "bell")
+#endif
         }
+    }
+
+    private func acknowledgeNotificationSetup() {
+        guard let progress = weeklyWelcomeProgress,
+              progress.isNotificationSetupPending else { return }
+        progress.acknowledgeNotificationSetup()
+        heroDestination = nil
     }
 
     private func profileValue(_ value: String?, fallback: String?) -> String? {

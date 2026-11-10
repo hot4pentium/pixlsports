@@ -5,6 +5,25 @@ import ClerkKitUI
 #endif
 
 struct NativeAuthRootView: View {
+    fileprivate enum AuthEntryChoice: String, Equatable {
+        case signIn
+        case signUp
+
+        var title: String {
+            switch self {
+            case .signIn: return "Sign in"
+            case .signUp: return "Create account"
+            }
+        }
+
+        var clerkMode: AuthView.Mode {
+            switch self {
+            case .signIn: return .signIn
+            case .signUp: return .signUp
+            }
+        }
+    }
+
     @AppStorage("pixl.native.account-removal-receipt") private var accountRemovalReceiptScope = ""
     @AppStorage("pixl.native.account-removal-reference") private var accountRemovalSupportReference = ""
     @AppStorage("pixl.native.signout-pending") private var localSignOutPending = false
@@ -16,6 +35,7 @@ struct NativeAuthRootView: View {
     @State private var showingAccountLink = false
     @State private var showingSettings = false
     @State private var authPresentationID = UUID()
+    @State private var authEntryChoice: AuthEntryChoice?
     @ObservedObject private var offline = NativeOfflineRuntime.shared
     @Environment(\.scenePhase) private var offlineScenePhase
 
@@ -59,6 +79,9 @@ struct NativeAuthRootView: View {
                         showingAccountLink: $showingAccountLink,
                         showingSettings: $showingSettings
                     )
+#if os(iOS)
+                        .environmentObject(notificationCoordinator)
+#endif
                         // Tear down previous user's screen state on account switches.
                         .id((clerk.user?.id ?? offline.vault.subject ?? "signed-out") + ":\(offline.revocationGeneration)")
                         .sheet(isPresented: $showingAccountLink) {
@@ -87,16 +110,34 @@ struct NativeAuthRootView: View {
                 // measurements back into a NavigationStack inside a ScrollView.
                 VStack(spacing: 20) {
                     signInHeader
-                    NativeClerkSignInForm()
-                        .id(authPresentationID)
+                    if let authEntryChoice {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Button {
+                                self.authEntryChoice = nil
+                            } label: {
+                                Label("Back to sign-in options", systemImage: "chevron.left")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(SupporterHomeColors.blue)
+                            }
+                            .accessibilityIdentifier("native-auth-back-to-options")
+
+                            NativeClerkSignInForm(mode: authEntryChoice.clerkMode)
+                                .id("\(authPresentationID.uuidString)-\(authEntryChoice.rawValue)")
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    } else {
+                        NativeAuthEntryChoiceView { choice in
+                            authEntryChoice = choice
+                        }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
                 .frame(maxWidth: 560)
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .background { signInBackdrop }
                 .preferredColorScheme(.light)
-                .accessibilityIdentifier("native-sign-in-screen")
+                .accessibilityIdentifier("native-auth-screen")
             }
         }
         .onChange(of: offline.online) { _, connected in
@@ -127,6 +168,7 @@ struct NativeAuthRootView: View {
             guard previousUserID != nil, currentUserID == nil else { return }
             showingSettings = false
             showingAccountLink = false
+            authEntryChoice = nil
             if offline.online {
                 // A session expiring is not permission to discard pending work.
                 offline.deny(status: 401)
@@ -310,11 +352,13 @@ struct NativeAuthRootView: View {
 /// Keep SDK form construction out of the root's observation scope. AuthView
 /// eagerly constructs observable AuthState in its initializer; creating it
 /// directly in a body that also reads Clerk and AppStorage couples that work
-/// to unrelated root invalidations. This leaf has no changing input properties.
-/// The root's explicit .id still resets it after a real sign-out.
+/// to unrelated root invalidations. The mode is fixed for each presentation;
+/// the root's explicit .id resets the form after a choice or a real sign-out.
 struct NativeClerkSignInForm: View {
+    var mode: AuthView.Mode = .signInOrUp
+
     var body: some View {
-        AuthView(isDismissible: false)
+        AuthView(isDismissible: false, mode: mode)
             .environment(\.clerkTheme, Self.theme)
     }
 
@@ -334,6 +378,58 @@ struct NativeClerkSignInForm: View {
         theme.design = .init(borderRadius: 16)
         return theme
     }()
+}
+
+private struct NativeAuthEntryChoiceView: View {
+    let onSelect: (NativeAuthRootView.AuthEntryChoice) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Welcome to PIXL Sports")
+                .font(.title2.weight(.bold))
+                .fontDesign(.rounded)
+                .foregroundStyle(.white)
+
+            Text("Choose how you want to continue.")
+                .font(.subheadline)
+                .foregroundStyle(SupporterHomeColors.muted)
+
+            choiceButton(.signIn, prominent: true)
+            choiceButton(.signUp, prominent: false)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            SupporterHomeColors.panel,
+            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+        )
+        .supporterSurfaceShadow()
+        .accessibilityIdentifier("native-auth-entry-choices")
+    }
+
+    private func choiceButton(_ choice: NativeAuthRootView.AuthEntryChoice, prominent: Bool) -> some View {
+        Button {
+            onSelect(choice)
+        } label: {
+            Text(choice.title)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(prominent ? SupporterHomeColors.background : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(prominent ? SupporterHomeColors.accent : .white.opacity(0.07))
+                }
+                .overlay {
+                    if !prominent {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(choice == .signIn ? "native-auth-choose-sign-in" : "native-auth-choose-sign-up")
+    }
 }
 #endif
 

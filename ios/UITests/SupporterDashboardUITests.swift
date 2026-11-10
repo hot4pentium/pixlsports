@@ -79,7 +79,7 @@ final class SupporterDashboardUITests: XCTestCase {
         app.launch()
 
         let splash = app.descendants(matching: .any)["native-launch-wordmark"]
-        let signIn = app.descendants(matching: .any)["native-sign-in-screen"]
+        let signIn = app.descendants(matching: .any)["native-auth-screen"]
         let dashboard = app.buttons["dashboard-settings-button"]
         let retry = app.buttons["native-launch-retry"]
         let visible = XCTNSPredicateExpectation(
@@ -99,6 +99,10 @@ final class SupporterDashboardUITests: XCTestCase {
         )
         XCTAssertEqual(XCTWaiter.wait(for: [actionable], timeout: 30), .completed,
                        "Startup must reach sign-in, the dashboard, or an explicit retry.")
+        if signIn.exists {
+            XCTAssertTrue(app.buttons["native-auth-choose-sign-in"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["native-auth-choose-sign-up"].exists)
+        }
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.lifetime = .keepAlways
         add(screenshot)
