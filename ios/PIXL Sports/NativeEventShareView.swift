@@ -10,7 +10,7 @@ struct NativeEventShareView: View {
     var body: some View {
         Group {
             if embedded {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 36) {
                     eventShareCard
                     hypeCardShareCard
                 }

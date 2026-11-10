@@ -33,6 +33,12 @@ Use soft navy shadows beneath native blue containers and major cards to add sepa
 
 **How to apply:** Use a consistent, restrained shadow on section surfaces, large cards, and tool panels; do not add elevation to every button or badge.
 
+Keep clear vertical separation between Share event details and Athlete Showcase on the iPhone event Share screen.
+
+**Why:** The user has repeatedly requested more separation between these two boxes.
+
+**How to apply:** Do not collapse their spacing when compacting the shared Share panel.
+
 On the white native canvas, use a dark, contrast-checked green for text. Keep the bright lime for fills, icons, and text that sits on blue surfaces.
 
 **Why:** The user found lime-green text difficult to read against white.
