@@ -2788,12 +2788,11 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         mobile: true,
       }, page.sessionId);
       await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-header\\"]") !== null', Boolean);
-      const supporterTabColors = await connection.evaluate<{ active: string; inactive: string }>(`(() => ({
-        active: getComputedStyle(document.querySelector('[data-testid="link-mobile-parent-week"]')).color,
-        inactive: getComputedStyle(document.querySelector('[data-testid="link-mobile-player-showcase"]')).color
-      }))()`, page.sessionId);
-      assert.equal(supporterTabColors.active, 'rgb(18, 33, 58)', 'the active mobile section tab uses the native dark-ink color on the light canvas');
-      assert.equal(supporterTabColors.inactive, 'rgb(83, 101, 124)', 'the inactive mobile section tab remains readable on the light canvas');
+      const separateShowcaseTab = await connection.evaluate<boolean>(
+        `Boolean(document.querySelector('[data-testid="mobile-supporter-tabs"] [href="/studio/player-showcase"]'))`,
+        page.sessionId,
+      );
+      assert.equal(separateShowcaseTab, false, 'the dashboard HYPE Card is the Showcase entry, not a separate mobile tab');
       const sharedDashboardPlacement = await connection.evaluate<{
         canvas: string;
         seasonStatsVisible: boolean;

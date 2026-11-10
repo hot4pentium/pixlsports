@@ -474,6 +474,39 @@ test('signed-in account controls survive phone and desktop transitions against r
     assert.deepEqual(await fetch(`${apiOrigin}/__fixture/create-counts`).then(res => res.json()),
       { createAttempts: 0, createConflicts: 0 });
 
+    const athleteDetails = await open(
+      firstSaveOwner,
+      390,
+      844,
+      `/studio/profile?section=athlete&returnTo=showcase&inviteToken=${encodeURIComponent(String(authoredCard.inviteToken))}`,
+    );
+    await waitVisible(athleteDetails, 'input-fan-card-photo');
+    const athletePhotoControls = await connection.evaluate<{
+      backHref: string | null;
+      uploadDisabled: boolean;
+      inputDisabled: boolean;
+      privacyNotice: string;
+      hasSeparateProfilePhoto: boolean;
+    }>(`(() => ({
+      backHref: document.querySelector('[data-testid="btn-back"]')?.getAttribute('href') ?? null,
+      uploadDisabled: document.querySelector('[data-testid="button-upload-fan-card-photo"]')?.disabled ?? true,
+      inputDisabled: document.querySelector('[data-testid="input-fan-card-photo"]')?.disabled ?? true,
+      privacyNotice: document.querySelector('[data-testid="notice-fan-card-photo-visibility"]')?.textContent ?? '',
+      hasSeparateProfilePhoto: document.body.innerText.includes('There is no separate athlete-profile photo to upload.'),
+    }))()`, athleteDetails);
+    assert.equal(athletePhotoControls.backHref, '/studio/player-showcase');
+    assert.equal(athletePhotoControls.inputDisabled, false, 'a matching saved HYPE Card accepts a photo selection');
+    assert.equal(athletePhotoControls.uploadDisabled, true, 'upload waits until a photo is chosen');
+    assert.match(athletePhotoControls.privacyNotice, /does not make a private card public/);
+    assert.equal(athletePhotoControls.hasSeparateProfilePhoto, true);
+    await connection.evaluate(`(() => {
+      const input = document.getElementById('athleteName');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'Edited Athlete');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`, athleteDetails);
+    await waitFor(connection, athleteDetails,
+      "document.querySelector('[data-testid=\"input-fan-card-photo\"]')?.disabled === true", Boolean);
+
     const edit = await connection.evaluate<{ status: number; card: Record<string, unknown> }>(`fetch(
       '/api/athlete-invites/' + ${JSON.stringify(authoredCard.inviteToken)}, {
         method: 'PATCH', headers: { 'content-type': 'application/json' },

@@ -11,7 +11,9 @@ test('photo upload and design controls have no background-removal or cutout-uplo
   assert.doesNotMatch(photoManager, /removeAthleteBackground|saveAthleteCutout|processCutout|input-fan-card-cutout|button-retry-fan-card-cutout/);
   assert.doesNotMatch(editor, /removeAthleteBackground|preparePremiumCutout|button-retry-premium-cutout/);
   assert.match(photoManager, /await confirm\.mutateAsync/);
-  assert.match(photoManager, /Your uploaded photo is ready to use/);
+  assert.match(photoManager, /Upload one athlete photo for the front of their public HYPE Card/);
+  assert.match(photoManager, /disabled=\{controlsDisabled\}/);
+  assert.match(photoManager, /Save your athlete details before changing the photo/);
   assert.equal(packageJson.devDependencies['@huggingface/transformers'], undefined);
 });
 

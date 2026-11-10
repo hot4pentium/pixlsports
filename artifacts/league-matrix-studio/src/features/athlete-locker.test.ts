@@ -4,11 +4,10 @@ import { readFileSync } from 'node:fs';
 import type { OwnedAthleteInvite, SoccerGearState } from '@workspace/api-client-react';
 import { canOpenAthleteLockerCard, getAthleteLockerRewards, isSoccerGearForAthlete } from './athlete-locker-model';
 
-test('the dashboard HYPE Card remains the showcase entry while the toolbar omits a separate tab', () => {
+test('the dashboard HYPE Card remains the Showcase entry without a separate mobile tab', () => {
   const source = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /<AthleteLocker\b|useGetSoccerGear|soccerGearQuery/);
-  assert.match(source, /data-testid="link-mobile-player-showcase"/);
-  assert.match(source, /href="\/studio\/player-showcase"/);
+  assert.doesNotMatch(source, /mobile-supporter-tabs|link-mobile-player-showcase/);
   assert.equal((source.match(/<SupporterGameOnSummary\b/g) ?? []).length, 2);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(app, /data-testid="link-toolbar-player-showcase"/);
@@ -28,6 +27,8 @@ test('the private owner HYPE Card screen shares its direct link and saves all ow
   const source = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
   assert.match(source, /ownerExperience/);
   assert.match(source, /\/fan\/\$\{encodeURIComponent\(inviteToken\)\}/);
+  assert.match(source, /returnTo=showcase/);
+  assert.match(source, /inviteToken=\$\{encodeURIComponent\(matchedInvite\.inviteToken\)\}/);
   assert.match(source, /Show HYPE Card/);
   assert.match(source, /Share finalized stats/);
   assert.match(source, /Share Event Cards/);
@@ -35,6 +36,16 @@ test('the private owner HYPE Card screen shares its direct link and saves all ow
   assert.match(source, /useUpdateAthleteInvite/);
   assert.match(source, /getGetAthleteInviteQueryKey\(matchedInvite\.inviteToken\)/);
   assert.match(source, /getGetAthleteFanCardQueryKey\(matchedInvite\.inviteToken\)/);
+});
+
+test('the athlete details editor includes only the selected matching HYPE Card photo controls', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /getShowcasePhotoInvite\(ownedInvites, savedProfile, photoInviteToken\)/);
+  assert.match(app, /<FanCardPhotoManager/);
+  assert.match(app, /disabled=\{!athleteDetailsAreSaved \|\| !photoInviteMatchesSavedProfile \|\| saving\}/);
+  const profile = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+  assert.match(profile, /athletePhotoControls\?: ReactNode/);
+  assert.match(profile, /data-testid="section-athlete-photo-controls"/);
 });
 
 function invite(overrides: Partial<OwnedAthleteInvite> = {}) {

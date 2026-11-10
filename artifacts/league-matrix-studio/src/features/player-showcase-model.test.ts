@@ -4,6 +4,7 @@ import type { OwnedAthleteInvite } from '@workspace/api-client-react';
 import {
   getShowcaseInvite,
   getShowcaseInviteCandidates,
+  getShowcasePhotoInvite,
   getShowcaseInviteReconnectionCandidates,
 } from './player-showcase-model';
 
@@ -63,6 +64,17 @@ test('unresolved same-athlete cards remain selectable without exposing other ath
 
   assert.equal(getShowcaseInvite([fall, spring, anotherAthlete], staleProfile), null);
   assert.deepEqual(getShowcaseInviteCandidates([fall, spring, anotherAthlete], staleProfile), [fall, spring]);
+});
+
+test('photo editing honors only a selected card for the saved athlete and team', () => {
+  const fall = invite({ inviteToken: 'fall', seasonName: 'Fall 2025' });
+  const spring = invite({ inviteToken: 'spring', seasonName: 'Spring 2026' });
+  const anotherAthlete = invite({ inviteToken: 'other', athleteName: 'Casey Park', teamName: 'Other Team' });
+  const unresolvedProfile = { ...profile, seasonName: 'Summer 2026' };
+
+  assert.equal(getShowcasePhotoInvite([fall, spring, anotherAthlete], unresolvedProfile, 'spring'), spring);
+  assert.equal(getShowcasePhotoInvite([fall, spring, anotherAthlete], unresolvedProfile, 'other'), null);
+  assert.equal(getShowcasePhotoInvite([fall, anotherAthlete], profile, 'invalid'), fall);
 });
 
 test('a truly missing card has no owner-choice candidates', () => {

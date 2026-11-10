@@ -119,6 +119,11 @@ import {
   type AccessMode,
   type UserRole,
 } from '@/features/supporter-dashboard-model';
+import { FanCardPhotoManager } from '@/features/fan-card-photo-manager';
+import {
+  getShowcaseInviteCandidates,
+  getShowcasePhotoInvite,
+} from '@/features/player-showcase-model';
 import {
   clearPrivateOfflineAccountData,
   readOfflineDashboardSnapshot,
@@ -1449,8 +1454,11 @@ function SupporterStudio() {
 function SupporterProfilePage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded, isSignedIn } = useUser();
-  const initialSection = new URLSearchParams(window.location.search).get('section') === 'athlete' ? 'athlete' : null;
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialSection = searchParams.get('section') === 'athlete' ? 'athlete' : null;
+  const returnToShowcase = searchParams.get('returnTo') === 'showcase';
   const [profile, setProfile] = useState<SupporterProfile>(() => supporterProfileFromUser(user));
+  const [photoInviteToken, setPhotoInviteToken] = useState(() => searchParams.get('inviteToken') ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const ownedAthleteInvitesQuery = useListAthleteInvites({
@@ -1474,6 +1482,64 @@ function SupporterProfilePage() {
   });
   const pauseAccount = usePauseAccount();
   const cancelAccount = useCancelAccount();
+  const savedProfile = user ? supporterProfileFromUser(user) : profile;
+  const ownedInvites = ownedAthleteInvitesQuery.data ?? [];
+  const photoInviteCandidates = getShowcaseInviteCandidates(ownedInvites, savedProfile);
+  const photoInvite = getShowcasePhotoInvite(ownedInvites, savedProfile, photoInviteToken);
+  const editedAthleteDetails = cleanSupporterProfile(profile);
+  const savedAthleteDetails = cleanSupporterProfile(savedProfile);
+  const athleteDetailsAreSaved = editedAthleteDetails.athleteName === savedAthleteDetails.athleteName
+    && editedAthleteDetails.teamName === savedAthleteDetails.teamName
+    && editedAthleteDetails.seasonName === savedAthleteDetails.seasonName
+    && editedAthleteDetails.sport === savedAthleteDetails.sport
+    && editedAthleteDetails.jerseyNumber === savedAthleteDetails.jerseyNumber
+    && editedAthleteDetails.position === savedAthleteDetails.position;
+  const photoInviteMatchesSavedProfile = Boolean(photoInvite
+    && photoInvite.athleteName.trim().toLocaleLowerCase() === savedProfile.athleteName.trim().toLocaleLowerCase()
+    && photoInvite.teamName.trim().toLocaleLowerCase() === savedProfile.teamName.trim().toLocaleLowerCase());
+  const athletePhotoControls: ReactNode = ownedAthleteInvitesQuery.isLoading && !ownedAthleteInvitesQuery.data
+    ? <p role="status" data-testid="status-athlete-photo-loading">Loading HYPE Card photo settings…</p>
+    : ownedAthleteInvitesQuery.isError && !ownedAthleteInvitesQuery.data
+      ? (
+        <div>
+          <p role="alert" data-testid="status-athlete-photo-load-error">HYPE Card photo settings could not load.</p>
+          <button type="button" onClick={() => void ownedAthleteInvitesQuery.refetch()} className="mt-3 text-sm font-bold text-primary underline" data-testid="button-athlete-photo-retry">Try again</button>
+        </div>
+      )
+      : photoInviteCandidates.length === 0
+        ? <p role="status" data-testid="status-athlete-photo-no-card">There isn’t a HYPE Card linked to these athlete details yet. Create or link a card before adding its photo.</p>
+        : (
+          <>
+            {photoInviteCandidates.length > 1 && (
+              <label className="mb-4 flex max-w-xl flex-col gap-2 text-xs font-bold uppercase tracking-widest text-white/70">
+                HYPE Card
+                <select
+                  value={photoInvite?.inviteToken ?? ''}
+                  onChange={(event) => setPhotoInviteToken(event.target.value)}
+                  className="min-h-11 border border-white/20 bg-[#12213A] px-3 text-sm font-medium normal-case tracking-normal text-white"
+                  data-testid="select-athlete-photo-card"
+                >
+                  <option value="">Choose the matching HYPE Card</option>
+                  {photoInviteCandidates.map((invite) => (
+                    <option key={invite.inviteToken} value={invite.inviteToken}>
+                      {[invite.teamName, invite.seasonName, invite.sport].filter(Boolean).join(' · ')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {photoInvite ? (
+              <FanCardPhotoManager
+                key={photoInvite.inviteToken}
+                inviteToken={photoInvite.inviteToken}
+                photoUrl={photoInvite.photoUrl}
+                disabled={!athleteDetailsAreSaved || !photoInviteMatchesSavedProfile || saving}
+              />
+            ) : (
+              <p role="status" data-testid="status-athlete-photo-select-card">Choose the matching HYPE Card to manage its photo.</p>
+            )}
+          </>
+        );
 
   useEffect(() => {
     if (user) setProfile(supporterProfileFromUser(user));
@@ -1539,7 +1605,7 @@ function SupporterProfilePage() {
           // The profile is already saved; the dashboard offers an explicit owner-only repair action.
         }
       }
-      setLocation(savePlan.redirectTo);
+      setLocation(returnToShowcase ? '/studio/player-showcase' : savePlan.redirectTo);
     } catch {
       setSaving(false);
       setError('We could not save your supporter profile. Please try again.');
@@ -1553,6 +1619,9 @@ function SupporterProfilePage() {
           initialSection={initialSection}
           profile={profile}
           userId={user?.id}
+          athletePhotoControls={athletePhotoControls}
+          backHref={returnToShowcase ? '/studio/player-showcase' : '/studio'}
+          backLabel={returnToShowcase ? 'Back to HYPE Card' : 'Back to Supporter Hub'}
           saving={saving}
           error={error}
           onChange={(field, value) => {
@@ -1560,7 +1629,7 @@ function SupporterProfilePage() {
             setProfile((current) => ({ ...current, [field]: value }));
           }}
           onSave={() => void saveProfile()}
-          onCancel={() => setLocation('/studio')}
+          onCancel={() => setLocation(returnToShowcase ? '/studio/player-showcase' : '/studio')}
           accountInformation={
             <>
               <section className="supporter-profile-account-section" aria-labelledby="account-info-heading" data-testid="account-information">

@@ -229,6 +229,9 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const cardSettingsHref = matchedInvite
     ? `/player/${encodeURIComponent(matchedInvite.inviteToken)}/manage#design`
     : '/studio/athlete-page';
+  const athleteDetailsHref = `/studio/profile?section=athlete&returnTo=showcase${matchedInvite
+    ? `&inviteToken=${encodeURIComponent(matchedInvite.inviteToken)}`
+    : ''}`;
   const copyHypeCardUrl = async () => {
     if (!publicHypeCardUrl) return;
     try {
@@ -371,7 +374,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
             <h2 id="edit-athlete-details-title">Edit Athlete Details</h2>
             <p>Update the athlete identity linked to this season. HYPE Card privacy stays unchanged.</p>
           </div>
-          <Link href="/studio/profile?section=athlete" className="hype-owner-item__action" data-testid="link-showcase-athlete-details">Edit details <ArrowRight aria-hidden="true" /></Link>
+          <Link href={athleteDetailsHref} aria-label="Edit Athlete Details" className="hype-owner-item__action" data-testid="link-showcase-athlete-details">Edit details <ArrowRight aria-hidden="true" /></Link>
         </section>
         <section className="hype-owner-item hype-owner-item--cheers" aria-labelledby="owner-fan-cheers-title" data-testid="owner-item-fan-cheers">
           <div className="hype-owner-item__icon"><HeartHandshake aria-hidden="true" /></div>

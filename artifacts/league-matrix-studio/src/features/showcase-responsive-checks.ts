@@ -161,26 +161,41 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     await bounded(browser, '.living-card-stage', desktop ? 520 : width, false);
     assert.ok(await browser.evaluate(`document.querySelector('#living-card-display')?.getAttribute('aria-label').includes(${JSON.stringify(longShowcaseLabels.athleteName)})`), 'Retry displays the successful athlete card');
   } else if (route.startsWith('/studio/')) {
-    await browser.wait(scenario === 'long-labels'
+    await browser.wait(scenario === 'long-labels' || scenario === 'not-shared'
       ? `document.querySelector('[data-testid="showcase-card-art"]')`
       : `document.querySelector('[data-testid="status-showcase-card-unavailable"] h2')?.textContent===${JSON.stringify({
-        missing: 'No HYPE Card linked', unavailable: 'HYPE Card unavailable', ambiguous: 'Choose a HYPE Card', 'not-shared': 'HYPE Card not shared',
-      }[scenario as 'missing' | 'unavailable' | 'ambiguous' | 'not-shared'])}`);
+        missing: 'No HYPE Card linked', unavailable: 'HYPE Card unavailable', ambiguous: 'Choose a HYPE Card',
+      }[scenario as 'missing' | 'unavailable' | 'ambiguous'])}`);
     await bounded(browser, '.ps', desktop ? 880 : width);
     await bounded(browser, '.ps-desktop-bounded', desktop ? 880 : width);
     await readable(browser, byId('link-back-supporter-dashboard'), true);
-    if (scenario === 'long-labels') {
+    if (scenario === 'long-labels' || scenario === 'not-shared') {
+      if (scenario === 'not-shared') {
+        await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
+        assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]')`), null, 'a hidden HYPE Card has no public-card link');
+        assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), null, 'a hidden HYPE Card has no share action');
+        await readable(browser, byId('owner-item-share-hype-card'));
+      } else {
       assert.equal(await browser.evaluate(`document.querySelector('.ps__card-only-team').textContent`), longShowcaseLabels.teamName);
       await readable(browser, '.ps__card-only-team');
-      await bounded(browser, byId('showcase-card-art'), desktop ? 260 : width, false);
+      await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
       await proportion(browser, byId('showcase-card-art'), 2 / 3);
       for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) await readable(browser, byId(id), true);
       await expectAccessible(browser, byId('link-showcase-card-edit'), 'link', 'Edit HYPE Card');
       await expectAccessible(browser, byId('link-showcase-card-public'), 'link', 'Open public card');
       await expectAccessible(browser, byId('link-showcase-athlete-details'), 'link', 'Edit Athlete Details');
-      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-athlete-details"]')?.getAttribute('href')?.endsWith('/studio/profile?section=athlete')`), true, 'athlete details action should open the existing profile section at any artifact base path');
+      assert.equal(await browser.evaluate(`(() => {
+        const href = document.querySelector('[data-testid="link-showcase-athlete-details"]')?.getAttribute('href');
+        if (!href) return false;
+        const url = new URL(href, location.origin);
+        return url.pathname.endsWith('/studio/profile')
+          && url.searchParams.get('section') === 'athlete'
+          && url.searchParams.get('returnTo') === 'showcase'
+          && Boolean(url.searchParams.get('inviteToken'));
+      })()`), true, 'athlete details opens the profile editor with the selected HYPE Card and return destination');
       assert.equal(await browser.evaluate(`(() => { const card = document.querySelector('[data-testid="showcase-card-art"]'); const edit = document.querySelector('[data-testid="link-showcase-athlete-details"]'); return Boolean(card && edit && (card.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), true, 'athlete details action should follow the card');
       await expectAccessible(browser, byId('button-copy-public-showcase'), 'button', 'Copy link');
+      }
     } else {
       await bounded(browser, '.ps__card-unavailable', 460, false);
       for (const selector of ['.ps__card-unavailable h2', '.ps__card-unavailable > span']) await readable(browser, selector);
@@ -188,7 +203,6 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
         missing: { name: 'No HYPE Card linked', context: /no HYPE Card linked to this athlete yet/i },
         unavailable: { name: 'HYPE Card unavailable', context: /linked HYPE Card could not be loaded/i },
         ambiguous: { name: 'Choose a HYPE Card', context: /several cards match.*compare sport and season/i },
-        'not-shared': { name: 'HYPE Card not shared', context: /Card details stay private until sharing is active/i },
       } as const;
       const status = statusByScenario[scenario as keyof typeof statusByScenario];
       await expectAccessible(browser, byId('status-showcase-card-unavailable'), 'status', status.name, status.context);
@@ -400,7 +414,7 @@ export async function checkResponsiveRoute(browser: Browser, route: string, widt
     await browser.wait(`document.querySelector('[data-testid="showcase-card-art"]')`);
     await bounded(browser, '.ps', desktop ? 880 : width);
     await bounded(browser, '.ps-desktop-bounded', desktop ? 880 : width);
-    await bounded(browser, byId('showcase-card-art'), desktop ? 260 : width, false);
+        await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
     await proportion(browser, byId('showcase-card-art'), 2 / 3);
     for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) {
       const box = await rect(browser, byId(id));

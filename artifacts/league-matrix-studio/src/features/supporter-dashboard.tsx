@@ -1366,15 +1366,6 @@ export function SupporterDashboardView({
           )}
         </header>
 
-        <nav aria-label="Supporter sections" className="mx-4 mt-3 flex gap-1 rounded-xl border border-[#12213A]/10 bg-white/75 px-2 pt-1 shadow-sm" data-testid="mobile-supporter-tabs">
-          <Link href="/studio" aria-current="page" className="border-b-2 border-[#55A4FF] px-3 py-3 text-sm font-bold text-[#12213A]" data-testid="link-mobile-parent-week">
-            Supporter Hub
-          </Link>
-          <Link href="/studio/player-showcase" className="border-b-2 border-transparent px-3 py-3 text-sm font-bold text-[#53657C] hover:text-[#12213A]" data-testid="link-mobile-player-showcase">
-            Player Showcase
-          </Link>
-        </nav>
-
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
           <SupporterGameOnSummary
@@ -1741,9 +1732,12 @@ export function SupporterDashboardView({
 
 export interface SupporterProfileViewProps {
   accountInformation?: ReactNode;
+  athletePhotoControls?: ReactNode;
   initialSection?: 'athlete' | 'alerts' | 'account' | null;
   userId?: string | null;
   profile: SupporterProfile;
+  backHref?: string;
+  backLabel?: string;
   saving: boolean;
   error: string;
   onChange: (field: keyof SupporterProfile, value: string) => void;
@@ -1753,9 +1747,12 @@ export interface SupporterProfileViewProps {
 
 export function SupporterProfileView({
   accountInformation,
+  athletePhotoControls,
   initialSection = null,
   userId,
   profile,
+  backHref = '/studio',
+  backLabel = 'Back to Supporter Hub',
   saving,
   error,
   onChange,
@@ -1778,7 +1775,7 @@ export function SupporterProfileView({
           <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-wide">Supporter Profile</h1>
           <p className="mt-2 text-sm sm:text-base">Everything for the athlete you follow, all in one place.</p>
         </div>
-        <BackNavigationLink href="/studio" label="Back to Supporter Hub" testId="btn-back" />
+         <BackNavigationLink href={backHref} label={backLabel} testId="btn-back" />
       </div>
 
       <div className="supporter-profile-stack">
@@ -1925,6 +1922,12 @@ export function SupporterProfileView({
               </div>
             </div>
           </div>
+
+          {athletePhotoControls && (
+            <div className="border-t border-border/50 pt-6" data-testid="section-athlete-photo-controls">
+              {athletePhotoControls}
+            </div>
+          )}
 
           <div className="pt-6 border-t border-border flex flex-col-reverse sm:flex-row items-center justify-end gap-4">
             <button

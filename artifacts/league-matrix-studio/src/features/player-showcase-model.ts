@@ -32,6 +32,22 @@ export function getShowcaseInvite(
 }
 
 /**
+ * Honor an explicit Showcase card selection only when it belongs to the
+ * currently saved athlete and team. Otherwise use the normal unique match.
+ */
+export function getShowcasePhotoInvite(
+  invites: readonly OwnedAthleteInvite[],
+  profile: Pick<SupporterProfile, 'athleteName' | 'teamName' | 'seasonName' | 'sport'>,
+  selectedInviteToken?: string | null,
+) {
+  const candidates = getShowcaseInviteCandidates(invites, profile);
+  const selected = selectedInviteToken
+    ? candidates.find((invite) => invite.inviteToken === selectedInviteToken)
+    : undefined;
+  return selected ?? getShowcaseInvite(invites, profile);
+}
+
+/**
  * Return only the owner's cards for the selected athlete and team. These are
  * the only options that may be shown when sport and season cannot resolve a
  * single Showcase card.

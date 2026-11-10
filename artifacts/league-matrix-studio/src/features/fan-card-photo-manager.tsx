@@ -35,7 +35,19 @@ async function preparePhoto(file: File): Promise<Blob> {
   }
 }
 
-export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: string; photoUrl: string | null; cutoutUrl?: string | null; photoRevision?: string | null }) {
+export function FanCardPhotoManager({
+  inviteToken,
+  photoUrl,
+  disabled = false,
+  disabledReason = 'Save your athlete details before changing the photo.',
+}: {
+  inviteToken: string;
+  photoUrl: string | null;
+  cutoutUrl?: string | null;
+  photoRevision?: string | null;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
   const queryClient = useQueryClient();
   const requestUpload = useRequestAthleteInvitePhotoUploadUrl();
   const confirm = useConfirmAthleteInvitePhoto();
@@ -44,6 +56,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const isBusy = busy || requestUpload.isPending || confirm.isPending || remove.isPending;
+  const controlsDisabled = disabled || isBusy;
 
   async function refresh() {
     await Promise.all([
@@ -54,7 +67,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
   }
 
   async function upload() {
-    if (!selected || isBusy) return;
+    if (!selected || controlsDisabled) return;
     setNotice('');
     if (!PHOTO_TYPES.includes(selected.type) || selected.size > MAX_PHOTO_BYTES || selected.size === 0) {
       setNotice('Choose a JPG, PNG, or WebP image under 5 MB.');
@@ -85,6 +98,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
   }
 
   async function removePhoto() {
+    if (controlsDisabled) return;
     if (!window.confirm('Remove the HYPE Card photo? Fans will see a silhouette placeholder instead.')) return;
     setNotice('');
     try {
@@ -104,7 +118,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
         <p className="font-bold uppercase tracking-wide text-amber-100">When fans can see it</p>
         <p className="mt-1">{HYPE_CARD_ATHLETE_PHOTO_UPLOAD_NOTICE}</p>
       </div>
-      <div className="mt-4 flex flex-wrap items-end gap-4">
+      <div className={`mt-4 flex flex-wrap items-end gap-4 ${disabled ? 'opacity-60' : ''}`}>
         {photoUrl ? (
           <img src={photoUrl} alt="Current HYPE Card athlete photo" className="h-24 w-24 border border-white/20 object-cover" data-testid="img-owner-fan-card-photo" />
         ) : (
@@ -112,13 +126,14 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
         )}
         <label className="flex flex-col gap-2 text-xs font-bold uppercase tracking-widest text-white/70">
           Choose photo
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setSelected(event.target.files?.[0] ?? null); setNotice(''); }} className="max-w-[270px] text-xs font-normal normal-case tracking-normal file:mr-3 file:border-0 file:bg-white/15 file:px-3 file:py-2 file:text-white" data-testid="input-fan-card-photo" />
+          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={controlsDisabled} onChange={(event) => { setSelected(event.target.files?.[0] ?? null); setNotice(''); }} className="max-w-[270px] text-xs font-normal normal-case tracking-normal file:mr-3 file:border-0 file:bg-white/15 file:px-3 file:py-2 file:text-white" data-testid="input-fan-card-photo" />
         </label>
-        <button type="button" onClick={() => void upload()} disabled={!selected || isBusy} className="inline-flex min-h-11 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-upload-fan-card-photo">
+        <button type="button" onClick={() => void upload()} disabled={!selected || controlsDisabled} className="inline-flex min-h-11 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-upload-fan-card-photo">
           <ImagePlus className="h-4 w-4" aria-hidden="true" />{isBusy ? 'Saving…' : photoUrl ? 'Replace photo' : 'Upload photo'}
         </button>
-        {photoUrl && <button type="button" onClick={() => void removePhoto()} disabled={isBusy} className="inline-flex min-h-11 items-center gap-2 border border-red-300/60 px-4 text-xs font-bold uppercase tracking-widest text-red-200 disabled:opacity-50" data-testid="button-remove-fan-card-photo"><Trash2 className="h-4 w-4" aria-hidden="true" />Remove</button>}
+        {photoUrl && <button type="button" onClick={() => void removePhoto()} disabled={controlsDisabled} className="inline-flex min-h-11 items-center gap-2 border border-red-300/60 px-4 text-xs font-bold uppercase tracking-widest text-red-200 disabled:opacity-50" data-testid="button-remove-fan-card-photo"><Trash2 className="h-4 w-4" aria-hidden="true" />Remove</button>}
       </div>
+      {disabled && <p className="mt-3 text-xs font-semibold text-white/65" role="status" data-testid="status-fan-card-photo-disabled">{disabledReason}</p>}
       {notice && <p className="mt-3 text-xs font-medium text-white/75" role="status" data-testid="status-fan-card-photo">{notice}</p>}
     </section>
   );
