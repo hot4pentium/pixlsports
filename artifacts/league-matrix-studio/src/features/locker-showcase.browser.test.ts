@@ -101,11 +101,11 @@ import {AthleteEditorInvitationPanel} from './src/features/athlete-invite';
 import {SupporterHypeCardPreview} from './src/features/supporter-hype-card-preview';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
-const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showStats:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],videos:[],liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:'Legacy saved moment',events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
+const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showStats:true,showEvents:true,paused:false,hypesEnabled:true,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],videos:[],liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:'Legacy saved moment',events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
 const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,favoriteMoment:'Legacy saved moment',patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
-window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = []; window.__momentSaves = [];
+window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = []; window.__momentSaves = []; window.__ownerSettingsSaves = [];
 window.__fixtureUser = null; window.__ownerInviteResponses = 0;
 window.__alertPreferences = {liveAlerts:false,eventAlerts:false,preEventAlerts:false,active:true};
 window.__followCreates = []; window.__followUpdates = []; window.__followDeletes = 0;
@@ -156,6 +156,16 @@ window.fetch = async (input,init) => {
       const body=JSON.parse(init.body);window.__momentSaves.push(body);state.favoriteMoment=body.favoriteMoment.trim()||null;
       return new Response(JSON.stringify({favoriteMoment:state.favoriteMoment}),{status:200,headers:{'Content-Type':'application/json'}});
     }
+     const settingsPathParts=new URL(url,location.origin).pathname.split('/').filter(Boolean);
+     if(init?.method==='PATCH'&&settingsPathParts.at(-2)==='athlete-invites'){
+       const inviteToken=decodeURIComponent(settingsPathParts.at(-1)||'');
+       const body=JSON.parse(init.body);
+       const current=state.ownerInvites.find(invite=>invite.inviteToken===inviteToken);
+       const updated={...current,...body};
+       state.ownerInvites=state.ownerInvites.map(invite=>invite.inviteToken===inviteToken?updated:invite);
+       window.__ownerSettingsSaves.push({inviteToken,data:body});
+       return new Response(JSON.stringify(updated),{status:200,headers:{'Content-Type':'application/json'}});
+     }
      if(url.endsWith('/api/athlete-invites')){window.__ownerInviteResponses++;const invites=state.mode!=='public-showcase'||window.__fixtureUser?.id==='fixture-account'?state.ownerInvites:[];return new Response(JSON.stringify(invites),{status:200,headers:{'Content-Type':'application/json'}});}
     if(url.endsWith('/api/projects'))return new Response(JSON.stringify([]),{status:200,headers:{'Content-Type':'application/json'}});
     if(url.includes('/athlete-gear/sports')){
@@ -514,7 +524,13 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     await browser.send('Network.enable');
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?mode=athlete-home` });
-    await browser.wait(`document.querySelector('[data-testid="athlete-showcase-home"]')`);
+    try {
+      await browser.wait(`document.querySelector('[data-testid="athlete-showcase-home"]')`);
+    } catch (error) {
+      const fixtureResponse = await fetch(`http://127.0.0.1:${port}${base}/${suffix}.tsx`).catch(() => null);
+      const fixtureError = fixtureResponse ? await fixtureResponse.text() : 'fixture response unavailable';
+      throw new Error(`${error instanceof Error ? error.message : String(error)}; Vite fixture response: ${fixtureError.slice(0, 4000)}; ${viteMonitor.diagnostics()}`);
+    }
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-favorite-moment-editor"]')`), null);
     await browser.evaluate(`window.__update({editorAccessStatus:'pending',existingAccount:true})`);
     await browser.wait(`document.querySelector('[data-testid="card-editor-acceptance"]')`);
@@ -543,7 +559,7 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     assert.ok(await browser.evaluate(`document.documentElement.scrollWidth<=innerWidth`), 'the public card fits a desktop viewport');
     await browser.evaluate(`window.__update({mode:'owner-showcase'})`);
-    await browser.wait(`document.querySelector('[data-testid="panel-share-public-showcase"]')`);
+    await browser.wait(`document.querySelector('[data-testid="owner-item-share-hype-card"]')`);
     await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"]')`);
     await browser.wait(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-front"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="owner-card-private-explanation"]')`), null,
@@ -556,10 +572,47 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     }
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="owner-hype-card-surface"] [data-testid^="button-living-card-"]').length`), 4,
       'the owner card offers Front, Videos, Stats, and Events when each is allowed');
-    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-public-showcase-url"]'))`), 'the parent share control remains available');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="input-owner-hype-card-url"]'))`), 'the parent share control remains available');
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="input-owner-hype-card-url"]').value.endsWith('/fan/fixture-athlete')`), 'sharing uses the direct HYPE Card URL');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-hype-card-settings"]'))`), 'the private owner page includes HYPE Card settings');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-athlete-details"]'))`), 'the private owner page includes the athlete details shortcut');
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-fan-cheers"]'))`), 'the private owner page includes Fan Cheers');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), 'athlete invitation management remains available');
+    const desktopOwnerLayout = await browser.evaluate(`(() => {
+      const selectors = ['[data-testid="owner-hype-card-surface"]','[data-testid="owner-item-athlete-details"]','[data-testid="owner-item-fan-cheers"]','[data-testid="owner-item-share-hype-card"]','[data-testid="owner-item-hype-card-settings"]'];
+      const rects = selectors.map((selector) => document.querySelector(selector)?.getBoundingClientRect());
+      return { noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth, allItemsVisible: rects.every((rect) => rect && rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth) };
+    })()`);
+    assert.equal(desktopOwnerLayout.noHorizontalOverflow, true, 'the desktop owner page has no horizontal overflow');
+    assert.equal(desktopOwnerLayout.allItemsVisible, true, 'the desktop owner sections remain within the viewport');
+
+    await browser.evaluate(`document.querySelector('[data-testid="toggle-share-finalized-stats"]').click()`);
+    await browser.evaluate(`document.querySelector('[data-testid="toggle-share-event-cards"]').click()`);
+    await browser.evaluate(`document.querySelector('[data-testid="toggle-pause-public-page"]').click()`);
+    await browser.wait(`!document.querySelector('[data-testid="button-save-hype-card-settings"]').disabled`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+    await browser.wait(`window.__ownerSettingsSaves.length===1`);
+    const savedSettings = await browser.evaluate(`window.__ownerSettingsSaves[0]`);
+    assert.equal(savedSettings.inviteToken, 'fixture-athlete');
+    assert.equal(savedSettings.data.showHypeCard, true, 'saving other choices does not hide the HYPE Card');
+    assert.equal(savedSettings.data.showStats, false);
+    assert.equal(savedSettings.data.showEvents, false);
+    assert.equal(savedSettings.data.paused, true);
+    assert.equal(savedSettings.data.hypesEnabled, true, 'unrelated Fan Shoutouts settings are preserved');
+    assert.equal(savedSettings.data.athleteName, 'Jordan Lee', 'saving privacy choices preserves athlete identity');
+    assert.equal(savedSettings.data.teamName, 'River FC');
+    assert.equal(savedSettings.data.timezone, 'America/New_York');
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('paused')`);
+    await browser.wait(`document.querySelector('[data-testid="input-owner-hype-card-url"]')===null`);
 
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const phoneOwnerLayout = await browser.evaluate(`(() => {
+      const selectors = ['[data-testid="owner-hype-card-surface"]','[data-testid="owner-item-athlete-details"]','[data-testid="owner-item-fan-cheers"]','[data-testid="owner-item-share-hype-card"]','[data-testid="owner-item-hype-card-settings"]'];
+      const rects = selectors.map((selector) => document.querySelector(selector)?.getBoundingClientRect());
+      return { noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth, allItemsVisible: rects.every((rect) => rect && rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth) };
+    })()`);
+    assert.equal(phoneOwnerLayout.noHorizontalOverflow, true, 'the phone owner page has no horizontal overflow');
+    assert.equal(phoneOwnerLayout.allItemsVisible, true, 'the phone owner sections remain within the viewport');
     await browser.evaluate(`window.__update({mode:'hype-preview-empty'})`);
     await browser.wait(`document.querySelector('[data-testid="mobile-saved-hype-card"] .supporter-hype-preview__state--empty')`);
     const mobileTypography = await browser.evaluate(`(() => {
@@ -1038,13 +1091,13 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="gear-art-football-helmet"]').dataset.earned`), 'true');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="section-public-showcase-gear"]'))`), 'public Showcase gear is not controlled by HYPE Card visibility');
     await browser.evaluate(`window.__update({mode:'owner-showcase',sport:'soccer',gearStatus:'ready'})`);
-    await browser.wait(`document.querySelector('[data-testid="link-public-showcase-url"]')`);
+    await browser.wait(`document.querySelector('[data-testid="input-owner-hype-card-url"]')`);
      assert.equal(
        await browser.evaluate(`document.querySelector('[data-testid="link-back-supporter-dashboard"]').getAttribute('href')`),
        `${base}/studio`,
        'the owner Showcase provides a return link to the Supporter Hub',
      );
-    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]').getAttribute('href').endsWith('/showcase/fixture-athlete')`), 'the share link resolves the invite matching the selected athlete rather than the first saved invite');
+     assert.ok(await browser.evaluate(`document.querySelector('[data-testid="input-owner-hype-card-url"]').value.endsWith('/fan/fixture-athlete')`), 'the direct HYPE Card link resolves the invite matching the selected athlete rather than the first saved invite');
     await browser.evaluate(`window.__update({profileSeason:'Spring 2027'})`);
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="showcase-hype-card-preview"] [data-testid="img-living-card-athlete"]')`);
@@ -1059,7 +1112,7 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     await browser.evaluate(`window.__update({ownerInvites:${JSON.stringify([unrelatedCard,fallCard,springCard])},profileSeason:'Summer 2026',cardSport:null,sport:'soccer'})`);
     await browser.wait(`document.querySelector('[data-testid="select-showcase-card"]')`);
     assert.deepEqual(await browser.evaluate(`Array.from(document.querySelectorAll('[data-testid="select-showcase-card"] option')).map(option=>option.textContent.trim())`), ['Select a HYPE Card','Soccer · Fall 2025','Soccer · Spring 2026'], 'only cards for the selected athlete and team are offered with sport and season details');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]')`), null, 'an unresolved card does not publish a misleading showcase URL');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-owner-hype-card-url"]')`), null, 'an unresolved card does not publish a misleading HYPE Card URL');
     await browser.evaluate(`(()=>{const select=document.querySelector('[data-testid="select-showcase-card"]');select.value='spring-card';select.dispatchEvent(new Event('change',{bubbles:true}))})()`);
     await browser.wait(`document.querySelector('[data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="select-showcase-card"]').value`), 'spring-card', 'the selected card remains available for comparison');
@@ -1067,8 +1120,7 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/spring-card`, 'the public card link uses the chosen card');
     assert.ok(await browser.evaluate(`window.__requests.some(url=>url.includes('/athlete-invites/spring-card/fan'))`), 'the preview loads the selected card rather than the first matching invite');
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
-    await browser.wait(`document.querySelector('[data-testid="panel-share-public-showcase"]')`);
-    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="link-public-showcase-url"]').getAttribute('href').endsWith('/showcase/spring-card')`), 'the Showcase link uses the chosen card token');
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="input-owner-hype-card-url"]').value.endsWith('/fan/spring-card')`), 'the direct HYPE Card URL uses the chosen card token');
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-card"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='card'`);
     await browser.evaluate(`window.__update({ownerInvites:[${JSON.stringify(unrelatedCard)}]})`);
@@ -1076,12 +1128,12 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="select-showcase-card"]')`), null, 'a truly missing card is distinct and does not offer another athlete’s card');
     await browser.evaluate(`window.__update({ownerInvites:[${JSON.stringify(fallCard)}]})`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`), null, 'the owner HYPE Card view omits the jersey gear collection');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="panel-share-public-showcase"]')`), null, 'the owner HYPE Card view omits the general Showcase-sharing panel');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-owner-hype-card-url"]')`), null, 'sharing stays unavailable without an owned matching card');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'the owner HYPE Card view omits the athlete-editor invitation panel');
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='jersey'`);
     await browser.wait(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`);
-    assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="panel-share-public-showcase"]'))`), true, 'the Jersey slide restores Showcase-level sharing');
+    assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-share-hype-card"]'))`), true, 'the HYPE Card sharing item remains in the owner screen');
     assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), true, 'the Jersey slide restores athlete-editor access');
     await browser.evaluate(`window.__update({mode:'sport-editor',sport:'football',athleteRestricted:true,noMatchingCard:false})`);
     await browser.wait(`document.querySelector('[data-testid="page-sport-gear-football"]')`);

@@ -4,24 +4,37 @@ import { readFileSync } from 'node:fs';
 import type { OwnedAthleteInvite, SoccerGearState } from '@workspace/api-client-react';
 import { canOpenAthleteLockerCard, getAthleteLockerRewards, isSoccerGearForAthlete } from './athlete-locker-model';
 
-test('the parent dashboard contains no Locker and offers a separate Player Showcase tab', () => {
+test('the dashboard HYPE Card remains the showcase entry while the toolbar omits a separate tab', () => {
   const source = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /<AthleteLocker\b|useGetSoccerGear|soccerGearQuery/);
   assert.match(source, /data-testid="link-mobile-player-showcase"/);
   assert.match(source, /href="\/studio\/player-showcase"/);
   assert.equal((source.match(/<SupporterGameOnSummary\b/g) ?? []).length, 2);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
-  assert.match(app, /data-testid="link-toolbar-player-showcase"/);
+  assert.doesNotMatch(app, /data-testid="link-toolbar-player-showcase"/);
   assert.match(app, /<Route path="\/studio\/player-showcase"><PlayerShowcaseStudioPage \/><\/Route>/);
 });
 
-test('the studio toolbar contains only Supporter Hub and Player Showcase tabs', () => {
+test('the studio toolbar keeps the home destination without a Player Showcase tab', () => {
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   const layout = app.slice(app.indexOf('function StudioLayout'), app.indexOf('\n\nfunction Studio('));
   assert.match(layout, /data-testid="link-studio-directory"/);
-  assert.match(layout, /data-testid="link-toolbar-player-showcase"/);
-  assert.equal((layout.match(/data-testid="link-[^"]+"/g) ?? []).length, 2);
+  assert.doesNotMatch(layout, /Player Showcase|link-toolbar-player-showcase/);
+  assert.equal((layout.match(/data-testid="link-[^"]+"/g) ?? []).length, 1);
   assert.doesNotMatch(layout, /AdminEntryLink/, 'the toolbar should not expose an admin tab');
+});
+
+test('the private owner HYPE Card screen shares its direct link and saves all owner privacy choices', () => {
+  const source = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
+  assert.match(source, /ownerExperience/);
+  assert.match(source, /\/fan\/\$\{encodeURIComponent\(inviteToken\)\}/);
+  assert.match(source, /Show HYPE Card/);
+  assert.match(source, /Share finalized stats/);
+  assert.match(source, /Share Event Cards/);
+  assert.match(source, /Pause public page/);
+  assert.match(source, /useUpdateAthleteInvite/);
+  assert.match(source, /getGetAthleteInviteQueryKey\(matchedInvite\.inviteToken\)/);
+  assert.match(source, /getGetAthleteFanCardQueryKey\(matchedInvite\.inviteToken\)/);
 });
 
 function invite(overrides: Partial<OwnedAthleteInvite> = {}) {

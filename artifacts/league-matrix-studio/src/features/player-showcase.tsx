@@ -1,7 +1,8 @@
-import { ArrowRight, Check, Copy, ExternalLink, Pencil, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, Check, Copy, ExternalLink, Pencil, ShieldCheck, Zap, Share2, Save, WifiOff, Settings2, HeartHandshake } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useClerk, useUser } from '@clerk/react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 import { BrandLogo } from './brand-logo';
 import {
@@ -12,6 +13,9 @@ import {
   getGetAthleteEditorAccessQueryKey,
   getGetAthleteFanCardQueryKey,
   useGetAthleteFanCard,
+  getGetAthleteInviteQueryKey,
+  useUpdateAthleteInvite,
+  type AthleteInviteInput,
   type OwnedAthleteInvite,
   type PublicAthleteFanCard,
 } from '@workspace/api-client-react';
@@ -21,6 +25,7 @@ import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { OwnerHypeCardSurface } from './owner-hype-card-surface';
 import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { FanCheersSummary } from './cheer-celebration';
+import { athleteFanCardUrl } from './athlete-fan-card-url';
 import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
 import './player-showcase.css';
 import './showcase-desktop-density.css';
@@ -34,6 +39,7 @@ export interface PlayerShowcaseContentProps {
   cardPublicHref?: string;
   cardCandidates?: readonly OwnedAthleteInvite[];
   ownerInvite?: OwnedAthleteInvite | null;
+  ownerExperience?: boolean;
   selectedCardToken?: string;
   onSelectCard?: (inviteToken: string) => void;
   onRetryCard?: () => void;
@@ -43,7 +49,7 @@ function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', profileEditHref, cardPublicHref, cardCandidates = [], ownerInvite, selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', profileEditHref, cardPublicHref, cardCandidates = [], ownerInvite, ownerExperience = false, selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
   const card = cardStatus === 'ready' ? linkedCard ?? null : null;
   const privateCheers = cardCandidates.find(candidate => candidate.inviteToken === selectedCardToken)?.liveTaps;
   const privateFrontPreview = cardStatus === 'not-shared' && ownerInvite;
@@ -106,7 +112,7 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
                   <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
                 </div>
               ) : null}
-              {card && <FanCheersSummary liveTaps={card.liveTaps} />}
+              {!ownerExperience && card && <FanCheersSummary liveTaps={card.liveTaps} />}
             </div>
           ) : (
             <div
@@ -140,9 +146,9 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
               </Link>}
             </div>
           )}
-          {!card && privateCheers && cardStatus === 'not-shared' && <FanCheersSummary liveTaps={privateCheers} />}
+          {!ownerExperience && !card && privateCheers && cardStatus === 'not-shared' && <FanCheersSummary liveTaps={privateCheers} />}
         </div>
-        {profileEditHref && <Link href={profileEditHref} className="ps__profile-edit" data-testid="link-showcase-athlete-details">
+        {!ownerExperience && profileEditHref && <Link href={profileEditHref} className="ps__profile-edit" data-testid="link-showcase-athlete-details">
           <Pencil size={16} aria-hidden="true" /> Edit Athlete Details
         </Link>}
       </section>
@@ -153,6 +159,17 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
 export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProfile; userId: string | null }) {
   const [shareStatus, setShareStatus] = useState('');
   const [selectedInviteToken, setSelectedInviteToken] = useState<string | null>(null);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const [settingsMessageKind, setSettingsMessageKind] = useState<'success' | 'error' | 'info'>('info');
+  const [draftShowHypeCard, setDraftShowHypeCard] = useState(false);
+  const [draftShowStats, setDraftShowStats] = useState(false);
+  const [draftShowEvents, setDraftShowEvents] = useState(false);
+  const [draftPaused, setDraftPaused] = useState(false);
+  const shareInputRef = useRef<HTMLInputElement>(null);
+  const selectedTokenRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
+  const updateInvite = useUpdateAthleteInvite();
   const invitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(userId),
@@ -188,6 +205,19 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     && fanCardQuery.data.sport === matchedInvite?.sport
     ? fanCardQuery.data
     : null;
+  useEffect(() => {
+    if (selectedTokenRef.current !== matchedInvite?.inviteToken) {
+      selectedTokenRef.current = matchedInvite?.inviteToken ?? null;
+      setSettingsDirty(false);
+      setSettingsMessage('');
+    }
+    if (!settingsDirty && matchedInvite) {
+      setDraftShowHypeCard(matchedInvite.showHypeCard);
+      setDraftShowStats(matchedInvite.showStats);
+      setDraftShowEvents(matchedInvite.showEvents);
+      setDraftPaused(matchedInvite.paused);
+    }
+  }, [matchedInvite?.inviteToken, matchedInvite?.showHypeCard, matchedInvite?.showStats, matchedInvite?.showEvents, matchedInvite?.paused, settingsDirty]);
   const cardStatus: PlayerShowcaseContentProps['cardStatus'] = invitesQuery.isLoading
     ? 'loading'
     : invitesQuery.isError ? 'unavailable'
@@ -195,23 +225,123 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     : !matchedInvite.showHypeCard || matchedInvite.paused
       ? 'not-shared'
     : fanCardQuery.isLoading ? 'loading' : linkedCard ? 'ready' : 'unavailable';
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-  const publicShowcaseUrl = inviteToken
-    ? `${window.location.origin}${basePath}/showcase/${encodeURIComponent(inviteToken)}`
-    : null;
+  const publicHypeCardUrl = inviteToken ? athleteFanCardUrl(inviteToken) : null;
   const cardSettingsHref = matchedInvite
     ? `/player/${encodeURIComponent(matchedInvite.inviteToken)}/manage#design`
     : '/studio/athlete-page';
-  const copyShowcaseUrl = async () => {
-    if (!publicShowcaseUrl) return;
+  const copyHypeCardUrl = async () => {
+    if (!publicHypeCardUrl) return;
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(publicShowcaseUrl);
-      setShareStatus('Player Showcase link copied.');
+      await navigator.clipboard.writeText(publicHypeCardUrl);
+      setShareStatus('HYPE Card link copied.');
     } catch {
-      setShareStatus('Could not copy the link. Open the showcase and copy its address.');
+      const input = shareInputRef.current;
+      if (input) {
+        input.focus();
+        input.select();
+        try {
+          if (document.execCommand('copy')) {
+            setShareStatus('HYPE Card link copied.');
+            return;
+          }
+        } catch {
+          // Keep the link selected so it can be copied manually.
+        }
+      }
+      setShareStatus('Copy was unavailable. The HYPE Card link is selected so you can copy it.');
     }
   };
+  const shareHypeCard = async () => {
+    if (!publicHypeCardUrl) return;
+    setShareStatus('');
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${matchedInvite?.athleteName ?? profile.athleteName} HYPE Card`,
+          text: `Follow ${matchedInvite?.athleteName ?? profile.athleteName}’s season.`,
+          url: publicHypeCardUrl,
+        });
+        setShareStatus('HYPE Card share completed.');
+      } catch (error) {
+        setShareStatus(error instanceof DOMException && error.name === 'AbortError'
+          ? 'Share menu closed.'
+          : 'Could not open the share menu. Copy the link instead.');
+      }
+    } else {
+      await copyHypeCardUrl();
+    }
+  };
+  const settingsPayload = (invite: OwnedAthleteInvite): AthleteInviteInput => ({
+    athleteName: invite.athleteName,
+    teamName: invite.teamName,
+    seasonName: invite.seasonName,
+    seasonEndsAt: invite.seasonEndsAt,
+    timezone: invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    sport: invite.sport,
+    trackerProjectId: invite.trackerProjectId,
+    scheduleProjectId: invite.scheduleProjectId,
+    showHypeCard: draftShowHypeCard,
+    showStats: draftShowStats,
+    showSchedule: invite.showSchedule,
+    showEvents: draftShowEvents,
+    hypesEnabled: invite.hypesEnabled,
+    paused: draftPaused,
+  });
+  const saveSettings = async () => {
+    if (!matchedInvite || updateInvite.isPending) return;
+    setSettingsMessage('');
+    if (!navigator.onLine) {
+      setSettingsMessageKind('error');
+      setSettingsMessage('You’re offline. Your changes have not been saved; reconnect and try again.');
+      return;
+    }
+    if (!matchedInvite.showHypeCard && draftShowHypeCard
+      && !window.confirm('Make this HYPE Card public? Anyone with its link will be able to view the sections you enable.')) return;
+    try {
+      const updatedInvite = await updateInvite.mutateAsync({
+        inviteToken: matchedInvite.inviteToken,
+        data: settingsPayload(matchedInvite),
+      });
+      queryClient.setQueriesData<OwnedAthleteInvite[]>(
+        { queryKey: getListAthleteInvitesQueryKey() },
+        (current) => current?.map((invite) =>
+          invite.inviteToken === updatedInvite.inviteToken ? updatedInvite : invite,
+        ),
+      );
+      setSettingsDirty(false);
+      setSettingsMessageKind('success');
+      setSettingsMessage(draftPaused
+        ? 'HYPE Card settings saved. The public page is paused.'
+        : draftShowHypeCard ? 'HYPE Card settings saved.'
+          : 'HYPE Card settings saved. The public card is hidden.');
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(matchedInvite.inviteToken) }),
+          queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(matchedInvite.inviteToken) }),
+        ]);
+      } catch {
+        setSettingsMessageKind('info');
+        setSettingsMessage('Settings were saved, but the latest card status could not be refreshed. Try again when you’re online.');
+      }
+    } catch {
+      setSettingsMessageKind('error');
+      setSettingsMessage('HYPE Card settings could not be saved. Check your connection and try again.');
+    }
+  };
+  const setSetting = (setter: (value: boolean) => void, value: boolean) => {
+    setter(value);
+    setSettingsDirty(true);
+    setSettingsMessage('');
+  };
+  const isShareable = Boolean(matchedInvite?.showHypeCard && !matchedInvite.paused && publicHypeCardUrl);
+  const cheers = linkedCard?.liveTaps ?? matchedInvite?.liveTaps;
+  const settingsDescription = draftPaused
+    ? 'Paused. Public access is suspended until you resume the page.'
+    : draftShowHypeCard
+      ? 'The HYPE Card can be shared while the public page is active.'
+      : 'The public HYPE Card is hidden; you can still review its owner preview.';
   return (
     <div className="ps-owner-canvas">
       <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pt-5 sm:px-8">
@@ -223,6 +353,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
       </div>
       <PlayerShowcaseContent profile={profile} linkedCard={linkedCard} cardStatus={cardStatus}
         ownerInvite={matchedInvite}
+        ownerExperience
         cardCandidates={hasAmbiguousInvite ? inviteCandidates : undefined}
         selectedCardToken={selectedInvite?.inviteToken}
         onSelectCard={setSelectedInviteToken}
@@ -231,23 +362,76 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           else void invitesQuery.refetch();
         }}
         cardEditHref={cardSettingsHref}
-        profileEditHref="/studio/profile?section=athlete"
-        cardPublicHref={inviteToken ? `/fan/${encodeURIComponent(inviteToken)}?from=player-showcase` : undefined} />
+        cardPublicHref={isShareable ? `/fan/${encodeURIComponent(inviteToken!)}?from=player-showcase` : undefined} />
       <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
-        {publicShowcaseUrl && (
-          <section className="mb-5 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="share-showcase-title" data-testid="panel-share-public-showcase">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Public recipient view</p>
-              <h2 id="share-showcase-title" className="mt-2 font-display text-2xl uppercase">Share the Player Showcase</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Recipients open the HYPE Card and its currently published faces.</p>
-              <a href={publicShowcaseUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex max-w-full items-center gap-2 break-all text-xs font-semibold text-primary underline underline-offset-4" data-testid="link-public-showcase-url">
-                {publicShowcaseUrl}<ExternalLink size={13} aria-hidden="true" />
-              </a>
-              {shareStatus && <p className="mt-2 text-xs" role="status" data-testid="status-public-showcase-share">{shareStatus}</p>}
+        <section className="hype-owner-item" aria-labelledby="edit-athlete-details-title" data-testid="owner-item-athlete-details">
+          <div className="hype-owner-item__icon"><Pencil aria-hidden="true" /></div>
+          <div className="hype-owner-item__copy">
+            <p className="hype-owner-item__eyebrow">Athlete profile</p>
+            <h2 id="edit-athlete-details-title">Edit Athlete Details</h2>
+            <p>Update the athlete identity linked to this season. HYPE Card privacy stays unchanged.</p>
+          </div>
+          <Link href="/studio/profile?section=athlete" className="hype-owner-item__action" data-testid="link-showcase-athlete-details">Edit details <ArrowRight aria-hidden="true" /></Link>
+        </section>
+        <section className="hype-owner-item hype-owner-item--cheers" aria-labelledby="owner-fan-cheers-title" data-testid="owner-item-fan-cheers">
+          <div className="hype-owner-item__icon"><HeartHandshake aria-hidden="true" /></div>
+          <div className="hype-owner-item__copy">
+            <p className="hype-owner-item__eyebrow">From your Fan Base</p>
+            <h2 id="owner-fan-cheers-title">Fan Cheers</h2>
+            <p>See the live and season cheer totals shared for this athlete.</p>
+          </div>
+          {cheers
+            ? <div className="hype-owner-cheers"><FanCheersSummary liveTaps={cheers} /></div>
+            : <p className="hype-owner-empty-cheers" role="status">Cheer totals will appear here when fans have sent cheers.</p>}
+        </section>
+        <section className="hype-owner-item hype-owner-item--share" aria-labelledby="share-hype-card-title" data-testid="owner-item-share-hype-card">
+          <div className="hype-owner-item__icon"><Share2 aria-hidden="true" /></div>
+          <div className="hype-owner-item__copy">
+            <p className="hype-owner-item__eyebrow">One link for family and friends</p>
+            <h2 id="share-hype-card-title">Share HYPE Card</h2>
+            <p>{isShareable ? 'Share the direct HYPE Card link. Fans will only see the sections you have published.' : 'Sharing is unavailable while the card is hidden or the public page is paused.'}</p>
+          </div>
+          {isShareable && publicHypeCardUrl ? (
+            <div className="hype-owner-share-controls">
+              <label className="sr-only" htmlFor="owner-hype-card-url">Direct HYPE Card URL</label>
+              <input ref={shareInputRef} id="owner-hype-card-url" readOnly value={publicHypeCardUrl} onFocus={(event) => event.currentTarget.select()} data-testid="input-owner-hype-card-url" />
+              <div className="hype-owner-share-buttons">
+                <button type="button" onClick={() => void shareHypeCard()} data-testid="button-share-hype-card"><Share2 aria-hidden="true" />Share</button>
+                <button type="button" onClick={() => void copyHypeCardUrl()} data-testid="button-copy-hype-card"><Copy aria-hidden="true" />Copy link</button>
+                <a href={`/fan/${encodeURIComponent(inviteToken ?? '')}`} target="_blank" rel="noreferrer" data-testid="link-open-owner-hype-card">Open card <ExternalLink aria-hidden="true" /></a>
+              </div>
+              <p className="hype-owner-status" role="status" aria-live="polite" data-testid="status-hype-card-share">{shareStatus}</p>
             </div>
-            <button type="button" onClick={() => void copyShowcaseUrl()} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90" data-testid="button-copy-public-showcase">
-              {shareStatus === 'Player Showcase link copied.' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
-              {shareStatus === 'Player Showcase link copied.' ? 'Copied' : 'Copy link'}
+          ) : (
+            <div className="hype-owner-private-share" role="status"><WifiOff aria-hidden="true" />The direct link is not active right now.</div>
+          )}
+        </section>
+        {matchedInvite && (
+          <section className="hype-owner-settings" aria-labelledby="hype-card-settings-title" data-testid="owner-item-hype-card-settings">
+            <div className="hype-owner-settings__heading">
+              <span className="hype-owner-item__icon"><Settings2 aria-hidden="true" /></span>
+              <div>
+                <p className="hype-owner-item__eyebrow">Owner controls</p>
+                <h2 id="hype-card-settings-title">HYPE Card settings</h2>
+                <p>{settingsDescription}</p>
+              </div>
+            </div>
+            <div className="hype-owner-setting-list">
+              {[
+                { id: 'show-hype-card', title: 'Show HYPE Card', detail: 'Let anyone with the direct link view your published card.', value: draftShowHypeCard, setter: setDraftShowHypeCard },
+                { id: 'share-finalized-stats', title: 'Share finalized stats', detail: 'Include season totals from finalized games on the Stats side.', value: draftShowStats, setter: setDraftShowStats },
+                { id: 'share-event-cards', title: 'Share Event Cards', detail: 'Show eligible saved Event Cards on the Events side.', value: draftShowEvents, setter: setDraftShowEvents },
+                { id: 'pause-public-page', title: 'Pause public page', detail: 'Temporarily suspend public access without changing the card link.', value: draftPaused, setter: setDraftPaused },
+              ].map((item) => (
+                <label className="hype-owner-setting" key={item.id} htmlFor={item.id}>
+                  <span><strong>{item.title}</strong><small>{item.detail}</small></span>
+                  <input id={item.id} type="checkbox" checked={item.value} onChange={(event) => setSetting(item.setter, event.currentTarget.checked)} data-testid={`toggle-${item.id}`} />
+                </label>
+              ))}
+            </div>
+            {settingsMessage && <p className={`hype-owner-settings__message hype-owner-settings__message--${settingsMessageKind}`} role={settingsMessageKind === 'error' ? 'alert' : 'status'} data-testid="status-hype-card-settings">{settingsMessage}</p>}
+            <button type="button" className="hype-owner-save" onClick={() => void saveSettings()} disabled={!settingsDirty || updateInvite.isPending} data-testid="button-save-hype-card-settings">
+              <Save aria-hidden="true" />{updateInvite.isPending ? 'Saving…' : 'Save HYPE Card settings'}
             </button>
           </section>
         )}

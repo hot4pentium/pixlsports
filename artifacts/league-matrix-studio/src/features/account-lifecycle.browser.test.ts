@@ -511,9 +511,9 @@ test('signed-in account controls survive phone and desktop transitions against r
     })`, phone);
     assert.deepEqual(profileMobileNavigation, {
       hub: true,
-      playerShowcase: true,
-      tabCount: 2,
-    }, 'the supporter profile navigation should show only Supporter Hub and Player Showcase');
+      playerShowcase: false,
+      tabCount: 1,
+    }, 'the toolbar keeps Supporter Hub but does not add a separate Player Showcase tab');
     await click(phone, 'button-hype-manager-account-information');
     await waitVisible(phone, 'account-information');
     await waitFor(connection, phone, "document.querySelector('[data-testid=\"account-plan\"]')?.textContent.trim() === 'Pro'", Boolean);
