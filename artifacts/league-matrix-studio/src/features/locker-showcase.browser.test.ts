@@ -560,7 +560,7 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     assert.ok(await browser.evaluate(`document.documentElement.scrollWidth<=innerWidth`), 'the public card fits a desktop viewport');
     await browser.evaluate(`window.__update({mode:'owner-showcase'})`);
     await browser.wait(`document.querySelector('[data-testid="owner-item-share-hype-card"]')`);
-    await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'new athlete invitations are not offered');
     await browser.wait(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-front"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="owner-card-private-explanation"]')`), null,
       'the published owner card uses the interactive iPhone-style card surface');
@@ -577,7 +577,7 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-hype-card-settings"]'))`), 'the private owner page includes HYPE Card settings');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-athlete-details"]'))`), 'the private owner page includes the athlete details shortcut');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-fan-cheers"]'))`), 'the private owner page includes Fan Cheers');
-    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), 'athlete invitation management remains available');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'owners without existing grants do not see athlete invitation controls');
     const desktopOwnerLayout = await browser.evaluate(`(() => {
       const selectors = ['[data-testid="owner-hype-card-surface"]','[data-testid="owner-item-athlete-details"]','[data-testid="owner-item-fan-cheers"]','[data-testid="owner-item-share-hype-card"]','[data-testid="owner-item-hype-card-settings"]'];
       const rects = selectors.map((selector) => document.querySelector(selector)?.getBoundingClientRect());
@@ -1135,7 +1135,7 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     await browser.wait(`document.querySelector('[data-testid="showcase-rotor"]').dataset.activeSlide==='jersey'`);
     await browser.wait(`document.querySelector('[data-testid="collection-sport-gear-soccer"]')`);
     assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="owner-item-share-hype-card"]'))`), true, 'the HYPE Card sharing item remains in the owner screen');
-    assert.equal(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), true, 'the Jersey slide restores athlete-editor access');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'retired invitation creation does not return when changing views');
     await browser.evaluate(`window.__update({mode:'sport-editor',sport:'football',athleteRestricted:true,noMatchingCard:false})`);
     await browser.wait(`document.querySelector('[data-testid="page-sport-gear-football"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-sport-gear-public"]')`), null);
@@ -1173,28 +1173,9 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     assert.equal(appearanceSave.jerseyNumber, '17');
     assert.ok(await browser.evaluate(`window.__requests.some(url=>url.includes('/api/athlete-editor/card/appearance'))`), 'athlete card edits use the linked Showcase-only endpoint');
     await browser.evaluate(`window.__update({mode:'invitation-panel'})`);
-    await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"]')`);
-    await browser.wait(`document.querySelector('[aria-label="Checking athlete editor access"]')===null`);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] select')`), null, 'an owner does not need to choose a separate HYPE Card project');
-    assert.equal(await browser.evaluate(`window.__requests.some(url=>url.endsWith('/api/projects'))`), false, 'sending this invitation does not depend on a project list');
-    await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] input[type="email"]').focus()`);
-    await browser.send('Input.insertText', { text: 'athlete@example.com' });
-    for (const [status, message] of [
-      [409, 'That email already has a Pixl Sports sign-in. Use a separate athlete email.'],
-      [409, 'That email already has a Pixl Sports sign-in or invitation.'],
-      [503, 'The athlete email could not be checked. Try again.'],
-    ] as const) {
-      await browser.evaluate(`window.__update({inviteError:${JSON.stringify(message)},inviteErrorStatus:${status}})`);
-      await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] button[type="submit"]').click()`);
-      await browser.wait(`document.querySelector('[role="status"]')?.textContent===${JSON.stringify(message)}`);
-      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] input[type="email"]').value`), 'athlete@example.com', 'failed invitations preserve the email for correction');
-      await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"] button[type="submit"]').disabled===false`);
-    }
-    await browser.evaluate(`window.__update({inviteError:null})`);
-    await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"] button[type="submit"]').click()`);
-    await browser.wait(`document.querySelector('[role="status"]')?.textContent.includes('Invitation sent')`);
-    const invitationPayload = await browser.evaluate(`window.__invitationPayloads.at(-1)`);
-    assert.deepEqual(invitationPayload, { emailAddress: 'athlete@example.com' }, 'new athlete invitations target the existing Showcase card without a project ID');
+    await browser.wait(`window.__requests.some(url=>url.includes('/editor-access'))`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'no invitation form is offered without an existing grant');
+    assert.equal(await browser.evaluate(`window.__invitationPayloads.length`), 0, 'retired invitation controls send no new invitation requests');
      await browser.evaluate(`window.__update({mode:'owner-showcase',sport:'soccer'})`);
      await browser.wait(`document.querySelector('[data-testid="link-back-supporter-dashboard"]')`);
      await browser.evaluate(`document.querySelector('[data-testid="link-back-supporter-dashboard"]').click()`);

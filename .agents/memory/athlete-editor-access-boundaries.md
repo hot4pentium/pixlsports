@@ -3,6 +3,12 @@ name: Athlete editor access boundaries
 description: Product ownership and access rules for athlete participation through the HYPE Card.
 ---
 
+New athlete design invitations are retired. Do not offer invite, resend, or restore-access actions. Preserve existing grants and their revocation controls unless the user separately authorizes changing access.
+
+**Why:** The user changed their mind about inviting athletes to edit the design and asked to remove the option.
+
+**How to apply:** Treat the invitation-creation guidance below as historical compatibility context, not permission to expose new invitations.
+
 For dedicated athlete-only invitations, use a separate, limited sign-in for the parent-selected HYPE Card only. The athlete may edit that linked card and focused card content, but not publishing, visibility, privacy, sharing, invitation, or account controls. Keep those controls with the parent.
 
 Existing Pixl Sports accounts may also be invited to edit a selected HYPE Card. They must explicitly accept using their matching verified email. Do not convert an existing account into an athlete-only identity, rewrite its role or profile, borrow the owner's plan, or lock its own account when card access is revoked. Dedicated athlete-only sign-ins retain their original restrictions.

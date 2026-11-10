@@ -32,7 +32,6 @@ import {
 import QRCode from 'qrcode';
 import { Link } from 'wouter';
 import { athleteFanCardUrl } from './athlete-fan-card-url';
-import { athleteInvitationErrorMessage } from './athlete-invitation-error';
 import {
   getListAthleteInvitesQueryKey,
   getGetAthleteInviteQueryKey,
@@ -49,7 +48,6 @@ import {
   useListAthleteInvites,
   useListProjects,
   useGetAthleteInviteEditorAccess,
-  useCreateAthleteInviteEditorAccess,
   useRevokeAthleteInviteEditorAccess,
   useListHypeCardShares,
   useDeleteHypeCardShare,
@@ -406,7 +404,6 @@ export function AthleteInviteManager() {
 
 export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: string | null }) {
   const queryClient = useQueryClient();
-  const [emailAddress, setEmailAddress] = useState('');
   const [message, setMessage] = useState('');
   const invitationQuery = useGetAthleteInviteEditorAccess(inviteToken ?? '', {
     query: {
@@ -416,43 +413,15 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       staleTime: 0,
     },
   });
-  const createInvitation = useCreateAthleteInviteEditorAccess();
   const revokeInvitation = useRevokeAthleteInviteEditorAccess();
   const invitation = invitationQuery.data;
   const invitationLocked = invitation?.status === 'pending' || invitation?.status === 'active';
-  useEffect(() => {
-    if (!invitation) return;
-    setEmailAddress((current) => current || invitation.emailAddress || '');
-  }, [invitation]);
   const refreshInvitation = async () => {
     if (!inviteToken) return;
     await queryClient.invalidateQueries({
       queryKey: getGetAthleteInviteEditorAccessQueryKey(inviteToken),
     });
     await invitationQuery.refetch();
-  };
-  const sendInvite = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage('');
-    if (!inviteToken || !emailAddress.trim()) return;
-    try {
-      const response = await createInvitation.mutateAsync({
-        inviteToken,
-        data: { emailAddress: emailAddress.trim() },
-      });
-      setMessage(response.status === 'active'
-        ? 'Access restored. The athlete can sign in and edit this card.'
-        : 'Invitation sent. The recipient can sign in using the invited email and follow the email instructions to access this HYPE Card.');
-      try {
-        await refreshInvitation();
-      } catch {
-        setMessage(response.status === 'active'
-          ? 'Access restored, but its latest status could not be loaded. Refresh this page.'
-          : 'Invitation sent, but its latest status could not be loaded. Refresh this page before sending another invitation.');
-      }
-    } catch (error) {
-      setMessage(athleteInvitationErrorMessage(error));
-    }
   };
   const revoke = async () => {
     if (!inviteToken || !window.confirm('Revoke this athlete’s HYPE Card access?')) return;
@@ -465,21 +434,17 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
       setMessage('Access could not be revoked. Try again.');
     }
   };
-  const statusLabel = invitation?.status === 'active'
-    ? 'Active'
-    : invitation?.status === 'pending'
-      ? 'Invitation pending'
-      : invitation?.status === 'revoked'
-        ? 'Revoked'
-        : 'Not invited';
+  // New invitations are retired. Keep revocation available for existing grants.
+  if (!inviteToken || !invitationLocked) return null;
+  const statusLabel = invitation?.status === 'active' ? 'Active' : 'Invitation pending';
 
   return (
     <section className="mt-8 border border-border bg-card p-5 sm:p-7" aria-labelledby="athlete-editor-invitation-title" data-testid="athlete-editor-invitation">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Design access only</p>
-          <h2 id="athlete-editor-invitation-title" className="mt-2 font-display text-3xl uppercase">Invite athlete to edit</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Parents remain in control of the athlete page, visibility, publishing, privacy, and sharing. The athlete can edit only the linked HYPE Card design.</p>
+          <h2 id="athlete-editor-invitation-title" className="mt-2 font-display text-3xl uppercase">Existing athlete access</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">You can remove previously granted editing access here.</p>
         </div>
         {inviteToken && (
           <span className={`inline-flex w-fit items-center gap-2 border px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${invitation?.status === 'active' ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}`}>
@@ -487,43 +452,15 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
           </span>
         )}
       </div>
-      {!inviteToken ? (
-        <div className="mt-5 border-l-2 border-primary bg-primary/5 px-4 py-3 text-sm leading-relaxed">
-          Create the athlete page first to connect a parent-owned HYPE Card.
-          <Link href="/studio/athlete-page" className="ml-2 font-bold text-primary underline underline-offset-4">Open athlete page settings</Link>
-        </div>
-      ) : invitationQuery.isLoading ? (
-        <div className="mt-5 h-16 animate-pulse bg-muted" aria-label="Checking athlete editor access" />
-      ) : (
         <div className="mt-5">
-          <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            New invitations connect to the HYPE Card already shown in the Showcase. You can invite a new or existing Pixl Sports account. Existing accounts must accept the invitation and keep their own account permissions. The recipient can edit this card’s design; page settings and sharing stay with you.
-          </p>
           {invitationQuery.isError && (
             <p className="mb-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2 text-sm" role="alert">
               Invitation status could not be loaded. <button type="button" onClick={() => void invitationQuery.refetch()} className="font-bold underline">Retry</button>
             </p>
           )}
-          {invitation?.projectId && invitationLocked && (
-            <p className="mb-3 border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm">
-              This existing invitation is linked to a legacy HYPE Card project. Revoke it and send a new invitation to switch to the Showcase card.
-            </p>
-          )}
-          <form onSubmit={sendInvite} className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Athlete email
-              <input type="email" required maxLength={320} value={invitationLocked ? invitation?.emailAddress ?? emailAddress : emailAddress} onChange={(event) => setEmailAddress(event.target.value)} placeholder="athlete@example.com" disabled={invitationLocked} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60" />
-            </label>
-            {invitation?.status === 'pending' || invitation?.status === 'active' ? (
               <button type="button" onClick={() => void revoke()} disabled={revokeInvitation.isPending} className="inline-flex h-12 items-center justify-center gap-2 border border-destructive/40 px-4 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive/5 disabled:opacity-50">
                 <Trash2 className="h-4 w-4" />{revokeInvitation.isPending ? 'Revoking' : 'Revoke access'}
               </button>
-            ) : (
-              <Button type="submit" disabled={createInvitation.isPending || !emailAddress.trim()} className="h-12 rounded-none px-5 text-xs font-bold uppercase tracking-widest">
-                {createInvitation.isPending ? 'Sending' : invitation?.status === 'revoked' ? 'Invite again' : 'Send invitation'}
-              </Button>
-            )}
-          </form>
           {invitation?.emailAddress && (
             <p className="mt-3 text-xs text-muted-foreground">Current invite: <strong className="text-foreground">{invitation.emailAddress}</strong> · {invitation.projectId ? 'Legacy HYPE Card project' : 'Showcase HYPE Card'}</p>
           )}
@@ -534,7 +471,6 @@ export function AthleteEditorInvitationPanel({ inviteToken }: { inviteToken: str
           )}
           {message && <p className="mt-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm" role="status">{message}</p>}
         </div>
-      )}
     </section>
   );
 }

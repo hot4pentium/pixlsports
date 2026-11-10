@@ -196,7 +196,7 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
             && Boolean(url.searchParams.get('inviteToken'));
         })()`), true, 'athlete details opens the profile editor with the selected HYPE Card and return destination');
         assert.equal(await browser.evaluate(`(() => { const card = document.querySelector('[data-testid="showcase-card-art"]'); const edit = document.querySelector('[data-testid="link-showcase-athlete-details"]'); return Boolean(card && edit && (card.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), true, 'athlete details action should follow the card');
-        await expectAccessible(browser, byId('button-copy-public-showcase'), 'button', 'Copy link');
+        await expectAccessible(browser, byId('button-copy-hype-card'), 'button', 'Copy link');
       }
     } else {
       await bounded(browser, '.ps__card-unavailable', 460, false);

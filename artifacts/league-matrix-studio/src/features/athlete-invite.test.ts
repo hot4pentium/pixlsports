@@ -20,6 +20,17 @@ const supporterDashboardSource = readFileSync(new URL('./supporter-dashboard.tsx
 const showcaseSource = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
 const livingControlsSource = readFileSync(new URL('./living-card-controls.tsx', import.meta.url), 'utf8');
 
+test('new athlete design invitations are retired while existing access can be revoked', () => {
+  const panel = source.slice(source.indexOf('export function AthleteEditorInvitationPanel('), source.indexOf('type OwnedAthleteInvite ='));
+  assert.doesNotMatch(source, /useCreateAthleteInviteEditorAccess|Invite athlete to edit|Send invitation|Invite again/);
+  assert.doesNotMatch(panel, /<form|<input|sendInvite|mutateAsync\(\{\s*inviteToken,\s*data:/);
+  assert.match(panel, /if \(!inviteToken \|\| !invitationLocked\) return null/);
+  assert.match(panel, /invitation\?\.status === 'pending' \|\| invitation\?\.status === 'active'/);
+  assert.match(panel, /Existing athlete access/);
+  assert.match(panel, /revokeInvitation\.mutateAsync\(\{ inviteToken \}\)/);
+  assert.match(panel, /Revoke access/);
+});
+
 test('Retired Favorite Moment text is absent from HYPE Card interfaces', () => {
   assert.doesNotMatch(source, /favorite.?moment|AthleteFavoriteMomentEditor/i);
   assert.doesNotMatch(showcaseSource, /favorite.?moment|AthleteFavoriteMomentEditor/i);

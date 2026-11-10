@@ -9,6 +9,12 @@ Use the iPhone experience as the reference for shared PWA mobile screens: a whit
 
 **How to apply:** Align shared mobile journeys to the iOS canvas, containers, terminology, and actions. Preserve authored card artwork, account boundaries, and genuine browser-only or desktop capabilities.
 
+Keep the PWA owner Showcase focused on HYPE Card, Edit Athlete Details (including the card photo), Fan Cheers, Share HYPE Card, and HYPE Card settings. Enter it from the dashboard card, without a separate Showcase tab or duplicate Edit HYPE Card button. Leave frame and lower-third customization out for now; preserve invited-athlete editing access.
+
+**Why:** The user wants one consistent iOS/PWA product and explicitly deferred design customization to simplify the owner process.
+
+**How to apply:** Use the five owner sections as the scope for parity work; do not reintroduce design-editor shortcuts into the owner preview.
+
 Use soft navy shadows beneath native blue containers and major cards to add separation from the white canvas. Keep shadows off small controls.
 
 **Why:** The user asked for depth around the boxes without making the interface visually heavy.
