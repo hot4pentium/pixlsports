@@ -18,7 +18,7 @@ enum NativeAPIConnectionCheckResult: Equatable {
     case connected
     case signInRequired
     case unreachable
-    case serverResponseError(statusCode: Int)
+    case serverResponseError(statusCode: Int, detail: String)
 
     var message: String {
         switch self {
@@ -28,8 +28,8 @@ enum NativeAPIConnectionCheckResult: Equatable {
             "Sign in again to check the PIXL connection."
         case .unreachable:
             "Couldn’t reach the PIXL server. Check your connection and try again."
-        case let .serverResponseError(statusCode):
-            "PIXL responded with an error (HTTP \(statusCode)). Try again later."
+        case let .serverResponseError(_, detail):
+            detail
         }
     }
 

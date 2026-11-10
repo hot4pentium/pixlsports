@@ -34,6 +34,7 @@ struct NativeAccountLinkEndpointChecks {
         let origin = URL(string: fixture)!
         let notFound = NativeAccountLinkEndpoint.responseFailure(status: 404, contentType: "text/html", origin: origin)
         precondition(notFound.contains("HTTP 404") && notFound.contains("native-api.example.com"))
+        precondition(notFound.contains("development builds need a running development API"))
         let redirect = NativeAccountLinkEndpoint.responseFailure(status: 302, contentType: nil, origin: origin)
         precondition(redirect.contains("HTTP 302") && redirect.contains("blocked"))
         let page = NativeAccountLinkEndpoint.responseFailure(status: 503, contentType: "text/html", origin: origin)

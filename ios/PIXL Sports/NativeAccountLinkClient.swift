@@ -315,7 +315,14 @@ final class NativeAccountLinkClient {
         if response.statusCode == 401 {
             return .signInRequired
         }
-        return .serverResponseError(statusCode: response.statusCode)
+        return .serverResponseError(
+            statusCode: response.statusCode,
+            detail: NativeAccountLinkEndpoint.responseFailure(
+                status: response.statusCode,
+                contentType: response.mimeType,
+                origin: origin
+            )
+        )
     }
 
     func getData(_ path: String, headers: [String: String] = [:], clerk: Clerk) async throws -> Data {

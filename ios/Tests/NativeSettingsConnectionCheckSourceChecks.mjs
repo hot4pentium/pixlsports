@@ -21,11 +21,17 @@ test("connection results distinguish sign-in, unreachable host, and server error
   const check = client.slice(client.indexOf("func checkAPIConnection"), client.indexOf("func getData"));
   assert.match(check, /catch \{\s*return \.unreachable/);
   assert.match(check, /response\.statusCode == 401[\s\S]*?return \.signInRequired/);
-  assert.match(check, /serverResponseError\(statusCode: response\.statusCode\)/);
+  assert.match(check, /serverResponseError\([\s\S]*?statusCode: response\.statusCode,[\s\S]*?NativeAccountLinkEndpoint\.responseFailure\([\s\S]*?origin: origin/);
   assert.match(runtime, /case connected/);
   assert.match(runtime, /case signInRequired/);
   assert.match(runtime, /case unreachable/);
-  assert.match(runtime, /case serverResponseError\(statusCode: Int\)/);
+  assert.match(runtime, /case serverResponseError\(statusCode: Int, detail: String\)/);
+  assert.match(runtime, /case let \.serverResponseError\(_, detail\):\s+detail/);
+});
+
+test("404 connection errors identify the responding host and explain development-server requirements", () => {
+  const endpoint = source("NativeAccountLinkEndpoint.swift");
+  assert.match(endpoint, /The API route was not found on \\\(host\) \(HTTP 404\)\. Check the installed app’s API address; development builds need a running development API\./);
 });
 
 test("Settings presents the connection result without exposing credentials", () => {

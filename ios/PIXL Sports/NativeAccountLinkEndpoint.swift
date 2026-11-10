@@ -72,7 +72,7 @@ struct NativeAccountLinkEndpoint {
             return "\(host) redirected the connection (HTTP \(status)). Redirects are blocked to protect your sign-in. Check the API address."
         }
         if status == 404 {
-            return "The account-linking API was not found on \(host) (HTTP 404). Check that this is the development server, not the published website."
+            return "The API route was not found on \(host) (HTTP 404). Check the installed app’s API address; development builds need a running development API."
         }
         let page = contentType?.lowercased().contains("text/html") == true
             ? " The server returned a web page instead of an API response." : ""
