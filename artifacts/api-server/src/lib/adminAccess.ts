@@ -1,5 +1,5 @@
 import { createClerkClient } from "@clerk/express";
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import type { RequestHandler } from "express";
 import {
   accountAccessTable,
@@ -12,6 +12,7 @@ import { getOptionalClerkUserId } from "../middlewares/requireAuth";
 type BootstrapConfig = {
   enabled: boolean;
   email: string | null;
+  environment?: "production" | "development";
 };
 
 type VerifiedEmailUser = {
@@ -35,6 +36,23 @@ function productionBootstrapConfig(): BootstrapConfig {
   };
 }
 
+function previewBootstrapConfig(): BootstrapConfig {
+  const email = process.env.PIXL_PREVIEW_ADMIN_EMAIL?.trim().toLowerCase() || null;
+  return {
+    enabled: process.env.NODE_ENV === "development"
+      && Boolean(process.env.CLERK_SECRET_KEY?.startsWith("sk_test_"))
+      && Boolean(email),
+    email,
+    environment: "development",
+  };
+}
+
+function hasVerifiedEmail(user: VerifiedEmailUser, email: string) {
+  return user.emailAddresses.some((address) =>
+    address.emailAddress.trim().toLowerCase() === email.trim().toLowerCase()
+    && address.verification?.status === "verified");
+}
+
 export function getAdminClerkClient() {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) throw new Error("CLERK_SECRET_KEY is required for member administration");
@@ -46,16 +64,27 @@ export async function bootstrapAdminForVerifiedUser(
   config: BootstrapConfig,
   getUser: (id: string) => Promise<VerifiedEmailUser>,
 ) {
-  if (process.env.NODE_ENV !== "production" || !config.enabled || !config.email) return false;
+  const environment = config.environment ?? "production";
+  if (process.env.NODE_ENV !== environment || !config.enabled || !config.email) return false;
 
   const user = await getUser(clerkUserId);
-  const hasVerifiedBootstrapEmail = user.emailAddresses.some((emailAddress) =>
-    emailAddress.emailAddress.trim().toLowerCase() === config.email
-    && emailAddress.verification?.status === "verified");
-  if (!hasVerifiedBootstrapEmail) return false;
+  if (!hasVerifiedEmail(user, config.email)) return false;
 
   return db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ADMIN_MEMBERSHIP_LOCK_KEY}, 0))`);
+    if (environment === "development") {
+      const [existing] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
+        .from(adminUsersTable).where(eq(adminUsersTable.clerkUserId, clerkUserId)).limit(1);
+      if (existing) return true;
+      const [previousGrant] = await tx.select({ id: adminActionAuditTable.id })
+        .from(adminActionAuditTable)
+        .where(and(
+          eq(adminActionAuditTable.targetClerkUserId, clerkUserId),
+          eq(adminActionAuditTable.action, "initial_admin_bootstrapped"),
+          eq(adminActionAuditTable.status, "completed"),
+        )).limit(1);
+      if (previousGrant) return false;
+    }
     const [access] = await tx.select({
       lifecycleStatus: accountAccessTable.lifecycleStatus,
       deletionEligibleAt: accountAccessTable.deletionEligibleAt,
@@ -99,16 +128,24 @@ export async function isLastAdmin(clerkUserId: string) {
   return Number(adminCount.value) <= 1;
 }
 
-export async function hasAdminAccess(clerkUserId: string) {
-  if (process.env.NODE_ENV !== "production") return false;
+export async function hasAdminAccess(
+  clerkUserId: string,
+  getUser: (id: string) => Promise<VerifiedEmailUser> = (id) => getAdminClerkClient().users.getUser(id),
+) {
+  if (process.env.NODE_ENV !== "production") {
+    const config = previewBootstrapConfig();
+    if (!config.enabled || !config.email) return false;
+    const user = await getUser(clerkUserId);
+    if (!hasVerifiedEmail(user, config.email)) return false;
+    return bootstrapAdminForVerifiedUser(clerkUserId, config, async () => user);
+  }
   if (await isAdminUser(clerkUserId)) return true;
   const config = productionBootstrapConfig();
   if (!config.enabled) return false;
-  const clerk = getAdminClerkClient();
   await bootstrapAdminForVerifiedUser(
     clerkUserId,
     config,
-    (id) => clerk.users.getUser(id),
+    getUser,
   );
   return isAdminUser(clerkUserId);
 }

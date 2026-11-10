@@ -80,6 +80,22 @@ async function withNodeEnv<T>(value: string, run: () => Promise<T>) {
   }
 }
 
+async function withPreviewAdminConfig<T>(email: string | undefined, run: () => Promise<T>, key = "sk_test_preview_fixture") {
+  const previousEmail = process.env.PIXL_PREVIEW_ADMIN_EMAIL;
+  const previousKey = process.env.CLERK_SECRET_KEY;
+  if (email === undefined) delete process.env.PIXL_PREVIEW_ADMIN_EMAIL;
+  else process.env.PIXL_PREVIEW_ADMIN_EMAIL = email;
+  process.env.CLERK_SECRET_KEY = key;
+  try {
+    return await run();
+  } finally {
+    if (previousEmail === undefined) delete process.env.PIXL_PREVIEW_ADMIN_EMAIL;
+    else process.env.PIXL_PREVIEW_ADMIN_EMAIL = previousEmail;
+    if (previousKey === undefined) delete process.env.CLERK_SECRET_KEY;
+    else process.env.CLERK_SECRET_KEY = previousKey;
+  }
+}
+
 function fakeClerkUser(id: string, emailAddress: string) {
   return {
     id,
@@ -285,7 +301,7 @@ test("administrators can filter audit history by member, action, status, dates, 
     },
   ]);
   try {
-    await withTestServer(async (baseUrl) => {
+    await withNodeEnv("production", () => withTestServer(async (baseUrl) => {
       const headers = { "x-test-user": administratorId };
       const query = (params: Record<string, string>) => new URLSearchParams(params).toString();
 
@@ -352,7 +368,7 @@ test("administrators can filter audit history by member, action, status, dates, 
       assert.deepEqual(await invalidCalendarDate.json(), {
         error: "Dates must be valid YYYY-MM-DD calendar dates.",
       });
-    });
+    }));
   } finally {
     await cleanFixture([administratorId, targetId, otherTargetId, otherAdministratorId]);
   }
@@ -418,10 +434,10 @@ test("production bootstrap requires the exact verified address and does not enro
   }
 });
 
-test("development rejects administrator authorization, bootstrap, and grant attempts", async () => {
+test("development rejects administrator authorization, bootstrap, and grant attempts without preview opt-in", async () => {
   const administratorId = `admin-development-${crypto.randomUUID()}`;
   const targetId = `member-development-${crypto.randomUUID()}`;
-  await withNodeEnv("development", async () => {
+  await withPreviewAdminConfig(undefined, () => withNodeEnv("development", async () => {
     assert.equal(await hasAdminAccess(administratorId), false);
     const bootstrapped = await bootstrapAdminForVerifiedUser(
       targetId,
@@ -449,7 +465,60 @@ test("development rejects administrator authorization, bootstrap, and grant atte
       });
       assert.equal(audit.status, 403);
     });
+  }));
+});
+
+test("preview admin requires the configured verified identity, grants once, and respects removal", async () => {
+  const administratorId = `admin-preview-${crypto.randomUUID()}`;
+  const otherId = `other-preview-${crypto.randomUUID()}`;
+  const address = `${crypto.randomUUID()}@example.test`;
+  const verified = async () => ({
+    emailAddresses: [{ emailAddress: address, verification: { status: "verified" } }],
   });
+  try {
+    await withPreviewAdminConfig(` ${address.toUpperCase()} `, () => withNodeEnv("development", async () => {
+      assert.equal(await hasAdminAccess(administratorId, async () => ({
+        emailAddresses: [{ emailAddress: address, verification: { status: "unverified" } }],
+      })), false);
+      assert.equal(await isAdminUser(administratorId), false);
+      await db.insert(adminUsersTable).values({ clerkUserId: otherId });
+      assert.equal(await hasAdminAccess(otherId, async () => ({
+        emailAddresses: [{ emailAddress: `other-${address}`, verification: { status: "verified" } }],
+      })), false, "A development membership alone must not bypass the configured email");
+      assert.equal(await hasAdminAccess(administratorId, verified), true);
+      assert.equal(await hasAdminAccess(administratorId, verified), true);
+      const audit = await db.select().from(adminActionAuditTable)
+        .where(eq(adminActionAuditTable.targetClerkUserId, administratorId));
+      assert.equal(audit.length, 1);
+      assert.equal(audit[0].action, "initial_admin_bootstrapped");
+      assert.equal(audit[0].status, "completed");
+      assert.equal(await hasAdminAccess(administratorId, async () => ({
+        emailAddresses: [{ emailAddress: address, verification: { status: "unverified" } }],
+      })), false, "Existing membership cannot bypass current email verification");
+      await db.delete(adminUsersTable).where(eq(adminUsersTable.clerkUserId, administratorId));
+      assert.equal(await hasAdminAccess(administratorId, verified), false, "A removed grant must not be restored silently");
+      assert.equal(await isAdminUser(administratorId), false);
+    }));
+    await withPreviewAdminConfig(address, () => withNodeEnv("production", async () => {
+      assert.equal(await bootstrapAdminForVerifiedUser(
+        administratorId,
+        { enabled: true, email: address, environment: "development" },
+        async () => { throw new Error("Preview seeding must not run in production"); },
+      ), false);
+    }));
+    await withPreviewAdminConfig(address, () => withNodeEnv("development", async () => {
+      assert.equal(await hasAdminAccess(administratorId, async () => {
+        throw new Error("Preview must not use a live Clerk tenant");
+      }), false);
+    }), "sk_live_not_a_real_key");
+    await withPreviewAdminConfig(undefined, () => withNodeEnv("development", async () => {
+      assert.equal(await hasAdminAccess(otherId, async () => {
+        throw new Error("Disabled preview must not contact Clerk");
+      }), false);
+    }));
+  } finally {
+    await cleanFixture([administratorId, otherId]);
+  }
 });
 
 test("production administrators can grant and revoke roles with durable audit entries", async () => {

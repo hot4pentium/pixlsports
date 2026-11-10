@@ -59,3 +59,4 @@ RESEND_INBOUND_DOMAIN = "rexuas.resend.app"
 
 [userenv.development]
 NATIVE_IOS_CLERK_ISSUER = "https://healthy-feline-9810.clerk.accounts.dev"
+PIXL_PREVIEW_ADMIN_EMAIL = "hot4pentium@gmail.com"
