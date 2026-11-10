@@ -202,9 +202,11 @@ struct NativeNotificationSettingsView: View {
                             .accessibilityIdentifier("native-settings-sign-in-email")
                     }
                     .accessibilityIdentifier("native-settings-sign-in-email-row")
-                    Button("Sign out of iPhone account", role: .destructive) {
+                    Button(role: .destructive) {
                         if NativeOfflineRuntime.shared.hasPending { confirmingPendingSignOut = true }
                         else { Task { await signOut() } }
+                    } label: {
+                        Label("Sign out of iPhone account", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                     .accessibilityIdentifier("native-settings-sign-out")
                 }
@@ -262,11 +264,13 @@ struct NativeNotificationSettingsView: View {
                                 .accessibilityIdentifier("native-settings-local-reminder-status")
                         }
                         if localReminders.isSelected {
-                            Button("Refresh saved reminders") {
+                            Button {
                                 Task {
                                     NativeOfflineRuntime.shared.resume(clerk: clerk, force: true)
                                     await pushCoordinator.configure(clerk: clerk)
                                 }
+                            } label: {
+                                Label("Refresh saved reminders", systemImage: "arrow.clockwise")
                             }
                             .disabled(model.isSaving || pushCoordinator.isUpdating)
                             .accessibilityIdentifier("native-settings-local-reminders-refresh")
@@ -276,8 +280,10 @@ struct NativeNotificationSettingsView: View {
                         }
 
                         if pushCoordinator.authorizationStatus == .denied {
-                            Button("Open iPhone notification settings") {
+                            Button {
                                 pushCoordinator.openSystemSettings()
+                            } label: {
+                                Label("Open iPhone notification settings", systemImage: "bell.badge")
                             }
                         }
 
@@ -297,11 +303,19 @@ struct NativeNotificationSettingsView: View {
                             get: { model.preferences.timezone ?? TimeZone.current.identifier },
                             set: { value in Task { await save(timezone: value) } }
                         )) {
-                            ForEach(timezoneOptions, id: \.self) { zone in
-                                Text(zone.replacingOccurrences(of: "_", with: " ")).tag(zone)
+                            Section("On this iPhone") {
+                                Text(TimeZone.current.identifier.replacingOccurrences(of: "_", with: " "))
+                                    .tag(TimeZone.current.identifier)
+                            }
+                            Section("Other time zones") {
+                                ForEach(timezoneOptions.filter { $0 != TimeZone.current.identifier }, id: \.self) { zone in
+                                    Text(zone.replacingOccurrences(of: "_", with: " ")).tag(zone)
+                                }
                             }
                         }
                         .pickerStyle(.menu)
+                        .accessibilityHint("Sets the time zone for 7 a.m. event-day alerts. One-hour alerts use the event’s time zone.")
+                        .accessibilityIdentifier("native-settings-alert-timezone")
                         .disabled(model.isLoading || model.isSaving || pushCoordinator.isUpdating)
 
                         Text("Event-day alerts arrive at 7:00 a.m. in this time zone. One-hour alerts follow each event’s time zone.")
@@ -337,11 +351,14 @@ struct NativeNotificationSettingsView: View {
                     Text("Review exactly what will be removed before confirming. Linked PWA accounts and their shared data are protected.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Button(removalAccepted ? "Finish signing out" : "Delete account or remove iPhone access", role: .destructive) {
+                    Button(role: .destructive) {
                         Task {
                             if removalAccepted { await finishRemoval() }
                             else { await reviewRemoval() }
                         }
+                    } label: {
+                        Label(removalAccepted ? "Finish signing out" : "Delete account or remove iPhone access",
+                              systemImage: "trash")
                     }
                     .disabled(removalBusy)
                     .accessibilityIdentifier("native-settings-delete-account")
@@ -371,7 +388,9 @@ struct NativeNotificationSettingsView: View {
             .navigationTitle("Settings")
             .confirmationDialog("Discard unsynced iPhone changes and sign out?", isPresented: $confirmingPendingSignOut,
                                 titleVisibility: .visible) {
-                Button("Discard local changes & sign out", role: .destructive) { Task { await signOut() } }
+                Button(role: .destructive) { Task { await signOut() } } label: {
+                    Label("Discard local changes & sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
                 Button("Keep my changes", role: .cancel) {}
             } message: {
                 Text("Pending Prep, notes, and Tracker changes will be removed from this iPhone. Reconnect and sync first to keep them.")
@@ -396,6 +415,7 @@ struct NativeNotificationSettingsView: View {
                 Task { await pushCoordinator.configure(clerk: clerk) }
             }
             .preferredColorScheme(.light)
+            .tint(NativeMenuAppearance.actionTint)
             .interactiveDismissDisabled(removalBusy)
         }
     }
@@ -575,11 +595,18 @@ struct NativeOnboardingNotificationSettingsView: View {
                     .accessibilityIdentifier("native-onboarding-alert-day-of")
 
                 Picker("Event-day time zone", selection: $timezone) {
-                    ForEach(timezoneOptions, id: \.self) { zone in
-                        Text(zone.replacingOccurrences(of: "_", with: " ")).tag(zone)
+                    Section("On this iPhone") {
+                        Text(TimeZone.current.identifier.replacingOccurrences(of: "_", with: " "))
+                            .tag(TimeZone.current.identifier)
+                    }
+                    Section("Other time zones") {
+                        ForEach(timezoneOptions.filter { $0 != TimeZone.current.identifier }, id: \.self) { zone in
+                            Text(zone.replacingOccurrences(of: "_", with: " ")).tag(zone)
+                        }
                     }
                 }
                 .pickerStyle(.menu)
+                .accessibilityHint("Sets the time zone for 7 a.m. event-day alerts. One-hour alerts use the event’s time zone.")
                 .disabled(model.isLoading || isSaving || !model.isLinked)
                 .accessibilityIdentifier("native-onboarding-alert-timezone")
 
@@ -655,6 +682,7 @@ struct NativeOnboardingNotificationSettingsView: View {
         .task { await loadSettings() }
         .interactiveDismissDisabled()
         .preferredColorScheme(.light)
+        .tint(NativeMenuAppearance.actionTint)
         .accessibilityIdentifier("native-onboarding-alert-settings")
     }
 

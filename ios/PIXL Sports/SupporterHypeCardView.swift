@@ -298,6 +298,7 @@ struct SupporterHypeCardView: View {
             }
         }
         .navigationTitle("HYPE Card")
+        .tint(NativeMenuAppearance.actionTint)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -322,8 +323,10 @@ struct SupporterHypeCardView: View {
             isPresented: $showPublishConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Publish HYPE Card") {
+            Button {
                 Task { await saveSettings(confirmPublish: true) }
+            } label: {
+                Label("Publish HYPE Card", systemImage: "globe")
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -334,8 +337,10 @@ struct SupporterHypeCardView: View {
             isPresented: $showIdentityCorrectionConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Update HYPE Card identity") {
+            Button {
                 Task { await correctHypeCardIdentity() }
+            } label: {
+                Label("Update HYPE Card identity", systemImage: "person.crop.rectangle")
             }
             Button("Cancel", role: .cancel) {}
         } message: {

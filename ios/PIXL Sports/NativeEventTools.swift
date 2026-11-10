@@ -1039,14 +1039,19 @@ struct NativeToolSaveNotice: View {
             titleVisibility: .visible
         ) {
             if confirmingRecovery == .keepLocalPrep {
-                Button("Replace saved Prep", role: .destructive) {
+                Button(role: .destructive) {
                     Task { await onKeepLocalPrep?() }
+                } label: {
+                    Label("Replace saved Prep", systemImage: "arrow.triangle.2.circlepath")
                 }
             } else {
-                Button("Use saved \(savedContentName)", role: .destructive) {
+                Button(role: .destructive) {
                     Task { await model.discardAndReload(clerk: clerk) }
+                } label: {
+                    Label("Use saved \(savedContentName)", systemImage: "icloud.and.arrow.down")
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             if confirmingRecovery == .keepLocalPrep {
                 Text("The saved Prep list will be replaced with the one on this iPhone.")

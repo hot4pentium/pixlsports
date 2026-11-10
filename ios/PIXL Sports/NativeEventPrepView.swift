@@ -149,15 +149,25 @@ struct NativeEventPrepView: View {
                                 .accessibilityHint("Mark this task ready or not ready.")
                                 .accessibilityIdentifier("native-prep-item-\(item.id)")
                                 .contextMenu {
-                                     Button {
-                                         beginEditingTask(item)
-                                     } label: {
-                                         Label("Edit task", systemImage: "pencil")
+                                     Section {
+                                         Button {
+                                             beginEditingTask(item)
+                                         } label: {
+                                             Label("Edit task", systemImage: "pencil")
+                                         }
+                                         .disabled(!model.canEditLocally)
                                      }
-                                    Button("Remove task", role: .destructive) {
-                                         removeTask(id: item.id)
-                                    }
+                                     Section {
+                                         Button(role: .destructive) {
+                                             removeTask(id: item.id)
+                                         } label: {
+                                             Label("Delete task", systemImage: "trash")
+                                         }
+                                         .disabled(!model.canEditLocally)
+                                     }
                                 }
+                                 .accessibilityAction(named: "Edit task") { beginEditingTask(item) }
+                                 .accessibilityAction(named: "Delete task") { removeTask(id: item.id) }
                             }
                             .onDelete { offsets in
                                  if let editingTaskID,
@@ -396,13 +406,21 @@ struct NativeEventPrepView: View {
         .accessibilityHint("Mark this task ready or not ready.")
         .accessibilityIdentifier("native-prep-item-\(item.id)")
         .contextMenu {
-            Button {
-                editQuickTask(item)
-            } label: {
-                Label("Edit task", systemImage: "pencil")
+            Section {
+                Button {
+                    editQuickTask(item)
+                } label: {
+                    Label("Edit task", systemImage: "pencil")
+                }
+                .disabled(!model.canEditLocally)
             }
-            Button("Delete task", role: .destructive) {
-                removeTask(id: item.id)
+            Section {
+                Button(role: .destructive) {
+                    removeTask(id: item.id)
+                } label: {
+                    Label("Delete task", systemImage: "trash")
+                }
+                .disabled(!model.canEditLocally)
             }
         }
         .accessibilityHint("Tap to mark ready or not ready. Press and hold to edit or delete.")
@@ -445,7 +463,7 @@ struct NativeEventPrepView: View {
                             .accessibilityIdentifier("native-prep-management-title")
                         }
                         prepSections
-                        Text("Press and hold a task to edit or remove it.")
+                        Text("Press and hold a task to edit or delete it.")
                             .font(.caption)
                             .foregroundStyle(SupporterHomeColors.muted)
                         if compactContent {
@@ -482,7 +500,10 @@ struct NativeEventPrepView: View {
             }
         }
         .confirmationDialog("Leave without saving these prep edits?", isPresented: $confirmingLeave, titleVisibility: .visible) {
-            Button("Leave without saving", role: .destructive) { dismiss() }
+            Button(role: .destructive) { dismiss() } label: {
+                Label("Leave without saving", systemImage: "trash")
+            }
+            Button("Keep editing", role: .cancel) {}
         }
         .tint(NativeEventToolColors.prep)
         .task {

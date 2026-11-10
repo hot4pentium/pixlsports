@@ -91,7 +91,7 @@ test("routine Prep saves do not insert a changing status panel", () => {
 
 test("long-press edit updates the selected Prep task in place", () => {
   const prep = readFileSync(new URL("../PIXL Sports/NativeEventPrepView.swift", import.meta.url), "utf8");
-  assert.match(prep, /\.contextMenu\s*\{\s*Button\s*\{\s*beginEditingTask\(item\)\s*\}\s*label:\s*\{\s*Label\("Edit task", systemImage: "pencil"\)/);
+  assert.match(prep, /\.contextMenu\s*\{\s*Section\s*\{\s*Button\s*\{\s*beginEditingTask\(item\)\s*\}\s*label:\s*\{\s*Label\("Edit task", systemImage: "pencil"\)/);
   const editBlock = prep.slice(prep.indexOf("private func saveTaskEntry()"), prep.indexOf("private func beginEditingTask"));
   assert.match(editBlock, /items\[index\]\.label = label[\s\S]*?scheduleChecklistAutosave\(\)/);
   assert.doesNotMatch(editBlock, /items\[index\]\s*=\s*NativePrepItem/);
@@ -283,10 +283,9 @@ test("Prep save conflicts use simple copy and confirm before replacing local cha
   const pendingDescription = tools.slice(tools.indexOf("var pendingDescription"), tools.indexOf("var ownsCurrentScope"));
   assert.match(prep, /hasUnsavedChanges: edited,\s*savedContentName: "Prep"/);
   assert.match(notice, /Your Prep update wasn't saved\. It's still on this iPhone\./);
-  const savedAction = 'Button("Use saved \\(savedContentName)", role: .destructive)';
-  assert.ok(notice.includes(savedAction));
+  assert.match(notice, /Button\(role: \.destructive\) \{\s*Task \{ await model\.discardAndReload\(clerk: clerk\) \}\s*\} label: \{\s*Label\("Use saved \\\(savedContentName\)", systemImage: "icloud\.and\.arrow\.down"\)/);
   assert.ok(notice.includes('Button("Keep this Prep")'));
-  assert.ok(notice.includes('Button("Replace saved Prep", role: .destructive)'));
+  assert.match(notice, /Button\(role: \.destructive\) \{\s*Task \{ await onKeepLocalPrep\?\(\) \}\s*\} label: \{\s*Label\("Replace saved Prep"/);
   assert.ok(notice.includes("The saved Prep list will be replaced with the one on this iPhone."));
   assert.ok(notice.includes("Task { await onKeepLocalPrep?() }"));
   assert.ok(notice.includes('confirmingRecovery == .keepLocalPrep\n                ? "Replace saved Prep?"\n                : "Use saved \\(savedContentName) instead?"'));

@@ -17,8 +17,8 @@ struct NativeEventShareView: View {
                 VStack(alignment: .leading, spacing: 36) {
                     eventShareCard
                     VStack(spacing: 12) {
-                        hypeCardShareCard
                         hypeCardShareAction
+                        hypeCardShareCard
                     }
                 }
             } else {
@@ -91,11 +91,11 @@ struct NativeEventShareView: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     SupporterEyebrow(text: "Athlete Showcase")
-                    Text("Review & share HYPE Card")
+                    Text("Review HYPE Card")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Review the card before sharing. A private HYPE Card stays private.")
+                    Text("View the card and manage its sharing settings.")
                         .font(.subheadline)
                         .foregroundStyle(SupporterHomeColors.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -119,6 +119,7 @@ struct NativeEventShareView: View {
             .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityHint("Opens the Player Showcase and HYPE Card settings.")
         .accessibilityIdentifier("native-event-share-hype-card")
     }
 
@@ -137,6 +138,7 @@ struct NativeEventShareView: View {
                     .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Opens the iPhone share sheet with the public HYPE Card link.")
             .accessibilityIdentifier("native-event-share-hype-direct")
         } else if isCheckingHypeCardShare {
             HStack(spacing: 10) {
@@ -152,12 +154,13 @@ struct NativeEventShareView: View {
             Button {
                 Task { await refreshHypeCardShareURL() }
             } label: {
-                Label("Try sharing the HYPE Card again", systemImage: "arrow.clockwise")
+                Label("Check HYPE Card sharing again", systemImage: "arrow.clockwise")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             }
             .buttonStyle(.plain)
             .foregroundStyle(NativeEventToolColors.share)
+            .accessibilityHint("Checks availability without changing the card’s privacy.")
             .accessibilityIdentifier("native-event-hype-share-retry")
         } else {
             Text("This HYPE Card is private or paused. Review its settings before sharing.")
@@ -188,13 +191,14 @@ struct NativeEventShareView: View {
             .listRowBackground(SupporterHomeColors.panel)
 
             Section {
+                hypeCardShareAction
                 NavigationLink {
                     SupporterHypeCardView(clerk: clerk)
                 } label: {
-                    Label("Review & share HYPE Card", systemImage: "person.crop.rectangle")
+                    Label("Review HYPE Card", systemImage: "person.crop.rectangle")
                 }
+                .accessibilityHint("Opens the Player Showcase and HYPE Card settings.")
                 .accessibilityIdentifier("native-event-share-hype-card")
-                hypeCardShareAction
             } header: {
                 Text("Athlete HYPE Card")
             } footer: {

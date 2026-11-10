@@ -1,5 +1,11 @@
 import SwiftUI
 
+/// A readable PIXL blue for native controls on light system surfaces.
+/// Leave menu geometry, destructive colors, and presentation to iOS.
+enum NativeMenuAppearance {
+    static let actionTint = Color(red: 0.12, green: 0.34, blue: 0.70)
+}
+
 /// Shared presentation helpers for the native supporter schedule screen.
 /// Pure SwiftUI; no data loading or navigation lives here.
 

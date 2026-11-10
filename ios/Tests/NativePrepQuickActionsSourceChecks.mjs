@@ -9,7 +9,7 @@ const quickEditor = prep.slice(prep.indexOf("private func editQuickTask"), prep.
 
 test("the main checkoff rows themselves offer Edit and Delete", () => {
   assert.match(quickRow, /toggleItem\(id: item\.id\)/);
-  assert.match(quickRow, /\.contextMenu \{[\s\S]*editQuickTask\(item\)[\s\S]*Label\("Edit task"[\s\S]*Button\("Delete task", role: \.destructive\)[\s\S]*removeTask\(id: item\.id\)/);
+  assert.match(quickRow, /\.contextMenu \{[\s\S]*editQuickTask\(item\)[\s\S]*Label\("Edit task"[\s\S]*Button\(role: \.destructive\)[\s\S]*removeTask\(id: item\.id\)[\s\S]*Label\("Delete task", systemImage: "trash"\)/);
 });
 
 test("editing a main-screen task uses an inline alert rather than Manage navigation", () => {
