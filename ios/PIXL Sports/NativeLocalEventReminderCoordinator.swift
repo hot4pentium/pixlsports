@@ -204,7 +204,15 @@ final class NativeLocalEventReminderCoordinator: ObservableObject {
                     return
                 }
             }
-            status = "\(reminders.count) reminders saved on this iPhone. Refresh online before offline access expires."
+            if let next = reminders.first {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                formatter.timeZone = .current
+                formatter.dateFormat = "EEE, MMM d 'at' h:mm a"
+                status = "\(reminders.count) reminders saved on this iPhone. Next: \(formatter.string(from: next.fire))."
+            } else {
+                status = "No future reminders are currently saved on this iPhone. Only downloaded, verified events can have offline reminders."
+            }
             errorMessage = nil
         } catch {
             guard revision == generation, scope == vault.namespace else { return }

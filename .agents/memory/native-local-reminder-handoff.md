@@ -37,3 +37,15 @@ or account authority could falsely confirm an alert or retain a private request.
 **How to apply:** Preserve full checks on relevant changes and reset optimizations
 on verification/account/download boundaries. Completion and unreadable pending
 work remain invalidating inputs even without a server response.
+
+Treat enabled reminder switches as consent, not proof that an iPhone has a
+future reminder scheduled. A zero count captured after the expected fire time
+does not establish what was scheduled before that time.
+
+**Why:** A reported missed one-hour alert was investigated after its due time;
+the settings count alone could not distinguish an absent schedule from an
+already-consumed reminder.
+
+**How to apply:** Check the actual next trigger and verified download readiness
+before the deadline. Preserve the single-channel handoff while repairing local
+preparation; do not compensate by enabling simultaneous server push.

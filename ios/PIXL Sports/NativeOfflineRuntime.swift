@@ -62,6 +62,7 @@ final class NativeOfflineRuntime: ObservableObject {
     let vault = NativeOfflineVault.shared
     private let monitor = NWPathMonitor()
     private var worker: Task<Void, Never>?
+    private var preparationRefreshRequested = false
     private var lastRefresh = Date.distantPast
     private var activeDrains = Set<String>()
     private var activeEventCardSyncs = Set<String>()
@@ -515,6 +516,9 @@ final class NativeOfflineRuntime: ObservableObject {
             }
             if didSyncAny {
                 NotificationCenter.default.post(name: .nativeEventCardQueueSynced, object: nil)
+                // A newly synced Event Card also needs its verified workspace
+                // downloaded before local reminders can be scheduled.
+                resume(clerk: clerk, force: true)
             }
         } catch {
             for change in pendingEventCards(subject: subject) where onlyID == nil || change.id == onlyID {
@@ -927,19 +931,35 @@ final class NativeOfflineRuntime: ObservableObject {
     }
 
     private func cancelWorker() {
+        preparationRefreshRequested = false
         worker?.cancel()
         worker = nil
         workerID = UUID()
     }
 
     func resume(clerk: Clerk, force: Bool = false) {
-        guard online, clerk.isAuthFlowComplete, worker == nil,
-              force || Date().timeIntervalSince(lastRefresh) > 30 else { return }
+        guard online, clerk.isAuthFlowComplete else { return }
+        guard worker == nil else {
+            // Do not lose a new Event Card's refresh while an older schedule
+            // is being prepared. Coalesce requests into one fresh pass.
+            if force { preparationRefreshRequested = true }
+            return
+        }
+        guard force || Date().timeIntervalSince(lastRefresh) > 30 else { return }
+        preparationRefreshRequested = false
         lastRefresh = Date()
         let jobID = UUID()
         workerID = jobID
         worker = Task {
-            defer { if workerID == jobID { worker = nil } }
+            defer {
+                if workerID == jobID {
+                    worker = nil
+                    if preparationRefreshRequested {
+                        preparationRefreshRequested = false
+                        resume(clerk: clerk, force: true)
+                    }
+                }
+            }
             // Revalidate the native account before touching any persisted outbox.
             do {
                 let page = try await verifiedSchedule(clerk: clerk)
@@ -951,10 +971,20 @@ final class NativeOfflineRuntime: ObservableObject {
                 _ = await syncPendingHypeCardSettings(clerk: clerk)
                 guard !Task.isCancelled, vault.namespace == scope,
                       vault.canContinue(subject: clerk.user?.id) else { return }
-                await retryPendingEventCards(clerk: clerk)
+                let syncedCards = await retryPendingEventCards(clerk: clerk)
                 guard !Task.isCancelled, vault.namespace == scope,
                       vault.canContinue(subject: clerk.user?.id) else { return }
-                await prepare(page, clerk: clerk, scope: scope)
+                // The first page predates the sync above. Preparing that old
+                // snapshot can omit the very Event Card that just saved.
+                let preparationPage: NativeSupporterSchedule
+                if syncedCards.isEmpty {
+                    preparationPage = page
+                } else {
+                    preparationPage = try await verifiedSchedule(clerk: clerk)
+                }
+                guard !Task.isCancelled, vault.namespace == scope,
+                      vault.canContinue(subject: clerk.user?.id) else { return }
+                await prepare(preparationPage, clerk: clerk, scope: scope)
 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--prep-hold-auto-retry") { return }
 #endif
@@ -1025,6 +1055,7 @@ final class NativeOfflineRuntime: ObservableObject {
         let selected = Array(events.prefix(24))
         var prepared = 0
         var removed = 0
+        var failed = 0
         for event in selected {
             guard !Task.isCancelled, online, vault.namespace == scope else { return }
             do {
@@ -1050,13 +1081,17 @@ final class NativeOfflineRuntime: ObservableObject {
                 preparation = "Ready offline: \(prepared) of \(selected.count) upcoming events"
             } catch {
                 guard !Task.isCancelled, vault.namespace == scope else { return }
+                failed += 1
                 preparation = "Ready offline: \(prepared) of \(selected.count - removed). Tap Retry to finish."
-                return
+                // One unavailable older event must not prevent another
+                // upcoming event from receiving its local reminder.
+                continue
             }
         }
         preparation = selected.isEmpty ? "Saved dashboard available offline" :
             "Ready offline: \(prepared) upcoming events" + (events.count > 24 ? " · open other events to prepare them" : "")
         if removed > 0 { preparation += " · \(removed) removed downloads need an online download" }
+        if failed > 0 { preparation += " · Tap Retry to finish missing downloads" }
 #if os(iOS)
         await NativeLocalEventReminderCoordinator.shared.reconcile()
         await NativeToolAvailabilityReminderCoordinator.shared.reconcile()
