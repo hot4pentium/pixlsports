@@ -552,6 +552,7 @@
   }
 
   .pixl-locker-dashboard .dashboard-hype-card-panel__body {
+    --dashboard-hype-card-width: 220px;
     justify-items: center;
     gap: 12px;
     padding: 0 clamp(8px, 1vw, 14px) 20px;
@@ -562,9 +563,6 @@
     font-size: 10px;
   }
 
-  .pixl-locker-dashboard .supporter-hype-preview--desktop .supporter-hype-preview__card-wrap {
-    width: min(100%, 220px);
-  }
 
   .pixl-locker-dashboard .supporter-stat-trends-stage > .supporter-event-graphic--desktop {
     align-self: flex-start;
@@ -634,12 +632,10 @@
   }
 
   .supporter-dashboard-desktop-shell .dashboard-hype-card-panel__body {
+    --dashboard-hype-card-width: 184px;
     padding: 0 12px 14px;
   }
 
-  .supporter-dashboard-desktop-shell .supporter-hype-preview--desktop .supporter-hype-preview__card-wrap {
-    width: min(100%, 184px);
-  }
 
   .supporter-dashboard-desktop-shell .dashboard-hype-trends-row > .dashboard-desktop-message-board {
     display: flex;

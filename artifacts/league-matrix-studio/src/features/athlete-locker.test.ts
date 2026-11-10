@@ -17,13 +17,26 @@ test('the dashboard HYPE Card remains the Showcase entry without a separate mobi
 test('dashboard HYPE Cards use the basic iOS front without decorative frames', () => {
   const source = readFileSync(new URL('./supporter-hype-card-preview.tsx', import.meta.url), 'utf8');
   const css = readFileSync(new URL('./supporter-hype-card-preview.css', import.meta.url), 'utf8');
-  const dashboard = source.slice(source.indexOf('<div className="supporter-hype-preview__surface">'), source.indexOf('<DialogTrigger asChild>'));
+  const start = source.indexOf('<div className="supporter-hype-preview__surface">');
+  const dashboard = source.slice(start, source.indexOf('</Link>', start));
   assert.match(dashboard, /<NativeHypeCardFront/);
   assert.doesNotMatch(dashboard, /<LivingAthleteCardFront|cutoutUrl|data-design/);
   assert.match(dashboard, /seasonName=\{card\.seasonName\}/);
   assert.match(dashboard, /appearance=\{appearance\}/, 'saved photo placement and athlete details are preserved');
   assert.doesNotMatch(css, /clip-path: polygon|surface\[data-design/);
   assert.match(css, /surface > \.lc-native-front\s*\{[^}]*box-shadow: none/);
+});
+
+test('the dashboard omits sharing controls and gives Fan Base the HYPE Card width', () => {
+  const source = readFileSync(new URL('./supporter-hype-card-preview.tsx', import.meta.url), 'utf8');
+  const previewCss = readFileSync(new URL('./supporter-hype-card-preview.css', import.meta.url), 'utf8');
+  const summaryCss = readFileSync(new URL('./supporter-game-on-summary.css', import.meta.url), 'utf8');
+  const fanBase = readFileSync(new URL('./fan-base-owner-card.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /share-trigger|hype-card-share|DialogTrigger|QRCode|copyShareLink/);
+  assert.match(source, /href=\{manageHref\}/);
+  assert.match(summaryCss, /\.fan-base-entry\s*\{[^}]*width: 100%/);
+  assert.match(previewCss, /desktop \+ \.fan-base-entry\s*\{[^}]*var\(--dashboard-hype-card-width, 190px\)/);
+  assert.match(fanBase, /\/studio\/fan-base\?card=/);
 });
 
 test('the studio toolbar keeps the home destination without a Player Showcase tab', () => {

@@ -6983,7 +6983,7 @@ test('mobile event guidance prioritizes live games and always offers a next acti
 });
 
 for (const shareOnly of [false, true]) {
-test(shareOnly ? 'Hub Share copies the direct HYPE Card link on mobile and desktop' : 'mobile Calendar and saved HYPE Card stay paired with safe states and fresh owner data', { concurrency: false }, async () => {
+test(shareOnly ? 'Hub HYPE Cards omit dashboard sharing on mobile and desktop' : 'mobile Calendar and saved HYPE Card stay paired with safe states and fresh owner data', { concurrency: false }, async () => {
   const release = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-hype-pair');
   let devServer: ChildProcess | undefined, browser: ChildProcess | undefined;
@@ -7026,90 +7026,13 @@ test(shareOnly ? 'Hub Share copies the direct HYPE Card link on mobile and deskt
     const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
     const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean);
     const verifyHypeCardShare = async (variant: 'mobile' | 'desktop') => {
-      const expectedUrl = new URL('/fan/saved-athlete-token', fixtureUrl).toString();
-      await wait(`Boolean(document.querySelector('[data-testid="button-${variant}-hype-card-share"]'))`);
-      await evaluate(`document.querySelector('[data-testid="button-${variant}-hype-card-share"]').click()`);
-      await wait(`Boolean(document.querySelector('[data-testid="img-${variant}-hype-card-qr"]'))`);
-      const revealed = await evaluate<{ link: string; qrSrc: string; qrAlt: string }>(`(() => {
-        const link = document.querySelector('[data-testid="input-${variant}-hype-card-share-link"]');
-        const qr = document.querySelector('[data-testid="img-${variant}-hype-card-qr"]');
-        return {
-          link: link instanceof HTMLInputElement ? link.value : '',
-          qrSrc: qr instanceof HTMLImageElement ? qr.src : '',
-          qrAlt: qr instanceof HTMLImageElement ? qr.alt : '',
-        };
-      })()`);
-      assert.deepEqual(revealed, {
-        link: expectedUrl,
-        qrSrc: revealed.qrSrc,
-        qrAlt: "QR code for Alexandria Montgomery-Williams's HYPE Card",
-      });
-      assert.match(revealed.qrSrc, /^data:image\/png;base64,/);
-      await evaluate(`Object.defineProperty(navigator, 'clipboard', {
-        configurable: true,
-        value: { writeText: async (text) => { window.__copiedHypeCardUrl = text; } },
-      });
-      document.querySelector('[data-testid="button-${variant}-copy-hype-card-link"]').click()`);
-      await wait(`document.querySelector('[data-testid="text-${variant}-hype-card-copy-status"]')?.textContent === 'Link copied.'`);
-      assert.equal(await evaluate<string>('window.__copiedHypeCardUrl'), expectedUrl);
-      await evaluate(`(() => {
-        window.__hypeClipboardFallback = { calls: 0, selected: false, command: '', succeeds: true };
-        Object.defineProperty(navigator, 'clipboard', {
-          configurable: true,
-          value: { writeText: async () => { throw new Error('Clipboard permission denied'); } },
-        });
-        Object.defineProperty(document, 'execCommand', {
-          configurable: true,
-          value: (command) => {
-            const input = document.querySelector('[data-testid="input-${variant}-hype-card-share-link"]');
-            window.__hypeClipboardFallback.calls += 1;
-            window.__hypeClipboardFallback.command = command;
-            window.__hypeClipboardFallback.selected = input instanceof HTMLInputElement
-              && input.selectionStart === 0
-              && input.selectionEnd === input.value.length;
-            return command === 'copy' && window.__hypeClipboardFallback.selected
-              && window.__hypeClipboardFallback.succeeds;
-          },
-        });
-        document.querySelector('[data-testid="button-${variant}-copy-hype-card-link"]').click();
-      })()`);
-      await wait(`document.querySelector('[data-testid="text-${variant}-hype-card-copy-status"]')?.textContent === 'Link copied.'`);
-      assert.deepEqual(await evaluate('window.__hypeClipboardFallback'), {
-        calls: 1,
-        selected: true,
-        command: 'copy',
-        succeeds: true,
-      }, 'a denied Clipboard API write should fall back to copying the selected link');
-      await evaluate(`(() => {
-        window.__hypeClipboardFallback.calls = 0;
-        window.__hypeClipboardFallback.succeeds = false;
-        document.querySelector('[data-testid="button-${variant}-copy-hype-card-link"]').click();
-      })()`);
-      await wait(`document.querySelector('[data-testid="text-${variant}-hype-card-copy-status"]')?.textContent === 'Could not copy automatically. The link is selected so you can copy it.'`);
-      assert.deepEqual(await evaluate('window.__hypeClipboardFallback'), {
-        calls: 1,
-        selected: true,
-        command: 'copy',
-        succeeds: false,
-      }, 'if the legacy copy command also fails, the link should remain selected for manual copying');
-      await connection.send('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key: 'Escape',
-        code: 'Escape',
-        windowsVirtualKeyCode: 27,
-      }, page!.sessionId);
-      await connection.send('Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        key: 'Escape',
-        code: 'Escape',
-        windowsVirtualKeyCode: 27,
-      }, page!.sessionId);
-      await wait(`!document.querySelector('[data-testid="dialog-${variant}-hype-card-share"]')`);
+      await wait(`Boolean(document.querySelector('[data-testid="link-${variant}-hype-preview"]'))`);
       assert.equal(
-        await evaluate(`document.activeElement?.getAttribute('data-testid')`),
-        `button-${variant}-hype-card-share`,
-        `${variant} share dialog returns focus to its button`,
+        await evaluate(`document.querySelector('[data-testid="button-${variant}-hype-card-share"]')`),
+        null,
+        `${variant} dashboard sharing is available through Player Showcase instead`,
       );
+      assert.equal(await evaluate(`document.querySelector('[data-testid="link-${variant}-hype-preview"]').getAttribute('href')`), '/studio/player-showcase');
     };
     await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
     if (shareOnly) {

@@ -1111,18 +1111,19 @@
 }
 
 .fan-base-entry {
+  box-sizing: border-box;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   align-self: center;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   min-height: 44px;
   margin: 8px auto 0;
   padding: 8px 18px;
   border: 1px solid #416891;
-  border-radius: 999px;
+  border-radius: 12px;
   background: #122b4d;
   color: #fff;
   font: 700 14px/1.2 "DM Sans", sans-serif;

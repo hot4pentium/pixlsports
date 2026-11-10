@@ -12,7 +12,7 @@
   display: flex;
   flex: 1;
   min-width: 0;
-  padding-top: 16%;
+  padding-top: 0;
 }
 .supporter-hype-preview__link {
   display: flex;
@@ -26,28 +26,6 @@
   text-decoration: none;
 }
 .supporter-hype-preview__link:hover .supporter-hype-preview__surface { filter: brightness(1.04); }
-.supporter-hype-preview__share-trigger {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  right: 0;
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border: 1px solid rgba(142, 196, 255, .58);
-  border-radius: 999px;
-  padding: 0 10px;
-  background: rgba(7, 26, 49, .96);
-  color: #f7faff;
-  box-shadow: 0 5px 16px rgba(0, 0, 0, .2);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .04em;
-}
-.supporter-hype-preview__share-trigger:hover { background: #143861; }
-.supporter-hype-preview__share-trigger:focus-visible { outline: 2px solid #a1d1ff; outline-offset: 2px; }
 .supporter-hype-preview__surface {
   --ln-panel: #14243a;
   --ln-bg: #0c182b;
@@ -146,7 +124,7 @@
 }
 .supporter-hype-preview--desktop .supporter-hype-preview__card-wrap {
   flex: none;
-  width: min(100%, 190px);
+  width: min(100%, var(--dashboard-hype-card-width, 190px));
   flex-direction: column;
   gap: 8px;
   margin-inline: auto;
@@ -158,10 +136,8 @@
   margin-inline: 0;
   padding: 0;
 }
-.supporter-hype-preview--desktop .supporter-hype-preview__share-trigger {
-  position: static;
-  width: 100%;
-  min-height: 44px;
+.supporter-hype-preview--desktop + .fan-base-entry {
+  width: min(100%, var(--dashboard-hype-card-width, 190px));
 }
 .supporter-hype-preview--desktop .supporter-hype-preview__state {
   flex: none;

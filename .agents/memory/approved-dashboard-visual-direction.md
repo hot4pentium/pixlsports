@@ -15,6 +15,12 @@ Keep the PWA owner Showcase focused on HYPE Card, Edit Athlete Details (includin
 
 **How to apply:** Use the five owner sections as the scope for parity work; do not reintroduce design-editor shortcuts into the owner preview.
 
+On the PWA dashboard, omit the HYPE Card Share button and place a horizontal Fan Base button directly below the card at the same width. Keep sharing in Player Showcase.
+
+**Why:** The user requested removing the dashboard Share shortcut and making Fan Base span the HYPE Card width.
+
+**How to apply:** Preserve this layout across mobile and desktop card sizes, including the Fan Base details destination.
+
 Use soft navy shadows beneath native blue containers and major cards to add separation from the white canvas. Keep shadows off small controls.
 
 **Why:** The user asked for depth around the boxes without making the interface visually heavy.
