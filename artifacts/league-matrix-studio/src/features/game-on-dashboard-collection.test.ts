@@ -5,14 +5,25 @@ import test from 'node:test';
 const styles = readFileSync(new URL('./game-on-dashboard-collection.css', import.meta.url), 'utf8');
 const component = readFileSync(new URL('./game-on-dashboard-collection.tsx', import.meta.url), 'utf8');
 
-test('completed events share the HYPE Card and private cards lead to owner setup', () => {
-  assert.match(component, /const shareHypeCard = statusLabel === 'Complete' \|\| Boolean\(card.recordedGameId \|\| card.completedAt\)/);
-  assert.match(component, /shareHypeCard \? !hypeCardShareToken : !card.shareToken/);
-  assert.match(component, /shareHypeCard && !hypeCardShareToken/);
+test('the Event Card Share page separates event details from public HYPE Card sharing', () => {
+  assert.match(component, /const publicHypeCardUrl = hypeCardShareToken \? athleteFanCardUrl\(hypeCardShareToken\) : null/);
+  assert.match(component, /button-close-game-on-share-/);
+  assert.match(component, /Share event details/);
+  assert.match(component, /Share HYPE Card/);
+  assert.match(component, /<HypeCardShareQr url=\{publicHypeCardUrl\}/);
+  assert.match(component, /publicHypeCardUrl \? \([\s\S]*?<HypeCardShareQr/);
+  assert.match(component, /HYPE Card sharing is unavailable while the public card is hidden or paused/);
   assert.match(component, /href=\{hypeCardManageHref \?\? '\/studio\/athlete-page'\}/);
-  assert.match(component, /shareHypeCard \? 'Share HYPE Card' : 'Share'/);
   const dashboard = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
   assert.match(dashboard, /!savedFanCard.paused && savedFanCard.showHypeCard && Date.parse\(savedFanCard.seasonEndsAt\) > currentTime.getTime\(\)/);
+});
+
+test('the selected Event Card Share action opens an accessible Share page', () => {
+  assert.match(component, /panel: 'calendar' \| 'prep' \| 'tracker' \| 'share'/);
+  assert.match(component, /onOpenPanel\(card\.id, 'share', event\.currentTarget\)/);
+  assert.match(component, /aria-expanded=\{shareOpen\}/);
+  assert.match(component, /data-testid=\{`panel-game-on-share-\$\{card\.id\}`\}/);
+  assert.match(component, /role="status" aria-live="polite" data-testid=\{`status-share-hype-card-\$\{card\.id\}`\}/);
 });
 
 test('Event Card Stat Tracker opens the game-day choice before either path', () => {

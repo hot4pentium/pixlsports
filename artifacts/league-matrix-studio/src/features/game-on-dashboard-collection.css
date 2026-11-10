@@ -275,7 +275,8 @@
 }
 .game-on-collection__card--tracker-open .game-on-collection__flip-inner,
 .game-on-collection__card--calendar-open .game-on-collection__flip-inner,
-.game-on-collection__card--prep-open .game-on-collection__flip-inner { transform: rotateY(180deg); }
+.game-on-collection__card--prep-open .game-on-collection__flip-inner,
+.game-on-collection__card--share-open .game-on-collection__flip-inner { transform: rotateY(180deg); }
 .game-on-collection__card--calendar-open {
   flex-basis: min(94vw, 430px);
   min-height: 600px;
@@ -288,15 +289,21 @@
   flex-basis: min(94vw, 430px);
   min-height: 600px;
 }
+.game-on-collection__card--share-open {
+  flex-basis: min(94vw, 430px);
+  min-height: 660px;
+}
 .game-on-collection__card--tracker-open .game-on-collection__flip-front,
 .game-on-collection__card--calendar-open .game-on-collection__flip-front,
-.game-on-collection__card--prep-open .game-on-collection__flip-front {
+.game-on-collection__card--prep-open .game-on-collection__flip-front,
+.game-on-collection__card--share-open .game-on-collection__flip-front {
   visibility: hidden;
   transition-delay: .34s;
 }
 .game-on-collection__card--tracker-open .game-on-collection__flip-back,
 .game-on-collection__card--calendar-open .game-on-collection__flip-back,
-.game-on-collection__card--prep-open .game-on-collection__flip-back {
+.game-on-collection__card--prep-open .game-on-collection__flip-back,
+.game-on-collection__card--share-open .game-on-collection__flip-back {
   visibility: visible;
   transition-delay: 0s;
 }
@@ -344,6 +351,97 @@
   color: #506782;
   font-size: 11px;
   line-height: 1.45;
+}
+.game-on-collection__share-page {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  color: #102b4d;
+}
+.game-on-collection__share-heading {
+  display: grid;
+  gap: 5px;
+}
+.game-on-collection__share-heading h3 {
+  margin: 0;
+  color: #102b4d;
+  font: 800 24px/.98 'Barlow Condensed', var(--app-font-serif), sans-serif;
+  text-transform: uppercase;
+}
+.game-on-collection__share-heading > p:last-child,
+.game-on-collection__share-option > div > p:last-child,
+.game-on-collection__share-status,
+.game-on-collection__share-unavailable p {
+  margin: 0;
+  color: #506782;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.game-on-collection__share-option {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #c4d8eb;
+  border-top: 3px solid #17467b;
+  border-radius: 7px;
+  background: #fff;
+}
+.game-on-collection__share-option h4 {
+  margin: 3px 0 5px;
+  color: #102b4d;
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.game-on-collection__share-option > button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid #17467b;
+  border-radius: 6px;
+  background: #12355c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.game-on-collection__share-option > button:hover { background: #1b4b7c; }
+.game-on-collection__share-option > button:focus-visible {
+  outline: 3px solid #2878f5;
+  outline-offset: 2px;
+}
+.game-on-collection__share-option > button:disabled {
+  border-color: #c1d5e8;
+  background: #edf3f9;
+  color: #506782;
+  cursor: not-allowed;
+}
+.game-on-collection__share-unavailable {
+  display: grid;
+  gap: 8px;
+}
+.game-on-collection__share-unavailable a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #c1d5e8;
+  border-radius: 6px;
+  color: #17467b;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.game-on-collection__share-unavailable a:hover { background: #e9f4ff; }
+.game-on-collection__share-unavailable a:focus-visible {
+  outline: 3px solid #2878f5;
+  outline-offset: 2px;
 }
 .game-on-collection__tracker-stat-option {
   display: grid;

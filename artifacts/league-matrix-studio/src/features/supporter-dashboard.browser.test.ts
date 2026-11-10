@@ -256,7 +256,7 @@ class DevToolsConnection {
   }
 }
 
-async function openPage(connection: DevToolsConnection, url: string) {
+async function openPage(connection: DevToolsConnection, url: string, viewport?: { width: number; height: number; deviceScaleFactor: number; mobile: boolean }) {
   const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
   const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', {
     targetId: target.targetId,
@@ -267,6 +267,7 @@ async function openPage(connection: DevToolsConnection, url: string) {
   await connection.send('Runtime.enable', {}, sessionId);
   connection.registerTarget(target.targetId, sessionId);
   await connection.send('Page.bringToFront', {}, sessionId);
+  if (viewport) await connection.send('Emulation.setDeviceMetricsOverride', viewport, sessionId);
   await connection.send('Page.navigate', { url }, sessionId);
   return { sessionId, targetId: target.targetId };
 }
@@ -2551,13 +2552,12 @@ test('Event Card sharing sends the selected card link and copies it when sharing
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
-    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?game-on-card-save-transition`);
-    await connection.send('Emulation.setDeviceMetricsOverride', {
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?game-on-card-save-transition`, {
       width: 1440,
       height: 1000,
       deviceScaleFactor: 1,
       mobile: false,
-    }, page.sessionId);
+    });
     await waitFor(connection, page.sessionId,
       `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]'))`,
       Boolean);
@@ -2600,7 +2600,7 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       return { inactive, initiallyExpanded };
     })()`, page.sessionId);
     assert.deepEqual(trackerStateColors, {
-      inactive: 'rgb(231, 242, 255)',
+      inactive: 'rgb(255, 255, 255)',
       initiallyExpanded: 'false',
     }, 'Track Stats should be neutral by default');
 
@@ -2619,27 +2619,32 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-game-on-card-share:share-test-card"]')?.click()`,
       page.sessionId,
     );
+    await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="panel-game-on-share-share:share-test-card"]'))`, Boolean);
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-event-details-share:share-test-card"]')?.click()`,
+      page.sessionId,
+    );
     await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card shared.'`, Boolean);
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-share-event-details-share:share-test-card"]')?.textContent === 'Event details shared.'`, Boolean);
     const sharedCardDetails = await connection.evaluate<{
       sharedUrl: string;
       expectedUrl: string;
       selectedCardActionVisible: boolean;
-      editArrowVisible: boolean;
+      backButtonVisible: boolean;
       removedActionTilesAbsent: boolean;
     }>(`(() => {
       const dialog = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"]');
-      const cardAction = dialog?.querySelector('[data-testid="button-share-game-on-card-share:share-test-card"]');
+      const cardAction = dialog?.querySelector('[data-testid="button-share-event-details-share:share-test-card"]');
       return {
         sharedUrl: window.__eventCardShareCalls[0]?.url ?? '',
         expectedUrl: new URL('/game-on/share-test-card', location.href).href,
         selectedCardActionVisible: Boolean(cardAction?.getClientRects().length),
-        editArrowVisible: Boolean(dialog?.querySelector('[data-testid^="button-edit-event-arrow-"]')?.getClientRects().length),
+        backButtonVisible: Boolean(dialog?.querySelector('[data-testid="button-close-game-on-share-share:share-test-card"]')?.getClientRects().length),
         removedActionTilesAbsent: !dialog?.querySelector('[data-testid^="button-edit-calendar-"], [data-testid^="button-copy-game-on-card-link-"], [data-testid^="link-open-game-on-card-"]'),
       };
     })()`, page.sessionId);
     assert.equal(sharedCardDetails.selectedCardActionVisible, true, 'Share should be visible on the selected Event Card');
-    assert.equal(sharedCardDetails.editArrowVisible, true, 'the Event Card arrow should provide the edit entry point');
+    assert.equal(sharedCardDetails.backButtonVisible, true, 'the Share page should provide a clear return action');
     assert.equal(sharedCardDetails.removedActionTilesAbsent, true, 'Details, Copy link, and Open card should not appear as action tiles');
     assert.equal(sharedCardDetails.sharedUrl, sharedCardDetails.expectedUrl,
       'the device share sheet should receive this Event Card public link');
@@ -2653,11 +2658,11 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       });
     })()`, page.sessionId);
     await connection.evaluate(
-      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-game-on-card-share:share-test-card"]')?.click()`,
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-event-details-share:share-test-card"]')?.click()`,
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `Boolean(window.__eventCardCopiedUrl)
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card link copied.'`, Boolean);
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-share-event-details-share:share-test-card"]')?.textContent === 'Event details link copied.'`, Boolean);
     assert.equal(
       await connection.evaluate<string>('window.__eventCardCopiedUrl', page.sessionId),
       sharedCardDetails.expectedUrl,
@@ -2685,11 +2690,11 @@ test('Event Card sharing sends the selected card link and copies it when sharing
       });
     })()`, page.sessionId);
     await connection.evaluate(
-      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-game-on-card-share:share-test-card"]')?.click()`,
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-event-details-share:share-test-card"]')?.click()`,
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `window.__eventCardShareCancelled === true
-      && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-game-on-share"]')`, Boolean);
+      && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="status-share-event-details-share:share-test-card"]')`, Boolean);
     assert.equal(
       await connection.evaluate<number>('window.__eventCardClipboardCalls', page.sessionId),
       0,
@@ -2702,6 +2707,7 @@ test('Event Card sharing sends the selected card link and copies it when sharing
         else delete navigator[key];
       }
     })()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid="button-close-game-on-share-share:share-test-card"]')?.click()`, page.sessionId);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-edit-event-arrow-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card[data-calendar-open="true"] [data-testid="input-inline-date"]'))`, Boolean);
     assert.match(await connection.evaluate<string>(
@@ -3244,14 +3250,14 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
             label.querySelector('.game-on-collection__suggested-badge')?.remove();
             return label.textContent?.trim() || '';
           }),
-        optionsAreTouchFriendly: options.length === 2 && options.every((option) => option.getBoundingClientRect().height >= 44),
+        optionsAreTouchFriendly: options.length === 3 && options.every((option) => option.getBoundingClientRect().height >= 44),
       };
     })()`, page.sessionId), {
       expanded: true,
       detailVisible: true,
       factsVisible: true,
       editorOnFront: false,
-      options: ['Prep', 'Track Stats'],
+      options: ['Prep', 'Track Stats', 'Share'],
       optionsAreTouchFriendly: true,
     });
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-edit-event-arrow-"]'))
@@ -3503,54 +3509,6 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:filter-test-published"] .game-on-collection__actions')?.hidden === true`,
       page.sessionId,
     ), true, 'share actions should remain hidden on compact grid tiles');
-    await connection.evaluate(`(() => {
-      window.__eventCardShareCalls = [];
-      Object.defineProperty(navigator, 'share', {
-        configurable: true,
-        value: async (payload) => window.__eventCardShareCalls.push(payload),
-      });
-    })()`, page.sessionId);
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card shared.'`, Boolean);
-    const sharedCardDetails = await connection.evaluate<{
-      sharedUrl: string;
-      expectedUrl: string;
-      selectedCardActionVisible: boolean;
-      editArrowVisible: boolean;
-      removedActionTilesAbsent: boolean;
-    }>(`(() => {
-      const dialog = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"]');
-      const cardAction = dialog?.querySelector('[data-testid="button-share-game-on-card-share:filter-test-published"]');
-      return {
-        sharedUrl: window.__eventCardShareCalls[0]?.url ?? '',
-        expectedUrl: new URL('/game-on/filter-test-published', location.href).href,
-        selectedCardActionVisible: Boolean(cardAction?.getClientRects().length),
-        editArrowVisible: Boolean(dialog?.querySelector('[data-testid^="button-edit-event-arrow-"]')?.getClientRects().length),
-        removedActionTilesAbsent: !dialog?.querySelector('[data-testid^="button-edit-calendar-"], [data-testid^="button-copy-game-on-card-link-"], [data-testid^="link-open-game-on-card-"]'),
-      };
-    })()`, page.sessionId);
-    assert.deepEqual(sharedCardDetails, {
-      sharedUrl: sharedCardDetails.expectedUrl,
-      expectedUrl: sharedCardDetails.expectedUrl,
-      selectedCardActionVisible: true,
-      editArrowVisible: true,
-      removedActionTilesAbsent: true,
-    }, 'Share should send the selected Event Card public link');
-    await connection.evaluate(`(() => {
-      window.__eventCardCopiedUrl = '';
-      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
-      Object.defineProperty(navigator, 'clipboard', {
-        configurable: true,
-        value: { writeText: async (url) => { window.__eventCardCopiedUrl = url; } },
-      });
-    })()`, page.sessionId);
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="button-share-game-on-card-share:filter-test-published"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `Boolean(window.__eventCardCopiedUrl)
-      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [data-testid="status-game-on-share"]')?.textContent === 'Event Card link copied.'`, Boolean);
-    const copiedCardUrl = await connection.evaluate<string>('window.__eventCardCopiedUrl', page.sessionId);
-    assert.equal(copiedCardUrl, sharedCardDetails.expectedUrl,
-      'browsers without Web Share should copy the same Event Card link');
     await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
     await waitFor(connection, page.sessionId,
       `!document.querySelector('.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:filter-test-published"]')`,
@@ -3944,7 +3902,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       const actions = Array.from(card?.querySelectorAll('.game-on-collection__actions > button') || [])
         .filter((action) => action.getClientRects().length > 0);
       const cardRect = card?.getBoundingClientRect();
-      return actions.length === 2 && Boolean(cardRect)
+      return actions.length === 3 && Boolean(cardRect)
         && actions.every((action) => {
           const rect = action.getBoundingClientRect();
           return rect.width >= 44 && rect.left >= cardRect.left && rect.right <= cardRect.right;

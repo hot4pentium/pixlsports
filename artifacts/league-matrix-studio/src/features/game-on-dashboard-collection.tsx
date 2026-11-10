@@ -1,18 +1,21 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Share2, Swords, Trash2, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, ExternalLink, MapPin, Plus, Search, Share2, Swords, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { buildWorkspaceToolHref } from './workspace-context';
 import { shareGameOnCardPublicLink, sharePublicCardLink } from './game-on-card-links';
+import { athleteFanCardUrl } from './athlete-fan-card-url';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { getSuggestedGameOnAction } from './game-on-dashboard-model';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
 import { EventCardLiveTaps } from './event-card-live-taps';
 import type { Sport } from './stat-tracker';
 import './game-on-dashboard-collection.css';
+
+const HypeCardShareQr = lazy(() => import('./hype-card-share-qr').then(({ HypeCardShareQr: component }) => ({ default: component })));
 
 export type DashboardGameOnCard = {
   id: string;
@@ -132,8 +135,8 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
   visible: boolean;
   featuredCardId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
-  panel: 'calendar' | 'prep' | 'tracker' | null;
-  onOpenPanel: (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => void;
+  panel: 'calendar' | 'prep' | 'tracker' | 'share' | null;
+  onOpenPanel: (id: string, panel: 'calendar' | 'prep' | 'tracker' | 'share', trigger: HTMLButtonElement) => void;
   onClosePanel: () => void;
   statTrackerUserId?: string | null;
   prepUserId?: string | null;
@@ -148,14 +151,17 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
   const frontFaceRef = useRef<HTMLDivElement>(null);
   const backFaceRef = useRef<HTMLDivElement>(null);
   const previousPanel = useRef<typeof panel>(null);
-  const [shareLinkNotice, setShareLinkNotice] = useState('');
+  const [eventShareNotice, setEventShareNotice] = useState('');
+  const [hypeCardShareNotice, setHypeCardShareNotice] = useState('');
   const trackerOpen = panel === 'tracker';
   const prepOpen = panel === 'prep';
   const calendarOpen = panel === 'calendar';
+  const shareOpen = panel === 'share';
   const panelOpen = panel !== null;
   const trackerPanelId = `panel-inline-tracker-${card.id}-${editorId}`;
   const calendarPanelId = `panel-inline-calendar-${card.id}-${editorId}`;
   const prepPanelId = `panel-inline-prep-${card.id}-${editorId}`;
+  const sharePanelId = `panel-inline-share-${card.id}-${editorId}`;
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
   const suggestedAction = getSuggestedGameOnAction({
@@ -223,20 +229,22 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
     previousRecommendation.current.announced = true;
   }, [isDialogCard, selected, visible, card.isUnsavedDraft, recommendationIdentity, statusLabel, suggestedAction, title]);
   const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
-  const shareHypeCard = statusLabel === 'Complete' || Boolean(card.recordedGameId || card.completedAt);
-  const shareLabel = shareHypeCard ? 'HYPE Card' : 'Event Card';
-  const shareEventCard = async () => {
-    if (shareHypeCard ? !hypeCardShareToken : !card.shareToken) return;
-    setShareLinkNotice('');
-    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-    const result = shareHypeCard
-      ? await sharePublicCardLink(`${window.location.origin}${basePath}/player/${encodeURIComponent(hypeCardShareToken!)}`, `${card.athleteName}'s HYPE Card`)
-      : await shareGameOnCardPublicLink(card.shareToken!, `${card.athleteName}'s Event Card`);
-    if (result === 'shared') setShareLinkNotice(`${shareLabel} shared.`);
-    else if (result === 'copied') setShareLinkNotice(`${shareLabel} link copied.`);
-    else if (result === 'failed') {
-      setShareLinkNotice(`${shareLabel} link could not be shared or copied.`);
-    }
+  const publicHypeCardUrl = hypeCardShareToken ? athleteFanCardUrl(hypeCardShareToken) : null;
+  const shareEventDetails = async () => {
+    if (!card.shareToken) return;
+    setEventShareNotice('');
+    const result = await shareGameOnCardPublicLink(card.shareToken, `${card.athleteName}'s Event Card`);
+    if (result === 'shared') setEventShareNotice('Event details shared.');
+    else if (result === 'copied') setEventShareNotice('Event details link copied.');
+    else if (result === 'failed') setEventShareNotice('Event details could not be shared. Try again.');
+  };
+  const shareHypeCard = async () => {
+    if (!publicHypeCardUrl) return;
+    setHypeCardShareNotice('');
+    const result = await sharePublicCardLink(publicHypeCardUrl, `${card.athleteName}'s HYPE Card`);
+    if (result === 'shared') setHypeCardShareNotice('HYPE Card shared.');
+    else if (result === 'copied') setHypeCardShareNotice('HYPE Card link copied.');
+    else if (result === 'failed') setHypeCardShareNotice('HYPE Card could not be shared. Try again.');
   };
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
   const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
@@ -248,7 +256,9 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
         ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-prep__title')
         : panel === 'calendar'
           ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-inline__section h3')
-          : backFaceRef.current?.querySelector<HTMLElement>('.game-on-collection__tracker-mode-heading h3');
+          : panel === 'share'
+            ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-collection__share-heading h3')
+            : backFaceRef.current?.querySelector<HTMLElement>('.game-on-collection__tracker-mode-heading h3');
       if (heading?.getClientRects().length) heading.focus();
     }
     previousPanel.current = panel;
@@ -259,7 +269,7 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
       layout={!isDialogCard && !reduceMotion}
       layoutId={isDialogCard || reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
       transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
-      className={`game-on-collection__card${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' || card.status === 'Sharing' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${isActive ? ' game-on-collection__card--active' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
+      className={`game-on-collection__card${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' || card.status === 'Sharing' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${isActive ? ' game-on-collection__card--active' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}${shareOpen ? ' game-on-collection__card--share-open' : ''}`}
       hidden={!visible}
       data-testid={`card-game-on-${card.id}`}
       data-layout-id={card.layoutId ?? card.id}
@@ -402,35 +412,20 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
                         {suggestedAction === 'tracker' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
                       </button>
                 )}
-                {shareHypeCard && !hypeCardShareToken ? (
-                  <Link
-                    href={hypeCardManageHref ?? '/studio/athlete-page'}
-                    className="game-on-collection__action--share"
-                    data-testid={`button-share-game-on-card-${card.id}`}
-                    aria-label="Set up HYPE Card sharing"
-                  >
-                    <Share2 size={15} aria-hidden="true" />
-                    <span>Set up HYPE Card sharing</span>
-                  </Link>
-                ) : (shareHypeCard ? hypeCardShareToken : card.shareToken) && (
-                  <button
-                    type="button"
+                <button
+                  type="button"
                   className={`game-on-collection__action--share${suggestedAction === 'share' ? ' game-on-collection__action--suggested' : ''}`}
-                    onClick={() => void shareEventCard()}
-                  aria-label={`Share ${card.athleteName}'s ${shareLabel}${suggestedAction === 'share' ? '. Suggested next.' : ''}`}
-                    data-testid={`button-share-game-on-card-${card.id}`}
+                  onClick={(event) => onOpenPanel(card.id, 'share', event.currentTarget)}
+                  aria-label="Open Share page"
+                  aria-expanded={shareOpen}
+                  aria-controls={shareOpen ? sharePanelId : undefined}
+                  data-testid={`button-share-game-on-card-${card.id}`}
                   data-suggested-next={suggestedAction === 'share' ? 'true' : undefined}
-                  >
-                    <Share2 size={15} aria-hidden="true" />
-                    <span>{shareHypeCard ? 'Share HYPE Card' : 'Share'}</span>
+                >
+                  <Share2 size={15} aria-hidden="true" />
+                  <span>Share</span>
                   {suggestedAction === 'share' && <span className="game-on-collection__suggested-badge" aria-hidden="true">NEXT</span>}
-                  </button>
-                )}
-                {shareLinkNotice && (
-                  <p className="basis-full text-xs font-semibold text-current" role="status" aria-live="polite" data-testid="status-game-on-share">
-                    {shareLinkNotice}
-                  </p>
-                )}
+                </button>
               </>
             )}
           </div>
@@ -512,6 +507,58 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
               />
             </>
           )}
+          {shareOpen && (
+            <>
+              <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-game-on-share-${card.id}`}>
+                <ArrowLeft size={15} aria-hidden="true" /> Back to Event Card
+              </button>
+              <div id={sharePanelId} className="game-on-collection__share-page" data-testid={`panel-game-on-share-${card.id}`}>
+                <div className="game-on-collection__share-heading">
+                  <p className="game-on-collection__tracker-mode-eyebrow">Share</p>
+                  <h3 tabIndex={-1} data-testid={`heading-game-on-share-${card.id}`}>Share this game day</h3>
+                  <p>Send event details or share the athlete’s HYPE Card with family and friends.</p>
+                </div>
+                <section className="game-on-collection__share-option" aria-labelledby={`event-details-share-title-${card.id}`}>
+                  <div>
+                    <p className="game-on-collection__tracker-option-eyebrow">This Event Card</p>
+                    <h4 id={`event-details-share-title-${card.id}`}>{card.athleteName || 'Your athlete'}{card.opponent ? ` vs ${card.opponent}` : ' · Game day'}</h4>
+                    <p>{date.weekday}{card.time ? ` · ${displayTime(card.time)}` : ''}{card.location ? ` · ${card.location}` : ''}</p>
+                  </div>
+                  <button type="button" onClick={() => void shareEventDetails()} disabled={!card.shareToken}
+                    data-testid={`button-share-event-details-${card.id}`}>
+                    <Share2 size={16} aria-hidden="true" /> Share event details
+                  </button>
+                  {eventShareNotice && <p className="game-on-collection__share-status" role="status" aria-live="polite" data-testid={`status-share-event-details-${card.id}`}>{eventShareNotice}</p>}
+                  {!card.shareToken && <p className="game-on-collection__share-status" role="status">Event sharing is unavailable until this card is published.</p>}
+                </section>
+                <section className="game-on-collection__share-option" aria-labelledby={`hype-card-share-title-${card.id}`}>
+                  <div>
+                    <p className="game-on-collection__tracker-option-eyebrow">Athlete Showcase</p>
+                    <h4 id={`hype-card-share-title-${card.id}`}>Share HYPE Card</h4>
+                    <p>Share the athlete’s published HYPE Card separately from this event.</p>
+                  </div>
+                  {publicHypeCardUrl ? (
+                    <>
+                      <button type="button" onClick={() => void shareHypeCard()} data-testid={`button-share-hype-card-${card.id}`}>
+                        <Share2 size={16} aria-hidden="true" /> Share HYPE Card
+                      </button>
+                      {hypeCardShareNotice && <p className="game-on-collection__share-status" role="status" aria-live="polite" data-testid={`status-share-hype-card-${card.id}`}>{hypeCardShareNotice}</p>}
+                      <Suspense fallback={<p className="game-on-collection__share-status" role="status">Preparing QR code…</p>}>
+                        <HypeCardShareQr url={publicHypeCardUrl} athleteName={card.athleteName || 'Your athlete'} />
+                      </Suspense>
+                    </>
+                  ) : (
+                    <div className="game-on-collection__share-unavailable" role="status" data-testid={`status-hype-card-share-unavailable-${card.id}`}>
+                      <p>HYPE Card sharing is unavailable while the public card is hidden or paused.</p>
+                      <Link href={hypeCardManageHref ?? '/studio/athlete-page'} data-testid={`link-manage-hype-card-sharing-${card.id}`}>
+                        HYPE Card settings <ExternalLink size={14} aria-hidden="true" />
+                      </Link>
+                    </div>
+                  )}
+                </section>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </motion.article>
@@ -538,7 +585,7 @@ export function GameOnDashboardCollection({
   statTrackerTeamName,
   onCompleteScheduledGame,
 }: GameOnDashboardCollectionProps) {
-  const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
+  const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' | 'share' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
   const [deleteAnnouncement, setDeleteAnnouncement] = useState('');
   const [deleteConfirmationCardId, setDeleteConfirmationCardId] = useState<string | null>(null);
@@ -627,7 +674,7 @@ export function GameOnDashboardCollection({
     setOpenPanel(null);
   }, [openPanel, selectedId]);
 
-  const openCardPanel = (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => {
+  const openCardPanel = (id: string, panel: 'calendar' | 'prep' | 'tracker' | 'share', trigger: HTMLButtonElement) => {
     const frontAction = trigger.closest('.game-on-collection__flip-back')
       ?.closest('.game-on-collection__card')
       ?.querySelector<HTMLButtonElement>(panel === 'calendar'
