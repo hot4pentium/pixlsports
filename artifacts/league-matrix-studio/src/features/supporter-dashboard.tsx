@@ -1767,6 +1767,12 @@ export function SupporterProfileView({
   const [activeSection, setActiveSection] = useState<'athlete' | 'alerts' | 'account' | null>(initialSection);
   const toggleSection = (section: 'athlete' | 'alerts' | 'account') =>
     setActiveSection((current) => current === section ? null : section);
+  const openPhoneAlerts = () => {
+    setActiveSection('alerts');
+    window.requestAnimationFrame(() => {
+      document.getElementById('hype-manager-trigger-phone-alerts')?.focus();
+    });
+  };
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSave();
@@ -1780,7 +1786,20 @@ export function SupporterProfileView({
           <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-wide">Supporter Profile</h1>
           <p className="mt-2 text-sm sm:text-base">Everything for the athlete you follow, all in one place.</p>
         </div>
-         <BackNavigationLink href={backHref} label={backLabel} testId="btn-back" />
+        <div className="supporter-profile-heading-actions">
+          <button
+            type="button"
+            className="supporter-profile-alerts-shortcut"
+            onClick={openPhoneAlerts}
+            aria-expanded={activeSection === 'alerts'}
+            aria-controls="hype-manager-panel-phone-alerts"
+            data-testid="button-profile-phone-alerts"
+          >
+            <Bell className="h-4 w-4" aria-hidden="true" />
+            Phone Alerts
+          </button>
+          <BackNavigationLink href={backHref} label={backLabel} testId="btn-back" />
+        </div>
       </div>
 
       <div className="supporter-profile-stack">

@@ -59,6 +59,16 @@ test('the dashboard hamburger retains the server-verified administrator link', (
   assert.match(entry, /href="\/studio\/admin"/);
 });
 
+test('profile Phone Alerts are directly accessible above the athlete form on desktop and mobile', () => {
+  const source = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+  const view = source.slice(source.indexOf('export function SupporterProfileView'));
+  assert.match(view, /const openPhoneAlerts = \(\) => \{[\s\S]*?setActiveSection\('alerts'\)/);
+  assert.match(view, /getElementById\('hype-manager-trigger-phone-alerts'\)\?\.focus\(\)/);
+  assert.match(view, /onClick=\{openPhoneAlerts\}[\s\S]*?aria-controls="hype-manager-panel-phone-alerts"[\s\S]*?data-testid="button-profile-phone-alerts"/);
+  assert.ok(view.indexOf('data-testid="button-profile-phone-alerts"') < view.indexOf('id="athlete-profile"'));
+  assert.match(view, /<NotificationSettings userId=\{userId\}/);
+});
+
 test('the private owner HYPE Card screen shares its direct link and saves all owner privacy choices', () => {
   const source = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
   assert.match(source, /ownerExperience/);

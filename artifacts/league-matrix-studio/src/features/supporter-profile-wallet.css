@@ -17,6 +17,38 @@
   color: #aabbd0;
 }
 
+.supporter-profile-heading-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.supporter-profile-alerts-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #8cc8ff;
+  border-radius: 12px;
+  background: #122b4b;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.supporter-profile-alerts-shortcut:hover {
+  background: #1c3e64;
+}
+
+.supporter-profile-alerts-shortcut:focus-visible {
+  outline: 3px solid #c4e64b;
+  outline-offset: 4px;
+}
+
 .supporter-profile-eyebrow {
   margin-bottom: 12px;
   color: #55a4ff;
@@ -77,6 +109,11 @@
     gap: 8px;
   }
   .supporter-profile-back { order: -1; margin-bottom: 12px; }
+  .supporter-profile-heading-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
