@@ -22,8 +22,10 @@
   min-width: 0;
   padding: 0;
   color: inherit;
+  cursor: pointer;
   text-decoration: none;
 }
+.supporter-hype-preview__link:hover .supporter-hype-preview__surface { filter: brightness(1.04); }
 .supporter-hype-preview__share-trigger {
   position: absolute;
   z-index: 2;
@@ -91,6 +93,11 @@
   color: #a1d1ff;
   font-size: 11px;
   font-weight: 800;
+}
+.supporter-hype-preview__open-showcase {
+  border: 1px solid #80afee70;
+  border-radius: 999px;
+  padding: 0 14px;
 }
 .supporter-hype-preview__state--empty {
   gap: 16px;

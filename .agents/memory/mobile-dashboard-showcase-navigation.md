@@ -1,13 +1,13 @@
 ---
 name: Dashboard and Showcase navigation
-description: Dashboard HYPE Card previews are non-clickable; viewing and editing belong in Player Showcase.
+description: Dashboard HYPE Card previews open the private Player Showcase owner page.
 ---
 
-The dashboard HYPE Card image is a non-clickable preview on both mobile and desktop. Users should go through the Player Showcase tab to view, edit, and manage the HYPE Card. Keep public sharing separate from private owner navigation, and preserve the Showcase return link to Supporter Hub.
+The dashboard HYPE Card image is a clickable owner entry on mobile and desktop. It opens the private Player Showcase, where the owner can review the interactive card and find its editing, athlete-details, and sharing controls. Keep public sharing separate from private owner navigation, and preserve the Showcase return link to Supporter Hub.
 
-**Why:** The user said there were too many HYPE Card entry points and explicitly replaced the earlier dashboard-card navigation request.
+**Why:** The user now wants the dashboard card to follow the iPhone interaction: tap the card to open its owner content page.
 
-**How to apply:** Do not add a link, button role, keyboard tab stop, or card-opening handler to the dashboard artwork. Direct card-management guidance to Player Showcase.
+**How to apply:** Make the artwork a labeled, keyboard-accessible link to the owner Player Showcase, not to the public card. Keep public links in their explicit share actions and never use the dashboard card tap to bypass account ownership checks.
 
 When the owner opens the public HYPE Card from Player Showcase, its back button must return to the private Player Showcase, not the separate public Showcase card view. Public recipients retain a public return destination.
 

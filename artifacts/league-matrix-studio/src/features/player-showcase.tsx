@@ -18,6 +18,7 @@ import {
 import type { SupporterProfile } from './supporter-dashboard';
 import { AthleteEditorInvitationPanel } from './athlete-invite';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { OwnerHypeCardSurface } from './owner-hype-card-surface';
 import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { FanCheersSummary } from './cheer-celebration';
 import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
@@ -32,6 +33,7 @@ export interface PlayerShowcaseContentProps {
   profileEditHref?: string;
   cardPublicHref?: string;
   cardCandidates?: readonly OwnedAthleteInvite[];
+  ownerInvite?: OwnedAthleteInvite | null;
   selectedCardToken?: string;
   onSelectCard?: (inviteToken: string) => void;
   onRetryCard?: () => void;
@@ -41,9 +43,10 @@ function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', profileEditHref, cardPublicHref, cardCandidates = [], selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', profileEditHref, cardPublicHref, cardCandidates = [], ownerInvite, selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
   const card = cardStatus === 'ready' ? linkedCard ?? null : null;
   const privateCheers = cardCandidates.find(candidate => candidate.inviteToken === selectedCardToken)?.liveTaps;
+  const privateFrontPreview = cardStatus === 'not-shared' && ownerInvite;
   const cardPicker = cardCandidates.length > 1 && onSelectCard ? (
     <label className="ps__card-picker">
       <span>Choose the HYPE Card</span>
@@ -71,12 +74,12 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
         <p className="ps__card-only-intro">One athlete. One season. Your HYPE Card.</p>
         <div className="ps__card-only" role="region" aria-label={`${profile.athleteName || 'Athlete'} HYPE Card Showcase`}>
           {cardPicker}
-          {card ? (
+          {card || privateFrontPreview ? (
             <div className="ps__card-only-panel" data-testid="showcase-hype-card-preview">
               <div className="ps__card-only-heading">
                 <div>
                   <p className="ps__card-only-kicker">HYPE Card</p>
-                  <p className="ps__card-only-team">{card.teamName || sportLabel(card.sport)}</p>
+                  <p className="ps__card-only-team">{card?.teamName || ownerInvite?.teamName || sportLabel(profile.sport ?? '')}</p>
                 </div>
                 <div className="ps__card-links">
                   <Link href={cardEditHref} className="ps__link ps__link--primary" data-testid="link-showcase-card-edit">
@@ -87,10 +90,23 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
                   </Link>}
                 </div>
               </div>
-              <div className="ps__card-only-art" aria-label={`${card.athleteName} HYPE Card preview`} data-testid="showcase-card-art">
-                <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
-              </div>
-              <FanCheersSummary liveTaps={card.liveTaps} />
+              {ownerInvite ? (
+                <div className="ps__owner-card-surface-container" aria-label={`${card?.athleteName ?? profile.athleteName} HYPE Card preview`} data-testid="showcase-card-art">
+                  <OwnerHypeCardSurface
+                    card={card}
+                    invite={ownerInvite}
+                    athleteName={card?.athleteName ?? ownerInvite.athleteName}
+                    teamName={card?.teamName ?? ownerInvite.teamName}
+                    sport={card?.sport ?? ownerInvite.sport}
+                    privatePreview={!ownerInvite.showHypeCard || ownerInvite.paused}
+                  />
+                </div>
+              ) : card ? (
+                <div className="ps__card-only-art" aria-label={`${card.athleteName} HYPE Card preview`} data-testid="showcase-card-art">
+                  <LivingAthleteCardFront athleteName={card.athleteName} teamName={card.teamName} photoUrl={card.photoUrl} appearance={card.cardAppearance} sport={card.sport} cutoutUrl={card.cutoutUrl} />
+                </div>
+              ) : null}
+              {card && <FanCheersSummary liveTaps={card.liveTaps} />}
             </div>
           ) : (
             <div
@@ -206,6 +222,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         />
       </div>
       <PlayerShowcaseContent profile={profile} linkedCard={linkedCard} cardStatus={cardStatus}
+        ownerInvite={matchedInvite}
         cardCandidates={hasAmbiguousInvite ? inviteCandidates : undefined}
         selectedCardToken={selectedInvite?.inviteToken}
         onSelectCard={setSelectedInviteToken}

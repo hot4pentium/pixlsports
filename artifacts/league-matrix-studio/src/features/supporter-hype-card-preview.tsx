@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Copy, Loader2, Share2 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { Link } from 'wouter';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ type Props = {
   targetAthleteName: string;
   targetTeamName: string;
   href: string;
+  manageHref?: string;
   reconnectionCandidates?: OwnedAthleteInvite[];
   onReconnect?: (card: OwnedAthleteInvite) => Promise<boolean>;
   reconnectingToken?: string | null;
@@ -36,6 +38,7 @@ export function SupporterHypeCardPreview({
   targetAthleteName,
   targetTeamName,
   href,
+  manageHref = '/studio/player-showcase',
   reconnectionCandidates = [],
   onReconnect,
   reconnectingToken = null,
@@ -173,12 +176,19 @@ export function SupporterHypeCardPreview({
               </div>
             )}
             <p className="text-xs text-white/70">Open Player Showcase to set up, view, and manage your HYPE Card.</p>
+            <Link
+              href={manageHref}
+              className="supporter-hype-preview__open-showcase"
+              data-testid={`${testIdPrefix}-hype-preview-open-showcase`}
+            >
+              Open Player Showcase
+            </Link>
           </div>
         ) : (
           <div className="supporter-hype-preview__card-wrap">
-            <div
+            <Link
+              href={manageHref}
               className="supporter-hype-preview__link"
-              role="img"
               aria-label={`${card.athleteName}'s HYPE Card preview`}
               data-testid={isMobile ? 'link-mobile-hype-preview' : 'link-desktop-hype-preview'}
             >
@@ -193,7 +203,7 @@ export function SupporterHypeCardPreview({
                   onPhotoError={() => setFailedPhoto(card.photoUrl)}
                 />
               </div>
-            </div>
+            </Link>
             <DialogTrigger asChild>
               <button
                 type="button"

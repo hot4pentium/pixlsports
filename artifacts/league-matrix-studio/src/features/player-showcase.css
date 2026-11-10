@@ -126,3 +126,8 @@
 .ps-owner-canvas [data-testid="panel-share-public-showcase"]{border-radius:20px;background:linear-gradient(145deg,#102b4d,#0b1f3a);color:#f3f6fa;box-shadow:0 12px 26px rgba(15,35,64,.16)}
 .ps-owner-canvas [data-testid="panel-share-public-showcase"] .text-primary{color:#8ec2ff}
 .ps-owner-canvas [data-testid="panel-share-public-showcase"] button{border-radius:12px}
+.ps-owner-canvas .ps__owner-card-surface-container{width:min(100%,380px);min-width:0;margin-inline:auto}
+.ps-owner-canvas .ps__owner-card-surface-container .owner-hype-surface{max-width:100%}
+.ps-owner-canvas .ps__card-only-panel>.ps__owner-card-surface-container{order:1}
+.ps-owner-canvas .ps__card-only-panel>.ps__card-only-heading{order:2}
+@media(max-width:720px){.ps-owner-canvas .ps__owner-card-surface-container{width:min(100%,380px)}}

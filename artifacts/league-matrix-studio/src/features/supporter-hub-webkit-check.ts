@@ -292,11 +292,11 @@ export async function checkPairedHubInWebKit(appDirectory: string, fixturePath: 
     await evaluate(`(window.__hypePreviewState='velocity', localStorage.setItem('hype-preview-fixture','"velocity"'))`);
     await click('[data-testid="mobile-saved-hype-card"] button');
     await wait(`!!document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
-    const previewPath = await evaluate('location.pathname');
-    assert.equal(await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').tabIndex`), -1);
-    assert.equal(await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').getAttribute('href')`), null);
+    assert.equal(await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').tabIndex`), 0);
+    assert.equal(await evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').getAttribute('href')`), '/studio/player-showcase');
     await click('[data-testid="link-mobile-hype-preview"]');
-    assert.equal(await evaluate('location.pathname'), previewPath, 'dashboard artwork does not navigate');
+    await wait(`location.pathname==='/studio/player-showcase'`);
+    assert.equal(await evaluate('location.pathname'), '/studio/player-showcase', 'dashboard artwork opens Player Showcase');
   } finally {
     if (sessionPath) await command('DELETE', sessionPath).catch(() => undefined);
     for (const { child, monitor } of processes.reverse()) {

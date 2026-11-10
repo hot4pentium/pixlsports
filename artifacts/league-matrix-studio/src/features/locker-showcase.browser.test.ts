@@ -101,7 +101,7 @@ import {AthleteEditorInvitationPanel} from './src/features/athlete-invite';
 import {SupporterHypeCardPreview} from './src/features/supporter-hype-card-preview';
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
- const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:'Legacy saved moment',events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
+const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showStats:true,showEvents:true,paused:false,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],videos:[],liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:'Legacy saved moment',events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
 const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,favoriteMoment:'Legacy saved moment',patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
@@ -545,6 +545,17 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     await browser.evaluate(`window.__update({mode:'owner-showcase'})`);
     await browser.wait(`document.querySelector('[data-testid="panel-share-public-showcase"]')`);
     await browser.wait(`document.querySelector('[data-testid="athlete-editor-invitation"]')`);
+    await browser.wait(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-front"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="owner-card-private-explanation"]')`), null,
+      'the published owner card uses the interactive iPhone-style card surface');
+    for (const side of ['videos', 'stats', 'events']) {
+      await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-${side}"]').click()`);
+      await browser.wait(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="owner-card-${side}-side"]')`);
+      await browser.wait(`document.querySelector('[data-testid="owner-hype-card-flip-container"] .owner-hype-flip-inner')?.dataset.animate === 'false'`);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-${side}"]').getAttribute('aria-pressed')`), 'true');
+    }
+    assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="owner-hype-card-surface"] [data-testid^="button-living-card-"]').length`), 4,
+      'the owner card offers Front, Videos, Stats, and Events when each is allowed');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="link-public-showcase-url"]'))`), 'the parent share control remains available');
     assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="athlete-editor-invitation"]'))`), 'athlete invitation management remains available');
 
@@ -554,7 +565,7 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     const mobileTypography = await browser.evaluate(`(() => {
       const preview = document.querySelector('[data-testid="mobile-saved-hype-card"]');
       const message = preview?.querySelector('.supporter-hype-preview__state--empty > p');
-      const action = preview?.querySelector('.supporter-hype-preview__state--empty > p:last-child');
+      const action = preview?.querySelector('.supporter-hype-preview__open-showcase');
       return {
         message: message ? Number.parseFloat(getComputedStyle(message).fontSize) : 0,
         action: action ? Number.parseFloat(getComputedStyle(action).fontSize) : 0,
@@ -564,24 +575,25 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
       };
     })()`);
     assert.equal(mobileTypography.message, 15, 'the empty-card message should use the larger mobile type size');
-    assert.equal(mobileTypography.action, 15, 'the Showcase navigation guidance should be readable on a phone');
+    assert.ok(mobileTypography.action >= 14, 'the Showcase navigation action should be readable on a phone');
     assert.match(mobileTypography.text, /Your athlete’s card belongs here/);
-    assert.match(mobileTypography.actionText, /Use the Player Showcase tab to set up, view, and manage your HYPE Card/);
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="mobile-saved-hype-card"] .supporter-hype-preview__state--empty > a')`), null, 'setup uses the Showcase tab, not a retired inline link');
+    assert.match(mobileTypography.actionText, /Open Player Showcase/);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="mobile-hype-preview-open-showcase"]')?.getAttribute('href')`), `${base}/studio/player-showcase`,
+      'the empty-card dashboard state also opens the owner Showcase');
     assert.equal(mobileTypography.noHorizontalOverflow, true, 'larger copy should not introduce horizontal scrolling on phones');
 
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     const desktopTypography = await browser.evaluate(`(() => {
       const preview = document.querySelector('[data-testid="desktop-saved-hype-card"]');
       const message = preview?.querySelector('.supporter-hype-preview__state--empty > p');
-      const action = preview?.querySelector('.supporter-hype-preview__state--empty > p:last-child');
+       const action = preview?.querySelector('.supporter-hype-preview__open-showcase');
       return {
         message: message ? Number.parseFloat(getComputedStyle(message).fontSize) : 0,
         action: action ? Number.parseFloat(getComputedStyle(action).fontSize) : 0,
       };
     })()`);
     assert.equal(desktopTypography.message, 20, 'the desktop bulletin-board message should use the larger type size');
-    assert.equal(desktopTypography.action, 20, 'the desktop Showcase navigation guidance uses the current paragraph type size');
+    assert.equal(desktopTypography.action, 18, 'the desktop Showcase navigation action uses the larger link type size');
   } finally {
     browser?.close();
     await stop(chromium);
@@ -1138,16 +1150,17 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
      await browser.wait(`document.querySelector('[data-testid="link-mobile-hype-preview"]')`);
      assert.equal(
        await browser.evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').getAttribute('href')`),
-       null,
-       'the mobile dashboard HYPE Card is display-only',
+        `${base}/studio/player-showcase`,
+        'the mobile dashboard HYPE Card opens Player Showcase',
      );
      assert.equal(
        await browser.evaluate(`document.querySelector('[data-testid="link-desktop-hype-preview"]').getAttribute('href')`),
-       null,
-       'the desktop dashboard HYPE Card is display-only',
+        `${base}/studio/player-showcase`,
+        'the desktop dashboard HYPE Card opens Player Showcase',
      );
      await browser.evaluate(`document.querySelector('[data-testid="link-mobile-hype-preview"]').click()`);
-     assert.equal(await browser.evaluate('location.pathname'), `${base}/studio`, 'dashboard artwork does not navigate');
+      await browser.wait(`location.pathname==='${base}/studio/player-showcase'`);
+      assert.equal(await browser.evaluate('location.pathname'), `${base}/studio/player-showcase`, 'dashboard artwork opens Player Showcase');
   } finally {
     browser?.close();
     await stop(chromium);

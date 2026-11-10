@@ -182,7 +182,7 @@ export async function checkSavedHypeCardOwnerApi(appDirectory: string, chromiumP
           .some(e => [e.getAttribute('href'),e.getAttribute('xlink:href'),e.getAttribute('src')].includes(${JSON.stringify(media)}))`);
       }
       const front = await readFront();
-      assert.equal(front.href, null, 'dashboard artwork is not a navigation link');
+      assert.equal(front.href, '/studio/player-showcase', 'dashboard artwork opens the owner Player Showcase');
       assert.ok(front.text.toUpperCase().includes(card.athleteName.toUpperCase()), front.text);
       assert.ok(front.text.toUpperCase().includes(card.teamName.toUpperCase()), front.text);
       if (media) {
