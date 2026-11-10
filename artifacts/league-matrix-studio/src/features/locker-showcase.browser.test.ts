@@ -1116,7 +1116,8 @@ test.skip('Retired Locker sharing behavior is no longer an application flow', { 
     await browser.evaluate(`(()=>{const select=document.querySelector('[data-testid="select-showcase-card"]');select.value='spring-card';select.dispatchEvent(new Event('change',{bubbles:true}))})()`);
     await browser.wait(`document.querySelector('[data-testid="img-living-card-athlete"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="select-showcase-card"]').value`), 'spring-card', 'the selected card remains available for comparison');
-    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), `${base}/player/spring-card/manage#design`, 'the design link uses the chosen card');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]')`), null, 'the parent Showcase does not repeat the HYPE Card design action');
+    assert.equal(await browser.evaluate(`new URL(document.querySelector('[data-testid="link-showcase-athlete-details"]').getAttribute('href'), location.origin).searchParams.get('inviteToken')`), 'spring-card', 'athlete details keeps the chosen HYPE Card linked');
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]').getAttribute('href')`), `${base}/fan/spring-card`, 'the public card link uses the chosen card');
     assert.ok(await browser.evaluate(`window.__requests.some(url=>url.includes('/athlete-invites/spring-card/fan'))`), 'the preview loads the selected card rather than the first matching invite');
     await browser.evaluate(`document.querySelector('[data-testid="button-showcase-slide-jersey"]').click()`);

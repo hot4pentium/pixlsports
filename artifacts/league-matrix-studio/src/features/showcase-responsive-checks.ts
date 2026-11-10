@@ -172,33 +172,37 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
     if (scenario === 'long-labels' || scenario === 'not-shared') {
       if (scenario === 'not-shared') {
         await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
+        await proportion(browser, '.owner-hype-stage', 2 / 3);
+        assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]')`), null, 'the owner Showcase has no duplicate design-edit button');
         assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-public"]')`), null, 'a hidden HYPE Card has no public-card link');
         assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), null, 'a hidden HYPE Card has no share action');
         await readable(browser, byId('owner-item-share-hype-card'));
       } else {
-      assert.equal(await browser.evaluate(`document.querySelector('.ps__card-only-team').textContent`), longShowcaseLabels.teamName);
-      await readable(browser, '.ps__card-only-team');
-      await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
-      await proportion(browser, byId('showcase-card-art'), 2 / 3);
-      for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) await readable(browser, byId(id), true);
-      await expectAccessible(browser, byId('link-showcase-card-edit'), 'link', 'Edit HYPE Card');
-      await expectAccessible(browser, byId('link-showcase-card-public'), 'link', 'Open public card');
-      await expectAccessible(browser, byId('link-showcase-athlete-details'), 'link', 'Edit Athlete Details');
-      assert.equal(await browser.evaluate(`(() => {
-        const href = document.querySelector('[data-testid="link-showcase-athlete-details"]')?.getAttribute('href');
-        if (!href) return false;
-        const url = new URL(href, location.origin);
-        return url.pathname.endsWith('/studio/profile')
-          && url.searchParams.get('section') === 'athlete'
-          && url.searchParams.get('returnTo') === 'showcase'
-          && Boolean(url.searchParams.get('inviteToken'));
-      })()`), true, 'athlete details opens the profile editor with the selected HYPE Card and return destination');
-      assert.equal(await browser.evaluate(`(() => { const card = document.querySelector('[data-testid="showcase-card-art"]'); const edit = document.querySelector('[data-testid="link-showcase-athlete-details"]'); return Boolean(card && edit && (card.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), true, 'athlete details action should follow the card');
-      await expectAccessible(browser, byId('button-copy-public-showcase'), 'button', 'Copy link');
+        assert.equal(await browser.evaluate(`document.querySelector('.ps__card-only-team').textContent`), longShowcaseLabels.teamName);
+        await readable(browser, '.ps__card-only-team');
+        await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
+        await proportion(browser, '.owner-hype-stage', 2 / 3);
+        assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]')`), null, 'the owner Showcase has no duplicate design-edit button');
+        await readable(browser, byId('link-showcase-card-public'), true);
+        await expectAccessible(browser, byId('link-showcase-card-public'), 'link', 'Open public card');
+        await expectAccessible(browser, byId('link-showcase-athlete-details'), 'link', 'Edit Athlete Details');
+        assert.equal(await browser.evaluate(`(() => {
+          const href = document.querySelector('[data-testid="link-showcase-athlete-details"]')?.getAttribute('href');
+          if (!href) return false;
+          const url = new URL(href, location.origin);
+          return url.pathname.endsWith('/studio/profile')
+            && url.searchParams.get('section') === 'athlete'
+            && url.searchParams.get('returnTo') === 'showcase'
+            && Boolean(url.searchParams.get('inviteToken'));
+        })()`), true, 'athlete details opens the profile editor with the selected HYPE Card and return destination');
+        assert.equal(await browser.evaluate(`(() => { const card = document.querySelector('[data-testid="showcase-card-art"]'); const edit = document.querySelector('[data-testid="link-showcase-athlete-details"]'); return Boolean(card && edit && (card.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), true, 'athlete details action should follow the card');
+        await expectAccessible(browser, byId('button-copy-public-showcase'), 'button', 'Copy link');
       }
     } else {
       await bounded(browser, '.ps__card-unavailable', 460, false);
       for (const selector of ['.ps__card-unavailable h2', '.ps__card-unavailable > span']) await readable(browser, selector);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit-unavailable"]')`), null, 'unavailable owner cards do not offer a duplicate design-edit action');
+      await readable(browser, byId('link-showcase-athlete-details'), true);
       const statusByScenario = {
         missing: { name: 'No HYPE Card linked', context: /no HYPE Card linked to this athlete yet/i },
         unavailable: { name: 'HYPE Card unavailable', context: /linked HYPE Card could not be loaded/i },
@@ -218,7 +222,6 @@ export async function checkShowcaseEdgeGeometry(browser: Browser, route: string,
           ]);
         }
       } else {
-        await readable(browser, byId('link-showcase-card-edit-unavailable'), true);
         if (scenario === 'unavailable') {
           await readable(browser, byId('button-showcase-card-retry'), true);
           await expectAccessible(browser, byId('button-showcase-card-retry'), 'button', "Try again to load Alexandria-Montgomery Maximiliana Worthington-Smythe's HYPE Card");
@@ -316,10 +319,10 @@ export async function checkShowcaseEnlargedText(
   if (scenario === 'long-labels') {
     assert.ok(route.startsWith('/studio/'), 'Enlarged owner-label checks run on the owner Showcase');
     await browser.wait(`document.querySelector('[data-testid="showcase-card-art"]')`);
-    await enlargeText(browser, ['.ps__card-only-team', byId('link-showcase-card-edit'), byId('link-showcase-card-public')]);
+    await enlargeText(browser, ['.ps__card-only-team', byId('link-showcase-card-public'), byId('link-showcase-athlete-details')]);
     assert.equal(await browser.evaluate(`document.querySelector('.ps__card-only-team').textContent`), longShowcaseLabels.teamName);
     await readable(browser, '.ps__card-only-team');
-    for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) {
+    for (const id of ['link-showcase-card-public', 'link-showcase-athlete-details']) {
       await readable(browser, byId(id), true);
       await keyboardFocusable(browser, byId(id));
     }
@@ -414,17 +417,13 @@ export async function checkResponsiveRoute(browser: Browser, route: string, widt
     await browser.wait(`document.querySelector('[data-testid="showcase-card-art"]')`);
     await bounded(browser, '.ps', desktop ? 880 : width);
     await bounded(browser, '.ps-desktop-bounded', desktop ? 880 : width);
-        await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
-    await proportion(browser, byId('showcase-card-art'), 2 / 3);
-    for (const id of ['link-showcase-card-edit', 'link-showcase-card-public']) {
-      const box = await rect(browser, byId(id));
-      assert.ok(box.height >= 44, `${id} retains a usable target`);
-    }
-    assert.match(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]').getAttribute('href')`), /\/player\/responsive-athlete\/manage#design$/);
+    await bounded(browser, byId('showcase-card-art'), desktop ? 460 : width, false);
+    await proportion(browser, '.owner-hype-stage', 2 / 3);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-showcase-card-edit"]')`), null, 'the owner Showcase has no duplicate design-edit button');
+    const publicCardLink = await rect(browser, byId('link-showcase-card-public'));
+    assert.ok(publicCardLink.height >= 44, 'Open public card retains a usable target');
+    await expectAccessible(browser, byId('link-showcase-card-public'), 'link', 'Open public card');
     await contained(browser);
-    await click(browser, byId('link-showcase-card-edit'));
-    await browser.wait(`location.pathname.endsWith('/player/responsive-athlete/manage')&&location.hash==='#design'`);
-    await editor(browser, width);
   } else if (route.startsWith('/player/')) {
     await browser.wait(`document.querySelector('[data-testid="owner-athlete-invite-management-page"]')`);
     await bounded(browser, '.ps-owner-manage', desktop ? 880 : width);

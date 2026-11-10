@@ -49,7 +49,7 @@ function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref = '/studio/hype-card', profileEditHref, cardPublicHref, cardCandidates = [], ownerInvite, ownerExperience = false, selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref, profileEditHref, cardPublicHref, cardCandidates = [], ownerInvite, ownerExperience = false, selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
   const card = cardStatus === 'ready' ? linkedCard ?? null : null;
   const privateCheers = cardCandidates.find(candidate => candidate.inviteToken === selectedCardToken)?.liveTaps;
   const privateFrontPreview = cardStatus === 'not-shared' && ownerInvite;
@@ -88,9 +88,9 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
                   <p className="ps__card-only-team">{card?.teamName || ownerInvite?.teamName || sportLabel(profile.sport ?? '')}</p>
                 </div>
                 <div className="ps__card-links">
-                  <Link href={cardEditHref} className="ps__link ps__link--primary" data-testid="link-showcase-card-edit">
+                  {!ownerExperience && cardEditHref && <Link href={cardEditHref} className="ps__link ps__link--primary" data-testid="link-showcase-card-edit">
                     <Zap size={16} aria-hidden="true" /> Edit HYPE Card
-                  </Link>
+                  </Link>}
                   {cardPublicHref && <Link href={cardPublicHref} className="ps__link ps__link--secondary" data-testid="link-showcase-card-public">
                     <ExternalLink size={16} aria-hidden="true" /> Open public card
                   </Link>}
@@ -140,10 +140,12 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
               </span>
               {(cardStatus === 'ambiguous' || (cardStatus === 'unavailable' && cardCandidates.length > 1)) && cardPicker}
               {cardStatus === 'unavailable' && onRetryCard && <button type="button" onClick={onRetryCard} className="ps__link" aria-label={`Try again to load ${profile.athleteName}'s HYPE Card`} data-testid="button-showcase-card-retry">Try again</button>}
-              {cardStatus !== 'ambiguous' && <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
-                {cardStatus === 'not-linked' ? 'Create HYPE Card' : 'Open HYPE Card'}
-                <ArrowRight size={15} aria-hidden="true" />
-              </Link>}
+              {!ownerExperience && cardStatus !== 'ambiguous' && cardEditHref && (
+                <Link href={cardEditHref} className="ps__link" data-testid="link-showcase-card-edit-unavailable">
+                  {cardStatus === 'not-linked' ? 'Create HYPE Card' : 'Open HYPE Card'}
+                  <ArrowRight size={15} aria-hidden="true" />
+                </Link>
+              )}
             </div>
           )}
           {!ownerExperience && !card && privateCheers && cardStatus === 'not-shared' && <FanCheersSummary liveTaps={privateCheers} />}
@@ -226,9 +228,6 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
       ? 'not-shared'
     : fanCardQuery.isLoading ? 'loading' : linkedCard ? 'ready' : 'unavailable';
   const publicHypeCardUrl = inviteToken ? athleteFanCardUrl(inviteToken) : null;
-  const cardSettingsHref = matchedInvite
-    ? `/player/${encodeURIComponent(matchedInvite.inviteToken)}/manage#design`
-    : '/studio/athlete-page';
   const athleteDetailsHref = `/studio/profile?section=athlete&returnTo=showcase${matchedInvite
     ? `&inviteToken=${encodeURIComponent(matchedInvite.inviteToken)}`
     : ''}`;
@@ -364,7 +363,6 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           if (fanCardQuery.isError) void fanCardQuery.refetch();
           else void invitesQuery.refetch();
         }}
-        cardEditHref={cardSettingsHref}
         cardPublicHref={isShareable ? `/fan/${encodeURIComponent(inviteToken!)}?from=player-showcase` : undefined} />
       <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8">
         <section className="hype-owner-item" aria-labelledby="edit-athlete-details-title" data-testid="owner-item-athlete-details">

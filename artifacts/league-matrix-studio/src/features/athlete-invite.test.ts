@@ -423,10 +423,11 @@ test('Athlete Hype Pages cap active highlight videos at three', () => {
   assert.match(athleteApiSource, /\.limit\(maxHighlightVideos\)/);
 });
 
-test('shared card has no management banner; management stays in the owner Showcase', () => {
+test('shared card has no management banner; parent Showcase omits duplicate design editing', () => {
   assert.doesNotMatch(livingCardSource, /living-card-intro|link-manage-living-card|Manage this athletic card/);
-  assert.match(showcaseSource, /cardEditHref=\{cardSettingsHref\}/);
-  assert.match(showcaseSource, /\/player\/\$\{encodeURIComponent\(matchedInvite\.inviteToken\)\}\/manage#design/);
+  assert.doesNotMatch(showcaseSource, /cardEditHref=\{cardSettingsHref\}/);
+  assert.match(showcaseSource, /!ownerExperience && cardEditHref/);
+  assert.match(showcaseSource, /cardEditHref=\{cardEditHref\}/);
   assert.match(livingCardSource, /aria-label=\{`\$\{displayAthleteName\}'s HYPE Card`\}/);
   assert.doesNotMatch(livingCardSource, /One card\.|Every chapter\./);
   assert.doesNotMatch(livingCardSource, /The same athlete, a new story after every game\. Keep this link close\./);
