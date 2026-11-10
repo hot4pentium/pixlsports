@@ -1078,6 +1078,30 @@ enum SupporterHomeAPI {
         return try await fetchPublicHypeCard(inviteToken: inviteToken, client: client)
     }
 
+    static func fetchOwnerHypeCardShareURL(clerk: Clerk) async throws -> URL? {
+        let data = try await NativeAccountLinkClient()
+            .getAuthoritativeData("supporter/hype-card", clerk: clerk)
+        let reference: NativeHypeCardReference
+        do {
+            reference = try JSONDecoder().decode(NativeHypeCardReference.self, from: data)
+        } catch {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        guard reference.status == "available",
+              let settings = reference.settings,
+              settings.showHypeCard,
+              !settings.paused else {
+            return nil
+        }
+        guard let inviteToken = reference.inviteToken,
+              inviteToken.range(of: "^[A-Za-z0-9_-]{1,128}$", options: .regularExpression) != nil else {
+            throw SupporterHomeAPIError.invalidResponse
+        }
+        return try NativeAccountLinkClient.apiOrigin()
+            .appendingPathComponent("fan")
+            .appendingPathComponent(inviteToken)
+    }
+
     static func fetchPublicHypeCard(inviteToken: String) async throws -> NativePublicHypeCard {
         guard inviteToken.range(of: "^[A-Za-z0-9_-]{1,128}$", options: .regularExpression) != nil else {
             throw SupporterHomeAPIError.invalidResponse

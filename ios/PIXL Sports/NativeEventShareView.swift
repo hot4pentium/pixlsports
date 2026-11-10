@@ -7,12 +7,19 @@ struct NativeEventShareView: View {
     let clerk: Clerk
     var embedded: Bool = false
 
+    @State private var hypeCardShareURL: URL?
+    @State private var isCheckingHypeCardShare = true
+    @State private var hypeCardShareError = false
+
     var body: some View {
         Group {
             if embedded {
                 VStack(alignment: .leading, spacing: 36) {
                     eventShareCard
-                    hypeCardShareCard
+                    VStack(spacing: 12) {
+                        hypeCardShareCard
+                        hypeCardShareAction
+                    }
                 }
             } else {
                 ZStack {
@@ -27,6 +34,9 @@ struct NativeEventShareView: View {
         .preferredColorScheme(.light)
         .eventToolNavigationTitle("Share", embedded: embedded)
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: clerk.user?.id) {
+            await refreshHypeCardShareURL()
+        }
     }
 
     private var eventShareCard: some View {
@@ -113,6 +123,52 @@ struct NativeEventShareView: View {
     }
 
     @ViewBuilder
+    private var hypeCardShareAction: some View {
+        if let shareURL = hypeCardShareURL {
+            ShareLink(item: shareURL) {
+                Label("Share HYPE Card", systemImage: "square.and.arrow.up")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity, minHeight: 54)
+                    .background(
+                        NativeEventToolColors.share,
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
+                    .foregroundStyle(SupporterHomeColors.background)
+                    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("native-event-share-hype-direct")
+        } else if isCheckingHypeCardShare {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .tint(NativeEventToolColors.share)
+                Text("Checking HYPE Card availability…")
+                    .font(.subheadline)
+                    .foregroundStyle(SupporterHomeColors.muted)
+            }
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            .accessibilityIdentifier("native-event-hype-share-checking")
+        } else if hypeCardShareError {
+            Button {
+                Task { await refreshHypeCardShareURL() }
+            } label: {
+                Label("Try sharing the HYPE Card again", systemImage: "arrow.clockwise")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(NativeEventToolColors.share)
+            .accessibilityIdentifier("native-event-hype-share-retry")
+        } else {
+            Text("This HYPE Card is private or paused. Review its settings before sharing.")
+                .font(.subheadline)
+                .foregroundStyle(SupporterHomeColors.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("native-event-hype-share-unavailable")
+        }
+    }
+
+    @ViewBuilder
     private var shareSections: some View {
             Section("Event details") {
                 VStack(alignment: .leading, spacing: 6) {
@@ -138,12 +194,29 @@ struct NativeEventShareView: View {
                     Label("Review & share HYPE Card", systemImage: "person.crop.rectangle")
                 }
                 .accessibilityIdentifier("native-event-share-hype-card")
+                hypeCardShareAction
             } header: {
                 Text("Athlete HYPE Card")
             } footer: {
-                Text("Review your athlete’s card before sharing. This does not publish a private HYPE Card.")
+                Text("Share is available only while the HYPE Card is public and active. Review its settings before sharing.")
             }
             .listRowBackground(SupporterHomeColors.panel)
+    }
+
+    @MainActor
+    private func refreshHypeCardShareURL() async {
+        isCheckingHypeCardShare = true
+        hypeCardShareError = false
+        hypeCardShareURL = nil
+        defer { isCheckingHypeCardShare = false }
+        do {
+            let url = try await SupporterHomeAPI.fetchOwnerHypeCardShareURL(clerk: clerk)
+            guard !Task.isCancelled else { return }
+            hypeCardShareURL = url
+        } catch {
+            guard !Task.isCancelled else { return }
+            hypeCardShareError = true
+        }
     }
 
     private var zone: String? { event.timezone ?? schedule.timezone }
