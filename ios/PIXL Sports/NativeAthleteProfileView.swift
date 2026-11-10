@@ -74,13 +74,6 @@ struct NativeAthleteProfileView: View {
                     .accessibilityIdentifier("native-athlete-profile-retry")
                 }
             } else {
-                if isInitialSetup, savedProfile?.requiresSetup == true,
-                   !athleteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Section {
-                        Text("Your athlete details were saved, but setup still needs to finish. Review them and tap Continue to finish your private HYPE Card setup. Any existing card will be kept.")
-                            .accessibilityIdentifier("native-athlete-profile-resume")
-                    }
-                }
                 Section("Athlete information") {
                     if isInitialSetup {
                         Picker("Sport", selection: Binding(
@@ -208,26 +201,47 @@ struct NativeAthleteProfileView: View {
                             .accessibilityIdentifier("native-athlete-profile-error")
                     }
                 }
+
+                if isInitialSetup {
+                    Section {
+                        Button {
+                            Task { await saveProfile() }
+                        } label: {
+                            Group {
+                                if isSaving {
+                                    ProgressView()
+                                } else {
+                                    Text("Save")
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .disabled(!canSave)
+                        .accessibilityIdentifier("native-athlete-profile-save")
+                    }
+                }
             }
         }
         .navigationTitle(isInitialSetup ? "Athlete setup" : "Athlete profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    Task { await saveProfile() }
-                } label: {
-                    Group {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text(isInitialSetup ? "Continue" : "Save")
+            if !isInitialSetup {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        Task { await saveProfile() }
+                    } label: {
+                        Group {
+                            if isSaving {
+                                ProgressView()
+                            } else {
+                                Text("Save")
+                            }
                         }
+                        .nativeToolbarLabel()
                     }
-                    .nativeToolbarLabel()
+                    .disabled(!canSave)
+                    .accessibilityIdentifier("native-athlete-profile-save")
                 }
-                .disabled(!canSave)
-                .accessibilityIdentifier("native-athlete-profile-save")
             }
         }
         .interactiveDismissDisabled(isInitialSetup && !didSave)

@@ -45,3 +45,13 @@ test("setup eligibility still uses the real saved profile instead of a bypass", 
   assert.match(read("NativeSupporterProfile.swift"), /requiresSetup == true\s*\|\| athleteName\.trimmingCharacters/);
   assert.match(read("ContentView.swift"), /onSaved: \{ profile in\s*viewModel\.setAthleteProfile\(profile\)/);
 });
+
+test("initial athlete setup has a quiet form and a save button after its fields", () => {
+  const view = read("NativeAthleteProfileView.swift");
+  assert.doesNotMatch(view, /native-athlete-profile-resume|Your athlete details were saved, but setup still needs to finish/);
+  const setupButton = view.indexOf('if isInitialSetup {\n                    Section {\n                        Button {');
+  const timezoneSection = view.indexOf('Section("Time zone")');
+  assert.ok(setupButton > timezoneSection, "setup Save button should follow the profile and time-zone fields");
+  assert.match(view, /if !isInitialSetup \{\s+ToolbarItem\(placement: \.confirmationAction\)/);
+  assert.match(view, /accessibilityIdentifier\("native-athlete-profile-save"\)/);
+});
