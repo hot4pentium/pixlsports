@@ -21,6 +21,12 @@ On the PWA dashboard, omit the HYPE Card Share button and place a horizontal Fan
 
 **How to apply:** Preserve this layout across mobile and desktop card sizes, including the Fan Base details destination.
 
+Offer a public HYPE Card QR code in the sharing section on both iOS and PWA, encoding the same public card link as Share. Keep this distinct from the private family Live Taps access QR.
+
+**Why:** The user requested QR sharing for both platforms; the two QR types grant different access.
+
+**How to apply:** Generate QR artwork locally and preserve the existing card sharing/privacy gate; displaying a QR must not publish a private card.
+
 Use soft navy shadows beneath native blue containers and major cards to add separation from the white canvas. Keep shadows off small controls.
 
 **Why:** The user asked for depth around the boxes without making the interface visually heavy.

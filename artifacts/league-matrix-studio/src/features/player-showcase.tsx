@@ -26,6 +26,7 @@ import { OwnerHypeCardSurface } from './owner-hype-card-surface';
 import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { FanCheersSummary } from './cheer-celebration';
 import { athleteFanCardUrl } from './athlete-fan-card-url';
+import { HypeCardShareQr } from './hype-card-share-qr';
 import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
 import './player-showcase.css';
 import './showcase-desktop-density.css';
@@ -401,6 +402,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
                 <button type="button" onClick={() => void copyHypeCardUrl()} data-testid="button-copy-hype-card"><Copy aria-hidden="true" />Copy link</button>
                 <a href={`/fan/${encodeURIComponent(inviteToken ?? '')}`} target="_blank" rel="noreferrer" data-testid="link-open-owner-hype-card">Open card <ExternalLink aria-hidden="true" /></a>
               </div>
+              <HypeCardShareQr key={publicHypeCardUrl} url={publicHypeCardUrl} athleteName={matchedInvite?.athleteName ?? profile.athleteName} />
               <p className="hype-owner-status" role="status" aria-live="polite" data-testid="status-hype-card-share">{shareStatus}</p>
             </div>
           ) : (

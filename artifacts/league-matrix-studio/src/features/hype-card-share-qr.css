@@ -1,0 +1,18 @@
+.hype-share-qr { min-width: 0; }
+.hype-share-qr__toggle {
+  display: flex; width: 100%; min-height: 44px; align-items: center;
+  justify-content: center; gap: 8px; border: 1px solid #c8d7e6;
+  border-radius: 12px; background: #fff; color: #17324c; padding: 10px 14px;
+  font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.hype-share-qr__toggle svg { width: 18px; height: 18px; }
+.hype-share-qr__toggle:hover { border-color: #2878f5; }
+.hype-share-qr__toggle:focus-visible { outline: 3px solid #2878f5; outline-offset: 3px; }
+.hype-share-qr__panel {
+  display: grid; justify-items: center; gap: 12px; padding: 16px;
+  margin-top: 10px; border: 1px solid #cfdae5; border-radius: 16px;
+  background: #fff; color: #17324c; text-align: center;
+}
+.hype-share-qr__panel img { display: block; width: 100%; max-width: 320px; height: auto; }
+.hype-share-qr__panel p { margin: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.hype-share-qr__panel button { min-height: 44px; padding: 8px 16px; text-decoration: underline; cursor: pointer; }

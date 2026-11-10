@@ -2,6 +2,7 @@ import SwiftUI
 import ClerkKit
 import UIKit
 import AVKit
+import CoreImage.CIFilterBuiltins
 
 private enum NativeHypeCardSide: String, CaseIterable, Identifiable, Equatable {
     case front = "Front"
@@ -66,6 +67,7 @@ struct SupporterHypeCardView: View {
     @State private var settingsMessage: String?
     @State private var mediaErrorMessage: String?
     @State private var showPublishConfirmation = false
+    @State private var showShareQR = false
     @State private var showIdentityCorrectionConfirmation = false
     @State private var identityMismatch = false
     @State private var identityCorrectionId: String?
@@ -423,6 +425,20 @@ struct SupporterHypeCardView: View {
                 .tint(SupporterHomeColors.accent)
                 .foregroundStyle(SupporterHomeColors.background)
                 .accessibilityIdentifier("native-hype-card-share")
+                Button {
+                    showShareQR.toggle()
+                } label: {
+                    Label(showShareQR ? "Hide QR code" : "Show QR code", systemImage: "qrcode")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                }
+                .buttonStyle(.bordered)
+                .tint(SupporterHomeColors.accentText)
+                .accessibilityValue(showShareQR ? "Expanded" : "Collapsed")
+                .accessibilityIdentifier("native-hype-card-show-qr")
+                if showShareQR {
+                    NativeHypeCardShareQR(url: shareURL, athleteName: card.athleteName)
+                }
             }
         } else if !isPublicRecipient, let privateCard {
             Text("Private preview · only visible to your linked account")
@@ -1883,6 +1899,54 @@ struct SupporterHypeCardView: View {
             } else {
                 errorMessage = "We couldn’t load this HYPE Card right now."
             }
+        }
+    }
+}
+
+private struct NativeHypeCardShareQR: View {
+    let url: URL
+    let athleteName: String
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if let image = Self.qrImage(url) {
+                Image(uiImage: image)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 320)
+                    .accessibilityLabel("QR code for \(athleteName)'s HYPE Card")
+                    .accessibilityIdentifier("native-hype-card-share-qr")
+                Text("Scan to open \(athleteName)’s HYPE Card.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.black)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("The QR code couldn’t be created. You can still share the link.")
+                    .foregroundStyle(Color.black)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private static func qrImage(_ url: URL) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(url.absoluteString.utf8)
+        filter.correctionLevel = "M"
+        guard let output = filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)),
+              let bitmap = CIContext().createCGImage(output, from: output.extent) else { return nil }
+        let source = UIImage(cgImage: bitmap)
+        // White quiet zone keeps the code scannable against either app theme.
+        let size = CGSize(width: source.size.width + 64, height: source.size.height + 64)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor.white.setFill()
+            context.cgContext.fill(CGRect(origin: .zero, size: size))
+            context.cgContext.interpolationQuality = .none
+            source.draw(at: CGPoint(x: 32, y: 32))
         }
     }
 }
