@@ -489,6 +489,7 @@ function SiteNav({ dark = true }: { dark?: boolean }) {
   const navText = dark ? 'text-white/70 hover:text-accent' : 'text-muted-foreground hover:text-accent';
   const { isSignedIn, user } = useUser();
   const { signOut } = useClerk();
+  const profileInitial = supporterProfileFromUser(user).displayName?.trim().charAt(0).toUpperCase() || 'S';
 
   return (
     <header className={`relative z-30 border-b ${dark ? 'bg-[#0B1F3A]/95 border-white/15 backdrop-blur-md' : 'bg-background border-border'}`}>
@@ -502,7 +503,17 @@ function SiteNav({ dark = true }: { dark?: boolean }) {
           {isSignedIn ? (
             <div className="flex items-center gap-4">
               <AdminEntryLink className={`text-xs font-bold uppercase tracking-wider ${navText}`} />
-              <span className={`text-sm font-bold tracking-wider ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</span>
+              <Link
+                href="/studio/profile"
+                className={`inline-flex shrink-0 items-center gap-2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${navText}`}
+                aria-label="Supporter profile and settings"
+                title="Profile and settings"
+                data-testid="link-desktop-profile-settings"
+              >
+                <span className={`flex h-11 w-11 items-center justify-center rounded-full border text-lg font-bold ${dark ? 'border-[#8cc8ff]/50 bg-[#122b4b] text-white' : 'border-[#285d9b]/30 bg-[#e9f2fc] text-[#102a4c]'}`} aria-hidden="true">{profileInitial}</span>
+                <span className="text-xs font-bold uppercase tracking-wider">Settings</span>
+              </Link>
+              <span className={`hidden text-sm font-bold tracking-wider xl:inline ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</span>
               <button onClick={() => signOut({ redirectUrl: basePath || "/" })} className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-destructive hover:text-destructive-foreground ${dark ? 'bg-white/10 text-white' : 'bg-muted text-foreground'}`} data-testid="btn-sign-out">
                 Sign Out
               </button>

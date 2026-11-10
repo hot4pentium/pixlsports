@@ -69,6 +69,17 @@ test('profile Phone Alerts are directly accessible above the athlete form on des
   assert.match(view, /<NotificationSettings userId=\{userId\}/);
 });
 
+test('the desktop header offers the same profile settings destination as the mobile monogram', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const dashboard = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+  const nav = app.slice(app.indexOf('function SiteNav('), app.indexOf('function Footer('));
+  assert.match(nav, /supporterProfileFromUser\(user\)\.displayName/);
+  assert.match(nav, /href="\/studio\/profile"[\s\S]*?aria-label="Supporter profile and settings"[\s\S]*?data-testid="link-desktop-profile-settings"/);
+  assert.match(nav, /aria-hidden="true">\{profileInitial\}<\/span>/);
+  assert.match(nav, />Settings<\/span>/);
+  assert.match(dashboard, /href=\{supporterToolRoutes\.profile\}[\s\S]*?data-testid="btn-mobile-open-profile"/);
+});
+
 test('the private owner HYPE Card screen shares its direct link and saves all owner privacy choices', () => {
   const source = readFileSync(new URL('./player-showcase.tsx', import.meta.url), 'utf8');
   assert.match(source, /ownerExperience/);

@@ -74,3 +74,9 @@ For the desktop supporter dashboard, keep everything within one centered, bounde
 **Why:** The user requested a smaller desktop HYPE Card and the same mobile message board beside it, then rejected the scattered desktop composition as overwhelming and asked for centered content with properly aligned sections.
 
 **How to apply:** Preserve mobile/desktop message and action parity using real event state, not a static badge substitute. Check full-screen centering and shared section boundaries at both narrow desktop and wide-screen widths; do not treat merely fitting three columns as sufficient visual verification.
+
+Keep the profile/settings monogram reachable from both desktop and mobile headers, with both leading to the same account settings.
+
+**Why:** The user could access the full settings menu through the mobile monogram but had no equivalent entry on desktop. A shortcut inside the profile page alone did not solve dashboard access.
+
+**How to apply:** Preserve a visible desktop account entry when changing the top navigation; do not rely on a plain email label or an already-open settings page as the route to profile and alerts.
