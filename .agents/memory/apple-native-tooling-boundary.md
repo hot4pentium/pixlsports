@@ -8,6 +8,12 @@ is available in this Linux workspace. A non-Apple `xcbuild` compatibility tool m
 answer version queries without Apple SDKs. An off-PATH Swift compiler can also
 parse sources while its Foundation dependencies cannot resolve SwiftGlibc.
 
+The available Swift 5.8 module was not sufficient by itself to execute a
+Foundation-based check: its outer wrapper cleared PATH, while the raw compiler
+could report its version without finding Foundation. Installing a module is not
+verification that these dependencies work. Smoke-compile the actual imports;
+use standard-library-only checks or the Mac instructions when they do not.
+
 **Why:** Native verification would be falsely reported as available if tool
 discovery stopped at `command -v xcodebuild`.
 

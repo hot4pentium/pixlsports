@@ -61,8 +61,7 @@ final class NativeOfflineRuntime: ObservableObject {
     @Published private(set) var revocationGeneration = 0
     let vault = NativeOfflineVault.shared
     private let monitor = NWPathMonitor()
-    private var worker: Task<Void, Never>?
-    private var preparationRefreshRequested = false
+    private let worker = NativeEventPreparationWorker()
     private var lastRefresh = Date.distantPast
     private var activeDrains = Set<String>()
     private var activeEventCardSyncs = Set<String>()
@@ -71,7 +70,6 @@ final class NativeOfflineRuntime: ObservableObject {
     private var recentlySyncedEventCardTokens: [String: String] = [:]
     private var models: [String: NativeEventToolModel] = [:]
     private var downloadEpochs = NativeOfflineDownloadEpochs()
-    private var workerID = UUID()
     private var expiryClock: AnyCancellable?
     private var reminderInvalidation = NativeReminderInvalidationPolicy()
 
@@ -931,60 +929,24 @@ final class NativeOfflineRuntime: ObservableObject {
     }
 
     private func cancelWorker() {
-        preparationRefreshRequested = false
-        worker?.cancel()
-        worker = nil
-        workerID = UUID()
+        worker.cancel()
     }
 
     func resume(clerk: Clerk, force: Bool = false) {
-        guard online, clerk.isAuthFlowComplete else { return }
-        guard worker == nil else {
-            // Do not lose a new Event Card's refresh while an older schedule
-            // is being prepared. Coalesce requests into one fresh pass.
-            if force { preparationRefreshRequested = true }
-            return
-        }
-        guard force || Date().timeIntervalSince(lastRefresh) > 30 else { return }
-        preparationRefreshRequested = false
-        lastRefresh = Date()
-        let jobID = UUID()
-        workerID = jobID
-        worker = Task {
-            defer {
-                if workerID == jobID {
-                    worker = nil
-                    if preparationRefreshRequested {
-                        preparationRefreshRequested = false
-                        resume(clerk: clerk, force: true)
-                    }
-                }
-            }
+        guard !Task.isCancelled, online, clerk.isAuthFlowComplete else { return }
+        guard worker.isRunning || force || Date().timeIntervalSince(lastRefresh) > 30 else { return }
+        let subject = clerk.user?.id
+        worker.request(force: force) { [self] in
+            guard !Task.isCancelled, online, subject == clerk.user?.id,
+                  clerk.isAuthFlowComplete else { return }
+            lastRefresh = Date()
             // Revalidate the native account before touching any persisted outbox.
             do {
                 let page = try await verifiedSchedule(clerk: clerk)
-                guard page.status == "linked", vault.canContinue(subject: clerk.user?.id) else { return }
+                guard subject == clerk.user?.id, page.status == "linked",
+                      vault.canContinue(subject: subject) else { return }
                 let scope = vault.namespace
-                _ = try? await SupporterHomeAPI.syncQueuedAthleteProfile(clerk: clerk)
-                guard !Task.isCancelled, vault.namespace == scope,
-                      vault.canContinue(subject: clerk.user?.id) else { return }
-                _ = await syncPendingHypeCardSettings(clerk: clerk)
-                guard !Task.isCancelled, vault.namespace == scope,
-                      vault.canContinue(subject: clerk.user?.id) else { return }
-                let syncedCards = await retryPendingEventCards(clerk: clerk)
-                guard !Task.isCancelled, vault.namespace == scope,
-                      vault.canContinue(subject: clerk.user?.id) else { return }
-                // The first page predates the sync above. Preparing that old
-                // snapshot can omit the very Event Card that just saved.
-                let preparationPage: NativeSupporterSchedule
-                if syncedCards.isEmpty {
-                    preparationPage = page
-                } else {
-                    preparationPage = try await verifiedSchedule(clerk: clerk)
-                }
-                guard !Task.isCancelled, vault.namespace == scope,
-                      vault.canContinue(subject: clerk.user?.id) else { return }
-                await prepare(preparationPage, clerk: clerk, scope: scope)
+                try await prepare(page, clerk: clerk, subject: subject, scope: scope)
 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--prep-hold-auto-retry") { return }
 #endif
@@ -1043,59 +1005,69 @@ final class NativeOfflineRuntime: ObservableObject {
         throw lastError
     }
 
-    private func prepare(_ page: NativeSupporterSchedule, clerk: Clerk, scope: String?) async {
-        let now = Date()
-        let cutoff = now.addingTimeInterval(7 * 24 * 60 * 60)
-        let events = page.events.filter {
-            let zone = $0.timezone ?? page.timezone ?? TimeZone.current.identifier
-            guard let date = $0.parsedStart(timezone: zone) else { return false }
-            return date >= Calendar.current.startOfDay(for: now) && date < cutoff
-        }.sorted { $0.date + $0.time < $1.date + $1.time }
-        // Serial requests and a fixed budget keep first dashboard paint independent.
-        let selected = Array(events.prefix(24))
-        var prepared = 0
-        var removed = 0
-        var failed = 0
-        for event in selected {
-            guard !Task.isCancelled, online, vault.namespace == scope else { return }
-            do {
-                if try vault.skipsAutomaticDownload(event.shareToken) {
-                    removed += 1
-                    continue
+    private func prepare(_ page: NativeSupporterSchedule, clerk: Clerk,
+                         subject: String?, scope: String?) async throws {
+        func isCurrent() -> Bool {
+            online && clerk.user?.id == subject && vault.namespace == scope
+                && vault.canContinue(subject: subject)
+        }
+        var eventCount = 0
+        let result = try await NativeEventPreparationFlow.run(
+            initialPage: page,
+            synchronize: {
+                _ = try? await SupporterHomeAPI.syncQueuedAthleteProfile(clerk: clerk)
+                guard !Task.isCancelled, isCurrent() else { throw CancellationError() }
+                _ = await syncPendingHypeCardSettings(clerk: clerk)
+                guard !Task.isCancelled, isCurrent() else { throw CancellationError() }
+                return !(await retryPendingEventCards(clerk: clerk)).isEmpty
+            },
+            refreshSchedule: { try await verifiedSchedule(clerk: clerk) },
+            isCurrent: isCurrent,
+            select: { freshPage in
+                let now = Date()
+                let cutoff = now.addingTimeInterval(7 * 24 * 60 * 60)
+                let events = freshPage.events.filter {
+                    let zone = $0.timezone ?? freshPage.timezone ?? TimeZone.current.identifier
+                    guard let date = $0.parsedStart(timezone: zone) else { return false }
+                    return date >= Calendar.current.startOfDay(for: now) && date < cutoff
+                }.sorted { $0.date + $0.time < $1.date + $1.time }
+                eventCount = events.count
+                return Array(events.prefix(24))
+            },
+            availability: { event in
+                do {
+                    if try vault.skipsAutomaticDownload(event.shareToken) { return .removed }
+                } catch {
+                    storageError = error.localizedDescription
+                    throw error
                 }
-            } catch {
-                storageError = error.localizedDescription
-                return
-            }
-            if vault.date("workspace/" + event.shareToken).map({ Date().timeIntervalSince($0) < 300 }) == true {
-                prepared += 1
-                continue
-            }
-            do {
+                return vault.date("workspace/" + event.shareToken).map {
+                    Date().timeIntervalSince($0) < 300
+                } == true ? .ready : .download
+            },
+            download: { event in
                 let data = try await NativeAccountLinkClient().postData(
                     "supporter/event-workspace", body: ["shareToken": event.shareToken], clerk: clerk)
+                guard !Task.isCancelled, isCurrent() else { throw CancellationError() }
                 guard try vault.read("workspace/" + event.shareToken) == data else {
                     throw NativeOfflineError.protectedStorage
                 }
-                prepared += 1
-                preparation = "Ready offline: \(prepared) of \(selected.count) upcoming events"
-            } catch {
-                guard !Task.isCancelled, vault.namespace == scope else { return }
-                failed += 1
-                preparation = "Ready offline: \(prepared) of \(selected.count - removed). Tap Retry to finish."
-                // One unavailable older event must not prevent another
-                // upcoming event from receiving its local reminder.
-                continue
-            }
-        }
-        preparation = selected.isEmpty ? "Saved dashboard available offline" :
-            "Ready offline: \(prepared) upcoming events" + (events.count > 24 ? " · open other events to prepare them" : "")
-        if removed > 0 { preparation += " · \(removed) removed downloads need an online download" }
-        if failed > 0 { preparation += " · Tap Retry to finish missing downloads" }
+            },
+            progress: { result in
+                preparation = "Ready offline: \(result.prepared) of \(result.selected - result.removed)"
+                    + (result.failed > 0 ? ". Tap Retry to finish." : " upcoming events")
+            },
+            reconcile: {
 #if os(iOS)
-        await NativeLocalEventReminderCoordinator.shared.reconcile()
-        await NativeToolAvailabilityReminderCoordinator.shared.reconcile()
+                await NativeLocalEventReminderCoordinator.shared.reconcile()
+                guard !Task.isCancelled, isCurrent() else { throw CancellationError() }
+                await NativeToolAvailabilityReminderCoordinator.shared.reconcile()
 #endif
+            })
+        preparation = result.selected == 0 ? "Saved dashboard available offline" :
+            "Ready offline: \(result.prepared) upcoming events" + (eventCount > 24 ? " · open other events to prepare them" : "")
+        if result.removed > 0 { preparation += " · \(result.removed) removed downloads need an online download" }
+        if result.failed > 0 { preparation += " · Tap Retry to finish missing downloads" }
     }
 }
 

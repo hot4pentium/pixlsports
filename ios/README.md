@@ -161,6 +161,12 @@ loaded data are not access.
 
 ## Mac verification
 
+For deterministic coverage of overlapping Event Card saves and reminder
+preparation, run `bash ios/Tests/verify-reminder-behavior.sh`. It executes the
+production async worker/coordinator with controlled IO, not source-pattern
+assertions alone. See [reminder behavior checks](Tests/native-reminder-behavior-checks.md)
+for the cases, Apple SDK build command, and the separate real-device boundary.
+
 This repository is edited on Linux, without Xcode or an iOS simulator. Build,
 signing, and rendered native UI must be verified on the Mac.
 
