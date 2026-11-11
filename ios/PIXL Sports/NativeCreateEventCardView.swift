@@ -109,7 +109,8 @@ struct NativeCreateEventCardView: View {
 
     private var canSaveWithoutClerk: Bool {
 #if DEBUG
-        NativeEventCardCreateRetryUITestFixture.isRequested
+        NativeEventCardRescheduleUITestFixture.isRequested
+            || NativeEventCardCreateRetryUITestFixture.isRequested
             || NativeEventCardConflictUITestFixture.isRequested
 #else
         false
@@ -183,6 +184,23 @@ struct NativeCreateEventCardView: View {
                             .environment(\.timeZone, selectedTimeZone)
                             .tint(SupporterHomeColors.accent)
                             .accessibilityIdentifier("native-event-start-time")
+#if DEBUG
+                        if NativeEventCardRescheduleUITestFixture.isRequested {
+                            Button("Set start time to 7:20 PM") {
+                                let date = Self.formatted(
+                                    eventDate,
+                                    pattern: "yyyy-MM-dd",
+                                    timezone: timezone
+                                )
+                                eventTime = Self.dateValue(
+                                    date,
+                                    time: "19:20",
+                                    timezone: timezone
+                                ) ?? eventTime
+                            }
+                            .accessibilityIdentifier("native-event-reschedule-fixture-later-time")
+                        }
+#endif
 
                         Picker("Event time zone", selection: $timezone) {
                             ForEach(availableTimeZones, id: \.self) { zone in
@@ -436,6 +454,14 @@ struct NativeCreateEventCardView: View {
             opponent: eventType == "practice" ? "" : cleanOpponent
         )
 #if DEBUG
+        if NativeEventCardRescheduleUITestFixture.isRequested {
+            guard NativeEventCardRescheduleUITestFixture.shared.save(draft) else {
+                errorMessage = "This fictional Event Card could not be updated."
+                return
+            }
+            completeSync(token: existingEvent?.shareToken ?? shareToken ?? "")
+            return
+        }
         if canSaveWithoutClerk {
             if NativeEventCardConflictUITestFixture.isRequested {
                 if forceNetworkAttempt {

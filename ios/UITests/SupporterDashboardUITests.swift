@@ -589,6 +589,82 @@ final class SupporterDashboardUITests: XCTestCase {
         }
     }
 
+    func testReschedulingChangesDashboardFocusAndKeepsCompletedCardsInBothLayouts() {
+        for accessibilityText in [false, true] {
+            let app = launch("guide-reschedule", accessibilityText: accessibilityText)
+            let targetID = accessibilityText
+                ? "dashboard-event-card-fictional-reschedule-target"
+                : "dashboard-event-tile-fictional-reschedule-target"
+            let nextID = accessibilityText
+                ? "dashboard-event-card-fictional-reschedule-next"
+                : "dashboard-event-tile-fictional-reschedule-next"
+            let completedID = accessibilityText
+                ? "dashboard-event-card-fictional-reschedule-completed"
+                : "dashboard-event-tile-fictional-reschedule-completed"
+
+            let hero = reachable("dashboard-message-board-card", in: app)
+            XCTAssertTrue(hero.label.contains("Target Event Card"), hero.label)
+            let target = reachable(targetID, in: app)
+            let next = reachable(nextID, in: app)
+            XCTAssertTrue(target.label.contains("UP NEXT"), target.label)
+            XCTAssertFalse(next.label.contains("UP NEXT"), next.label)
+            XCTAssertTrue(target.label.contains("7:10"), target.label)
+
+            let seasonRecord = reachable("dashboard-season-record", in: app)
+            XCTAssertTrue(seasonRecord.staticTexts["4 GAMES"].exists)
+
+            target.press(forDuration: 1.1)
+            let edit = app.descendants(matching: .any)
+                .matching(identifier: "dashboard-event-edit-action-fictional-reschedule-target")
+                .firstMatch
+            XCTAssertTrue(edit.waitForExistence(timeout: 5))
+            edit.tap()
+
+            XCTAssertTrue(app.staticTexts["Edit Event Card"].waitForExistence(timeout: 5))
+            XCTAssertTrue(reachable("native-event-start-time", in: app).exists)
+            reachable("native-event-reschedule-fixture-later-time", in: app).tap()
+            reachable("native-event-create-submit", in: app).tap()
+
+            let heroMoved = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label CONTAINS %@", "Next Event Card"),
+                object: app.descendants(matching: .any)["dashboard-message-board-card"].firstMatch
+            )
+            let nextBecameUpNext = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label CONTAINS[c] %@", "UP NEXT"),
+                object: app.descendants(matching: .any)[nextID].firstMatch
+            )
+            let targetLostUpNext = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "NOT (label CONTAINS[c] %@)", "UP NEXT"),
+                object: app.descendants(matching: .any)[targetID].firstMatch
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(
+                    for: [heroMoved, nextBecameUpNext, targetLostUpNext],
+                    timeout: 10
+                ),
+                .completed,
+                "Saving the changed start time should immediately reorder dashboard focus."
+            )
+
+            let updatedTarget = reachable(targetID, in: app)
+            XCTAssertTrue(updatedTarget.label.contains("7:20"), updatedTarget.label)
+            XCTAssertTrue(reachable(nextID, in: app).label.contains("UP NEXT"))
+            let completed = reachable(completedID, in: app)
+            XCTAssertTrue(completed.label.contains("COMPLETE"), completed.label)
+            XCTAssertTrue(completed.label.contains("Completed Card With Saved Stats"), completed.label)
+            XCTAssertTrue(
+                reachable("dashboard-season-record", in: app).staticTexts["4 GAMES"].exists,
+                "Rescheduling must leave the completed season record available."
+            )
+
+            completed.tap()
+            let detailTitle = app.staticTexts["event-detail-title"]
+            XCTAssertTrue(detailTitle.waitForExistence(timeout: 5))
+            XCTAssertTrue(detailTitle.label.contains("Completed Card With Saved Stats"), detailTitle.label)
+            app.terminate()
+        }
+    }
+
     func testLongPressDeleteRequiresConfirmationAndKeepsTheDateHistory() {
         for accessibilityText in [false, true] {
             let app = launch("upcoming", accessibilityText: accessibilityText)

@@ -116,6 +116,47 @@ enum SupporterDashboardFixtures {
                     )
                 ]
             )
+        case "guide-reschedule":
+            let target = guideGame(
+                status: "upcoming",
+                id: "fictional-reschedule-target",
+                title: "Target Event Card",
+                date: "2026-11-08",
+                time: "19:10",
+                timezone: "America/New_York"
+            )
+            let next = guideGame(
+                status: "upcoming",
+                id: "fictional-reschedule-next",
+                title: "Next Event Card",
+                date: "2026-11-08",
+                time: "19:15",
+                timezone: "America/New_York"
+            )
+            let completed = guideGame(
+                status: "final",
+                id: "fictional-reschedule-completed",
+                title: "Completed Card With Saved Stats",
+                date: "2026-11-07",
+                time: "18:30",
+                timezone: "America/New_York"
+            )
+            let schedulePage = page(
+                events: [target, next, completed],
+                timezone: "America/New_York"
+            )
+            let now = fixedGuideNow ?? Date()
+            return .schedule(
+                page: schedulePage,
+                events: SupporterHomeViewModel.upcomingEvents(in: schedulePage, now: now),
+                pastEvents: [
+                    SupporterScheduleItem(
+                        event: completed,
+                        timing: .complete,
+                        start: completed.parsedStart(timezone: completed.timezone)
+                    )
+                ]
+            )
         default:
             let timing: SupporterEventTiming = name == "live" ? .live : .upcoming
             let events = [
@@ -155,7 +196,8 @@ enum SupporterDashboardFixtures {
             "guide-close-events-before-pregame": "2026-11-09T00:04:59Z",
             "guide-close-events-pregame": "2026-11-09T00:05:00Z",
             "guide-close-events-clock": "2026-11-09T00:04:59Z",
-            "guide-close-events-history": "2026-11-09T01:55:00Z"
+            "guide-close-events-history": "2026-11-09T01:55:00Z",
+            "guide-reschedule": "2026-11-08T23:59:00Z"
         ]
         guard let timestamp = timestamps[state] else { return nil }
         return ISO8601DateFormatter().date(from: timestamp)
@@ -253,6 +295,62 @@ enum SupporterDashboardFixtures {
             liveTapsInviteToken: nil,
             liveTapsSport: nil
         )
+    }
+}
+
+@MainActor
+final class NativeEventCardRescheduleUITestFixture: ObservableObject {
+    static var isRequested: Bool {
+        ProcessInfo.processInfo.arguments.contains("--dashboard-state=guide-reschedule")
+    }
+
+    static let shared = NativeEventCardRescheduleUITestFixture()
+
+    @Published private(set) var state = SupporterDashboardFixtures.state()
+
+    @discardableResult
+    func save(_ draft: NativeEventCardDraft) -> Bool {
+        guard case let .schedule(page, _, pastEvents) = state,
+              page.events.contains(where: { $0.eventId == draft.id }) else {
+            return false
+        }
+
+        let updatedEvents = page.events.map { event in
+            guard event.eventId == draft.id else { return event }
+            return AthleteFanEvent(
+                shareToken: event.shareToken,
+                eventId: event.eventId,
+                title: event.title,
+                date: draft.date,
+                time: draft.time,
+                type: draft.type,
+                status: event.status,
+                opponent: draft.opponent,
+                location: draft.location,
+                timezone: draft.timezone,
+                liveTapsActive: event.liveTapsActive,
+                liveTapsOnly: event.liveTapsOnly,
+                liveTapsInviteToken: event.liveTapsInviteToken,
+                liveTapsSport: event.liveTapsSport
+            )
+        }
+        let updatedPage = NativeSupporterSchedule(
+            status: page.status,
+            athleteName: page.athleteName,
+            teamName: page.teamName,
+            seasonName: page.seasonName,
+            timezone: page.timezone,
+            events: updatedEvents,
+            record: page.record,
+            linkId: page.linkId
+        )
+        let now = SupporterDashboardFixtures.fixedGuideNow ?? Date()
+        state = .schedule(
+            page: updatedPage,
+            events: SupporterHomeViewModel.upcomingEvents(in: updatedPage, now: now),
+            pastEvents: pastEvents
+        )
+        return true
     }
 }
 

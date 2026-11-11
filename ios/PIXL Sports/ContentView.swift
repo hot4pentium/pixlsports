@@ -24,6 +24,7 @@ struct ContentView: View {
 #if DEBUG
     @ObservedObject private var scheduleRefreshProbe = NativeScheduleRefreshUITestProbe.shared
     @ObservedObject private var dashboardClock: SupporterDashboardClock
+    @ObservedObject private var rescheduleUITestFixture: NativeEventCardRescheduleUITestFixture
     @ObservedObject private var fanBaseRefreshFixture: NativeFanBaseRefreshUITestFixture
     private let usesFanBaseRefreshFixture: Bool
 #endif
@@ -92,6 +93,9 @@ struct ContentView: View {
 #if DEBUG
         self.fixtureState = nil
         self._dashboardClock = ObservedObject(wrappedValue: SupporterDashboardFixtures.clock)
+        self._rescheduleUITestFixture = ObservedObject(
+            wrappedValue: NativeEventCardRescheduleUITestFixture.shared
+        )
         self._fanBaseRefreshFixture = ObservedObject(
             wrappedValue: NativeFanBaseRefreshUITestFixture(startLoaded: false)
         )
@@ -112,6 +116,9 @@ struct ContentView: View {
         self._showingSettings = showingSettings
         self.fixtureState = fixtureState
         self._dashboardClock = ObservedObject(wrappedValue: SupporterDashboardFixtures.clock)
+        self._rescheduleUITestFixture = ObservedObject(
+            wrappedValue: NativeEventCardRescheduleUITestFixture.shared
+        )
         self._fanBaseRefreshFixture = ObservedObject(
             wrappedValue: fanBaseRefreshFixture
                 ?? NativeFanBaseRefreshUITestFixture(startLoaded: false)
@@ -142,6 +149,9 @@ struct ContentView: View {
     private var displayedState: SupporterHomeViewModel.State {
 #if DEBUG
         if let fixtureState {
+            if NativeEventCardRescheduleUITestFixture.isRequested {
+                return rescheduleUITestFixture.state
+            }
             if SupporterDashboardFixtures.isClockControlled {
                 return SupporterDashboardFixtures.state(now: dashboardClock.now)
             }
@@ -736,6 +746,12 @@ struct ContentView: View {
                     existingEvent: event,
                     shareToken: token,
                     onCreated: { updatedToken in
+#if DEBUG
+                        if NativeEventCardRescheduleUITestFixture.isRequested {
+                            heroDestination = nil
+                            return
+                        }
+#endif
                         Task {
                             await loadSchedule()
                             heroDestination = .eventCard(updatedToken)

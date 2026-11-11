@@ -171,7 +171,7 @@ final class SupporterHomeViewModel: ObservableObject {
         if let data = try? offline.vault.read("get/supporter/schedule", subject: previewUserID),
            let saved = try? JSONDecoder().decode(NativeSupporterSchedule.self, from: data),
            saved.status == "linked" {
-            state = .schedule(page: saved, events: upcomingEvents(in: saved, now: Date()),
+            state = .schedule(page: saved, events: Self.upcomingEvents(in: saved, now: Date()),
                               pastEvents: pastEventCards(in: saved, now: Date()))
             if !hasLoadedAthleteProfile,
                let data = try? offline.vault.read("get/supporter/profile", subject: previewUserID),
@@ -238,7 +238,7 @@ final class SupporterHomeViewModel: ObservableObject {
             let now = Date()
             state = .schedule(
                 page: page,
-                events: upcomingEvents(in: page, now: now),
+                events: Self.upcomingEvents(in: page, now: now),
                 pastEvents: pastEventCards(in: page, now: now)
             )
             if forceProfileReload || !hasLoadedAthleteProfile || athleteProfile?.needsSetup == true {
@@ -373,7 +373,7 @@ final class SupporterHomeViewModel: ObservableObject {
         hasResolvedInitialSchedule = true
     }
 
-    private func upcomingEvents(
+    static func upcomingEvents(
         in page: NativeSupporterSchedule,
         now: Date
     ) -> [SupporterScheduleItem] {
