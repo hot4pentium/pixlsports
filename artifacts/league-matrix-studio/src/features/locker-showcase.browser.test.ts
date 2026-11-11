@@ -560,6 +560,21 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     assert.ok(await browser.evaluate(`document.documentElement.scrollWidth<=innerWidth`), 'the public card fits a desktop viewport');
     await browser.evaluate(`window.__update({mode:'owner-showcase'})`);
     await browser.wait(`document.querySelector('[data-testid="owner-item-share-hype-card"]')`);
+    const settingsShortcut = await browser.evaluate(`(() => {
+      const link = document.querySelector('[data-testid="link-showcase-hype-card-settings"]');
+      const rect = link?.getBoundingClientRect();
+      return {
+        href: link?.getAttribute('href') ?? '',
+        label: link?.textContent?.trim() ?? '',
+        visible: Boolean(rect && rect.width > 0 && rect.top >= 0 && rect.bottom <= innerHeight),
+      };
+    })()`);
+    assert.equal(settingsShortcut.href, '#hype-card-settings', 'the Showcase has a direct HYPE Card settings shortcut');
+    assert.match(settingsShortcut.label, /HYPE Card settings/);
+    assert.equal(settingsShortcut.visible, true, 'the settings shortcut is visible beside the top card heading');
+    await browser.evaluate(`document.querySelector('[data-testid="link-showcase-hype-card-settings"]').click()`);
+    await browser.wait(`location.hash === '#hype-card-settings'
+      && document.querySelector('[data-testid="owner-item-hype-card-settings"]')?.getBoundingClientRect().top < innerHeight`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="athlete-editor-invitation"]')`), null, 'new athlete invitations are not offered');
     await browser.wait(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-front"]')`);
     assert.equal(await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="owner-card-private-explanation"]')`), null,

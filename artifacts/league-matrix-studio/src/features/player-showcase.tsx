@@ -79,6 +79,13 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
         <p className="ps__eyebrow">Player Showcase</p>
         <h1 id="ps-dyn" className="ps__section-title">HYPE Card</h1>
         <p className="ps__card-only-intro">One athlete. One season. Your HYPE Card.</p>
+        {ownerExperience && ownerInvite && (
+          <a href="#hype-card-settings" className="ps__owner-settings-shortcut" data-testid="link-showcase-hype-card-settings">
+            <Settings2 aria-hidden="true" />
+            <span>HYPE Card settings</span>
+            <ArrowRight aria-hidden="true" />
+          </a>
+        )}
         <div className="ps__card-only" role="region" aria-label={`${profile.athleteName || 'Athlete'} HYPE Card Showcase`}>
           {cardPicker}
           {card || privateFrontPreview ? (
@@ -410,7 +417,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           )}
         </section>
         {matchedInvite && (
-          <section className="hype-owner-settings" aria-labelledby="hype-card-settings-title" data-testid="owner-item-hype-card-settings">
+          <section id="hype-card-settings" className="hype-owner-settings" aria-labelledby="hype-card-settings-title" data-testid="owner-item-hype-card-settings">
             <div className="hype-owner-settings__heading">
               <span className="hype-owner-item__icon"><Settings2 aria-hidden="true" /></span>
               <div>

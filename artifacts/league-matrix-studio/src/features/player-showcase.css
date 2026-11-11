@@ -130,6 +130,11 @@
 .ps-owner-canvas .ps__owner-card-surface-container .owner-hype-surface{max-width:100%}
 .ps-owner-canvas .ps__card-only-panel>.ps__owner-card-surface-container{order:1}
 .ps-owner-canvas .ps__card-only-panel>.ps__card-only-heading{order:2}
+.ps-owner-canvas .ps__owner-settings-shortcut{display:flex;align-items:center;gap:11px;width:100%;min-height:54px;margin:0 0 16px;padding:0 16px;border:1px solid rgba(40,120,245,.5);border-radius:14px;background:linear-gradient(120deg,#102b4d,#0b1f3a);color:#fff;font-size:13px;font-weight:900;letter-spacing:.04em;text-decoration:none;box-shadow:0 10px 22px rgba(16,43,77,.16);transition:transform .16s ease,background .16s ease}
+.ps-owner-canvas .ps__owner-settings-shortcut svg:first-child{width:19px;height:19px;color:#dff56f}
+.ps-owner-canvas .ps__owner-settings-shortcut svg:last-child{width:17px;height:17px;margin-left:auto;color:#dff56f}
+.ps-owner-canvas .ps__owner-settings-shortcut:hover{transform:translateY(-1px);background:linear-gradient(120deg,#17467b,#102b4d)}
+.ps-owner-canvas .ps__owner-settings-shortcut:focus-visible{outline:3px solid #2878f5;outline-offset:3px}
 @media(max-width:720px){.ps-owner-canvas .ps__owner-card-surface-container{width:min(100%,380px)}}
 
 /* Private owner controls: iOS-inspired hierarchy on the existing Pixl paper canvas. */
