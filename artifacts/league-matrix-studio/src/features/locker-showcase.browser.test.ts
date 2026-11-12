@@ -700,13 +700,13 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     // A failed Private save must not pretend that public access was revoked.
     await browser.wait(`!document.querySelector('[data-testid="toggle-show-hype-card"]').disabled`);
     await browser.evaluate(`Object.defineProperty(navigator,'onLine',{configurable:true,value:true});window.dispatchEvent(new Event('online'));window.__failOwnerSettingsSave=true;document.querySelector('[data-testid="toggle-show-hype-card"]').click();document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
-    await browser.wait(`!document.querySelector('[data-testid="toggle-show-hype-card"]').disabled && document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('saved on this device')`);
-    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), 'failed privacy save keeps the last confirmed public status');
+    await browser.wait(`!document.querySelector('[data-testid="toggle-show-hype-card"]').disabled && document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.toLowerCase().includes('saved on this device')`);
+    assert.ok(await browser.evaluate(`Boolean(document.querySelector('[data-testid="button-share-hype-card"]'))`), 'failed privacy save keeps the last confirmed public status');
     await browser.evaluate(`window.__failOwnerSettingsSave=false;document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
     await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('Private') && !document.querySelector('[data-testid="button-share-hype-card"]')`);
     // Save Public while offline, then relaunch: automatic retry must stop for confirmation.
     await browser.evaluate(`Object.defineProperty(navigator,'onLine',{configurable:true,value:false});window.dispatchEvent(new Event('offline'));document.querySelector('[data-testid="toggle-show-hype-card"]').click();document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
-    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('saved on this device')`);
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.toLowerCase().includes('saved on this device')`);
     await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?mode=owner-showcase` });
     await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('private card stays private')`);
     assert.equal(await browser.evaluate(`window.__ownerSettingsSaves.length`), 0, 'a queued Public choice cannot auto-publish after relaunch');

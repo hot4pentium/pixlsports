@@ -157,3 +157,4 @@
 - [Private iPhone Season Stats](private-season-stats.md) — dashboard entry below Game Record; preserve private, project-scoped history and athlete/team attribution.
 - [PostgreSQL privacy races](postgres-privacy-race-tests.md) — prove concurrent request order through database blocking dependencies, not launch timing.
 - [Retained tool browser fixtures](retained-tool-browser-fixtures.md) — hidden tools keep querying; model real list responses before diagnosing missing controls or focus.
+- [iOS Clerk production domain](ios-clerk-production-domain.md) — use Secondary application to scope external iOS Clerk to its subdomain without claiming the PWA root.
