@@ -402,10 +402,9 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
       setDraftShowEvents(updatedInvite.showEvents);
       setDraftPaused(updatedInvite.paused);
       setSettingsMessageKind('success');
-      setSettingsMessage(updatedInvite.paused
-        ? 'HYPE Card settings saved. The public page is paused.'
-        : updatedInvite.showHypeCard ? 'HYPE Card settings saved.'
-          : 'HYPE Card settings saved. The public card is hidden.');
+      setSettingsMessage(updatedInvite.showHypeCard && !updatedInvite.paused
+        ? 'HYPE Card settings saved. The card is Public.'
+        : 'HYPE Card settings saved. The card is Private.');
       try {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
@@ -515,11 +514,14 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   };
   const isShareable = Boolean(matchedInvite?.showHypeCard && !matchedInvite.paused && publicHypeCardUrl);
   const cheers = linkedCard?.liveTaps ?? matchedInvite?.liveTaps;
-  const settingsDescription = draftPaused
-    ? 'Paused. Public access is suspended until you resume the page.'
-    : draftShowHypeCard
-      ? 'The HYPE Card can be shared while the public page is active.'
-      : 'The public HYPE Card is hidden; you can still review its owner preview.';
+  const setPublicVisibility = (isPublic: boolean) => {
+    // Keep legacy flags as loaded until the owner explicitly changes visibility.
+    setDraftShowHypeCard(isPublic);
+    setDraftPaused(!isPublic);
+  };
+  const settingsDescription = draftShowHypeCard && !draftPaused
+    ? 'Public lets anyone with the link view your shared sections. Save to apply changes.'
+    : 'Private keeps the card visible only to your linked account. Save to apply changes.';
   return (
     <div className="ps-owner-canvas">
       <div className="ps-desktop-bounded mx-auto w-full max-w-6xl px-4 pt-5 sm:px-8">
@@ -567,7 +569,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           <div className="hype-owner-item__copy">
             <p className="hype-owner-item__eyebrow">One link for family and friends</p>
             <h2 id="share-hype-card-title">Share HYPE Card</h2>
-            <p>{isShareable ? 'Share the direct HYPE Card link. Fans will only see the sections you have published.' : 'Sharing is unavailable while the card is hidden or the public page is paused.'}</p>
+            <p>{isShareable ? 'Share the direct HYPE Card link. Fans will only see the sections you have published.' : 'This HYPE Card is Private. Save it as Public in HYPE Card settings before sharing.'}</p>
           </div>
           {isShareable && publicHypeCardUrl ? (
             <div className="hype-owner-share-controls">
@@ -597,10 +599,9 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
             </div>
             <div className="hype-owner-setting-list">
               {[
-                { id: 'show-hype-card', title: 'Show HYPE Card', detail: 'Let anyone with the direct link view your published card.', value: draftShowHypeCard, setter: setDraftShowHypeCard },
+                { id: 'show-hype-card', title: 'Public / Private', detail: `Selected: ${draftShowHypeCard && !draftPaused ? 'Public' : 'Private'}. On is Public; off is Private. Save to apply.`, value: draftShowHypeCard && !draftPaused, setter: setPublicVisibility },
                 { id: 'share-finalized-stats', title: 'Share finalized stats', detail: 'Include season totals from finalized games on the Stats side.', value: draftShowStats, setter: setDraftShowStats },
                 { id: 'share-event-cards', title: 'Share Event Cards', detail: 'Show eligible saved Event Cards on the Events side.', value: draftShowEvents, setter: setDraftShowEvents },
-                { id: 'pause-public-page', title: 'Pause public page', detail: 'Temporarily suspend public access without changing the card link.', value: draftPaused, setter: setDraftPaused },
               ].map((item) => (
                 <label className="hype-owner-setting" key={item.id} htmlFor={item.id}>
                   <span><strong>{item.title}</strong><small>{item.detail}</small></span>
@@ -756,7 +757,7 @@ export function AthleteFanCardAppearancePage() {
     return <AthleteStudioShell><main className="grid min-h-[70dvh] place-items-center px-5"><div className="h-40 w-full max-w-2xl animate-pulse bg-muted" /></main></AthleteStudioShell>;
   }
   if (cardQuery.isError || !cardQuery.data || cardQuery.data.inviteToken !== access.inviteToken) {
-    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">HYPE Card unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Your parent may have paused the public card. Ask them to resume it before editing.</p><Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Player Showcase</Link></section></main></AthleteStudioShell>;
+    return <AthleteStudioShell><main className="mx-auto max-w-3xl px-5 py-14"><section className="border-l-4 border-primary bg-card p-7" role="alert"><h1 className="font-display text-4xl uppercase">HYPE Card unavailable</h1><p className="mt-3 text-sm text-muted-foreground">Your parent may have made the card Private. Ask them to review its settings before editing.</p><Link href={access.existingAccount ? '/card-editor' : '/studio/player-showcase'} className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Back to Player Showcase</Link></section></main></AthleteStudioShell>;
   }
   const profile = {
     athleteName: access.athleteName,

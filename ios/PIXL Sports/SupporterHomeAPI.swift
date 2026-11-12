@@ -1422,15 +1422,18 @@ enum SupporterHomeAPI {
         let localHasKnownBase = base.revision != nil
             && local.revision != nil
             && local.revision == base.revision
+        // Visibility is one choice even though the legacy API stores two flags.
+        let visibilityEdited = !localHasKnownBase
+            || local.showHypeCard != base.showHypeCard || local.paused != base.paused
         return NativeHypeCardSettings(
             revision: latest.revision,
-            showHypeCard: !localHasKnownBase || local.showHypeCard != base.showHypeCard
+            showHypeCard: visibilityEdited
                 ? local.showHypeCard : latest.showHypeCard,
             showStats: !localHasKnownBase || local.showStats != base.showStats
                 ? local.showStats : latest.showStats,
             showEvents: !localHasKnownBase || local.showEvents != base.showEvents
                 ? local.showEvents : latest.showEvents,
-            paused: !localHasKnownBase || local.paused != base.paused
+            paused: visibilityEdited
                 ? local.paused : latest.paused,
             favoriteMoment: !localHasKnownBase || local.favoriteMoment != base.favoriteMoment
                 ? local.favoriteMoment : latest.favoriteMoment

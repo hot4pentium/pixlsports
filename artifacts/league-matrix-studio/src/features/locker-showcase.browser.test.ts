@@ -161,6 +161,7 @@ window.fetch = async (input,init) => {
      if(init?.method==='PATCH'&&settingsPathParts.at(-2)==='athlete-invites'){
        const inviteToken=decodeURIComponent(settingsPathParts.at(-1)||'');
        const body=JSON.parse(init.body);
+       if(window.__failOwnerSettingsSave)return new Response(JSON.stringify({error:'Settings unavailable'}),{status:503,headers:{'Content-Type':'application/json'}});
        const current=state.ownerInvites.find(invite=>invite.inviteToken===inviteToken);
        const updated={...current,...body};
        state.ownerInvites=state.ownerInvites.map(invite=>invite.inviteToken===inviteToken?updated:invite);
@@ -614,7 +615,8 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     await browser.evaluate(`window.__holdOwnerSettingsSave=true`);
     await browser.evaluate(`document.querySelector('[data-testid="toggle-share-finalized-stats"]').click()`);
     await browser.evaluate(`document.querySelector('[data-testid="toggle-share-event-cards"]').click()`);
-    await browser.evaluate(`document.querySelector('[data-testid="toggle-pause-public-page"]').click()`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-pause-public-page"]')`), null, 'visibility has no separate pause toggle');
+    await browser.evaluate(`document.querySelector('[data-testid="toggle-show-hype-card"]').click()`);
     await browser.wait(`!document.querySelector('[data-testid="button-save-hype-card-settings"]').disabled`);
     await browser.evaluate(`document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
     await browser.wait(`window.__ownerSettingsSaves.length===1`);
@@ -626,7 +628,7 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     await browser.evaluate(`window.__holdOwnerSettingsSave=false;window.__releaseOwnerSettingsSave()`);
     const savedSettings = await browser.evaluate(`window.__ownerSettingsSaves[0]`);
     assert.equal(savedSettings.inviteToken, 'fixture-athlete');
-    assert.equal(savedSettings.data.showHypeCard, true, 'saving other choices does not hide the HYPE Card');
+    assert.equal(savedSettings.data.showHypeCard, false, 'Private hides the HYPE Card');
     assert.equal(savedSettings.data.showStats, false);
     assert.equal(savedSettings.data.showEvents, false);
     assert.equal(savedSettings.data.paused, true);
@@ -634,7 +636,7 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     assert.equal(savedSettings.data.athleteName, 'Jordan Lee', 'saving privacy choices preserves athlete identity');
     assert.equal(savedSettings.data.teamName, 'River FC');
     assert.equal(savedSettings.data.timezone, 'America/New_York');
-    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('paused')`);
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('Private')`);
     await browser.wait(`document.querySelector('[data-testid="input-owner-hype-card-url"]')===null`);
 
     await browser.evaluate(`Object.defineProperty(navigator,'onLine',{configurable:true,value:false});window.dispatchEvent(new Event('offline'))`);
@@ -665,6 +667,50 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     assert.equal(relaunchedSettings.current.showHypeCard, false, 'the retry cannot make a hidden card public');
     assert.equal(relaunchedSettings.current.paused, true, 'a retry cannot make a paused card public');
     assert.deepEqual(relaunchedSettings.pendingKeys, [], 'the local queue clears after the server confirms the save');
+
+    // Legacy private states must stay private on load and on unrelated saves.
+    for (const [showHypeCard, paused] of [[true, true], [false, false], [false, true]]) {
+      await browser.evaluate(`window.__update({ownerInvites:[{...JSON.parse(localStorage.getItem('locker-fixture-owner-invites')).find(invite=>invite.inviteToken==='fixture-athlete'),showHypeCard:${showHypeCard},paused:${paused}}]})`);
+      await browser.wait(`document.querySelector('[data-testid="toggle-show-hype-card"]')?.checked === false`);
+      const count = await browser.evaluate(`window.__ownerSettingsSaves.length`);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-save-hype-card-settings"]').disabled`), true, 'loading legacy privacy does not queue a save');
+      await browser.evaluate(`document.querySelector('[data-testid="toggle-share-finalized-stats"]').click();document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+      await browser.wait(`window.__ownerSettingsSaves.length===${count + 1} && !document.querySelector('[data-testid="toggle-share-finalized-stats"]').disabled`);
+      const unrelated = await browser.evaluate(`window.__ownerSettingsSaves.at(-1).data`);
+      assert.equal(unrelated.showHypeCard, showHypeCard);
+      assert.equal(unrelated.paused, paused);
+      assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), null);
+    }
+    // A draft Public choice is never enough to enable sharing or QR.
+    await browser.evaluate(`window.__confirms=0;window.confirm=()=>{window.__confirms++;return false};document.querySelector('[data-testid="toggle-show-hype-card"]').click()`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), null);
+    await browser.evaluate(`document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+    await browser.wait(`window.__confirms===1`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), null, 'cancelling publication leaves sharing unavailable');
+    await browser.evaluate(`window.confirm=()=>true;window.__holdOwnerSettingsSave=true;document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+    await browser.wait(`typeof window.__releaseOwnerSettingsSave==='function' && document.querySelector('[data-testid="toggle-show-hype-card"]').disabled`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), null, 'sharing waits for the saved server response');
+    const publication = await browser.evaluate(`window.__ownerSettingsSaves.at(-1).data`);
+    assert.equal(publication.showHypeCard, true);
+    assert.equal(publication.paused, false);
+    await browser.evaluate(`window.__holdOwnerSettingsSave=false;window.__releaseOwnerSettingsSave()`);
+    await browser.wait(`document.querySelector('[data-testid="button-share-hype-card"]')`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-pause-public-page"]')`), null);
+
+    // A failed Private save must not pretend that public access was revoked.
+    await browser.evaluate(`window.__failOwnerSettingsSave=true;document.querySelector('[data-testid="toggle-show-hype-card"]').click();document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+    await browser.wait(`!document.querySelector('[data-testid="toggle-show-hype-card"]').disabled && document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('saved on this device')`);
+    assert.ok(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), 'failed privacy save keeps the last confirmed public status');
+    await browser.evaluate(`window.__failOwnerSettingsSave=false;document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('Private') && !document.querySelector('[data-testid="button-share-hype-card"]')`);
+    // Save Public while offline, then relaunch: automatic retry must stop for confirmation.
+    await browser.evaluate(`Object.defineProperty(navigator,'onLine',{configurable:true,value:false});window.dispatchEvent(new Event('offline'));document.querySelector('[data-testid="toggle-show-hype-card"]').click();document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('saved on this device')`);
+    await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?mode=owner-showcase` });
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('private card stays private')`);
+    assert.equal(await browser.evaluate(`window.__ownerSettingsSaves.length`), 0, 'a queued Public choice cannot auto-publish after relaunch');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="button-share-hype-card"]')`), null);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="input-owner-hype-card-url"]')`), null);
 
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const phoneOwnerLayout = await browser.evaluate(`(() => {

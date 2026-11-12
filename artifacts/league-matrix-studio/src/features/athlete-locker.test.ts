@@ -86,10 +86,10 @@ test('the private owner HYPE Card screen shares its direct link and saves all ow
   assert.match(source, /\/fan\/\$\{encodeURIComponent\(inviteToken\)\}/);
   assert.match(source, /returnTo=showcase/);
   assert.match(source, /inviteToken=\$\{encodeURIComponent\(matchedInvite\.inviteToken\)\}/);
-  assert.match(source, /Show HYPE Card/);
+  assert.match(source, /Public \/ Private/);
   assert.match(source, /Share finalized stats/);
   assert.match(source, /Share Event Cards/);
-  assert.match(source, /Pause public page/);
+  assert.doesNotMatch(source, /title: 'Pause public page'/);
   assert.match(source, /useUpdateAthleteInvite/);
   assert.match(source, /getGetAthleteInviteQueryKey\(matchedInvite\.inviteToken\)/);
   assert.match(source, /getGetAthleteFanCardQueryKey\(matchedInvite\.inviteToken\)/);

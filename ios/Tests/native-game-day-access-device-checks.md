@@ -31,7 +31,7 @@ backend checks on Linux do not establish that the iPhone journey works.
    Separately unpause the public page in Settings without enabling HYPE Card
    sharing, then create a QR and verify that it targets this event.
    When Live Taps is paused, use its new action to open HYPE Card settings.
-   Confirm iPhone scrolls directly to Pause public page; only the owner's
+   Confirm iPhone scrolls directly to Public / Private; only the owner's
    explicit toggle change and Save unpause the page.
 4. While tracking, reschedule the event beyond ten minutes and background/resume.
    The chooser and recorder remain available; Stats, new Live Taps, and the full
@@ -44,7 +44,7 @@ backend checks on Linux do not establish that the iPhone journey works.
 7. Repeat with a second account, a different sport, and a paused/expired card.
    Never show another account's context; give the real access error rather than
    asking an already-provisioned athlete to create a public Showcase.
-   Explicitly saving Pause public page must stop owner Live Taps too; it is
+   Explicitly saving Private must stop owner Live Taps too; it is
    distinct from the automatic privacy pause assigned to a new starter card.
 
 ## Optional availability reminder

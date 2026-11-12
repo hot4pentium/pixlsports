@@ -546,6 +546,37 @@ test("native owner edits require confirmation before publishing and close live t
   assert.equal((await loadNativeSupporterHypeCard(who, lookup)).status, "available");
 });
 
+test("Public / Private updates preserve the card link and section choices without restoring live shares", async () => {
+  const who = identity();
+  const linkedOwner = await owner();
+  await link(who, linkedOwner);
+  const inviteToken = randomBytes(18).toString("base64url");
+  await addInvite(linkedOwner, "Jordan", "Tigers", inviteToken);
+  const lookup = async () => ({ athleteName: "Jordan", teamName: "Tigers" });
+  const initial = await loadNativeSupporterHypeCard(who, lookup);
+  assert.ok(initial.settings);
+  const desired = { ...initial.settings, showHypeCard: false, paused: true };
+  await updateCurrentSettings(who, { ...desired, confirmPublish: false }, lookup);
+  const privateCard = await loadNativeSupporterHypeCard(who, lookup);
+  assert.equal(privateCard.status, "hidden");
+  assert.equal("inviteToken" in privateCard, false);
+  assert.equal(privateCard.settings?.showStats, initial.settings.showStats);
+  assert.equal(privateCard.settings?.showEvents, initial.settings.showEvents);
+  await assert.rejects(
+    updateCurrentSettings(who, { ...desired, showHypeCard: true, paused: false, confirmPublish: false }, lookup),
+    (error: any) => error.status === 400,
+  );
+  await updateCurrentSettings(who, { ...desired, showHypeCard: true, paused: false, confirmPublish: true }, lookup);
+  const publicCard = await loadNativeSupporterHypeCard(who, lookup);
+  assert.equal(publicCard.inviteToken, inviteToken);
+  assert.equal(publicCard.settings?.showStats, initial.settings.showStats);
+  assert.equal(publicCard.settings?.showEvents, initial.settings.showEvents);
+  const stored = await pool.query(
+    "SELECT live_tracker_share_token FROM athlete_invites WHERE public_token=$1", [inviteToken],
+  );
+  assert.equal(stored.rows[0].live_tracker_share_token, null);
+});
+
 test("native HYPE Card settings can be confirmed after the update response is lost", async () => {
   const who = identity();
   const linkedOwner = await owner();

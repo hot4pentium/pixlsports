@@ -291,7 +291,7 @@ struct SupporterHypeCardView: View {
                     await Task.yield()
                     guard !Task.isCancelled, focusPauseSettingOnOpen else { return }
                     withAnimation(.easeInOut(duration: 0.25)) {
-                        scrollProxy.scrollTo("native-hype-card-toggle-paused", anchor: .center)
+                        scrollProxy.scrollTo("native-hype-card-toggle-public", anchor: .center)
                     }
                     focusPauseSettingOnOpen = false
                 }
@@ -344,7 +344,7 @@ struct SupporterHypeCardView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This updates only the saved card’s athlete and team name to match your linked profile. Privacy, pause, photo, media, saved artwork, and published snapshots stay unchanged.")
+            Text("This updates only the saved card’s athlete and team name to match your linked profile. Privacy, photo, media, saved artwork, and published snapshots stay unchanged.")
         }
         .task { await loadCard() }
         .task(id: scenePhase) {
@@ -492,7 +492,7 @@ struct SupporterHypeCardView: View {
                 systemImage: "sportscourt",
                 description: Text(
                     isPublicRecipient
-                        ? "The owner may have paused sharing or this link may no longer be active."
+                        ? "The card may be Private or this link may no longer be active."
                         : "The linked PIXL account doesn’t have a HYPE Card for its selected athlete yet."
                 )
             )
@@ -893,9 +893,19 @@ struct SupporterHypeCardView: View {
                 .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
 
-            Toggle("Show HYPE Card", isOn: showHypeCardBinding)
+            Toggle(isOn: publicVisibilityBinding) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Public / Private")
+                    Text(draftShowHypeCard && !draftPaused ? "Public" : "Private")
+                        .font(.subheadline)
+                        .foregroundStyle(SupporterHomeColors.muted)
+                }
+            }
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-public")
+                .accessibilityValue(draftShowHypeCard && !draftPaused ? "Public" : "Private")
+                .accessibilityHint("On is Public. Off is Private. Tap Save to apply your choice.")
+                .id("native-hype-card-toggle-public")
                 .disabled(!canEditSettingsDraft)
             Toggle("Share finalized stats", isOn: showStatsBinding)
                 .foregroundStyle(.white)
@@ -904,11 +914,6 @@ struct SupporterHypeCardView: View {
             Toggle("Share Event Cards", isOn: showEventsBinding)
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("native-hype-card-toggle-events")
-                .disabled(!canEditSettingsDraft)
-            Toggle("Pause public page", isOn: pausedBinding)
-                .foregroundStyle(.white)
-                .accessibilityIdentifier("native-hype-card-toggle-paused")
-                .id("native-hype-card-toggle-paused")
                 .disabled(!canEditSettingsDraft)
 
 #if DEBUG
@@ -991,12 +996,10 @@ struct SupporterHypeCardView: View {
     }
 
     private var publicationDescription: String {
-        if draftPaused {
-            "Paused. Public access is suspended until you resume the page."
-        } else if draftShowHypeCard {
-            "The HYPE Card can be shared while the public page is active."
+        if draftShowHypeCard && !draftPaused {
+            "Public lets anyone with the link view your shared sections. Tap Save to apply changes."
         } else {
-            "The public HYPE Card preview is off; the linked owner can still review it."
+            "Private keeps the card visible only to your linked account. Tap Save to apply changes."
         }
     }
 
@@ -1032,8 +1035,13 @@ struct SupporterHypeCardView: View {
             && !isSaving && !isCheckingSettings
     }
 
-    private var showHypeCardBinding: Binding<Bool> {
-        Binding(get: { draftShowHypeCard }, set: { draftShowHypeCard = $0; persistSettingsDraft() })
+    private var publicVisibilityBinding: Binding<Bool> {
+        Binding(get: { draftShowHypeCard && !draftPaused }, set: {
+            // Only an explicit visibility choice normalizes legacy raw flags.
+            draftShowHypeCard = $0
+            draftPaused = !$0
+            persistSettingsDraft()
+        })
     }
 
     private var showStatsBinding: Binding<Bool> {
@@ -1044,9 +1052,6 @@ struct SupporterHypeCardView: View {
         Binding(get: { draftShowEvents }, set: { draftShowEvents = $0; persistSettingsDraft() })
     }
 
-    private var pausedBinding: Binding<Bool> {
-        Binding(get: { draftPaused }, set: { draftPaused = $0; persistSettingsDraft() })
-    }
 
 #if DEBUG
     private func simulateOtherDeviceSettingsChange() {
@@ -1185,15 +1190,17 @@ struct SupporterHypeCardView: View {
         let localHasKnownBase = base.revision != nil
             && local.revision != nil
             && local.revision == base.revision
+        let visibilityEdited = !localHasKnownBase
+            || local.showHypeCard != base.showHypeCard || local.paused != base.paused
         return NativeHypeCardSettings(
             revision: latest.revision,
-            showHypeCard: !localHasKnownBase || local.showHypeCard != base.showHypeCard
+            showHypeCard: visibilityEdited
                 ? local.showHypeCard : latest.showHypeCard,
             showStats: !localHasKnownBase || local.showStats != base.showStats
                 ? local.showStats : latest.showStats,
             showEvents: !localHasKnownBase || local.showEvents != base.showEvents
                 ? local.showEvents : latest.showEvents,
-            paused: !localHasKnownBase || local.paused != base.paused
+            paused: visibilityEdited
                 ? local.paused : latest.paused,
             favoriteMoment: !localHasKnownBase || local.favoriteMoment != base.favoriteMoment
                 ? local.favoriteMoment : latest.favoriteMoment

@@ -45,7 +45,12 @@ export function createPendingHypeCardSettings(
     savedAt: now,
     base: { ...base },
     desired: { ...desired },
-    editedFields: HYPE_CARD_SETTINGS_FIELDS.filter((field) => base[field] !== desired[field]),
+    // Treat an explicit visibility edit as one atomic choice across conflicts.
+    // Unrelated edits leave both legacy flags untouched.
+    editedFields: HYPE_CARD_SETTINGS_FIELDS.filter((field) =>
+      field === 'showHypeCard' || field === 'paused'
+        ? base.showHypeCard !== desired.showHypeCard || base.paused !== desired.paused
+        : base[field] !== desired[field]),
   };
 }
 

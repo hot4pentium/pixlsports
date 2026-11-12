@@ -10,6 +10,22 @@ const runtime = read("NativeOfflineRuntime.swift");
 const api = read("SupporterHomeAPI.swift");
 const uiTest = readFileSync(new URL("../UITests/NativeHypeCardOfflineUITests.swift", import.meta.url), "utf8");
 
+test("visibility uses one explicit Public / Private choice without normalizing on load", () => {
+  assert.match(view, /Toggle\(isOn: publicVisibilityBinding\)/);
+  assert.match(view, /Text\("Public \/ Private"\)/);
+  assert.doesNotMatch(view, /Toggle\("(Show HYPE Card|Pause public page)"/);
+  const binding = view.slice(view.indexOf("private var publicVisibilityBinding"), view.indexOf("private var showStatsBinding"));
+  assert.match(binding, /get: \{ draftShowHypeCard && !draftPaused \}/);
+  assert.match(binding, /draftShowHypeCard = \$0[\s\S]*?draftPaused = !\$0[\s\S]*?persistSettingsDraft/);
+  assert.match(view, /draftShowHypeCard = saved\.showHypeCard/);
+  assert.match(view, /draftPaused = saved\.paused/);
+  assert.match(view, /if becomesPublic \{[\s\S]*?showPublishConfirmation = true/);
+  for (const source of [view, api]) {
+    assert.match(source, /let visibilityEdited = !localHasKnownBase[\s\S]*?local\.showHypeCard != base\.showHypeCard \|\| local\.paused != base\.paused/);
+    assert.match(source, /showHypeCard: visibilityEdited[\s\S]*?paused: visibilityEdited/);
+  }
+});
+
 test("only an explicit Save creates an automatically syncable settings intent", () => {
   const draftPersistence = view.slice(
     view.indexOf("private func persistSettingsDraft()"),

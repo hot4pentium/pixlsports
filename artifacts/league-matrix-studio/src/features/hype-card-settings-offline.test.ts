@@ -23,6 +23,33 @@ function memoryStorage(): Storage {
 
 const activeSettings = { showHypeCard: true, showStats: true, showEvents: true, paused: false };
 
+test('unrelated saves preserve every legacy visibility combination', () => {
+  for (const showHypeCard of [false, true]) {
+    for (const paused of [false, true]) {
+      const base = { ...activeSettings, showHypeCard, paused };
+      const pending = createPendingHypeCardSettings('owner', 'invite', base, { ...base, showStats: false });
+      assert.deepEqual(pending.editedFields, ['showStats']);
+      assert.deepEqual(mergePendingHypeCardSettings(base, pending), { ...base, showStats: false });
+    }
+  }
+});
+
+test('an explicit visibility choice rebases both flags together without changing sections', () => {
+  const legacyPrivate = { ...activeSettings, paused: true };
+  const makePublic = createPendingHypeCardSettings('owner', 'invite', legacyPrivate, activeSettings);
+  assert.deepEqual(makePublic.editedFields, ['showHypeCard', 'paused']);
+  const mergedPublic = mergePendingHypeCardSettings({ ...legacyPrivate, showHypeCard: false, showEvents: false }, makePublic);
+  assert.deepEqual(mergedPublic, { ...activeSettings, showEvents: false });
+  assert.equal(retryWouldMakeHypeCardPublic(legacyPrivate, mergedPublic), true);
+
+  const makePrivate = createPendingHypeCardSettings('owner', 'invite', activeSettings, {
+    ...activeSettings, showHypeCard: false, paused: true,
+  });
+  assert.deepEqual(mergePendingHypeCardSettings({ ...activeSettings, showStats: false }, makePrivate), {
+    ...activeSettings, showHypeCard: false, paused: true, showStats: false,
+  });
+});
+
 test('pending settings persist separately for each signed-in owner and invite', () => {
   const storage = memoryStorage();
   const pending = createPendingHypeCardSettings(

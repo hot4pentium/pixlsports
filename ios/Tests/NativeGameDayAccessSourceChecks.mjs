@@ -46,7 +46,7 @@ test("private owner context replaces public-card startup and authenticated owner
   assert.match(read("SupporterHomeAPI"), /getAuthoritativeData\(\s*"athlete-invites\/\\\(inviteToken\)\/live-taps"/);
 });
 
-test("a paused Live Taps error links directly to the owner pause toggle", () => {
+test("a paused Live Taps error links directly to the owner visibility toggle", () => {
   const access = read("SupporterHomeAPI");
   const fan = read("NativeEventFanAccessView");
   const accountError = read("NativeAccountLinkClient");
@@ -57,8 +57,8 @@ test("a paused Live Taps error links directly to the owner pause toggle", () => 
   assert.match(fan, /if isLiveTapsPaused \{[\s\S]*?NavigationLink \{[\s\S]*?SupporterHypeCardView\(clerk: clerk, focusPauseSetting: true\)/);
   assert.match(fan, /native-live-taps-open-pause-setting/);
   assert.match(card, /focusPauseSetting: Bool = false/);
-  assert.match(card, /scrollProxy\.scrollTo\("native-hype-card-toggle-paused", anchor: \.center\)/);
-  assert.match(card, /\.id\("native-hype-card-toggle-paused"\)/);
+  assert.match(card, /scrollProxy\.scrollTo\("native-hype-card-toggle-public", anchor: \.center\)/);
+  assert.match(card, /\.id\("native-hype-card-toggle-public"\)/);
   assert.match(card, /guard focusPauseSettingOnOpen, settings\?\.revision != nil, !identityMismatch/);
 });
 

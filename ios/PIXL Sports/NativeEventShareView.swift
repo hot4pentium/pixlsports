@@ -163,7 +163,7 @@ struct NativeEventShareView: View {
             .accessibilityHint("Checks availability without changing the card’s privacy.")
             .accessibilityIdentifier("native-event-hype-share-retry")
         } else {
-            Text("This HYPE Card is private or paused. Review its settings before sharing.")
+                        Text("This HYPE Card is Private. Make it Public in HYPE Card settings before sharing.")
                 .font(.subheadline)
                 .foregroundStyle(SupporterHomeColors.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -202,7 +202,7 @@ struct NativeEventShareView: View {
             } header: {
                 Text("Athlete HYPE Card")
             } footer: {
-                Text("Share is available only while the HYPE Card is public and active. Review its settings before sharing.")
+            Text("Share is available only after the HYPE Card is saved as Public. Review its settings before sharing.")
             }
             .listRowBackground(SupporterHomeColors.panel)
     }

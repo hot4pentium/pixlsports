@@ -265,7 +265,7 @@ struct NativeEventFanAccessView: View {
                         NavigationLink {
                             SupporterHypeCardView(clerk: clerk, focusPauseSetting: true)
                         } label: {
-                            Label("Open Pause public page setting", systemImage: "arrow.up.right")
+                            Label("Open Public / Private setting", systemImage: "arrow.up.right")
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
                         .buttonStyle(.bordered)
