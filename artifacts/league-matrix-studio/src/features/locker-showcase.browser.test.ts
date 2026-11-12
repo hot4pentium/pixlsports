@@ -164,6 +164,7 @@ window.fetch = async (input,init) => {
        const updated={...current,...body};
        state.ownerInvites=state.ownerInvites.map(invite=>invite.inviteToken===inviteToken?updated:invite);
        window.__ownerSettingsSaves.push({inviteToken,data:body});
+       if(window.__holdOwnerSettingsSave) await new Promise(resolve=>{window.__releaseOwnerSettingsSave=resolve;});
        return new Response(JSON.stringify(updated),{status:200,headers:{'Content-Type':'application/json'}});
      }
      if(url.endsWith('/api/athlete-invites')){window.__ownerInviteResponses++;const invites=state.mode!=='public-showcase'||window.__fixtureUser?.id==='fixture-account'?state.ownerInvites:[];return new Response(JSON.stringify(invites),{status:200,headers:{'Content-Type':'application/json'}});}
@@ -582,7 +583,7 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     for (const side of ['videos', 'stats', 'events']) {
       await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-${side}"]').click()`);
       await browser.wait(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="owner-card-${side}-side"]')`);
-      await browser.wait(`document.querySelector('[data-testid="owner-hype-card-flip-container"] .owner-hype-flip-inner')?.dataset.animate === 'false'`);
+      await browser.wait(`document.querySelector('[data-testid="owner-hype-card-flip-container"]')?.getAttribute('aria-busy') === 'false'`);
       assert.equal(await browser.evaluate(`document.querySelector('[data-testid="owner-hype-card-surface"] [data-testid="button-living-card-${side}"]').getAttribute('aria-pressed')`), 'true');
     }
     assert.equal(await browser.evaluate(`document.querySelectorAll('[data-testid="owner-hype-card-surface"] [data-testid^="button-living-card-"]').length`), 4,
@@ -600,13 +601,27 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     })()`);
     assert.equal(desktopOwnerLayout.noHorizontalOverflow, true, 'the desktop owner page has no horizontal overflow');
     assert.equal(desktopOwnerLayout.allItemsVisible, true, 'the desktop owner sections remain within the viewport');
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="link-open-owner-hype-card"]').getAttribute('href')`),
+      `${base}/fan/fixture-athlete`, 'opening the public card respects the PWA base path');
+    const ownerOrder = await browser.evaluate(`Array.from(document.querySelectorAll('[data-testid="owner-hype-card-surface"],[data-testid^="owner-item-"]')).map(element=>element.dataset.testid)`);
+    assert.deepEqual(ownerOrder, ['owner-hype-card-surface', 'owner-item-athlete-details', 'owner-item-fan-cheers', 'owner-item-share-hype-card', 'owner-item-hype-card-settings'],
+      'the five owner items follow the iPhone order');
+    assert.equal(await browser.evaluate(`getComputedStyle(document.querySelector('[data-testid="owner-item-hype-card-settings"]')).backgroundColor`),
+      'rgb(19, 33, 59)', 'owner settings use the native navy panel');
 
+    await browser.evaluate(`window.__holdOwnerSettingsSave=true`);
     await browser.evaluate(`document.querySelector('[data-testid="toggle-share-finalized-stats"]').click()`);
     await browser.evaluate(`document.querySelector('[data-testid="toggle-share-event-cards"]').click()`);
     await browser.evaluate(`document.querySelector('[data-testid="toggle-pause-public-page"]').click()`);
     await browser.wait(`!document.querySelector('[data-testid="button-save-hype-card-settings"]').disabled`);
     await browser.evaluate(`document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
     await browser.wait(`window.__ownerSettingsSaves.length===1`);
+    assert.equal(await browser.evaluate(`Array.from(document.querySelectorAll('.hype-owner-setting input')).every(input=>input.disabled)`),
+      true, 'settings cannot change while the current choices are being saved');
+    await browser.evaluate(`document.querySelector('[data-testid="toggle-share-finalized-stats"]').click()`);
+    assert.equal(await browser.evaluate(`document.querySelector('[data-testid="toggle-share-finalized-stats"]').checked`),
+      false, 'a second tap during saving cannot create an edit that the response discards');
+    await browser.evaluate(`window.__holdOwnerSettingsSave=false;window.__releaseOwnerSettingsSave()`);
     const savedSettings = await browser.evaluate(`window.__ownerSettingsSaves[0]`);
     assert.equal(savedSettings.inviteToken, 'fixture-athlete');
     assert.equal(savedSettings.data.showHypeCard, true, 'saving other choices does not hide the HYPE Card');

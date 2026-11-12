@@ -182,7 +182,7 @@ export function OwnerHypeCardSurface({ card, invite, athleteName, teamName = '',
 
   return (
     <div className={`owner-hype-surface${publicActive ? '' : ' owner-hype-surface--private'}`} data-testid="owner-hype-card-surface">
-      <div className="owner-hype-stage" data-testid="owner-hype-card-flip-container">
+      <div className="owner-hype-stage" aria-busy={displayFlip.busy} data-testid="owner-hype-card-flip-container">
         <div className="owner-hype-flip-inner" data-rotated={displayFlip.rotated ? 'true' : 'false'} data-animate={displayFlip.animate ? 'true' : 'false'}>
           <div className="owner-hype-face owner-hype-face--front" aria-hidden={displayFlip.rotated || undefined} inert={displayFlip.rotated || undefined}>
             {displayFlip.frontFace === 'front' ? (

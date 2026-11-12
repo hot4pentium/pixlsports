@@ -124,9 +124,9 @@ export function FanCardPhotoManager({
         ) : (
           <div className="grid h-24 w-24 place-items-center border border-dashed border-white/30 text-white/50" aria-label="No athlete photo selected"><ImagePlus aria-hidden="true" /></div>
         )}
-        <label className="flex flex-col gap-2 text-xs font-bold uppercase tracking-widest text-white/70">
+        <label className="flex w-full min-w-0 flex-col gap-2 text-xs font-bold uppercase tracking-widest text-white/70 sm:w-auto">
           Choose photo
-          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={controlsDisabled} onChange={(event) => { setSelected(event.target.files?.[0] ?? null); setNotice(''); }} className="max-w-[270px] text-xs font-normal normal-case tracking-normal file:mr-3 file:border-0 file:bg-white/15 file:px-3 file:py-2 file:text-white" data-testid="input-fan-card-photo" />
+          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={controlsDisabled} onChange={(event) => { setSelected(event.target.files?.[0] ?? null); setNotice(''); }} className="w-full min-w-0 max-w-full text-xs font-normal normal-case tracking-normal file:mr-3 file:border-0 file:bg-white/15 file:px-3 file:py-2 file:text-white sm:max-w-[270px]" data-testid="input-fan-card-photo" />
         </label>
         <button type="button" onClick={() => void upload()} disabled={!selected || controlsDisabled} className="inline-flex min-h-11 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-upload-fan-card-photo">
           <ImagePlus className="h-4 w-4" aria-hidden="true" />{isBusy ? 'Saving…' : photoUrl ? 'Replace photo' : 'Upload photo'}

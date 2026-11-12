@@ -43,6 +43,7 @@ export interface PlayerShowcaseContentProps {
   ownerExperience?: boolean;
   selectedCardToken?: string;
   onSelectCard?: (inviteToken: string) => void;
+  selectionDisabled?: boolean;
   onRetryCard?: () => void;
 }
 
@@ -50,7 +51,7 @@ function sportLabel(sport: string | null) {
   return sport ? sport.replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Sport';
 }
 
-export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref, profileEditHref, cardPublicHref, cardCandidates = [], ownerInvite, ownerExperience = false, selectedCardToken, onSelectCard, onRetryCard }: PlayerShowcaseContentProps) {
+export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-linked', cardEditHref, profileEditHref, cardPublicHref, cardCandidates = [], ownerInvite, ownerExperience = false, selectedCardToken, onSelectCard, selectionDisabled = false, onRetryCard }: PlayerShowcaseContentProps) {
   const card = cardStatus === 'ready' ? linkedCard ?? null : null;
   const privateCheers = cardCandidates.find(candidate => candidate.inviteToken === selectedCardToken)?.liveTaps;
   const privateFrontPreview = cardStatus === 'not-shared' && ownerInvite;
@@ -60,6 +61,7 @@ export function PlayerShowcaseContent({ profile, linkedCard, cardStatus = 'not-l
       <select
         aria-label={`Choose a HYPE Card for ${profile.athleteName}`}
         value={selectedCardToken ?? ''}
+        disabled={selectionDisabled}
         onChange={(event) => onSelectCard(event.currentTarget.value)}
         data-testid="select-showcase-card"
       >
@@ -367,6 +369,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         cardCandidates={hasAmbiguousInvite ? inviteCandidates : undefined}
         selectedCardToken={selectedInvite?.inviteToken}
         onSelectCard={setSelectedInviteToken}
+        selectionDisabled={updateInvite.isPending}
         onRetryCard={() => {
           if (fanCardQuery.isError) void fanCardQuery.refetch();
           else void invitesQuery.refetch();
@@ -407,7 +410,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
               <div className="hype-owner-share-buttons">
                 <button type="button" onClick={() => void shareHypeCard()} data-testid="button-share-hype-card"><Share2 aria-hidden="true" />Share</button>
                 <button type="button" onClick={() => void copyHypeCardUrl()} data-testid="button-copy-hype-card"><Copy aria-hidden="true" />Copy link</button>
-                <a href={`/fan/${encodeURIComponent(inviteToken ?? '')}`} target="_blank" rel="noreferrer" data-testid="link-open-owner-hype-card">Open card <ExternalLink aria-hidden="true" /></a>
+                <Link href={`/fan/${encodeURIComponent(inviteToken ?? '')}`} target="_blank" rel="noreferrer" data-testid="link-open-owner-hype-card">Open card <ExternalLink aria-hidden="true" /></Link>
               </div>
               <HypeCardShareQr key={publicHypeCardUrl} url={publicHypeCardUrl} athleteName={matchedInvite?.athleteName ?? profile.athleteName} />
               <p className="hype-owner-status" role="status" aria-live="polite" data-testid="status-hype-card-share">{shareStatus}</p>
@@ -435,7 +438,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
               ].map((item) => (
                 <label className="hype-owner-setting" key={item.id} htmlFor={item.id}>
                   <span><strong>{item.title}</strong><small>{item.detail}</small></span>
-                  <input id={item.id} type="checkbox" checked={item.value} onChange={(event) => setSetting(item.setter, event.currentTarget.checked)} data-testid={`toggle-${item.id}`} />
+                  <input id={item.id} type="checkbox" checked={item.value} disabled={updateInvite.isPending} onChange={(event) => setSetting(item.setter, event.currentTarget.checked)} data-testid={`toggle-${item.id}`} />
                 </label>
               ))}
             </div>

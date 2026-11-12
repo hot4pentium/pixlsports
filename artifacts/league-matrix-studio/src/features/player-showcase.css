@@ -188,3 +188,34 @@
 @media(min-width:768px){.hype-owner-item,.hype-owner-settings{margin-bottom:18px;padding:22px}.hype-owner-item__action{grid-column:2}}
 @media(max-width:420px){.hype-owner-item,.hype-owner-settings{gap:12px;padding:15px}.hype-owner-item__icon{width:40px;height:40px}.hype-owner-share-buttons>*{flex:1 1 42%}.hype-owner-share-buttons a{flex:1 1 100%}.hype-owner-setting{gap:10px}.hype-owner-setting small{max-width:260px}}
 @media(prefers-reduced-motion:reduce){.hype-owner-setting input,.hype-owner-setting input::before{transition:none}}
+
+/* Owner containers: native SupporterHomeColors (panel #13213b, background #091326, blue #2a7afa, accent #b8f040, muted #adbfdb). */
+.ps-owner-canvas .hype-owner-item,.ps-owner-canvas .hype-owner-settings{border:1px solid rgba(42,122,250,.35);border-radius:20px;background:#13213b;color:#fff;box-shadow:0 12px 26px rgba(9,19,38,.18)}
+.ps-owner-canvas .hype-owner-item__icon{background:rgba(42,122,250,.22);color:#b8f040}
+.ps-owner-canvas .hype-owner-item__eyebrow{color:#b8f040}
+.ps-owner-canvas .hype-owner-item h2,.ps-owner-canvas .hype-owner-settings h2{color:#fff}
+.ps-owner-canvas .hype-owner-item__copy>p:last-child,.ps-owner-canvas .hype-owner-settings__heading p:last-child{color:#adbfdb}
+.ps-owner-canvas .hype-owner-item__action{border:1px solid #2a7afa;background:#2a7afa;color:#fff}
+.ps-owner-canvas .hype-owner-item__action:hover{background:#1f63c9}
+.ps-owner-canvas .hype-owner-cheers .fan-cheers-summary{border-color:rgba(42,122,250,.3);background:#091326}
+.ps-owner-canvas .hype-owner-empty-cheers,.ps-owner-canvas .hype-owner-private-share{background:#091326;color:#adbfdb}
+.ps-owner-canvas .hype-owner-private-share svg{color:#b8f040}
+.ps-owner-canvas .hype-owner-share-controls>input{border-color:rgba(42,122,250,.45);background:#091326;color:#e6eefa}
+.ps-owner-canvas .hype-owner-share-buttons button,.ps-owner-canvas .hype-owner-share-buttons a{border-color:rgba(42,122,250,.6);background:#1a2e52;color:#fff}
+.ps-owner-canvas .hype-owner-share-buttons button:first-child{border-color:#b8f040;background:#b8f040;color:#091326}
+.ps-owner-canvas .hype-owner-share-buttons button:hover,.ps-owner-canvas .hype-owner-share-buttons a:hover{border-color:#b8f040}
+.ps-owner-canvas .hype-owner-status{color:#adbfdb}
+.ps-owner-canvas .hype-owner-setting-list,.ps-owner-canvas .hype-owner-setting{border-color:rgba(173,191,219,.2)}
+.ps-owner-canvas .hype-owner-setting strong{color:#fff}
+.ps-owner-canvas .hype-owner-setting small{color:#adbfdb}
+.ps-owner-canvas .hype-owner-setting input{background:#3a4a66}
+.ps-owner-canvas .hype-owner-setting input:checked{background:#2a7afa}
+.ps-owner-canvas .hype-owner-setting input:disabled{cursor:wait;opacity:.65}
+.ps-owner-canvas .hype-owner-settings__message--success{background:rgba(184,240,64,.14);color:#d6f79a}
+.ps-owner-canvas .hype-owner-settings__message--info{background:rgba(42,122,250,.18);color:#cfe1ff}
+.ps-owner-canvas .hype-owner-settings__message--error{border:1px solid #ff9b87;background:rgba(255,120,95,.16);color:#ffd2c8}
+.ps-owner-canvas .hype-owner-save{background:#b8f040;color:#091326}
+.ps-owner-canvas .hype-owner-save:hover:not(:disabled){background:#cdf76d}
+.ps-owner-canvas .hype-owner-item :focus-visible,.ps-owner-canvas .hype-owner-settings :focus-visible{outline:3px solid #b8f040;outline-offset:3px}
+.ps-owner-canvas .ps__card-only-panel>.ps__card-only-heading,.ps-owner-canvas .ps__owner-settings-shortcut{background:#13213b}
+@media(prefers-reduced-motion:reduce){.ps-owner-canvas .ps__owner-settings-shortcut{transition:none}.ps-owner-canvas .ps__owner-settings-shortcut:hover{transform:none}}
