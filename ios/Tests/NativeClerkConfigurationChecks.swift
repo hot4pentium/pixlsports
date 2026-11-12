@@ -16,6 +16,22 @@ struct NativeClerkConfigurationChecks {
         try expectSuccess(["PublishableKey": developmentKey], key: developmentKey)
         try expectSuccess(["PublishableKey": productionKey], key: productionKey)
         try expectSuccess(
+            ["PublishableKey": productionKey],
+            key: productionKey,
+            requireProductionKey: true
+        )
+        try expectFailure(
+            ["PublishableKey": developmentKey],
+            .developmentKeyInRelease,
+            requireProductionKey: true
+        )
+        try expectFailure(
+            ["PublishableKey": ""],
+            .missingProductionPublishableKey,
+            requireProductionKey: true
+        )
+        try expectFailure([:], .missingProductionPublishableKey, requireProductionKey: true)
+        try expectSuccess(
             ["PublishableKey": " \n\(developmentKey)\n "],
             key: developmentKey
         )
@@ -45,8 +61,15 @@ struct NativeClerkConfigurationChecks {
         try PropertyListSerialization.data(fromPropertyList: value, format: .xml, options: 0)
     }
 
-    private static func expectSuccess(_ value: [String: Any], key: String) throws {
-        switch NativeClerkConfiguration.parse(try data(value)) {
+    private static func expectSuccess(
+        _ value: [String: Any],
+        key: String,
+        requireProductionKey: Bool = false
+    ) throws {
+        switch NativeClerkConfiguration.parse(
+            try data(value),
+            requireProductionKey: requireProductionKey
+        ) {
         case let .success(config):
             precondition(config.publishableKey == key, "Expected normalized publishable key")
         case .failure:
@@ -56,9 +79,16 @@ struct NativeClerkConfigurationChecks {
 
     private static func expectFailure(
         _ value: [String: Any],
-        _ expected: NativeClerkConfiguration.ConfigurationError
+        _ expected: NativeClerkConfiguration.ConfigurationError,
+        requireProductionKey: Bool = false
     ) throws {
-        expectError(NativeClerkConfiguration.parse(try data(value)), expected)
+        expectError(
+            NativeClerkConfiguration.parse(
+                try data(value),
+                requireProductionKey: requireProductionKey
+            ),
+            expected
+        )
     }
 
     private static func expectError(

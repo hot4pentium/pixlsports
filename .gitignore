@@ -21,6 +21,8 @@ node_modules
 *.sublime-workspace
 .DS_Store
 **/xcuserdata/
+# Production Clerk publishable key is provided locally when archiving for TestFlight.
+/ios/PIXL Sports/ClerkConfig-Production.plist
 
 # IDE - VSCode
 .vscode/*

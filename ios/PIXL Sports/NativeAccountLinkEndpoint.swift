@@ -11,9 +11,9 @@ struct NativeAccountLinkEndpoint {
         var errorDescription: String? {
             switch self {
             case .missingFile:
-                return "ClerkConfig.plist is missing from the installed app. Check target membership and rebuild."
+                return "The Clerk configuration plist is missing from the installed app. Check target membership and rebuild."
             case .invalidFile:
-                return "The installed ClerkConfig.plist is not a readable dictionary."
+                return "The installed Clerk configuration plist is not a readable dictionary."
             case .missingDevelopmentOrigin:
                 return "The installed app has no development API address. Add AccountLinkAPIOrigin as a String in ClerkConfig.plist, save, and rebuild. Development will not fall back to the published website."
             case .invalidOrigin:
@@ -23,7 +23,12 @@ struct NativeAccountLinkEndpoint {
     }
 
     static func load(bundle: Bundle = .main) throws -> URL {
-        guard let file = bundle.url(forResource: "ClerkConfig", withExtension: "plist") else {
+#if DEBUG
+        let resourceName = "ClerkConfig"
+#else
+        let resourceName = "ClerkConfig-Production"
+#endif
+        guard let file = bundle.url(forResource: resourceName, withExtension: "plist") else {
             throw ConfigurationError.missingFile
         }
         guard let data = try? Data(contentsOf: file) else {

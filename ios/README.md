@@ -68,6 +68,44 @@ in any native source, plist, or build setting.
 6. Select an iPhone simulator and run. An empty/invalid configuration shows a setup
    message instead of crashing. A configured app shows Clerk's native `AuthView`.
 
+## TestFlight release setup
+
+The shared `PIXL Sports` scheme archives the Release configuration. Release
+builds read only `ClerkConfig-Production.plist`; Debug builds continue to read
+`ClerkConfig.plist`. Before archiving on the Mac, copy
+`ClerkConfig-Production.example.plist` to `ClerkConfig-Production.plist` and set
+`PublishableKey` to the `pk_live_` publishable key from the **production**
+instance of the separate PIXL Sports iOS Clerk app. Release builds reject a
+`pk_test_` key. The production plist is ignored by Git so the Mac-local
+configuration is not committed. Never use a Clerk secret key in the app.
+
+The published API must also have `NATIVE_IOS_CLERK_ISSUER` set in its **production**
+environment to that same Clerk production instance's exact HTTPS issuer origin
+(no path or trailing slash). This is a public issuer URL, not a secret. Without
+it, native sign-in may work but private Event Cards, account linking, and other
+native API requests will be rejected. The Release app uses
+`https://pixlsports.com` unless an explicit API origin is added to its production
+plist.
+
+The Xcode target is configured with bundle ID `com.pixlsports`, the existing
+Apple development team, and a 1024-pixel app icon. On the Mac:
+
+1. Create or select the App Store Connect app record with bundle ID
+   `com.pixlsports`, and confirm the Apple Developer team has access.
+2. Configure the production Clerk plist and production API issuer above.
+3. In Xcode, select **Any iOS Device (arm64)** and choose **Product → Archive**.
+   Confirm the Release archive signs with the App Store distribution profile.
+4. In Organizer, validate and upload the archive to App Store Connect. Add the
+   build to an internal TestFlight testing group and install it from TestFlight.
+5. Increase the build number before each subsequent upload. Verify sign-in,
+   account linking, Event Card loading and saving, alerts, and offline recovery
+   on the installed build; simulator success does not validate push delivery or
+   real-device behavior.
+
+This workspace cannot sign or upload an iOS archive. Archive validation,
+Apple-account access, and the first TestFlight install must be completed in
+Xcode on the Mac.
+
 ## Apple capabilities still require separate setup
 
 Adding a native app in Clerk does not enable Sign in with Apple by itself.
