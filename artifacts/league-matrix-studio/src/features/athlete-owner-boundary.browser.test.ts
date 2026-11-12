@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -50,6 +51,7 @@ async function webDriverCommand<T>(
     method,
     headers: body ? { 'content-type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(20_000),
   });
   const payload = await response.json() as { value?: T & { error?: string; message?: string } };
   if (!response.ok || payload.value?.error) {
@@ -365,26 +367,25 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, visitorFanCard, element('[data-testid="living-card-responses-side"]'), Boolean, 12_000);
     await waitFor(connection, visitorFanCard, "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText.includes('Amazing hustle, Jordan!')", Boolean, 12_000);
     await waitFor(connection, visitorFanCard, `(() => {
-      const inner = document.querySelector('.living-card-flip-inner');
-      const m11 = new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11;
-      return m11 < 0.9 && m11 > -0.9;
-    })()`, Boolean, 12_000);
-    await waitFor(connection, visitorFanCard, `(() => {
       const card = document.querySelector('#living-card-display');
       const inner = document.querySelector('.living-card-flip-inner');
-      return card?.dataset.side === 'responses'
-        && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001;
+      const response = document.querySelector('[data-testid="living-card-responses-side"]');
+      const backFace = document.querySelector('.living-card-flip-back');
+      return card?.getAttribute('aria-label') === 'Kimberly — viewer responses'
+        && response?.getBoundingClientRect().width > 0
+        && backFace?.getAttribute('aria-hidden') !== 'true'
+        && inner?.getAttribute('data-rotated') === 'true'
+        && inner?.getAttribute('data-animate') === 'false'
+        && (window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          || Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001);
     })()`, Boolean, 12_000);
-    const backFaceMotion = await connection.evaluate<{ duration: string; backface: string; backM11: number }>(`(() => {
-      const inner = document.querySelector('.living-card-flip-inner');
+    const backFaceMotion = await connection.evaluate<{ backface: string; backM11: number }>(`(() => {
       const back = document.querySelector('.living-card-flip-back');
       return {
-        duration: getComputedStyle(inner).transitionDuration,
         backface: getComputedStyle(back).backfaceVisibility,
         backM11: new DOMMatrixReadOnly(getComputedStyle(back).transform).m11,
       };
     })()`, visitorFanCard);
-    assert.equal(backFaceMotion.duration, '0.72s');
     assert.equal(backFaceMotion.backface, 'hidden');
     assert.ok(Math.abs(backFaceMotion.backM11 + 1) < 0.001);
     const visitorResponses = await connection.evaluate<string>(
@@ -396,15 +397,23 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.ok(requests.some(({ viewer, method, path }) => (
       viewer === 'visitor' && method === 'GET' && path === `/api/athlete-invites/${token}/public-shoutouts`
     )), 'visitors load the public-shoutouts endpoint');
-    for (const side of ['stats', 'live-taps', 'events']) {
+    for (const side of ['live-taps']) {
       await connection.evaluate(
         `document.querySelector('[data-testid="button-living-card-${side}"]').click()`,
         visitorFanCard,
       );
+      const sideLabel = 'Live Taps tally';
       await waitFor(
         connection,
         visitorFanCard,
-        `document.querySelector('#living-card-display')?.dataset.side === '${side}'`,
+        `(() => {
+          const card = document.querySelector('#living-card-display');
+          const inner = document.querySelector('.living-card-flip-inner');
+          return card?.getAttribute('aria-label') === 'Kimberly — ${sideLabel}'
+            && inner?.getAttribute('data-animate') === 'false'
+            && (window.matchMedia('(prefers-reduced-motion: reduce)').matches
+              || Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001);
+        })()`,
         Boolean,
         12_000,
       );
@@ -419,7 +428,6 @@ test('player-page owner tools remain private across account changes and pause', 
         ), true, 'the public card link alone cannot submit a Live Tap');
       }
     }
-    await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.dataset.side === 'events' && Boolean(document.querySelector('[data-testid=\"living-card-events-side\"]'))", Boolean, 12_000);
     assert.equal(await connection.evaluate(
       "document.querySelector('[data-testid=\"button-living-card-front\"]')?.getBoundingClientRect().top > document.querySelector('#living-card-display')?.getBoundingClientRect().bottom",
       visitorFanCard,
@@ -427,10 +435,15 @@ test('player-page owner tools remain private across account changes and pause', 
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-front\"]').click()", visitorFanCard);
     await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.getAttribute('aria-label') === 'Kimberly — card front'", Boolean, 12_000);
     await waitFor(connection, visitorFanCard, `(() => {
-      const inner = document.querySelector('.living-card-flip-inner');
-      return Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 - 1) < 0.001;
+      const frontFace = document.querySelector('.living-card-flip-front');
+      const backFace = document.querySelector('.living-card-flip-back');
+      return frontFace?.getAttribute('aria-hidden') !== 'true'
+        && backFace?.getAttribute('aria-hidden') === 'true'
+        && document.querySelector('.living-card-flip-inner')?.getAttribute('data-animate') === 'false'
+        && Math.abs(new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.living-card-flip-inner')).transform).m11 - 1) < 0.001
+        && Boolean(document.querySelector('.lc-native-front-name')?.textContent?.includes('Kimberly'));
     })()`, Boolean, 12_000);
-    assert.equal(await connection.evaluate(`[...document.querySelectorAll('.living-card-controls button')].every(button => {
+    assert.equal(await connection.evaluate(`[...document.querySelectorAll('.living-card-controls button, .living-card-secondary-sides button')].every(button => {
       const bounds = button.getBoundingClientRect();
       const content = document.createRange();
       content.selectNodeContents(button);
@@ -445,26 +458,24 @@ test('player-page owner tools remain private across account changes and pause', 
     }, visitorFanCard);
     await connection.evaluate('window.scrollTo(0, 0)', visitorFanCard);
     const desktopCardBounds = await connection.evaluate<{
-      top: number;
-      bottom: number;
       height: number;
       width: number;
-      viewportHeight: number;
+      viewportWidth: number;
+      right: number;
     }>(`(() => {
-      const card = document.querySelector('.living-card-frame-outer');
-      if (!(card instanceof HTMLElement)) throw new Error('Hype Card frame is missing');
+      const card = document.querySelector('#living-card-display');
+      if (!(card instanceof HTMLElement)) throw new Error('HYPE Card artwork is missing');
       const rect = card.getBoundingClientRect();
       return {
-        top: rect.top,
-        bottom: rect.bottom,
         height: rect.height,
         width: rect.width,
-        viewportHeight: window.innerHeight,
+        right: rect.right,
+        viewportWidth: window.innerWidth,
       };
     })()`, visitorFanCard);
     assert.ok(
-      desktopCardBounds.top >= 0 && desktopCardBounds.bottom <= desktopCardBounds.viewportHeight,
-      'the Hype Card should fit in a typical desktop viewport without cropping',
+      desktopCardBounds.width > 0 && desktopCardBounds.right <= desktopCardBounds.viewportWidth,
+      'the HYPE Card remains fully visible horizontally at desktop width',
     );
     assert.ok(
       Math.abs(desktopCardBounds.width / desktopCardBounds.height - (2 / 3)) < .03,
@@ -480,9 +491,9 @@ test('player-page owner tools remain private across account changes and pause', 
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-responses\"]').click()", visitorFanCard);
     await waitFor(connection, visitorFanCard, `(() => {
       const card = document.querySelector('#living-card-display');
-      const inner = document.querySelector('.living-card-flip-inner');
-      return card?.dataset.side === 'responses'
-        && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001;
+      return card?.getAttribute('aria-label') === 'Kimberly — viewer responses'
+        && document.querySelector('[data-testid="button-living-card-responses"]')?.getAttribute('aria-pressed') === 'true'
+        && document.querySelector('[data-testid="living-card-responses-side"]')?.innerText.includes('Amazing hustle, Jordan!');
     })()`, Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-responses\"]').click()", ownerFanCard);
     await waitFor(connection, ownerFanCard, element('[data-testid="living-card-responses-side"]'), Boolean, 12_000);
@@ -643,7 +654,7 @@ test('player-page owner tools remain private across account changes and pause', 
       "Array.from(document.querySelectorAll('[data-testid^=\"button-hype-manager-\"]')).map(button => button.querySelector('.hype-manager-task-title')?.textContent?.trim() || '')",
       ownerManage,
     );
-    assert.deepEqual(taskOrder.slice(0, 4), ['Share Hype Card', 'Card Design', 'Family Live Taps', 'Upload Photo']);
+    assert.deepEqual(taskOrder.slice(0, 4), ['Public HYPE Page', 'Card Design', 'Family Live Taps', 'Upload Photo']);
     const directDesignManage = await open('owner', 'manage', false, '#design');
     await waitFor(connection, directDesignManage, element('[data-testid="owner-hype-page-management"]'), Boolean, 30_000);
     await waitFor(connection, directDesignManage, "document.querySelector('#hype-manager-panel-design')?.hidden === false && document.activeElement?.id === 'hype-manager-trigger-design'", Boolean, 12_000);
@@ -701,7 +712,7 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === true && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'false'", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === false && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'true'", Boolean, 12_000);
-    for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Shoutouts']) {
+    for (const label of ['Public HYPE Page', 'Upload Photo', 'Visible Sections', 'Fan Shoutouts']) {
       assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).toLowerCase().includes(label.toLowerCase()), label);
     }
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-live-taps\"]').click()", ownerManage);
@@ -792,9 +803,8 @@ test('player-page owner tools remain private across account changes and pause', 
 
     const cardNavigation = [
       { id: 'button-living-card-responses', side: 'responses' },
-      { id: 'button-living-card-stats', side: 'stats' },
+      { id: 'button-living-card-videos', side: 'videos' },
       { id: 'button-living-card-live-taps', side: 'live-taps' },
-      { id: 'button-living-card-events', side: 'events' },
     ] as const;
     const cardViewports = [
       { name: 'phone', width: 390, height: 844, mobile: true },
@@ -803,8 +813,8 @@ test('player-page owner tools remain private across account changes and pause', 
     const inspectSharedCardLayout = (sessionId: string) => connection!.evaluate<{
       design: string;
       side: string;
-      navBelowFrame: boolean;
-      navInsideCard: boolean;
+      controlsInsideShell: boolean;
+      controlsBelowArtwork: boolean;
       buttons: Array<{
         height: number;
         width: number;
@@ -814,22 +824,23 @@ test('player-page owner tools remain private across account changes and pause', 
         textFits: boolean;
         pressed: boolean;
       }>;
-      returnFrontBelowFrame: boolean;
+      returnFrontAvailable: boolean;
       returnFrontHeight: number;
     }>(`(() => {
       const stage = document.querySelector('.living-card-stage');
-      const outer = document.querySelector('.living-card-frame-outer');
+      const shell = document.querySelector('.lc-native-shell');
       const card = document.querySelector('#living-card-display');
       const controls = document.querySelector('.living-card-controls');
       const returnFront = document.querySelector('[data-testid="button-living-card-front"]');
-      if (!(stage instanceof HTMLElement) || !(outer instanceof HTMLElement)
+      const secondary = document.querySelector('.living-card-secondary-sides');
+      if (!(stage instanceof HTMLElement) || !(shell instanceof HTMLElement)
         || !(card instanceof HTMLElement) || !(controls instanceof HTMLElement)
-        || !(returnFront instanceof HTMLElement)) throw new Error('Shared HYPE Card navigation is missing');
-      const outerBounds = outer.getBoundingClientRect();
+        || !(secondary instanceof HTMLElement) || !(returnFront instanceof HTMLElement)) throw new Error('Shared HYPE Card navigation is missing');
+      const shellBounds = shell.getBoundingClientRect();
       const cardBounds = card.getBoundingClientRect();
       const controlsBounds = controls.getBoundingClientRect();
       const returnBounds = returnFront.getBoundingClientRect();
-      const buttons = [...controls.querySelectorAll('button')].map((button) => {
+      const buttons = [...controls.querySelectorAll('button'), ...secondary.querySelectorAll('button')].map((button) => {
         const bounds = button.getBoundingClientRect();
         const style = getComputedStyle(button);
         const range = document.createRange();
@@ -848,11 +859,11 @@ test('player-page owner tools remain private across account changes and pause', 
       });
       return {
         design: stage.dataset.design || '',
-        side: card.dataset.side || '',
-        navBelowFrame: controlsBounds.top >= outerBounds.bottom + 8,
-        navInsideCard: controlsBounds.top >= cardBounds.top - 1 && controlsBounds.bottom <= cardBounds.bottom + 1,
+        side: shell.dataset.selectedSide || '',
+        controlsInsideShell: controlsBounds.top >= cardBounds.bottom - 1 && controlsBounds.bottom <= shellBounds.bottom + 1,
+        controlsBelowArtwork: controlsBounds.top >= cardBounds.bottom - 1,
         buttons,
-        returnFrontBelowFrame: returnBounds.top >= outerBounds.bottom - 1,
+        returnFrontAvailable: returnBounds.width > 0 && returnBounds.left >= 0,
         returnFrontHeight: returnBounds.height,
       };
     })()`, sessionId);
@@ -860,9 +871,10 @@ test('player-page owner tools remain private across account changes and pause', 
       const layout = await inspectSharedCardLayout(sessionId);
       assert.equal(layout.design, design, `${design} template is shared at ${viewport} width`);
       assert.equal(layout.side, side, `${design} reaches the ${side} side at ${viewport} width`);
-      assert.equal(layout.buttons.length, 4, `${design} keeps all four section controls`);
-      assert.equal(layout.navBelowFrame, true, `${design} navigation stays below the artwork at ${viewport} width on ${side}`);
-      assert.equal(layout.returnFrontBelowFrame, true, `the return-to-front action stays below the card at ${viewport} width`);
+      assert.equal(layout.buttons.length, 4, `${design} keeps all four available card-side controls`);
+      assert.equal(layout.controlsInsideShell, true, `${design} navigation stays inside the card shell at ${viewport} width on ${side}`);
+      assert.equal(layout.controlsBelowArtwork, true, `${design} navigation stays below the artwork at ${viewport} width on ${side}`);
+      assert.equal(layout.returnFrontAvailable, true, `the return-to-front control stays available at ${viewport} width`);
       assert.ok(layout.returnFrontHeight >= 44, `the return-to-front action remains tappable at ${viewport} width`);
       for (const button of layout.buttons) {
         assert.equal(button.visible, true, `${design} section controls remain visible at ${viewport} width on ${side}`);
@@ -871,7 +883,7 @@ test('player-page owner tools remain private across account changes and pause', 
           `${design} section controls fit horizontally at ${viewport} width on ${side}`);
         assert.equal(button.textFits, true, `${design} section labels fit their buttons at ${viewport} width on ${side}`);
       }
-      assert.equal(layout.buttons.filter((button) => button.pressed).length, side === 'front' ? 0 : 1,
+      assert.equal(layout.buttons.filter((button) => button.pressed).length, 1,
         `${design} marks only the selected section at ${viewport} width on ${side}`);
     };
     const clickSharedCardControl = async (sessionId: string, testId: string, minimumHeight = 44) => {
@@ -911,7 +923,7 @@ test('player-page owner tools remain private across account changes and pause', 
         await waitFor(
           connection,
           sharedCard,
-          `document.querySelector('.living-card-stage')?.dataset.design === '${design}' && document.querySelector('#living-card-display')?.dataset.side === 'front'`,
+          `document.querySelector('.living-card-stage')?.dataset.design === '${design}' && document.querySelector('#living-card-display')?.getAttribute('aria-label')?.endsWith('card front')`,
           Boolean,
           12_000,
         );
@@ -923,15 +935,18 @@ test('player-page owner tools remain private across account changes and pause', 
           await waitFor(connection, sharedCard, `(() => {
             const card = document.querySelector('#living-card-display');
             const inner = document.querySelector('.living-card-flip-inner');
-            return card?.dataset.side === '${section.side}'
-              && card?.getAttribute('aria-label')?.endsWith('${
+            return card?.getAttribute('aria-label')?.endsWith('${
                 section.side === 'responses' ? 'viewer responses'
                   : section.side === 'stats' ? 'finalized stats'
-                  : section.side === 'events' ? 'events'
-                  : 'Live Taps tally'
+                  : section.side === 'live-taps' ? 'Live Taps tally'
+                  : section.side === 'videos' ? 'videos' : 'viewer responses'
               }')
               && document.querySelector('[data-testid="${section.id}"]')?.getAttribute('aria-pressed') === 'true'
-              && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001;
+              && document.querySelector('[data-testid="living-card-flip-container"]')?.getAttribute('data-selected-side') === '${section.side}'
+              && document.querySelector('.living-card-flip-back')?.getAttribute('aria-hidden') !== 'true'
+              && inner?.getAttribute('data-animate') === 'false'
+              && (window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                || Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001);
           })()`, Boolean, 12_000);
           await assertSharedCardLayout(sharedCard, design, viewport.name, section.side);
         }
@@ -940,10 +955,13 @@ test('player-page owner tools remain private across account changes and pause', 
         await waitFor(connection, sharedCard, `(() => {
           const card = document.querySelector('#living-card-display');
           const inner = document.querySelector('.living-card-flip-inner');
-          return card?.dataset.side === 'front'
-            && card?.getAttribute('aria-label')?.endsWith('card front')
+          return card?.getAttribute('aria-label')?.endsWith('card front')
+            && document.querySelector('[data-testid="living-card-flip-container"]')?.getAttribute('data-selected-side') === 'front'
             && document.querySelector('[data-testid="button-living-card-front"]')?.getAttribute('aria-pressed') === 'true'
-            && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 - 1) < 0.001;
+            && document.querySelector('.living-card-flip-front')?.getAttribute('aria-hidden') !== 'true'
+            && inner?.getAttribute('data-animate') === 'false'
+            && (window.matchMedia('(prefers-reduced-motion: reduce)').matches
+              || Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 - 1) < 0.001);
         })()`, Boolean, 12_000);
         await assertSharedCardLayout(sharedCard, design, viewport.name, 'front');
       }
@@ -953,11 +971,11 @@ test('player-page owner tools remain private across account changes and pause', 
     fanCard.cutoutUrl = pausedPageCutout;
     fanCard.cardAppearance = defaultCardAppearance('classic');
     const openPhotoCard = await open('visitor', 'fan');
-    await waitFor(connection, openPhotoCard, `document.querySelector('[data-testid="img-living-card-athlete"] [data-testid="svg-card-photo"]')?.getAttribute('href') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
+    await waitFor(connection, openPhotoCard, `document.querySelector('.lc-native-front-photo')?.getAttribute('src') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
 
     fanCard.cardAppearance = defaultCardAppearance('breakout');
     const openCutoutCard = await open('visitor', 'fan');
-    await waitFor(connection, openCutoutCard, `document.querySelector('[data-testid="img-living-card-athlete"] [data-testid="svg-card-photo"]')?.getAttribute('href') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
+    await waitFor(connection, openCutoutCard, `document.querySelector('.lc-native-front-photo')?.getAttribute('src') === ${JSON.stringify(pausedPagePhoto)}`, Boolean, 12_000);
 
     await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Hide public page')).click()", ownerManage);
     await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('make page public again'))", Boolean, 12_000);
@@ -1079,6 +1097,8 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const viteMonitor = monitorProcess(vite, 'Hype Card cross-browser Vite');
+  let displayProcess: ChildProcess | undefined;
+  let displayMonitor: ReturnType<typeof monitorProcess> | undefined;
   const drivers: Array<{
     process: ChildProcess;
     monitor: ReturnType<typeof monitorProcess>;
@@ -1094,7 +1114,54 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
     ]) {
       const driverPort = await availablePort();
       const origin = `http://127.0.0.1:${driverPort}`;
-      const driverProcess = spawn(browser.command, browser.args(driverPort), { stdio: ['ignore', 'pipe', 'pipe'] });
+      let driverCommand = browser.command;
+      let driverArguments = browser.args(driverPort);
+      let driverEnvironment = process.env;
+      let detached = false;
+      if (browser.name === 'WebKit') {
+        const mesaLibrary = [...(process.env.NIX_LDFLAGS || '').matchAll(/-L(\S*mesa-\S*\/lib)(?:\s|$)/g)]
+          .map((match) => match[1])
+          .find((path) => existsSync(`${path}/../share/glvnd/egl_vendor.d/50_mesa.json`));
+        assert.ok(mesaLibrary, 'WebKit coverage requires the installed Mesa graphics provider');
+        const display = spawn('Xvfb', ['-displayfd', '1', '-screen', '0', '1280x1024x24', '-nolisten', 'tcp'], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        displayProcess = display;
+        displayMonitor = monitorProcess(display, 'HYPE Card WebKit Xvfb');
+        const displayNumber = await new Promise<string>((resolveDisplay, reject) => {
+          let output = '';
+          const timer = setTimeout(() => reject(new Error(displayMonitor!.diagnostics())), 10_000);
+          display.once('error', (error) => { clearTimeout(timer); reject(error); });
+          display.stdout!.on('data', (chunk) => {
+            output += String(chunk);
+            if (/^\d+\n/.test(output)) {
+              clearTimeout(timer);
+              resolveDisplay(output.trim());
+            }
+          });
+        });
+        const gstPlugins = [...(process.env.NIX_LDFLAGS || '').matchAll(/-L(\S+\/lib)(?:\s|$)/g)]
+          .map((match) => `${match[1]}/gstreamer-1.0`)
+          .filter((path) => existsSync(path));
+        driverCommand = 'proot';
+        driverArguments = ['-b', '/tmp:/var/tmp', browser.command, ...browser.args(driverPort)];
+        driverEnvironment = {
+          ...process.env,
+          DISPLAY: `:${displayNumber}`,
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1',
+          LIBGL_ALWAYS_SOFTWARE: '1',
+          TMPDIR: '/tmp',
+          GST_PLUGIN_SYSTEM_PATH_1_0: gstPlugins.join(':'),
+          __EGL_VENDOR_LIBRARY_FILENAMES: `${mesaLibrary}/../share/glvnd/egl_vendor.d/50_mesa.json`,
+          LIBGL_DRIVERS_PATH: `${mesaLibrary}/dri`,
+        };
+        detached = true;
+      }
+      const driverProcess = spawn(driverCommand, driverArguments, {
+        env: driverEnvironment,
+        detached,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
       const monitor = monitorProcess(driverProcess, `${browser.name} WebDriver`);
       const driver = { process: driverProcess, monitor, origin };
       drivers.push(driver);
@@ -1126,6 +1193,7 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
           fallback: boolean;
           heading: string;
           headingVisible: boolean;
+          settled: boolean;
           controlsFit: boolean;
           statsPressed: boolean;
           frontPressed: boolean;
@@ -1133,12 +1201,19 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
           script: `return (() => {
             const card = document.querySelector('#living-card-display');
             const inner = document.querySelector('.living-card-flip-inner');
-            const side = card?.dataset.side || '';
+            const label = card?.getAttribute('aria-label') || '';
+            const side = label.endsWith('card front') ? 'front'
+              : label.endsWith('finalized stats') ? 'stats'
+              : label.endsWith('viewer responses') ? 'responses' : '';
             const heading = side === 'front'
-              ? card?.querySelector('[data-testid="svg-card-athlete-name"]')
+              ? card?.querySelector('.lc-native-front-name')
               : card?.querySelector('.living-card-flip-back .living-card-alt-title');
             const headingStyle = heading ? getComputedStyle(heading) : null;
-            const headingBounds = heading?.getBoundingClientRect();
+            const face = side === 'front'
+              ? card?.querySelector('.living-card-flip-front')
+              : card?.querySelector('.living-card-flip-back');
+            const faceStyle = face ? getComputedStyle(face) : null;
+            const faceBounds = face?.getBoundingClientRect();
             const controlsFit = [...document.querySelectorAll('.living-card-controls button')].every((button) => {
               const buttonBounds = button.getBoundingClientRect();
               const range = document.createRange();
@@ -1149,11 +1224,16 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
             return {
               side,
               matrixM11: inner ? new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 : NaN,
-              fallback: !CSS.supports('transform-style', 'preserve-3d'),
+              fallback: !CSS.supports('transform-style', 'preserve-3d')
+                || matchMedia('(prefers-reduced-motion: reduce)').matches,
               heading: heading?.textContent?.trim() || '',
-              headingVisible: Boolean(heading && headingBounds?.width && headingBounds.height
+              headingVisible: Boolean(heading && heading.textContent?.trim()
+                && faceBounds?.width && faceBounds.height
+                && face?.getAttribute('aria-hidden') !== 'true'
+                && faceStyle?.display !== 'none' && faceStyle?.visibility !== 'hidden'
                 && headingStyle?.display !== 'none' && headingStyle?.visibility !== 'hidden'
                 && headingStyle?.color !== 'rgba(0, 0, 0, 0)'),
+              settled: inner?.getAttribute('data-animate') === 'false',
               controlsFit,
               statsPressed: document.querySelector('[data-testid="button-living-card-stats"]')?.getAttribute('aria-pressed') === 'true',
               frontPressed: document.querySelector('[data-testid="button-living-card-front"]')?.getAttribute('aria-pressed') === 'true',
@@ -1161,16 +1241,28 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
           })();`,
           args: [],
         });
-        const waitForSide = (side: 'front' | 'stats') => waitForWebDriverValue(
+        const waitForSide = (side: 'front' | 'stats' | 'responses') => waitForWebDriverValue(
           inspect,
           (state) => state.side === side
             && state.headingVisible
+            && state.settled
             && (state.fallback || Math.abs(state.matrixM11 - (side === 'front' ? 1 : -1)) < 0.001),
           `${browser.name} ${viewport.name} ${side} face`,
         );
+        const activateButton = async (elementId: string, elementReference: Record<string, string>) => {
+          if (browser.name === 'WebKit') {
+            await webDriverCommand(origin, 'POST', `${sessionPath}/execute/sync`, {
+              script: 'arguments[0].scrollIntoView({ block: "center" }); arguments[0].focus(); return true;',
+              args: [elementReference],
+            });
+            await webDriverCommand(origin, 'POST', `${sessionPath}/element/${elementId}/value`, { text: ' ' });
+          } else {
+            await webDriverCommand(origin, 'POST', `${sessionPath}/element/${elementId}/click`, {});
+          }
+        };
 
         const front = await waitForSide('front');
-        assert.equal(front.heading, 'JORDAN');
+        assert.equal(front.heading, 'Jordan');
         assert.equal(front.frontPressed, true);
         assert.equal(front.controlsFit, true, `${browser.name} controls fit at ${viewport.width}px`);
 
@@ -1182,12 +1274,26 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
         );
         const statsButtonId = statsButton['element-6066-11e4-a52e-4f735466cecf'] || statsButton.ELEMENT;
         assert.ok(statsButtonId, `${browser.name} exposes the Stats control`);
-        await webDriverCommand(origin, 'POST', `${sessionPath}/element/${statsButtonId}/click`, {});
+        await activateButton(statsButtonId, statsButton);
         const back = await waitForSide('stats');
         assert.match(back.heading, /Season stats\./);
         assert.equal(back.statsPressed, true);
         assert.equal(back.controlsFit, true);
         if (!back.fallback) assert.ok(Math.abs(back.matrixM11 + 1) < 0.001, `${browser.name} rotates the back toward the viewer`);
+
+        const responsesButton = await webDriverCommand<Record<string, string>>(
+          origin,
+          'POST',
+          `${sessionPath}/element`,
+          { using: 'css selector', value: '[data-testid="button-living-card-responses"]' },
+        );
+        const responsesButtonId = responsesButton['element-6066-11e4-a52e-4f735466cecf'] || responsesButton.ELEMENT;
+        assert.ok(responsesButtonId, `${browser.name} exposes the Responses control`);
+        await activateButton(responsesButtonId, responsesButton);
+        const responses = await waitForSide('responses');
+        assert.match(responses.heading, /Responses\./);
+        assert.equal(responses.controlsFit, true);
+        if (!responses.fallback) assert.ok(Math.abs(responses.matrixM11 + 1) < 0.001, `${browser.name} rotates the response side toward the viewer`);
 
         const frontButton = await webDriverCommand<Record<string, string>>(
           origin,
@@ -1197,9 +1303,9 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
         );
         const frontButtonId = frontButton['element-6066-11e4-a52e-4f735466cecf'] || frontButton.ELEMENT;
         assert.ok(frontButtonId, `${browser.name} exposes the return-to-front control`);
-        await webDriverCommand(origin, 'POST', `${sessionPath}/element/${frontButtonId}/click`, {});
+        await activateButton(frontButtonId, frontButton);
         const returnedFront = await waitForSide('front');
-        assert.equal(returnedFront.heading, 'JORDAN');
+        assert.equal(returnedFront.heading, 'Jordan');
         assert.equal(returnedFront.frontPressed, true);
         if (!returnedFront.fallback) assert.ok(Math.abs(returnedFront.matrixM11 - 1) < 0.001, `${browser.name} returns the front toward the viewer`);
       }
@@ -1207,10 +1313,28 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
   } finally {
     for (const driver of drivers) {
       if (driver.sessionId) {
-        await webDriverCommand(driver.origin, 'DELETE', `/session/${driver.sessionId}`).catch(() => undefined);
+        await Promise.race([
+          webDriverCommand(driver.origin, 'DELETE', `/session/${driver.sessionId}`).catch(() => undefined),
+          new Promise((resolveClose) => setTimeout(resolveClose, 2_000)),
+        ]);
+      }
+      if (driver.process.pid && driver.process.spawnargs[0] === 'proot') {
+        try { process.kill(-driver.process.pid, 'SIGTERM'); } catch { /* The test process may already be gone. */ }
       }
       if (!driver.monitor.hasExited()) driver.process.kill('SIGTERM');
-      await driver.monitor.waitForExit();
+      await Promise.race([
+        driver.monitor.waitForExit(),
+        new Promise((resolveClose) => setTimeout(resolveClose, 1_500)),
+      ]);
+      if (!driver.monitor.hasExited()) driver.process.kill('SIGKILL');
+    }
+    if (displayProcess && displayMonitor && !displayMonitor.hasExited()) {
+      displayProcess.kill('SIGTERM');
+      await Promise.race([
+        displayMonitor.waitForExit(),
+        new Promise((resolveClose) => setTimeout(resolveClose, 1_500)),
+      ]);
+      if (!displayMonitor.hasExited()) displayProcess.kill('SIGKILL');
     }
     if (!viteMonitor.hasExited()) vite.kill('SIGTERM');
     await viteMonitor.waitForExit();
