@@ -109,6 +109,8 @@ function restoreLiveTapsGame(share: StatTrackerShare): GameSession | null {
 }
 
 type EventCardLiveTapsProps = {
+  canStart?: boolean;
+  checkCanStart?: () => boolean;
   userId?: string | null;
   sport: Sport | null;
   athleteName: string;
@@ -167,6 +169,8 @@ function getApiError(error: unknown, fallback: string) {
 }
 
 export function EventCardLiveTaps({
+  canStart = true,
+  checkCanStart,
   userId,
   sport,
   athleteName,
@@ -362,6 +366,10 @@ export function EventCardLiveTaps({
   const startLiveTaps = async () => {
     setError('');
     setNotice('');
+    if (!canStart || (checkCanStart && !checkCanStart())) {
+      setError('Starting Live Taps is unavailable for this game. Existing cheers can still be managed.');
+      return;
+    }
     if (!userId) {
       setError('Sign in to start Live Taps for this game.');
       return;
@@ -727,7 +735,7 @@ export function EventCardLiveTaps({
             type="button"
             className="event-card-live-taps__primary"
             onClick={() => void startLiveTaps()}
-            disabled={busy || trackerShareQuery.isFetching || trackerShareQuery.isError || (selectedInvite?.sport === 'soccer' && !soccerPeriodFormat)}
+            disabled={!canStart || busy || trackerShareQuery.isFetching || trackerShareQuery.isError || (selectedInvite?.sport === 'soccer' && !soccerPeriodFormat)}
             data-testid="button-start-live-taps-only"
           >
             <Radio size={16} aria-hidden="true" /> {busy ? 'Starting…' : 'Start Live Taps only'}
@@ -747,7 +755,7 @@ export function EventCardLiveTaps({
               type="button"
               className="event-card-live-taps__primary"
               onClick={() => void startLiveTaps()}
-              disabled={busy}
+              disabled={!canStart || busy}
               data-testid="button-retry-start-live-taps-only"
             >
               <Radio size={16} aria-hidden="true" /> {busy ? 'Starting…' : 'Start Game Day Live'}

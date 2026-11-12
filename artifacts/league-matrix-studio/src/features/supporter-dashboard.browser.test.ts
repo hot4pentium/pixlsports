@@ -6021,6 +6021,133 @@ test('the authenticated Supporter Hub restores the upcoming Event Card after rel
   }
 });
 
+test('mobile Event Card tools preserve drafts, focus and narrow-screen navigation', { concurrency: false }, async () => {
+  const release = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-event-tool-navigation');
+  let devServer: ChildProcess | undefined;
+  let browser: ChildProcess | undefined;
+  let devMonitor: ProcessMonitor | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  try {
+    const probe = createServer();
+    const { port } = await listen(probe);
+    await new Promise<void>((done) => probe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource());
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)));
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(port), BASE_PATH: '/', VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devMonitor = monitorProcess(devServer, 'Event tool navigation Vite');
+    await waitForUrl(`http://127.0.0.1:${port}/`, 30_000, devMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-event-navigation-'));
+    browser = spawn(chromiumPath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Event tool navigation Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, () => `${devMonitor?.diagnostics()}; ${browserMonitor?.diagnostics()}`);
+    page = await openPage(connection, `http://127.0.0.1:${port}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-game-record&supporter-event-details-draft`,
+      { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const evaluate = <T,>(expression: string) => connection!.evaluate<T>(expression, page!.sessionId);
+    const wait = (expression: string) => waitFor(connection!, page!.sessionId, expression, Boolean, 30_000);
+    const eventId = 'mobile-navigation-game';
+    const future = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
+    await wait('Boolean(window.__setSupporterDashboardEvents)');
+    await evaluate(`(() => { const original = window.fetch.bind(window); window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (new URL(url, location.href).pathname === '/api/stat-tracker-shares') {
+        return Promise.resolve(new Response('[]', {status:200,headers:{'Content-Type':'application/json'}}));
+      }
+      return original(input,init);
+    }; })()`);
+    await evaluate(`window.__setSupporterDashboardEvents([{id:'${eventId}',type:'game',date:'${future}',time:'18:30',timezone:'UTC',location:'Northside Gym',opponent:'Rivals',status:'upcoming'}])`);
+    const dialog = `[data-testid="dialog-game-on-card-draft:${eventId}"]`;
+    const selector = (id: string) => `${dialog} [data-testid="${id}"]`;
+    const click = async (id: string) => { await evaluate(`document.querySelector(${JSON.stringify(selector(id))})?.click()`); };
+    await wait(`Boolean(document.querySelector('[data-testid="button-open-game-on-card-draft:${eventId}"]'))`);
+    await evaluate(`document.querySelector('[data-testid="button-open-game-on-card-draft:${eventId}"]').click()`);
+    await wait(`document.querySelector('${dialog} [data-tool="prep"]')?.getAttribute('aria-pressed') === 'true'`);
+    await wait(`document.activeElement?.matches('${dialog} .game-on-prep__title')`);
+    await evaluate(`void (window.__retainedPrep = document.querySelector('${dialog} .game-on-prep'))`);
+    // An unfinished task-entry field must survive switching tools, not merely a saved checklist.
+    await evaluate(`(() => { const input = document.querySelector('${dialog} [data-testid="input-card-prep-title-${eventId}"]');
+      if (!input) throw new Error('Prep title input missing');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Keep this unsaved task');
+      input.dispatchEvent(new Event('input',{bubbles:true})); })()`);
+    await click(`button-event-step-tracker-draft:${eventId}`);
+    await wait(`document.querySelector('${dialog} [data-testid="status-event-tracking-availability"]')?.textContent.includes('within 10 minutes')`);
+    await wait(`document.activeElement?.matches('${dialog} .game-on-collection__tracker-mode-heading h3')`);
+    assert.equal(await evaluate(`document.querySelector('${dialog} [data-testid="input-event-record-moments"]')?.disabled ?? 'missing'`), false,
+      await evaluate(`document.querySelector('${dialog}')?.innerHTML.slice(-12000)`));
+    assert.equal(await evaluate(`Boolean(document.querySelector('${dialog} a[data-testid="link-open-stat-tracker-draft:${eventId}"]'))`), false);
+    await evaluate(`void (window.__retainedTaps = document.querySelector('${dialog} .event-card-live-taps'))`);
+    await click(`button-event-step-share-draft:${eventId}`);
+    await wait(`document.activeElement?.matches('${dialog} .game-on-collection__share-heading h3')`);
+    await click(`button-event-step-prep-draft:${eventId}`);
+    await wait(`document.activeElement?.matches('${dialog} .game-on-prep__title')`);
+    assert.equal(await evaluate(`window.__retainedPrep === document.querySelector('${dialog} .game-on-prep')`), true);
+    assert.equal(await evaluate(`document.querySelector('${dialog} [data-testid="input-card-prep-title-${eventId}"]').value`), 'Keep this unsaved task');
+    await click(`button-event-step-tracker-draft:${eventId}`);
+    assert.equal(await evaluate(`window.__retainedTaps === document.querySelector('${dialog} .event-card-live-taps')`), true);
+    // The recommendation changes independently of the tool the supporter selected.
+    await evaluate(`window.__setSupporterDashboardEvents([{id:'${eventId}',type:'game',date:'${future}',time:'18:30',timezone:'UTC',location:'Northside Gym',opponent:'Rivals',status:'final',completedAt:new Date().toISOString()}])`);
+    await wait(`document.querySelector('${dialog} [data-testid="status-event-tracking-availability"]')?.textContent === 'Game complete'`);
+    assert.equal(await evaluate(`document.querySelector('${dialog} [data-tool="tracker"]').getAttribute('aria-pressed')`), 'true');
+    assert.equal(await evaluate(`document.querySelector('${dialog} [data-tool="share"]').getAttribute('data-recommended')`), 'true');
+    // Keyboard activation and focus must stay inside the visible panel.
+    await evaluate(`document.querySelector('${dialog} [data-tool="share"]').focus()`);
+    await pressKey(connection, page.sessionId, ' ', 'Space', 32);
+    await wait(`document.activeElement?.matches('${dialog} .game-on-collection__share-heading h3')`);
+    for (const width of [320, 390, 767]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 740, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+      for (const tool of ['prep', 'tracker', 'share']) {
+      await click(`button-event-step-${tool}-draft:${eventId}`);
+      await wait(`document.querySelector('${dialog} [data-tool="${tool}"]')?.getAttribute('aria-pressed') === 'true'`);
+      await evaluate(`document.querySelector('${dialog}').scrollTop = 0`);
+      const geometry = await evaluate<{ fits: boolean; barVisible: boolean; buttons: boolean }>(`(() => {
+        const modal=document.querySelector('${dialog}'), bar=modal.querySelector('.game-on-collection__step-bar');
+        const m=modal.getBoundingClientRect(), b=bar.getBoundingClientRect();
+        return {fits:modal.scrollWidth<=modal.clientWidth+1,
+          barVisible:b.top>=m.top && b.bottom<=m.bottom+1,
+          buttons:[...bar.querySelectorAll('button')].every(x=>{const r=x.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=m.left && r.right<=m.right;})};
+      })()`);
+      assert.deepEqual(geometry, { fits: true, barVisible: true, buttons: true }, `${tool} navigation geometry at ${width}px`);
+      }
+    }
+    await evaluate(`document.querySelectorAll('${dialog} .game-on-collection__step-bar button span').forEach(x => x.style.fontSize='22px')`);
+    assert.equal(await evaluate(`(() => { const m=document.querySelector('${dialog}'); return m.scrollWidth<=m.clientWidth+1; })()`), true, 'larger navigation text reflows');
+    await evaluate(`document.querySelectorAll('${dialog} .game-on-collection__step-bar button span').forEach(x => x.style.fontSize='')`);
+    await click(`button-edit-event-arrow-draft:${eventId}`);
+    await wait(`document.querySelector('${dialog} [data-testid="panel-inline-calendar-draft:${eventId}"]')?.getClientRects().length > 0`);
+    await click(`button-event-step-share-draft:${eventId}`);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, page.sessionId);
+    await wait(`!document.querySelector('${dialog} [data-testid="event-card-step-bar"]')`);
+    await click(`button-close-game-on-share-draft:${eventId}`);
+    await wait(`document.querySelector('${dialog} .game-on-collection__flip-front')?.getAttribute('aria-hidden') === 'false'`);
+    assert.equal(await evaluate(`document.querySelector('${dialog} [data-testid="button-open-card-prep-draft:${eventId}"]').getClientRects().length > 0`), true);
+    await evaluate(`document.querySelector('${dialog} [aria-label="Close Event Card"]').click()`);
+    await wait(`!document.querySelector('${dialog}')`);
+    await wait(`document.activeElement?.matches('[data-testid="button-open-game-on-card-draft:${eventId}"]')`);
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+    connection?.close();
+    if (browser && browserMonitor) { if (!browserMonitor.hasExited()) browser.kill('SIGTERM'); await browserMonitor.waitForExit(); }
+    if (devServer && devMonitor) { if (!devMonitor.hasExited()) devServer.kill('SIGTERM'); await devMonitor.waitForExit(); }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    release();
+  }
+});
+
 for (const openPanel of ['prep', 'details'] as const) {
 test(openPanel === 'details'
   ? 'saving Live Event Card details updates announcement wording once'

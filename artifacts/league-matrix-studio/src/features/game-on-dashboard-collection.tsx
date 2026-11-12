@@ -12,6 +12,10 @@ import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { getSuggestedGameOnAction } from './game-on-dashboard-model';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
 import { EventCardLiveTaps } from './event-card-live-taps';
+import { EventCardRecordMoments } from './event-card-record-moments';
+import { getEventCardToolGuidance } from './event-card-tool-guidance';
+import { readStoredTrackerData, readStoredActiveGame } from './stat-tracker';
+import { resolveGameOnTimeZone } from './game-on-timezone';
 import type { Sport } from './stat-tracker';
 import './game-on-dashboard-collection.css';
 
@@ -153,18 +157,59 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
   const previousPanel = useRef<typeof panel>(null);
   const [eventShareNotice, setEventShareNotice] = useState('');
   const [hypeCardShareNotice, setHypeCardShareNotice] = useState('');
-  const trackerOpen = panel === 'tracker';
-  const prepOpen = panel === 'prep';
-  const calendarOpen = panel === 'calendar';
-  const shareOpen = panel === 'share';
-  const panelOpen = panel !== null;
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [now, setNow] = useState(Date.now);
+  const [visited, setVisited] = useState({ prep: false, tracker: false, share: false });
+  const mobileWorkspace = mobile && isDialogCard && selected && !card.isUnsavedDraft;
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 767px)');
+    const update = () => setMobile(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    if (!isDialogCard || !selected) return;
+    const update = () => setNow(Date.now());
+    const timer = window.setInterval(update, 1000);
+    window.addEventListener('storage', update);
+    window.addEventListener('focus', update);
+    return () => { window.clearInterval(timer); window.removeEventListener('storage', update); window.removeEventListener('focus', update); };
+  }, [isDialogCard, selected]);
+  let localFinal = false;
+  if (isDialogCard && statTrackerUserId && typeof window !== 'undefined') {
+    const matches = (game: { status: string; sourceEventId?: string }) => game.status === 'final' && game.sourceEventId === (card.eventId ?? card.id.replace(/^(?:share|draft):/, ''));
+    localFinal = readStoredTrackerData(window.localStorage, statTrackerUserId).games.some(matches);
+    const active = readStoredActiveGame(window.localStorage, statTrackerUserId);
+    localFinal ||= Boolean(active && matches(active));
+  }
+  const guidance = getEventCardToolGuidance(card, now, localFinal);
+  const [initialTool] = useState(guidance.recommended);
+  const activePanel = panel ?? (mobileWorkspace ? initialTool : null);
+  // Initial recommendation chooses the tool once; clock changes never navigate away.
+  const initialized = useRef(false);
+  const initialToolTrigger = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    if (!mobileWorkspace || initialized.current) return;
+    initialized.current = true;
+    if (!panel && initialToolTrigger.current) onOpenPanel(card.id, guidance.recommended, initialToolTrigger.current);
+  }, [mobileWorkspace, panel, card.id, guidance.recommended, onOpenPanel]);
+  useEffect(() => {
+    if (activePanel === 'prep' || activePanel === 'tracker' || activePanel === 'share') {
+      setVisited((current) => current[activePanel] ? current : { ...current, [activePanel]: true });
+    }
+  }, [activePanel]);
+  const trackerOpen = activePanel === 'tracker';
+  const prepOpen = activePanel === 'prep';
+  const calendarOpen = activePanel === 'calendar';
+  const shareOpen = activePanel === 'share';
+  const panelOpen = activePanel !== null;
   const trackerPanelId = `panel-inline-tracker-${card.id}-${editorId}`;
   const calendarPanelId = `panel-inline-calendar-${card.id}-${editorId}`;
   const prepPanelId = `panel-inline-prep-${card.id}-${editorId}`;
   const sharePanelId = `panel-inline-share-${card.id}-${editorId}`;
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
-  const suggestedAction = getSuggestedGameOnAction({
+  const suggestedAction = mobileWorkspace ? guidance.recommended : getSuggestedGameOnAction({
     type: card.type,
     status: getCardStatus(card),
     recordedGameId: card.recordedGameId,
@@ -249,28 +294,30 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
   const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
   useLayoutEffect(() => {
-    if (frontFaceRef.current) frontFaceRef.current.inert = panelOpen;
+    if (frontFaceRef.current) frontFaceRef.current.inert = panelOpen && !mobileWorkspace;
     if (backFaceRef.current) backFaceRef.current.inert = !panelOpen;
-    if (panel && previousPanel.current !== panel) {
-      const heading = panel === 'prep'
+    if (activePanel && previousPanel.current !== activePanel) {
+      const heading = activePanel === 'prep'
         ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-prep__title')
-        : panel === 'calendar'
+        : activePanel === 'calendar'
           ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-inline__section h3')
-          : panel === 'share'
+          : activePanel === 'share'
             ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-collection__share-heading h3')
             : backFaceRef.current?.querySelector<HTMLElement>('.game-on-collection__tracker-mode-heading h3');
       if (heading?.getClientRects().length) heading.focus();
     }
-    previousPanel.current = panel;
-  }, [panel, panelOpen]);
+    previousPanel.current = activePanel;
+  }, [activePanel, panelOpen, mobileWorkspace]);
 
   return (
     <motion.article
       layout={!isDialogCard && !reduceMotion}
       layoutId={isDialogCard || reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
       transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
-      className={`game-on-collection__card${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' || card.status === 'Sharing' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${isActive ? ' game-on-collection__card--active' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}${shareOpen ? ' game-on-collection__card--share-open' : ''}`}
+      className={`game-on-collection__card${mobileWorkspace ? ' game-on-collection__card--workspace' : ''}${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' || card.status === 'Sharing' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${isActive ? ' game-on-collection__card--active' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}${shareOpen ? ' game-on-collection__card--share-open' : ''}`}
       hidden={!visible}
+      data-active-tool={activePanel}
+      data-mobile-workspace={mobileWorkspace ? 'true' : undefined}
       data-testid={`card-game-on-${card.id}`}
       data-layout-id={card.layoutId ?? card.id}
       data-up-next={isUpNext ? 'true' : 'false'}
@@ -287,12 +334,13 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
         </p>
       )}
       <div className="game-on-collection__flip-inner">
-        <div ref={frontFaceRef} className="game-on-collection__flip-front" aria-hidden={panelOpen}>
+        <div ref={frontFaceRef} className="game-on-collection__flip-front" aria-hidden={panelOpen && !mobileWorkspace}>
           <div className="game-on-collection__summary-wrap">
           <button
             type="button"
             className="game-on-collection__summary"
-            onClick={(event) => onOpen(card.id, event.currentTarget)}
+            onClick={(event) => { if (!mobileWorkspace) onOpen(card.id, event.currentTarget); }}
+            disabled={mobileWorkspace}
             aria-label={`${isStartingSoon ? 'Starting soon: ' : isUpNext ? 'Up next: ' : isActive ? 'Active now: ' : ''}${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
             aria-haspopup={isDialogCard ? undefined : 'dialog'}
             aria-expanded={renderSelectedCard ? (isDialogCard ? selected : triggerSelected) : undefined}
@@ -459,8 +507,8 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
               })}
             </div>
           )}
-          {prepOpen && (
-            <div id={prepPanelId} data-testid={`panel-inline-prep-${card.id}`}>
+          {(prepOpen || visited.prep) && (
+            <div id={prepPanelId} data-testid={`panel-inline-prep-${card.id}`} hidden={!prepOpen}>
               <GameOnInlinePrepChecklist
                 key={`${prepUserId ?? statTrackerUserId ?? 'anonymous'}:${eventId}`}
                 event={eventContext}
@@ -469,8 +517,8 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
               />
             </div>
           )}
-          {trackerOpen && !practice && (
-            <>
+          {(trackerOpen || visited.tracker) && !practice && (
+            <div hidden={!trackerOpen}>
               <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-stat-tracker-${card.id}`}>
                 <ArrowLeft size={15} aria-hidden="true" /> Back to badge
               </button>
@@ -479,19 +527,27 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
                 <h3 tabIndex={-1} data-testid={`heading-event-card-game-day-mode-${eventId}`}>Choose how to follow this game</h3>
                 <p>Track player stats, or use Live Taps for family cheers without recording stats.</p>
               </div>
+              <p role="status" data-testid="status-event-tracking-availability">{guidance.availability}</p>
+              {guidance.availability === 'Available within 10 minutes of start' && guidance.opensAt !== undefined && (
+                <p>Opens {new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: resolveGameOnTimeZone(card.timezone) }).format(guidance.opensAt)} ({resolveGameOnTimeZone(card.timezone)}).</p>
+              )}
               <section className="game-on-collection__tracker-stat-option" aria-labelledby={`tracker-stat-option-title-${eventId}`} data-testid="event-card-stat-tracker-option">
                 <div>
                   <p className="game-on-collection__tracker-option-eyebrow">Track stats</p>
                   <h4 id={`tracker-stat-option-title-${eventId}`}>Full tracker</h4>
                   <p>Log game plays and stats for the season.</p>
                 </div>
-                <Link
+                {card.recordedGameId && (
+                  <Link href={`/studio/season-stats?gameId=${encodeURIComponent(card.recordedGameId)}`} data-testid={`link-view-card-stats-${card.id}`}>View saved stats</Link>
+                )}
+                {guidance.allowed ? <Link
                   href={buildWorkspaceToolHref('stats', eventContext)}
                   className="game-on-collection__tracker-stat-link"
                   data-testid={`link-open-stat-tracker-${card.id}`}
+                  onClick={(event) => { if (!getEventCardToolGuidance(card, Date.now(), localFinal).allowed) event.preventDefault(); }}
                 >
                   Open full tracker
-                </Link>
+                </Link> : <button type="button" disabled className="game-on-collection__tracker-stat-link">Open full tracker</button>}
               </section>
               <EventCardLiveTaps
                 key={`${statTrackerUserId ?? 'anonymous'}:${eventId}`}
@@ -504,11 +560,14 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
                 time={card.time}
                 location={card.location}
                 opponent={card.opponent}
+                canStart={guidance.allowed}
+                checkCanStart={() => getEventCardToolGuidance(card, Date.now(), localFinal).allowed}
               />
-            </>
+              <EventCardRecordMoments active={trackerOpen} />
+            </div>
           )}
-          {shareOpen && (
-            <>
+          {(shareOpen || visited.share) && (
+            <div hidden={!shareOpen}>
               <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-game-on-share-${card.id}`}>
                 <ArrowLeft size={15} aria-hidden="true" /> Back to Event Card
               </button>
@@ -519,7 +578,7 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
                   <p>Send event details or share the athlete’s HYPE Card with family and friends.</p>
                 </div>
                 <section className="game-on-collection__share-option" aria-labelledby={`event-details-share-title-${card.id}`}>
-                  <div>
+                  <div className="game-on-collection__share-event-summary">
                     <p className="game-on-collection__tracker-option-eyebrow">This Event Card</p>
                     <h4 id={`event-details-share-title-${card.id}`}>{card.athleteName || 'Your athlete'}{card.opponent ? ` vs ${card.opponent}` : ' · Game day'}</h4>
                     <p>{date.weekday}{card.time ? ` · ${displayTime(card.time)}` : ''}{card.location ? ` · ${card.location}` : ''}</p>
@@ -557,10 +616,29 @@ function CollectionCard({ card, hypeCardShareToken, hypeCardManageHref, onOpen, 
                   )}
                 </section>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
+      {mobileWorkspace && (
+        <nav className="game-on-collection__step-bar" aria-label="Event Card tools" data-testid="event-card-step-bar">
+          <p>Next: {guidance.recommended === 'prep' ? 'Prep' : guidance.recommended === 'tracker' ? 'Track Stats' : 'Share'}</p>
+          <div>
+            {(['prep', 'tracker', 'share'] as const).map((tool) => (
+              <button key={tool} type="button" ref={tool === guidance.recommended ? initialToolTrigger : undefined}
+                data-tool={tool} data-recommended={tool === guidance.recommended ? 'true' : undefined}
+                aria-pressed={activePanel === tool} disabled={tool === 'tracker' && practice}
+                aria-controls={tool === 'prep' ? prepPanelId : tool === 'tracker' ? trackerPanelId : sharePanelId}
+                aria-label={`${tool === 'prep' ? 'Prep' : tool === 'tracker' ? 'Track Stats' : 'Share'}${tool === guidance.recommended ? '. Recommended next step' : ''}`}
+                onClick={(event) => onOpenPanel(card.id, tool, event.currentTarget)}
+                data-testid={`button-event-step-${tool}-${card.id}`}>
+                {tool === 'prep' ? <ClipboardCheck size={18} aria-hidden="true" /> : tool === 'tracker' ? <Activity size={18} aria-hidden="true" /> : <Share2 size={18} aria-hidden="true" />}
+                <span>{tool === 'prep' ? 'Prep' : tool === 'tracker' ? 'Track Stats' : 'Share'}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
     </motion.article>
   );
 }
