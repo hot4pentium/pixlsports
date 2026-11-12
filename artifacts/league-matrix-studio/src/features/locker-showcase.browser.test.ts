@@ -102,7 +102,8 @@ import {SupporterHypeCardPreview} from './src/features/supporter-hype-card-previ
 import './src/index.css';
 const loadout = {shinGuards:'basic',shinGuardColor:'#2878F5',jerseyStyle:'classic',jerseyColor:'#2878F5',shortsStyle:'classic',shortsColor:'#173758',socksStyle:'classic',socksColor:'#F6F5EA',cleatsStyle:'classic',cleatsColor:'#173758',sweatband:'none',background:'field'};
 const card = {inviteToken:'fixture-athlete',athleteName:'Jordan Lee',teamName:'River FC',seasonName:'Fall Season',sport:'soccer',showHypeCard:true,showStats:true,showEvents:true,paused:false,hypesEnabled:true,photoUrl:null,cardAppearance:{jerseyNumber:'17'},timezone:'America/New_York',replies:[],videos:[],liveTaps:{active:false,gameId:null,cheers:[],seasonCheers:[]},stats:{record:{wins:3,losses:1,ties:0},gamesPlayed:4,score:14,stats:{goals:7},games:[]},favoriteMoment:'Legacy saved moment',events:[{shareToken:'fixture-event',eventId:'game-1',title:'River FC vs Hawks',type:'game',date:'2026-10-24',time:'10:00',location:'Field 2',opponent:'Hawks',status:'upcoming'}]};
-const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,favoriteMoment:'Legacy saved moment',patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
+const savedOwnerInvites=JSON.parse(localStorage.getItem('locker-fixture-owner-invites')||'null');
+const state = {mode:new URLSearchParams(location.search).get('mode')||'shared',showEvents:true,fail:false,failSave:false,noMatchingCard:false,athleteRestricted:false,accountId:'fixture-account',denyCopy:false,sport:new URLSearchParams(location.search).get('sport')||'soccer',cardSport:null,profileSeason:null,cardStatus:'ready',gearStatus:'ready',paused:false,showHypeCard:true,favoriteMoment:'Legacy saved moment',patch:{},unlocked:[],inviteStatus:'not_invited',inviteEmail:null,ownerInvites:savedOwnerInvites||[{...card,inviteToken:'unrelated-first',athleteName:'Casey Park',teamName:'Other Team',sport:'basketball',seasonName:'Spring Season'},{...card}]};
 const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
 const root = createRoot(document.getElementById('root'));
 window.__requests = []; window.__copied = ''; window.__appearanceSaves = []; window.__invitationPayloads = []; window.__momentSaves = []; window.__ownerSettingsSaves = [];
@@ -163,6 +164,7 @@ window.fetch = async (input,init) => {
        const current=state.ownerInvites.find(invite=>invite.inviteToken===inviteToken);
        const updated={...current,...body};
        state.ownerInvites=state.ownerInvites.map(invite=>invite.inviteToken===inviteToken?updated:invite);
+       localStorage.setItem('locker-fixture-owner-invites',JSON.stringify(state.ownerInvites));
        window.__ownerSettingsSaves.push({inviteToken,data:body});
        if(window.__holdOwnerSettingsSave) await new Promise(resolve=>{window.__releaseOwnerSettingsSave=resolve;});
        return new Response(JSON.stringify(updated),{status:200,headers:{'Content-Type':'application/json'}});
@@ -634,6 +636,35 @@ test('Showcase keeps the HYPE Card central without a Favorite Moment field', { t
     assert.equal(savedSettings.data.timezone, 'America/New_York');
     await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('paused')`);
     await browser.wait(`document.querySelector('[data-testid="input-owner-hype-card-url"]')===null`);
+
+    await browser.evaluate(`Object.defineProperty(navigator,'onLine',{configurable:true,value:false});window.dispatchEvent(new Event('offline'))`);
+    await browser.evaluate(`document.querySelector('[data-testid="toggle-share-finalized-stats"]').click()`);
+    await browser.evaluate(`document.querySelector('[data-testid="button-save-hype-card-settings"]').click()`);
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.toLowerCase().includes('saved on this device')`);
+    assert.equal(await browser.evaluate(`window.__ownerSettingsSaves.length`), 1, 'offline settings are queued locally instead of sent to the API');
+    await browser.evaluate(`(() => {
+      const invites=JSON.parse(localStorage.getItem('locker-fixture-owner-invites')||'[]');
+      const current=invites.find(invite=>invite.inviteToken==='fixture-athlete');
+      current.showHypeCard=false;
+      current.showEvents=true;
+      localStorage.setItem('locker-fixture-owner-invites',JSON.stringify(invites));
+    })()`);
+    await browser.send('Page.navigate', { url: `http://127.0.0.1:${port}${base}/${suffix}.html?mode=owner-showcase` });
+    await browser.wait(`document.querySelector('[data-testid="owner-item-hype-card-settings"]')`);
+    await browser.wait(`window.__ownerSettingsSaves.length===1`);
+    await browser.wait(`document.querySelector('[data-testid="status-hype-card-settings"]')?.textContent.includes('settings saved')`);
+    const relaunchedSettings = await browser.evaluate(`({
+      saved: window.__ownerSettingsSaves[0],
+      current: JSON.parse(localStorage.getItem('locker-fixture-owner-invites')||'[]').find(invite=>invite.inviteToken==='fixture-athlete'),
+      pendingKeys: Object.keys(localStorage).filter(key=>key.startsWith('pixlsports:hype-card-settings:v1:')),
+    })`);
+    assert.equal(relaunchedSettings.saved.data.showStats, true, 'settings saved offline are retried after the app relaunches');
+    assert.equal(relaunchedSettings.saved.data.showHypeCard, false, 'a newer server privacy change is not overwritten by an unrelated retry');
+    assert.equal(relaunchedSettings.saved.data.showEvents, true, 'a newer server section choice is retained during the merge');
+    assert.equal(relaunchedSettings.saved.data.paused, true, 'the retry keeps the card paused');
+    assert.equal(relaunchedSettings.current.showHypeCard, false, 'the retry cannot make a hidden card public');
+    assert.equal(relaunchedSettings.current.paused, true, 'a retry cannot make a paused card public');
+    assert.deepEqual(relaunchedSettings.pendingKeys, [], 'the local queue clears after the server confirms the save');
 
     await browser.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const phoneOwnerLayout = await browser.evaluate(`(() => {

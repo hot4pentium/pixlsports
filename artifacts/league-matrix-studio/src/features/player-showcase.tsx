@@ -26,6 +26,17 @@ import { OwnerHypeCardSurface } from './owner-hype-card-surface';
 import { FanCardAppearanceManager } from './fan-card-appearance-manager';
 import { FanCheersSummary } from './cheer-celebration';
 import { athleteFanCardUrl } from './athlete-fan-card-url';
+import {
+  clearPendingHypeCardSettings,
+  createPendingHypeCardSettings,
+  hypeCardSettingsFromInvite,
+  mergePendingHypeCardSettings,
+  readPendingHypeCardSettings,
+  retryWouldMakeHypeCardPublic,
+  savePendingHypeCardSettings,
+  type HypeCardSettings,
+  type PendingHypeCardSettings,
+} from './hype-card-settings-offline';
 import { HypeCardShareQr } from './hype-card-share-qr';
 import { getShowcaseInvite, getShowcaseInviteCandidates } from './player-showcase-model';
 import './player-showcase.css';
@@ -174,12 +185,16 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsMessageKind, setSettingsMessageKind] = useState<'success' | 'error' | 'info'>('info');
+  const [pendingSettingsSave, setPendingSettingsSave] = useState<PendingHypeCardSettings | null>(null);
+  const [settingsSyncing, setSettingsSyncing] = useState(false);
   const [draftShowHypeCard, setDraftShowHypeCard] = useState(false);
   const [draftShowStats, setDraftShowStats] = useState(false);
   const [draftShowEvents, setDraftShowEvents] = useState(false);
   const [draftPaused, setDraftPaused] = useState(false);
   const shareInputRef = useRef<HTMLInputElement>(null);
-  const selectedTokenRef = useRef<string | null>(null);
+  const hydratedSettingsIdentity = useRef<string | null>(null);
+  const syncingSettingsKey = useRef<string | null>(null);
+  const skipImmediateSettingsRetry = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const updateInvite = useUpdateAthleteInvite();
   const invitesQuery = useListAthleteInvites({
@@ -217,19 +232,46 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     && fanCardQuery.data.sport === matchedInvite?.sport
     ? fanCardQuery.data
     : null;
+  const activeSettingsIdentity = useRef({ accountId: userId, inviteToken: matchedInvite?.inviteToken ?? null });
+  activeSettingsIdentity.current = { accountId: userId, inviteToken: matchedInvite?.inviteToken ?? null };
   useEffect(() => {
-    if (selectedTokenRef.current !== matchedInvite?.inviteToken) {
-      selectedTokenRef.current = matchedInvite?.inviteToken ?? null;
+    const identity = userId && matchedInvite ? `${userId}:${matchedInvite.inviteToken}` : null;
+    const identityChanged = hydratedSettingsIdentity.current !== identity;
+    if (identityChanged) {
+      hydratedSettingsIdentity.current = identity;
       setSettingsDirty(false);
       setSettingsMessage('');
+      setPendingSettingsSave(null);
     }
-    if (!settingsDirty && matchedInvite) {
+    if (!identityChanged && settingsDirty) return;
+    if (!userId || !matchedInvite) return;
+    let pending: PendingHypeCardSettings | null = null;
+    try {
+      pending = readPendingHypeCardSettings(window.localStorage, userId, matchedInvite.inviteToken);
+    } catch {
+      pending = null;
+    }
+    if (pending) {
+      const restoredSettings = mergePendingHypeCardSettings(
+        hypeCardSettingsFromInvite(matchedInvite),
+        pending,
+      );
+      setPendingSettingsSave(pending);
+      setDraftShowHypeCard(restoredSettings.showHypeCard);
+      setDraftShowStats(restoredSettings.showStats);
+      setDraftShowEvents(restoredSettings.showEvents);
+      setDraftPaused(restoredSettings.paused);
+      setSettingsDirty(false);
+      setSettingsMessage('Saved on this device. Waiting to sync your HYPE Card settings.');
+      setSettingsMessageKind('info');
+    } else if (!settingsDirty) {
+      setPendingSettingsSave(null);
       setDraftShowHypeCard(matchedInvite.showHypeCard);
       setDraftShowStats(matchedInvite.showStats);
       setDraftShowEvents(matchedInvite.showEvents);
       setDraftPaused(matchedInvite.paused);
     }
-  }, [matchedInvite?.inviteToken, matchedInvite?.showHypeCard, matchedInvite?.showStats, matchedInvite?.showEvents, matchedInvite?.paused, settingsDirty]);
+  }, [userId, matchedInvite?.inviteToken, matchedInvite?.showHypeCard, matchedInvite?.showStats, matchedInvite?.showEvents, matchedInvite?.paused, settingsDirty]);
   const cardStatus: PlayerShowcaseContentProps['cardStatus'] = invitesQuery.isLoading
     ? 'loading'
     : invitesQuery.isError ? 'unavailable'
@@ -284,7 +326,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
       await copyHypeCardUrl();
     }
   };
-  const settingsPayload = (invite: OwnedAthleteInvite): AthleteInviteInput => ({
+  const settingsPayload = (invite: OwnedAthleteInvite, settings: HypeCardSettings): AthleteInviteInput => ({
     athleteName: invite.athleteName,
     teamName: invite.teamName,
     seasonName: invite.seasonName,
@@ -293,27 +335,58 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
     sport: invite.sport,
     trackerProjectId: invite.trackerProjectId,
     scheduleProjectId: invite.scheduleProjectId,
-    showHypeCard: draftShowHypeCard,
-    showStats: draftShowStats,
+    showHypeCard: settings.showHypeCard,
+    showStats: settings.showStats,
     showSchedule: invite.showSchedule,
-    showEvents: draftShowEvents,
+    showEvents: settings.showEvents,
     hypesEnabled: invite.hypesEnabled,
-    paused: draftPaused,
+    paused: settings.paused,
   });
-  const saveSettings = async () => {
-    if (!matchedInvite || updateInvite.isPending) return;
-    setSettingsMessage('');
-    if (!navigator.onLine) {
-      setSettingsMessageKind('error');
-      setSettingsMessage('You’re offline. Your changes have not been saved; reconnect and try again.');
-      return;
-    }
-    if (!matchedInvite.showHypeCard && draftShowHypeCard
-      && !window.confirm('Make this HYPE Card public? Anyone with its link will be able to view the sections you enable.')) return;
+  const syncPendingSettings = async (
+    pending: PendingHypeCardSettings,
+    automaticRetry: boolean,
+    persistBeforeRequest: boolean,
+  ) => {
+    if (
+      !userId
+      || pending.accountId !== userId
+      || pending.inviteToken !== matchedInvite?.inviteToken
+      || !navigator.onLine
+      || updateInvite.isPending
+    ) return;
+    const identity = `${pending.accountId}:${pending.inviteToken}`;
+    if (syncingSettingsKey.current) return;
+    syncingSettingsKey.current = identity;
+    setSettingsSyncing(true);
     try {
+      const refreshed = await invitesQuery.refetch();
+      if (
+        activeSettingsIdentity.current.accountId !== pending.accountId
+        || activeSettingsIdentity.current.inviteToken !== pending.inviteToken
+        || refreshed.isError
+      ) throw new Error('Could not refresh the owner card');
+      const latestInvite = refreshed.data?.find((invite) => invite.inviteToken === pending.inviteToken);
+      if (!latestInvite) throw new Error('The owner card is not available for this account');
+      const currentSettings = hypeCardSettingsFromInvite(latestInvite);
+      const mergedSettings = mergePendingHypeCardSettings(currentSettings, pending);
+      const wouldPublish = retryWouldMakeHypeCardPublic(currentSettings, mergedSettings);
+      if (automaticRetry && wouldPublish) {
+        setSettingsMessageKind('info');
+        setSettingsMessage('Your private card stays private. Reconnect, then save again to confirm public access.');
+        return;
+      }
+      if (!automaticRetry && wouldPublish
+        && !window.confirm('Make this HYPE Card public? Anyone with its link will be able to view the sections you enable.')) {
+        setSettingsMessageKind('info');
+        setSettingsMessage(pendingSettingsSave
+          ? 'Your changes are still saved on this device. The HYPE Card was not made public.'
+          : 'No changes were saved. The HYPE Card was not made public.');
+        return;
+      }
+      if (persistBeforeRequest) savePendingHypeCardSettings(window.localStorage, pending);
       const updatedInvite = await updateInvite.mutateAsync({
-        inviteToken: matchedInvite.inviteToken,
-        data: settingsPayload(matchedInvite),
+        inviteToken: pending.inviteToken,
+        data: settingsPayload(latestInvite, mergedSettings),
       });
       queryClient.setQueriesData<OwnedAthleteInvite[]>(
         { queryKey: getListAthleteInvitesQueryKey() },
@@ -321,11 +394,17 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
           invite.inviteToken === updatedInvite.inviteToken ? updatedInvite : invite,
         ),
       );
+      clearPendingHypeCardSettings(window.localStorage, pending);
+      setPendingSettingsSave(null);
       setSettingsDirty(false);
+      setDraftShowHypeCard(updatedInvite.showHypeCard);
+      setDraftShowStats(updatedInvite.showStats);
+      setDraftShowEvents(updatedInvite.showEvents);
+      setDraftPaused(updatedInvite.paused);
       setSettingsMessageKind('success');
-      setSettingsMessage(draftPaused
+      setSettingsMessage(updatedInvite.paused
         ? 'HYPE Card settings saved. The public page is paused.'
-        : draftShowHypeCard ? 'HYPE Card settings saved.'
+        : updatedInvite.showHypeCard ? 'HYPE Card settings saved.'
           : 'HYPE Card settings saved. The public card is hidden.');
       try {
         await Promise.all([
@@ -338,9 +417,96 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         setSettingsMessage('Settings were saved, but the latest card status could not be refreshed. Try again when you’re online.');
       }
     } catch {
-      setSettingsMessageKind('error');
-      setSettingsMessage('HYPE Card settings could not be saved. Check your connection and try again.');
+      if (persistBeforeRequest) {
+        try {
+          savePendingHypeCardSettings(window.localStorage, pending);
+          skipImmediateSettingsRetry.current = pending.savedAt;
+          setPendingSettingsSave(pending);
+          setSettingsDirty(false);
+          setSettingsMessageKind('info');
+          setSettingsMessage('Your settings are saved on this device and will sync when the connection is available.');
+        } catch {
+          setSettingsMessageKind('error');
+          setSettingsMessage('HYPE Card settings could not be saved on this device. Check storage access and try again.');
+        }
+      } else {
+        setSettingsMessageKind('error');
+        setSettingsMessage('HYPE Card settings could not be synced. Your saved changes remain on this device.');
+      }
+    } finally {
+      if (syncingSettingsKey.current === identity) syncingSettingsKey.current = null;
+      setSettingsSyncing(false);
     }
+  };
+  useEffect(() => {
+    if (
+      !pendingSettingsSave
+      || pendingSettingsSave.accountId !== userId
+      || pendingSettingsSave.inviteToken !== matchedInvite?.inviteToken
+    ) return;
+    const retryWhenOnline = () => {
+      if (navigator.onLine) void syncPendingSettings(pendingSettingsSave, true, false);
+    };
+    if (skipImmediateSettingsRetry.current === pendingSettingsSave.savedAt) {
+      skipImmediateSettingsRetry.current = null;
+    } else if (navigator.onLine) {
+      void syncPendingSettings(pendingSettingsSave, true, false);
+    }
+    window.addEventListener('online', retryWhenOnline);
+    return () => window.removeEventListener('online', retryWhenOnline);
+  }, [pendingSettingsSave?.savedAt, userId, matchedInvite?.inviteToken]);
+  const saveSettings = async () => {
+    if (!matchedInvite || !userId || updateInvite.isPending || settingsSyncing) return;
+    setSettingsMessage('');
+    const pendingForCurrentCard = pendingSettingsSave?.accountId === userId
+      && pendingSettingsSave.inviteToken === matchedInvite.inviteToken
+      ? pendingSettingsSave
+      : null;
+    const baseSettings = hypeCardSettingsFromInvite(matchedInvite);
+    const desiredSettings: HypeCardSettings = {
+      showHypeCard: draftShowHypeCard,
+      showStats: draftShowStats,
+      showEvents: draftShowEvents,
+      paused: draftPaused,
+    };
+    const pending = createPendingHypeCardSettings(
+      userId,
+      matchedInvite.inviteToken,
+      baseSettings,
+      desiredSettings,
+    );
+    if (!pending.editedFields.length) {
+      try {
+        if (pendingForCurrentCard) clearPendingHypeCardSettings(window.localStorage, pendingForCurrentCard);
+      } catch {
+        setSettingsMessageKind('error');
+        setSettingsMessage('The saved settings could not be cleared from this device. Check storage access and try again.');
+        return;
+      }
+      setPendingSettingsSave(null);
+      setSettingsDirty(false);
+      setDraftShowHypeCard(baseSettings.showHypeCard);
+      setDraftShowStats(baseSettings.showStats);
+      setDraftShowEvents(baseSettings.showEvents);
+      setDraftPaused(baseSettings.paused);
+      return;
+    }
+    if (!navigator.onLine) {
+      if (retryWouldMakeHypeCardPublic(baseSettings, desiredSettings)
+        && !window.confirm('Make this HYPE Card public? Anyone with its link will be able to view the sections you enable.')) return;
+      try {
+        savePendingHypeCardSettings(window.localStorage, pending);
+        setPendingSettingsSave(pending);
+        setSettingsDirty(false);
+        setSettingsMessageKind('info');
+        setSettingsMessage('Your settings are saved on this device and will sync when the connection is available.');
+      } catch {
+        setSettingsMessageKind('error');
+        setSettingsMessage('HYPE Card settings could not be saved on this device. Check storage access and try again.');
+      }
+      return;
+    }
+    await syncPendingSettings(pending, false, true);
   };
   const setSetting = (setter: (value: boolean) => void, value: boolean) => {
     setter(value);
@@ -369,7 +535,7 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
         cardCandidates={hasAmbiguousInvite ? inviteCandidates : undefined}
         selectedCardToken={selectedInvite?.inviteToken}
         onSelectCard={setSelectedInviteToken}
-        selectionDisabled={updateInvite.isPending}
+        selectionDisabled={updateInvite.isPending || settingsSyncing}
         onRetryCard={() => {
           if (fanCardQuery.isError) void fanCardQuery.refetch();
           else void invitesQuery.refetch();
@@ -438,13 +604,13 @@ export function PlayerShowcasePage({ profile, userId }: { profile: SupporterProf
               ].map((item) => (
                 <label className="hype-owner-setting" key={item.id} htmlFor={item.id}>
                   <span><strong>{item.title}</strong><small>{item.detail}</small></span>
-                  <input id={item.id} type="checkbox" checked={item.value} disabled={updateInvite.isPending} onChange={(event) => setSetting(item.setter, event.currentTarget.checked)} data-testid={`toggle-${item.id}`} />
+                  <input id={item.id} type="checkbox" checked={item.value} disabled={updateInvite.isPending || settingsSyncing} onChange={(event) => setSetting(item.setter, event.currentTarget.checked)} data-testid={`toggle-${item.id}`} />
                 </label>
               ))}
             </div>
             {settingsMessage && <p className={`hype-owner-settings__message hype-owner-settings__message--${settingsMessageKind}`} role={settingsMessageKind === 'error' ? 'alert' : 'status'} data-testid="status-hype-card-settings">{settingsMessage}</p>}
-            <button type="button" className="hype-owner-save" onClick={() => void saveSettings()} disabled={!settingsDirty || updateInvite.isPending} data-testid="button-save-hype-card-settings">
-              <Save aria-hidden="true" />{updateInvite.isPending ? 'Saving…' : 'Save HYPE Card settings'}
+            <button type="button" className="hype-owner-save" onClick={() => void saveSettings()} disabled={(!settingsDirty && !pendingSettingsSave) || updateInvite.isPending || settingsSyncing} data-testid="button-save-hype-card-settings">
+              <Save aria-hidden="true" />{settingsSyncing ? 'Syncing…' : updateInvite.isPending ? 'Saving…' : pendingSettingsSave && !settingsDirty ? 'Try saving settings' : 'Save HYPE Card settings'}
             </button>
           </section>
         )}
