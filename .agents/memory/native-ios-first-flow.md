@@ -9,6 +9,12 @@ Do not replace PWA auth, migrate production accounts, or connect the SwiftUI pro
 
 The iOS `ClerkConfig.plist` publishable key must belong to the dedicated iOS Clerk instance, not the Replit-managed web app. **Why:** the API verifies the native token against the separately configured iOS issuer, so a web-instance token can return HTTP 401. **How to apply:** when restoring the plist, pair the iOS app key with the server's native issuer configuration; never ask the user to paste a key into chat.
 
+Native server-side Clerk operations must use the same instance as the configured native JWT issuer, independently of the PWA's managed credentials.
+
+**Why:** successful Google sign-in and authenticated API reachability do not prove that first-time profile setup can read the native identity. A connector marked production can still contain credentials whose public keys match the development instance.
+
+**How to apply:** verify the provider/issuer public-key match in the actual runtime before signup or provider deletion. Workspace connector probes alone do not establish published-runtime credentials. Keep native development, native production, and PWA authentication isolated.
+
 Legacy linking, when used for recovery, must prove the native identity and existing web owner independently, with explicit approval on both sides. Never infer ownership from matching emails or silently replace a connection. Disconnect preserves both accounts and their saved data.
 
 Do not show a “PIXL account connected” card or connection-management section on the native dashboard.
