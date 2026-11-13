@@ -62,6 +62,7 @@ import { GetNativeAthletePhotoStateResponse, RemoveNativeAthletePhotoBody } from
 import { RequestNativeAccountDeletionBody, RequestNativeAccountDeletionResponse, GetNativeAccountDeletionResponse } from "@workspace/api-zod";
 import { assertNativeNotDeleting, previewNativeAccountDeletion, requestNativeAccountDeletion } from "../lib/nativeAccountDeletion";
 import { runNativeAccountDeletions } from "../jobs/nativeAccountDeletions";
+import { NativeClerkProviderError } from "../lib/nativeClerkProvider";
 
 const handle: (fn: RequestHandler, photoOperation?: NativePhotoOperation) => RequestHandler = (fn, photoOperation) => async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -79,6 +80,9 @@ const handle: (fn: RequestHandler, photoOperation?: NativePhotoOperation) => Req
       return;
     }
     if (error instanceof NativeLinkError) {
+      if (error instanceof NativeClerkProviderError) {
+        req.log.error({ nativeClerkDiagnostic: error.diagnosticCode }, "Native Clerk provider check failed");
+      }
       if (error.status === 429) res.setHeader("Retry-After", "600");
       res.status(error.status).json({ error: error.message });
     } else {

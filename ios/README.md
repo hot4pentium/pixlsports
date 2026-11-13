@@ -87,6 +87,16 @@ native API requests will be rejected. The Release app uses
 `https://pixlsports.com` unless an explicit API origin is added to its production
 plist.
 
+The API also requires the server-only secret
+`NATIVE_IOS_CLERK_PRODUCTION_SECRET_KEY`, using the `sk_live_` key from that
+dedicated **iOS Production** instance. Enter it through Replit Secrets, never in
+Xcode, source control, or chat. It is used only when the API runs in production;
+development continues to use the existing native Clerk workspace connector.
+The production API fails closed if the native key is missing or does not match
+the configured issuer. Do not replace the PWA's managed `CLERK_SECRET_KEY`.
+Republish the backend after adding or changing this configuration; no native
+app rebuild is needed for this server-only change.
+
 The Xcode target is configured with bundle ID `com.pixlsports`, the existing
 Apple development team, and a 1024-pixel app icon. On the Mac:
 
@@ -600,8 +610,11 @@ and sport. Team, jersey number, and position are optional and remain editable in
 Settings. Saving setup assigns a private, paused starter HYPE Card; nothing is
 published automatically. A PWA visit is not required.
 
-The API uses the server-side Clerk workspace connector for the dedicated iOS
-instance. Its public signing keys must match `NATIVE_IOS_CLERK_ISSUER`.
+The development API uses the server-side Clerk workspace connector for the
+dedicated iOS instance. Production instead requires
+`NATIVE_IOS_CLERK_PRODUCTION_SECRET_KEY`; it never falls back to the development
+connector. Both paths verify that the backend's public signing keys match
+`NATIVE_IOS_CLERK_ISSUER` before reading or deleting a native provider identity.
 Keep the iOS secret out of Xcode and leave the PWA's managed keys unchanged.
 New iPhone signups receive independent database-backed profiles in
 `native_accounts`, with owners namespaced by the verified issuer and subject.

@@ -1,6 +1,7 @@
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { z } from "zod/v4";
 import { NativeLinkError, nativeIssuer, type NativeIdentity } from "./nativeIdentity";
+import { createNativeClerkRead, NativeClerkProviderError } from "./nativeClerkProvider";
 
 const NativeUser = z.object({
   id: z.string(),
@@ -23,23 +24,9 @@ const Keys = z.object({
 });
 const connectors = new ReplitConnectors();
 
-async function nativeRead(path: string, method: "GET" | "DELETE" = "GET") {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    // The connector SDK does not expose AbortSignal. Bound calls; DELETE can
-    // have an uncertain outcome, but retrying the same subject is idempotent.
-    return await Promise.race([
-      connectors.proxy("clerk", path, { method }),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new NativeLinkError(
-          503, "Account setup is temporarily unavailable. Please try again.",
-        )), 10000);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
+const nativeRead = createNativeClerkRead({
+  proxy: (path, init) => connectors.proxy("clerk", path, init),
+});
 
 const providerDependencies = {
   read: nativeRead,
@@ -51,20 +38,30 @@ const providerDependencies = {
 
 export async function assertNativeProviderConnection(who: NativeIdentity, deps = providerDependencies) {
   if (who.issuer !== nativeIssuer()) throw new NativeLinkError(401, "Sign in to the iPhone app again.");
-  // Workspace connections can be replaced. Prove that the connected backend
-  // belongs to the same instance that signed this app's verified JWT.
-  const [backendKeys, issuerKeys] = await Promise.all([
-    deps.read("/v1/jwks"),
-    deps.issuerKeys(nativeIssuer()),
-  ]);
-  if (!backendKeys.ok || !issuerKeys.ok) {
-    throw new NativeLinkError(503, "Account setup is temporarily unavailable. Please try again.");
+  // Credentials can be replaced. Prove that the backend belongs to the same
+  // instance that signed this app's verified JWT before reading/deleting users.
+  let backendKeys: Response, issuerKeys: Response;
+  try {
+    [backendKeys, issuerKeys] = await Promise.all([
+      deps.read("/v1/jwks"),
+      deps.issuerKeys(nativeIssuer()),
+    ]);
+  } catch (error) {
+    if (error instanceof NativeClerkProviderError) throw error;
+    throw new NativeClerkProviderError("key_lookup_failed");
   }
-  const a = Keys.parse(await backendKeys.json());
-  const b = Keys.parse(await issuerKeys.json());
+  if (!backendKeys.ok) throw new NativeClerkProviderError("backend_keys_unavailable");
+  if (!issuerKeys.ok) throw new NativeClerkProviderError("issuer_keys_unavailable");
+  let a: z.infer<typeof Keys>, b: z.infer<typeof Keys>;
+  try {
+    a = Keys.parse(await backendKeys.json());
+    b = Keys.parse(await issuerKeys.json());
+  } catch {
+    throw new NativeClerkProviderError("keys_invalid");
+  }
   if (!a.keys.some(k => k.kty === "RSA" && k.n && k.e
     && b.keys.some(e => e.kid === k.kid && e.n === k.n && e.e === k.e && e.kty === k.kty))) {
-    throw new NativeLinkError(503, "iPhone account setup needs attention. Please try again later.");
+    throw new NativeClerkProviderError("instance_mismatch");
   }
 }
 
@@ -81,7 +78,7 @@ export async function loadNativeProviderIdentity(who: NativeIdentity) {
 }
 
 /** Deleting the dedicated native user revokes all its sessions, never a web user.
- * Recheck the connector/issuer match on every retry; a 404 is already deleted.
+ * Recheck the credential/issuer match on every retry; a 404 is already deleted.
  */
 export function createNativeProviderDeletion(deps = providerDependencies) {
   return async (who: NativeIdentity) => {
