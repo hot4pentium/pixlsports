@@ -495,7 +495,11 @@ struct NativeEventPrepView: View {
         .toolbar {
             if hasManualUnsavedEdits {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Back") { confirmingLeave = true }
+                    Button {
+                        confirmingLeave = true
+                    } label: {
+                        Text("Back").nativeToolbarLabel()
+                    }
                 }
             }
         }

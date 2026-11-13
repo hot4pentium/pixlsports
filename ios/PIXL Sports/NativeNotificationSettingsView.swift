@@ -674,7 +674,9 @@ struct NativeOnboardingNotificationSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Not now", action: onComplete)
+                Button(action: onComplete) {
+                    Text("Not now").nativeToolbarLabel()
+                }
                     .disabled(isSaving || model.isSaving)
                     .accessibilityIdentifier("native-onboarding-alert-skip")
             }

@@ -30,7 +30,9 @@ struct NativePublicHypeCardRecipientView: View {
             recipientCard
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("Done", action: onClose)
+                        Button(action: onClose) {
+                            Text("Done").nativeToolbarLabel()
+                        }
                         .tint(.black)
                         .accessibilityIdentifier("native-public-hype-card-done")
                     }

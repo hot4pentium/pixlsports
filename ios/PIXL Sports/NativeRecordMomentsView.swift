@@ -125,7 +125,7 @@ struct NativeRecordMomentsView: View {
                 Button {
                     dismiss()
                 } label: {
-                    Text("Done")
+                    Text("Done").nativeToolbarLabel()
                         .foregroundStyle(SupporterHomeColors.background)
                 }
                 .disabled(model.busy || authorizing)

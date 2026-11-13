@@ -13,7 +13,7 @@ Native server-side Clerk operations must use the same instance as the configured
 
 **Why:** successful Google sign-in and authenticated API reachability do not prove that first-time profile setup can read the native identity. A connector marked production can still contain credentials whose public keys match the development instance.
 
-**How to apply:** verify the provider/issuer public-key match in the actual runtime before signup or provider deletion. Workspace connector probes alone do not establish published-runtime credentials. Keep native development, native production, and PWA authentication isolated.
+**How to apply:** use an isolated native Production backend credential while preserving the native development connector and PWA credentials. The user confirmed this separation works for TestFlight signup. Verify the provider/issuer public-key match in the actual runtime before signup or provider deletion; workspace connector probes alone do not establish published-runtime credentials.
 
 Legacy linking, when used for recovery, must prove the native identity and existing web owner independently, with explicit approval on both sides. Never infer ownership from matching emails or silently replace a connection. Disconnect preserves both accounts and their saved data.
 

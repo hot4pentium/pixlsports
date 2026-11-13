@@ -30,7 +30,8 @@ test("onboarding alert choices save preferences and explicitly request notificat
   assert.match(page, /Toggle\("One hour before"/);
   assert.match(page, /Toggle\("Event day"/);
   assert.match(page, /Picker\("Event-day time zone"/);
-  assert.match(page, /Button\("Not now", action: onComplete\)/);
+  assert.match(page, /Button\(action: onComplete\) \{\s*Text\("Not now"\)\.nativeToolbarLabel\(\)/);
+  assert.match(page, /Text\("Not now"\)\.nativeToolbarLabel\(\)[\s\S]*?\.disabled\(isSaving \|\| model\.isSaving\)/);
   assert.match(page, /Save and enable alerts/);
   assert.match(page, /model\.save\([\s\S]*?oneHourBefore: oneHourBefore,[\s\S]*?dayOf: dayOf,[\s\S]*?timezone: timezone/);
   assert.match(page, /pushCoordinator\.enable\(clerk: clerk\)/);

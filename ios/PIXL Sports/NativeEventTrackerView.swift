@@ -503,7 +503,11 @@ struct NativeEventTrackerView: View {
             .navigationTitle("Finish game")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showingFinish = false }
+                    Button {
+                        showingFinish = false
+                    } label: {
+                        Text("Cancel").nativeToolbarLabel()
+                    }
                 }
             }
         }

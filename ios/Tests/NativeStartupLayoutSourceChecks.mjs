@@ -146,9 +146,24 @@ test("trailing toolbar labels reserve padding inside their native containers", (
   for (const file of [
     "ContentView.swift", "NativeNotificationSettingsView.swift", "NativeAthleteProfileView.swift",
     "NativeAccountLinkView.swift", "SupporterLiveTapsView.swift", "SupporterHypeCardView.swift",
+    "NativePublicHypeCardRecipientView.swift", "NativeRecordMomentsView.swift",
+    "NativeEventPrepView.swift", "NativeEventTrackerView.swift",
   ]) {
     const source = readFileSync(new URL(`../PIXL Sports/${file}`, import.meta.url), "utf8");
     assert.match(source, /\.nativeToolbarLabel\(/, `${file} must size its toolbar label`);
+  }
+  for (const [file, title] of [
+    ["NativeNotificationSettingsView.swift", "Not now"],
+    ["NativePublicHypeCardRecipientView.swift", "Done"],
+    ["NativeRecordMomentsView.swift", "Done"],
+    ["NativeEventPrepView.swift", "Back"],
+    ["NativeEventTrackerView.swift", "Cancel"],
+  ]) {
+    const source = readFileSync(new URL(`../PIXL Sports/${file}`, import.meta.url), "utf8");
+    assert.ok(source.includes(`Text("${title}").nativeToolbarLabel()`),
+      `${file}'s ${title} action must pad the label inside the toolbar container`);
+    assert.ok(!source.includes(`Button("${title}"`),
+      `${file}'s ${title} action must not bypass the padded label`);
   }
 });
 
